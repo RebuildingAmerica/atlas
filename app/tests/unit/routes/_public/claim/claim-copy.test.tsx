@@ -7,6 +7,7 @@ import { ClaimHero } from "@/routes/_public/claim/-claim-state-panels";
 import { ClaimSubmissionPanel } from "@/routes/_public/claim/-claim-submission-panel";
 import {
   claimPanelNoop,
+  claimAtprotoIdentity,
   createClaimSubmissionPanelProps,
   createOrganizationEntry,
   staleClaimCopyPatterns,
@@ -49,13 +50,13 @@ describe("profile verification copy", () => {
     render(
       <ClaimSubmissionPanel
         {...createClaimSubmissionPanelProps({
-          atprotoHandle: "eastsidehousing.bsky.social",
-          atprotoLoginHandle: "eastsidehousing.bsky.social",
+          atprotoIdentities: [claimAtprotoIdentity("eastsidehousing.bsky.social")],
+          selectedAtprotoIdentityId: "identity_1",
         })}
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Connect ATProto" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect another account" })).toBeInTheDocument();
     expect(
       screen.getByText(
         "This personal Bluesky-style handle needs an organization domain or workspace to confirm it belongs with this profile.",

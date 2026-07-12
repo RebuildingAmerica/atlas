@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ClaimSubmissionPanel } from "@/routes/_public/claim/-claim-submission-panel";
 import {
   claimPanelNoop,
+  claimAtprotoIdentity,
   createClaimSubmissionPanelProps,
 } from "./claim-submission-panel-test-support";
 
@@ -18,8 +19,8 @@ describe("ClaimSubmissionPanel", () => {
     render(
       <ClaimSubmissionPanel
         {...createClaimSubmissionPanelProps({
-          atprotoHandle: "eastsidehousing.bsky.social",
-          atprotoLoginHandle: "eastsidehousing.bsky.social",
+          atprotoIdentities: [claimAtprotoIdentity("eastsidehousing.bsky.social")],
+          selectedAtprotoIdentityId: "identity_1",
         })}
       />,
     );
@@ -35,8 +36,8 @@ describe("ClaimSubmissionPanel", () => {
     render(
       <ClaimSubmissionPanel
         {...createClaimSubmissionPanelProps({
-          atprotoHandle: "eastsidehousing.bsky.social",
-          atprotoLoginHandle: "eastsidehousing.bsky.social",
+          atprotoIdentities: [claimAtprotoIdentity("eastsidehousing.bsky.social")],
+          selectedAtprotoIdentityId: "identity_1",
         })}
       />,
     );
@@ -56,8 +57,8 @@ describe("ClaimSubmissionPanel", () => {
     render(
       <ClaimSubmissionPanel
         {...createClaimSubmissionPanelProps({
-          atprotoHandle: "social.eastsidehousing.org",
-          atprotoLoginHandle: "social.eastsidehousing.org",
+          atprotoIdentities: [claimAtprotoIdentity("social.eastsidehousing.org")],
+          selectedAtprotoIdentityId: "identity_1",
         })}
       />,
     );

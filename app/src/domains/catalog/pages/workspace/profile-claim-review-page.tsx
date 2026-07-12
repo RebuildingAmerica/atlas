@@ -23,7 +23,7 @@ export function ProfileClaimReviewPage() {
   return (
     <ProfileClaimReviewView
       approving={approve.isPending}
-      atprotoStatus={atprotoRevalidationLabel(revalidateAtproto.data?.cleared)}
+      atprotoStatus={atprotoRevalidationLabel(revalidateAtproto.data?.needs_attention)}
       claims={claims}
       errorMessage={errorMessage}
       isLoading={reviews.isPending}
@@ -53,10 +53,10 @@ export function ProfileClaimReviewPage() {
   );
 }
 
-function atprotoRevalidationLabel(cleared: number | undefined): string {
-  if (cleared === undefined) return "Not checked";
-  if (cleared === 0) return "All current";
-  return cleared === 1 ? "1 removed" : `${cleared} removed`;
+function atprotoRevalidationLabel(needsAttention: number | undefined): string {
+  if (needsAttention === undefined) return "Not checked";
+  if (needsAttention === 0) return "All current";
+  return needsAttention === 1 ? "1 needs attention" : `${needsAttention} need attention`;
 }
 
 function reviewNote(note: string, fallback: string): string {

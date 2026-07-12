@@ -26,11 +26,13 @@ describe("routes/_public/claim/$slug organization proofs", () => {
     const initiateMock = await mockInitiateClaim();
 
     await renderOrganizationClaim({ atprotoHandle: "acme.org", atprotoIdentityId: "atp_1" });
-    expect(screen.getByText("ATProto account connected")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "acme.org" })).toBeInTheDocument();
     expect(screen.queryByText("This is me")).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /use my workspace role/i })).toBeDisabled();
     expect(
-      screen.getByText("Use an official ATProto account for this organization."),
+      screen.getByText(
+        "Choose an account connected in Account settings or connect another account.",
+      ),
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Organization domain"), {
       target: { value: "acme.org" },
@@ -47,28 +49,26 @@ describe("routes/_public/claim/$slug organization proofs", () => {
     });
   });
 
-  it("does not submit a stale ATProto identity after the connected handle changes", async () => {
+  it("does not submit an identity that needs attention during the draft", async () => {
     const initiateMock = await mockInitiateClaim();
 
-    await renderOrganizationClaim({ atprotoHandle: "acme.org", atprotoIdentityId: "atp_1" });
-    fireEvent.change(screen.getByRole("textbox", { name: "ATProto handle" }), {
-      target: { value: "other.example" },
+    await renderOrganizationClaim({
+      atprotoHandle: "acme.org",
+      atprotoIdentityId: "atp_1",
+      atprotoIdentityStatus: "needs_attention",
     });
-    expect(screen.queryByText("ATProto account connected")).not.toBeInTheDocument();
-    expect(screen.getByText("Reconnect this account to use other.example.")).toBeInTheDocument();
 
     await clickSubmitVerification();
 
-    expect(initiateMock).toHaveBeenCalledWith({
-      slug: "acme",
-      body: {
-        relationship: "organization_representative",
-      },
-    });
+    expect(initiateMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Reconnect this ATProto account or choose another identity.",
+    );
   });
 
   it("starts ATProto OAuth from the organization proof step", async () => {
     const assignMock = vi.fn();
+    const sessionStorage = window.sessionStorage;
     vi.stubGlobal("window", {
       location: {
         assign: assignMock,
@@ -77,17 +77,25 @@ describe("routes/_public/claim/$slug organization proofs", () => {
         href: "https://atlas.test/claim/acme?atprotoError=ATProto+identity+could+not+be+verified.&atprotoHandle=acme.org",
         search: "?atprotoError=ATProto+identity+could+not+be+verified.&atprotoHandle=acme.org",
       },
+      sessionStorage,
     });
 
     await renderOrganizationClaim();
-    fireEvent.change(screen.getByRole("textbox", { name: "ATProto handle" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Source for your connection" }), {
+      target: { value: "https://acme.org/team" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Another ATProto handle" }), {
       target: { value: "acme.org" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Connect ATProto" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect another account" }));
 
     expect(assignMock).toHaveBeenCalledWith(
-      "https://atlas.test/api/atproto/oauth/start?handle=acme.org&returnTo=%2Fclaim%2Facme%3FatprotoHandle%3Dacme.org",
+      "https://atlas.test/api/atproto/oauth/start?handle=acme.org&returnTo=%2Fclaim%2Facme",
     );
+    expect(JSON.parse(sessionStorage.getItem("atlas:claim-draft:acme") ?? "null")).toMatchObject({
+      evidence: "https://acme.org/team",
+      relationship: "organization_representative",
+    });
   });
 
   it("submits active workspace role for organization verification", async () => {

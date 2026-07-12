@@ -82,7 +82,7 @@ describe("ProfileClaimReviewPage", () => {
   it("lets reviewers recheck linked ATProto profiles", async () => {
     const claimReviewHooks = getClaimReviewHooks();
     claimReviewHooks.useRevalidateProfileAtprotoLinks.mockReturnValue({
-      data: { checked: 3, cleared: 1 },
+      data: { checked: 3, needs_attention: 1 },
       mutate: claimReviewHooks.revalidateAtproto,
       isPending: false,
     });
@@ -92,7 +92,7 @@ describe("ProfileClaimReviewPage", () => {
     render(<ProfileClaimReviewPage />);
 
     expect(screen.getByText("ATProto links")).toBeInTheDocument();
-    expect(screen.getByText("1 removed")).toBeInTheDocument();
+    expect(screen.getByText("1 needs attention")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Recheck ATProto links" }));
     expect(claimReviewHooks.revalidateAtproto).toHaveBeenCalledOnce();
   });
@@ -100,7 +100,7 @@ describe("ProfileClaimReviewPage", () => {
   it("shows a clear status when linked ATProto profiles are current", async () => {
     const claimReviewHooks = getClaimReviewHooks();
     claimReviewHooks.useRevalidateProfileAtprotoLinks.mockReturnValue({
-      data: { checked: 3, cleared: 0 },
+      data: { checked: 3, needs_attention: 0 },
       mutate: claimReviewHooks.revalidateAtproto,
       isPending: false,
     });

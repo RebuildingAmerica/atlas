@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access";
+import { useAtprotoIdentities } from "@/domains/access/atproto-identities";
 import {
   useInitiateClaim,
   useMyClaims,
@@ -21,12 +22,12 @@ import {
   VerificationTokenPanel,
   VerifiedClaimPanel,
 } from "./-claim-components";
+import { clearClaimDraft, loadClaimDraft, saveClaimDraft, type ClaimDraft } from "./claim-draft";
 
 const claimSearchSchema = z.object({
   from: z.string().optional(),
   token: z.string().optional(),
   atprotoIdentityId: z.string().optional(),
-  atprotoHandle: z.string().optional(),
   atprotoError: z.string().optional(),
 });
 
@@ -62,16 +63,24 @@ function ClaimRoute() {
   const verify = useVerifyClaimEmail();
   const verifyDomain = useVerifyClaimDomain();
   const claims = useMyClaims();
-  const [relationship, setRelationship] = useState(defaultRelationship(entry.type));
-  const [evidence, setEvidence] = useState("");
-  const [requestedChanges, setRequestedChanges] = useState("");
-  const [preferredContactChannel, setPreferredContactChannel] = useState("");
-  const [privateNote, setPrivateNote] = useState("");
-  const [atprotoIdentityId] = useState(search.atprotoIdentityId ?? "");
-  const [atprotoHandle] = useState(search.atprotoHandle ?? "");
-  const [atprotoLoginHandle, setAtprotoLoginHandle] = useState(search.atprotoHandle ?? "");
-  const [dnsDomain, setDnsDomain] = useState("");
-  const [useActiveWorkspace, setUseActiveWorkspace] = useState(false);
+  const atprotoIdentities = useAtprotoIdentities();
+  const [restoredDraft] = useState(() => loadClaimDraft(entry.slug));
+  const [relationship, setRelationship] = useState(
+    restoredDraft?.relationship ?? defaultRelationship(entry.type),
+  );
+  const [evidence, setEvidence] = useState(restoredDraft?.evidence ?? "");
+  const [requestedChanges, setRequestedChanges] = useState(restoredDraft?.requestedChanges ?? "");
+  const [preferredContactChannel, setPreferredContactChannel] = useState(
+    restoredDraft?.preferredContactChannel ?? "",
+  );
+  const [privateNote, setPrivateNote] = useState(restoredDraft?.privateNote ?? "");
+  const [atprotoIdentityId, setAtprotoIdentityId] = useState(
+    search.atprotoIdentityId ?? restoredDraft?.atprotoIdentityId ?? "",
+  );
+  const [dnsDomain, setDnsDomain] = useState(restoredDraft?.dnsDomain ?? "");
+  const [useActiveWorkspace, setUseActiveWorkspace] = useState(
+    restoredDraft?.useActiveWorkspace ?? false,
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(search.atprotoError ?? null);
 
   const myClaim = claims.data?.find((claim) => claim.entry_id === entry.id);
@@ -80,24 +89,27 @@ function ClaimRoute() {
   const isOrganization = entry.type === "organization";
   const activeWorkspaceName = sessionQuery.data?.workspace?.activeOrganization?.name ?? null;
   const canUseActiveWorkspace = activeWorkspaceName !== null;
-  const activeAtprotoIdentityId = activeConnectedAtprotoIdentityId({
-    atprotoHandle,
-    atprotoIdentityId,
-    atprotoLoginHandle,
-  });
-  const activeAtprotoHandle = activeAtprotoIdentityId ? atprotoHandle : "";
-  const atprotoConnectionChanged = Boolean(
-    atprotoIdentityId && atprotoHandle && !activeAtprotoIdentityId,
+  const selectedAtprotoIdentity = atprotoIdentities.data?.find(
+    (identity) => identity.id === atprotoIdentityId,
   );
+  const activeAtprotoIdentityId =
+    selectedAtprotoIdentity?.control_status === "active" &&
+    selectedAtprotoIdentity.resolution_status === "verified"
+      ? selectedAtprotoIdentity.id
+      : "";
 
   async function handleInitiate() {
     setErrorMessage(null);
     const domainProof = dnsDomain.trim();
     const workspaceProof = canUseActiveWorkspace && useActiveWorkspace;
+    if (atprotoIdentityId && !activeAtprotoIdentityId) {
+      setErrorMessage("Reconnect this ATProto account or choose another identity.");
+      return;
+    }
     if (
       isOrganization &&
       activeAtprotoIdentityId &&
-      isGenericAtprotoHandle(activeAtprotoHandle) &&
+      isGenericAtprotoHandle(selectedAtprotoIdentity?.current_handle ?? "") &&
       !domainProof &&
       !workspaceProof
     ) {
@@ -120,6 +132,7 @@ function ClaimRoute() {
           ...(workspaceProof ? { use_active_workspace: true } : {}),
         },
       });
+      clearClaimDraft(entry.slug);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Could not start verification.");
     }
@@ -148,16 +161,38 @@ function ClaimRoute() {
     }
   }
 
-  function handleConnectAtproto() {
-    const handle = atprotoLoginHandle.trim();
-    if (!handle) {
-      setErrorMessage("Enter an ATProto handle first.");
-      return;
-    }
+  function handleConnectAtproto(handle: string) {
+    saveClaimDraft(entry.slug, currentDraft());
     const startUrl = new URL("/api/atproto/oauth/start", window.location.origin);
     startUrl.searchParams.set("handle", handle);
-    startUrl.searchParams.set("returnTo", atprotoReturnPath());
+    startUrl.searchParams.set("returnTo", `/claim/${entry.slug}`);
     window.location.assign(startUrl.toString());
+  }
+
+  function currentDraft(): ClaimDraft {
+    return {
+      atprotoIdentityId,
+      dnsDomain,
+      evidence,
+      preferredContactChannel,
+      privateNote,
+      relationship,
+      requestedChanges,
+      useActiveWorkspace,
+    };
+  }
+
+  function handleCancel() {
+    clearClaimDraft(entry.slug);
+    setRelationship(defaultRelationship(entry.type));
+    setEvidence("");
+    setRequestedChanges("");
+    setPreferredContactChannel("");
+    setPrivateNote("");
+    setAtprotoIdentityId("");
+    setDnsDomain("");
+    setUseActiveWorkspace(false);
+    setErrorMessage(null);
   }
 
   return (
@@ -202,9 +237,9 @@ function ClaimRoute() {
                 requestedChanges={requestedChanges}
                 preferredContactChannel={preferredContactChannel}
                 privateNote={privateNote}
-                atprotoLoginHandle={atprotoLoginHandle}
-                atprotoHandle={activeAtprotoHandle}
-                atprotoConnectionChanged={atprotoConnectionChanged}
+                atprotoIdentities={atprotoIdentities.data ?? []}
+                atprotoIdentitiesError={atprotoIdentities.isError}
+                selectedAtprotoIdentityId={atprotoIdentityId}
                 dnsDomain={dnsDomain}
                 activeWorkspaceName={activeWorkspaceName}
                 useActiveWorkspace={canUseActiveWorkspace && useActiveWorkspace}
@@ -215,10 +250,11 @@ function ClaimRoute() {
                 onRequestedChangesChange={setRequestedChanges}
                 onPreferredContactChannelChange={setPreferredContactChannel}
                 onPrivateNoteChange={setPrivateNote}
-                onAtprotoLoginHandleChange={setAtprotoLoginHandle}
+                onAtprotoIdentityChange={setAtprotoIdentityId}
                 onDnsDomainChange={setDnsDomain}
                 onUseActiveWorkspaceChange={setUseActiveWorkspace}
                 onConnectAtproto={handleConnectAtproto}
+                onCancel={handleCancel}
                 onSubmit={() => {
                   void handleInitiate();
                 }}
@@ -239,13 +275,7 @@ function ClaimRoute() {
 
 function claimRedirectPath(slug: string, search: ClaimSearch): string {
   const params = new URLSearchParams();
-  for (const key of [
-    "from",
-    "token",
-    "atprotoIdentityId",
-    "atprotoHandle",
-    "atprotoError",
-  ] as const) {
+  for (const key of ["from", "token", "atprotoIdentityId", "atprotoError"] as const) {
     const value = search[key];
     if (value) {
       params.set(key, value);
@@ -255,25 +285,8 @@ function claimRedirectPath(slug: string, search: ClaimSearch): string {
   return query ? `/claim/${slug}?${query}` : `/claim/${slug}`;
 }
 
-function atprotoReturnPath(): string {
-  const returnUrl = new URL(window.location.href);
-  returnUrl.searchParams.delete("atprotoError");
-  return `${returnUrl.pathname}${returnUrl.search}`;
-}
-
 function defaultRelationship(entryType: string): string {
   return entryType === "organization" ? "organization_representative" : "self";
-}
-
-function activeConnectedAtprotoIdentityId(input: {
-  atprotoHandle: string;
-  atprotoIdentityId: string;
-  atprotoLoginHandle: string;
-}): string {
-  const connectedHandle = normalizeHandle(input.atprotoHandle);
-  if (!connectedHandle) return "";
-  if (normalizeHandle(input.atprotoLoginHandle) !== connectedHandle) return "";
-  return input.atprotoIdentityId.trim();
 }
 
 function normalizeHandle(value: string): string {

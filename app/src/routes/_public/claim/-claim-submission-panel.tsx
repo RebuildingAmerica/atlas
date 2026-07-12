@@ -1,8 +1,10 @@
-import { AtSign, Contact, Globe, LockKeyhole, UserCheck } from "lucide-react";
+import { Contact, Globe, LockKeyhole, UserCheck } from "lucide-react";
+import type { AtprotoIdentityResponse } from "@/lib/generated/atlas-schemas";
 import { Button } from "@/platform/ui/button";
 import { Select } from "@/platform/ui/select";
 import { SurfaceSection } from "@/platform/ui/surface-section";
 import { ClaimVisibilitySummary, FieldBlock } from "./-claim-form-fields";
+import { ClaimAtprotoIdentityField } from "./-claim-atproto-identity-field";
 
 export interface ClaimSubmissionPanelProps {
   relationship: string;
@@ -10,9 +12,9 @@ export interface ClaimSubmissionPanelProps {
   requestedChanges: string;
   preferredContactChannel: string;
   privateNote: string;
-  atprotoLoginHandle: string;
-  atprotoHandle: string;
-  atprotoConnectionChanged: boolean;
+  atprotoIdentities: AtprotoIdentityResponse[];
+  atprotoIdentitiesError: boolean;
+  selectedAtprotoIdentityId: string;
   dnsDomain: string;
   activeWorkspaceName: string | null;
   useActiveWorkspace: boolean;
@@ -23,10 +25,11 @@ export interface ClaimSubmissionPanelProps {
   onRequestedChangesChange: (value: string) => void;
   onPreferredContactChannelChange: (value: string) => void;
   onPrivateNoteChange: (value: string) => void;
-  onAtprotoLoginHandleChange: (value: string) => void;
+  onAtprotoIdentityChange: (value: string) => void;
   onDnsDomainChange: (value: string) => void;
   onUseActiveWorkspaceChange: (value: boolean) => void;
-  onConnectAtproto: () => void;
+  onConnectAtproto: (handle: string) => void;
+  onCancel: () => void;
   onSubmit: () => void;
 }
 
@@ -39,7 +42,7 @@ export function ClaimSubmissionPanel(props: ClaimSubmissionPanelProps) {
   return (
     <div className="space-y-5">
       <RelationshipStep {...props} />
-      {props.showOrganizationProofs ? <OrganizationProofStep {...props} /> : null}
+      <IdentityProofStep {...props} />
       <PublicChangesStep {...props} />
       <PrivateContextStep {...props} />
     </div>
@@ -100,101 +103,86 @@ function relationshipOptions(isOrganization: boolean): RelationshipOption[] {
   ];
 }
 
-function OrganizationProofStep({
-  atprotoLoginHandle,
-  atprotoHandle,
-  atprotoConnectionChanged,
+function IdentityProofStep({
+  atprotoIdentities,
+  atprotoIdentitiesError,
+  selectedAtprotoIdentityId,
   dnsDomain,
   activeWorkspaceName,
   useActiveWorkspace,
-  onAtprotoLoginHandleChange,
+  showOrganizationProofs,
+  onAtprotoIdentityChange,
   onDnsDomainChange,
   onUseActiveWorkspaceChange,
   onConnectAtproto,
 }: ClaimSubmissionPanelProps) {
   const canUseActiveWorkspace = activeWorkspaceName !== null;
-  const needsOrganizationBackup = isGenericAtprotoHandle(atprotoHandle);
+  const selectedIdentity = atprotoIdentities.find(
+    (identity) => identity.id === selectedAtprotoIdentityId,
+  );
+  const needsOrganizationBackup = isGenericAtprotoHandle(selectedIdentity?.current_handle ?? "");
 
   return (
     <SurfaceSection
       marker="2"
-      title="Show you represent this organization"
-      description="Use an official account, domain, or workspace role."
+      title={showOrganizationProofs ? "Show you represent this organization" : "Verify this is you"}
+      description={
+        showOrganizationProofs
+          ? "Use an official account, domain, or workspace role."
+          : "Choose a connected account as evidence for review."
+      }
     >
-      {atprotoHandle ? (
-        <section className="border-outline-variant bg-surface-container-lowest rounded-lg border p-4">
-          <div className="flex items-center gap-2">
-            <AtSign className="text-accent h-4 w-4" aria-hidden />
-            <h3 className="type-title-small text-ink-strong">ATProto account connected</h3>
-          </div>
-          <p className="type-body-medium text-ink-soft mt-2">{atprotoHandle}</p>
-          {needsOrganizationBackup ? (
-            <p className="type-body-small text-ink-soft mt-2 max-w-xl">
-              This personal Bluesky-style handle needs an organization domain or workspace to
-              confirm it belongs with this profile.
-            </p>
-          ) : null}
-        </section>
+      <ClaimAtprotoIdentityField
+        identities={atprotoIdentities}
+        isError={atprotoIdentitiesError}
+        selectedIdentityId={selectedAtprotoIdentityId}
+        onConnectAnother={onConnectAtproto}
+        onSelect={onAtprotoIdentityChange}
+      />
+      {showOrganizationProofs && needsOrganizationBackup ? (
+        <p className="type-body-small text-ink-soft max-w-xl">
+          This personal Bluesky-style handle needs an organization domain or workspace to confirm it
+          belongs with this profile.
+        </p>
       ) : null}
-      <FieldBlock
-        label="ATProto handle"
-        help="Use an official ATProto account for this organization."
-        htmlFor="claim-atproto-handle"
-      >
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            id="claim-atproto-handle"
-            aria-describedby="claim-atproto-handle-help"
-            className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
-            value={atprotoLoginHandle}
-            onChange={(event) => {
-              onAtprotoLoginHandleChange(event.target.value);
-            }}
-          />
-          <Button onClick={onConnectAtproto} variant="secondary">
-            Connect ATProto
-          </Button>
-        </div>
-        {atprotoConnectionChanged ? (
-          <p className="type-body-small text-on-warning-container mt-2">
-            Reconnect this account to use {atprotoLoginHandle.trim()}.
-          </p>
-        ) : null}
-      </FieldBlock>
-      <FieldBlock
-        label="Organization domain"
-        help="Use the website or email domain that belongs to this organization."
-        htmlFor="claim-dns-domain"
-        icon={Globe}
-      >
-        <input
-          id="claim-dns-domain"
-          aria-describedby="claim-dns-domain-help"
-          className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
-          value={dnsDomain}
-          onChange={(event) => {
-            onDnsDomainChange(event.target.value);
-          }}
-        />
-      </FieldBlock>
-      <div className="border-outline-variant bg-surface-container-lowest flex items-start gap-3 rounded-lg border p-4">
-        <input
-          id="claim-use-active-workspace"
-          type="checkbox"
-          className="accent-primary mt-1 h-4 w-4"
-          checked={canUseActiveWorkspace && useActiveWorkspace}
-          disabled={!canUseActiveWorkspace}
-          onChange={(event) => {
-            onUseActiveWorkspaceChange(event.target.checked);
-          }}
-        />
-        <label htmlFor="claim-use-active-workspace" className="space-y-1">
-          <span className="type-label-medium text-ink-strong block">Use my workspace role</span>
-          <span className="type-body-small text-ink-soft block">
-            {activeWorkspaceName ?? "No organization workspace connected."}
-          </span>
-        </label>
-      </div>
+      {showOrganizationProofs ? (
+        <>
+          <FieldBlock
+            label="Organization domain"
+            help="Use the website or email domain that belongs to this organization."
+            htmlFor="claim-dns-domain"
+            icon={Globe}
+          >
+            <input
+              id="claim-dns-domain"
+              aria-describedby="claim-dns-domain-help"
+              className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
+              value={dnsDomain}
+              onChange={(event) => {
+                onDnsDomainChange(event.target.value);
+              }}
+            />
+          </FieldBlock>
+          <div className="border-outline-variant bg-surface-container-lowest flex items-start gap-3 rounded-lg border p-4">
+            <input
+              id="claim-use-active-workspace"
+              type="checkbox"
+              className="accent-primary mt-1 h-4 w-4"
+              checked={canUseActiveWorkspace && useActiveWorkspace}
+              disabled={!canUseActiveWorkspace}
+              onChange={(event) => {
+                onUseActiveWorkspaceChange(event.target.checked);
+              }}
+            />
+            <label htmlFor="claim-use-active-workspace" className="space-y-1">
+              <span className="type-label-medium text-ink-strong block">Use my workspace role</span>
+              <span className="type-body-small text-ink-soft block">
+                {activeWorkspaceName ?? "No organization workspace connected."}
+              </span>
+            </label>
+          </div>
+        </>
+      ) : null}
     </SurfaceSection>
   );
 }
@@ -207,13 +195,12 @@ function isGenericAtprotoHandle(handle: string): boolean {
 function PublicChangesStep({
   requestedChanges,
   preferredContactChannel,
-  showOrganizationProofs,
   onRequestedChangesChange,
   onPreferredContactChannelChange,
 }: ClaimSubmissionPanelProps) {
   return (
     <SurfaceSection
-      marker={showOrganizationProofs ? "3" : "2"}
+      marker="3"
       title="Suggest profile updates"
       description="Tell us what should change on the public profile."
     >
@@ -251,17 +238,22 @@ function PublicChangesStep({
 }
 
 function PrivateContextStep({
-  atprotoHandle,
+  atprotoIdentities,
+  selectedAtprotoIdentityId,
   dnsDomain,
   privateNote,
   showOrganizationProofs,
   isPending,
   useActiveWorkspace,
   onPrivateNoteChange,
+  onCancel,
   onSubmit,
 }: ClaimSubmissionPanelProps) {
+  const selectedIdentity = atprotoIdentities.find(
+    (identity) => identity.id === selectedAtprotoIdentityId,
+  );
   const submitBlockReason = submitBlockedReason({
-    atprotoHandle,
+    atprotoHandle: selectedIdentity?.current_handle ?? "",
     dnsDomain,
     showOrganizationProofs,
     useActiveWorkspace,
@@ -269,7 +261,7 @@ function PrivateContextStep({
 
   return (
     <SurfaceSection
-      marker={showOrganizationProofs ? "4" : "3"}
+      marker="4"
       title="Private context"
       description="Add anything we should know but readers should not see."
     >
@@ -297,9 +289,14 @@ function PrivateContextStep({
         <p className="type-body-small text-ink-soft max-w-md">
           {submitBlockReason ?? "Send your sources and requested profile updates for review."}
         </p>
-        <Button onClick={onSubmit} disabled={isPending || Boolean(submitBlockReason)}>
-          {isPending ? "Submitting..." : "Submit verification"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={onSubmit} disabled={isPending || Boolean(submitBlockReason)}>
+            {isPending ? "Submitting..." : "Submit verification"}
+          </Button>
+        </div>
       </div>
     </SurfaceSection>
   );

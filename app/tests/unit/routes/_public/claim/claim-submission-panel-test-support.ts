@@ -4,18 +4,31 @@ import type { Entry } from "@/types";
 
 export const claimPanelNoop = vi.fn();
 
+export function claimAtprotoIdentity(handle: string, id = "identity_1") {
+  return {
+    connected_at: "2026-07-12T12:00:00Z",
+    control_status: "active" as const,
+    current_handle: handle,
+    did: "did:plc:claim",
+    id,
+    profiles: [],
+    resolution_status: "verified" as const,
+    verified_at: "2026-07-12T12:00:00Z",
+  };
+}
+
 export function createClaimSubmissionPanelProps(
   overrides: Partial<ClaimSubmissionPanelProps> = {},
 ): ClaimSubmissionPanelProps {
   return {
     activeWorkspaceName: null,
-    atprotoConnectionChanged: false,
-    atprotoHandle: "",
-    atprotoLoginHandle: "",
+    atprotoIdentities: [],
+    atprotoIdentitiesError: false,
     dnsDomain: "",
     evidence: "",
     isPending: false,
-    onAtprotoLoginHandleChange: claimPanelNoop,
+    onAtprotoIdentityChange: claimPanelNoop,
+    onCancel: claimPanelNoop,
     onConnectAtproto: claimPanelNoop,
     onDnsDomainChange: claimPanelNoop,
     onEvidenceChange: claimPanelNoop,
@@ -29,6 +42,7 @@ export function createClaimSubmissionPanelProps(
     privateNote: "",
     relationship: "organization_representative",
     requestedChanges: "",
+    selectedAtprotoIdentityId: "",
     showOrganizationProofs: true,
     useActiveWorkspace: false,
     ...overrides,

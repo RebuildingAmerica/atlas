@@ -12,6 +12,10 @@ vi.mock("@/domains/access", () => ({
   useAtlasSession: vi.fn(),
 }));
 
+vi.mock("@/domains/access/atproto-identities", () => ({
+  useAtprotoIdentities: vi.fn(),
+}));
+
 vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useInitiateClaim: vi.fn(),
   useMyClaims: vi.fn(),
@@ -52,8 +56,13 @@ describe("routes/_public/claim/$slug submission", () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
     const { useAtlasSession } = await import("@/domains/access");
+    const { useAtprotoIdentities } = await import("@/domains/access/atproto-identities");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReset();
+    vi.mocked(useAtprotoIdentities).mockReturnValue({
+      data: [],
+      isError: false,
+    } as unknown as ReturnType<typeof useAtprotoIdentities>);
     vi.mocked(claims.useInitiateClaim).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,
@@ -121,9 +130,26 @@ describe("routes/_public/claim/$slug submission", () => {
     vi.mocked(claims.useMyClaims).mockReturnValueOnce({
       data: [],
     } as unknown as ReturnType<typeof claims.useMyClaims>);
+    const { useAtprotoIdentities } = await import("@/domains/access/atproto-identities");
+    vi.mocked(useAtprotoIdentities).mockReturnValue({
+      data: [
+        {
+          connected_at: "2026-07-12T12:00:00Z",
+          control_status: "active",
+          current_handle: "jane.example",
+          did: "did:plc:jane",
+          id: "identity_jane",
+          profiles: [],
+          resolution_status: "verified",
+          verified_at: "2026-07-12T12:00:00Z",
+        },
+      ],
+      isError: false,
+    } as unknown as ReturnType<typeof useAtprotoIdentities>);
     const submitView = render(<Component />);
     expect(submitView.getByText("Profile verification")).toBeInTheDocument();
     expect(submitView.getByText("Show your connection")).toBeInTheDocument();
+    expect(submitView.getByText("Verify this is you")).toBeInTheDocument();
     expect(submitView.getByText("Suggest profile updates")).toBeInTheDocument();
     expect(submitView.getByText("Private context")).toBeInTheDocument();
     expect(submitView.getByText("Profile being verified")).toBeInTheDocument();
@@ -142,6 +168,9 @@ describe("routes/_public/claim/$slug submission", () => {
     fireEvent.change(submitView.getByLabelText("Preferred contact"), {
       target: { value: "form" },
     });
+    fireEvent.change(submitView.getByLabelText("ATProto identity"), {
+      target: { value: "identity_jane" },
+    });
     fireEvent.change(submitView.getByRole("textbox", { name: "Private note" }), {
       target: { value: "Keep my direct email private." },
     });
@@ -158,6 +187,7 @@ describe("routes/_public/claim/$slug submission", () => {
         requested_changes: "Update my title and contact path.",
         preferred_contact_channel: "form",
         private_note: "Keep my direct email private.",
+        atproto_identity_id: "identity_jane",
       },
     });
     submitView.unmount();
