@@ -141,7 +141,7 @@ export async function proxyAtlasApiRequest(request: Request): Promise<Response> 
     );
   }
 
-  const responseBody = request.method === "HEAD" ? null : await apiResponse.arrayBuffer();
+  const responseBody = request.method === "HEAD" ? null : await apiResponse.text();
 
   return new Response(responseBody, {
     headers: copyProxyHeaders(apiResponse.headers, RESPONSE_HEADERS_TO_DROP),
