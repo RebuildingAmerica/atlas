@@ -327,7 +327,11 @@ class EntryLookupMixin:
 
         if old_slug is not None:
             await conn.execute(
-                "INSERT OR IGNORE INTO slug_aliases (old_slug, entry_id) VALUES (?, ?)",
+                """
+                INSERT INTO slug_aliases (old_slug, entry_id)
+                VALUES (?, ?)
+                ON CONFLICT(old_slug) DO NOTHING
+                """,
                 (old_slug, entry_id),
             )
 

@@ -18,6 +18,7 @@ from atlas.domains.catalog.models.relationships import RelationshipCRUD
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, SourceCRUD
+from atlas.platform.database import db
 
 if TYPE_CHECKING:
     from aiosqlite import Connection
@@ -189,10 +190,11 @@ async def _persist_issue_areas(conn: Connection, entry_id: str, issue_areas: lis
     for issue_area in sorted(set(issue_areas)):
         await conn.execute(
             """
-            INSERT OR IGNORE INTO entry_issue_areas (entry_id, issue_area, created_at)
-            VALUES (?, ?, datetime('now'))
+            INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(entry_id, issue_area) DO NOTHING
             """,
-            (entry_id, issue_area),
+            (entry_id, issue_area, db.now_iso()),
         )
     await conn.commit()
 

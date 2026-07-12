@@ -322,8 +322,11 @@ class SourceCRUD:
         """
         await conn.execute(
             """
-            INSERT OR REPLACE INTO entry_sources (entry_id, source_id, extraction_context, created_at)
+            INSERT INTO entry_sources (entry_id, source_id, extraction_context, created_at)
             VALUES (?, ?, ?, ?)
+            ON CONFLICT(entry_id, source_id) DO UPDATE SET
+                extraction_context = excluded.extraction_context,
+                created_at = excluded.created_at
             """,
             (entry_id, source_id, extraction_context, db.now_iso()),
         )
