@@ -13,7 +13,40 @@ test("deploy helper scripts validate without redeploying staging", () => {
   assert.equal(outputs.deploy_scripts, true);
   assert.equal(outputs.staging_api_deploy, false);
   assert.equal(outputs.hosted_smoke, false);
+  assert.equal(outputs.browser_acceptance, false);
+  assert.equal(outputs.stripe_acceptance, false);
   assert.equal(outputs.credential_scan, true);
+});
+
+test("ordinary app changes run browser acceptance without Stripe acceptance", () => {
+  const outputs = outputsFor(["app/src/domains/catalog/pages/profile-page.tsx"]);
+
+  assert.equal(outputs.app_tests, true);
+  assert.equal(outputs.browser_acceptance, true);
+  assert.equal(outputs.stripe_acceptance, false);
+  assert.equal(outputs.hosted_smoke, true);
+});
+
+test("billing app changes run browser and Stripe acceptance", () => {
+  const outputs = outputsFor(["app/src/domains/billing/server/webhook-handler.ts"]);
+
+  assert.equal(outputs.app_tests, true);
+  assert.equal(outputs.browser_acceptance, true);
+  assert.equal(outputs.stripe_acceptance, true);
+});
+
+test("billing acceptance spec changes run Stripe acceptance", () => {
+  const outputs = outputsFor(["app/tests/acceptance/domains/billing/oobe.spec.ts"]);
+
+  assert.equal(outputs.browser_acceptance, true);
+  assert.equal(outputs.stripe_acceptance, true);
+});
+
+test("Stripe setup changes run Stripe acceptance", () => {
+  const outputs = outputsFor(["scripts/bootstrap/products/atlas/catalog.ts"]);
+
+  assert.equal(outputs.browser_acceptance, false);
+  assert.equal(outputs.stripe_acceptance, true);
 });
 
 test("API image inputs redeploy staging and run hosted smoke", () => {
@@ -40,4 +73,5 @@ test("production-only deploy workflow changes do not redeploy staging", () => {
   assert.equal(outputs.deploy_scripts, true);
   assert.equal(outputs.staging_api_deploy, false);
   assert.equal(outputs.hosted_smoke, false);
+  assert.equal(outputs.stripe_acceptance, false);
 });

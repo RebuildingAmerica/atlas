@@ -47,7 +47,8 @@ jobs:
       quality: ${{ steps.classify.outputs.quality }}
       python_tests: ${{ steps.classify.outputs.python_tests }}
       app_tests: ${{ steps.classify.outputs.app_tests }}
-      acceptance: ${{ steps.classify.outputs.acceptance }}
+      browser_acceptance: ${{ steps.classify.outputs.browser_acceptance }}
+      stripe_acceptance: ${{ steps.classify.outputs.stripe_acceptance }}
       contract: ${{ steps.classify.outputs.contract }}
       openapi: ${{ steps.classify.outputs.openapi }}
       docs: ${{ steps.classify.outputs.docs }}
@@ -153,11 +154,14 @@ jobs:
 
   acceptance:
     needs: changes
-    if: needs.changes.outputs.acceptance == 'true'
+    if: needs.changes.outputs.browser_acceptance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
+      ATLAS_E2E_API_URL: http://localhost:38000
+      ATLAS_E2E_APP_URL: http://localhost:3100
+      ATLAS_E2E_MAILBOX_URL: http://localhost:8025
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-toolchain
@@ -182,14 +186,65 @@ jobs:
       - name: Run Playwright acceptance suite
         env:
           CI: "true"
-          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
-        run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance' --output-logs=full
+        run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance:browser' --output-logs=full
       - name: Upload Playwright traces on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-test-results
+          path: app/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  stripe-acceptance:
+    needs: changes
+    if: needs.changes.outputs.stripe_acceptance == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
+      ATLAS_E2E_API_URL: http://localhost:38000
+      ATLAS_E2E_APP_URL: http://localhost:3100
+      ATLAS_E2E_MAILBOX_URL: http://localhost:8025
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-toolchain
+      - name: Install Stripe CLI
+        run: |
+          curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | sudo gpg --dearmor -o /usr/share/keyrings/stripe.gpg
+          echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list
+          sudo apt-get update
+          sudo apt-get install -y stripe
+          stripe version
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright system dependencies
+        run: pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
+      - name: Install Playwright browser (retried; cached after first success)
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium; then
+              exit 0
+            fi
+            echo "Playwright browser install attempt ${attempt} stalled or failed; retrying with a fresh connection..."
+            sleep 5
+          done
+          echo "::error::Playwright browser install failed after 3 attempts"
+          exit 1
+      - name: Run Stripe billing acceptance suite
+        env:
+          CI: "true"
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
+        run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance:stripe' --output-logs=full
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-stripe-test-results
           path: app/test-results/
           if-no-files-found: ignore
           retention-days: 14

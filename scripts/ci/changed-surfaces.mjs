@@ -8,7 +8,8 @@ const TRUE_OUTPUTS = {
   quality: true,
   python_tests: true,
   app_tests: true,
-  acceptance: true,
+  browser_acceptance: true,
+  stripe_acceptance: true,
   contract: true,
   openapi: true,
   docs: true,
@@ -26,7 +27,8 @@ const FALSE_OUTPUTS = {
   quality: false,
   python_tests: false,
   app_tests: false,
-  acceptance: false,
+  browser_acceptance: false,
+  stripe_acceptance: false,
   contract: false,
   openapi: false,
   docs: false,
@@ -65,6 +67,15 @@ const APP_PATHS = [
   /^app\//,
   /^packages\/entity-widgets\//,
   /^packages\/entity-widgets-mcp\//,
+];
+
+const STRIPE_ACCEPTANCE_PATHS = [
+  /^app\/src\/domains\/billing\//,
+  /^app\/tests\/acceptance\/domains\/billing\//,
+  /^app\/scripts\/e2e\/stripe-playwright\.ts$/,
+  /^scripts\/bootstrap\/config\/products\.ts$/,
+  /^scripts\/bootstrap\/products\/atlas\//,
+  /^scripts\/bootstrap\/products\/stripe-cli-client\.ts$/,
 ];
 
 const SCOUT_PATHS = [
@@ -165,6 +176,9 @@ export function classifyChangedFiles(files, context = {}) {
 
   const touchesApi = normalized.some((file) => matchesAny(file, API_PATHS));
   const touchesApp = normalized.some((file) => matchesAny(file, APP_PATHS));
+  const touchesStripeAcceptance = normalized.some((file) =>
+    matchesAny(file, STRIPE_ACCEPTANCE_PATHS),
+  );
   const touchesScout = normalized.some((file) => matchesAny(file, SCOUT_PATHS));
   const touchesDocs = normalized.some((file) => matchesAny(file, DOCS_PATHS));
   const touchesCompose = normalized.some((file) =>
@@ -192,7 +206,8 @@ export function classifyChangedFiles(files, context = {}) {
     quality: touchesApi || touchesApp || touchesScout,
     python_tests: touchesApi || touchesScout,
     app_tests: touchesApp,
-    acceptance: touchesApi || touchesApp,
+    browser_acceptance: touchesApi || touchesApp,
+    stripe_acceptance: touchesStripeAcceptance,
     contract: touchesApi,
     openapi: touchesApi,
     docs: touchesDocs,

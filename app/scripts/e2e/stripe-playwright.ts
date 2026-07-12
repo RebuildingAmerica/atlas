@@ -229,6 +229,7 @@ async function main(): Promise<void> {
     [
       "listen",
       "--skip-verify",
+      "--skip-update",
       "--events",
       STRIPE_BILLING_WEBHOOK_EVENTS.join(","),
       "--forward-to",

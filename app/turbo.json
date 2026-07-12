@@ -165,6 +165,34 @@
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     },
+    "test:acceptance:browser": {
+      "dependsOn": ["api-client", "e2e:cleanup"],
+      "env": [
+        "ATLAS_E2E_API_URL",
+        "ATLAS_E2E_APP_URL",
+        "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_E2E_MAILBOX_URL",
+        "ATLAS_E2E_WORKERS",
+        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
+      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
+    },
+    "test:acceptance:stripe": {
+      "dependsOn": ["api-client", "e2e:cleanup"],
+      "env": [
+        "ATLAS_E2E_API_URL",
+        "ATLAS_E2E_APP_URL",
+        "ATLAS_E2E_AUTH_INTROSPECTION_URL",
+        "ATLAS_E2E_MAILBOX_URL",
+        "ATLAS_E2E_WORKERS",
+        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
+        "STRIPE_API_KEY",
+        "STRIPE_ATLAS_CATALOG"
+      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "cache": false
+    },
     "test:acceptance:headed": {
       "dependsOn": ["api-client", "e2e:cleanup"],
       "env": [

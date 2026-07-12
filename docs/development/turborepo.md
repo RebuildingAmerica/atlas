@@ -152,9 +152,11 @@ work that cannot affect the change:
   the hosted API
 - staging deploy workflow and API image input changes run deploy script
   validation, then staging deploy and hosted smoke on `main`
-- app changes run app quality, app tests, acceptance, and hosted smoke
+- app changes run app quality, app tests, browser acceptance, and hosted smoke
 - API or shared Python changes run Python quality, Python tests, contract,
-  OpenAPI drift, acceptance, API deploy, and hosted smoke
+  OpenAPI drift, browser acceptance, API deploy, and hosted smoke
+- billing and Stripe setup changes also run Stripe billing acceptance; this is
+  the only CI path that installs the Stripe CLI
 - production release tags always run the full gate
 
 CodeQL is owned by GitHub default setup, not a repo workflow. Keep it that way:
