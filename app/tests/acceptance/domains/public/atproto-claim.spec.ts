@@ -6,8 +6,25 @@ const organizationDomain = "eastsidehousing.org";
 const representativeHandle = "eastsidehousing.bsky.social";
 const draftHandle = "eastsidehousing-draft.bsky.social";
 const recoveryHandle = "eastsidehousing-recovery.bsky.social";
+const personSlug = "maya-thompson";
 
 test.describe("ATProto profile verification handoff", () => {
+  test("submits a person identity claim for review", async ({ page }) => {
+    await performSignIn(page);
+    await page.goto(`/claim/${personSlug}`);
+    await expect(page.getByRole("heading", { name: "Maya Thompson" })).toBeVisible();
+    const identityId = await connectAtprotoAccount(page, "maya-claim.bsky.social", personSlug);
+
+    const request = page.waitForRequest(`**/api/profiles/${personSlug}/claim`);
+    const submission = page.waitForResponse(`**/api/profiles/${personSlug}/claim`);
+    await page.getByRole("button", { name: "Submit verification" }).click();
+    const response = await submission;
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(response.status(), JSON.stringify(body)).toBe(201);
+    expect((await request).postDataJSON()).toMatchObject({ atproto_identity_id: identityId });
+    expect(body).toMatchObject({ status: "pending" });
+  });
+
   test("connects an ATProto account through the local OAuth route harness", async ({ page }) => {
     await performSignIn(page);
 
@@ -86,7 +103,11 @@ async function openOrganizationVerification(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "Eastside Housing Network" })).toBeVisible();
 }
 
-async function connectAtprotoAccount(page: Page, handle: string): Promise<string> {
+async function connectAtprotoAccount(
+  page: Page,
+  handle: string,
+  slug = organizationSlug,
+): Promise<string> {
   await page.getByRole("textbox", { name: "Another ATProto handle" }).fill(handle);
   const startResponse = waitForOAuthResponse(page, "/api/atproto/oauth/start");
   const authorizeResponse = waitForOAuthResponse(page, "/api/atproto/oauth/harness/authorize");
@@ -98,9 +119,7 @@ async function connectAtprotoAccount(page: Page, handle: string): Promise<string
   expect((await callbackResponse).status()).toBe(302);
 
   await expect(page).toHaveURL((url) => {
-    return (
-      url.pathname === `/claim/${organizationSlug}` && url.searchParams.has("atprotoIdentityId")
-    );
+    return url.pathname === `/claim/${slug}` && url.searchParams.has("atprotoIdentityId");
   });
   const returnedUrl = new URL(page.url());
   const identityId = returnedUrl.searchParams.get("atprotoIdentityId");
@@ -110,10 +129,14 @@ async function connectAtprotoAccount(page: Page, handle: string): Promise<string
   return identityId;
 }
 
-async function startAtprotoConnection(page: Page, handle: string): Promise<URL> {
+async function startAtprotoConnection(
+  page: Page,
+  handle: string,
+  slug = organizationSlug,
+): Promise<URL> {
   const startUrl = new URL("/api/atproto/oauth/start", page.url());
   startUrl.searchParams.set("handle", handle);
-  startUrl.searchParams.set("returnTo", `/claim/${organizationSlug}`);
+  startUrl.searchParams.set("returnTo", `/claim/${slug}`);
   const response = await page.request.get(startUrl.toString(), { maxRedirects: 0 });
   expect(response.status()).toBe(302);
   const location = response.headers().location;
