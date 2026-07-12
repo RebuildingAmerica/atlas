@@ -1,0 +1,31 @@
+name: Mint Vercel Trusted Source OIDC token
+description: Mint a GitHub Actions OIDC token for Vercel Trusted Sources.
+
+inputs:
+  audience:
+    description: OIDC audience configured in Vercel Trusted Sources.
+    required: true
+
+outputs:
+  token:
+    description: Short-lived GitHub Actions OIDC token.
+    value: ${{ steps.token.outputs.value }}
+
+runs:
+  using: composite
+  steps:
+    - id: token
+      shell: bash
+      env:
+        AUDIENCE: ${{ inputs.audience }}
+      run: |
+        set -euo pipefail
+        request_url="$(jq -nr --arg url "$ACTIONS_ID_TOKEN_REQUEST_URL" --arg audience "$AUDIENCE" '$url + (if ($url | contains("?")) then "&" else "?" end) + "audience=" + ($audience | @uri)')"
+        response="$(curl -fsSL -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "$request_url")"
+        token="$(jq -r '.value // empty' <<<"$response")"
+        if [ -z "$token" ]; then
+          echo "::error title=Missing GitHub OIDC token::GitHub did not return an OIDC token for Vercel Trusted Sources."
+          exit 1
+        fi
+        echo "::add-mask::$token"
+        echo "value=$token" >> "$GITHUB_OUTPUT"

@@ -2,8 +2,9 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -59,10 +60,27 @@ jobs:
         with:
           python: "false"
 
+      - name: Deploy Vercel production app
+        working-directory: app
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error title=Missing VERCEL_TOKEN::Vercel CLI production deploys still require a Vercel access token. GitHub OIDC is used for protected hosted smoke requests, not CLI authentication."
+            exit 1
+          fi
+          pnpm exec vercel deploy --prod --yes --scope rebuilding-america-project --token "$VERCEL_TOKEN"
+
+      - name: Mint Vercel Trusted Source OIDC token
+        id: vercel-oidc
+        uses: ./.github/actions/vercel-trusted-oidc
+        with:
+          audience: https://github.com/${{ github.repository_owner }}
+
       - name: Run hosted Cloudflare API smoke
         env:
           ATLAS_HOSTED_EXPECT_EDGE: "true"
           ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
-          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET }}
+          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke

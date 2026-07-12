@@ -1,0 +1,18 @@
+"9437":
+  ID: 9437
+  Monitor:
+    active: true
+    frequency: 30m
+    kind: http
+    name: Atlas App
+    openTelemetry: {}
+    regions:
+    - iad
+    - ams
+    - jnb
+    - gru
+    request:
+      method: GET
+      url: https://atlas.rebuildingus.org/
+    retry: 3
+    timeout: 45000

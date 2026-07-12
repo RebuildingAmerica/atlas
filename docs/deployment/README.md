@@ -9,7 +9,7 @@ afterward.
 
 - [Production Deployment](./production.md) — Environment setup, hosting paths,
   and production verification
-- [Staging Deployment](./staging.md) — Manual staging deploys, required
+- [Staging Deployment](./staging.md) — Automatic staging deploys, required
   environment secrets, and staging verification
 - [Stripe Billing Setup](./stripe-billing.md) — Product catalog, discounts,
   webhook setup, and local/staging/production billing bootstrap

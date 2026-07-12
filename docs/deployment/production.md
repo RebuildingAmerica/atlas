@@ -218,11 +218,16 @@ a provider:
 - [Google Workspace OIDC SSO](./google-workspace-oidc-sso.md)
 - [Google Workspace SAML SSO](./google-workspace-saml-sso.md)
 
-## GitHub Actions production deploy
+## Production release deploy
 
-Pushes to `main` run `.github/workflows/deploy.yml` after CI passes. The
-workflow deploys the API service named `atlas-api`; the public app still ships
-through Vercel's GitHub integration.
+Pushes to `main` are the staging lane. Production deploys run from `v*` tags
+through `.github/workflows/deploy.yml` after CI passes. The workflow deploys the
+API service named `atlas-api`, deploys the Vercel production app from the same
+tagged checkout, and then runs hosted smoke checks.
+
+Vercel CLI production deploys still require a Vercel access token. GitHub OIDC
+is used for protected hosted smoke requests through Vercel Trusted Sources; it
+does not replace Vercel CLI authentication.
 
 The deploy job uses the `production` GitHub Environment. Configure these secrets
 on that environment, not as shared repository-level secrets, so staging cannot
@@ -242,7 +247,44 @@ accidentally inherit production URLs or databases:
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
+- `VERCEL_TOKEN` for the Vercel CLI production app deploy
 - `OPENSTATUS_API_KEY` when synthetics should run
+
+OpenStatus synthetics use `config.openstatus.yaml`, which points the GitHub
+Action at the monitor IDs already owned by the OpenStatus workspace. OpenStatus
+monitor-as-code uses `openstatus.yaml` plus `openstatus.lock`; keep both files
+tracked so `openstatus monitors apply --dry-run` reports real drift instead of
+treating existing monitors as new creates.
+
+### Vercel project settings
+
+Configure these in the Vercel dashboard for the `atlas` project:
+
+1. Open **Settings > Environments > Production > Branch Tracking**.
+2. Set the production branch to a reserved branch such as `production`, not
+   `main`.
+3. Open **Settings > Domains**.
+4. Assign `atlas.rebuildingus.org` to Production.
+5. Assign `atlas-staging.rebuildingus.org` to the `main` Preview branch.
+6. Open **Settings > Deployment Protection > Trusted Sources**.
+7. Add a GitHub Actions external service for `RebuildingAmerica/atlas` with
+   audience `https://github.com/RebuildingAmerica`.
+8. Add one rule for GitHub Actions environment `staging` that applies to Vercel
+   Preview.
+9. Add one rule for GitHub Actions environment `production` that applies to
+   Vercel Production.
+
+Those settings make `main` the continuous staging target while keeping
+production behind explicit `v*` release tags.
+
+The project also keeps this Ignored Build Step as a safety guard:
+
+```bash
+if [ "$VERCEL_ENV" = "production" ] && [ "$VERCEL_GIT_COMMIT_REF" = "main" ]; then exit 0; else exit 1; fi
+```
+
+That guard skips only production builds from `main`. After Branch Tracking moves
+production away from `main`, `main` Preview builds continue normally.
 
 Set `ATLAS_AUTH_JWT_AUDIENCES` to the production resource URL list the API
 accepts. Put the MCP resource first, for example:

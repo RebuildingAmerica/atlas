@@ -52,12 +52,11 @@ should look like this:
    make quality
    ```
 2. Build or deploy using the intended environment path
-   - production API: merge to `main`; `.github/workflows/deploy.yml` deploys
-     `atlas-api`
-   - staging API: run **Deploy Staging** from GitHub Actions;
-     `.github/workflows/deploy-staging.yml` deploys `atlas-api-staging`
-3. Tag the release if you are using tags for traceability
-4. Record what changed and any known follow-up items
+   - staging: push to `main`; `.github/workflows/deploy-staging.yml` deploys
+     `atlas-api-staging`, and Vercel deploys the `main` Preview app
+   - production: create and push a `v*` tag; `.github/workflows/deploy.yml`
+     deploys `atlas-api` and the Vercel production app from that tagged checkout
+3. Record the release tag and any known follow-up items
 
 ## Post-Release Verification
 

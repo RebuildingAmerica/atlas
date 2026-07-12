@@ -1,10 +1,13 @@
 name: Deploy Staging
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: deploy-staging
@@ -21,15 +24,13 @@ jobs:
     environment: staging
     timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
       id-token: write
       attestations: write
       packages: read
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
 
       - uses: ./.github/actions/deploy-atlas-api
         id: deploy-api
@@ -53,70 +54,20 @@ jobs:
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
 
-      - name: Advance Vercel staging branch
-        id: staging-branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STAGING_BRANCH: develop
-        run: |
-          set -euo pipefail
-
-          previous_vercel_target="$(
-            gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" \
-              --jq '[.statuses[] | select(.context == "Vercel")][0].target_url // ""'
-          )"
-
-          git fetch --no-tags origin "refs/heads/${STAGING_BRANCH}:refs/remotes/origin/${STAGING_BRANCH}"
-          if ! git merge-base --is-ancestor "origin/${STAGING_BRANCH}" HEAD; then
-            echo "::error title=Staging branch is not a fast-forward::origin/${STAGING_BRANCH} is not an ancestor of ${GITHUB_SHA}." >&2
-            exit 1
-          fi
-
-          git push origin "HEAD:refs/heads/${STAGING_BRANCH}"
-
-          {
-            echo "branch=${STAGING_BRANCH}"
-            echo "previous-vercel-target=${previous_vercel_target}"
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Wait for Vercel staging app
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PREVIOUS_VERCEL_TARGET: ${{ steps.staging-branch.outputs.previous-vercel-target }}
-        run: |
-          set -euo pipefail
-
-          deadline=$((SECONDS + 600))
-          while (( SECONDS < deadline )); do
-            status_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status")"
-            vercel_state="$(jq -r '[.statuses[] | select(.context == "Vercel")][0].state // ""' <<<"${status_json}")"
-            vercel_target="$(jq -r '[.statuses[] | select(.context == "Vercel")][0].target_url // ""' <<<"${status_json}")"
-
-            if [[ "${vercel_state}" == "success" && -n "${vercel_target}" && "${vercel_target}" != "${PREVIOUS_VERCEL_TARGET}" ]]; then
-              echo "Vercel staging deployment is ready: ${vercel_target}"
-              exit 0
-            fi
-
-            if [[ "${vercel_state}" == "failure" || "${vercel_state}" == "error" ]]; then
-              echo "::error title=Vercel staging deployment failed::${vercel_target}" >&2
-              exit 1
-            fi
-
-            echo "Waiting for Vercel staging deployment (state=${vercel_state:-missing})..."
-            sleep 10
-          done
-
-          echo "::error title=Timed out waiting for Vercel staging deployment::No new successful Vercel status appeared for ${GITHUB_SHA}." >&2
-          exit 1
-
       - uses: ./.github/actions/setup-toolchain
         with:
           python: "false"
+
+      - name: Mint Vercel Trusted Source OIDC token
+        id: vercel-oidc
+        uses: ./.github/actions/vercel-trusted-oidc
+        with:
+          audience: https://github.com/${{ github.repository_owner }}
 
       - name: Run hosted Cloudflare API smoke
         env:
           ATLAS_HOSTED_EXPECT_EDGE: "true"
           ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
-          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET }}
+          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke

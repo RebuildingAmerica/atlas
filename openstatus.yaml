@@ -1,38 +1,22 @@
 # yaml-language-server: $schema=https://www.openstatus.dev/schema.json
 #
 # OpenStatus monitor definitions for Atlas.
-# Apply with: openstatus monitors apply
-# Import existing monitors with: openstatus monitors import
+# Keep openstatus.lock with this file; the CLI uses it to map YAML entries to
+# existing monitor IDs so `openstatus monitors apply` stays idempotent.
 
-atlas-app:
-  name: "Atlas"
-  frequency: "5m"
+"9437":
   active: true
-  regions: ["iad", "ams", "syd"]
-  retry: 2
+  frequency: 30m
   kind: http
+  name: Atlas App
+  openTelemetry: {}
+  regions:
+  - iad
+  - ams
+  - jnb
+  - gru
   request:
-    url: https://atlas.rebuildingus.org
     method: GET
-  assertions:
-    - kind: statusCode
-      compare: eq
-      target: 200
-
-atlas-api:
-  name: "Atlas API"
-  frequency: "5m"
-  active: true
-  regions: ["iad", "ams", "syd"]
-  retry: 2
-  kind: http
-  request:
-    url: https://atlas.rebuildingus.org/api/health
-    method: GET
-  assertions:
-    - kind: statusCode
-      compare: eq
-      target: 200
-    - kind: textBody
-      compare: eq
-      target: '{"status":"ok"}'
+    url: https://atlas.rebuildingus.org/
+  retry: 3
+  timeout: 45000

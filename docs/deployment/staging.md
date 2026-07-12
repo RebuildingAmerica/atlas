@@ -10,19 +10,19 @@ use [Stripe Billing Setup](./stripe-billing.md).
 
 ## What staging owns
 
-The staging API deploy is a manual GitHub Actions workflow:
+The staging API deploy is a GitHub Actions workflow:
 
 - workflow: `.github/workflows/deploy-staging.yml`
-- trigger: **Deploy Staging** > **Run workflow**
+- automatic trigger: push to `main`
+- manual trigger: **Deploy Staging** > **Run workflow**
 - GitHub Environment: `staging`
 - Cloud Run service: `atlas-api-staging`
 - recommended app domain: `https://atlas-staging.rebuildingus.org`
 - recommended API domain: `https://atlas-api-staging.rebuildingus.org`
 
 The workflow runs CI first, builds the same `atlas-api` image as production,
-builds and deploys the staging API service, advances the Vercel staging branch,
-waits for Vercel to finish the Preview deployment for that commit, and
-smoke-tests the hosted app/API pair.
+deploys the staging API service, and smoke-tests the hosted app/API pair. Vercel
+owns staging app deployments through its GitHub integration.
 
 Staging does not create or update the production Cloud Scheduler job. Run
 discovery in staging deliberately so test data and external API spend stay
@@ -75,12 +75,9 @@ explicit secrets when staging uses split hosted app and API origins.
 
 ## Vercel staging app
 
-Staging uses the Atlas Vercel Preview environment and the `develop` branch. The
-Vercel project domain `atlas-staging.rebuildingus.org` must be assigned to the
-`develop` Git branch. The **Deploy Staging** workflow deploys
-`atlas-api-staging`, then fast-forwards `develop` to the same commit so the
-Vercel Git integration builds the staging app without a GitHub Actions Vercel
-token.
+Staging uses the Atlas Vercel Preview environment. Vercel builds the staging app
+from the `main` branch through its GitHub integration; GitHub Actions does not
+push branches or run `vercel deploy` for staging.
 
 Set the Vercel Preview env vars to the same app/API origins used by the GitHub
 `staging` environment:
@@ -98,8 +95,8 @@ If the staging app proxies docs through Mintlify, set `ATLAS_DOCS_URL` for the
 staging app as well.
 
 The staging app hostname must be available to the Rebuilding America Project
-Vercel team and assigned to the `develop` Git branch. Verify that before relying
-on the workflow:
+Vercel team and assigned to the `main` Preview branch in Vercel. Verify that
+before relying on the workflow:
 
 ```bash
 pnpm exec vercel domains ls --scope rebuilding-america-project
@@ -108,10 +105,8 @@ pnpm exec vercel api '/v10/projects/prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3/domains/atl
 ```
 
 `atlas-staging.rebuildingus.org` must inspect as an `atlas` Preview deployment
-created from the commit being tested. The API response must include
-`"gitBranch":"develop"`. If Vercel reports that the team does not own the
-domain, transfer or verify the staging hostname in the Rebuilding America
-Project Vercel team, then rerun **Deploy Staging**.
+from `main`. If Vercel reports that the team does not own the domain, transfer
+or verify the staging hostname in the Rebuilding America Project Vercel team.
 
 ## Deploy staging
 
@@ -138,23 +133,18 @@ To intentionally verify hosted anonymous throttling after the edge is enabled:
 Add `ATLAS_HOSTED_EXPECT_EDGE=true` to require Cloudflare response headers in
 the hosted smoke suite.
 
-Then:
+Then, for a manual staging deploy:
 
 1. Open GitHub Actions.
 2. Select **Deploy Staging**.
 3. Run the workflow from `main`.
 4. Wait for CI and the deploy job to pass.
 
-The workflow advances `develop` only after the staging API deploy succeeds. It
-also checks that `develop` can fast-forward to the workflow commit before
-pushing. If another process moved `develop` somewhere unrelated, the workflow
-fails instead of rewriting branch history.
-
 After the workflow completes, verify:
 
 1. `GET /health` returns `200` on the staging API.
 2. `atlas-staging.rebuildingus.org` points at the Vercel Preview deployment for
-   the `develop` branch at the same commit.
+   `main`.
 3. The staging app loads data through the staging API proxy.
 4. `/.well-known/oauth-protected-resource/mcp` returns staging resource
    metadata.
@@ -172,6 +162,6 @@ pnpm bootstrap --api-edge --target staging
 
 ## Promote to production
 
-After staging passes, merge to `main`. The production deploy workflow ships
-`atlas-api`; Vercel ships the production app through its GitHub integration. Use
+After staging passes on `main`, cut a `v*` tag. The production workflow deploys
+`atlas-api` and the Vercel production app from that tag. Use
 [Release Process](./release.md) for the release checklist.

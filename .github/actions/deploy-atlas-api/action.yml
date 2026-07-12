@@ -204,6 +204,7 @@ runs:
       uses: openstatushq/openstatus-github-action@adb7e3ec5e8918d11b7e73ffa74a873ce62b5f75 # v1
       with:
         api_key: ${{ inputs.openstatus-api-key }}
+        config_path: config.openstatus.yaml
       continue-on-error: true
 
     - name: Write deploy summary
