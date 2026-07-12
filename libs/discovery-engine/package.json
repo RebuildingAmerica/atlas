@@ -3,5 +3,8 @@
   "private": true,
   "scripts": {
     "test": "uv run pytest"
+  },
+  "dependencies": {
+    "@rebuildingamerica/atlas-shared": "workspace:*"
   }
 }

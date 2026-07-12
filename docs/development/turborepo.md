@@ -160,6 +160,11 @@ PR quality checks use Turbo `--affected` when the classifier proves the run is
 not a full-gate run. Staging and production still rely on explicit surface gates
 so hosted deploy behavior stays predictable.
 
+The Python packages also declare their local package relationships in
+`package.json` with `workspace:*` dependencies. Those links mirror the
+`pyproject.toml` path dependencies and are required for Turbo affected mode to
+fan shared-library changes out to API, Scout, and discovery-engine tests.
+
 ## Running Tasks
 
 ### Via Make (Recommended)

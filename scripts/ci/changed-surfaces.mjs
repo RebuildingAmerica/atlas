@@ -14,6 +14,7 @@ const TRUE_OUTPUTS = {
   docs: true,
   compose: true,
   secrets_scan: true,
+  deploy_scripts: true,
   staging_api_deploy: true,
   hosted_smoke: true,
   use_affected: false,
@@ -30,6 +31,7 @@ const FALSE_OUTPUTS = {
   docs: false,
   compose: false,
   secrets_scan: false,
+  deploy_scripts: false,
   staging_api_deploy: false,
   hosted_smoke: false,
   use_affected: false,
@@ -163,6 +165,7 @@ export function classifyChangedFiles(files, context = {}) {
     docs: touchesDocs,
     compose: touchesCompose,
     secrets_scan: true,
+    deploy_scripts: touchesDeploy,
     staging_api_deploy: touchesApi || touchesDeploy,
     hosted_smoke: touchesApi || touchesApp || touchesDeploy,
     use_affected:
