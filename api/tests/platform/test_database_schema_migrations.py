@@ -1218,6 +1218,118 @@ class TestMigrateAtprotoIdentityGraph:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
+        ("restored_status", "expected_restored_status", "expected_owner_status"),
+        [
+            ("active", "conflict", "conflict"),
+            ("disconnected", "disconnected", "active"),
+        ],
+    )
+    async def test_partial_graph_restored_controller_conflicts_with_legacy_owner(
+        self,
+        tmp_path: Path,
+        restored_status: str,
+        expected_restored_status: str,
+        expected_owner_status: str,
+    ) -> None:
+        """Only current restored controllers should conflict with the legacy owner."""
+        database_path = tmp_path / "partial-restored-controller.db"
+        conn = await _legacy_database(database_path)
+        try:
+            identity_id, owner_user_id, entry_id = await _insert_legacy_identity_link(
+                conn,
+                key="union-owner",
+                did="did:plc:union-owner",
+                handle="union.example",
+            )
+            await _create_partial_atproto_graph(conn)
+            restored_user_id = "user-restored-controller"
+            restored_control_id = await _insert_partial_atproto_control(
+                conn,
+                identity_id=identity_id,
+                user_id=restored_user_id,
+                status=restored_status,
+            )
+            link_id = await _insert_partial_atproto_link(
+                conn,
+                identity_id=identity_id,
+                entry_id=entry_id,
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        db_url = f"sqlite:///{database_path}"
+        await init_db(db_url)
+
+        conn = await aiosqlite.connect(database_path)
+        try:
+            await conn.execute("PRAGMA foreign_keys = ON")
+            controls_cursor = await conn.execute(
+                """
+                SELECT id, identity_id, user_id, status, created_at, updated_at
+                FROM user_atproto_controls
+                ORDER BY user_id
+                """
+            )
+            owner_control_id = _migration_id("control", identity_id, owner_user_id)
+            assert await controls_cursor.fetchall() == [
+                (
+                    restored_control_id,
+                    identity_id,
+                    restored_user_id,
+                    expected_restored_status,
+                    TIMESTAMP,
+                    TIMESTAMP,
+                ),
+                (
+                    owner_control_id,
+                    identity_id,
+                    owner_user_id,
+                    expected_owner_status,
+                    TIMESTAMP,
+                    TIMESTAMP,
+                ),
+            ]
+            link_cursor = await conn.execute(
+                "SELECT id, identity_id FROM profile_atproto_links WHERE id = ?",
+                (link_id,),
+            )
+            assert await link_cursor.fetchone() == (link_id, identity_id)
+            fk_cursor = await conn.execute("PRAGMA foreign_key_check")
+            assert await fk_cursor.fetchall() == []
+            entry_columns_cursor = await conn.execute("PRAGMA table_info(entries)")
+            entry_columns = {str(row[1]) for row in await entry_columns_cursor.fetchall()}
+            assert LEGACY_ATPROTO_COLUMNS.isdisjoint(entry_columns)
+            archive_cursor = await conn.execute(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type = 'table' AND name = 'atproto_identities_legacy'
+                """
+            )
+            assert await archive_cursor.fetchone() is None
+            rows_before_second_init = {}
+            for table in (
+                "atproto_identities",
+                "user_atproto_controls",
+                "profile_atproto_links",
+            ):
+                cursor = await conn.execute(f"SELECT * FROM {table} ORDER BY id")
+                rows_before_second_init[table] = await cursor.fetchall()
+        finally:
+            await conn.close()
+
+        await init_db(db_url)
+
+        conn = await aiosqlite.connect(database_path)
+        try:
+            for table, expected_rows in rows_before_second_init.items():
+                cursor = await conn.execute(f"SELECT * FROM {table} ORDER BY id")
+                assert await cursor.fetchall() == expected_rows
+        finally:
+            await conn.close()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
         ("claim_status", "proof_status"),
         [
             ("pending", "verified"),

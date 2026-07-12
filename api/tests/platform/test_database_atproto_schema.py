@@ -14,7 +14,11 @@ import pytest
 from atlas.models import database as database_module
 from atlas.models import init_db
 from atlas.models.database import PostgresConnection, _init_postgres, _load_postgres_schema
-from atlas.models.database_migrations import migrate_atproto_identity_graph
+from atlas.models.database_migrations import (
+    _ATPROTO_GRAPH_POSTGRES_DDL,
+    _migration_id,
+    migrate_atproto_identity_graph,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -131,6 +135,7 @@ async def _prepare_legacy_postgres_database(
     database_url: str,
     *,
     handle: str | None = "postgres.example",
+    partial_controller_user_id: str | None = None,
     with_verified_proof: bool = False,
 ) -> None:
     await init_db(database_url)
@@ -188,6 +193,42 @@ async def _prepare_legacy_postgres_database(
             """,
             (handle,),
         )
+        if partial_controller_user_id is not None:
+            for statement in _ATPROTO_GRAPH_POSTGRES_DDL[1:]:
+                await conn.execute(statement)
+            control_id = _migration_id(
+                "control",
+                "identity-postgres",
+                partial_controller_user_id,
+            )
+            link_id = _migration_id(
+                "profile-link",
+                "entry-postgres",
+                "identity-postgres",
+            )
+            await conn.execute(
+                """
+                INSERT INTO user_atproto_controls (
+                    id, identity_id, user_id, status, verified_at, created_at, updated_at
+                ) VALUES (
+                    ?, 'identity-postgres', ?, 'active',
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                """,
+                (control_id, partial_controller_user_id),
+            )
+            await conn.execute(
+                """
+                INSERT INTO profile_atproto_links (
+                    id, entry_id, identity_id, status, verified_at,
+                    last_checked_at, created_at, updated_at
+                ) VALUES (
+                    ?, 'entry-postgres', 'identity-postgres', 'verified',
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                """,
+                (link_id,),
+            )
         if with_verified_proof:
             await conn.execute(
                 """
@@ -216,6 +257,34 @@ async def _prepare_legacy_postgres_database(
             )
     finally:
         await raw_conn.close()
+
+
+async def _wait_for_postgres_lock_waiters(conn: Any, *, expected: int) -> None:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + 5
+    while loop.time() < deadline:
+        cursor = await conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND pid <> pg_backend_pid()
+              AND wait_event_type = 'Lock'
+            """
+        )
+        row = await cursor.fetchone()
+        if row is not None and int(row[0]) >= expected:
+            return
+        await asyncio.sleep(0.01)
+    cursor = await conn.execute(
+        """
+        SELECT state, wait_event_type, wait_event, query
+        FROM pg_stat_activity
+        WHERE datname = current_database() AND pid <> pg_backend_pid()
+        ORDER BY pid
+        """
+    )
+    pytest.fail(f"PostgreSQL activity: {await cursor.fetchall()!r}")
 
 
 class _PausingPostgresConnection:
@@ -463,6 +532,146 @@ async def test_postgres_legacy_identity_migration_is_idempotent(
         )
         assert await link_cursor.fetchall() == [("entry-postgres", "identity-postgres", "verified")]
         assert LEGACY_ENTRY_COLUMNS.isdisjoint(await _postgres_columns(conn, "entries"))
+    finally:
+        await raw_conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_partial_controller_conflicts_with_legacy_owner(
+    postgres_database_url: str,
+) -> None:
+    """Restored and legacy-owner controls should share conflict semantics in PostgreSQL."""
+    restored_user_id = "user-restored-controller"
+    await _prepare_legacy_postgres_database(
+        postgres_database_url,
+        partial_controller_user_id=restored_user_id,
+    )
+
+    await init_db(postgres_database_url)
+
+    raw_conn = await psycopg.AsyncConnection.connect(postgres_database_url, autocommit=True)
+    conn = PostgresConnection(raw_conn)
+    try:
+        owner_control_id = _migration_id(
+            "control",
+            "identity-postgres",
+            "user-postgres",
+        )
+        restored_control_id = _migration_id(
+            "control",
+            "identity-postgres",
+            restored_user_id,
+        )
+        controls_cursor = await conn.execute(
+            """
+            SELECT id, identity_id, user_id, status
+            FROM user_atproto_controls
+            ORDER BY user_id
+            """
+        )
+        assert await controls_cursor.fetchall() == [
+            (owner_control_id, "identity-postgres", "user-postgres", "conflict"),
+            (restored_control_id, "identity-postgres", restored_user_id, "conflict"),
+        ]
+        link_id = _migration_id(
+            "profile-link",
+            "entry-postgres",
+            "identity-postgres",
+        )
+        link_cursor = await conn.execute(
+            "SELECT id, identity_id FROM profile_atproto_links WHERE id = ?",
+            (link_id,),
+        )
+        assert await link_cursor.fetchone() == (link_id, "identity-postgres")
+        for table in ("user_atproto_controls", "profile_atproto_links"):
+            orphan_cursor = await conn.execute(
+                f"""
+                SELECT COUNT(*)
+                FROM {table} AS child
+                LEFT JOIN atproto_identities AS identity ON identity.id = child.identity_id
+                WHERE identity.id IS NULL
+                """
+            )
+            assert await orphan_cursor.fetchone() == (0,)
+        assert LEGACY_ENTRY_COLUMNS.isdisjoint(await _postgres_columns(conn, "entries"))
+        archive_cursor = await conn.execute("SELECT to_regclass('atproto_identities_legacy')")
+        assert await archive_cursor.fetchone() == (None,)
+        rows_before_second_init = {}
+        for table in (
+            "atproto_identities",
+            "user_atproto_controls",
+            "profile_atproto_links",
+        ):
+            cursor = await conn.execute(f"SELECT * FROM {table} ORDER BY id")
+            rows_before_second_init[table] = await cursor.fetchall()
+
+        await init_db(postgres_database_url)
+
+        for table, expected_rows in rows_before_second_init.items():
+            cursor = await conn.execute(f"SELECT * FROM {table} ORDER BY id")
+            assert await cursor.fetchall() == expected_rows
+    finally:
+        await raw_conn.close()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_postgres_initialization_serializes_before_introspection(
+    postgres_database_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Concurrent replicas should classify and migrate one legacy schema exactly once."""
+    await _prepare_legacy_postgres_database(postgres_database_url)
+    original_connect = psycopg.AsyncConnection.connect
+    initializer_connections = [
+        await original_connect(postgres_database_url, autocommit=False),
+        await original_connect(postgres_database_url, autocommit=False),
+    ]
+    queued_connections = iter(initializer_connections)
+
+    async def use_preopened_connection(database_url: str, *, autocommit: bool) -> Any:
+        assert database_url == postgres_database_url
+        assert autocommit is False
+        return next(queued_connections)
+
+    monkeypatch.setattr(
+        psycopg.AsyncConnection,
+        "connect",
+        staticmethod(use_preopened_connection),
+    )
+    blocker = await original_connect(postgres_database_url, autocommit=False)
+    initializers: list[asyncio.Task[None]] = []
+    try:
+        await blocker.execute("LOCK TABLE entries IN ACCESS EXCLUSIVE MODE")
+        initializers = [
+            asyncio.create_task(init_db(postgres_database_url)),
+            asyncio.create_task(init_db(postgres_database_url)),
+        ]
+        await _wait_for_postgres_lock_waiters(blocker, expected=2)
+        await blocker.commit()
+        await asyncio.wait_for(asyncio.gather(*initializers), timeout=20)
+    finally:
+        await blocker.rollback()
+        for initializer in initializers:
+            if not initializer.done():
+                initializer.cancel()
+        await asyncio.gather(*initializers, return_exceptions=True)
+        await blocker.close()
+
+    raw_conn = await original_connect(postgres_database_url, autocommit=True)
+    conn = PostgresConnection(raw_conn)
+    try:
+        counts = []
+        for table in (
+            "atproto_identities",
+            "user_atproto_controls",
+            "profile_atproto_links",
+        ):
+            cursor = await conn.execute(f"SELECT COUNT(*) FROM {table}")
+            counts.append(await cursor.fetchone())
+        assert counts == [(1,), (1,), (1,)]
+        assert LEGACY_ENTRY_COLUMNS.isdisjoint(await _postgres_columns(conn, "entries"))
+        archive_cursor = await conn.execute("SELECT to_regclass('atproto_identities_legacy')")
+        assert await archive_cursor.fetchone() == (None,)
     finally:
         await raw_conn.close()
 

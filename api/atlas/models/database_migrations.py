@@ -53,6 +53,7 @@ _LEGACY_ENTRY_ATPROTO_COLUMNS = (
     "linked_atproto_verified_at",
 )
 _ATPROTO_MIGRATION_SAVEPOINT = "migrate_atproto_identity_graph"
+_ATPROTO_MIGRATION_ADVISORY_LOCK_KEY = 0x41544C4153415450
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,6 +300,11 @@ async def migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
 
 
 async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
+    if backend == "postgres":
+        await conn.execute(
+            "SELECT pg_advisory_xact_lock(?)",
+            (_ATPROTO_MIGRATION_ADVISORY_LOCK_KEY,),
+        )
     identity_columns = await _table_columns(conn, "atproto_identities", backend=backend)
     entry_columns = await _table_columns(conn, "entries", backend=backend)
     control_columns = await _table_columns(conn, "user_atproto_controls", backend=backend)
@@ -363,17 +369,15 @@ async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
     control_count_before = await _table_count(conn, "user_atproto_controls")
     link_count_before = await _table_count(conn, "profile_atproto_links")
     identity_rows = await _migrate_legacy_identity_rows(conn, legacy_identities)
-    restored_graph_rows = await _restore_existing_atproto_graph_rows(
+    restored_graph_rows, reconciled_legacy_controls = await _restore_existing_atproto_graph_rows(
         conn,
         rows=existing_graph_rows,
         identity_id_map=identity_rows.identity_id_map,
-        conflicting_identity_ids={
-            control[1] for control in identity_rows.controls if control[3] == "conflict"
-        },
+        legacy_controls=identity_rows.controls,
     )
     migrated_controls = await _insert_missing_legacy_control_rows(
         conn,
-        identity_rows.controls,
+        reconciled_legacy_controls,
     )
     profile_rows = await _migrate_legacy_profile_link_rows(
         conn,
@@ -465,18 +469,25 @@ async def _restore_existing_atproto_graph_rows(
     *,
     rows: _ExistingAtprotoGraphRows,
     identity_id_map: dict[str, str],
-    conflicting_identity_ids: set[str],
-) -> _ExistingAtprotoGraphRows:
+    legacy_controls: list[tuple[Any, ...]],
+) -> tuple[_ExistingAtprotoGraphRows, list[tuple[Any, ...]]]:
     restored_controls = _deduplicate_existing_controls(
         [
-            _reconcile_existing_control(
-                row,
-                identity_id_map=identity_id_map,
-                conflicting_identity_ids=conflicting_identity_ids,
-            )
+            _remap_existing_identity_id(row, identity_id_map=identity_id_map, identity_index=1)
             for row in rows.controls
         ]
     )
+    conflicting_identity_ids = _conflicting_control_identity_ids(
+        [*restored_controls, *legacy_controls]
+    )
+    restored_controls = [
+        _reconcile_control_conflict(row, conflicting_identity_ids=conflicting_identity_ids)
+        for row in restored_controls
+    ]
+    reconciled_legacy_controls = [
+        _reconcile_control_conflict(row, conflicting_identity_ids=conflicting_identity_ids)
+        for row in legacy_controls
+    ]
     restored_links = [
         _remap_existing_identity_id(row, identity_id_map=identity_id_map, identity_index=2)
         for row in rows.links
@@ -493,7 +504,7 @@ async def _restore_existing_atproto_graph_rows(
             f"VALUES ({', '.join('?' for _ in _ATPROTO_PROFILE_LINK_COLUMNS)})",
             link,
         )
-    return _ExistingAtprotoGraphRows(restored_controls, restored_links)
+    return _ExistingAtprotoGraphRows(restored_controls, restored_links), reconciled_legacy_controls
 
 
 def _deduplicate_existing_controls(rows: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
@@ -516,20 +527,23 @@ def _deduplicate_existing_controls(rows: list[tuple[Any, ...]]) -> list[tuple[An
     return sorted(controls_by_user.values(), key=lambda row: row[0])
 
 
-def _reconcile_existing_control(
+def _conflicting_control_identity_ids(rows: list[tuple[Any, ...]]) -> set[str]:
+    users_by_identity: dict[str, set[str]] = defaultdict(set)
+    for row in rows:
+        if row[3] == "disconnected":
+            continue
+        users_by_identity[row[1]].add(row[2])
+    return {identity_id for identity_id, user_ids in users_by_identity.items() if len(user_ids) > 1}
+
+
+def _reconcile_control_conflict(
     row: tuple[Any, ...],
     *,
-    identity_id_map: dict[str, str],
     conflicting_identity_ids: set[str],
 ) -> tuple[Any, ...]:
-    remapped = _remap_existing_identity_id(
-        row,
-        identity_id_map=identity_id_map,
-        identity_index=1,
-    )
-    if remapped[1] not in conflicting_identity_ids or remapped[3] != "active":
-        return remapped
-    return (*remapped[:3], "conflict", *remapped[4:])
+    if row[1] not in conflicting_identity_ids or row[3] != "active":
+        return row
+    return (*row[:3], "conflict", *row[4:])
 
 
 def _remap_existing_identity_id(
