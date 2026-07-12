@@ -193,7 +193,8 @@ forward_with_dev_atlas_url() {
     run_scout "\${original_args[@]}"
   fi
 
-  run_scout "\${prefix[@]}" "\$@" --atlas-url "\$SCOUT_DEV_ATLAS_URL" "\${remaining_args[@]}"
+  run_scout \${prefix[@]+"\${prefix[@]}"} "\$@" --atlas-url "\$SCOUT_DEV_ATLAS_URL" \
+    \${remaining_args[@]+"\${remaining_args[@]}"}
 }
 
 if [ -n "\${_SCOUT_DEV_COMPLETE:-}" ]; then
@@ -237,7 +238,7 @@ done
 
 command_name="\${1:-}"
 if [ -z "\$command_name" ]; then
-  run_scout "\${prefix[@]}" --help
+  run_scout \${prefix[@]+"\${prefix[@]}"} --help
 fi
 shift
 remaining_args=("\$@")
