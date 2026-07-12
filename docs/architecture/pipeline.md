@@ -2,7 +2,9 @@
 
 [Docs](../README.md) > [Architecture](./README.md) > Pipeline Architecture
 
-The autodiscovery pipeline is the core product. It takes a location and set of issues as input, systematically finds who's doing what there, and produces a ranked list of entries with sources.
+The autodiscovery pipeline is the core product. It takes a location and set of
+issues as input, systematically finds who's doing what there, and produces a
+ranked list of entries with sources.
 
 ## The 6-Step Pipeline
 
@@ -60,6 +62,7 @@ The autodiscovery pipeline is the core product. It takes a location and set of i
 **How it works:**
 
 For each issue area, generate queries targeting different sources:
+
 - Local news: "worker cooperatives Kansas City Missouri"
 - Nonprofits: "site:guidestar.org housing Kansas City"
 - Organizations: "labor advocacy site:org Kansas City"
@@ -68,6 +71,7 @@ For each issue area, generate queries targeting different sources:
 - Social media: "housing affordability Kansas City twitter"
 
 **Implementation:**
+
 - File: `api/atlas/pipeline/query_generator.py`
 - Input: DiscoveryRun (location, issue_areas)
 - Output: List of query strings
@@ -85,6 +89,7 @@ For each issue area, generate queries targeting different sources:
 **How it works:**
 
 For each query, hit search engines and directories:
+
 - Google News (via news.google.com or API if available)
 - Google Search
 - Nonprofit directories (GuideStar, etc.)
@@ -94,13 +99,17 @@ For each query, hit search engines and directories:
 Deduplicate URLs (same article found multiple times) before passing to Step 3.
 
 **Implementation:**
+
 - File: `api/atlas/pipeline/source_fetcher.py`
 - Input: List of query strings
 - Output: List of Source objects (with raw_content)
 
-**Status:** Scaffolded. Currently returns empty list. Needs integration with search engines or API.
+**Status:** Scaffolded. Currently returns empty list. Needs integration with
+search engines or API.
 
-**Note:** For initial implementation, may use simple web scraping or search APIs (Google, Bing). Later may add integrations with specialized databases (news archives, nonprofit directories).
+**Note:** For initial implementation, may use simple web scraping or search APIs
+(Google, Bing). Later may add integrations with specialized databases (news
+archives, nonprofit directories).
 
 ---
 
@@ -133,6 +142,7 @@ Return as JSON array.
 Claude returns structured JSON. Parse and convert to Entry objects.
 
 **Implementation:**
+
 - File: `api/atlas/pipeline/extractor.py`
 - Input: List of Source objects with raw_content
 - Output: List of Entry objects (not yet in database)
@@ -153,16 +163,19 @@ Claude returns structured JSON. Parse and convert to Entry objects.
 **How it works:**
 
 Same entry found in 3 articles = 1 entry with 3 sources. Dedup by:
+
 1. Name similarity (fuzzy match on name field)
 2. Location + type (same person in same city with same role)
 3. Description similarity (semantic matching)
 
 When duplicates are found:
+
 - Merge fields (keep longer descriptions, combine source lists)
 - Keep track of all sources that mentioned this entry
 - Resolve conflicting fields (if sources disagree, take most frequent)
 
 **Implementation:**
+
 - File: `api/atlas/pipeline/deduplicator.py`
 - Input: List of Entry objects from Step 3
 - Output: Deduplicated list of Entry objects with merged source lists
@@ -180,8 +193,11 @@ When duplicates are found:
 **How it works:**
 
 Score each entry by:
-1. **Specificity** — More specific is better. "Maria Gonzalez, founder of Prairie Workers Coop" scores higher than "The Sierra Club."
-2. **Source quality** — Bylined news article scores higher than social media rumor.
+
+1. **Specificity** — More specific is better. "Maria Gonzalez, founder of
+   Prairie Workers Coop" scores higher than "The Sierra Club."
+2. **Source quality** — Bylined news article scores higher than social media
+   rumor.
 3. **Recency** — Newer sources score higher than old ones.
 4. **Issue match** — How well does entry match query's issue areas?
 5. **Location match** — Is it in the right city/state, or national?
@@ -189,6 +205,7 @@ Score each entry by:
 Sort by combined score, highest first.
 
 **Implementation:**
+
 - File: `api/atlas/pipeline/ranker.py`
 - Input: List of Entry objects from Step 4
 - Output: Same list, sorted by relevance score
@@ -206,14 +223,19 @@ Sort by combined score, highest first.
 **How it works:**
 
 Analyze coverage:
-1. **Geographic gaps** — Which neighborhoods or parts of the city are underrepresented?
+
+1. **Geographic gaps** — Which neighborhoods or parts of the city are
+   underrepresented?
 2. **Demographic gaps** — Are leaders mostly one gender, age, race?
-3. **Organizational type gaps** — Are results heavy on nonprofits and light on grassroots groups?
-4. **Issue area gaps** — Are some issue areas overrepresented (easy to find) vs. underrepresented?
+3. **Organizational type gaps** — Are results heavy on nonprofits and light on
+   grassroots groups?
+4. **Issue area gaps** — Are some issue areas overrepresented (easy to find) vs.
+   underrepresented?
 
 Recommend additional searches to fill gaps.
 
 **Implementation:**
+
 - File: `api/atlas/pipeline/gap_analyzer.py`
 - Input: Ranked entries from Step 5 + original query
 - Output: GapAnalysis object with findings and recommendations
@@ -285,24 +307,27 @@ Content-Type: application/json
 
 Then poll: `GET /api/v1/discovery/{run_id}` to check progress.
 
-### From Frontend
+### From the Web App
 
-Admin goes to `/admin/discovery`, fills in location and checkboxes for issue areas, clicks "Run Discovery". App POSTs to `/api/v1/discovery`, then polls for completion.
+Admin goes to `/admin/discovery`, fills in location and checkboxes for issue
+areas, clicks "Run Discovery". App POSTs to `/api/v1/discovery`, then polls for
+completion.
 
 ---
 
 ## Current Implementation Status
 
-| Step | Status | Notes |
-|---|---|---|
+| Step                | Status     | Notes                                                      |
+| ------------------- | ---------- | ---------------------------------------------------------- |
 | 1. Query Generation | Scaffolded | Generates basic queries. Needs tuning for better coverage. |
-| 2. Source Fetching | Stubbed | Returns empty. Needs web search integration. |
-| 3. Extraction | Stubbed | Claude API calls stubbed. Needs implementation. |
-| 4. Deduplication | Scaffolded | Dedup logic stubbed. Needs fuzzy matching. |
-| 5. Ranking | Scaffolded | Scoring stubbed. Needs tuning. |
-| 6. Gap Analysis | Scaffolded | Analysis stubbed. Needs implementation. |
+| 2. Source Fetching  | Stubbed    | Returns empty. Needs web search integration.               |
+| 3. Extraction       | Stubbed    | Claude API calls stubbed. Needs implementation.            |
+| 4. Deduplication    | Scaffolded | Dedup logic stubbed. Needs fuzzy matching.                 |
+| 5. Ranking          | Scaffolded | Scoring stubbed. Needs tuning.                             |
+| 6. Gap Analysis     | Scaffolded | Analysis stubbed. Needs implementation.                    |
 
-**Current behavior:** Running discovery returns empty results. All steps execute but produce no real data.
+**Current behavior:** Running discovery returns empty results. All steps execute
+but produce no real data.
 
 ---
 
@@ -310,26 +335,34 @@ Admin goes to `/admin/discovery`, fills in location and checkboxes for issue are
 
 ### Synchronous Pipeline
 
-Currently runs to completion (Step 1 → 2 → 3 → 4 → 5 → 6). Could be optimized later with streaming, async processing, or progressive results.
+Currently runs to completion (Step 1 → 2 → 3 → 4 → 5 → 6). Could be optimized
+later with streaming, async processing, or progressive results.
 
 ### AI-Driven Extraction
 
-Uses Claude API for extraction instead of hand-written NER. Trades cost for flexibility and accuracy. Can improve extraction without code changes (prompt tuning).
+Uses Claude API for extraction instead of hand-written NER. Trades cost for
+flexibility and accuracy. Can improve extraction without code changes (prompt
+tuning).
 
 ### Deduplication as Separate Step
 
-Rather than building dedup into extraction, it's a dedicated step. Makes the logic testable and reusable.
+Rather than building dedup into extraction, it's a dedicated step. Makes the
+logic testable and reusable.
 
 ### Audit Trail
 
-Every entry knows which sources it came from. Every source is timestamped. DiscoveryRun logs every pipeline execution. Enables re-runs, debugging, and understanding coverage.
+Every entry knows which sources it came from. Every source is timestamped.
+DiscoveryRun logs every pipeline execution. Enables re-runs, debugging, and
+understanding coverage.
 
 ---
 
 ## See Also
 
-- [System Overview](./system-overview.md) — How pipeline fits in three-layer architecture
-- [System Design](../../docs/the-atlas-system-design.md) — Complete pipeline spec
+- [System Overview](./system-overview.md) — How pipeline fits in three-layer
+  architecture
+- [System Design](../../docs/the-atlas-system-design.md) — Complete pipeline
+  spec
 - [API Development](../development/api.md) — How to implement a pipeline step
 
 ---

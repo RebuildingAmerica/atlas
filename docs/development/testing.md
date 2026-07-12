@@ -16,7 +16,7 @@ incomplete.
 - Tests describe intended behavior (not just pass/fail)
 - Tests catch regressions (would fail if behavior regressed)
 
-## Backend Testing (pytest)
+## API Testing (pytest)
 
 ### Scout Credential Storage In Tests
 

@@ -149,37 +149,45 @@ Where HTTP endpoints are defined. Add new features here:
 
 ### api/atlas/models/
 
-Database models and how to read/write data. The single source of truth for database schema.
+Database models and how to read/write data. The single source of truth for
+database schema.
 
 - **database.py** — Database connection and initialization
 - **entry.py** — Entry table and read/update operations
 - **source.py** — Source table and operations
 
-**When to work here:** Adding new database tables, changing schema, or adding CRUD operations
+**When to work here:** Adding new database tables, changing schema, or adding
+CRUD operations
 
 ### api/atlas/pipeline/
 
 The heart of the product. Six steps that autodiscover entries.
 
-1. **query_generator.py** — Generate dozens of search queries from location + issues
+1. **query_generator.py** — Generate dozens of search queries from location +
+   issues
 2. **source_fetcher.py** — Search web (news, nonprofits, etc.) for sources
 3. **extractor.py** — Feed sources to Claude API, extract structured data
-4. **deduplicator.py** — Merge duplicate entries (same person in multiple articles)
+4. **deduplicator.py** — Merge duplicate entries (same person in multiple
+   articles)
 5. **ranker.py** — Rank entries by relevance to original query
-6. **gap_analyzer.py** — Identify what's missing (underrepresented areas, person types)
+6. **gap_analyzer.py** — Identify what's missing (underrepresented areas, person
+   types)
 
 The main orchestrator in `__init__.py` runs all 6 steps in sequence.
 
-**When to work here:** Improving discovery quality, tweaking extraction logic, or adding new pipeline steps
+**When to work here:** Improving discovery quality, tweaking extraction logic,
+or adding new pipeline steps
 
 ### api/atlas/taxonomy/
 
-Issue areas (housing, labor, climate, etc.) and their search terms. Used by query_generator to create targeted searches.
+Issue areas (housing, labor, climate, etc.) and their search terms. Used by
+query_generator to create targeted searches.
 
 - **issue_areas.py** — All issue area definitions
 - **search_terms.py** — Search terms per issue area
 
-**When to work here:** Adding new issue areas or tweaking search terms for existing ones
+**When to work here:** Adding new issue areas or tweaking search terms for
+existing ones
 
 ### app/src/routes/
 
@@ -194,13 +202,14 @@ File-based routing (TanStack Start convention). Each `.tsx` file is a route.
 
 ### app/src/hooks/
 
-Custom React hooks that talk to the API API. Encapsulates data fetching and state management.
+Custom React hooks that talk to the API API. Encapsulates data fetching and
+state management.
 
 **When to work here:** Adding new API calls or complex data logic
 
 ## Running Specific Parts
 
-### Backend Only
+### API Only
 
 ```bash
 make dev-api
@@ -239,7 +248,8 @@ make typecheck      # Type check everything
 The project is organized in three logical layers:
 
 1. **API Layer** (api/atlas/api/) — HTTP endpoints
-2. **Business Logic Layer** (api/atlas/pipeline/, api/atlas/models/) — Core algorithms and data access
+2. **Business Logic Layer** (api/atlas/pipeline/, api/atlas/models/) — Core
+   algorithms and data access
 3. **Interface Layer** (app/) — What users see
 
 This separation makes it easy to:
@@ -250,7 +260,8 @@ This separation makes it easy to:
 
 ## Next Steps
 
-- Understand the complete architecture: [Architecture Overview](../architecture/README.md)
+- Understand the complete architecture:
+  [Architecture Overview](../architecture/README.md)
 - Start developing: [Development Guide](../development/README.md)
 - Learn standards: [Standards](../standards/README.md)
 

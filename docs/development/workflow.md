@@ -71,7 +71,7 @@ Use Conventional Commits format. Enforced by the `commit-msg` hook.
 
 **Scopes:** (optional but recommended)
 
-- `api` — Backend changes
+- `api` — API server changes
 - `app` — App changes
 - `pipeline` — Pipeline/discovery changes
 - `db` — Database/schema changes
