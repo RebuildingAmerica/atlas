@@ -516,6 +516,181 @@ describe("routes/_workspace/manage/$slug", () => {
     });
   });
 
+  it("keeps the existing public identity when replacement is cancelled", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const identities = await import("@/domains/access/atproto-identities");
+    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const attach = vi.fn();
+    vi.mocked(dialogs.useConfirmDialog).mockReturnValue({
+      confirm: vi.fn().mockResolvedValue(false),
+    });
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: attach,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
+      data: [
+        {
+          id: "identity-new",
+          did: "did:plc:new",
+          current_handle: "new.example",
+          resolution_status: "verified",
+          control_status: "active",
+        },
+      ],
+    } as unknown as ReturnType<typeof identities.useAtprotoIdentities>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified", linked_atproto_handle: "old.example" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    fireEvent.change(screen.getByLabelText("ATProto identity"), {
+      target: { value: "identity-new" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Replace identity" }));
+      await Promise.resolve();
+    });
+
+    expect(attach).not.toHaveBeenCalled();
+  });
+
+  it("surfaces attachment failures without changing the public identity", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const identities = await import("@/domains/access/atproto-identities");
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new Error("Identity is already attached.")),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
+      data: [
+        {
+          id: "identity-1",
+          did: "did:plc:jane",
+          current_handle: "jane.example",
+          resolution_status: "verified",
+          control_status: "active",
+        },
+      ],
+    } as unknown as ReturnType<typeof identities.useAtprotoIdentities>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    fireEvent.change(screen.getByLabelText("ATProto identity"), {
+      target: { value: "identity-1" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Attach identity" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Identity is already attached.");
+  });
+
+  it("keeps the public identity when removal is cancelled", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const detach = vi.fn();
+    vi.mocked(dialogs.useConfirmDialog).mockReturnValue({
+      confirm: vi.fn().mockResolvedValue(false),
+    });
+    vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: detach,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useDetachProfileAtprotoIdentity>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified", linked_atproto_handle: "jane.example" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Remove identity" }));
+      await Promise.resolve();
+    });
+
+    expect(detach).not.toHaveBeenCalled();
+  });
+
+  it("surfaces removal failures without disconnecting the account identity", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new Error("Removal was rejected.")),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useDetachProfileAtprotoIdentity>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified", linked_atproto_handle: "jane.example" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Remove identity" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Removal was rejected.");
+  });
+
+  it("starts account OAuth with a return to the managed profile", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    fireEvent.change(screen.getByLabelText("Another ATProto handle"), {
+      target: { value: "jane.example" },
+    });
+    expect(screen.getByRole("button", { name: "Connect another account" })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Connect another account" }));
+  });
+
   it("excludes disconnected and attention-required identities", async () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     const identities = await import("@/domains/access/atproto-identities");
