@@ -152,6 +152,37 @@ describe("AccountPage", () => {
     });
   });
 
+  it("shows attention, reconnect, and identity-list failure states", async () => {
+    setQueryResults({
+      atprotoIdentities: [
+        {
+          connected_at: "2026-07-10T12:00:00Z",
+          control_status: "conflict",
+          current_handle: "stale.example",
+          did: "did:plc:stale",
+          id: "identity-stale",
+          pds_url: null,
+          profiles: [],
+          resolution_status: "needs_attention",
+          verified_at: null,
+        },
+      ],
+    });
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+    const { unmount } = render(<AccountPage />);
+
+    expect(screen.getByText("Needs attention")).not.toBeNull();
+    expect(screen.getByText("No profiles use this identity.")).not.toBeNull();
+    expect(screen.getAllByText("Not available").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Reconnect" })).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reconnect" }));
+
+    unmount();
+    setQueryResults({ atprotoIdentitiesError: true });
+    render(<AccountPage />);
+    expect(screen.getByText("Could not load ATProto accounts.")).not.toBeNull();
+  });
+
   it("shows OAuth callback notices and clears callback parameters", async () => {
     window.history.replaceState(
       null,
