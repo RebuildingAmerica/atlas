@@ -5,6 +5,31 @@ import {
 } from "./atproto-oauth-test-support";
 
 describe("atproto-oauth", () => {
+  function configureHarnessCallback(returnTo: string, responseStatus = 201) {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        requestedHandle: "org.example",
+        returnTo,
+        userId: "user_1",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          current_handle: "org.example",
+          did: "did:web:org.example",
+          id: "identity_harness",
+          pds_url: "https://pds.atlas-e2e.test",
+        }),
+        { status: responseStatus },
+      ),
+    );
+  }
+
   beforeEach(() => {
     setupAtprotoOAuthMocks();
   });
@@ -46,6 +71,42 @@ describe("atproto-oauth", () => {
     });
     expect(() => parseAtprotoReturnTo("/admin")).toThrow("not allowed");
     expect(() => parseAtprotoReturnTo("https://evil.example/claim/org")).toThrow("not allowed");
+  });
+
+  it("requires a signed-in Atlas session before starting OAuth", async () => {
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ run: vi.fn() }),
+    });
+    mocks().loadAtlasSession.mockResolvedValue(null);
+    const { createAtprotoAuthorizationUrl } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      createAtprotoAuthorizationUrl({ handle: "org.example", returnTo: "/account" }),
+    ).rejects.toThrow("Sign in before verifying an ATProto account.");
+  });
+
+  it("returns successful Account callbacks to the Identity section", async () => {
+    configureHarnessCallback("/account#identity");
+    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoAuthorization(
+        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
+      ),
+    ).resolves.toBe(
+      "https://atlas.test/account?atprotoStatus=connected&atprotoIdentityId=identity_harness#identity",
+    );
+  });
+
+  it("rejects a callback when Atlas cannot persist the verified identity", async () => {
+    configureHarnessCallback("/manage/org", 409);
+    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoAuthorization(
+        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
+      ),
+    ).rejects.toThrow("ATProto identity could not be linked.");
   });
 
   it("builds an internal provider authorization URL when the end-to-end OAuth harness is enabled", async () => {
