@@ -22,7 +22,8 @@ export function hostedPublicRequestInit(init: RequestInit = {}): RequestInit {
   const headers = new Headers(init.headers);
   if (trustedOidcToken) {
     headers.set("x-vercel-trusted-oidc-idp-token", trustedOidcToken);
-  } else if (bypassSecret) {
+  }
+  if (bypassSecret) {
     headers.set("x-vercel-protection-bypass", bypassSecret);
   }
   return { ...init, headers };
