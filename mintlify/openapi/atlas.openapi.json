@@ -522,6 +522,120 @@
         "title": "ClaimStatusInfo",
         "type": "object"
       },
+      "CloudBillingExportPosture": {
+        "description": "Cloud Billing BigQuery export connection status.",
+        "properties": {
+          "detail": {
+            "description": "detail for this cloud billing export posture.",
+            "title": "Detail",
+            "type": "string"
+          },
+          "status": {
+            "description": "status for this cloud billing export posture.",
+            "enum": [
+              "connected",
+              "not_connected",
+              "not_configured"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "detail"
+        ],
+        "title": "CloudBillingExportPosture",
+        "type": "object"
+      },
+      "CloudCostGuardrail": {
+        "description": "One operator-facing cost guardrail status.",
+        "properties": {
+          "detail": {
+            "description": "detail for this cloud cost guardrail.",
+            "title": "Detail",
+            "type": "string"
+          },
+          "id": {
+            "description": "id for this cloud cost guardrail.",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "description": "label for this cloud cost guardrail.",
+            "title": "Label",
+            "type": "string"
+          },
+          "posture": {
+            "description": "posture for this cloud cost guardrail.",
+            "enum": [
+              "pass",
+              "warn",
+              "block"
+            ],
+            "title": "Posture",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "posture",
+          "detail"
+        ],
+        "title": "CloudCostGuardrail",
+        "type": "object"
+      },
+      "CloudCostPostureResponse": {
+        "description": "Operator cloud-cost posture summary.",
+        "properties": {
+          "billing_export": {
+            "$ref": "#/components/schemas/CloudBillingExportPosture",
+            "description": "billing export for this cloud cost posture."
+          },
+          "discovery_spend": {
+            "$ref": "#/components/schemas/DiscoverySpendPosture",
+            "description": "discovery spend for this cloud cost posture."
+          },
+          "external_fixed_costs": {
+            "$ref": "#/components/schemas/ExternalFixedCostsPosture",
+            "description": "external fixed costs for this cloud cost posture."
+          },
+          "generated_at": {
+            "description": "generated at for this cloud cost posture.",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "guardrails": {
+            "description": "guardrails for this cloud cost posture.",
+            "items": {
+              "$ref": "#/components/schemas/CloudCostGuardrail"
+            },
+            "title": "Guardrails",
+            "type": "array"
+          },
+          "posture": {
+            "description": "posture for this cloud cost posture.",
+            "enum": [
+              "pass",
+              "warn",
+              "block"
+            ],
+            "title": "Posture",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "posture",
+          "discovery_spend",
+          "billing_export",
+          "external_fixed_costs",
+          "guardrails"
+        ],
+        "title": "CloudCostPostureResponse",
+        "type": "object"
+      },
       "ConnectedActorResponse": {
         "description": "A ranked connected actor on an entity's civic map.",
         "properties": {
@@ -3947,6 +4061,50 @@
         "title": "DiscoveryScheduleUpdateRequest",
         "type": "object"
       },
+      "DiscoverySpendPosture": {
+        "description": "Discovery cost-ledger spend and configured ceilings.",
+        "properties": {
+          "daily_ceiling_usd": {
+            "description": "daily ceiling usd for this discovery spend posture.",
+            "title": "Daily Ceiling Usd",
+            "type": "number"
+          },
+          "estimated_daily_usd": {
+            "description": "Estimated discovery spend in the last day.",
+            "title": "Estimated Daily Usd",
+            "type": "number"
+          },
+          "kill_switch_enabled": {
+            "description": "kill switch enabled for this discovery spend posture.",
+            "title": "Kill Switch Enabled",
+            "type": "boolean"
+          },
+          "posture": {
+            "description": "posture for this discovery spend posture.",
+            "enum": [
+              "pass",
+              "warn",
+              "block"
+            ],
+            "title": "Posture",
+            "type": "string"
+          },
+          "run_ceiling_usd": {
+            "description": "run ceiling usd for this discovery spend posture.",
+            "title": "Run Ceiling Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "estimated_daily_usd",
+          "daily_ceiling_usd",
+          "run_ceiling_usd",
+          "kill_switch_enabled",
+          "posture"
+        ],
+        "title": "DiscoverySpendPosture",
+        "type": "object"
+      },
       "DiscoverySyncInfo": {
         "description": "Sync and reconciliation metadata for a local or remotely replayed run.",
         "properties": {
@@ -5544,6 +5702,32 @@
           }
         },
         "title": "EntityUpdateRequest",
+        "type": "object"
+      },
+      "ExternalFixedCostsPosture": {
+        "description": "External provider fixed-cost accounting status.",
+        "properties": {
+          "detail": {
+            "description": "detail for this external fixed costs posture.",
+            "title": "Detail",
+            "type": "string"
+          },
+          "status": {
+            "description": "status for this external fixed costs posture.",
+            "enum": [
+              "connected",
+              "not_connected",
+              "not_configured"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "detail"
+        ],
+        "title": "ExternalFixedCostsPosture",
         "type": "object"
       },
       "FacetOption": {
@@ -13358,6 +13542,120 @@
           }
         },
         "summary": "Submit discount verification",
+        "tags": [
+          "access"
+        ]
+      }
+    },
+    "/api/admin/cloud-costs": {
+      "get": {
+        "description": "Return operator-only Atlas cloud-cost posture and guardrail status.\n\nUse this access operation before relying on protected workflows. It explains or changes the caller's ability to use authenticated Atlas features, so integrations should surface authorization failures clearly instead of treating them as empty data.",
+        "operationId": "getCloudCostPosture",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudCostPostureResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get cloud cost posture",
         "tags": [
           "access"
         ]

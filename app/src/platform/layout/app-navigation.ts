@@ -22,7 +22,7 @@ const CORE_APP_NAV: AppNavItem[] = [
   { label: "Activity", to: "/feed" },
 ];
 
-const LOCAL_REVIEW_NAV: AppNavItem[] = [{ label: "Verifications", to: "/admin/profile-claims" }];
+const LOCAL_REVIEW_NAV: AppNavItem[] = [{ label: "Admin", to: "/admin" }];
 
 /**
  * Returns whether the app shell should surface the organization tab for

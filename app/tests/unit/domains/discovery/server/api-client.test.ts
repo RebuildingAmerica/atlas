@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
-import { requestAtlasApi } from "@/domains/discovery/server/api-client";
+import { requestAtlasApi, requestAtlasService } from "@/domains/discovery/server/api-client";
 
 const mocks = vi.hoisted(() => ({
   requireReadyAtlasSessionState: vi.fn(),
   getServerApiBaseUrl: vi.fn(),
+  getServerServiceBaseUrl: vi.fn(),
 }));
 
 vi.mock("@/domains/access/server/session-state", () => ({
@@ -12,6 +13,7 @@ vi.mock("@/domains/access/server/session-state", () => ({
 
 vi.mock("@/platform/config/app-config", () => ({
   getServerApiBaseUrl: mocks.getServerApiBaseUrl,
+  getServerServiceBaseUrl: mocks.getServerServiceBaseUrl,
 }));
 
 describe("api-client", () => {
@@ -21,6 +23,7 @@ describe("api-client", () => {
     vi.resetModules();
     mocks.requireReadyAtlasSessionState.mockReset();
     mocks.getServerApiBaseUrl.mockReset();
+    mocks.getServerServiceBaseUrl.mockReset();
     fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
 
     vi.stubEnv("ATLAS_DEPLOY_MODE", "");
@@ -48,6 +51,33 @@ describe("api-client", () => {
     expect(result).toEqual({ data: "test" });
     expect(fetchSpy).toHaveBeenCalledWith(
       "https://api.atlas.test/test-endpoint",
+      expect.objectContaining({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.objectContaining returns any
+        headers: expect.objectContaining({
+          "X-Atlas-Actor-Email": "operator@atlas.test",
+          "X-Atlas-Actor-Id": "user_123",
+          "X-Atlas-Internal-Secret": "test-secret",
+        }),
+      }),
+    );
+  });
+
+  it("sends service-level requests to the service origin without an API prefix", async () => {
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      user: { email: "operator@atlas.test", id: "user_123" },
+      workspace: { activeOrganization: { id: "org_123" } },
+    });
+    mocks.getServerServiceBaseUrl.mockReturnValue("https://api.atlas.test");
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: "ok" }),
+    } as Response);
+
+    const result = await requestAtlasService("/health");
+
+    expect(result).toEqual({ status: "ok" });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://api.atlas.test/health",
       expect.objectContaining({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.objectContaining returns any
         headers: expect.objectContaining({

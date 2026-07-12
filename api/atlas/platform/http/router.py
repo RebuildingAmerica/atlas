@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from atlas.domains.access.api.cloud_cost_admin import router as cloud_cost_admin_router
 from atlas.domains.access.api.health import router as auth_health_router
 from atlas.domains.access.api.lists import router as lists_router
 from atlas.domains.access.api.mcp_elicitations import router as mcp_elicitations_router
@@ -47,6 +48,7 @@ def create_router() -> APIRouter:
     router.include_router(auth_health_router, prefix="/api")
     router.include_router(verification_router, prefix="")
     router.include_router(verification_admin_router, prefix="")
+    router.include_router(cloud_cost_admin_router, prefix="")
     router.include_router(entries_router, prefix="/api/entities")
     router.include_router(discovery_router, prefix="/api/discovery-runs")
     router.include_router(schedule_router, prefix="/api/discovery-schedules")

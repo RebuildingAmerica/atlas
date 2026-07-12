@@ -103,6 +103,14 @@ runs:
         username: oauth2accesstoken
         password: ${{ steps.auth.outputs.access_token }}
 
+    - name: Run cloud cost preflight
+      shell: bash
+      env:
+        GCP_REGION: ${{ inputs.gcp-region }}
+        IMAGE_REGISTRY: ${{ inputs.image-registry }}
+        SERVICE_NAME: ${{ inputs.service-name }}
+      run: node scripts/deploy/cloud-cost-preflight.mjs check
+
     - name: Build, push, and attest atlas-api
       uses: ./.github/actions/build-attest-push
       with:

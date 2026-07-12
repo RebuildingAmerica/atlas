@@ -37,7 +37,7 @@ fi
 # Format: type(scope)?: message
 # Scopes are optional, but when present they must use an approved repo term.
 # Descriptions must start with sentence case.
-PATTERN='^(feat|fix|docs|chore|refactor)(\((api|app|scout|docs|dx)\))?!?: [A-Z0-9].+'
+PATTERN='^(feat|fix|docs|chore|refactor)(\((admin|api|app|scout|docs|dx)\))?!?: [A-Z0-9].+'
 
 if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo -e "\n${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -56,6 +56,7 @@ if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo "  - ${BLUE}refactor${NC}: Internal code reshaping with no behavior change"
     echo ""
     echo "Valid scopes (optional):"
+    echo "  - ${BLUE}admin${NC}:       Operator/admin portal, review, and observability surfaces"
     echo "  - ${BLUE}api${NC}:         Python/FastAPI application code"
     echo "  - ${BLUE}app${NC}:         React/TanStack Start application code"
     echo "  - ${BLUE}scout${NC}:       Atlas Scout autonomous discovery CLI"
@@ -64,6 +65,7 @@ if ! echo "$COMMIT_HEADER" | grep -qE "$PATTERN"; then
     echo "  Use no scope for broad or cross-cutting changes."
     echo ""
     echo "Examples:"
+    echo "  ${BLUE}feat(admin): Add operator cost dashboard${NC}"
     echo "  ${BLUE}feat(app): Add browse experience for issue areas${NC}"
     echo "  ${BLUE}fix(api): Return correct pagination metadata${NC}"
     echo "  ${BLUE}docs: Clarify local development workflow${NC}"

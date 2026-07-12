@@ -63,8 +63,9 @@ delete baseWebServerEnv.FORCE_COLOR;
 // only needs to listen on localhost. Avoiding the portless DNS shim keeps local
 // acceptance startup deterministic.
 const mailServerCommand = "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci";
+const operatorAllowedEmails = "person@atlas.test";
 const commonAuthEnv = {
-  ATLAS_OPERATOR_ALLOWED_EMAILS: "person@atlas.test",
+  ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
   ATLAS_AUTH_BASE_PATH: "/api/auth",
   ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
@@ -116,6 +117,7 @@ export default defineConfig({
         ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
         ATLAS_DEPLOY_MODE: "production",
+        ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
         ATLAS_PUBLIC_URL: appUrl,
         CORS_ORIGINS: `["${appUrl}"]`,
         DATABASE_URL: `sqlite:///${apiDbPath}`,

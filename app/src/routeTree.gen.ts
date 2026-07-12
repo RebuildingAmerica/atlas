@@ -54,6 +54,7 @@ import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
 import { Route as AuthDeviceRouteImport } from './routes/_auth/device'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization/index'
+import { Route as WorkspaceAdminIndexRouteImport } from './routes/_workspace/admin/index'
 import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
 import { Route as AuthDeviceIndexRouteImport } from './routes/_auth/device/index'
 import { Route as DotwellKnownOauthProtectedResourceIndexRouteImport } from './routes/[.]well-known/oauth-protected-resource/index'
@@ -68,6 +69,7 @@ import { Route as WorkspaceBriefsNewRouteImport } from './routes/_workspace/brie
 import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/briefs/$briefId'
 import { Route as WorkspaceAdminProfileClaimsRouteImport } from './routes/_workspace/admin/profile-claims'
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
+import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
 import { Route as PublicPlacesPlaceSlugRouteImport } from './routes/_public/places/$placeSlug'
@@ -326,6 +328,11 @@ const WorkspaceOrganizationIndexRoute =
     path: '/',
     getParentRoute: () => WorkspaceOrganizationRoute,
   } as any)
+const WorkspaceAdminIndexRoute = WorkspaceAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const PublicProfilesIndexRoute = PublicProfilesIndexRouteImport.update({
   id: '/profiles/',
   path: '/profiles/',
@@ -401,6 +408,12 @@ const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
   path: '/admin/discounts',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceAdminCloudCostsRoute =
+  WorkspaceAdminCloudCostsRouteImport.update({
+    id: '/admin/cloud-costs',
+    path: '/admin/cloud-costs',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
 const PublicProfilesPeopleRoute = PublicProfilesPeopleRouteImport.update({
   id: '/profiles/people',
   path: '/profiles/people',
@@ -642,6 +655,7 @@ export interface FileRoutesByFullPath {
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
+  '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
@@ -656,6 +670,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/device/': typeof AuthDeviceIndexRoute
   '/profiles/': typeof PublicProfilesIndexRoute
+  '/admin/': typeof WorkspaceAdminIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
@@ -729,6 +744,7 @@ export interface FileRoutesByTo {
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
+  '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
@@ -743,6 +759,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/device': typeof AuthDeviceIndexRoute
   '/profiles': typeof PublicProfilesIndexRoute
+  '/admin': typeof WorkspaceAdminIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
@@ -824,6 +841,7 @@ export interface FileRoutesById {
   '/_public/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
+  '/_workspace/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/_workspace/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/_workspace/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
@@ -838,6 +856,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/_auth/device/': typeof AuthDeviceIndexRoute
   '/_public/profiles/': typeof PublicProfilesIndexRoute
+  '/_workspace/admin/': typeof WorkspaceAdminIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/_public/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
@@ -917,6 +936,7 @@ export interface FileRouteTypes {
     | '/places/$placeSlug'
     | '/profiles/organizations'
     | '/profiles/people'
+    | '/admin/cloud-costs'
     | '/admin/discounts'
     | '/admin/profile-claims'
     | '/briefs/$briefId'
@@ -931,6 +951,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource/'
     | '/device/'
     | '/profiles/'
+    | '/admin/'
     | '/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/places/boroughs/$placeSlug'
@@ -1004,6 +1025,7 @@ export interface FileRouteTypes {
     | '/entries/$entryId'
     | '/feedback/$slug'
     | '/places/$placeSlug'
+    | '/admin/cloud-costs'
     | '/admin/discounts'
     | '/admin/profile-claims'
     | '/briefs/$briefId'
@@ -1018,6 +1040,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/device'
     | '/profiles'
+    | '/admin'
     | '/organization'
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/places/boroughs/$placeSlug'
@@ -1098,6 +1121,7 @@ export interface FileRouteTypes {
     | '/_public/places/$placeSlug'
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
+    | '/_workspace/admin/cloud-costs'
     | '/_workspace/admin/discounts'
     | '/_workspace/admin/profile-claims'
     | '/_workspace/briefs/$briefId'
@@ -1112,6 +1136,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource/'
     | '/_auth/device/'
     | '/_public/profiles/'
+    | '/_workspace/admin/'
     | '/_workspace/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/_public/places/boroughs/$placeSlug'
@@ -1486,6 +1511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceOrganizationIndexRouteImport
       parentRoute: typeof WorkspaceOrganizationRoute
     }
+    '/_workspace/admin/': {
+      id: '/_workspace/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof WorkspaceAdminIndexRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_public/profiles/': {
       id: '/_public/profiles/'
       path: '/profiles'
@@ -1582,6 +1614,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/discounts'
       fullPath: '/admin/discounts'
       preLoaderRoute: typeof WorkspaceAdminDiscountsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/admin/cloud-costs': {
+      id: '/_workspace/admin/cloud-costs'
+      path: '/admin/cloud-costs'
+      fullPath: '/admin/cloud-costs'
+      preLoaderRoute: typeof WorkspaceAdminCloudCostsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/_public/profiles/people': {
@@ -2026,9 +2065,11 @@ interface WorkspaceRouteChildren {
   WorkspaceListsRoute: typeof WorkspaceListsRouteWithChildren
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
   WorkspaceWatchingRoute: typeof WorkspaceWatchingRoute
+  WorkspaceAdminCloudCostsRoute: typeof WorkspaceAdminCloudCostsRoute
   WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
   WorkspaceAdminProfileClaimsRoute: typeof WorkspaceAdminProfileClaimsRoute
   WorkspaceManageSlugRoute: typeof WorkspaceManageSlugRoute
+  WorkspaceAdminIndexRoute: typeof WorkspaceAdminIndexRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
@@ -2042,9 +2083,11 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceListsRoute: WorkspaceListsRouteWithChildren,
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
   WorkspaceWatchingRoute: WorkspaceWatchingRoute,
+  WorkspaceAdminCloudCostsRoute: WorkspaceAdminCloudCostsRoute,
   WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
   WorkspaceAdminProfileClaimsRoute: WorkspaceAdminProfileClaimsRoute,
   WorkspaceManageSlugRoute: WorkspaceManageSlugRoute,
+  WorkspaceAdminIndexRoute: WorkspaceAdminIndexRoute,
 }
 
 const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
@@ -2103,12 +2146,11 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }

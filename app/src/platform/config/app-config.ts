@@ -129,21 +129,39 @@ export function getAbsoluteApiBaseUrl({
 }
 
 export function getServerApiBaseUrl(env: AppConfigEnv = process.env): string {
+  try {
+    return ensureApiSuffix(getServerServiceBaseUrl(env));
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message ===
+        "ATLAS_PUBLIC_URL or ATLAS_SERVER_API_PROXY_TARGET is required for server-side Atlas service calls."
+    ) {
+      throw new Error(
+        "ATLAS_PUBLIC_URL or ATLAS_SERVER_API_PROXY_TARGET is required for server-side Atlas API calls.",
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+}
+
+export function getServerServiceBaseUrl(env: AppConfigEnv = process.env): string {
   const serverProxyTarget = env.ATLAS_SERVER_API_PROXY_TARGET?.trim();
   if (serverProxyTarget) {
     if (!isAbsoluteUrl(serverProxyTarget)) {
       throw new Error("ATLAS_SERVER_API_PROXY_TARGET must be an absolute URL.");
     }
 
-    return ensureApiSuffix(serverProxyTarget);
+    return trimTrailingSlash(serverProxyTarget);
   }
 
   const publicUrl = getConfiguredPublicUrl(env);
   if (publicUrl) {
-    return ensureApiSuffix(publicUrl);
+    return publicUrl;
   }
 
   throw new Error(
-    "ATLAS_PUBLIC_URL or ATLAS_SERVER_API_PROXY_TARGET is required for server-side Atlas API calls.",
+    "ATLAS_PUBLIC_URL or ATLAS_SERVER_API_PROXY_TARGET is required for server-side Atlas service calls.",
   );
 }

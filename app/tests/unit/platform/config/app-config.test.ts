@@ -5,6 +5,7 @@ import {
   getAppConfig,
   getDocsUrl,
   getServerApiBaseUrl,
+  getServerServiceBaseUrl,
 } from "@/platform/config/app-config";
 
 describe("getApiBaseUrl", () => {
@@ -180,6 +181,24 @@ describe("getServerApiBaseUrl", () => {
     expect(() => getServerApiBaseUrl({})).toThrow(
       "ATLAS_PUBLIC_URL or ATLAS_SERVER_API_PROXY_TARGET is required for server-side Atlas API calls.",
     );
+  });
+});
+
+describe("getServerServiceBaseUrl", () => {
+  it("uses the proxy target origin without adding the API path suffix", () => {
+    expect(
+      getServerServiceBaseUrl({
+        ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
+      }),
+    ).toBe("https://api.atlas.example.com");
+  });
+
+  it("uses the public origin without adding the API path suffix", () => {
+    expect(
+      getServerServiceBaseUrl({
+        ATLAS_PUBLIC_URL: "https://atlas.example.com/",
+      }),
+    ).toBe("https://atlas.example.com");
   });
 });
 

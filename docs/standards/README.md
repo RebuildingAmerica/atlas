@@ -25,6 +25,19 @@ REST API design standards. Base path, pagination, errors, versioning.
 
 → [Read: API Conventions](./api-conventions.md)
 
+### Cloud Costs
+
+Infrastructure cost defaults, deploy guardrails, and operator visibility.
+
+→ [Read: Cloud Cost Standards](./cloud-costs.md)
+
+### Admin Portal
+
+Operator page organization, service-health indicators, and responsive admin
+navigation.
+
+→ [Read: Admin Portal Standards](./admin-portal.md)
+
 ### Documentation (Diátaxis)
 
 How we organize and write docs. Every page is one of four modes — tutorial,
@@ -109,6 +122,8 @@ Queries target different source types (news, nonprofits, etc).
 | Understand commit message format | [Commit Messages](./commit-messages.md)        |
 | Format code consistently         | [Code Style](./code-style.md)                  |
 | Design a REST endpoint           | [API Conventions](./api-conventions.md)        |
+| Keep cloud costs bounded         | [Cloud Costs](./cloud-costs.md)                |
+| Organize admin portal pages      | [Admin Portal](./admin-portal.md)              |
 | Write or organize documentation  | [Documentation (Diátaxis)](./documentation.md) |
 
 ---

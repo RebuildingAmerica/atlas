@@ -162,8 +162,8 @@ Enforced by `.githooks/commit-msg`. Format: `type(scope)?: Description`
 **Types:** `feat` (consumer-facing only), `fix` (consumer-facing), `docs`,
 `chore` (internal, tests, tooling), `refactor`
 
-**Scopes:** `api`, `app`, `scout`, `docs`, `dx` — or omit for cross-cutting
-changes. Never use `shared` as a scope.
+**Scopes:** `admin`, `api`, `app`, `scout`, `docs`, `dx` — or omit for
+cross-cutting changes. Never use `shared` as a scope.
 
 **Rules:**
 

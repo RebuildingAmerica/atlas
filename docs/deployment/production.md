@@ -10,6 +10,9 @@ If you are looking for release workflow rather than environment setup, see
 For Stripe products, discounts, webhooks, and billing env sync, use
 [Stripe Billing Setup](./stripe-billing.md).
 
+For infrastructure cost defaults and deploy guardrails, use
+[Cloud Cost Standards](../standards/cloud-costs.md).
+
 Atlas supports two production paths:
 
 - `Managed hosted`: deploy the app from `app/` to Vercel, deploy the API to
@@ -30,6 +33,10 @@ The recommended hosted topology is:
 - Google Cloud Run for the API
 - PostgreSQL for API data
 - GitHub Environments for production and staging deploy secrets
+
+Hosted API deploys run cloud cost preflight before Docker build and push. The
+preflight applies Artifact Registry cleanup policy and blocks Cloud Run drift
+that would create paid idle capacity.
 
 Why this is the recommended path:
 
