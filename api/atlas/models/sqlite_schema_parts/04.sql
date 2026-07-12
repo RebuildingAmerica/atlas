@@ -1,18 +1,60 @@
--- ATProto identities linked through profile verification.
+-- Stable ATProto identities and their verified Atlas relationships.
 CREATE TABLE IF NOT EXISTS atproto_identities (
     id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
     did TEXT NOT NULL,
     current_handle TEXT NOT NULL,
     pds_url TEXT,
-    did_resolved_at TEXT NOT NULL,
+    resolution_status TEXT NOT NULL DEFAULT 'verified'
+        CHECK(resolution_status IN ('verified', 'needs_attention')),
+    did_resolved_at TEXT,
     handle_verified_at TEXT,
+    last_resolution_error TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    UNIQUE(user_id, did)
+    UNIQUE(did)
 );
-CREATE INDEX IF NOT EXISTS idx_atproto_identities_user ON atproto_identities(user_id);
-CREATE INDEX IF NOT EXISTS idx_atproto_identities_did ON atproto_identities(did);
+
+CREATE TABLE IF NOT EXISTS user_atproto_controls (
+    id TEXT PRIMARY KEY,
+    identity_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('active', 'disconnected', 'conflict')),
+    verified_at TEXT,
+    disconnected_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(user_id, identity_id),
+    FOREIGN KEY (identity_id) REFERENCES atproto_identities(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_user_atproto_controls_user
+    ON user_atproto_controls(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_atproto_controls_identity
+    ON user_atproto_controls(identity_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_atproto_controls_active_identity
+    ON user_atproto_controls(identity_id) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS profile_atproto_links (
+    id TEXT PRIMARY KEY,
+    entry_id TEXT NOT NULL,
+    identity_id TEXT NOT NULL,
+    claim_id TEXT,
+    proof_id TEXT,
+    status TEXT NOT NULL
+        CHECK(status IN ('verified', 'reverification_required', 'removed')),
+    verified_at TEXT,
+    last_checked_at TEXT,
+    removed_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE,
+    FOREIGN KEY (identity_id) REFERENCES atproto_identities(id) ON DELETE CASCADE,
+    FOREIGN KEY (claim_id) REFERENCES profile_claims(id) ON DELETE SET NULL,
+    FOREIGN KEY (proof_id) REFERENCES profile_claim_proofs(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_profile_atproto_links_identity
+    ON profile_atproto_links(identity_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_atproto_links_non_removed_entry
+    ON profile_atproto_links(entry_id) WHERE status <> 'removed';
 
 -- Discount verification records awaiting billing review.
 CREATE TABLE IF NOT EXISTS discount_verifications (

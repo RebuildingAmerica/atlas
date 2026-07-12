@@ -13,7 +13,6 @@ from atlas.domains.catalog.api.profile_claim_atproto_helpers import (
     link_atproto_proof_if_present,
     link_entry_atproto_identity,
 )
-from atlas.domains.catalog.models import atproto_schema
 from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.domains.catalog.services import atproto_identity
@@ -213,81 +212,6 @@ def test_atproto_identity_helper_branches() -> None:
     assert _txt_answer_value(_TxtAnswer(chunks=(b"did:", b"plc:org"))) == "did:plc:org"
     assert _txt_answer_value(_TxtAnswer(chunks=(b"\xff",))) is None
     assert _txt_answer_value(_TxtAnswer('"did:plc:text"')) == "did:plc:text"
-
-
-@pytest.mark.asyncio
-async def test_atproto_schema_helpers_handle_postgres_and_empty_sqlite() -> None:
-    class FakeConn:
-        backend = "postgres"
-
-        def __init__(self) -> None:
-            self.executed: list[str] = []
-
-        async def execute(self, sql: str) -> object:
-            self.executed.append(sql)
-            return object()
-
-    postgres_conn = FakeConn()
-    await atproto_schema.ensure_atproto_identity_schema(postgres_conn)
-    await atproto_schema.ensure_entry_atproto_columns(postgres_conn)
-
-    assert atproto_schema.ATPROTO_IDENTITY_POSTGRES_DDL in postgres_conn.executed
-    assert list(atproto_schema.ENTRY_ATPROTO_POSTGRES_COLUMNS) == postgres_conn.executed[-3:]
-
-    class EmptySqliteConn(FakeConn):
-        backend = "sqlite"
-
-        async def execute(self, sql: str) -> object:
-            self.executed.append(sql)
-
-            class Cursor:
-                async def fetchall(self) -> list[tuple[object, ...]]:
-                    return []
-
-            return Cursor()
-
-    sqlite_conn = EmptySqliteConn()
-    await atproto_schema.ensure_entry_atproto_columns(sqlite_conn)
-    assert sqlite_conn.executed == ["PRAGMA table_info(entries)"]
-
-
-@pytest.mark.asyncio
-async def test_atproto_schema_bootstrap_closes_connection(monkeypatch: pytest.MonkeyPatch) -> None:
-    class FakeConnection:
-        def __init__(self) -> None:
-            self.closed = False
-            self.committed = False
-            self.executed: list[str] = []
-
-        async def execute(self, sql: str) -> object:
-            self.executed.append(sql)
-
-            class Cursor:
-                description = (("name",),)
-
-                async def fetchall(self) -> list[tuple[int, str]]:
-                    return [(0, "linked_atproto_did")]
-
-            return Cursor()
-
-        async def commit(self) -> None:
-            self.committed = True
-
-        async def close(self) -> None:
-            self.closed = True
-
-    conn = FakeConnection()
-
-    async def fake_get_db_connection(database_url: str) -> FakeConnection:
-        assert database_url == "sqlite:///atlas.db"
-        return conn
-
-    monkeypatch.setattr(atproto_schema, "get_db_connection", fake_get_db_connection)
-
-    await atproto_schema.ensure_atproto_profile_schema("sqlite:///atlas.db")
-
-    assert conn.committed is True
-    assert conn.closed is True
 
 
 @pytest.mark.asyncio

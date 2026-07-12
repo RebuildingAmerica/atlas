@@ -162,21 +162,6 @@ async def test_link_atproto_identity_rejects_mismatched_e2e_harness_identity(
 
 
 @pytest.mark.asyncio
-async def test_atproto_schema_helper_prepares_identity_and_entry_columns(
-    test_db: object,
-) -> None:
-    table_cursor = await test_db.execute(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'atproto_identities'"
-    )
-    assert await table_cursor.fetchone() is not None
-    columns_cursor = await test_db.execute("PRAGMA table_info(entries)")
-    columns = {row[1] for row in await columns_cursor.fetchall()}
-    assert "linked_atproto_did" in columns
-    assert "linked_atproto_handle" in columns
-    assert "linked_atproto_verified_at" in columns
-
-
-@pytest.mark.asyncio
 async def test_atproto_identity_crud_uses_initialized_schema(
     test_db: object,
 ) -> None:

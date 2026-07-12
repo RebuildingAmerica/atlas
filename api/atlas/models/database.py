@@ -25,6 +25,7 @@ from .database_migrations import (
     _ensure_place_related_place_columns,
     _ensure_review_queue_columns,
     db,
+    migrate_atproto_identity_graph,
 )
 
 if TYPE_CHECKING:
@@ -164,8 +165,11 @@ async def get_db_connection(database_url: str, *, backend: str | None = None) ->
 
     db_path = _get_sqlite_path(database_url)
     sqlite_conn = await aiosqlite.connect(db_path)
-    await sqlite_conn.execute("PRAGMA foreign_keys = ON")
-    await sqlite_conn.execute("PRAGMA journal_mode = WAL")
+    foreign_keys_cursor = await sqlite_conn.execute("PRAGMA foreign_keys = ON")
+    await foreign_keys_cursor.close()
+    journal_cursor = await sqlite_conn.execute("PRAGMA journal_mode = WAL")
+    await journal_cursor.fetchone()
+    await journal_cursor.close()
     return sqlite_conn
 
 
@@ -197,6 +201,7 @@ async def _init_postgres(database_url: str) -> None:  # pragma: no cover - PG-on
 
     conn = await psycopg.AsyncConnection.connect(database_url, autocommit=False)
     try:
+        await migrate_atproto_identity_graph(PostgresConnection(conn), backend="postgres")
         schema_sql = _load_postgres_schema()
         await conn.execute(schema_sql)
         await conn.commit()
@@ -222,6 +227,7 @@ async def _init_sqlite(database_url: str) -> None:
     """
     conn = await get_db_connection(database_url)
     try:
+        await migrate_atproto_identity_graph(conn, backend="sqlite")
         await _ensure_entry_columns(conn)
         await _ensure_discovery_run_columns(conn)
         await _ensure_discovery_job_columns(conn)
@@ -235,6 +241,7 @@ async def _init_sqlite(database_url: str) -> None:
         await conn.commit()
         logger.info("SQLite schema initialized successfully")
     except Exception:
+        await conn.rollback()
         logger.exception("Failed to initialize SQLite database")
         raise
     finally:
