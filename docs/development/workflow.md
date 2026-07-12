@@ -170,9 +170,21 @@ The `commit-msg` hook will reject non-conformant messages.
    - GitHub lands to main through the repo's linear-history rules
    - Delete feature branch
 
+## Shell Scripts
+
+Repo shell scripts should default to POSIX `sh`. Use `#!/usr/bin/env sh` for
+scripts that do not require Bash-specific syntax, and invoke those scripts with
+`sh` from package scripts, workflows, and other shell entrypoints.
+
+Use `#!/usr/bin/env bash` only when the script needs Bash features such as
+`[[ ... ]]`, regex captures, here-strings, arrays, or `BASH_SOURCE`. Git hooks
+currently use Bash because they rely on those features for validation and
+operator-facing output.
+
 ## Git Hooks
 
-The project has three git hooks that automate quality checks:
+The project uses local Git hooks to automate quality checks and protect the
+mainline branch:
 
 ### Pre-Commit Hook
 

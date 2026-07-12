@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Reset portless state and start a fresh proxy daemon before turbo dev.
 #
 # Why: routes/lock files corrupt when prior dev runs crash or race, and

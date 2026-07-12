@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Color codes (disabled when not in TTY to prevent escape sequence leakage)

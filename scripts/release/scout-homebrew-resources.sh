@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 write_dependency_names() {
   names_path=$1
