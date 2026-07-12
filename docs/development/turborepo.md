@@ -172,7 +172,8 @@ Cheap-path jobs should keep their setup cheap: docs validation installs only the
 `docs` workspace, Compose validation runs the shell script directly, workflow
 linting skips workspace dependency install, deploy script validation skips
 Python, and the credential scan sets up Python/uv without installing the pnpm
-workspace.
+workspace. Push and pull-request credential scans check only changed files;
+local and scheduled scans still check every tracked file.
 
 The Python packages also declare their local package relationships in
 `package.json` with `workspace:*` dependencies. Those links mirror the

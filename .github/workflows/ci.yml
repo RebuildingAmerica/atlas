@@ -264,4 +264,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "api/uv.lock"
       - name: Scan for committed secrets
+        env:
+          ATLAS_SECRETS_SCAN_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          ATLAS_SECRETS_SCAN_HEAD_SHA: ${{ github.sha }}
+          ATLAS_SECRETS_SCAN_CHANGED_ONLY: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
         run: sh ./scripts/secrets-scan.sh
