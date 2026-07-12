@@ -4,6 +4,8 @@ import { performSignIn } from "../../helpers/auth";
 const organizationSlug = "eastside-housing-network";
 const organizationDomain = "eastsidehousing.org";
 const representativeHandle = "eastsidehousing.bsky.social";
+const draftHandle = "eastsidehousing-draft.bsky.social";
+const recoveryHandle = "eastsidehousing-recovery.bsky.social";
 
 test.describe("ATProto profile verification handoff", () => {
   test("connects an ATProto account through the local OAuth route harness", async ({ page }) => {
@@ -25,22 +27,26 @@ test.describe("ATProto profile verification handoff", () => {
     });
   });
 
-  test("drops the connected ATProto identity when the handle changes", async ({ page }) => {
+  test("restores the selected identity from the callback into the claim draft", async ({
+    page,
+  }) => {
     await performSignIn(page);
 
     await openOrganizationVerification(page);
-    await connectAtprotoAccount(page, representativeHandle);
+    await connectAtprotoAccount(page, draftHandle);
 
-    await page.getByRole("textbox", { name: "ATProto handle" }).fill("different.bsky.social");
+    await page.reload();
+    expect(await page.getByRole("combobox", { name: "ATProto identity" }).inputValue()).not.toBe(
+      "",
+    );
+    await page.getByRole("textbox", { name: "Organization domain" }).fill(organizationDomain);
     await fulfillProfileVerificationSubmission(page);
 
     const submissionRequest = waitForVerificationSubmission(page);
     await page.getByRole("button", { name: "Submit verification" }).click();
     const submittedBody = (await submissionRequest).postDataJSON() as Record<string, unknown>;
-    expect(submittedBody).not.toHaveProperty("atproto_identity_id");
-    expect(submittedBody).toMatchObject({
-      relationship: "organization_representative",
-    });
+    expect(submittedBody).toMatchObject({ relationship: "organization_representative" });
+    expect(submittedBody).toHaveProperty("atproto_identity_id");
   });
 
   test("returns failed ATProto verification to the organization verification page", async ({
@@ -49,7 +55,7 @@ test.describe("ATProto profile verification handoff", () => {
     await performSignIn(page);
 
     await openOrganizationVerification(page);
-    const callbackUrl = await startAtprotoConnection(page, representativeHandle);
+    const callbackUrl = await startAtprotoConnection(page, recoveryHandle);
     callbackUrl.searchParams.set("handle", "different.bsky.social");
 
     await page.goto(callbackUrl.toString());
@@ -57,21 +63,17 @@ test.describe("ATProto profile verification handoff", () => {
     await expect(page).toHaveURL((url) => {
       return (
         url.pathname === `/claim/${organizationSlug}` &&
-        url.searchParams.get("atprotoError") === "ATProto identity could not be verified." &&
-        url.searchParams.get("atprotoHandle") === representativeHandle
+        url.searchParams.get("atprotoError") === "ATProto identity could not be verified."
       );
     });
     await expect(page.getByRole("alert")).toHaveText("ATProto identity could not be verified.");
-    await expect(page.getByRole("textbox", { name: "ATProto handle" })).toHaveValue(
-      representativeHandle,
-    );
+    await expect(page.getByRole("textbox", { name: "Another ATProto handle" })).toHaveValue("");
 
-    await connectAtprotoAccount(page, representativeHandle);
+    await connectAtprotoAccount(page, recoveryHandle);
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page).toHaveURL((url) => {
       return (
         url.pathname === `/claim/${organizationSlug}` &&
-        url.searchParams.get("atprotoHandle") === representativeHandle &&
         url.searchParams.has("atprotoIdentityId") &&
         !url.searchParams.has("atprotoError")
       );
@@ -85,11 +87,11 @@ async function openOrganizationVerification(page: Page): Promise<void> {
 }
 
 async function connectAtprotoAccount(page: Page, handle: string): Promise<string> {
-  await page.getByRole("textbox", { name: "ATProto handle" }).fill(handle);
+  await page.getByRole("textbox", { name: "Another ATProto handle" }).fill(handle);
   const startResponse = waitForOAuthResponse(page, "/api/atproto/oauth/start");
   const authorizeResponse = waitForOAuthResponse(page, "/api/atproto/oauth/harness/authorize");
   const callbackResponse = waitForOAuthResponse(page, "/api/atproto/oauth/callback");
-  await page.getByRole("button", { name: "Connect ATProto" }).click();
+  await page.getByRole("button", { name: "Connect another account" }).click();
 
   expect((await startResponse).status()).toBe(302);
   expect((await authorizeResponse).status()).toBe(302);
@@ -97,9 +99,7 @@ async function connectAtprotoAccount(page: Page, handle: string): Promise<string
 
   await expect(page).toHaveURL((url) => {
     return (
-      url.pathname === `/claim/${organizationSlug}` &&
-      url.searchParams.has("atprotoIdentityId") &&
-      url.searchParams.get("atprotoHandle") === handle
+      url.pathname === `/claim/${organizationSlug}` && url.searchParams.has("atprotoIdentityId")
     );
   });
   const returnedUrl = new URL(page.url());
