@@ -123,7 +123,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     const activeWorkspace = session.workspace.activeOrganization;
 
     if (!activeWorkspace) {
-      throw new Error("Choose or create a workspace before purchasing a product.");
+      throw new Error("Create a workspace before continuing to payment.");
     }
 
     const auth = await ensureAuthReady();

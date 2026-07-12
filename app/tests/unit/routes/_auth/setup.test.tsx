@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", async () => {
 
 vi.mock("@/domains/access", () => ({
   AccountSetupPage: ({ redirectTo }: { redirectTo?: string }) => (
-    <div data-testid="account-setup-page" data-redirect={redirectTo ?? ""} />
+    <div data-testid="setup-page" data-redirect={redirectTo ?? ""} />
   ),
 }));
 
@@ -18,7 +18,7 @@ vi.mock("@/domains/access/server", () => ({
   requireIncompleteAtlasSession: vi.fn(),
 }));
 
-describe("routes/_auth/account-setup", () => {
+describe("routes/_auth/setup", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
@@ -31,7 +31,7 @@ describe("routes/_auth/account-setup", () => {
   });
 
   it("validates the search payload to a redirect-only schema", async () => {
-    const routeModule = await import("@/routes/_auth/account-setup");
+    const routeModule = await import("@/routes/_auth/setup");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
@@ -47,19 +47,16 @@ describe("routes/_auth/account-setup", () => {
       session as Awaited<ReturnType<typeof access.requireIncompleteAtlasSession>>,
     );
 
-    const routeModule = await import("@/routes/_auth/account-setup");
+    const routeModule = await import("@/routes/_auth/setup");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 
     if (!Route.options.beforeLoad) throw new Error("Expected beforeLoad");
     const ctx = await Route.options.beforeLoad({
-      location: { href: "/account-setup?redirect=/x" },
+      location: { href: "/setup?redirect=/x" },
       search: { redirect: "/x" },
     });
-    expect(access.requireIncompleteAtlasSession).toHaveBeenCalledWith(
-      "/account-setup?redirect=/x",
-      "/x",
-    );
+    expect(access.requireIncompleteAtlasSession).toHaveBeenCalledWith("/setup?redirect=/x", "/x");
     expect(ctx).toEqual({ session });
   });
 
@@ -68,12 +65,12 @@ describe("routes/_auth/account-setup", () => {
     const router = readRouterMocks();
     router.useSearch.mockReturnValue({ redirect: "/billing" });
 
-    const routeModule = await import("@/routes/_auth/account-setup");
+    const routeModule = await import("@/routes/_auth/setup");
     const Route = asRouteStub(routeModule.Route);
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     const view = render(<Component />);
-    expect(view.getByTestId("account-setup-page").dataset.redirect).toBe("/billing");
+    expect(view.getByTestId("setup-page").dataset.redirect).toBe("/billing");
   });
 });

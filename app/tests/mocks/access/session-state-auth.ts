@@ -12,6 +12,12 @@ import {
  */
 export function createSessionStateAuthApi() {
   return {
+    createOrganization: vi.fn().mockResolvedValue({
+      id: "org_personal",
+      metadata: { workspaceType: "individual" },
+      name: "Operator's Workspace",
+      slug: "operators-workspace",
+    }),
     getActiveMemberRole: vi.fn().mockResolvedValue({ role: "owner" }),
     getSession: vi.fn().mockResolvedValue(createBetterAuthSession()),
     listOrganizations: vi.fn().mockResolvedValue([createBetterAuthOrganization()]),

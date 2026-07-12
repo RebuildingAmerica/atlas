@@ -54,6 +54,11 @@ describe("resolveReadyDestination", () => {
     const session = createAtlasSessionFixture();
     expect(resolveReadyDestination(session)).toBe("/discovery");
   });
+
+  it("rejects protocol-relative redirect targets", () => {
+    const session = createAtlasSessionFixture();
+    expect(resolveReadyDestination(session, "//evil.example")).toBe("/discovery");
+  });
 });
 
 describe("useRelativeTimestamp", () => {

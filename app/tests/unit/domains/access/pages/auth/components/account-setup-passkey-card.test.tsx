@@ -26,17 +26,14 @@ afterEach(() => {
 });
 
 describe("AccountSetupPasskeyCard", () => {
-  it("uses the email-not-verified heading and disables the continue-without action", () => {
+  it("uses the email-not-verified heading and omits the continue-without action", () => {
     const onAddPasskey = vi.fn();
-    const onContinueWithoutPasskey = vi.fn();
     render(
       <AccountSetupPasskeyCard
         emailVerified={false}
         errorMessage={null}
         isAddPending={false}
-        isContinuingWithoutPasskey={false}
         onAddPasskey={onAddPasskey}
-        onContinueWithoutPasskey={onContinueWithoutPasskey}
       />,
     );
 
@@ -47,39 +44,19 @@ describe("AccountSetupPasskeyCard", () => {
     expect(onAddPasskey).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the email-verified path with a continue-without-passkey escape hatch", () => {
-    const onContinueWithoutPasskey = vi.fn();
+  it("renders the email-verified path without a continue-without-passkey escape hatch", () => {
     render(
       <AccountSetupPasskeyCard
         emailVerified={true}
         errorMessage="Atlas could not register that passkey."
         isAddPending={true}
-        isContinuingWithoutPasskey={false}
         onAddPasskey={vi.fn()}
-        onContinueWithoutPasskey={onContinueWithoutPasskey}
       />,
     );
 
-    expect(screen.getByText("Almost there — add a passkey or skip")).not.toBeNull();
+    expect(screen.getByText("Almost there — add a passkey")).not.toBeNull();
     expect(screen.getByText("Adding passkey...")).not.toBeNull();
     expect(screen.getByText("Atlas could not register that passkey.")).not.toBeNull();
-
-    fireEvent.click(screen.getByText(/Continue without a passkey/));
-    expect(onContinueWithoutPasskey).toHaveBeenCalledTimes(1);
-  });
-
-  it("renders the continuing-pending state on the escape-hatch button", () => {
-    render(
-      <AccountSetupPasskeyCard
-        emailVerified={true}
-        errorMessage={null}
-        isAddPending={false}
-        isContinuingWithoutPasskey={true}
-        onAddPasskey={vi.fn()}
-        onContinueWithoutPasskey={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Continuing...")).not.toBeNull();
+    expect(screen.queryByText(/Continue without a passkey/)).toBeNull();
   });
 });

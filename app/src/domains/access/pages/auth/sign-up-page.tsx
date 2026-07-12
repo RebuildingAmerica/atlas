@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
+import { sanitizeAtlasRedirectPath } from "@/domains/access/redirect-paths";
 import { checkAccountExists, requestMagicLink } from "@/domains/access/session.functions";
 import {
   AUTH_ERROR_CODE,
@@ -16,8 +17,7 @@ import { SignUpSentPanel } from "./components/sign-up-sent-panel";
  * Recognised intent the sign-up route accepts via the `intent` search param.
  *
  * `team-sso` is the only value today; it triggers the team-plan-buyer copy
- * and forces the post-sign-up redirect to bounce through `/pricing` so
- * checkout starts as soon as the magic-link callback resolves.
+ * and keeps the post-sign-up handoff inside the paid onboarding flow.
  */
 export type SignUpIntent = "team-sso";
 
@@ -38,7 +38,19 @@ const CROSS_DEVICE_POLL_INTERVAL_MS = 3000;
 
 const SIGN_UP_ERROR_LABELS = buildAuthErrorLabels("sign-up");
 
-const TEAM_SSO_REDIRECT = "/pricing?intent=atlas_team&interval=monthly";
+const TEAM_SSO_REDIRECT = "/start?product=atlas_team&interval=monthly";
+
+function isPurchaseStartRedirect(redirect: string): boolean {
+  return redirect === "/start" || redirect.startsWith("/start?");
+}
+
+function buildPostCredentialTarget(accountReady: boolean, redirectTo: string | undefined): string {
+  const target = sanitizeAtlasRedirectPath(redirectTo) ?? "/account";
+  if (accountReady || isPurchaseStartRedirect(target)) {
+    return target;
+  }
+  return `/setup?redirect=${encodeURIComponent(target)}`;
+}
 
 /**
  * Sign-up page for new Atlas accounts.
@@ -127,7 +139,7 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
     if (phase !== "sent" || !session.data) {
       return;
     }
-    const target = effectiveRedirect ?? "/account";
+    const target = buildPostCredentialTarget(session.data.accountReady, effectiveRedirect);
     window.location.assign(target);
   }, [phase, session.data, effectiveRedirect]);
 

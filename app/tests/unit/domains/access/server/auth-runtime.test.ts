@@ -228,7 +228,7 @@ describe("auth runtime wiring", () => {
       throw new TypeError("Expected the Better Auth wiring to register sendVerificationEmail.");
     }
     await typedOptions.emailVerification.sendVerificationEmail({
-      url: "https://atlas.test/account-setup",
+      url: "https://atlas.test/setup",
       user: { email: "operator@atlas.test" } as Parameters<
         NonNullable<typeof typedOptions.emailVerification.sendVerificationEmail>
       >[0]["user"],
@@ -237,7 +237,7 @@ describe("auth runtime wiring", () => {
     expect(mocks.emailSend).toHaveBeenCalledWith(
       expect.objectContaining({
         subject: "Verify your Atlas email",
-        text: "Verify your email for Atlas: https://atlas.test/account-setup",
+        text: "Verify your email for Atlas: https://atlas.test/setup",
         to: "operator@atlas.test",
       }),
     );

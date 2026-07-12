@@ -231,12 +231,12 @@ describe("createVerificationEmailSender", () => {
 
     await createVerificationEmailSender(deliverVerificationEmail)({
       email: "operator@atlas.test",
-      url: "https://atlas.test/account-setup",
+      url: "https://atlas.test/setup",
     });
 
     expect(deliverVerificationEmail).toHaveBeenCalledWith(
       "operator@atlas.test",
-      "https://atlas.test/account-setup",
+      "https://atlas.test/setup",
     );
   });
 });

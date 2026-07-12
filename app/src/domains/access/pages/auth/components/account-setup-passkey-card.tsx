@@ -1,29 +1,25 @@
-import { ArrowRight, KeyRound } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { Button } from "@/platform/ui/button";
 
 interface AccountSetupPasskeyCardProps {
   emailVerified: boolean;
   errorMessage: string | null;
   isAddPending: boolean;
-  isContinuingWithoutPasskey: boolean;
   onAddPasskey: () => void;
-  onContinueWithoutPasskey: () => void;
 }
 
 /**
  * Card promoting passkey enrollment as the recommended next step after
  * email verification.  Surfaces the "What's a passkey?" disclosure with
  * Atlas's plain-language explanation of phishing-resistant credentials,
- * and exposes the "Continue without a passkey" escape hatch once email
+ * and keeps passkey enrollment as the required next step once email
  * verification has cleared.
  */
 export function AccountSetupPasskeyCard({
   emailVerified,
   errorMessage,
   isAddPending,
-  isContinuingWithoutPasskey,
   onAddPasskey,
-  onContinueWithoutPasskey,
 }: AccountSetupPasskeyCardProps) {
   return (
     <div
@@ -34,12 +30,12 @@ export function AccountSetupPasskeyCard({
       }
     >
       <p className="type-title-small text-ink-strong">
-        {emailVerified ? "Almost there — add a passkey or skip" : "Add a passkey"}
+        {emailVerified ? "Almost there — add a passkey" : "Add a passkey"}
       </p>
       <p className="type-body-medium text-ink-soft mt-2">
         Passkeys let you sign in instantly with the same Touch ID, Face ID, Windows Hello, or
         hardware security key you already use elsewhere — no password to remember and no email link
-        to wait on. You can also keep using magic links and add a passkey later.
+        to wait on.
       </p>
       <details className="mt-3">
         <summary className="type-label-medium text-accent cursor-pointer hover:underline">
@@ -73,18 +69,6 @@ export function AccountSetupPasskeyCard({
             {isAddPending ? "Adding passkey..." : "Add a passkey"}
           </span>
         </Button>
-        {emailVerified ? (
-          <Button
-            variant="secondary"
-            disabled={isContinuingWithoutPasskey}
-            onClick={onContinueWithoutPasskey}
-          >
-            <span className="inline-flex items-center gap-2">
-              {isContinuingWithoutPasskey ? "Continuing..." : "Continue without a passkey"}
-              <ArrowRight className="h-4 w-4" />
-            </span>
-          </Button>
-        ) : null}
         {errorMessage ? <p className="type-body-medium text-red-700">{errorMessage}</p> : null}
       </div>
       <p className="type-body-small text-ink-soft mt-3">

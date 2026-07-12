@@ -55,6 +55,69 @@ const organizationInvitationSchema = z.object({
   status: z.string(),
 });
 
+interface LoadAtlasWorkspaceStateOptions {
+  ensurePersonalWorkspace?: boolean;
+}
+
+const MAX_PERSONAL_WORKSPACE_SLUG_ATTEMPTS = 20;
+
+function slugifyWorkspaceName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function derivePersonalWorkspaceIdentity(session: AtlasSessionRecord): {
+  name: string;
+  slugBase: string;
+} {
+  const displayName = session.user.name.trim();
+  const emailLocalPart = session.user.email.split("@")[0]?.trim() ?? "";
+  const ownerLabel = displayName || emailLocalPart || "My";
+  const name = displayName ? `${displayName}'s Workspace` : "My Workspace";
+  const slugBase = slugifyWorkspaceName(`${ownerLabel}'s Workspace`) || "my-workspace";
+  return { name, slugBase };
+}
+
+async function createPersonalWorkspace(
+  auth: AtlasWorkspaceStateAuth,
+  headers: Headers,
+  session: AtlasSessionRecord,
+  keepCurrentActiveOrganization: boolean,
+): Promise<z.infer<typeof organizationSummarySchema>> {
+  const { name, slugBase } = derivePersonalWorkspaceIdentity(session);
+
+  for (let attempt = 1; attempt <= MAX_PERSONAL_WORKSPACE_SLUG_ATTEMPTS; attempt += 1) {
+    const slug = attempt === 1 ? slugBase : `${slugBase}-${attempt}`;
+    try {
+      const created = await auth.api.createOrganization({
+        body: {
+          keepCurrentActiveOrganization,
+          metadata: {
+            onboarding: {
+              provisionedAt: new Date().toISOString(),
+            },
+            workspaceType: "individual",
+          },
+          name,
+          slug,
+          userId: session.user.id,
+        },
+        headers,
+      });
+      return organizationSummarySchema.parse(created);
+    } catch (error) {
+      if (attempt === MAX_PERSONAL_WORKSPACE_SLUG_ATTEMPTS) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("Atlas could not create a personal workspace.");
+}
+
 /**
  * Serializes Better Auth date-like values into JSON-safe ISO strings.
  */
@@ -164,6 +227,7 @@ export async function loadAtlasWorkspaceState(
   auth: AtlasWorkspaceStateAuth,
   headers: Headers,
   session: AtlasSessionRecord,
+  options: LoadAtlasWorkspaceStateOptions = {},
 ): Promise<AtlasSessionPayload["workspace"]> {
   const [organizationsValue, invitationsValue] = await Promise.all([
     auth.api.listOrganizations({ headers }),
@@ -177,6 +241,15 @@ export async function loadAtlasWorkspaceState(
 
   const organizations = z.array(organizationSummarySchema).parse(organizationsValue);
   const invitations = z.array(organizationInvitationSchema).parse(invitationsValue);
+  const hasPersonalWorkspace = organizations.some((organization) => {
+    const metadata = normalizeAtlasOrganizationMetadata(organization.metadata);
+    return metadata.workspaceType === "individual";
+  });
+  if (!hasPersonalWorkspace && options.ensurePersonalWorkspace === true) {
+    organizations.push(
+      await createPersonalWorkspace(auth, headers, session, organizations.length > 0),
+    );
+  }
 
   const memberships: AtlasSessionPayload["workspace"]["memberships"] = [];
   for (const organization of organizations) {

@@ -92,4 +92,69 @@ describe("handleStripeWebhook", () => {
     expect(response.status).toBe(200);
     expect(readWorkspaceProduct(db).expires_at).toBe("2026-07-31T00:00:00.000Z");
   });
+
+  it("marks the purchase intent paid when checkout metadata includes it", async () => {
+    const created = Date.parse("2026-07-01T00:00:00.000Z") / 1000;
+    db.prepare(
+      `INSERT INTO purchase_intents
+         (id, user_id, workspace_id, product, interval, status, stripe_checkout_session_id, created_at, updated_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "pi_123",
+      "user_123",
+      "org_research",
+      "atlas_research_pass",
+      "weekly",
+      "checkout_created",
+      "cs_research_pass",
+      "2026-07-01T00:00:00.000Z",
+      "2026-07-01T00:00:00.000Z",
+      "2026-07-02T00:00:00.000Z",
+    );
+
+    const response = await deliverWebhook(
+      buildResearchPassCheckoutCompletedEvent({
+        created,
+        interval: "weekly",
+        purchaseIntentId: "pi_123",
+      }),
+    );
+
+    const row = db.prepare("SELECT status FROM purchase_intents WHERE id = ?").get("pi_123") as
+      { status: string } | undefined;
+    expect(response.status).toBe(200);
+    expect(row?.status).toBe("paid");
+  });
+
+  it("does not mark a purchase intent paid from a different checkout session", async () => {
+    const created = Date.parse("2026-07-01T00:00:00.000Z") / 1000;
+    db.prepare(
+      `INSERT INTO purchase_intents
+         (id, user_id, product, interval, status, stripe_checkout_session_id, created_at, updated_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      "pi_123",
+      "user_123",
+      "atlas_research_pass",
+      "weekly",
+      "checkout_created",
+      "cs_expected",
+      "2026-07-01T00:00:00.000Z",
+      "2026-07-01T00:00:00.000Z",
+      "2026-07-02T00:00:00.000Z",
+    );
+
+    const response = await deliverWebhook(
+      buildResearchPassCheckoutCompletedEvent({
+        created,
+        interval: "weekly",
+        purchaseIntentId: "pi_123",
+      }),
+    );
+
+    const row = db.prepare("SELECT status FROM purchase_intents WHERE id = ?").get("pi_123") as
+      { status: string } | undefined;
+    expect(response.status).toBe(200);
+    expect(row?.status).toBe("checkout_created");
+  });
 });

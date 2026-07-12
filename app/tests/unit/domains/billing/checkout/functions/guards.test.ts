@@ -117,7 +117,9 @@ describe("checkout.functions guards", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeInstanceOf(Error);
-    expect((response.error as Error).message).toContain("Choose or create a workspace");
+    expect((response.error as Error).message).toContain(
+      "Create a workspace before continuing to payment",
+    );
   });
 
   it("creates a Stripe customer on demand when the workspace lacks one", async () => {

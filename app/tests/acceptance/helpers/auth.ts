@@ -138,11 +138,11 @@ export async function performSignIn(
 
   await page.waitForURL((url) => {
     const pathname = url.pathname;
-    return pathname === "/account" || pathname === "/account-setup" || pathname === "/organization";
+    return pathname === "/account" || pathname === "/setup" || pathname === "/organization";
   });
   await page.waitForLoadState("networkidle");
 
-  if (new URL(page.url()).pathname === "/account-setup") {
+  if (new URL(page.url()).pathname === "/setup") {
     await page.getByRole("button", { name: "Add passkey" }).click();
     await page.waitForURL((url) => {
       const pathname = url.pathname;

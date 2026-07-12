@@ -63,19 +63,32 @@ describe("route-guard", () => {
     expect(result).toBe(session);
   });
 
-  it("redirects to account-setup when the account is not ready", async () => {
+  it("redirects to setup when the account is not ready", async () => {
     const session = { accountReady: false };
     mocks.getAtlasSession.mockResolvedValue(session);
 
     await expect(requireReadyAtlasSession("/dashboard")).rejects.toThrow("Redirect");
     expect(mocks.redirect).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: "/account-setup",
+        to: "/setup",
       }),
     );
   });
 
-  it("redirects a ready operator away from account-setup", async () => {
+  it("redirects to setup when the account has no passkey", async () => {
+    const session = { accountReady: true, hasPasskey: false };
+    mocks.getAtlasSession.mockResolvedValue(session);
+
+    await expect(requireReadyAtlasSession("/dashboard")).rejects.toThrow("Redirect");
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: { redirect: "/dashboard" },
+        to: "/setup",
+      }),
+    );
+  });
+
+  it("redirects a ready operator away from setup", async () => {
     const session = {
       accountReady: true,
       hasPasskey: true,
@@ -83,7 +96,7 @@ describe("route-guard", () => {
     };
     mocks.getAtlasSession.mockResolvedValue(session);
 
-    await expect(requireIncompleteAtlasSession("/account-setup")).rejects.toThrow("Redirect");
+    await expect(requireIncompleteAtlasSession("/setup")).rejects.toThrow("Redirect");
     expect(mocks.redirect).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/account",
@@ -99,7 +112,7 @@ describe("route-guard", () => {
     };
     mocks.getAtlasSession.mockResolvedValue(session);
 
-    await expect(requireIncompleteAtlasSession("/account-setup")).rejects.toThrow("Redirect");
+    await expect(requireIncompleteAtlasSession("/setup")).rejects.toThrow("Redirect");
     expect(mocks.redirect).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/organization",
@@ -107,7 +120,7 @@ describe("route-guard", () => {
     );
   });
 
-  it("keeps an email-verified-but-passkey-less operator on account-setup", async () => {
+  it("keeps an email-verified-but-passkey-less operator on setup", async () => {
     const session = {
       accountReady: true,
       hasPasskey: false,
@@ -115,12 +128,12 @@ describe("route-guard", () => {
     };
     mocks.getAtlasSession.mockResolvedValue(session);
 
-    await expect(requireIncompleteAtlasSession("/account-setup")).resolves.toEqual(session);
+    await expect(requireIncompleteAtlasSession("/setup")).resolves.toEqual(session);
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
   it("returns the session when ready and accountReady is true", async () => {
-    const session = { accountReady: true };
+    const session = { accountReady: true, hasPasskey: true };
     mocks.getAtlasSession.mockResolvedValue(session);
 
     const result = await requireReadyAtlasSession("/dashboard");
@@ -136,10 +149,24 @@ describe("route-guard", () => {
     };
     mocks.getAtlasSession.mockResolvedValue(session);
 
-    await expect(requireIncompleteAtlasSession("/account-setup", "/saved/path")).rejects.toThrow(
+    await expect(requireIncompleteAtlasSession("/setup", "/saved/path")).rejects.toThrow(
       "Redirect",
     );
     expect(mocks.redirect).toHaveBeenCalledWith(expect.objectContaining({ to: "/saved/path" }));
+  });
+
+  it("falls back when the setup redirect target is protocol-relative", async () => {
+    const session = {
+      accountReady: true,
+      hasPasskey: true,
+      workspace: { onboarding: { needsWorkspace: false, hasPendingInvitations: false } },
+    };
+    mocks.getAtlasSession.mockResolvedValue(session);
+
+    await expect(requireIncompleteAtlasSession("/setup", "//evil.example")).rejects.toThrow(
+      "Redirect",
+    );
+    expect(mocks.redirect).toHaveBeenCalledWith(expect.objectContaining({ to: "/account" }));
   });
 
   describe("redirectIfLocalSession", () => {

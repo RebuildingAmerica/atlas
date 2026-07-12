@@ -88,6 +88,39 @@ describe("createCheckoutSession", () => {
     });
   });
 
+  it("propagates purchase intent metadata into checkout and subscription records", async () => {
+    create.mockResolvedValue({ url: "https://checkout.stripe.test/c/team" });
+
+    await createCheckoutSession({
+      workspaceId: "org_team",
+      product: "atlas_team",
+      interval: "monthly",
+      priceId: "price_team_base",
+      purchaseIntentId: "pi_123",
+      successUrl: "https://atlas.test/start/complete?purchase=pi_123",
+      cancelUrl: "https://atlas.test/start?purchase=pi_123&step=payment",
+      customerEmail: "owner@atlas.test",
+    });
+
+    const params = sessionParams();
+    expect(params.success_url).toBe("https://atlas.test/start/complete?purchase=pi_123");
+    expect(params.cancel_url).toBe("https://atlas.test/start?purchase=pi_123&step=payment");
+    expect(params.metadata).toEqual({
+      interval: "monthly",
+      product: "atlas_team",
+      purchase_intent_id: "pi_123",
+      workspace_id: "org_team",
+    });
+    expect(params.subscription_data).toEqual({
+      metadata: {
+        interval: "monthly",
+        product: "atlas_team",
+        purchase_intent_id: "pi_123",
+        workspace_id: "org_team",
+      },
+    });
+  });
+
   it("omits the seat line item when the seat quantity is zero", async () => {
     create.mockResolvedValue({ url: "https://checkout.stripe.test/c/base" });
 

@@ -1,11 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import { rememberPendingCheckout } from "@/domains/billing/pending-checkout";
-import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { PageLayout } from "@/platform/layout/page-layout";
-import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
 import type { BillingPeriod, PlanCardLinkCta } from "./components/plan-card";
 import { PricingComparisonTable } from "./components/pricing-comparison-table";
 import { PricingPlansGrid } from "./components/pricing-plans-grid";
@@ -18,9 +15,6 @@ import {
   type PricingCheckoutInterval,
   type PricingCheckoutParams,
   checkoutKey,
-  describeCheckoutCost,
-  loadStartCheckout,
-  readCheckoutErrorMessage,
 } from "./pricing-page-helpers";
 
 /**
@@ -57,94 +51,24 @@ interface PricingPageProps {
 export function PricingPage({ intent, interval: intentInterval }: PricingPageProps) {
   const navigate = useNavigate();
   const session = useAtlasSession();
-  const { confirm } = useConfirmDialog();
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [pendingCheckoutKey, setPendingCheckoutKey] = useState<string | null>(null);
-  const hasResumedRef = useRef(false);
 
   async function handleCheckout({ product, interval }: PricingCheckoutParams) {
-    // session.data === undefined while the query is still loading; null
-    // when resolved to "no session." Only treat the latter as anonymous
-    // — otherwise a fast-clicking authed user can be wrongly bounced
-    // through sign-in.
-    if (session.data === undefined) {
-      return;
-    }
-
-    if (session.data === null) {
-      const params = new URLSearchParams({ intent: product, interval });
-      const redirectTarget = `/pricing?${params.toString()}`;
-      void navigate({ to: "/sign-in", search: { redirect: redirectTarget } });
-      return;
-    }
-
-    const preview = describeCheckoutCost(product, interval);
-    const acknowledged = await confirm({
-      body: (
-        <div className="space-y-2">
-          <p>
-            Atlas will redirect you to Stripe to complete the {PRODUCT_LABELS[product]} purchase.
-          </p>
-          <p className="text-on-surface font-medium">{preview.priceLine}</p>
-          <p className="type-body-small text-outline">{preview.detailLine}</p>
-        </div>
-      ),
-      cancelLabel: "Not now",
-      confirmLabel: "Continue to checkout",
-      title: `Confirm ${PRODUCT_LABELS[product]} purchase`,
-    });
-    if (!acknowledged) {
-      return;
-    }
-
-    setCheckoutError(null);
     setPendingCheckoutKey(checkoutKey(product, interval));
-
     try {
-      const startCheckout = await loadStartCheckout();
-      const result = await startCheckout({ data: { product, interval } });
-      rememberPendingCheckout({ product, interval });
-      window.location.assign(result.url);
-    } catch (error) {
-      setCheckoutError(readCheckoutErrorMessage(error));
+      await navigate({ to: "/start", search: { product, interval } });
+    } finally {
       setPendingCheckoutKey(null);
     }
   }
 
   useEffect(() => {
-    if (hasResumedRef.current) {
-      return;
-    }
     if (!intent || !intentInterval) {
       return;
     }
-    if (!session.data) {
-      return;
-    }
-
-    hasResumedRef.current = true;
-
-    const resume = async () => {
-      setPendingCheckoutKey(checkoutKey(intent, intentInterval));
-      await navigate({ to: "/pricing", search: {}, replace: true });
-
-      try {
-        const startCheckout = await loadStartCheckout();
-        const result = await startCheckout({
-          data: { product: intent, interval: intentInterval },
-        });
-        window.location.assign(result.url);
-      } catch (error) {
-        setCheckoutError(readCheckoutErrorMessage(error));
-        setPendingCheckoutKey(null);
-        // Allow the operator to retry by clicking a CTA again.
-        hasResumedRef.current = false;
-      }
-    };
-
-    void resume();
-  }, [intent, intentInterval, session.data, navigate]);
+    void navigate({ to: "/start", search: { product: intent, interval: intentInterval } });
+  }, [intent, intentInterval, navigate]);
 
   const activeWorkspace = session.data?.workspace.activeOrganization ?? null;
   const isAuthed = Boolean(session.data);
@@ -154,37 +78,6 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   const freeCta: PlanCardLinkCta = isAuthed
     ? { label: "Open your workspace", to: "/discovery" }
     : { label: "Browse the Atlas", to: "/browse" };
-
-  // Auto-resume handoff: when the page is rendered with intent params and a
-  // live session, render a deliberate "taking you to checkout" view instead
-  // of the plan grid. Eliminates the brief flash of pricing cards before
-  // the redirect fires. If the resume errors (and clears the ref), we drop
-  // back to the full page so the operator can retry.
-  if (
-    intent !== undefined &&
-    intentInterval !== undefined &&
-    session.data &&
-    checkoutError === null
-  ) {
-    const productLabel = PRODUCT_LABELS[intent];
-    return (
-      <PageLayout className="py-10 lg:py-16">
-        <section className="mx-auto w-full max-w-3xl">
-          <div className="mb-2">
-            <p className="type-label-medium text-ink-muted mb-3 tracking-wider uppercase">
-              {productLabel}
-            </p>
-            <h1 className="type-display-small text-ink-strong mb-4 leading-tight">
-              Taking you to checkout
-            </h1>
-            <p className="type-body-large text-ink-soft leading-relaxed">
-              We're getting your purchase ready. You'll be on the payment screen in a moment.
-            </p>
-          </div>
-        </section>
-      </PageLayout>
-    );
-  }
 
   return (
     <PageLayout className="py-10 lg:py-16">
@@ -204,15 +97,6 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
             directory free for everyone.
           </p>
         </div>
-
-        {checkoutError ? (
-          <div
-            role="alert"
-            className="border-outline-variant bg-error-container mb-6 rounded-2xl border px-4 py-3"
-          >
-            <p className="type-body-medium text-on-error-container">{checkoutError}</p>
-          </div>
-        ) : null}
 
         <PricingPlansGrid
           activeWorkspaceName={activeWorkspace?.name ?? null}

@@ -251,7 +251,7 @@ type AtlasPasskeyApi = Pick<AtlasAuthApi, "listPasskeys">;
 
 type AtlasWorkspaceApi = Pick<
   AtlasAuthApi,
-  "getActiveMemberRole" | "listOrganizations" | "listUserInvitations"
+  "createOrganization" | "getActiveMemberRole" | "listOrganizations" | "listUserInvitations"
 >;
 
 /**

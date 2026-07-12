@@ -243,7 +243,7 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("redirects to the effective redirect path when the session lands on the sent screen", async () => {
+  it("redirects ready accounts to the effective redirect path when the session lands on the sent screen", async () => {
     mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     const assignSpy = vi.fn();
@@ -265,13 +265,41 @@ describe("SignUpPage", () => {
       await Promise.resolve();
     });
 
-    mocks.useAtlasSession.mockReturnValue({ data: { user: { id: "u1" } } });
+    mocks.useAtlasSession.mockReturnValue({ data: { accountReady: true, user: { id: "u1" } } });
     rerender(<SignUpPage redirectTo="/workspace" />);
 
     expect(assignSpy).toHaveBeenCalledWith("/workspace");
   });
 
-  it("falls back to /account when no redirect is configured and the session arrives", async () => {
+  it("does not assign protocol-relative redirects after sign-up", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: { ...window.location, assign: assignSpy },
+    });
+    mocks.useAtlasSession.mockReturnValue({ data: null });
+
+    const { rerender } = render(<SignUpPage redirectTo="//evil.example" />);
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    mocks.useAtlasSession.mockReturnValue({ data: { accountReady: true, user: { id: "u1" } } });
+    rerender(<SignUpPage redirectTo="//evil.example" />);
+
+    expect(assignSpy).toHaveBeenCalledWith("/account");
+  });
+
+  it("sends incomplete accounts to setup when no redirect is configured and the session arrives", async () => {
     mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     const assignSpy = vi.fn();
@@ -293,10 +321,66 @@ describe("SignUpPage", () => {
       await Promise.resolve();
     });
 
-    mocks.useAtlasSession.mockReturnValue({ data: { user: { id: "u1" } } });
+    mocks.useAtlasSession.mockReturnValue({ data: { accountReady: false, user: { id: "u1" } } });
     rerender(<SignUpPage />);
 
-    expect(assignSpy).toHaveBeenCalledWith("/account");
+    expect(assignSpy).toHaveBeenCalledWith("/setup?redirect=%2Faccount");
+  });
+
+  it("does not put unsafe redirects into setup for incomplete accounts", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: { ...window.location, assign: assignSpy },
+    });
+    mocks.useAtlasSession.mockReturnValue({ data: null });
+
+    const { rerender } = render(<SignUpPage redirectTo="//evil.example" />);
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    mocks.useAtlasSession.mockReturnValue({ data: { accountReady: false, user: { id: "u1" } } });
+    rerender(<SignUpPage redirectTo="//evil.example" />);
+
+    expect(assignSpy).toHaveBeenCalledWith("/setup?redirect=%2Faccount");
+  });
+
+  it("keeps incomplete paid sign-ups in the purchase start flow", async () => {
+    mocks.checkAccountExists.mockResolvedValue({ exists: false });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      writable: true,
+      value: { ...window.location, assign: assignSpy },
+    });
+    mocks.useAtlasSession.mockReturnValue({ data: null });
+
+    const { rerender } = render(<SignUpPage intent="team-sso" />);
+    fireEvent.change(screen.getByLabelText(/Email/i), {
+      target: { value: "new@example.com" },
+    });
+    const form = screen.getByRole("button", { name: "Continue with team setup" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    mocks.useAtlasSession.mockReturnValue({ data: { accountReady: false, user: { id: "u1" } } });
+    rerender(<SignUpPage intent="team-sso" />);
+
+    expect(assignSpy).toHaveBeenCalledWith("/start?product=atlas_team&interval=monthly");
   });
 
   it("renders the generic submit-error when the magic-link send rejects on the form", async () => {

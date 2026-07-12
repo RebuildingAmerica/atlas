@@ -5,6 +5,7 @@ import { getStripeClient, getStripeWebhookSecret } from "./stripe-client";
 import { mergeAtlasOrganizationMetadata } from "../../access/organization-metadata";
 import { ensureAuthReady } from "../../access/server/auth";
 import { getAuthDatabase, getAuthPgPool } from "../../access/server/auth";
+import { markPurchaseIntentPaid } from "./purchase-intents";
 
 /**
  * Maps a Stripe subscription status string to the Atlas workspace_products
@@ -220,6 +221,16 @@ async function handleCheckoutCompleted(
     expiresAt,
     eventAt,
   });
+
+  const purchaseIntentId = session.metadata?.purchase_intent_id;
+  if (purchaseIntentId) {
+    await markPurchaseIntentPaid({
+      id: purchaseIntentId,
+      product,
+      stripeCheckoutSessionId: session.id,
+      workspaceId,
+    });
+  }
 
   if (stripeCustomerId) {
     const auth = await ensureAuthReady();

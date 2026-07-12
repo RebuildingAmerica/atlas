@@ -69,6 +69,38 @@ const ADD_EVENT_AT_PG = `
 ALTER TABLE workspace_products ADD COLUMN stripe_event_at TIMESTAMPTZ;
 `;
 
+const PURCHASE_INTENTS_SQLITE = `
+CREATE TABLE purchase_intents (
+    id                         TEXT PRIMARY KEY,
+    user_id                    TEXT NOT NULL,
+    workspace_id               TEXT,
+    product                    TEXT NOT NULL,
+    interval                   TEXT NOT NULL,
+    status                     TEXT NOT NULL,
+    stripe_checkout_session_id TEXT,
+    created_at                 TEXT NOT NULL,
+    updated_at                 TEXT NOT NULL,
+    expires_at                 TEXT NOT NULL
+);
+CREATE INDEX idx_purchase_intents_user ON purchase_intents(user_id);
+`;
+
+const PURCHASE_INTENTS_PG = `
+CREATE TABLE purchase_intents (
+    id                         TEXT PRIMARY KEY,
+    user_id                    TEXT NOT NULL,
+    workspace_id               TEXT,
+    product                    TEXT NOT NULL,
+    interval                   TEXT NOT NULL,
+    status                     TEXT NOT NULL,
+    stripe_checkout_session_id TEXT,
+    created_at                 TIMESTAMPTZ NOT NULL,
+    updated_at                 TIMESTAMPTZ NOT NULL,
+    expires_at                 TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX idx_purchase_intents_user ON purchase_intents(user_id);
+`;
+
 const SCOUT_DEVICES_SQLITE = `
 CREATE TABLE scout_devices (
     id                    TEXT PRIMARY KEY,
@@ -328,6 +360,12 @@ export const ATLAS_MIGRATIONS: AtlasMigration[] = [
     sqlite: SEED_ATLAS_SCOUT_OAUTH_CLIENT_SQLITE,
     pg: SEED_ATLAS_SCOUT_OAUTH_CLIENT_PG,
     sqlitePrecondition: hasBetterAuthOAuthClientTable,
+  },
+  {
+    version: 6,
+    name: "create_purchase_intents",
+    sqlite: PURCHASE_INTENTS_SQLITE,
+    pg: PURCHASE_INTENTS_PG,
   },
 ];
 

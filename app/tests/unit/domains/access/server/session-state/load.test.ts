@@ -227,7 +227,7 @@ describe("session-state loading", () => {
     authApi.listUserInvitations.mockResolvedValue([]);
 
     const expectedSession = createAtlasSessionFixture({
-      accountReady: true,
+      accountReady: false,
       hasPasskey: false,
       passkeyCount: 0,
       workspace: createAtlasWorkspace({
@@ -249,5 +249,47 @@ describe("session-state loading", () => {
 
     const { loadAtlasSession } = await import("@/domains/access/server/session-state");
     await expect(loadAtlasSession()).resolves.toEqual(expectedSession);
+  });
+
+  it("creates a personal workspace automatically once email and passkey setup are complete", async () => {
+    authApi.getSession.mockResolvedValue(
+      createBetterAuthSession({
+        activeOrganizationId: null,
+        userName: "Pat Example",
+      }),
+    );
+    authApi.listPasskeys.mockResolvedValue([{}]);
+    authApi.listOrganizations.mockResolvedValue([]);
+    authApi.listUserInvitations.mockResolvedValue([]);
+
+    const { loadAtlasSession } = await import("@/domains/access/server/session-state");
+    const session = await loadAtlasSession();
+
+    interface CreateOrganizationCall {
+      body: {
+        keepCurrentActiveOrganization: boolean;
+        metadata: { workspaceType: string };
+        name: string;
+        slug: string;
+      };
+    }
+    const createOrganizationCall = authApi.createOrganization.mock.calls[0]?.[0] as
+      CreateOrganizationCall | undefined;
+    expect(createOrganizationCall).toMatchObject({
+      body: {
+        keepCurrentActiveOrganization: false,
+        metadata: { workspaceType: "individual" },
+        name: "Pat Example's Workspace",
+        slug: "pat-example-s-workspace",
+      },
+    });
+    expect(session?.accountReady).toBe(true);
+    expect(session?.workspace.activeOrganization).toMatchObject({
+      id: "org_personal",
+      name: "Operator's Workspace",
+      slug: "operators-workspace",
+      workspaceType: "individual",
+    });
+    expect(session?.workspace.onboarding.needsWorkspace).toBe(false);
   });
 });

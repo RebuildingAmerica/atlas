@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import { sanitizeAtlasRedirectPath } from "@/domains/access/redirect-paths";
 
 /**
  * Renders the relative time elapsed since `timestamp`, refreshing once
@@ -59,5 +60,5 @@ export function resolveReadyDestination(session: AtlasSessionPayload, redirectTo
   if (session.workspace.onboarding.hasPendingInvitations) {
     return "/organization";
   }
-  return redirectTo ?? "/discovery";
+  return sanitizeAtlasRedirectPath(redirectTo) ?? "/discovery";
 }

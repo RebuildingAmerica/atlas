@@ -34,9 +34,8 @@ const AUTO_REPOLL_INTERVAL_MS = 15_000;
  * verify their email or register a passkey before Atlas grants resource-
  * creation access.
  *
- * Email verification is required.  Passkey registration is recommended but
- * optional: the page surfaces a "Continue without a passkey" escape hatch
- * for operators who can't or won't enroll WebAuthn on their current device.
+ * Email verification and passkey registration are required. Magic links are
+ * the bootstrap and recovery path; app access waits for WebAuthn enrollment.
  *
  * @param props - Component props.
  * @param props.redirectTo - Optional post-setup destination forwarded from
@@ -48,7 +47,6 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   const session = atlasSession.data;
   const hasAutoRefreshedRef = useRef(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
-  const [isContinuingWithoutPasskey, setIsContinuingWithoutPasskey] = useState(false);
   const lastCheckedLabel = useRelativeTimestamp(lastCheckedAt);
 
   const sendVerificationMutation = useMutation({
@@ -150,21 +148,6 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
     await handleRefreshAndContinue();
   };
 
-  const handleContinueWithoutPasskey = async (currentSession: AtlasSessionPayload) => {
-    setIsContinuingWithoutPasskey(true);
-    try {
-      const refreshed = await refreshStatus();
-      const target = refreshed ?? currentSession;
-      if (!target.accountReady) {
-        return;
-      }
-      await ensureSoloWorkspaceForReadySession(target);
-      window.location.assign(resolveReadyDestination(target, redirectTo));
-    } finally {
-      setIsContinuingWithoutPasskey(false);
-    }
-  };
-
   const checklist = useMemo<readonly AccountSetupChecklistItem[]>(() => {
     const emailVerified = Boolean(session?.user.emailVerified);
     const hasPasskey = Boolean(session?.hasPasskey);
@@ -181,8 +164,8 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
         complete: hasPasskey,
         description: hasPasskey
           ? `You have ${session?.passkeyCount ?? 0} passkey${session?.passkeyCount === 1 ? "" : "s"} on this account.`
-          : "Recommended — register a passkey so you can sign in instantly without an email link.",
-        kind: "recommended",
+          : "Register a passkey to finish creating your Atlas account.",
+        kind: "required",
         title: "Register a passkey",
       },
     ];
@@ -208,10 +191,10 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="type-label-medium text-ink-muted">Account setup</p>
-        <h1 className="type-display-small text-ink-strong">Finish securing your Atlas account</h1>
+        <p className="type-label-medium text-ink-muted">Setup</p>
+        <h1 className="type-display-small text-ink-strong">Finish setting up Atlas</h1>
         <p className="type-body-large text-ink-soft">
-          Verify your email, then add a passkey if you'd like instant sign-in next time.
+          Verify your email and add a passkey to continue.
         </p>
       </div>
 
@@ -235,12 +218,8 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
             emailVerified={session.user.emailVerified}
             errorMessage={passkeyErrorMessage}
             isAddPending={addPasskeyMutation.isPending}
-            isContinuingWithoutPasskey={isContinuingWithoutPasskey}
             onAddPasskey={() => {
               void handleAddPasskey();
-            }}
-            onContinueWithoutPasskey={() => {
-              void handleContinueWithoutPasskey(session);
             }}
           />
         ) : null}

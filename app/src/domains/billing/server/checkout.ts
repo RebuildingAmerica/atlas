@@ -25,6 +25,8 @@ export interface CreateCheckoutOptions {
   seatPriceId?: string | null;
   /** Number of additional seats to bill (members beyond the base-covered one). */
   seatQuantity?: number;
+  /** Server-side purchase onboarding record that owns this checkout session. */
+  purchaseIntentId?: string | null;
 }
 
 /**
@@ -37,7 +39,7 @@ export interface CreateCheckoutOptions {
  */
 export async function createCheckoutSession(
   options: CreateCheckoutOptions,
-): Promise<{ url: string | null }> {
+): Promise<{ id: string; url: string | null }> {
   const stripe = getStripeClient();
   const mode: Stripe.Checkout.SessionCreateParams["mode"] =
     options.product === "atlas_research_pass" ? "payment" : "subscription";
@@ -49,6 +51,7 @@ export async function createCheckoutSession(
     workspace_id: options.workspaceId,
     product: options.product,
     ...(options.interval ? { interval: options.interval } : {}),
+    ...(options.purchaseIntentId ? { purchase_intent_id: options.purchaseIntentId } : {}),
   };
 
   // Base price covers the workspace (and the owner's seat). For Atlas Team,
@@ -98,5 +101,5 @@ export async function createCheckoutSession(
 
   const session = await stripe.checkout.sessions.create(sessionParams);
 
-  return { url: session.url };
+  return { id: session.id, url: session.url };
 }

@@ -48,10 +48,11 @@ import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logo
 import { Route as PublicMapRouteImport } from './routes/_public/map'
 import { Route as PublicFirehoseRouteImport } from './routes/_public/firehose'
 import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
+import { Route as AuthStartRouteImport } from './routes/_auth/start'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
+import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
 import { Route as AuthDeviceRouteImport } from './routes/_auth/device'
-import { Route as AuthAccountSetupRouteImport } from './routes/_auth/account-setup'
 import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization/index'
 import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
 import { Route as AuthDeviceIndexRouteImport } from './routes/_auth/device/index'
@@ -74,6 +75,7 @@ import { Route as PublicFeedbackSlugRouteImport } from './routes/_public/feedbac
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries/$entryId'
 import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories/$orgId'
 import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim/$slug'
+import { Route as AuthStartCompleteRouteImport } from './routes/_auth/start/complete'
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as AuthDeviceApprovedRouteImport } from './routes/_auth/device/approved'
 import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_auth/accept-invitation/$invitationId'
@@ -293,6 +295,11 @@ const PublicBrowseRoute = PublicBrowseRouteImport.update({
   path: '/browse',
   getParentRoute: () => PublicRoute,
 } as any)
+const AuthStartRoute = AuthStartRouteImport.update({
+  id: '/start',
+  path: '/start',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthSignUpRoute = AuthSignUpRouteImport.update({
   id: '/sign-up',
   path: '/sign-up',
@@ -303,14 +310,14 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthSetupRoute = AuthSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthDeviceRoute = AuthDeviceRouteImport.update({
   id: '/device',
   path: '/device',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthAccountSetupRoute = AuthAccountSetupRouteImport.update({
-  id: '/account-setup',
-  path: '/account-setup',
   getParentRoute: () => AuthRoute,
 } as any)
 const WorkspaceOrganizationIndexRoute =
@@ -429,6 +436,11 @@ const PublicClaimSlugRoute = PublicClaimSlugRouteImport.update({
   id: '/claim/$slug',
   path: '/claim/$slug',
   getParentRoute: () => PublicRoute,
+} as any)
+const AuthStartCompleteRoute = AuthStartCompleteRouteImport.update({
+  id: '/complete',
+  path: '/complete',
+  getParentRoute: () => AuthStartRoute,
 } as any)
 const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
   id: '/oauth/consent',
@@ -586,10 +598,11 @@ export interface FileRoutesByFullPath {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/account-setup': typeof AuthAccountSetupRoute
   '/device': typeof AuthDeviceRouteWithChildren
+  '/setup': typeof AuthSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
+  '/start': typeof AuthStartRouteWithChildren
   '/browse': typeof PublicBrowseRoute
   '/firehose': typeof PublicFirehoseRoute
   '/map': typeof PublicMapRoute
@@ -621,6 +634,7 @@ export interface FileRoutesByFullPath {
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
+  '/start/complete': typeof AuthStartCompleteRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -675,9 +689,10 @@ export interface FileRoutesByTo {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/account-setup': typeof AuthAccountSetupRoute
+  '/setup': typeof AuthSetupRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-up': typeof AuthSignUpRoute
+  '/start': typeof AuthStartRouteWithChildren
   '/browse': typeof PublicBrowseRoute
   '/firehose': typeof PublicFirehoseRoute
   '/map': typeof PublicMapRoute
@@ -708,6 +723,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
+  '/start/complete': typeof AuthStartCompleteRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -763,10 +779,11 @@ export interface FileRoutesById {
   '/openapi.json': typeof OpenapiDotjsonRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/_auth/account-setup': typeof AuthAccountSetupRoute
   '/_auth/device': typeof AuthDeviceRouteWithChildren
+  '/_auth/setup': typeof AuthSetupRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
+  '/_auth/start': typeof AuthStartRouteWithChildren
   '/_public/browse': typeof PublicBrowseRoute
   '/_public/firehose': typeof PublicFirehoseRoute
   '/_public/map': typeof PublicMapRoute
@@ -799,6 +816,7 @@ export interface FileRoutesById {
   '/_auth/accept-invitation/$invitationId': typeof AuthAcceptInvitationInvitationIdRoute
   '/_auth/device/approved': typeof AuthDeviceApprovedRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
+  '/_auth/start/complete': typeof AuthStartCompleteRoute
   '/_public/claim/$slug': typeof PublicClaimSlugRoute
   '/_public/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -855,10 +873,11 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/robots.txt'
     | '/sitemap.xml'
-    | '/account-setup'
     | '/device'
+    | '/setup'
     | '/sign-in'
     | '/sign-up'
+    | '/start'
     | '/browse'
     | '/firehose'
     | '/map'
@@ -890,6 +909,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/device/approved'
     | '/oauth/consent'
+    | '/start/complete'
     | '/claim/$slug'
     | '/directories/$orgId'
     | '/entries/$entryId'
@@ -944,9 +964,10 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/robots.txt'
     | '/sitemap.xml'
-    | '/account-setup'
+    | '/setup'
     | '/sign-in'
     | '/sign-up'
+    | '/start'
     | '/browse'
     | '/firehose'
     | '/map'
@@ -977,6 +998,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/device/approved'
     | '/oauth/consent'
+    | '/start/complete'
     | '/claim/$slug'
     | '/directories/$orgId'
     | '/entries/$entryId'
@@ -1031,10 +1053,11 @@ export interface FileRouteTypes {
     | '/openapi.json'
     | '/robots.txt'
     | '/sitemap.xml'
-    | '/_auth/account-setup'
     | '/_auth/device'
+    | '/_auth/setup'
     | '/_auth/sign-in'
     | '/_auth/sign-up'
+    | '/_auth/start'
     | '/_public/browse'
     | '/_public/firehose'
     | '/_public/map'
@@ -1067,6 +1090,7 @@ export interface FileRouteTypes {
     | '/_auth/accept-invitation/$invitationId'
     | '/_auth/device/approved'
     | '/_auth/oauth/consent'
+    | '/_auth/start/complete'
     | '/_public/claim/$slug'
     | '/_public/directories/$orgId'
     | '/_public/entries/$entryId'
@@ -1420,6 +1444,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicBrowseRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_auth/start': {
+      id: '/_auth/start'
+      path: '/start'
+      fullPath: '/start'
+      preLoaderRoute: typeof AuthStartRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/sign-up': {
       id: '/_auth/sign-up'
       path: '/sign-up'
@@ -1434,18 +1465,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignInRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/setup': {
+      id: '/_auth/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof AuthSetupRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/_auth/device': {
       id: '/_auth/device'
       path: '/device'
       fullPath: '/device'
       preLoaderRoute: typeof AuthDeviceRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/account-setup': {
-      id: '/_auth/account-setup'
-      path: '/account-setup'
-      fullPath: '/account-setup'
-      preLoaderRoute: typeof AuthAccountSetupRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_workspace/organization/': {
@@ -1601,6 +1632,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/claim/$slug'
       preLoaderRoute: typeof PublicClaimSlugRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/_auth/start/complete': {
+      id: '/_auth/start/complete'
+      path: '/complete'
+      fullPath: '/start/complete'
+      preLoaderRoute: typeof AuthStartCompleteRouteImport
+      parentRoute: typeof AuthStartRoute
     }
     '/_auth/oauth/consent': {
       id: '/_auth/oauth/consent'
@@ -1794,20 +1832,34 @@ const AuthDeviceRouteWithChildren = AuthDeviceRoute._addFileChildren(
   AuthDeviceRouteChildren,
 )
 
+interface AuthStartRouteChildren {
+  AuthStartCompleteRoute: typeof AuthStartCompleteRoute
+}
+
+const AuthStartRouteChildren: AuthStartRouteChildren = {
+  AuthStartCompleteRoute: AuthStartCompleteRoute,
+}
+
+const AuthStartRouteWithChildren = AuthStartRoute._addFileChildren(
+  AuthStartRouteChildren,
+)
+
 interface AuthRouteChildren {
-  AuthAccountSetupRoute: typeof AuthAccountSetupRoute
   AuthDeviceRoute: typeof AuthDeviceRouteWithChildren
+  AuthSetupRoute: typeof AuthSetupRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
+  AuthStartRoute: typeof AuthStartRouteWithChildren
   AuthAcceptInvitationInvitationIdRoute: typeof AuthAcceptInvitationInvitationIdRoute
   AuthOauthConsentRoute: typeof AuthOauthConsentRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
-  AuthAccountSetupRoute: AuthAccountSetupRoute,
   AuthDeviceRoute: AuthDeviceRouteWithChildren,
+  AuthSetupRoute: AuthSetupRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
+  AuthStartRoute: AuthStartRouteWithChildren,
   AuthAcceptInvitationInvitationIdRoute: AuthAcceptInvitationInvitationIdRoute,
   AuthOauthConsentRoute: AuthOauthConsentRoute,
 }
@@ -2051,11 +2103,12 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+import type { createStart } from "@tanstack/react-start";
+
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
   }
 }

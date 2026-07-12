@@ -27,7 +27,7 @@ describe("route-guard additional branches", () => {
     mocks.getAtlasSession.mockResolvedValue(null);
     const { requireIncompleteAtlasSession } = await import("@/domains/access/server/route-guard");
 
-    await expect(requireIncompleteAtlasSession("/account-setup")).rejects.toMatchObject({
+    await expect(requireIncompleteAtlasSession("/setup")).rejects.toMatchObject({
       status: 307,
     });
   });
@@ -56,7 +56,7 @@ describe("route-guard additional branches", () => {
 
     try {
       await requireIncompleteAtlasSession(
-        "/account-setup",
+        "/setup",
         "https://atlas.test/discovery?query=housing#map",
       );
       throw new Error("Expected requireIncompleteAtlasSession to redirect ready operators.");
@@ -94,7 +94,7 @@ describe("route-guard additional branches", () => {
     const { requireIncompleteAtlasSession } = await import("@/domains/access/server/route-guard");
 
     try {
-      await requireIncompleteAtlasSession("/account-setup", "not a url");
+      await requireIncompleteAtlasSession("/setup", "not a url");
       throw new Error("Expected requireIncompleteAtlasSession to redirect ready operators.");
     } catch (error) {
       const response = error as Response & {
@@ -130,7 +130,7 @@ describe("route-guard additional branches", () => {
     const { requireIncompleteAtlasSession } = await import("@/domains/access/server/route-guard");
 
     try {
-      await requireIncompleteAtlasSession("/account-setup");
+      await requireIncompleteAtlasSession("/setup");
       throw new Error("Expected requireIncompleteAtlasSession to redirect ready operators.");
     } catch (error) {
       const response = error as Response & {

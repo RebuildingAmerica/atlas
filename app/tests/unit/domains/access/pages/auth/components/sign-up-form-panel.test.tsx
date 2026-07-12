@@ -78,7 +78,7 @@ describe("SignUpFormPanel", () => {
   it("renders the team-sso copy and CTA when isTeamSso is true", () => {
     render(
       <SignUpFormPanel
-        effectiveRedirect="/pricing?intent=atlas_team"
+        effectiveRedirect="/start?product=atlas_team&interval=monthly"
         email="ops@atlas.test"
         errorMessage="Sign-up failed."
         isPending={false}

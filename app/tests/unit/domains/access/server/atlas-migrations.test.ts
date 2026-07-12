@@ -91,6 +91,23 @@ describe("atlas-migrations", () => {
     expect(userIndex).toBeTruthy();
   });
 
+  it("creates the purchase intent registry in the bundled migration set", () => {
+    runAtlasCustomMigrations(db, ATLAS_MIGRATIONS);
+
+    const table = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='purchase_intents'")
+      .get();
+    const userIndex = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_purchase_intents_user'",
+      )
+      .get();
+
+    expect(table).toBeTruthy();
+    expect(userIndex).toBeTruthy();
+    expect(columnType("purchase_intents", "stripe_checkout_session_id")).toBe("text");
+  });
+
   it("seeds Scout as a first-party OAuth device client when Better Auth clients exist", () => {
     db.exec(`
       CREATE TABLE "oauthClient" (

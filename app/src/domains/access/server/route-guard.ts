@@ -1,4 +1,5 @@
 import { redirect } from "@tanstack/react-router";
+import { sanitizeAtlasRedirectPath } from "../redirect-paths";
 import { getAtlasDeployMode, getAtlasSession } from "../session.functions";
 
 /**
@@ -39,17 +40,18 @@ function redirectToSignIn(locationHref: string): never {
  * Normalizes a stored redirect target back into an app-local path.
  */
 function normalizeRedirectTarget(target: string | undefined, fallback: string): string {
+  const sanitized = sanitizeAtlasRedirectPath(target);
+  if (sanitized) {
+    return sanitized;
+  }
+
   if (!target) {
     return fallback;
   }
 
-  if (target.startsWith("/")) {
-    return target;
-  }
-
   try {
     const url = new URL(target);
-    return `${url.pathname}${url.search}${url.hash}`;
+    return sanitizeAtlasRedirectPath(`${url.pathname}${url.search}${url.hash}`) ?? fallback;
   } catch {
     return fallback;
   }
@@ -126,9 +128,9 @@ export async function requireReadyAtlasSession(locationHref: string) {
     redirectToSignIn(locationHref);
   }
 
-  if (!session.accountReady) {
+  if (!session.accountReady || !session.hasPasskey) {
     throw redirect({
-      to: "/account-setup",
+      to: "/setup",
       search: { redirect: locationHref },
     });
   }
@@ -137,8 +139,7 @@ export async function requireReadyAtlasSession(locationHref: string) {
 }
 
 /**
- * Protects the account-setup flow so only incomplete signed-in operators can
- * access it.
+ * Protects the setup flow so only incomplete signed-in operators can access it.
  */
 export async function requireIncompleteAtlasSession(locationHref: string, redirectTo?: string) {
   const session = await getAtlasSession();
@@ -146,12 +147,8 @@ export async function requireIncompleteAtlasSession(locationHref: string, redire
     redirectToSignIn(locationHref);
   }
 
-  // Don't bounce email-verified-but-passkey-less operators out of the setup
-  // page: accountReady fires off the email check alone, but /account-setup
-  // is also where the recommended-but-optional passkey enrollment card and
-  // the explicit "Continue without a passkey" escape hatch live.  Letting
-  // them sit here means they get one more chance to register a passkey
-  // without an opaque mid-app interstitial.
+  // Magic-link sessions are account recovery only after sign-up. Keep
+  // verified-but-passkey-less operators on setup until WebAuthn is enrolled.
   if (session.accountReady && session.hasPasskey) {
     const destination = resolveReadySessionDestination(session, redirectTo);
 

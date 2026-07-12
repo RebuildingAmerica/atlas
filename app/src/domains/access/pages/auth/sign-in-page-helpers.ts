@@ -1,4 +1,5 @@
 import type { AtlasProduct } from "@/domains/access/capabilities";
+import { sanitizeAtlasRedirectPath } from "@/domains/access/redirect-paths";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 
 interface SignInHeadingCopy {
@@ -96,26 +97,7 @@ export function parsePricingIntent(redirectTo: string | undefined): AtlasProduct
  *   parameter or related untrusted input.
  */
 export function sanitizeSignInRedirectPath(candidate: string | undefined): string | null {
-  if (!candidate || typeof candidate !== "string") {
-    return null;
-  }
-
-  if (candidate.length === 0 || candidate.length > 2048) {
-    return null;
-  }
-
-  if (!candidate.startsWith("/")) {
-    return null;
-  }
-
-  // `//evil.example` and `/\evil.example` parse as protocol-relative or
-  // backslash-prefixed authority components in some browsers, leaking the
-  // user off-origin.
-  if (candidate.startsWith("//") || candidate.startsWith("/\\")) {
-    return null;
-  }
-
-  return candidate;
+  return sanitizeAtlasRedirectPath(candidate);
 }
 
 /**

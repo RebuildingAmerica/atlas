@@ -115,20 +115,19 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
     return null;
   }
 
-  const [passkeyCount, workspace] = await Promise.all([
-    getPasskeyCount(auth, browserSessionHeaders),
-    loadAtlasWorkspaceState(auth, browserSessionHeaders, session),
-  ]);
+  const passkeyCount = await getPasskeyCount(auth, browserSessionHeaders);
   const hasPasskey = passkeyCount > 0;
+  const accountReady = session.user.emailVerified && hasPasskey;
+  const workspace = await loadAtlasWorkspaceState(auth, browserSessionHeaders, session, {
+    ensurePersonalWorkspace: accountReady,
+  });
 
   return {
     isLocal: false,
-    // accountReady gates resource creation and the workspace shell.  Email
-    // verification is the only hard requirement; passkey enrollment is a
-    // recommendation we surface on /account-setup but do not block on, so
-    // operators who only want magic-link sign-in can keep moving without
-    // getting stuck behind a WebAuthn prompt their device can't satisfy.
-    accountReady: session.user.emailVerified,
+    // accountReady gates resource creation and the workspace shell. Magic-link
+    // sessions are recovery-only until the operator verifies email and enrolls
+    // a passkey.
+    accountReady,
     hasPasskey,
     passkeyCount,
     session: {
@@ -246,7 +245,7 @@ export async function sendVerificationEmailForCurrentSession(): Promise<{ ok: tr
   try {
     await auth.api.sendVerificationEmail({
       body: {
-        callbackURL: "/account-setup",
+        callbackURL: "/setup",
         email: session.user.email,
       },
       headers: getBrowserSessionHeaders(),

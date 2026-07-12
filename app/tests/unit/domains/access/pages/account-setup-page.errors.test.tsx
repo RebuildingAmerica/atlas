@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import {
   accountSetupPageMocks,
-  assignMock,
   defaultWorkspace,
 } from "../../../../helpers/access/account-setup-page-test-bed";
 
@@ -158,54 +157,5 @@ describe("AccountSetupPage", () => {
     await addPasskeyConfig.mutationFn();
 
     expect(accountSetupPageMocks.updatePasskey).not.toHaveBeenCalled();
-  });
-
-  it("continues without a passkey when the email is verified and the account is ready", async () => {
-    accountSetupPageMocks.mutateStates.push({}, {}, {});
-    accountSetupPageMocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: true,
-        hasPasskey: false,
-        passkeyCount: 0,
-        user: {
-          email: "operator@atlas.test",
-          emailVerified: true,
-          name: "Operator",
-        },
-        workspace: defaultWorkspace,
-      },
-      isPending: false,
-      isRefetching: false,
-      refetch: accountSetupPageMocks.refetch.mockResolvedValue({
-        data: {
-          accountReady: true,
-          hasPasskey: false,
-          passkeyCount: 0,
-          user: {
-            email: "operator@atlas.test",
-            emailVerified: true,
-            name: "Operator",
-          },
-          workspace: {
-            onboarding: {
-              hasPendingInvitations: false,
-              needsWorkspace: false,
-            },
-          },
-        },
-      }),
-    });
-    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
-
-    render(<AccountSetupPage redirectTo="/account" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Continue without a passkey/ }));
-
-    await waitFor(() => {
-      expect(accountSetupPageMocks.invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ["auth", "session"],
-      });
-      expect(assignMock).toHaveBeenCalledWith("/account");
-    });
   });
 });

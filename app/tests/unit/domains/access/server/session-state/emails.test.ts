@@ -143,7 +143,7 @@ describe("session-state email flows", () => {
 
     expect(authApi.sendVerificationEmail).toHaveBeenCalledWith({
       body: {
-        callbackURL: "/account-setup",
+        callbackURL: "/setup",
         email: "operator@atlas.test",
       },
       headers: browserSessionHeaders,

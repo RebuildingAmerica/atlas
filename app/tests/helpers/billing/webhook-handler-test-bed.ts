@@ -5,6 +5,7 @@ import type { WorkspaceProductStatusRow } from "@/domains/access/server/workspac
 export interface ResearchPassCheckoutEventOptions {
   created: number;
   interval: "once" | "weekly";
+  purchaseIntentId?: string;
 }
 
 export function buildResearchPassCheckoutCompletedEvent(
@@ -23,6 +24,7 @@ export function buildResearchPassCheckoutCompletedEvent(
         metadata: {
           interval: options.interval,
           product: "atlas_research_pass",
+          ...(options.purchaseIntentId ? { purchase_intent_id: options.purchaseIntentId } : {}),
           workspace_id: "org_research",
         },
         subscription: null,
