@@ -260,6 +260,25 @@ async function handleCheckoutCompleted(
 }
 
 /**
+ * Reconciles a completed checkout session when the success page is reached
+ * before Stripe webhook delivery has updated local billing state.
+ *
+ * @param stripeCheckoutSessionId - Checkout Session ID stored on the purchase intent.
+ */
+export async function reconcilePaidCheckoutSession(
+  stripeCheckoutSessionId: string,
+): Promise<boolean> {
+  const stripe = getStripeClient();
+  const session = await stripe.checkout.sessions.retrieve(stripeCheckoutSessionId);
+  if (session.payment_status !== "paid") {
+    return false;
+  }
+
+  await handleCheckoutCompleted(session, eventCreatedToIso(session.created));
+  return true;
+}
+
+/**
  * Handles a newly created Stripe subscription by ensuring a workspace product
  * row exists.
  *

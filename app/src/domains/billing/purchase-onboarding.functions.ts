@@ -107,16 +107,25 @@ function canAttachWorkspace(status: string): boolean {
 
 async function loadPurchaseServerModules() {
   if (import.meta.env.SSR) {
-    const [auth, checkout, purchaseIntents, requestHeaders, runtime, sessionState, stripeCustomer] =
-      await Promise.all([
-        import("@/domains/access/server/auth"),
-        import("@/domains/billing/server/checkout"),
-        import("@/domains/billing/server/purchase-intents"),
-        import("@/domains/access/server/request-headers"),
-        import("@/domains/access/server/runtime"),
-        import("@/domains/access/server/session-state"),
-        import("@/domains/billing/server/stripe-customer"),
-      ]);
+    const [
+      auth,
+      checkout,
+      purchaseIntents,
+      requestHeaders,
+      runtime,
+      sessionState,
+      stripeCustomer,
+      webhookHandler,
+    ] = await Promise.all([
+      import("@/domains/access/server/auth"),
+      import("@/domains/billing/server/checkout"),
+      import("@/domains/billing/server/purchase-intents"),
+      import("@/domains/access/server/request-headers"),
+      import("@/domains/access/server/runtime"),
+      import("@/domains/access/server/session-state"),
+      import("@/domains/billing/server/stripe-customer"),
+      import("@/domains/billing/server/webhook-handler"),
+    ]);
     return {
       auth,
       checkout,
@@ -125,6 +134,7 @@ async function loadPurchaseServerModules() {
       runtime,
       sessionState,
       stripeCustomer,
+      webhookHandler,
     };
   }
 
@@ -146,8 +156,23 @@ export const ensurePurchaseOnboarding = createServerFn({ method: "POST" })
 export const loadPurchaseOnboarding = createServerFn({ method: "POST" })
   .validator(purchaseIdInputSchema)
   .handler(async ({ data }) => {
-    const { purchaseIntents, sessionState } = await loadPurchaseServerModules();
+    const { purchaseIntents, sessionState, webhookHandler } = await loadPurchaseServerModules();
     const session = await sessionState.requireAtlasSessionState();
+    const intent = await purchaseIntents.loadPurchaseIntent({
+      id: data.purchaseId,
+      userId: session.user.id,
+    });
+    if (intent?.status !== "checkout_created" || !intent.stripeCheckoutSessionId) {
+      return intent;
+    }
+
+    const reconciled = await webhookHandler.reconcilePaidCheckoutSession(
+      intent.stripeCheckoutSessionId,
+    );
+    if (!reconciled) {
+      return intent;
+    }
+
     return purchaseIntents.loadPurchaseIntent({
       id: data.purchaseId,
       userId: session.user.id,

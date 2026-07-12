@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   getBrowserSessionHeaders: vi.fn(),
   loadPurchaseIntent: vi.fn(),
   markPurchaseCheckoutCreated: vi.fn(),
+  reconcilePaidCheckoutSession: vi.fn(),
   requireAtlasSessionState: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
 }));
@@ -58,6 +59,10 @@ vi.mock("@/domains/billing/server/stripe-customer", () => ({
   ensureStripeCustomerForWorkspace: mocks.ensureStripeCustomerForWorkspace,
 }));
 
+vi.mock("@/domains/billing/server/webhook-handler", () => ({
+  reconcilePaidCheckoutSession: mocks.reconcilePaidCheckoutSession,
+}));
+
 describe("purchase onboarding functions", () => {
   const authApi = {
     getFullOrganization: vi.fn(),
@@ -71,6 +76,7 @@ describe("purchase onboarding functions", () => {
     mocks.ensureAuthReady.mockResolvedValue({ api: authApi });
     mocks.getAuthRuntimeConfig.mockReturnValue({ publicBaseUrl: "https://atlas.test" });
     mocks.getBrowserSessionHeaders.mockReturnValue(new Headers({ cookie: "test" }));
+    mocks.reconcilePaidCheckoutSession.mockResolvedValue(false);
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     mocks.requireReadyAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
@@ -125,6 +131,68 @@ describe("purchase onboarding functions", () => {
       stripeCheckoutSessionId: "cs_123",
       userId: "user_123",
     });
+  });
+
+  it("reconciles a checkout-created purchase before returning the completion state", async () => {
+    mocks.loadPurchaseIntent
+      .mockResolvedValueOnce({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_pending",
+        interval: "monthly",
+        product: "atlas_pro",
+        status: "checkout_created",
+        stripeCheckoutSessionId: "cs_pending",
+        userId: "user_123",
+        workspaceId: "org_team",
+      })
+      .mockResolvedValueOnce({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_pending",
+        interval: "monthly",
+        product: "atlas_pro",
+        status: "paid",
+        stripeCheckoutSessionId: "cs_pending",
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+    mocks.reconcilePaidCheckoutSession.mockResolvedValue(true);
+
+    const { loadPurchaseOnboarding } =
+      await import("@/domains/billing/purchase-onboarding.functions");
+    const response = (await loadPurchaseOnboarding.__executeServer({
+      method: "POST",
+      data: { purchaseId: "pi_pending" },
+    })) as ServerFnExecutionResponse<{ status: string }>;
+
+    expect(response.error).toBeUndefined();
+    expect(mocks.reconcilePaidCheckoutSession).toHaveBeenCalledWith("cs_pending");
+    expect(mocks.loadPurchaseIntent).toHaveBeenCalledTimes(2);
+    expect(response.result?.status).toBe("paid");
+  });
+
+  it("does not reconcile a purchase that is already paid", async () => {
+    mocks.loadPurchaseIntent.mockResolvedValue({
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      id: "pi_paid",
+      interval: "monthly",
+      product: "atlas_pro",
+      status: "paid",
+      stripeCheckoutSessionId: "cs_paid",
+      userId: "user_123",
+      workspaceId: "org_team",
+    });
+
+    const { loadPurchaseOnboarding } =
+      await import("@/domains/billing/purchase-onboarding.functions");
+    const response = (await loadPurchaseOnboarding.__executeServer({
+      method: "POST",
+      data: { purchaseId: "pi_paid" },
+    })) as ServerFnExecutionResponse<{ status: string }>;
+
+    expect(response.error).toBeUndefined();
+    expect(mocks.reconcilePaidCheckoutSession).not.toHaveBeenCalled();
+    expect(mocks.loadPurchaseIntent).toHaveBeenCalledTimes(1);
+    expect(response.result?.status).toBe("paid");
   });
 
   it("rejects workspace attachment when the workspace is not in the current session", async () => {
