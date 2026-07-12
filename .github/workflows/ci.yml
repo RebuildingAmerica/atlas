@@ -1,13 +1,13 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - "**"
   pull_request:
   schedule:
     - cron: "0 12 * * 1"
   workflow_call:
+    secrets:
+      TURBO_TOKEN:
+        required: false
 
 permissions:
   contents: read

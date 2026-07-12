@@ -54,8 +54,9 @@ should look like this:
 2. Build or deploy using the intended environment path
    - staging: push to `main`; `.github/workflows/deploy-staging.yml` deploys
      `atlas-api-staging`, and Vercel deploys the `main` staging app
-   - production: create and push a `v*` tag; `.github/workflows/deploy.yml`
-     deploys `atlas-api` and the Vercel production app from that tagged checkout
+   - production: create and push a `v*` tag;
+     `.github/workflows/deploy-production.yml` deploys `atlas-api` and the
+     Vercel production app from that tagged checkout
 3. Record the release tag and any known follow-up items
 
 Production release tags should point at a commit that has already passed the
@@ -68,10 +69,10 @@ git tag vYYYY.MM.DD-N
 git push origin vYYYY.MM.DD-N
 ```
 
-The production workflow requires `VERCEL_TOKEN` in the GitHub `production`
-environment. GitHub OIDC is used only for Vercel Trusted Sources during hosted
-smoke checks. Because Vercel production domain auto-assignment is off, the
-workflow explicitly promotes the tagged Vercel deployment after
+The Deploy Production workflow requires `VERCEL_TOKEN` in the GitHub
+`production` environment. GitHub OIDC is used only for Vercel Trusted Sources
+during hosted smoke checks. Because Vercel production domain auto-assignment is
+off, the workflow explicitly promotes the tagged Vercel deployment after
 `vercel deploy --prod`.
 
 ## Post-Release Verification

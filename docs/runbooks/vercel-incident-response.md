@@ -17,7 +17,7 @@ git push origin main
 ```
 
 Pushing to `main` exercises staging. Production changes ship only from `v*`
-release tags through `.github/workflows/deploy.yml`.
+release tags through `.github/workflows/deploy-production.yml`.
 
 ## Check Deployment Status
 
@@ -45,7 +45,8 @@ release tags through `.github/workflows/deploy.yml`.
 - `main` is the continuous staging lane.
 - Vercel's `staging` custom environment serves the staging app.
 - `.github/workflows/deploy-staging.yml` deploys `atlas-api-staging` on `main`.
-- Production ships from `v*` tags through `.github/workflows/deploy.yml`.
+- Production ships from `v*` tags through
+  `.github/workflows/deploy-production.yml`.
 - GitHub Actions uses Vercel Trusted Sources for protected smoke checks.
 - The Vercel CLI production deploy still requires `VERCEL_TOKEN`.
 - Production domain auto-assignment is off; the release workflow promotes the

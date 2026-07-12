@@ -221,9 +221,11 @@ a provider:
 ## Production release deploy
 
 Pushes to `main` are the staging lane. Production deploys run from `v*` tags
-through `.github/workflows/deploy.yml` after CI passes. The workflow deploys the
-API service named `atlas-api`, deploys the Vercel production app from the same
-tagged checkout, and then runs hosted smoke checks.
+through `.github/workflows/deploy-production.yml` after CI passes. The workflow
+deploys the API service named `atlas-api`, deploys the Vercel production app
+from the same tagged checkout, and then runs hosted smoke checks. Manual
+production runs must also select a `v*` tag; runs from branches fail before CI
+or deploy work starts.
 
 Vercel CLI production deploys still require a Vercel access token. GitHub OIDC
 is used for protected hosted smoke requests through Vercel Trusted Sources; it
@@ -299,9 +301,9 @@ Vercel has two different OIDC surfaces:
   deployments.
 
 The Vercel CLI still needs `VERCEL_TOKEN` for `vercel deploy --prod`. Because
-Auto-assign Custom Production Domains is off, the production workflow deploys
-with `vercel deploy --prod` and then intentionally promotes that deployment with
-`vercel promote`.
+Auto-assign Custom Production Domains is off, the Deploy Production workflow
+deploys with `vercel deploy --prod` and then intentionally promotes that
+deployment with `vercel promote`.
 
 The project also keeps this Ignored Build Step as a safety guard:
 

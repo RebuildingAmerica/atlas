@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy Production
 
 on:
   push:
@@ -14,9 +14,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  guard-production-ref:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require v* release tag
+        shell: bash
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/v*) ;;
+            *)
+              echo "::error title=Production requires a release tag::Production deploys must run from a v* tag, not ${GITHUB_REF}."
+              exit 1
+              ;;
+          esac
+
   ci:
+    needs: guard-production-ref
     uses: ./.github/workflows/ci.yml
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
   deploy:
     needs: ci
