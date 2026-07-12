@@ -158,7 +158,9 @@
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
         "ATLAS_E2E_MAILBOX_URL",
         "ATLAS_E2E_WORKERS",
-        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
+        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
+        "STRIPE_API_KEY",
+        "STRIPE_ATLAS_CATALOG"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
@@ -171,7 +173,9 @@
         "ATLAS_E2E_AUTH_INTROSPECTION_URL",
         "ATLAS_E2E_MAILBOX_URL",
         "ATLAS_E2E_WORKERS",
-        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
+        "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
+        "STRIPE_API_KEY",
+        "STRIPE_ATLAS_CATALOG"
       ],
       "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false

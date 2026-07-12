@@ -16,6 +16,8 @@ on:
         required: false
       STRIPE_API_KEY:
         required: false
+      STRIPE_ATLAS_CATALOG:
+        required: false
     outputs:
       staging_api_deploy:
         description: Whether staging should rebuild and deploy atlas-api.
@@ -181,6 +183,7 @@ jobs:
         env:
           CI: "true"
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
         run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance' --output-logs=full
       - name: Upload Playwright traces on failure
         if: failure()
