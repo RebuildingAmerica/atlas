@@ -192,7 +192,9 @@ describe("proxyAtlasApiRequest anonymous rate limiting", () => {
 
   it("does not spend anonymous proxy buckets for authenticated sessions", async () => {
     const fetchMock = vi.mocked(global.fetch);
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
+    );
     mocks.getAuthRuntimeConfig.mockReturnValue({
       anonymousRateLimit: {
         enabled: true,
