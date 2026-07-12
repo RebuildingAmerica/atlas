@@ -7,7 +7,6 @@ from fastapi import HTTPException, Response, status
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.api.atproto_identities import (
-    _e2e_harness_identity_matches,
     _verify_linked_atproto_identity,
     disconnect_atproto_identity,
     link_atproto_identity,
@@ -18,7 +17,10 @@ from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
 from atlas.domains.catalog.schemas.public import AtprotoIdentityLinkRequest, AtprotoIdentityResponse
-from atlas.domains.catalog.services.atproto_identity import AtprotoIdentityResolution
+from atlas.domains.catalog.services.atproto_identity import (
+    AtprotoIdentityResolution,
+    e2e_harness_identity_matches,
+)
 
 
 def _actor(user_id: str = "user_1", *, auth_type: str = "internal") -> AuthenticatedActor:
@@ -225,9 +227,9 @@ def test_e2e_harness_match_is_explicit_and_normalized(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", raising=False)
-    assert not _e2e_harness_identity_matches("Person.Example", "did:web:person.example")
+    assert not e2e_harness_identity_matches("Person.Example", "did:web:person.example")
     monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
-    assert _e2e_harness_identity_matches(" @Person.Example ", "did:web:person.example")
+    assert e2e_harness_identity_matches(" @Person.Example ", "did:web:person.example")
 
 
 @pytest.mark.asyncio

@@ -24,7 +24,6 @@ from atlas.domains.catalog.schemas.public import (
     AtprotoIdentityResponse,
 )
 from atlas.domains.catalog.services.atproto_identity import (
-    e2e_harness_identity_matches,
     resolve_current_atproto_identity,
     verify_linked_atproto_identity,
 )
@@ -242,7 +241,3 @@ async def _controlled_identity(
 
 async def _verify_linked_atproto_identity(handle: str, did: str) -> bool:
     return await verify_linked_atproto_identity(handle, did)
-
-
-def _e2e_harness_identity_matches(handle: str, did: str) -> bool:
-    return e2e_harness_identity_matches(handle, did)
