@@ -107,9 +107,8 @@ pnpm bootstrap
 ### "command not found: pnpm" on bootstrap
 
 Make sure Node.js 24.18+ in the Node 24 release line is installed, then run
-`npm install --global corepack@0.35.0`, `corepack enable`, and
-`corepack prepare pnpm@11.10.0 --activate`. Verify with `node --version` and
-`pnpm --version`.
+`corepack enable` and `corepack prepare pnpm@11.10.0 --activate`. Verify with
+`node --version` and `pnpm --version`.
 
 ### Port 8000 or 3000 already in use
 
