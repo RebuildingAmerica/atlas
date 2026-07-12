@@ -18,6 +18,10 @@ vi.mock("@openstatus/react", () => ({
   getStatus: vi.fn(),
 }));
 
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: vi.fn(),
+}));
+
 vi.mock("@/domains/access/session.functions", () => ({
   getAtlasDeployMode: vi.fn(),
 }));
@@ -39,49 +43,24 @@ vi.mock("@/platform/layout/public-footer", () => ({
 }));
 
 describe("routes/_public layout", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     resetRouterMocks();
+    const { useQuery } = await import("@tanstack/react-query");
+    vi.mocked(useQuery).mockReturnValue({
+      data: { localMode: false },
+    } as unknown as ReturnType<typeof useQuery>);
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it("loads deploy mode without blocking on OpenStatus", async () => {
-    const { getAtlasDeployMode } = await import("@/domains/access/session.functions");
-    const openstatus = await import("@openstatus/react");
-    vi.mocked(getAtlasDeployMode).mockResolvedValue({
-      localMode: true,
-    });
-
-    const routeModule = await import("@/routes/_public");
-    const Route = asRouteStub(routeModule.Route);
-
-    if (!Route.options.loader) throw new Error("Expected loader");
-    const data = await Route.options.loader();
-    expect(getAtlasDeployMode).toHaveBeenCalled();
-    expect(openstatus.getStatus).not.toHaveBeenCalled();
-    expect(data).toEqual({ localMode: true });
-    expect(Route.options.staleTime).toBe(1000 * 60 * 5);
-  });
-
-  it("does not include footer-only status data in the loader payload", async () => {
-    const { getAtlasDeployMode } = await import("@/domains/access/session.functions");
-    vi.mocked(getAtlasDeployMode).mockResolvedValue({
-      localMode: false,
-    });
-
-    const routeModule = await import("@/routes/_public");
-    const Route = asRouteStub(routeModule.Route);
-
-    if (!Route.options.loader) throw new Error("Expected loader");
-    const data = await Route.options.loader();
-    expect(data).toEqual({ localMode: false });
-  });
-
-  it("renders the top nav, outlet, and footer with the loader payload", async () => {
+  it("renders the top nav, outlet, and footer with resolved deploy mode", async () => {
     const router = readRouterMocks();
-    router.useLoaderData.mockReturnValue({ localMode: true });
+    const { useQuery } = await import("@tanstack/react-query");
+    vi.mocked(useQuery).mockReturnValue({
+      data: { localMode: true },
+    } as unknown as ReturnType<typeof useQuery>);
     router.useRouterState.mockImplementation(routerPathnameState("/pricing"));
 
     const routeModule = await import("@/routes/_public");
@@ -104,6 +83,30 @@ describe("routes/_public layout", () => {
     expect(screen.getByTestId("public-top-nav").dataset.showSearch).toBe("true");
     expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
     expect(screen.getByTestId("public-footer").dataset.localMode).toBe("true");
+  });
+
+  it("renders the public shell while deploy mode is unavailable", async () => {
+    const router = readRouterMocks();
+    const { useQuery } = await import("@tanstack/react-query");
+    vi.mocked(useQuery).mockReturnValue({
+      data: undefined,
+      isError: true,
+    } as unknown as ReturnType<typeof useQuery>);
+    router.useLoaderData.mockReturnValue(undefined);
+    router.useRouterState.mockImplementation(routerPathnameState("/pricing"));
+
+    const routeModule = await import("@/routes/_public");
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+
+    render(<Component />);
+
+    expect(screen.getByTestId("public-top-nav")).toBeInTheDocument();
+    expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
+    expect(screen.getByTestId("public-footer")).toBeInTheDocument();
+    expect(screen.getByTestId("public-top-nav").dataset.localMode).toBe("false");
+    expect(screen.getByTestId("public-footer").dataset.localMode).toBe("false");
   });
 
   it("lets the map own the full viewport without the public footer", async () => {

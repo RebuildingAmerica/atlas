@@ -1,7 +1,7 @@
-import { useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
 import { UserRound } from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
+import { useHydrated } from "@/platform/runtime/use-hydrated";
 import type { AppNavItem } from "./app-navigation";
 import {
   AtlasBrandLink,
@@ -53,30 +53,6 @@ interface PublicSessionAreaProps {
 interface PublicSessionChipProps {
   item: AppNavItem;
   thumbnailUrl?: string;
-}
-
-/**
- * Subscribe to nothing -- the store never changes. This is a no-op used only
- * to distinguish server-side from client-side rendering via
- * `useSyncExternalStore`.
- */
-function subscribeNoop() {
-  // No-op: the hydration "store" never changes, so the unsubscribe is a no-op too.
-  return () => undefined;
-}
-
-/**
- * Returns `true` on the client after hydration, `false` during SSR.
- *
- * This avoids hydration mismatches when the auth nav link differs between
- * server-rendered HTML and the first client render.
- */
-function useHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribeNoop,
-    () => true,
-    () => false,
-  );
 }
 
 const PUBLIC_NAV_ITEMS: AppNavItem[] = [
