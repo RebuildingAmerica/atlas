@@ -14,6 +14,7 @@ from atlas.models.database import (
     _get_sqlite_path,
     _init_sqlite,
     _is_postgres_url,
+    _load_postgres_schema,
     _translate_placeholders,
     get_db_connection,
     init_db,
@@ -245,6 +246,15 @@ class TestInitDb:
         with patch("atlas.models.database._init_postgres", new_callable=AsyncMock) as mock_init:
             await init_db("postgresql://localhost/atlas")
             mock_init.assert_called_once_with("postgresql://localhost/atlas")
+
+    def test_postgres_schema_includes_discovery_run_syncs(self) -> None:
+        """PostgreSQL startup should create the Scout sync idempotency table."""
+        schema = _load_postgres_schema()
+
+        assert "CREATE TABLE IF NOT EXISTS discovery_run_syncs" in schema
+        assert "UNIQUE(local_run_id, artifact_hash)" in schema
+        assert "idx_discovery_run_syncs_local_run_id" in schema
+        assert "idx_discovery_run_syncs_remote_run_id" in schema
 
 
 class TestInitSqlite:

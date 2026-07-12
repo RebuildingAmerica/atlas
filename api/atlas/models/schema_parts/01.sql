@@ -238,6 +238,8 @@ CREATE INDEX IF NOT EXISTS idx_outreach_logs_date ON outreach_logs(date);
 CREATE INDEX IF NOT EXISTS idx_episode_assoc_entry_id ON episode_associations(entry_id);
 CREATE INDEX IF NOT EXISTS idx_discovery_runs_state ON discovery_runs(state);
 CREATE INDEX IF NOT EXISTS idx_discovery_runs_status ON discovery_runs(status);
+CREATE INDEX IF NOT EXISTS idx_discovery_run_syncs_local_run_id ON discovery_run_syncs(local_run_id);
+CREATE INDEX IF NOT EXISTS idx_discovery_run_syncs_remote_run_id ON discovery_run_syncs(remote_run_id);
 CREATE INDEX IF NOT EXISTS idx_sources_url ON sources(url);
 CREATE INDEX IF NOT EXISTS idx_sources_ingested ON sources(ingested_at);
 CREATE INDEX IF NOT EXISTS idx_entity_flags_entity_id ON entity_flags(entity_id);

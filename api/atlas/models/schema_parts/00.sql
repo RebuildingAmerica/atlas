@@ -141,6 +141,19 @@ CREATE TABLE IF NOT EXISTS discovery_runs (
     created_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS discovery_run_syncs (
+    id TEXT PRIMARY KEY,
+    local_run_id TEXT NOT NULL,
+    artifact_hash TEXT NOT NULL,
+    remote_run_id TEXT NOT NULL REFERENCES discovery_runs(id) ON DELETE CASCADE,
+    actor_user_id TEXT NOT NULL,
+    actor_email TEXT,
+    sync_status TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    synced_at TIMESTAMPTZ,
+    UNIQUE(local_run_id, artifact_hash)
+);
+
 -- Entity flags (anonymous public flagging)
 CREATE TABLE IF NOT EXISTS entity_flags (
     id TEXT PRIMARY KEY,
