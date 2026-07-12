@@ -9,6 +9,9 @@ import dns.asyncresolver
 import dns.exception
 import httpx
 
+from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
+from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
+
 if TYPE_CHECKING:
     import aiosqlite
 
@@ -60,7 +63,16 @@ class AtprotoProfileRevalidationResult:
     """Counts from one linked-profile ATProto freshness pass."""
 
     checked: int
-    cleared: int
+    needs_attention: int
+
+
+@dataclass(frozen=True, slots=True)
+class AtprotoIdentityResolution:
+    """A bidirectionally verified current DID resolution."""
+
+    did: str
+    handle: str
+    pds_url: str | None
 
 
 async def verify_current_atproto_identity(
@@ -82,30 +94,66 @@ async def verify_current_atproto_identity(
     return isinstance(also_known_as, list) and f"at://{normalized_handle}" in also_known_as
 
 
+async def resolve_current_atproto_identity(
+    did: str,
+    *,
+    resolver: AtprotoIdentityResolver | None = None,
+) -> AtprotoIdentityResolution | None:
+    """Resolve a DID document, select its ATProto handle, and verify it forward."""
+    active_resolver = resolver or NetworkAtprotoIdentityResolver()
+    did_doc = await active_resolver.did_document(did)
+    if did_doc is None or did_doc.get("id") != did:
+        return None
+    aliases = did_doc.get("alsoKnownAs")
+    if not isinstance(aliases, list):
+        return None
+    handles = [
+        _normalize_handle(alias.removeprefix("at://"))
+        for alias in aliases
+        if isinstance(alias, str) and alias.startswith("at://")
+    ]
+    for handle in handles:
+        if await active_resolver.handle_resolves_to_did(handle) != did:
+            continue
+        return AtprotoIdentityResolution(
+            did=did,
+            handle=handle,
+            pds_url=_pds_url_from_did_document(did_doc),
+        )
+    return None
+
+
 async def revalidate_linked_atproto_profiles(
     conn: aiosqlite.Connection,
     *,
     resolver: AtprotoIdentityResolver | None = None,
 ) -> AtprotoProfileRevalidationResult:
-    """Clear public ATProto links whose handle/DID no longer resolve together."""
-    cursor = await conn.execute(
-        """
-        SELECT id, linked_atproto_handle, linked_atproto_did
-        FROM entries
-        WHERE linked_atproto_handle IS NOT NULL
-          AND linked_atproto_did IS NOT NULL
-        """
-    )
-    rows = await cursor.fetchall()
+    """Refresh linked DIDs while retaining provenance when resolution fails."""
+    links = await ProfileAtprotoLinkCRUD.list_current(conn)
     checked = 0
-    cleared = 0
-    for entry_id, handle, did in rows:
-        checked += 1
-        if await verify_current_atproto_identity(handle, did, resolver=resolver):
+    needs_attention = 0
+    for link in links:
+        identity = await AtprotoIdentityCRUD.get_by_id(conn, link.identity_id)
+        if identity is None:
             continue
-        await _clear_entry_atproto_link(conn, entry_id)
-        cleared += 1
-    return AtprotoProfileRevalidationResult(checked=checked, cleared=cleared)
+        checked += 1
+        resolution = await resolve_current_atproto_identity(identity.did, resolver=resolver)
+        if resolution is not None:
+            await AtprotoIdentityCRUD.upsert(
+                conn,
+                did=resolution.did,
+                handle=resolution.handle,
+                pds_url=resolution.pds_url,
+            )
+            await ProfileAtprotoLinkCRUD.mark_verified(conn, link.id)
+            continue
+        await AtprotoIdentityCRUD.mark_needs_attention(
+            conn, identity.id, error="Current DID and handle could not be verified."
+        )
+        await ProfileAtprotoLinkCRUD.mark_needs_attention(conn, link.id)
+        needs_attention += 1
+    await conn.commit()
+    return AtprotoProfileRevalidationResult(checked=checked, needs_attention=needs_attention)
 
 
 async def _resolve_handle_dns(handle: str) -> str | None:
@@ -135,21 +183,6 @@ async def _resolve_handle_https(handle: str) -> str | None:
     return value if value.startswith("did:") else None
 
 
-async def _clear_entry_atproto_link(conn: aiosqlite.Connection, entry_id: str) -> None:
-    await conn.execute(
-        """
-        UPDATE entries
-        SET linked_atproto_did = NULL,
-            linked_atproto_handle = NULL,
-            linked_atproto_verified_at = NULL,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-        """,
-        (entry_id,),
-    )
-    await conn.commit()
-
-
 def _did_document_url(did: str) -> str | None:
     if did.startswith("did:plc:"):
         return f"{PLC_DIRECTORY_BASE_URL}/{did}"
@@ -171,3 +204,18 @@ def _txt_answer_value(answer: Any) -> str | None:
 
 def _normalize_handle(handle: str) -> str:
     return handle.strip().removeprefix("@").lower()
+
+
+def _pds_url_from_did_document(document: dict[str, Any]) -> str | None:
+    services = document.get("service")
+    if not isinstance(services, list):
+        return None
+    for service in services:
+        if not isinstance(service, dict):
+            continue
+        if service.get("type") != "AtprotoPersonalDataServer":
+            continue
+        endpoint = service.get("serviceEndpoint")
+        if isinstance(endpoint, str):
+            return endpoint
+    return None

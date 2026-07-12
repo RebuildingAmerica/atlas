@@ -14,6 +14,15 @@ from atlas.domains.catalog.api.profile_claim_atproto_helpers import (
     link_entry_atproto_identity,
 )
 from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
+from atlas.domains.catalog.models.atproto_identity_controls import (
+    AtprotoIdentityControlConflictError,
+    AtprotoIdentityControlCRUD,
+)
+from atlas.domains.catalog.models.profile_atproto_links import (
+    ProfileAtprotoLinkConflictError,
+    ProfileAtprotoLinkCRUD,
+    ProfileAtprotoLinkEvidence,
+)
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.domains.catalog.services import atproto_identity
 from atlas.domains.catalog.services.atproto_identity import (
@@ -22,6 +31,7 @@ from atlas.domains.catalog.services.atproto_identity import (
     _resolve_handle_dns,
     _resolve_handle_https,
     _txt_answer_value,
+    resolve_current_atproto_identity,
     revalidate_linked_atproto_profiles,
     verify_current_atproto_identity,
 )
@@ -98,6 +108,115 @@ class _FakeHttpClient:
         if isinstance(response, Exception):
             raise response
         return response
+
+
+@pytest.mark.asyncio
+async def test_global_identity_control_lifecycle_is_independent_from_identity(
+    test_db: object,
+) -> None:
+    identity, control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="user_1",
+        did="did:plc:person",
+        handle="person.example",
+        pds_url="https://pds.example",
+    )
+
+    assert identity.did == "did:plc:person"
+    assert control.status == "active"
+    assert await AtprotoIdentityControlCRUD.disconnect(
+        test_db, user_id="user_1", identity_id=identity.id
+    )
+    assert await AtprotoIdentityCRUD.get_by_id(test_db, identity.id) == identity
+
+    refreshed, reconnected = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="user_1",
+        did="did:plc:person",
+        handle="renamed.example",
+        pds_url="https://new-pds.example",
+    )
+    assert refreshed.id == identity.id
+    assert refreshed.current_handle == "renamed.example"
+    assert reconnected.id == control.id
+    assert reconnected.status == "active"
+
+
+@pytest.mark.asyncio
+async def test_second_user_control_conflict_does_not_replace_active_controller(
+    test_db: object,
+) -> None:
+    identity, first = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="user_1",
+        did="did:plc:controlled",
+        handle="person.example",
+    )
+
+    with pytest.raises(AtprotoIdentityControlConflictError):
+        await AtprotoIdentityControlCRUD.connect(
+            test_db,
+            user_id="user_2",
+            did=identity.did,
+            handle=identity.current_handle,
+        )
+
+    active = await AtprotoIdentityControlCRUD.get_active_for_identity(test_db, identity.id)
+    competing = await AtprotoIdentityControlCRUD.get_for_user_and_identity(
+        test_db, user_id="user_2", identity_id=identity.id
+    )
+    assert active == first
+    assert competing is not None
+    assert competing.status == "conflict"
+
+
+@pytest.mark.asyncio
+async def test_profile_link_requires_explicit_replacement_and_retains_history(
+    test_db: object,
+    claimable_org: str,
+) -> None:
+    first = await AtprotoIdentityCRUD.upsert(test_db, did="did:plc:first", handle="first.example")
+    second = await AtprotoIdentityCRUD.upsert(
+        test_db, did="did:plc:second", handle="second.example"
+    )
+    original = await ProfileAtprotoLinkCRUD.attach(
+        test_db, entry_id=claimable_org, identity_id=first.id
+    )
+
+    with pytest.raises(ProfileAtprotoLinkConflictError):
+        await ProfileAtprotoLinkCRUD.attach(test_db, entry_id=claimable_org, identity_id=second.id)
+
+    replacement = await ProfileAtprotoLinkCRUD.attach(
+        test_db, entry_id=claimable_org, identity_id=second.id, replace=True
+    )
+    removed = await ProfileAtprotoLinkCRUD.get_by_id(test_db, original.id)
+    assert removed is not None
+    assert removed.status == "removed"
+    assert replacement.identity_id == second.id
+    assert replacement.status == "verified"
+
+
+@pytest.mark.asyncio
+async def test_did_first_resolution_selects_verified_handle_and_pds() -> None:
+    resolver = _Resolver(
+        did="did:plc:person",
+        did_doc={
+            "id": "did:plc:person",
+            "alsoKnownAs": ["at://Person.Example"],
+            "service": [
+                {
+                    "type": "AtprotoPersonalDataServer",
+                    "serviceEndpoint": "https://pds.example",
+                }
+            ],
+        },
+    )
+
+    resolution = await resolve_current_atproto_identity("did:plc:person", resolver=resolver)
+
+    assert resolution is not None
+    assert resolution.handle == "person.example"
+    assert resolution.pds_url == "https://pds.example"
 
 
 @pytest.mark.asyncio
@@ -218,7 +337,6 @@ def test_atproto_identity_helper_branches() -> None:
 async def test_atproto_identity_crud_refreshes_existing_identity(test_db: object) -> None:
     created = await AtprotoIdentityCRUD.upsert(
         test_db,
-        user_id="user_1",
         did="did:plc:existing",
         handle="old.example",
         pds_url=None,
@@ -226,7 +344,6 @@ async def test_atproto_identity_crud_refreshes_existing_identity(test_db: object
 
     refreshed = await AtprotoIdentityCRUD.upsert(
         test_db,
-        user_id="user_1",
         did="did:plc:existing",
         handle="new.example",
         pds_url="https://pds.example",
@@ -236,14 +353,7 @@ async def test_atproto_identity_crud_refreshes_existing_identity(test_db: object
     assert refreshed.current_handle == "new.example"
     assert refreshed.pds_url == "https://pds.example"
     assert await AtprotoIdentityCRUD.get_by_id(test_db, "missing") is None
-    assert (
-        await AtprotoIdentityCRUD.get_by_user_and_did(
-            test_db,
-            user_id="user_1",
-            did="did:plc:missing",
-        )
-        is None
-    )
+    assert await AtprotoIdentityCRUD.get_by_did(test_db, "did:plc:missing") is None
 
 
 @pytest.mark.asyncio
@@ -253,24 +363,22 @@ async def test_atproto_identity_crud_raises_when_refresh_disappears(
 ) -> None:
     existing = await AtprotoIdentityCRUD.upsert(
         test_db,
-        user_id="user_1",
         did="did:plc:vanishing",
         handle="old.example",
     )
 
-    async def fake_get_by_user_and_did(*_args: object, **_kwargs: object) -> object:
+    async def fake_get_by_did(*_args: object, **_kwargs: object) -> object:
         return existing
 
     async def fake_get_by_id(*_args: object, **_kwargs: object) -> None:
         return None
 
-    monkeypatch.setattr(AtprotoIdentityCRUD, "get_by_user_and_did", fake_get_by_user_and_did)
+    monkeypatch.setattr(AtprotoIdentityCRUD, "get_by_did", fake_get_by_did)
     monkeypatch.setattr(AtprotoIdentityCRUD, "get_by_id", fake_get_by_id)
 
     with pytest.raises(RuntimeError, match="disappeared"):
         await AtprotoIdentityCRUD.upsert(
             test_db,
-            user_id="user_1",
             did="did:plc:vanishing",
             handle="new.example",
         )
@@ -306,7 +414,7 @@ async def test_atproto_claim_helpers_reject_missing_or_unbacked_identity(
     assert missing_identity.value.status_code == 404
     assert missing_identity.value.detail == "Linked ATProto identity not found."
 
-    identity = await AtprotoIdentityCRUD.upsert(
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
         test_db,
         user_id="local-operator",
         did="did:plc:generic",
@@ -366,7 +474,7 @@ async def test_link_atproto_proof_ignores_incomplete_or_stale_metadata(
         proof_type="atproto",
         proof_status="pending",
         proof_summary="Linked ATProto handle.",
-        proof_metadata={"did": "did:plc:generic", "handle": "org.example"},
+        proof_metadata={"identity_id": "missing"},
     )
 
     async def stale_identity(_handle: str, _did: str) -> bool:
@@ -389,16 +497,16 @@ async def test_link_atproto_proof_ignores_incomplete_or_stale_metadata(
 
 
 @pytest.mark.asyncio
-async def test_revalidate_linked_atproto_profiles_clears_stale_public_link(
+async def test_revalidate_linked_atproto_profiles_marks_stale_link_for_attention(
     test_db: object,
     claimable_org: str,
 ) -> None:
+    identity = await AtprotoIdentityCRUD.upsert(test_db, did="did:plc:org", handle="org.example")
     await link_entry_atproto_identity(
         test_db,
         claimable_org,
-        did="did:plc:org",
-        handle="org.example",
-        verified_at="2026-07-07T12:00:00Z",
+        identity_id=identity.id,
+        evidence=ProfileAtprotoLinkEvidence(verified_at="2026-07-07T12:00:00Z"),
     )
     await EntryCRUD.update(
         test_db,
@@ -415,13 +523,16 @@ async def test_revalidate_linked_atproto_profiles_clears_stale_public_link(
     result = await revalidate_linked_atproto_profiles(test_db, resolver=resolver)
 
     assert result.checked == 1
-    assert result.cleared == 1
+    assert result.needs_attention == 1
     refreshed = await EntryCRUD.get_by_id(test_db, claimable_org)
     assert refreshed is not None
     assert refreshed.claim_status == "verified"
-    assert refreshed.linked_atproto_handle is None
-    assert refreshed.linked_atproto_did is None
-    assert refreshed.linked_atproto_verified_at is None
+    link = await ProfileAtprotoLinkCRUD.get_current_for_entry(test_db, claimable_org)
+    assert link is not None
+    assert link.status == "reverification_required"
+    stale_identity = await AtprotoIdentityCRUD.get_by_id(test_db, identity.id)
+    assert stale_identity is not None
+    assert stale_identity.resolution_status == "needs_attention"
 
 
 @pytest.mark.asyncio
@@ -429,12 +540,12 @@ async def test_revalidate_linked_atproto_profiles_keeps_current_public_link(
     test_db: object,
     claimable_org: str,
 ) -> None:
+    identity = await AtprotoIdentityCRUD.upsert(test_db, did="did:plc:org", handle="org.example")
     await link_entry_atproto_identity(
         test_db,
         claimable_org,
-        did="did:plc:org",
-        handle="org.example",
-        verified_at="2026-07-07T12:00:00Z",
+        identity_id=identity.id,
+        evidence=ProfileAtprotoLinkEvidence(verified_at="2026-07-07T12:00:00Z"),
     )
     resolver = _Resolver(
         did="did:plc:org",
@@ -444,7 +555,12 @@ async def test_revalidate_linked_atproto_profiles_keeps_current_public_link(
     result = await revalidate_linked_atproto_profiles(test_db, resolver=resolver)
 
     assert result.checked == 1
-    assert result.cleared == 0
-    refreshed = await EntryCRUD.get_by_id(test_db, claimable_org)
-    assert refreshed is not None
-    assert refreshed.linked_atproto_handle == "org.example"
+    assert result.needs_attention == 0
+    link = await ProfileAtprotoLinkCRUD.get_current_for_entry(test_db, claimable_org)
+    assert link is not None
+    assert link.status == "verified"
+    public_identity = await ProfileAtprotoLinkCRUD.get_verified_public_identity(
+        test_db, claimable_org
+    )
+    assert public_identity is not None
+    assert public_identity.handle == "org.example"
