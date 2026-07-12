@@ -155,10 +155,10 @@ work that cannot affect the change:
   OpenAPI drift, acceptance, API deploy, and hosted smoke
 - production release tags always run the full gate
 
-CodeQL is also path-gated for push and pull request events so docs-only,
-Mintlify-only, Compose-only, and env-example-only changes do not start a
-two-language security scan. The scheduled weekly CodeQL scan still runs
-regardless of changed paths.
+CodeQL is owned by GitHub default setup, not a repo workflow. Keep it that way:
+running both default setup and `.github/workflows/codeql.yml` creates duplicate
+CodeQL rows on every push. The custom CI classifier controls Atlas-owned jobs;
+GitHub owns CodeQL scheduling and language selection.
 
 Keep this classifier aligned with `turbo.json`, package `turbo.json` files, and
 the deploy workflows. If a new package can affect the hosted app or API, add it
