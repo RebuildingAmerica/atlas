@@ -9,6 +9,11 @@ OPENAPI_TAG_OPERATION_GUIDANCE = {
         "their own Atlas presence. Keep subject-managed fields distinct from source-backed public "
         "claims so user edits do not overwrite provenance."
     ),
+    "identity": (
+        "Use this identity operation for a signed-in person's external ATProto connections or "
+        "their verified public-profile representation. Keep account control, profile stewardship, "
+        "and workspace membership separate when interpreting or changing these relationships."
+    ),
     "discovery-schedules": (
         "Use this schedule operation for recurring research targets. Schedules define what Atlas "
         "should revisit; review, source freshness, and publication decisions still happen through "

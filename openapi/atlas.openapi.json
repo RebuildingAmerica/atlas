@@ -293,12 +293,54 @@
         "title": "AtprotoIdentityLinkRequest",
         "type": "object"
       },
-      "AtprotoIdentityResponse": {
-        "description": "DID-backed ATProto identity linked to the authenticated user.",
+      "AtprotoIdentityProfileSummary": {
+        "description": "Profile currently represented by an account identity.",
         "properties": {
-          "created_at": {
-            "description": "created at for this atproto identity.",
-            "title": "Created At",
+          "id": {
+            "description": "id for this atproto identity profile summary.",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "name for this atproto identity profile summary.",
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "description": "slug for this atproto identity profile summary.",
+            "title": "Slug",
+            "type": "string"
+          },
+          "type": {
+            "description": "type for this atproto identity profile summary.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "type"
+        ],
+        "title": "AtprotoIdentityProfileSummary",
+        "type": "object"
+      },
+      "AtprotoIdentityResponse": {
+        "description": "Account-visible state for one controlled ATProto identity.",
+        "properties": {
+          "connected_at": {
+            "description": "connected at for this atproto identity.",
+            "title": "Connected At",
+            "type": "string"
+          },
+          "control_status": {
+            "description": "control status for this atproto identity.",
+            "enum": [
+              "active",
+              "conflict"
+            ],
+            "title": "Control Status",
             "type": "string"
           },
           "current_handle": {
@@ -311,12 +353,12 @@
             "title": "Did",
             "type": "string"
           },
-          "did_resolved_at": {
-            "description": "did resolved at for this atproto identity.",
-            "title": "Did Resolved At",
+          "id": {
+            "description": "id for this atproto identity.",
+            "title": "Id",
             "type": "string"
           },
-          "handle_verified_at": {
+          "last_checked_at": {
             "anyOf": [
               {
                 "type": "string"
@@ -325,13 +367,20 @@
                 "type": "null"
               }
             ],
-            "description": "handle verified at for this atproto identity.",
-            "title": "Handle Verified At"
+            "description": "last checked at for this atproto identity.",
+            "title": "Last Checked At"
           },
-          "id": {
-            "description": "id for this atproto identity.",
-            "title": "Id",
-            "type": "string"
+          "last_resolution_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last resolution error for this atproto identity.",
+            "title": "Last Resolution Error"
           },
           "pds_url": {
             "anyOf": [
@@ -345,25 +394,43 @@
             "description": "pds url for this atproto identity.",
             "title": "Pds Url"
           },
-          "updated_at": {
-            "description": "updated at for this atproto identity.",
-            "title": "Updated At",
+          "profiles": {
+            "description": "profiles for this atproto identity.",
+            "items": {
+              "$ref": "#/components/schemas/AtprotoIdentityProfileSummary"
+            },
+            "title": "Profiles",
+            "type": "array"
+          },
+          "resolution_status": {
+            "description": "resolution status for this atproto identity.",
+            "enum": [
+              "verified",
+              "needs_attention"
+            ],
+            "title": "Resolution Status",
             "type": "string"
           },
-          "user_id": {
-            "description": "user id for this atproto identity.",
-            "title": "User Id",
-            "type": "string"
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "verified at for this atproto identity.",
+            "title": "Verified At"
           }
         },
         "required": [
           "id",
-          "user_id",
           "did",
           "current_handle",
-          "did_resolved_at",
-          "created_at",
-          "updated_at"
+          "resolution_status",
+          "control_status",
+          "connected_at"
         ],
         "title": "AtprotoIdentityResponse",
         "type": "object"
@@ -493,6 +560,18 @@
             ],
             "description": "Verified ATProto handle linked to the profile.",
             "title": "Linked Atproto Handle"
+          },
+          "linked_atproto_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "verified when the DID relation is healthy; needs_attention otherwise.",
+            "title": "Linked Atproto Status"
           },
           "linked_atproto_verified_at": {
             "anyOf": [
@@ -9956,6 +10035,76 @@
         "title": "ProfileAnswers",
         "type": "object"
       },
+      "ProfileAtprotoIdentityAttachRequest": {
+        "description": "Explicit request to attach or replace a profile's public identity.",
+        "properties": {
+          "atproto_identity_id": {
+            "description": "atproto identity id for this profile atproto identity attach.",
+            "title": "Atproto Identity Id",
+            "type": "string"
+          },
+          "replace": {
+            "default": false,
+            "description": "replace for this profile atproto identity attach.",
+            "title": "Replace",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "atproto_identity_id"
+        ],
+        "title": "ProfileAtprotoIdentityAttachRequest",
+        "type": "object"
+      },
+      "ProfileAtprotoIdentityLinkResponse": {
+        "description": "Auditable public identity relation managed by a verified steward.",
+        "properties": {
+          "current_handle": {
+            "description": "current handle for this profile atproto identity link.",
+            "title": "Current Handle",
+            "type": "string"
+          },
+          "did": {
+            "description": "did for this profile atproto identity link.",
+            "title": "Did",
+            "type": "string"
+          },
+          "identity_id": {
+            "description": "identity id for this profile atproto identity link.",
+            "title": "Identity Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "status for this profile atproto identity link.",
+            "enum": [
+              "verified",
+              "reverification_required"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "verified at for this profile atproto identity link.",
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "identity_id",
+          "did",
+          "current_handle",
+          "status"
+        ],
+        "title": "ProfileAtprotoIdentityLinkResponse",
+        "type": "object"
+      },
       "ProfileAtprotoRevalidationResponse": {
         "description": "Result from rechecking linked ATProto profile identities.",
         "properties": {
@@ -9964,15 +10113,15 @@
             "title": "Checked",
             "type": "integer"
           },
-          "cleared": {
-            "description": "cleared for this profile atproto revalidation.",
-            "title": "Cleared",
+          "needs_attention": {
+            "description": "needs attention for this profile atproto revalidation.",
+            "title": "Needs Attention",
             "type": "integer"
           }
         },
         "required": [
           "checked",
-          "cleared"
+          "needs_attention"
         ],
         "title": "ProfileAtprotoRevalidationResponse",
         "type": "object"
@@ -13965,6 +14114,485 @@
         "summary": "Update discount verification",
         "tags": [
           "access"
+        ]
+      }
+    },
+    "/api/atproto/identities": {
+      "get": {
+        "description": "Return the current account's active or attention-required ATProto controls for Account settings. Disconnected history and other users' metadata are excluded, while affected public profiles are summarized so disconnect consequences remain understandable.\n\nUse this identity operation for a signed-in person's external ATProto connections or their verified public-profile representation. Keep account control, profile stewardship, and workspace membership separate when interpreting or changing these relationships.",
+        "operationId": "listAtprotoIdentities",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AtprotoIdentityResponse"
+                  },
+                  "title": "Response Listatprotoidentities",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List connected ATProto identities",
+        "tags": [
+          "identity"
+        ]
+      },
+      "post": {
+        "description": "Accept a short-lived app-server OAuth result, verify the handle and DID again, and record an active account-control relationship. A competing controller receives a privacy-safe conflict without any other account metadata or workspace side effects.\n\nUse this identity operation for a signed-in person's external ATProto connections or their verified public-profile representation. Keep account control, profile stewardship, and workspace membership separate when interpreting or changing these relationships.",
+        "operationId": "linkAtprotoIdentity",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtprotoIdentityLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtprotoIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Connect an ATProto identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/atproto/identities/{identity_id}": {
+      "delete": {
+        "description": "Disconnect the current account's control relationship so the identity cannot be selected for new actions. Existing verified public-profile links remain auditable until a verified profile steward explicitly removes or replaces them.\n\nUse this identity operation for a signed-in person's external ATProto connections or their verified public-profile representation. Keep account control, profile stewardship, and workspace membership separate when interpreting or changing these relationships.",
+        "operationId": "disconnectAtprotoIdentity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity_id",
+            "required": true,
+            "schema": {
+              "title": "Identity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disconnect an ATProto identity",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/atproto/identities/{identity_id}/refresh": {
+      "post": {
+        "description": "Resolve the controlled DID first, verify its current handle in both directions, and update account metadata. Failed resolution retains the DID and profile provenance but marks the identity and its public links as needing attention.\n\nUse this identity operation for a signed-in person's external ATProto connections or their verified public-profile representation. Keep account control, profile stewardship, and workspace membership separate when interpreting or changing these relationships.",
+        "operationId": "refreshAtprotoIdentity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity_id",
+            "required": true,
+            "schema": {
+              "title": "Identity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtprotoIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check an ATProto identity connection",
+        "tags": [
+          "identity"
         ]
       }
     },
@@ -27965,130 +28593,6 @@
         ]
       }
     },
-    "/api/profiles/atproto/identities": {
-      "post": {
-        "description": "Stores a DID-backed ATProto identity for the authenticated user.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
-        "operationId": "linkAtprotoIdentity",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "x-atlas-internal-secret",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Atlas-Internal-Secret"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-atlas-actor-id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Atlas-Actor-Id"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-atlas-actor-email",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Atlas-Actor-Email"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-atlas-organization-id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Atlas-Organization-Id"
-            }
-          },
-          {
-            "in": "header",
-            "name": "x-api-key",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AtprotoIdentityLinkRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AtprotoIdentityResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Link an ATProto identity",
-        "tags": [
-          "claims"
-        ]
-      }
-    },
     "/api/profiles/claims/me": {
       "get": {
         "description": "Returns all profile verifications belonging to the authenticated user.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
@@ -28346,7 +28850,7 @@
     },
     "/api/profiles/claims/review/atproto/revalidate": {
       "post": {
-        "description": "Remove linked ATProto profiles whose current handle and DID no longer match.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
+        "description": "Flag linked ATProto profiles whose current handle and DID no longer match.\n\nUse this profile-claim operation when a real profile subject needs controlled access to their own Atlas presence. Keep subject-managed fields distinct from source-backed public claims so user edits do not overwrite provenance.",
         "operationId": "revalidateProfileAtprotoLinks",
         "parameters": [
           {
@@ -28763,6 +29267,253 @@
         "summary": "Verify by email",
         "tags": [
           "claims"
+        ]
+      }
+    },
+    "/api/profiles/{slug}/atproto-identity": {
+      "delete": {
+        "description": "Let a verified profile steward remove the current public ATProto relation while retaining its audit history. The global DID and every account-control relationship remain intact, so this profile action cannot disconnect or transfer the external account.\n\nUse this identity operation for a signed-in person's external ATProto connections or their verified public-profile representation. Keep account control, profile stewardship, and workspace membership separate when interpreting or changing these relationships.",
+        "operationId": "detachProfileAtprotoIdentity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove a public ATProto identity",
+        "tags": [
+          "identity"
+        ]
+      },
+      "put": {
+        "description": "Let a verified profile steward attach a currently controlled and freshly resolved ATProto identity. Replacing another public identity requires explicit confirmation and writes a new auditable relation without changing account control or workspace membership.\n\nUse this identity operation for a signed-in person's external ATProto connections or their verified public-profile representation. Keep account control, profile stewardship, and workspace membership separate when interpreting or changing these relationships.",
+        "operationId": "attachProfileAtprotoIdentity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileAtprotoIdentityAttachRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileAtprotoIdentityLinkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Attach a verified public ATProto identity",
+        "tags": [
+          "identity"
         ]
       }
     },
@@ -30485,6 +31236,10 @@
       "name": "claims"
     },
     {
+      "description": "Account-level external identity connections and verified public-profile links. These operations keep durable ATProto DIDs separate from Atlas users, profile stewardship, and workspace membership while preserving verification history.",
+      "name": "identity"
+    },
+    {
       "description": "Recurring discovery targets for research operations. Schedules describe the places and issue areas Atlas should revisit; the durable discovery worker performs the actual source search, extraction, and review workflow.",
       "name": "discovery-schedules"
     },
@@ -30596,6 +31351,7 @@
       "name": "Personal account workflows",
       "tags": [
         "access",
+        "identity",
         "claims",
         "follows",
         "feed",

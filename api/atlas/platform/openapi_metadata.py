@@ -45,6 +45,14 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "identity",
+        "description": (
+            "Account-level external identity connections and verified public-profile links. "
+            "These operations keep durable ATProto DIDs separate from Atlas users, profile "
+            "stewardship, and workspace membership while preserving verification history."
+        ),
+    },
+    {
         "name": "discovery-schedules",
         "description": (
             "Recurring discovery targets for research operations. Schedules describe the places "
@@ -242,7 +250,7 @@ OPENAPI_TAG_GROUPS = [
     },
     {
         "name": "Personal account workflows",
-        "tags": ["access", "claims", "follows", "feed", "lists"],
+        "tags": ["access", "identity", "claims", "follows", "feed", "lists"],
     },
     {
         "name": "Workspace workflows",
