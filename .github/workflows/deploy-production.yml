@@ -32,6 +32,8 @@ jobs:
   ci:
     needs: guard-production-ref
     uses: ./.github/workflows/ci.yml
+    with:
+      profile: production
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 

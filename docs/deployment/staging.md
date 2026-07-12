@@ -20,9 +20,12 @@ The staging API deploy is a GitHub Actions workflow:
 - recommended app domain: `https://atlas-staging.rebuildingus.org`
 - recommended API domain: `https://atlas-api-staging.rebuildingus.org`
 
-The workflow runs CI first, builds the same `atlas-api` image as production,
-deploys the staging API service, and smoke-tests the hosted app/API pair. Vercel
-owns staging app deployments through its GitHub integration.
+The workflow runs CI first. CI classifies the changed files and only runs the
+staging work that can matter for that change. Docs-only changes do not rebuild
+the API image. App-only changes run hosted smoke without rebuilding
+`atlas-api-staging`. API and deploy changes build the same `atlas-api` image as
+production, deploy the staging API service, and smoke-test the hosted app/API
+pair. Vercel owns staging app deployments through its GitHub integration.
 
 Staging does not create or update the production Cloud Scheduler job. Run
 discovery in staging deliberately so test data and external API spend stay
@@ -140,7 +143,7 @@ Then, for a manual staging deploy:
 1. Open GitHub Actions.
 2. Select **Deploy Staging**.
 3. Run the workflow from `main`.
-4. Wait for CI and the deploy job to pass.
+4. Wait for CI and any selected staging jobs to pass.
 
 After the workflow completes, verify:
 

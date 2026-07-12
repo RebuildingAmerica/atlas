@@ -5,9 +5,22 @@ on:
   schedule:
     - cron: "0 12 * * 1"
   workflow_call:
+    inputs:
+      profile:
+        description: CI optimization profile. Production keeps the full gate.
+        required: false
+        type: string
+        default: auto
     secrets:
       TURBO_TOKEN:
         required: false
+    outputs:
+      staging_api_deploy:
+        description: Whether staging should rebuild and deploy atlas-api.
+        value: ${{ jobs.changes.outputs.staging_api_deploy }}
+      hosted_smoke:
+        description: Whether hosted smoke should run after CI.
+        value: ${{ jobs.changes.outputs.hosted_smoke }}
 
 permissions:
   contents: read
@@ -22,7 +35,43 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      full: ${{ steps.classify.outputs.full }}
+      quality: ${{ steps.classify.outputs.quality }}
+      python_tests: ${{ steps.classify.outputs.python_tests }}
+      app_tests: ${{ steps.classify.outputs.app_tests }}
+      acceptance: ${{ steps.classify.outputs.acceptance }}
+      contract: ${{ steps.classify.outputs.contract }}
+      openapi: ${{ steps.classify.outputs.openapi }}
+      docs: ${{ steps.classify.outputs.docs }}
+      compose: ${{ steps.classify.outputs.compose }}
+      secrets_scan: ${{ steps.classify.outputs.secrets_scan }}
+      staging_api_deploy: ${{ steps.classify.outputs.staging_api_deploy }}
+      hosted_smoke: ${{ steps.classify.outputs.hosted_smoke }}
+      use_affected: ${{ steps.classify.outputs.use_affected }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+          install-deps: "false"
+      - id: classify
+        name: Classify changed surfaces
+        env:
+          ATLAS_CI_PROFILE: ${{ inputs.profile || 'auto' }}
+          ATLAS_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ATLAS_BEFORE_SHA: ${{ github.event.before }}
+          ATLAS_HEAD_SHA: ${{ github.sha }}
+        run: node scripts/ci/changed-surfaces.mjs
+
   quality:
+    needs: changes
+    if: needs.changes.outputs.quality == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -33,20 +82,40 @@ jobs:
       - name: Test deploy scripts
         run: pnpm run deploy:test
       - name: Typecheck and lint
-        run: pnpm exec turbo run typecheck lint
+        env:
+          TURBO_AFFECTED_FLAG: ${{ needs.changes.outputs.use_affected == 'true' && '--affected' || '' }}
+        run: |
+          affected_args=()
+          if [ -n "$TURBO_AFFECTED_FLAG" ]; then
+            affected_args=("$TURBO_AFFECTED_FLAG")
+          fi
+          pnpm exec turbo run typecheck lint "${affected_args[@]}"
 
   test:
+    needs: changes
+    if: needs.changes.outputs.python_tests == 'true' || needs.changes.outputs.app_tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
+      RUN_PYTHON_TESTS: ${{ needs.changes.outputs.python_tests }}
+      RUN_APP_TESTS: ${{ needs.changes.outputs.app_tests }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-toolchain
       - name: Run test suites
-        run: pnpm run test:ci
+        run: |
+          if [ "$RUN_PYTHON_TESTS" = "true" ]; then
+            pnpm exec turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test @rebuildingamerica/atlas-api#test
+          fi
+
+          if [ "$RUN_APP_TESTS" = "true" ]; then
+            pnpm exec turbo run '@rebuildingamerica/atlas-app#test' @rebuildingamerica/entity-widgets#test @rebuildingamerica/entity-widgets-mcp#test
+          fi
 
   acceptance:
+    needs: changes
+    if: needs.changes.outputs.acceptance == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -86,6 +155,8 @@ jobs:
           retention-days: 14
 
   contract:
+    needs: changes
+    if: needs.changes.outputs.contract == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -95,6 +166,8 @@ jobs:
         run: pnpm run contract:test
 
   openapi-drift:
+    needs: changes
+    if: needs.changes.outputs.openapi == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -112,6 +185,8 @@ jobs:
           fi
 
   docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -125,6 +200,8 @@ jobs:
         run: pnpm run docs:broken-links
 
   compose-validate:
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -136,6 +213,8 @@ jobs:
         run: pnpm run compose:validate
 
   secrets-scan:
+    needs: changes
+    if: needs.changes.outputs.secrets_scan == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

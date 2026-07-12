@@ -16,11 +16,14 @@ concurrency:
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+    with:
+      profile: staging
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
-  deploy:
+  deploy-api:
     needs: ci
+    if: needs.ci.outputs.staging_api_deploy == 'true'
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 30
@@ -54,6 +57,21 @@ jobs:
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+
+  hosted-smoke:
+    needs:
+      - ci
+      - deploy-api
+    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_smoke == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - uses: ./.github/actions/setup-toolchain
         with:

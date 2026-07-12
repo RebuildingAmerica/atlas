@@ -75,6 +75,10 @@ during hosted smoke checks. Because Vercel production domain auto-assignment is
 off, the workflow explicitly promotes the tagged Vercel deployment after
 `vercel deploy --prod`.
 
+Production uses the full CI gate even when the tag only includes a small surface
+change. Turbo remote cache and Docker layer cache should make unchanged work
+cheap, but release tags do not skip correctness checks.
+
 ## Post-Release Verification
 
 After deployment, verify in this order:
