@@ -98,6 +98,40 @@ describe("routes/_public/claim/$slug organization proofs", () => {
     });
   });
 
+  it("clears the saved draft and resets every claim field on cancel", async () => {
+    window.sessionStorage.setItem(
+      "atlas:claim-draft:acme",
+      JSON.stringify({
+        atprotoIdentityId: "",
+        dnsDomain: "acme.org",
+        evidence: "https://acme.org/team",
+        preferredContactChannel: "email",
+        privateNote: "Reviewer context",
+        relationship: "staff",
+        requestedChanges: "Update the description",
+        useActiveWorkspace: false,
+      }),
+    );
+
+    await renderOrganizationClaim();
+    expect(screen.getByLabelText("Source for your connection")).toHaveValue(
+      "https://acme.org/team",
+    );
+    expect(screen.getByLabelText("Organization domain")).toHaveValue("acme.org");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(window.sessionStorage.getItem("atlas:claim-draft:acme")).toBeNull();
+    expect(screen.getByLabelText("Your relationship to this profile")).toHaveValue(
+      "organization_representative",
+    );
+    expect(screen.getByLabelText("Source for your connection")).toHaveValue("");
+    expect(screen.getByLabelText("What should change?")).toHaveValue("");
+    expect(screen.getByLabelText("Preferred contact")).toHaveValue("");
+    expect(screen.getByLabelText("Private note")).toHaveValue("");
+    expect(screen.getByLabelText("Organization domain")).toHaveValue("");
+  });
+
   it("submits active workspace role for organization verification", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
