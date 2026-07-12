@@ -61,6 +61,7 @@ RUN turbo prune @rebuildingamerica/entity-widgets-mcp --docker
 FROM node:24-alpine AS widget-builder
 
 ENV PNPM_HOME=/pnpm \
+    PUPPETEER_SKIP_DOWNLOAD=true \
     PATH=/pnpm:$PATH
 
 RUN corepack enable
