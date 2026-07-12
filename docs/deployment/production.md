@@ -35,8 +35,9 @@ The recommended hosted topology is:
 - GitHub Environments for production and staging deploy secrets
 
 Hosted API deploys run cloud cost preflight before Docker build and push. The
-preflight applies Artifact Registry cleanup policy and blocks Cloud Run drift
-that would create paid idle capacity.
+preflight verifies Artifact Registry cleanup policy presence and blocks Cloud
+Run drift that would create paid idle capacity. Apply Artifact Registry cleanup
+policy during infrastructure setup, not during each deploy.
 
 Why this is the recommended path:
 

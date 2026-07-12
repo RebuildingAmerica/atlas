@@ -30,8 +30,13 @@ function runTool(binary, args, options = {}) {
     throw result.error;
   }
   if (result.status !== 0) {
-    const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
-    throw new Error(`${binary} ${args.join(" ")} failed${output ? `\n${output}` : ""}`);
+    const output = [result.stdout, result.stderr]
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+    throw new Error(
+      `${binary} ${args.join(" ")} failed${output ? `\n${output}` : ""}`,
+    );
   }
   return typeof result.stdout === "string" ? result.stdout.trim() : "";
 }
@@ -39,7 +44,9 @@ function runTool(binary, args, options = {}) {
 function parseImageRegistry(registry) {
   const parts = registry.split("/");
   if (parts.length < 3) {
-    throw new Error("IMAGE_REGISTRY must look like <region>-docker.pkg.dev/<project>/<repo>.");
+    throw new Error(
+      "IMAGE_REGISTRY must look like <region>-docker.pkg.dev/<project>/<repo>.",
+    );
   }
   return {
     project: parts[1],
@@ -50,7 +57,10 @@ function parseImageRegistry(registry) {
 function writeCleanupPolicyFile() {
   const dir = mkdtempSync(path.join(tmpdir(), "atlas-artifact-cleanup-"));
   const policyPath = path.join(dir, "policy.json");
-  writeFileSync(policyPath, `${JSON.stringify(buildArtifactCleanupPolicy(), null, 2)}\n`);
+  writeFileSync(
+    policyPath,
+    `${JSON.stringify(buildArtifactCleanupPolicy(), null, 2)}\n`,
+  );
   return policyPath;
 }
 
@@ -114,10 +124,18 @@ function printSummary({ cloudRunPosture, repositoryPosture, summary }) {
     `Artifact Registry: ${repositoryPosture.status}`,
   ];
   if (summary.blockers.length > 0) {
-    lines.push("", "Blockers:", ...summary.blockers.map((blocker) => `- ${blocker}`));
+    lines.push(
+      "",
+      "Blockers:",
+      ...summary.blockers.map((blocker) => `- ${blocker}`),
+    );
   }
   if (summary.warnings.length > 0) {
-    lines.push("", "Warnings:", ...summary.warnings.map((warning) => `- ${warning}`));
+    lines.push(
+      "",
+      "Warnings:",
+      ...summary.warnings.map((warning) => `- ${warning}`),
+    );
   }
   console.log(lines.join("\n"));
 }
@@ -127,11 +145,12 @@ function check() {
   const imageRegistry = requiredEnv("IMAGE_REGISTRY");
   const serviceName = requiredEnv("SERVICE_NAME");
 
-  applyArtifactCleanupPolicy({ imageRegistry, region });
   const cloudRunPosture = evaluateCloudRunCostPosture(
     describeCloudRunService({ region, serviceName }),
   );
-  const repositoryPosture = evaluateRepositoryCostPosture(describeRepository({ imageRegistry, region }));
+  const repositoryPosture = evaluateRepositoryCostPosture(
+    describeRepository({ imageRegistry, region }),
+  );
   const summary = summarizeCostPosture([cloudRunPosture, repositoryPosture]);
 
   printSummary({ cloudRunPosture, repositoryPosture, summary });
@@ -140,10 +159,27 @@ function check() {
   }
 }
 
+function applyCleanupPolicy() {
+  const region = requiredEnv("GCP_REGION");
+  const imageRegistry = requiredEnv("IMAGE_REGISTRY");
+  const { project, repository } = applyArtifactCleanupPolicy({
+    imageRegistry,
+    region,
+  });
+  console.log(
+    `Applied Artifact Registry cleanup policy to ${project}/${repository}.`,
+  );
+}
+
 switch (command) {
+  case "apply-cleanup-policy":
+    applyCleanupPolicy();
+    break;
   case "check":
     check();
     break;
   default:
-    throw new Error("Usage: cloud-cost-preflight.mjs check");
+    throw new Error(
+      "Usage: cloud-cost-preflight.mjs <check|apply-cleanup-policy>",
+    );
 }

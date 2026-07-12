@@ -27,11 +27,19 @@ from crowding out source quality, review, and uptime work.
 Staging and production API deploys run cloud cost preflight before Docker build
 and push. The preflight:
 
-- applies the Artifact Registry cleanup policy;
 - verifies cleanup policy presence;
 - blocks Cloud Run min-instance drift;
 - blocks always-allocated CPU drift;
 - blocks CPU or memory limits above the hosted policy.
+
+Artifact Registry cleanup policies are infrastructure setup, not deploy work.
+Apply the repo cleanup policy deliberately with:
+
+```bash
+GCP_REGION=us-central1 \
+IMAGE_REGISTRY=us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images \
+node scripts/deploy/cloud-cost-preflight.mjs apply-cleanup-policy
+```
 
 Warnings can ship when they are accounting gaps rather than immediate spend
 regressions. Blocking failures must be fixed before starting a costly deploy.

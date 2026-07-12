@@ -12,7 +12,10 @@ import {
 } from "./cloud-cost-policy.mjs";
 
 const rootDir = path.resolve(import.meta.dirname, "../..");
-const preflightScript = path.join(rootDir, "scripts/deploy/cloud-cost-preflight.mjs");
+const preflightScript = path.join(
+  rootDir,
+  "scripts/deploy/cloud-cost-preflight.mjs",
+);
 
 void describe("cloud cost policy", () => {
   void it("accepts a scale-to-zero Cloud Run service with bounded resources", () => {
@@ -52,9 +55,18 @@ void describe("cloud cost policy", () => {
 
     assert.equal(posture.status, "block");
     assert.match(posture.blockers.join("\n"), /min instances must stay at 0/);
-    assert.match(posture.blockers.join("\n"), /CPU must stay request-allocated/);
-    assert.match(posture.blockers.join("\n"), /CPU limit 2 exceeds policy maximum 1/);
-    assert.match(posture.blockers.join("\n"), /memory limit 2Gi exceeds policy maximum 768Mi/);
+    assert.match(
+      posture.blockers.join("\n"),
+      /CPU must stay request-allocated/,
+    );
+    assert.match(
+      posture.blockers.join("\n"),
+      /CPU limit 2 exceeds policy maximum 1/,
+    );
+    assert.match(
+      posture.blockers.join("\n"),
+      /memory limit 2Gi exceeds policy maximum 768Mi/,
+    );
   });
 
   void it("blocks Artifact Registry repositories without cleanup policies", () => {
@@ -66,7 +78,10 @@ void describe("cloud cost policy", () => {
     });
 
     assert.equal(posture.status, "block");
-    assert.match(posture.blockers.join("\n"), /Artifact Registry cleanup policy is required/);
+    assert.match(
+      posture.blockers.join("\n"),
+      /Artifact Registry cleanup policy is required/,
+    );
   });
 
   void it("builds the repository cleanup policy that preserves rollback images", () => {
@@ -94,7 +109,7 @@ void describe("cloud cost policy", () => {
 });
 
 void describe("cloud cost preflight CLI", () => {
-  void it("applies cleanup policy before evaluating deployed service drift", () => {
+  void it("evaluates deployed service and repository cost drift without mutating infrastructure", () => {
     const tempDir = mkdtempSync(path.join(tmpdir(), "atlas-cost-preflight-"));
     const logPath = path.join(tempDir, "gcloud-args.log");
     const gcloudPath = path.join(tempDir, "gcloud");
@@ -111,7 +126,9 @@ void describe("cloud cost preflight CLI", () => {
               metadata: { annotations: {} },
               spec: {
                 containerConcurrency: 1,
-                containers: [{ resources: { limits: { cpu: "1", memory: "768Mi" } } }],
+                containers: [
+                  { resources: { limits: { cpu: "1", memory: "768Mi" } } },
+                ],
               },
             },
           },
@@ -143,15 +160,59 @@ void describe("cloud cost preflight CLI", () => {
         ...process.env,
         PATH: `${tempDir}:${process.env.PATH ?? ""}`,
         GCP_REGION: "us-central1",
-        IMAGE_REGISTRY: "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images",
+        IMAGE_REGISTRY:
+          "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images",
         SERVICE_NAME: "atlas-api",
       },
     });
 
     assert.equal(result.status, 0, result.stderr);
     const calls = readFileSync(logPath, "utf8");
-    assert.match(calls, /artifacts repositories set-cleanup-policies atlas-images/);
+    assert.doesNotMatch(
+      calls,
+      /artifacts repositories set-cleanup-policies atlas-images/,
+    );
     assert.match(calls, /run services describe atlas-api/);
     assert.match(result.stdout, /Cloud cost preflight passed/);
+  });
+
+  void it("applies the cleanup policy only when explicitly requested", () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), "atlas-cost-preflight-"));
+    const logPath = path.join(tempDir, "gcloud-args.log");
+    const gcloudPath = path.join(tempDir, "gcloud");
+    writeFileSync(
+      gcloudPath,
+      [
+        "#!/bin/sh",
+        `printf '%s\\n' "$*" >> ${JSON.stringify(logPath)}`,
+        "exit 0",
+        "",
+      ].join("\n"),
+      { mode: 0o755 },
+    );
+
+    const result = spawnSync(
+      "node",
+      [preflightScript, "apply-cleanup-policy"],
+      {
+        cwd: rootDir,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${tempDir}:${process.env.PATH ?? ""}`,
+          GCP_REGION: "us-central1",
+          IMAGE_REGISTRY:
+            "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images",
+        },
+      },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    const calls = readFileSync(logPath, "utf8");
+    assert.match(
+      calls,
+      /artifacts repositories set-cleanup-policies atlas-images/,
+    );
+    assert.match(result.stdout, /Applied Artifact Registry cleanup policy/);
   });
 });
