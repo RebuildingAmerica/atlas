@@ -30,6 +30,8 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - name: Validate Turbo task selectors
         run: pnpm run turbo:validate
+      - name: Test deploy scripts
+        run: pnpm run deploy:test
       - name: Typecheck and lint
         run: pnpm exec turbo run typecheck lint
 

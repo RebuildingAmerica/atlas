@@ -15,6 +15,51 @@ from atlas.models import DiscoveryRunCRUD, get_db_connection, init_db
 
 EXPECTED_TWO_ITEMS = 2
 EXPECTED_DEFAULT_MAX_RETRIES = 2
+POSTGRES_BOOLEAN_SQL_ERROR = "Postgres boolean filters must not compare enabled to integer 1"
+
+
+class _PostgresScheduleCursor:
+    description = (
+        ("id",),
+        ("location_query",),
+        ("state",),
+        ("issue_areas",),
+        ("search_depth",),
+        ("enabled",),
+        ("last_run_id",),
+        ("last_run_at",),
+        ("created_at",),
+        ("updated_at",),
+    )
+
+    async def fetchall(self) -> list[tuple[object, ...]]:
+        return [
+            (
+                "sched_1",
+                "Austin, TX",
+                "TX",
+                '["housing_affordability"]',
+                "standard",
+                True,
+                None,
+                None,
+                "2026-07-11T00:00:00+00:00",
+                "2026-07-11T00:00:00+00:00",
+            )
+        ]
+
+
+class _PostgresScheduleConnection:
+    backend = "postgres"
+
+    def __init__(self) -> None:
+        self.queries: list[str] = []
+
+    async def execute(self, sql: str, _params: list[object]) -> _PostgresScheduleCursor:
+        self.queries.append(sql)
+        if "enabled = 1" in sql:
+            raise AssertionError(POSTGRES_BOOLEAN_SQL_ERROR)
+        return _PostgresScheduleCursor()
 
 
 @pytest_asyncio.fixture
@@ -90,6 +135,16 @@ class TestDiscoveryScheduleCRUD:
         enabled = await DiscoveryScheduleCRUD.list(db, enabled_only=True)
         assert len(enabled) == 1
         assert enabled[0].location_query == "Denver, CO"
+
+    @pytest.mark.asyncio
+    async def test_list_enabled_only_uses_postgres_boolean_literal(self) -> None:
+        db = _PostgresScheduleConnection()
+
+        enabled = await DiscoveryScheduleCRUD.list(db, enabled_only=True)
+
+        assert len(enabled) == 1
+        assert enabled[0].enabled is True
+        assert "enabled = TRUE" in db.queries[0]
 
     @pytest.mark.asyncio
     async def test_update_fields(self, db: object) -> None:

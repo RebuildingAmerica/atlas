@@ -4,6 +4,9 @@ import { spawnSync } from "node:child_process";
 
 const [, , command] = process.argv;
 
+const SCHEDULER_ACTOR_ID = "atlas-scheduler";
+const SCHEDULER_ACTOR_EMAIL = "scheduler@atlas.rebuildingus.org";
+
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -86,6 +89,15 @@ function schedulerHeaderFlag(operation) {
   return operation === "update" ? "--update-headers" : "--headers";
 }
 
+function schedulerHeaders() {
+  return [
+    "Content-Type=application/json",
+    `X-Atlas-Internal-Secret=${requiredEnv("ATLAS_AUTH_INTERNAL_SECRET")}`,
+    `X-Atlas-Actor-Id=${SCHEDULER_ACTOR_ID}`,
+    `X-Atlas-Actor-Email=${SCHEDULER_ACTOR_EMAIL}`,
+  ].join(",");
+}
+
 function ensureSchedulerJob() {
   const jobName = requiredEnv("JOB_NAME");
   const region = requiredEnv("GCP_REGION");
@@ -105,9 +117,7 @@ function ensureSchedulerJob() {
       "--http-method",
       "POST",
       schedulerHeaderFlag(operation),
-      `Content-Type=application/json,X-Atlas-Internal-Secret=${requiredEnv(
-        "ATLAS_AUTH_INTERNAL_SECRET",
-      )}`,
+      schedulerHeaders(),
       "--schedule",
       "0 2 * * *",
       "--time-zone",

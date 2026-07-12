@@ -87,7 +87,7 @@ class DiscoveryScheduleCRUD:
         query = "SELECT * FROM discovery_schedules"
         params: list[Any] = []
         if enabled_only:
-            query += " WHERE enabled = 1"
+            query += " WHERE enabled = TRUE"
         query += " ORDER BY created_at ASC LIMIT ?"
         params.append(limit)
         cursor = await conn.execute(query, params)

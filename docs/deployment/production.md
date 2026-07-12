@@ -527,6 +527,10 @@ enabled:
 Add `ATLAS_HOSTED_EXPECT_EDGE=true` to require Cloudflare response headers in
 the hosted smoke suite.
 
+If production is healthy but the public catalog is empty, use the
+[Production Catalog Recovery Runbook](../runbooks/production-catalog-recovery.md)
+before publishing or scheduling new data.
+
 ## Verification checklist
 
 After every deployment, check these in order:
