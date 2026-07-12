@@ -139,6 +139,27 @@ pnpm turbo link
 
 Once linked, cached results are shared across all team members and CI runs.
 
+### GitHub Actions Cost Control
+
+GitHub Actions starts CI with `scripts/ci/changed-surfaces.mjs`. That script
+classifies the changed files once, then the workflow uses those outputs to skip
+work that cannot affect the change:
+
+- docs-only changes run docs validation and the secret scan
+- Compose-only changes run Compose validation and the secret scan
+- app changes run app quality, app tests, acceptance, and hosted smoke
+- API or shared Python changes run Python quality, Python tests, contract,
+  OpenAPI drift, acceptance, API deploy, and hosted smoke
+- production release tags always run the full gate
+
+Keep this classifier aligned with `turbo.json`, package `turbo.json` files, and
+the deploy workflows. If a new package can affect the hosted app or API, add it
+to the classifier before relying on CI to skip work.
+
+PR quality checks use Turbo `--affected` when the classifier proves the run is
+not a full-gate run. Staging and production still rely on explicit surface gates
+so hosted deploy behavior stays predictable.
+
 ## Running Tasks
 
 ### Via Make (Recommended)
