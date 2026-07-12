@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import aiosqlite
 import pytest
 
 from atlas.models import database_migrations as migrations
@@ -118,6 +119,26 @@ async def test_remove_legacy_storage_skips_absent_columns_and_archive() -> None:
         has_legacy_identities=False,
     )
     assert conn.statements == []
+
+
+@pytest.mark.asyncio
+async def test_migration_builds_graph_from_entry_columns_without_legacy_identity_table() -> None:
+    async with aiosqlite.connect(":memory:") as conn:
+        await conn.execute(
+            """
+            CREATE TABLE entries (
+                id TEXT PRIMARY KEY,
+                linked_atproto_did TEXT,
+                linked_atproto_handle TEXT,
+                linked_atproto_verified_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        await migrations.migrate_atproto_identity_graph(conn, backend="sqlite")
+        columns = await migrations._table_columns(conn, "atproto_identities", backend="sqlite")
+        assert "resolution_status" in columns
 
 
 @pytest.mark.asyncio
