@@ -195,8 +195,8 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
         freshness=_entity_freshness(entry=entry, latest_source_date=context.latest_source_date),
         flag_summary=FlagSummary.model_validate(context.flag_summary or {}),
         slug=entry.slug,
-        created_at=entry.created_at,
-        updated_at=entry.updated_at,
+        created_at=_string_or_none(entry.created_at),
+        updated_at=_string_or_none(entry.updated_at),
         resource_uri=f"atlas://entities/{entry.id}",
         profile_url=_profile_url(entry, context.public_url),
     ).model_dump(mode="json")
@@ -320,8 +320,8 @@ def _entity_freshness(
     )
     status, reason = _staleness(reference, "entity data")
     return FreshnessInfo(
-        updated_at=entry.updated_at,
-        created_at=entry.created_at,
+        updated_at=_string_or_none(entry.updated_at),
+        created_at=_string_or_none(entry.created_at),
         last_seen=entry.last_seen.isoformat(),
         last_verified=entry.last_verified.isoformat() if entry.last_verified else None,
         latest_source_date=latest_source_date_value,
