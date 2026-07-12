@@ -40,7 +40,7 @@ publishing.
 - Test: `api/tests/platform/test_database_atproto_schema.py`
 - Test: `api/tests/platform/test_database_schema_migrations.py`
 
-- [ ] **Step 1: Write failing fresh-schema and legacy-migration tests**
+- [x] **Step 1: Write failing fresh-schema and legacy-migration tests**
 
 Cover fresh SQLite/PostgreSQL DDL, one legacy owner, duplicate cross-user DID
 conflict, multiple entry links, an unresolved entry link, idempotent second
@@ -63,7 +63,7 @@ assert columns("profile_atproto_links") >= {
 }
 ```
 
-- [ ] **Step 2: Run the migration tests and confirm they fail on the user-owned
+- [x] **Step 2: Run the migration tests and confirm they fail on the user-owned
       schema**
 
 Run:
@@ -78,7 +78,7 @@ uv run --extra dev pytest --no-cov \
 Expected: failures show `user_id` still lives on `atproto_identities`,
 control/profile-link tables are missing, and entry-level ATProto columns remain.
 
-- [ ] **Step 3: Define the final schema in both dialect fragments**
+- [x] **Step 3: Define the final schema in both dialect fragments**
 
 Use the same state vocabulary in SQLite and PostgreSQL:
 
@@ -92,7 +92,7 @@ Create `UNIQUE(did)`, `UNIQUE(user_id, identity_id)`, one partial unique
 active-controller index per identity, and one partial unique non-removed profile
 link per entry. Remove `entries.linked_atproto_*` from fresh schemas.
 
-- [ ] **Step 4: Implement one transactional, resumable migration for both
+- [x] **Step 4: Implement one transactional, resumable migration for both
       databases**
 
 Add `migrate_atproto_identity_graph(conn, backend=...)` and call it before
@@ -111,14 +111,14 @@ profile links from entry fields, and mark unresolvable legacy pairs
 `reverification_required`. Drop the legacy table and entry columns only after
 row-count assertions pass. On any mismatch, raise and roll back.
 
-- [ ] **Step 5: Remove the unused parallel schema helper and make initialization
+- [x] **Step 5: Remove the unused parallel schema helper and make initialization
       the only owner**
 
 Delete `atproto_schema.py`, move its real initialization coverage into platform
 migration tests, and remove imports/tests that exercise a non-runtime schema
 path.
 
-- [ ] **Step 6: Run schema tests and commit**
+- [x] **Step 6: Run schema tests and commit**
 
 ```bash
 cd api
