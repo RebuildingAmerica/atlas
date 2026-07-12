@@ -249,6 +249,7 @@ accidentally inherit production URLs or databases:
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
+- `ATLAS_OPERATOR_ALLOWED_EMAILS`
 - `VERCEL_TOKEN` for the Vercel CLI production app deploy
 - `OPENSTATUS_API_KEY` when synthetics should run
 

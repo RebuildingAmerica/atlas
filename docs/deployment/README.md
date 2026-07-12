@@ -27,3 +27,6 @@ afterward.
 - [Anonymous API Rate Limits](../runbooks/rate-limits.md) — Cloudflare edge
   setup, hosted smoke checks, and incident response for unauthenticated API
   abuse
+- [Vercel Incident Response](../runbooks/vercel-incident-response.md) —
+  Deployment protection, Trusted Sources checks, and recovery steps for hosted
+  app incidents
