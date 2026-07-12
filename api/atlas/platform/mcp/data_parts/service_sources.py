@@ -91,7 +91,7 @@ class SourceDataServiceMixin:
                 LEFT JOIN entry_issue_areas eia ON e.id = eia.entry_id
                 WHERE {where_clause}
                 GROUP BY s.id
-                ORDER BY COALESCE(s.published_date, substr(s.ingested_at, 1, 10)) DESC, s.ingested_at DESC
+                ORDER BY COALESCE(s.published_date, DATE(s.ingested_at)) DESC, s.ingested_at DESC
                 LIMIT ? OFFSET ?
                 """,
                 [*params, limit, offset],

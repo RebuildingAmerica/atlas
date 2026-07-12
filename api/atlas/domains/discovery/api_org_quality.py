@@ -153,7 +153,7 @@ async def _load_quality_records(
             e.city,
             e.state,
             COUNT(DISTINCT s.id) AS source_count,
-            MAX(COALESCE(s.published_date, substr(CAST(s.ingested_at AS TEXT), 1, 10))) AS latest_source_date
+            MAX(COALESCE(s.published_date, DATE(s.ingested_at))) AS latest_source_date
         FROM entries e
         JOIN resource_ownership ro
             ON ro.resource_id = e.id

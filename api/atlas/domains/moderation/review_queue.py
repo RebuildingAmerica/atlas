@@ -181,7 +181,7 @@ class ReviewQueueCRUD:
             SELECT
                 ro.org_id,
                 e.id,
-                MAX(COALESCE(s.published_date, SUBSTR(s.ingested_at, 1, 10), SUBSTR(s.created_at, 1, 10))),
+                MAX(COALESCE(s.published_date, DATE(s.ingested_at), DATE(s.created_at))),
                 COUNT(DISTINCT s.id)
             FROM resource_ownership ro
             JOIN entries e ON e.id = ro.resource_id

@@ -76,7 +76,7 @@ class EntrySearchMixin:
             FROM entry_sources es
             JOIN sources s ON s.id = es.source_id
             WHERE es.entry_id IN ({placeholders})
-            ORDER BY COALESCE(s.published_date, substr(s.ingested_at, 1, 10)) DESC, s.ingested_at DESC
+            ORDER BY COALESCE(s.published_date, DATE(s.ingested_at)) DESC, s.ingested_at DESC
             """,
             entry_ids,
         )
