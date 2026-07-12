@@ -96,11 +96,18 @@ class _LegacyEntryAtprotoLink:
 class _IdentityMigrationRows:
     identities: dict[str, _GlobalAtprotoIdentity]
     controls: list[tuple[Any, ...]]
+    identity_id_map: dict[str, str]
 
 
 @dataclass(frozen=True, slots=True)
 class _ProfileLinkMigrationRows:
     identities: dict[str, _GlobalAtprotoIdentity]
+    links: list[tuple[Any, ...]]
+
+
+@dataclass(frozen=True, slots=True)
+class _ExistingAtprotoGraphRows:
+    controls: list[tuple[Any, ...]]
     links: list[tuple[Any, ...]]
 
 
@@ -227,6 +234,30 @@ _ATPROTO_GRAPH_INDEX_DDL = (
     "ON profile_atproto_links(entry_id) WHERE status <> 'removed'",
 )
 
+_ATPROTO_CONTROL_COLUMNS = (
+    "id",
+    "identity_id",
+    "user_id",
+    "status",
+    "verified_at",
+    "disconnected_at",
+    "created_at",
+    "updated_at",
+)
+_ATPROTO_PROFILE_LINK_COLUMNS = (
+    "id",
+    "entry_id",
+    "identity_id",
+    "claim_id",
+    "proof_id",
+    "status",
+    "verified_at",
+    "last_checked_at",
+    "removed_at",
+    "created_at",
+    "updated_at",
+)
+
 
 async def migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
     """Replace legacy user-owned identities and entry columns atomically.
@@ -247,19 +278,31 @@ async def migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
         msg = f"Unsupported database backend: {backend}"
         raise ValueError(msg)
 
+    owns_sqlite_transaction = backend == "sqlite" and not bool(
+        getattr(conn, "in_transaction", False)
+    )
+    if owns_sqlite_transaction:
+        await conn.execute("BEGIN IMMEDIATE")
+
     await conn.execute(f"SAVEPOINT {_ATPROTO_MIGRATION_SAVEPOINT}")
     try:
         await _migrate_atproto_identity_graph(conn, backend=backend)
     except Exception:
         await conn.execute(f"ROLLBACK TO SAVEPOINT {_ATPROTO_MIGRATION_SAVEPOINT}")
         await conn.execute(f"RELEASE SAVEPOINT {_ATPROTO_MIGRATION_SAVEPOINT}")
+        if owns_sqlite_transaction:
+            await conn.rollback()
         raise
     await conn.execute(f"RELEASE SAVEPOINT {_ATPROTO_MIGRATION_SAVEPOINT}")
+    if owns_sqlite_transaction:
+        await conn.commit()
 
 
 async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
     identity_columns = await _table_columns(conn, "atproto_identities", backend=backend)
     entry_columns = await _table_columns(conn, "entries", backend=backend)
+    control_columns = await _table_columns(conn, "user_atproto_controls", backend=backend)
+    profile_link_columns = await _table_columns(conn, "profile_atproto_links", backend=backend)
     legacy_entry_columns = set(_LEGACY_ENTRY_ATPROTO_COLUMNS) & entry_columns
     has_legacy_identities = "user_id" in identity_columns
     has_global_identities = "resolution_status" in identity_columns
@@ -270,6 +313,29 @@ async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
     if not has_legacy_identities and not legacy_entry_columns:
         return
 
+    await _lock_atproto_migration_sources(
+        conn,
+        backend=backend,
+        tables=tuple(
+            table
+            for table, columns in (
+                ("entries", entry_columns),
+                ("atproto_identities", identity_columns),
+                ("profile_atproto_links", profile_link_columns),
+                ("user_atproto_controls", control_columns),
+            )
+            if columns
+        ),
+    )
+    existing_graph_rows = (
+        await _load_existing_atproto_graph_rows(
+            conn,
+            control_columns=control_columns,
+            profile_link_columns=profile_link_columns,
+        )
+        if has_legacy_identities
+        else _ExistingAtprotoGraphRows([], [])
+    )
     legacy_links = await _load_legacy_entry_links(
         conn,
         entry_columns=entry_columns,
@@ -277,31 +343,44 @@ async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
     legacy_identities = await _load_legacy_identities(conn) if has_legacy_identities else []
     proof_links = await _load_matching_atproto_proofs(conn, backend=backend)
 
-    await _archive_legacy_atproto_identities(
-        conn,
-        backend=backend,
-        required=has_legacy_identities,
-    )
+    if has_legacy_identities:
+        await _drop_existing_atproto_graph_children(
+            conn,
+            has_controls=bool(control_columns),
+            has_profile_links=bool(profile_link_columns),
+        )
+        await _archive_legacy_atproto_identities(conn, backend=backend)
     await _create_atproto_identity_graph(conn, backend=backend)
     identity_count_before = await _table_count(conn, "atproto_identities")
     control_count_before = await _table_count(conn, "user_atproto_controls")
     link_count_before = await _table_count(conn, "profile_atproto_links")
     identity_rows = await _migrate_legacy_identity_rows(conn, legacy_identities)
+    restored_graph_rows = await _restore_existing_atproto_graph_rows(
+        conn,
+        rows=existing_graph_rows,
+        identity_id_map=identity_rows.identity_id_map,
+    )
+    migrated_controls = await _insert_missing_legacy_control_rows(
+        conn,
+        identity_rows.controls,
+    )
     profile_rows = await _migrate_legacy_profile_link_rows(
         conn,
         legacy_links=legacy_links,
         proof_links=proof_links,
     )
     expected_identities = identity_rows.identities | profile_rows.identities
+    expected_controls = restored_graph_rows.controls + migrated_controls
+    expected_links = restored_graph_rows.links + profile_rows.links
     await _assert_atproto_migration(
         conn,
         _AtprotoMigrationExpectations(
             identity_count=identity_count_before + len(expected_identities),
-            control_count=control_count_before + len(identity_rows.controls),
-            link_count=link_count_before + len(profile_rows.links),
+            control_count=control_count_before + len(expected_controls),
+            link_count=link_count_before + len(expected_links),
             identities=expected_identities,
-            controls=identity_rows.controls,
-            links=profile_rows.links,
+            controls=expected_controls,
+            links=expected_links,
         ),
     )
     await _remove_legacy_atproto_storage(
@@ -316,10 +395,7 @@ async def _archive_legacy_atproto_identities(
     conn: Any,
     *,
     backend: str,
-    required: bool,
 ) -> None:
-    if not required:
-        return
     archived_columns = await _table_columns(
         conn,
         "atproto_identities_legacy",
@@ -333,6 +409,91 @@ async def _archive_legacy_atproto_identities(
     await conn.execute("ALTER TABLE atproto_identities RENAME TO atproto_identities_legacy")
 
 
+async def _load_existing_atproto_graph_rows(
+    conn: Any,
+    *,
+    control_columns: set[str],
+    profile_link_columns: set[str],
+) -> _ExistingAtprotoGraphRows:
+    controls: list[tuple[Any, ...]] = []
+    links: list[tuple[Any, ...]] = []
+    if control_columns:
+        if control_columns != set(_ATPROTO_CONTROL_COLUMNS):
+            msg = "Unrecognized user_atproto_controls schema; migration stopped before changes"
+            raise RuntimeError(msg)
+        cursor = await conn.execute(
+            f"SELECT {', '.join(_ATPROTO_CONTROL_COLUMNS)} FROM user_atproto_controls ORDER BY id"
+        )
+        controls = await cursor.fetchall()
+    if profile_link_columns:
+        if profile_link_columns != set(_ATPROTO_PROFILE_LINK_COLUMNS):
+            msg = "Unrecognized profile_atproto_links schema; migration stopped before changes"
+            raise RuntimeError(msg)
+        cursor = await conn.execute(
+            f"SELECT {', '.join(_ATPROTO_PROFILE_LINK_COLUMNS)} "
+            "FROM profile_atproto_links ORDER BY id"
+        )
+        links = await cursor.fetchall()
+    return _ExistingAtprotoGraphRows(controls, links)
+
+
+async def _drop_existing_atproto_graph_children(
+    conn: Any,
+    *,
+    has_controls: bool,
+    has_profile_links: bool,
+) -> None:
+    if has_profile_links:
+        await conn.execute("DROP TABLE profile_atproto_links")
+    if has_controls:
+        await conn.execute("DROP TABLE user_atproto_controls")
+
+
+async def _restore_existing_atproto_graph_rows(
+    conn: Any,
+    *,
+    rows: _ExistingAtprotoGraphRows,
+    identity_id_map: dict[str, str],
+) -> _ExistingAtprotoGraphRows:
+    restored_controls = [
+        _remap_existing_identity_id(row, identity_id_map=identity_id_map, identity_index=1)
+        for row in rows.controls
+    ]
+    restored_links = [
+        _remap_existing_identity_id(row, identity_id_map=identity_id_map, identity_index=2)
+        for row in rows.links
+    ]
+    for control in restored_controls:
+        await conn.execute(
+            f"INSERT INTO user_atproto_controls ({', '.join(_ATPROTO_CONTROL_COLUMNS)}) "
+            f"VALUES ({', '.join('?' for _ in _ATPROTO_CONTROL_COLUMNS)})",
+            control,
+        )
+    for link in restored_links:
+        await conn.execute(
+            f"INSERT INTO profile_atproto_links ({', '.join(_ATPROTO_PROFILE_LINK_COLUMNS)}) "
+            f"VALUES ({', '.join('?' for _ in _ATPROTO_PROFILE_LINK_COLUMNS)})",
+            link,
+        )
+    return _ExistingAtprotoGraphRows(restored_controls, restored_links)
+
+
+def _remap_existing_identity_id(
+    row: tuple[Any, ...],
+    *,
+    identity_id_map: dict[str, str],
+    identity_index: int,
+) -> tuple[Any, ...]:
+    source_identity_id = row[identity_index]
+    identity_id = identity_id_map.get(source_identity_id)
+    if identity_id is None:
+        msg = f"Existing ATProto graph row references unknown identity {source_identity_id}"
+        raise RuntimeError(msg)
+    values = list(row)
+    values[identity_index] = identity_id
+    return tuple(values)
+
+
 async def _migrate_legacy_identity_rows(
     conn: Any,
     legacy_identities: list[_LegacyAtprotoIdentity],
@@ -343,6 +504,7 @@ async def _migrate_legacy_identity_rows(
 
     expected_identities: dict[str, _GlobalAtprotoIdentity] = {}
     expected_controls: list[tuple[Any, ...]] = []
+    identity_id_map: dict[str, str] = {}
     for did, identities in grouped_identities.items():
         canonical = identities[0]
         global_identity = _GlobalAtprotoIdentity(
@@ -359,13 +521,13 @@ async def _migrate_legacy_identity_rows(
         )
         await _insert_global_identity(conn, global_identity)
         expected_identities[did] = global_identity
-        controls = await _migrate_legacy_control_rows(conn, global_identity, identities)
+        identity_id_map.update({identity.id: global_identity.id for identity in identities})
+        controls = _legacy_control_rows(global_identity, identities)
         expected_controls.extend(controls)
-    return _IdentityMigrationRows(expected_identities, expected_controls)
+    return _IdentityMigrationRows(expected_identities, expected_controls, identity_id_map)
 
 
-async def _migrate_legacy_control_rows(
-    conn: Any,
+def _legacy_control_rows(
     global_identity: _GlobalAtprotoIdentity,
     legacy_identities: list[_LegacyAtprotoIdentity],
 ) -> list[tuple[Any, ...]]:
@@ -385,18 +547,37 @@ async def _migrate_legacy_control_rows(
             source_identity.created_at,
             source_identity.updated_at,
         )
+        controls.append(control)
+    return controls
+
+
+async def _insert_missing_legacy_control_rows(
+    conn: Any,
+    controls: list[tuple[Any, ...]],
+) -> list[tuple[Any, ...]]:
+    inserted: list[tuple[Any, ...]] = []
+    for control in controls:
+        cursor = await conn.execute(
+            """
+            SELECT id
+            FROM user_atproto_controls
+            WHERE identity_id = ? AND user_id = ?
+            """,
+            (control[1], control[2]),
+        )
+        if await cursor.fetchone() is not None:
+            continue
         await conn.execute(
             """
             INSERT INTO user_atproto_controls (
                 id, identity_id, user_id, status, verified_at,
                 disconnected_at, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO NOTHING
             """,
             control,
         )
-        controls.append(control)
-    return controls
+        inserted.append(control)
+    return inserted
 
 
 async def _migrate_legacy_profile_link_rows(
@@ -415,13 +596,26 @@ async def _migrate_legacy_profile_link_rows(
             stored_identities[identity.did] = identity
             expected_identities[identity.did] = identity
         link = _profile_link_row(identity, legacy_link, proof_links)
+        cursor = await conn.execute(
+            """
+            SELECT identity_id
+            FROM profile_atproto_links
+            WHERE entry_id = ? AND status <> 'removed'
+            """,
+            (link[1],),
+        )
+        existing_link = await cursor.fetchone()
+        if existing_link is not None and existing_link[0] == link[2]:
+            continue
+        if existing_link is not None:
+            msg = f"Existing ATProto profile link conflicts with legacy entry {link[1]}"
+            raise RuntimeError(msg)
         await conn.execute(
             """
             INSERT INTO profile_atproto_links (
                 id, entry_id, identity_id, claim_id, proof_id, status,
                 verified_at, last_checked_at, removed_at, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO NOTHING
             """,
             link,
         )
@@ -603,9 +797,10 @@ async def _load_matching_atproto_proofs(
         SELECT claims.entry_id, claims.id, proofs.id, proofs.proof_metadata_json
         FROM profile_claims AS claims
         JOIN profile_claim_proofs AS proofs ON proofs.claim_id = claims.id
-        WHERE proofs.proof_type = 'atproto'
+        WHERE claims.status = 'verified'
+          AND proofs.proof_type = 'atproto'
+          AND proofs.proof_status = 'verified'
         ORDER BY claims.entry_id,
-                 CASE WHEN proofs.proof_status = 'verified' THEN 0 ELSE 1 END,
                  COALESCE(proofs.reviewed_at, proofs.created_at) DESC,
                  proofs.id DESC
         """
@@ -634,6 +829,17 @@ async def _load_matching_atproto_proofs(
             (claim_id, proof_id),
         )
     return matches
+
+
+async def _lock_atproto_migration_sources(
+    conn: Any,
+    *,
+    backend: str,
+    tables: tuple[str, ...],
+) -> None:
+    if backend != "postgres":
+        return
+    await conn.execute(f"LOCK TABLE {', '.join(tables)} IN ACCESS EXCLUSIVE MODE")
 
 
 async def _create_atproto_identity_graph(conn: Any, *, backend: str) -> None:

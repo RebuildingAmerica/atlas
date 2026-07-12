@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -15,6 +16,11 @@ from atlas.models.database import (
     _ensure_entry_columns,
     _ensure_org_annotation_columns,
     init_db,
+)
+from atlas.models.database_migrations import (
+    _ATPROTO_GRAPH_SQLITE_DDL,
+    _migration_id,
+    migrate_atproto_identity_graph,
 )
 
 if TYPE_CHECKING:
@@ -92,11 +98,154 @@ async def _insert_legacy_entry(
     )
 
 
+async def _insert_legacy_identity_link(
+    conn: aiosqlite.Connection,
+    *,
+    key: str,
+    did: str,
+    handle: str,
+    pds_url: str | None = None,
+) -> tuple[str, str, str]:
+    identity_id = f"identity-{key}"
+    user_id = f"user-{key}"
+    entry_id = f"entry-{key}"
+    await conn.execute(
+        """
+        INSERT INTO atproto_identities (
+            id, user_id, did, current_handle, pds_url, did_resolved_at,
+            handle_verified_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (identity_id, user_id, did, handle, pds_url, TIMESTAMP, TIMESTAMP, TIMESTAMP, TIMESTAMP),
+    )
+    await _insert_legacy_entry(
+        conn,
+        entry_id,
+        did=did,
+        handle=handle,
+        verified_at=TIMESTAMP,
+    )
+    return identity_id, user_id, entry_id
+
+
 async def _legacy_database(database_path: Path) -> aiosqlite.Connection:
     await init_db(f"sqlite:///{database_path}")
     conn = await aiosqlite.connect(database_path)
     await _reset_to_legacy_atproto_schema(conn)
     return conn
+
+
+async def _create_partial_atproto_graph(
+    conn: aiosqlite.Connection,
+    *,
+    identity_id: str,
+    user_id: str,
+    entry_id: str,
+) -> tuple[str, str]:
+    for statement in _ATPROTO_GRAPH_SQLITE_DDL[1:]:
+        await conn.execute(statement)
+    control_id = _migration_id("control", identity_id, user_id)
+    link_id = _migration_id("profile-link", entry_id, identity_id)
+    await conn.execute(
+        """
+        INSERT INTO user_atproto_controls (
+            id, identity_id, user_id, status, verified_at, created_at, updated_at
+        ) VALUES (?, ?, ?, 'active', ?, ?, ?)
+        """,
+        (control_id, identity_id, user_id, TIMESTAMP, TIMESTAMP, TIMESTAMP),
+    )
+    await conn.execute(
+        """
+        INSERT INTO profile_atproto_links (
+            id, entry_id, identity_id, status, verified_at,
+            last_checked_at, created_at, updated_at
+        ) VALUES (?, ?, ?, 'verified', ?, ?, ?, ?)
+        """,
+        (link_id, entry_id, identity_id, TIMESTAMP, TIMESTAMP, TIMESTAMP, TIMESTAMP),
+    )
+    return control_id, link_id
+
+
+async def _insert_atproto_claim_proof(
+    conn: aiosqlite.Connection,
+    *,
+    suffix: str,
+    entry_id: str,
+    statuses: tuple[str, str],
+    reviewed_at: str,
+) -> tuple[str, str]:
+    claim_status, proof_status = statuses
+    claim_id = f"claim-{suffix}"
+    proof_id = f"proof-{suffix}"
+    await conn.execute(
+        """
+        INSERT INTO profile_claims (
+            id, entry_id, user_id, user_email, status, tier,
+            verified_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)
+        """,
+        (
+            claim_id,
+            entry_id,
+            f"user-{suffix}",
+            f"{suffix}@example.com",
+            claim_status,
+            reviewed_at if claim_status == "verified" else None,
+            reviewed_at,
+            reviewed_at,
+        ),
+    )
+    await conn.execute(
+        """
+        INSERT INTO profile_claim_proofs (
+            id, claim_id, proof_type, proof_status, proof_summary,
+            proof_metadata_json, created_at, reviewed_at
+        ) VALUES (?, ?, 'atproto', ?, ?, ?, ?, ?)
+        """,
+        (
+            proof_id,
+            claim_id,
+            proof_status,
+            "ATProto evidence.",
+            json.dumps({"did": "did:plc:proof", "handle": "proof.example"}),
+            reviewed_at,
+            reviewed_at,
+        ),
+    )
+    return claim_id, proof_id
+
+
+class _PausingSqliteConnection:
+    def __init__(
+        self,
+        inner: aiosqlite.Connection,
+        *,
+        source_read_reached: asyncio.Event,
+        resume_source_read: asyncio.Event,
+    ) -> None:
+        self._inner = inner
+        self._source_read_reached = source_read_reached
+        self._resume_source_read = resume_source_read
+
+    @property
+    def in_transaction(self) -> bool:
+        return self._inner.in_transaction
+
+    async def execute(
+        self,
+        statement: str,
+        parameters: tuple[object, ...] = (),
+    ) -> object:
+        if "FROM entries ORDER BY updated_at DESC, id DESC" in " ".join(statement.split()):
+            self._source_read_reached.set()
+            await self._resume_source_read.wait()
+        return await self._inner.execute(statement, parameters)
+
+    async def commit(self) -> None:
+        await self._inner.commit()
+
+    async def rollback(self) -> None:
+        await self._inner.rollback()
 
 
 class TestEnsureEntryColumns:
@@ -457,6 +606,63 @@ class TestMigrateAtprotoIdentityGraph:
     """Behavioral coverage for the legacy user-owned identity migration."""
 
     @pytest.mark.asyncio
+    async def test_sqlite_migration_blocks_writes_before_reading_source_rows(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """SQLite should reserve its write transaction before snapshotting legacy rows."""
+        database_path = tmp_path / "sqlite-lock.db"
+        setup_conn = await _legacy_database(database_path)
+        try:
+            await _insert_legacy_identity_link(
+                setup_conn,
+                key="lock",
+                did="did:plc:lock",
+                handle="lock.example",
+            )
+            await setup_conn.commit()
+        finally:
+            await setup_conn.close()
+
+        migration_inner = await aiosqlite.connect(database_path, timeout=0.1)
+        observer_conn = await aiosqlite.connect(database_path, timeout=0.1)
+        source_read_reached = asyncio.Event()
+        resume_source_read = asyncio.Event()
+        migration_conn = _PausingSqliteConnection(
+            migration_inner,
+            source_read_reached=source_read_reached,
+            resume_source_read=resume_source_read,
+        )
+        migration_task = asyncio.create_task(
+            migrate_atproto_identity_graph(migration_conn, backend="sqlite")
+        )
+        write_error: Exception | None = None
+        migration_error: Exception | None = None
+        try:
+            await asyncio.wait_for(source_read_reached.wait(), timeout=5)
+            try:
+                await observer_conn.execute(
+                    "UPDATE entries SET updated_at = updated_at WHERE id = 'entry-lock'"
+                )
+                await asyncio.wait_for(observer_conn.commit(), timeout=1)
+            except Exception as exc:  # noqa: BLE001 - assertion records the database error
+                write_error = exc
+        finally:
+            await observer_conn.rollback()
+            resume_source_read.set()
+            try:
+                await asyncio.wait_for(migration_task, timeout=5)
+            except Exception as exc:  # noqa: BLE001 - re-raised after guaranteed cleanup
+                migration_error = exc
+            finally:
+                await observer_conn.close()
+                await migration_inner.close()
+        if migration_error is not None:
+            raise migration_error
+        assert isinstance(write_error, aiosqlite.OperationalError)
+        assert "database is locked" in str(write_error)
+
+    @pytest.mark.asyncio
     async def test_preserves_single_owner_and_multiple_profile_links(
         self,
         tmp_path: Path,
@@ -764,6 +970,199 @@ class TestMigrateAtprotoIdentityGraph:
                 "reverification_required",
                 "2026-07-08T12:00:00+00:00",
             )
+        finally:
+            await conn.close()
+
+    @pytest.mark.asyncio
+    async def test_partial_graph_rows_survive_with_final_foreign_keys(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """A partial deployment should preserve child rows and repair their parent FKs."""
+        database_path = tmp_path / "partial-graph.db"
+        conn = await _legacy_database(database_path)
+        try:
+            await conn.execute("PRAGMA foreign_keys = ON")
+            identity_id, user_id, entry_id = await _insert_legacy_identity_link(
+                conn,
+                key="partial-graph",
+                did="did:plc:partial-graph",
+                handle="partial.example",
+                pds_url="https://pds.example",
+            )
+            control_id, link_id = await _create_partial_atproto_graph(
+                conn,
+                identity_id=identity_id,
+                user_id=user_id,
+                entry_id=entry_id,
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        db_url = f"sqlite:///{database_path}"
+        await init_db(db_url)
+
+        conn = await aiosqlite.connect(database_path)
+        try:
+            await conn.execute("PRAGMA foreign_keys = ON")
+            control_cursor = await conn.execute(
+                """
+                SELECT id, identity_id, user_id, status
+                FROM user_atproto_controls
+                """
+            )
+            assert await control_cursor.fetchall() == [(control_id, identity_id, user_id, "active")]
+            link_cursor = await conn.execute(
+                """
+                SELECT id, entry_id, identity_id, status
+                FROM profile_atproto_links
+                """
+            )
+            assert await link_cursor.fetchall() == [
+                (
+                    link_id,
+                    entry_id,
+                    identity_id,
+                    "verified",
+                )
+            ]
+
+            control_fk_cursor = await conn.execute("PRAGMA foreign_key_list(user_atproto_controls)")
+            control_fk_targets = {str(row[2]) for row in await control_fk_cursor.fetchall()}
+            assert control_fk_targets == {"atproto_identities"}
+            link_fk_cursor = await conn.execute("PRAGMA foreign_key_list(profile_atproto_links)")
+            link_fk_targets = {str(row[2]) for row in await link_fk_cursor.fetchall()}
+            assert "atproto_identities" in link_fk_targets
+            assert "atproto_identities_legacy" not in link_fk_targets
+            fk_check_cursor = await conn.execute("PRAGMA foreign_key_check")
+            assert await fk_check_cursor.fetchall() == []
+            archive_cursor = await conn.execute(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type = 'table' AND name = 'atproto_identities_legacy'
+                """
+            )
+            assert await archive_cursor.fetchone() is None
+        finally:
+            await conn.close()
+
+        await init_db(db_url)
+
+        conn = await aiosqlite.connect(database_path)
+        try:
+            control_cursor = await conn.execute("SELECT id FROM user_atproto_controls")
+            assert await control_cursor.fetchall() == [(control_id,)]
+            link_cursor = await conn.execute("SELECT id FROM profile_atproto_links")
+            assert await link_cursor.fetchall() == [(link_id,)]
+        finally:
+            await conn.close()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("claim_status", "proof_status"),
+        [
+            ("pending", "verified"),
+            ("rejected", "verified"),
+            ("revoked", "verified"),
+            ("verified", "pending"),
+            ("verified", "rejected"),
+            ("verified", "revoked"),
+        ],
+    )
+    async def test_unverified_claim_or_proof_is_not_profile_link_support(
+        self,
+        tmp_path: Path,
+        claim_status: str,
+        proof_status: str,
+    ) -> None:
+        """Unverified evidence should never support a migrated verified profile link."""
+        database_path = tmp_path / "unverified-proof.db"
+        conn = await _legacy_database(database_path)
+        try:
+            await _insert_legacy_identity_link(
+                conn,
+                key="proof",
+                did="did:plc:proof",
+                handle="proof.example",
+            )
+            await _insert_atproto_claim_proof(
+                conn,
+                suffix="unverified",
+                entry_id="entry-proof",
+                statuses=(claim_status, proof_status),
+                reviewed_at=TIMESTAMP,
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        await init_db(f"sqlite:///{database_path}")
+
+        conn = await aiosqlite.connect(database_path)
+        try:
+            link_cursor = await conn.execute(
+                "SELECT status, claim_id, proof_id FROM profile_atproto_links"
+            )
+            assert await link_cursor.fetchone() == ("verified", None, None)
+        finally:
+            await conn.close()
+
+    @pytest.mark.asyncio
+    async def test_newest_verified_claim_and_proof_support_profile_link(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Mixed evidence should select the newest verified claim and verified proof."""
+        database_path = tmp_path / "mixed-proofs.db"
+        conn = await _legacy_database(database_path)
+        try:
+            await _insert_legacy_identity_link(
+                conn,
+                key="proof",
+                did="did:plc:proof",
+                handle="proof.example",
+            )
+            await _insert_atproto_claim_proof(
+                conn,
+                suffix="verified-old",
+                entry_id="entry-proof",
+                statuses=("verified", "verified"),
+                reviewed_at="2026-07-09T12:00:00+00:00",
+            )
+            expected = await _insert_atproto_claim_proof(
+                conn,
+                suffix="verified-new",
+                entry_id="entry-proof",
+                statuses=("verified", "verified"),
+                reviewed_at="2026-07-10T12:00:00+00:00",
+            )
+            await _insert_atproto_claim_proof(
+                conn,
+                suffix="rejected-newest",
+                entry_id="entry-proof",
+                statuses=("rejected", "verified"),
+                reviewed_at="2026-07-12T12:00:00+00:00",
+            )
+            await _insert_atproto_claim_proof(
+                conn,
+                suffix="pending-newest",
+                entry_id="entry-proof",
+                statuses=("verified", "pending"),
+                reviewed_at="2026-07-13T12:00:00+00:00",
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        await init_db(f"sqlite:///{database_path}")
+
+        conn = await aiosqlite.connect(database_path)
+        try:
+            link_cursor = await conn.execute(
+                "SELECT status, claim_id, proof_id FROM profile_atproto_links"
+            )
+            assert await link_cursor.fetchone() == ("verified", *expected)
         finally:
             await conn.close()
 

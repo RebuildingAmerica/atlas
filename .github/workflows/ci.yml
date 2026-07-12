@@ -129,7 +129,22 @@ jobs:
     if: needs.changes.outputs.python_tests == 'true' || needs.changes.outputs.app_tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
+      ATLAS_TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres
       ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
       RUN_PYTHON_TESTS: ${{ needs.changes.outputs.python_tests }}
       RUN_APP_TESTS: ${{ needs.changes.outputs.app_tests }}

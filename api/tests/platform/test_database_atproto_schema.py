@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import aiosqlite
+import psycopg
 import pytest
 
 from atlas.models import database as database_module
 from atlas.models import init_db
-from atlas.models.database import _init_postgres, _load_postgres_schema
+from atlas.models.database import PostgresConnection, _init_postgres, _load_postgres_schema
+from atlas.models.database_migrations import migrate_atproto_identity_graph
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Any
 
 IDENTITY_COLUMNS = {
     "id",
@@ -61,6 +65,155 @@ LEGACY_ENTRY_COLUMNS = {
 async def _columns(conn: aiosqlite.Connection, table: str) -> set[str]:
     cursor = await conn.execute(f"PRAGMA table_info({table})")
     return {str(row[1]) for row in await cursor.fetchall()}
+
+
+async def _postgres_columns(conn: PostgresConnection, table: str) -> set[str]:
+    cursor = await conn.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = ?
+        """,
+        (table,),
+    )
+    return {str(row[0]) for row in await cursor.fetchall()}
+
+
+async def _insert_postgres_identity(
+    conn: PostgresConnection,
+    identity_id: str,
+    did: str,
+) -> None:
+    await conn.execute(
+        """
+        INSERT INTO atproto_identities (
+            id, did, current_handle, resolution_status, created_at, updated_at
+        ) VALUES (?, ?, ?, 'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """,
+        (identity_id, did, f"{identity_id}.example"),
+    )
+
+
+async def _insert_postgres_control(
+    conn: PostgresConnection,
+    control_id: str,
+    identity_id: str,
+    user_id: str,
+    status: str,
+) -> None:
+    await conn.execute(
+        """
+        INSERT INTO user_atproto_controls (
+            id, identity_id, user_id, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """,
+        (control_id, identity_id, user_id, status),
+    )
+
+
+async def _insert_postgres_link(
+    conn: PostgresConnection,
+    link_id: str,
+    identity_id: str,
+    status: str,
+) -> None:
+    await conn.execute(
+        """
+        INSERT INTO profile_atproto_links (
+            id, entry_id, identity_id, status, created_at, updated_at
+        ) VALUES (?, 'entry-one', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """,
+        (link_id, identity_id, status),
+    )
+
+
+async def _prepare_legacy_postgres_database(
+    database_url: str,
+    *,
+    handle: str | None = "postgres.example",
+) -> None:
+    await init_db(database_url)
+    raw_conn = await psycopg.AsyncConnection.connect(database_url, autocommit=True)
+    conn = PostgresConnection(raw_conn)
+    try:
+        for statement in (
+            "DROP TABLE profile_atproto_links",
+            "DROP TABLE user_atproto_controls",
+            "DROP TABLE atproto_identities",
+            "ALTER TABLE entries ADD COLUMN linked_atproto_did TEXT",
+            "ALTER TABLE entries ADD COLUMN linked_atproto_handle TEXT",
+            "ALTER TABLE entries ADD COLUMN linked_atproto_verified_at TIMESTAMPTZ",
+            """
+            CREATE TABLE atproto_identities (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                did TEXT NOT NULL,
+                current_handle TEXT NOT NULL,
+                pds_url TEXT,
+                did_resolved_at TIMESTAMPTZ NOT NULL,
+                handle_verified_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL,
+                UNIQUE(user_id, did)
+            )
+            """,
+            "CREATE INDEX idx_atproto_identities_user ON atproto_identities(user_id)",
+            "CREATE INDEX idx_atproto_identities_did ON atproto_identities(did)",
+        ):
+            await conn.execute(statement)
+        await conn.execute(
+            """
+            INSERT INTO atproto_identities (
+                id, user_id, did, current_handle, pds_url, did_resolved_at,
+                handle_verified_at, created_at, updated_at
+            ) VALUES (
+                'identity-postgres', 'user-postgres', 'did:plc:postgres',
+                'postgres.example', 'https://pds.example',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            """
+        )
+        await conn.execute(
+            """
+            INSERT INTO entries (
+                id, type, name, description, geo_specificity,
+                linked_atproto_did, linked_atproto_handle, linked_atproto_verified_at,
+                first_seen, last_seen, created_at, updated_at
+            ) VALUES (
+                'entry-postgres', 'person', 'Postgres', 'Postgres', 'local',
+                'did:plc:postgres', ?, CURRENT_TIMESTAMP,
+                CURRENT_DATE, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            """,
+            (handle,),
+        )
+    finally:
+        await raw_conn.close()
+
+
+class _PausingPostgresConnection:
+    backend = "postgres"
+
+    def __init__(
+        self,
+        inner: PostgresConnection,
+        *,
+        source_read_reached: asyncio.Event,
+        resume_source_read: asyncio.Event,
+    ) -> None:
+        self._inner = inner
+        self._source_read_reached = source_read_reached
+        self._resume_source_read = resume_source_read
+
+    async def execute(
+        self,
+        statement: str,
+        parameters: tuple[Any, ...] = (),
+    ) -> Any:
+        if "FROM entries ORDER BY updated_at DESC, id DESC" in " ".join(statement.split()):
+            self._source_read_reached.set()
+            await self._resume_source_read.wait()
+        return await self._inner.execute(statement, parameters)
 
 
 @pytest.mark.asyncio
@@ -206,6 +359,170 @@ def test_postgres_schema_defines_independent_atproto_identity_graph() -> None:
     assert "linked_atproto_did" not in schema
     assert "linked_atproto_handle" not in schema
     assert "linked_atproto_verified_at" not in schema
+
+
+@pytest.mark.asyncio
+async def test_postgres_fresh_schema_enforces_identity_relationship_cardinality(
+    postgres_database_url: str,
+) -> None:
+    """Production PostgreSQL should enforce the same graph shape and cardinality."""
+    await init_db(postgres_database_url)
+    raw_conn = await psycopg.AsyncConnection.connect(postgres_database_url, autocommit=True)
+    conn = PostgresConnection(raw_conn)
+    try:
+        assert await _postgres_columns(conn, "atproto_identities") == IDENTITY_COLUMNS
+        assert await _postgres_columns(conn, "user_atproto_controls") == CONTROL_COLUMNS
+        assert await _postgres_columns(conn, "profile_atproto_links") == PROFILE_LINK_COLUMNS
+        assert LEGACY_ENTRY_COLUMNS.isdisjoint(await _postgres_columns(conn, "entries"))
+
+        await _insert_postgres_identity(conn, "identity-one", "did:plc:one")
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            await _insert_postgres_identity(conn, "identity-duplicate", "did:plc:one")
+        await _insert_postgres_identity(conn, "identity-two", "did:plc:two")
+
+        await _insert_postgres_control(conn, "control-one", "identity-one", "user-one", "active")
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            await _insert_postgres_control(
+                conn, "control-two", "identity-one", "user-two", "active"
+            )
+        await _insert_postgres_control(
+            conn, "control-two", "identity-one", "user-two", "disconnected"
+        )
+
+        await conn.execute(
+            """
+            INSERT INTO entries (
+                id, type, name, description, geo_specificity,
+                first_seen, last_seen, created_at, updated_at
+            ) VALUES (
+                'entry-one', 'person', 'One', 'One', 'local',
+                CURRENT_DATE, CURRENT_DATE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            """
+        )
+        await _insert_postgres_link(conn, "link-one", "identity-one", "verified")
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            await _insert_postgres_link(conn, "link-two", "identity-two", "reverification_required")
+        await _insert_postgres_link(conn, "link-two", "identity-two", "removed")
+    finally:
+        await raw_conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_legacy_identity_migration_is_idempotent(
+    postgres_database_url: str,
+) -> None:
+    """Stored PostgreSQL identity provenance should survive migration and repeat startup."""
+    await _prepare_legacy_postgres_database(postgres_database_url)
+
+    await init_db(postgres_database_url)
+    await init_db(postgres_database_url)
+
+    raw_conn = await psycopg.AsyncConnection.connect(postgres_database_url, autocommit=True)
+    conn = PostgresConnection(raw_conn)
+    try:
+        identity_cursor = await conn.execute(
+            "SELECT id, did, resolution_status FROM atproto_identities"
+        )
+        assert await identity_cursor.fetchall() == [
+            ("identity-postgres", "did:plc:postgres", "verified")
+        ]
+        control_cursor = await conn.execute(
+            "SELECT identity_id, user_id, status FROM user_atproto_controls"
+        )
+        assert await control_cursor.fetchall() == [("identity-postgres", "user-postgres", "active")]
+        link_cursor = await conn.execute(
+            "SELECT entry_id, identity_id, status FROM profile_atproto_links"
+        )
+        assert await link_cursor.fetchall() == [("entry-postgres", "identity-postgres", "verified")]
+        assert LEGACY_ENTRY_COLUMNS.isdisjoint(await _postgres_columns(conn, "entries"))
+    finally:
+        await raw_conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_corrupt_legacy_link_rolls_back(postgres_database_url: str) -> None:
+    """A corrupt PostgreSQL legacy pair should leave its original storage untouched."""
+    await _prepare_legacy_postgres_database(postgres_database_url, handle=None)
+
+    with pytest.raises(
+        RuntimeError,
+        match="Corrupt legacy ATProto link for entry entry-postgres",
+    ):
+        await init_db(postgres_database_url)
+
+    raw_conn = await psycopg.AsyncConnection.connect(postgres_database_url, autocommit=True)
+    conn = PostgresConnection(raw_conn)
+    try:
+        assert "user_id" in await _postgres_columns(conn, "atproto_identities")
+        assert await _postgres_columns(conn, "entries") >= LEGACY_ENTRY_COLUMNS
+        archive_cursor = await conn.execute("SELECT to_regclass('atproto_identities_legacy')")
+        assert await archive_cursor.fetchone() == (None,)
+    finally:
+        await raw_conn.close()
+
+
+@pytest.mark.asyncio
+async def test_postgres_migration_locks_sources_before_reading_rows(
+    postgres_database_url: str,
+) -> None:
+    """Old-runtime writes should block before the migration snapshots source rows."""
+    await _prepare_legacy_postgres_database(postgres_database_url)
+    migration_raw = await psycopg.AsyncConnection.connect(
+        postgres_database_url,
+        autocommit=False,
+    )
+    observer_raw = await psycopg.AsyncConnection.connect(
+        postgres_database_url,
+        autocommit=True,
+    )
+    migration_conn = PostgresConnection(migration_raw)
+    observer_conn = PostgresConnection(observer_raw)
+    pid_cursor = await migration_conn.execute("SELECT pg_backend_pid()")
+    pid_row = await pid_cursor.fetchone()
+    assert pid_row is not None
+    source_read_reached = asyncio.Event()
+    resume_source_read = asyncio.Event()
+    pausing_conn = _PausingPostgresConnection(
+        migration_conn,
+        source_read_reached=source_read_reached,
+        resume_source_read=resume_source_read,
+    )
+    migration_task = asyncio.create_task(
+        migrate_atproto_identity_graph(pausing_conn, backend="postgres")
+    )
+    try:
+        await asyncio.wait_for(source_read_reached.wait(), timeout=5)
+        lock_cursor = await observer_conn.execute(
+            """
+            SELECT relation.relname, locks.mode
+            FROM pg_locks AS locks
+            JOIN pg_class AS relation ON relation.oid = locks.relation
+            WHERE locks.pid = ?
+              AND locks.granted
+              AND relation.relname IN ('entries', 'atproto_identities')
+            """,
+            (pid_row[0],),
+        )
+        locks = {(str(row[0]), str(row[1])) for row in await lock_cursor.fetchall()}
+        assert {
+            ("entries", "AccessExclusiveLock"),
+            ("atproto_identities", "AccessExclusiveLock"),
+        } <= locks
+
+        await observer_conn.execute("SET lock_timeout = '100ms'")
+        with pytest.raises(psycopg.errors.LockNotAvailable):
+            await observer_conn.execute(
+                "UPDATE entries SET updated_at = CURRENT_TIMESTAMP WHERE id = 'entry-postgres'"
+            )
+    finally:
+        resume_source_read.set()
+        try:
+            await asyncio.wait_for(migration_task, timeout=5)
+            await migration_raw.commit()
+        finally:
+            await observer_raw.close()
+            await migration_raw.close()
 
 
 @pytest.mark.asyncio
