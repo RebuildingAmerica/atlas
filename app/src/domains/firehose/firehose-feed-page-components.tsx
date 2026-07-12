@@ -26,17 +26,20 @@ interface FirehoseBucketDividerProps {
 }
 
 interface FirehoseJumpNavigationProps {
+  activeTargetId: string | null;
   onSelectTarget: (target: FirehoseJumpTarget) => void;
   targets: FirehoseJumpTarget[];
 }
 
 interface FirehoseJumpGroupProps {
+  activeTargetId: string | null;
   label: string;
   onSelectTarget: (target: FirehoseJumpTarget) => void;
   targets: FirehoseJumpTarget[];
 }
 
 interface FirehoseJumpLinkProps {
+  activeTargetId: string | null;
   onSelectTarget: (target: FirehoseJumpTarget) => void;
   target: FirehoseJumpTarget;
 }
@@ -53,7 +56,11 @@ interface VirtualFirehoseFeedItemProps {
   style: CSSProperties;
 }
 
-export function FirehoseJumpNavigation({ onSelectTarget, targets }: FirehoseJumpNavigationProps) {
+export function FirehoseJumpNavigation({
+  activeTargetId,
+  onSelectTarget,
+  targets,
+}: FirehoseJumpNavigationProps) {
   const groupedTargets = useMemo(() => groupJumpTargets(targets), [targets]);
 
   return (
@@ -65,23 +72,30 @@ export function FirehoseJumpNavigation({ onSelectTarget, targets }: FirehoseJump
         <p className="type-label-medium text-ink-strong">Jump</p>
         <span className="type-label-small text-ink-muted">{jumpCountLabel(targets.length)}</span>
       </div>
-      <div className="flex min-w-0 gap-3 overflow-x-auto pb-1 lg:block lg:space-y-4 lg:overflow-visible lg:pb-0">
+      <div
+        className="flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain [mask-image:linear-gradient(90deg,transparent,black_1rem,black_calc(100%_-_1rem),transparent)] pb-1 lg:block lg:space-y-4 lg:overflow-visible lg:[mask-image:none] lg:pb-0"
+        data-firehose-jump-scroll
+      >
         <FirehoseJumpGroup
+          activeTargetId={activeTargetId}
           label="Time"
           onSelectTarget={onSelectTarget}
           targets={groupedTargets.time}
         />
         <FirehoseJumpGroup
+          activeTargetId={activeTargetId}
           label="Issues"
           onSelectTarget={onSelectTarget}
           targets={groupedTargets.issue}
         />
         <FirehoseJumpGroup
+          activeTargetId={activeTargetId}
           label="Places"
           onSelectTarget={onSelectTarget}
           targets={groupedTargets.place}
         />
         <FirehoseJumpGroup
+          activeTargetId={activeTargetId}
           label="Sources"
           onSelectTarget={onSelectTarget}
           targets={groupedTargets.source}
@@ -91,27 +105,45 @@ export function FirehoseJumpNavigation({ onSelectTarget, targets }: FirehoseJump
   );
 }
 
-function FirehoseJumpGroup({ label, onSelectTarget, targets }: FirehoseJumpGroupProps) {
+function FirehoseJumpGroup({
+  activeTargetId,
+  label,
+  onSelectTarget,
+  targets,
+}: FirehoseJumpGroupProps) {
   if (targets.length === 0) {
     return null;
   }
 
   return (
-    <div className="min-w-44 shrink-0 lg:min-w-0">
+    <div className="min-w-44 shrink-0 snap-start lg:min-w-0">
       <p className="type-label-small text-ink-muted mb-1">{label}</p>
       <div className="space-y-1">
         {targets.map((target) => (
-          <FirehoseJumpLink key={target.id} onSelectTarget={onSelectTarget} target={target} />
+          <FirehoseJumpLink
+            activeTargetId={activeTargetId}
+            key={target.id}
+            onSelectTarget={onSelectTarget}
+            target={target}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function FirehoseJumpLink({ onSelectTarget, target }: FirehoseJumpLinkProps) {
+function FirehoseJumpLink({ activeTargetId, onSelectTarget, target }: FirehoseJumpLinkProps) {
+  const isActive = activeTargetId === target.id;
+
   return (
     <a
-      className="type-label-small text-ink-soft hover:bg-surface-container hover:text-ink-strong focus-visible:ring-accent flex min-h-8 items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      aria-current={isActive ? "location" : undefined}
+      className={clsx(
+        "type-label-small focus-visible:ring-accent flex min-h-8 snap-start items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none",
+        isActive
+          ? "bg-surface-container text-ink-strong shadow-sm"
+          : "text-ink-soft hover:bg-surface-container hover:text-ink-strong",
+      )}
       href={`#${target.anchorId}`}
       onClick={(event) => {
         event.preventDefault();
@@ -155,6 +187,7 @@ function FirehoseSignalRow({ density, signal }: FirehoseSignalRowProps) {
   const showEvidence = density !== "compact";
   const showExpandedDetails = density === "expanded";
   const titleId = `firehose-signal-title-${signal.id}`;
+  const sourceLabel = `Source from ${signal.evidence.publisher}`;
 
   return (
     <article
@@ -168,20 +201,20 @@ function FirehoseSignalRow({ density, signal }: FirehoseSignalRowProps) {
       <div
         className={clsx(
           "grid gap-3",
-          density === "compact" ? "sm:grid-cols-[7rem_1fr]" : "sm:grid-cols-[8.5rem_1fr]",
+          density === "compact" ? "sm:grid-cols-[7.5rem_1fr]" : "sm:grid-cols-[9rem_1fr]",
         )}
       >
-        <div className="space-y-1">
-          <time className="type-label-small text-ink-muted block" dateTime={signal.detected_at}>
+        <div className="space-y-2">
+          <time
+            className="type-title-small text-ink-strong block tabular-nums"
+            dateTime={signal.detected_at}
+          >
             {formatTimestamp(signal.detected_at)}
           </time>
-          <p className="type-label-small text-ink-muted line-clamp-2">
-            {signal.evidence.publisher}
-          </p>
+          <p className="type-label-small text-accent">{signalTypeLabel(signal.signal_type)}</p>
         </div>
         <div className={clsx("min-w-0", density === "compact" ? "space-y-2" : "space-y-3")}>
           <div className="space-y-1">
-            <p className="type-label-small text-accent">{signalTypeLabel(signal.signal_type)}</p>
             <h3
               className={clsx(
                 "text-ink-strong",
@@ -193,11 +226,27 @@ function FirehoseSignalRow({ density, signal }: FirehoseSignalRowProps) {
             </h3>
           </div>
           {showSummary ? <p className="type-body-medium text-ink-soft">{signal.summary}</p> : null}
-          {showEvidence ? (
-            <p className="type-body-small text-ink-muted border-outline-variant border-l pl-3">
-              {signal.evidence.passage}
-            </p>
-          ) : null}
+          <div
+            aria-label={sourceLabel}
+            className="border-outline-variant bg-surface-container-low rounded-md border px-3 py-2"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="type-label-medium text-ink-strong">{signal.evidence.publisher}</p>
+              <a
+                className="type-label-medium text-ink-strong underline underline-offset-4"
+                href={signal.evidence.source_url}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open source
+              </a>
+            </div>
+            {showEvidence ? (
+              <p className="type-body-small text-ink-soft border-outline-variant mt-2 border-l pl-3">
+                {signal.evidence.passage}
+              </p>
+            ) : null}
+          </div>
           {showExpandedDetails ? (
             <dl className="border-outline-variant grid gap-3 border-t pt-3 sm:grid-cols-2">
               <div>
@@ -221,14 +270,6 @@ function FirehoseSignalRow({ density, signal }: FirehoseSignalRowProps) {
                 {label}
               </span>
             ))}
-            <a
-              className="type-label-medium text-ink-strong ml-auto inline-flex underline underline-offset-4"
-              href={signal.evidence.source_url}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Open source
-            </a>
           </div>
         </div>
       </div>

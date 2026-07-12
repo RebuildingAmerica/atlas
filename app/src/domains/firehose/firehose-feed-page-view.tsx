@@ -37,6 +37,7 @@ interface FirehoseInfiniteFeedState {
 
 const INFINITE_FEED_PAGE_SIZE = 12;
 const INFINITE_FEED_AUTO_PAGE_CAP = 3;
+const ACTIVE_BUCKET_TOP_OFFSET = 96;
 
 function initialInfiniteFeedState(totalSignals: number): FirehoseInfiniteFeedState {
   const visibleSignalCount = Math.min(INFINITE_FEED_PAGE_SIZE, totalSignals);
@@ -84,11 +85,13 @@ export function FirehoseFeedView({
   snapshot,
 }: FirehoseFeedViewProps) {
   const [density, setDensity] = useState<FirehoseDensity>("standard");
+  const [activeJumpTargetId, setActiveJumpTargetId] = useState<string | null>(null);
   const [canVirtualize, setCanVirtualize] = useState(false);
   const [feedScrollMargin, setFeedScrollMargin] = useState(0);
   const [infiniteFeedState, setInfiniteFeedState] = useState<FirehoseInfiniteFeedState>(() =>
     initialInfiniteFeedState(snapshot.signals.length),
   );
+  const [readingLatest, setReadingLatest] = useState(true);
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
   const feedViewportRef = useRef<HTMLDivElement>(null);
   const rssParams = buildPublicFirehoseSearchParams(snapshot.query).toString();
@@ -118,6 +121,9 @@ export function FirehoseFeedView({
     scrollMargin: feedScrollMargin,
   });
   const virtualItems = shouldVirtualize ? rowVirtualizer.getVirtualItems() : [];
+  const latestButtonVisible = !readingLatest && snapshot.signals.length > 0;
+  const fallbackActiveJumpTargetId =
+    activeJumpTargetId ?? model.jumpTargets.find((target) => target.kind === "time")?.id ?? null;
 
   const handleJumpTarget = useCallback(
     (target: FirehoseJumpTarget) => {
@@ -126,6 +132,7 @@ export function FirehoseFeedView({
         return;
       }
 
+      setActiveJumpTargetId(target.id);
       if (shouldVirtualize) {
         rowVirtualizer.scrollToIndex(index, { align: "start" });
         return;
@@ -144,6 +151,11 @@ export function FirehoseFeedView({
   const resumeInfiniteLoading = useCallback(() => {
     revealNextPage({ resetPageCap: true });
   }, [revealNextPage]);
+  const returnToLatest = useCallback(() => {
+    setReadingLatest(true);
+    onReadingLatestChange?.(true);
+    window.scrollTo({ behavior: "smooth", top: 0 });
+  }, [onReadingLatestChange]);
 
   useEffect(() => {
     totalSignalCountRef.current = totalSignalCount;
@@ -175,12 +187,24 @@ export function FirehoseFeedView({
   }, []);
 
   useEffect(() => {
-    if (!onReadingLatestChange) {
-      return;
-    }
-
     const handleWindowScroll = () => {
-      onReadingLatestChange(window.scrollY <= READING_LATEST_SCROLL_THRESHOLD);
+      const nextReadingLatest = window.scrollY <= READING_LATEST_SCROLL_THRESHOLD;
+      setReadingLatest(nextReadingLatest);
+      onReadingLatestChange?.(nextReadingLatest);
+
+      const activeBucket = model.buckets.reduce<string | null>((currentBucketId, bucket) => {
+        const bucketElement = document.getElementById(bucket.anchorId);
+        if (!bucketElement) {
+          return currentBucketId;
+        }
+
+        if (bucketElement.getBoundingClientRect().top <= ACTIVE_BUCKET_TOP_OFFSET) {
+          return bucket.id;
+        }
+
+        return currentBucketId;
+      }, model.buckets[0]?.id ?? null);
+      setActiveJumpTargetId(activeBucket ? `time-${activeBucket}` : null);
     };
 
     handleWindowScroll();
@@ -189,7 +213,7 @@ export function FirehoseFeedView({
     return () => {
       window.removeEventListener("scroll", handleWindowScroll);
     };
-  }, [onReadingLatestChange]);
+  }, [model.buckets, onReadingLatestChange]);
 
   useEffect(() => {
     const measureFeedOffset = () => {
@@ -305,7 +329,11 @@ export function FirehoseFeedView({
           <p className="type-body-medium text-ink-strong py-8">No public signals listed.</p>
         ) : (
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]">
-            <FirehoseJumpNavigation onSelectTarget={handleJumpTarget} targets={model.jumpTargets} />
+            <FirehoseJumpNavigation
+              activeTargetId={fallbackActiveJumpTargetId}
+              onSelectTarget={handleJumpTarget}
+              targets={model.jumpTargets}
+            />
             <section className="min-w-0 lg:order-1" aria-label="Firehose event stream">
               {pendingSignalCount > 0 && onApplyPendingSignals ? (
                 <div className="sticky top-16 z-10 mb-3 flex justify-center lg:top-4">
@@ -315,6 +343,17 @@ export function FirehoseFeedView({
                     type="button"
                   >
                     {pendingUpdateLabel(pendingSignalCount)}
+                  </button>
+                </div>
+              ) : null}
+              {latestButtonVisible ? (
+                <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center px-4">
+                  <button
+                    className="type-label-medium bg-ink-strong text-surface hover:bg-ink focus-visible:ring-accent pointer-events-auto rounded-full px-4 py-2 shadow-lg transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                    onClick={returnToLatest}
+                    type="button"
+                  >
+                    Latest
                   </button>
                 </div>
               ) : null}
@@ -363,14 +402,19 @@ export function FirehoseFeedView({
                 <div aria-hidden="true" className="h-8" ref={loadMoreSentinelRef} />
               ) : null}
               {showKeepLoading ? (
-                <div className="flex justify-center py-5">
-                  <button
-                    className="type-label-medium border-outline-variant bg-surface-container-lowest text-ink-strong hover:bg-surface-container focus-visible:ring-accent rounded-md border px-4 py-2 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                    onClick={resumeInfiniteLoading}
-                    type="button"
-                  >
-                    Keep loading
-                  </button>
+                <div className="border-outline-variant mt-5 border-t pt-5">
+                  <div className="border-outline-variant bg-surface-container-lowest flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 shadow-sm">
+                    <p className="type-label-medium text-ink-soft">
+                      {visibleSignalCount} of {totalSignalCount} shown
+                    </p>
+                    <button
+                      className="type-label-medium bg-ink-strong text-surface hover:bg-ink focus-visible:ring-accent rounded-md px-4 py-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                      onClick={resumeInfiniteLoading}
+                      type="button"
+                    >
+                      Show more updates
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </section>
