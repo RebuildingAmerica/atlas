@@ -20,7 +20,6 @@ jobs:
       contents: write
       id-token: write
       attestations: write
-      artifact-metadata: write
     env:
       GH_REPO: ${{ github.repository }}
     steps:

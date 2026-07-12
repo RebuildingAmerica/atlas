@@ -14,6 +14,8 @@ on:
     secrets:
       TURBO_TOKEN:
         required: false
+      STRIPE_API_KEY:
+        required: false
     outputs:
       staging_api_deploy:
         description: Whether staging should rebuild and deploy atlas-api.
@@ -178,6 +180,7 @@ jobs:
       - name: Run Playwright acceptance suite
         env:
           CI: "true"
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
         run: pnpm exec turbo run '@rebuildingamerica/atlas-app#test:acceptance' --output-logs=full
       - name: Upload Playwright traces on failure
         if: failure()

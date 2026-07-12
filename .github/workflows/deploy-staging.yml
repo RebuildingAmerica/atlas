@@ -20,6 +20,7 @@ jobs:
       profile: staging
     secrets:
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
 
   deploy-api:
     needs: ci
