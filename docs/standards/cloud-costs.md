@@ -35,8 +35,8 @@ and push. The preflight:
 Artifact Registry cleanup policies are infrastructure setup, not deploy work.
 `pnpm bootstrap` creates the repository and applies the cleanup policy
 automatically. If a provider permission issue interrupts bootstrap, rerun the
-same phase after authenticating a GCP operator account that can update Artifact
-Registry repositories.
+cloud infrastructure phase with `pnpm bootstrap --infra` after authenticating a
+GCP operator account that can update Artifact Registry repositories.
 
 The fallback command is:
 

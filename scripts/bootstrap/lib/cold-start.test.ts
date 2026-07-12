@@ -76,6 +76,14 @@ void describe("Atlas bootstrap argument parsing", () => {
     assert.equal(args.stripeTarget, "staging");
   });
 
+  void it("supports rerunning cloud infrastructure setup directly", () => {
+    const args = parseArgs(["--infra"]);
+
+    assert.equal(args.infraOnly, true);
+    assert.equal(args.localOnly, false);
+    assert.equal(args.stripeTarget, "prod");
+  });
+
   void it("keeps product-only sync local unless a hosted target is explicit", () => {
     const args = parseArgs(["--product", "atlas"]);
 

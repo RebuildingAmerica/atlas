@@ -11,6 +11,7 @@ export interface CliArgs {
   doctorMode: boolean;
   resume: boolean;
   productOnly: string | null;
+  infraOnly: boolean;
   mcpRegistryOnly: boolean;
   ciCacheOnly: boolean;
   apiDomainOnly: boolean;
@@ -32,6 +33,7 @@ export function parseArgs(argv: string[]): CliArgs {
   const hasHostedOnlyMode =
     argv.includes("--api-domain") ||
     argv.includes("--api-edge") ||
+    argv.includes("--infra") ||
     argv.includes("--ci-cache");
   const defaultTarget = explicitLocalOnly || productOnly ? "local" : "prod";
   const targetArg =
@@ -52,6 +54,7 @@ export function parseArgs(argv: string[]): CliArgs {
     doctorMode: argv.includes("--doctor"),
     resume: argv.includes("--resume"),
     productOnly,
+    infraOnly: argv.includes("--infra"),
     mcpRegistryOnly: argv.includes("--mcp-registry"),
     ciCacheOnly: argv.includes("--ci-cache"),
     apiDomainOnly: argv.includes("--api-domain"),

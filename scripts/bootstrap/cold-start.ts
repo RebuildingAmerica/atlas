@@ -20,6 +20,7 @@
  * | `pnpm bootstrap --product atlas --target staging --yes`   | Applies hosted staging env sync without prompting. |
  * | `pnpm bootstrap --product atlas --target prod --live`     | Runs production Stripe live sync. |
  * | `pnpm bootstrap --mcp-registry`                           | Runs MCP Registry publisher setup only. |
+ * | `pnpm bootstrap --infra`                                  | Runs cloud infrastructure setup only. |
  * | `pnpm bootstrap --ci-cache`                               | Wires Vercel Remote Cache into Actions. |
  * | `pnpm bootstrap --api-domain`                             | Ensures atlas-api Cloud Run and Cloudflare CNAME. |
  * | `pnpm bootstrap --api-domain --target staging`            | Ensures the staging atlas-api Cloud Run and Cloudflare CNAME. |
@@ -103,6 +104,7 @@ async function main(): Promise<void> {
 
   if (
     !args.productOnly &&
+    !args.infraOnly &&
     !args.mcpRegistryOnly &&
     !args.ciCacheOnly &&
     !args.apiDomainOnly &&
@@ -112,6 +114,25 @@ async function main(): Promise<void> {
       renderSetupGuide(args.localOnly ? "local" : args.stripeTarget),
       "Repo setup checklist",
     );
+  }
+
+  // Infrastructure-only mode
+  if (args.infraOnly) {
+    log.info("Running cloud infrastructure setup only.");
+    log.info(describePhase("Cloud Infrastructure"));
+    attemptedPhases.add("infra");
+    const result = await runInfraPhase(projectRoot, state, args.doctorMode);
+    markPhase(state, "infra", resultPhaseStatus(result, args.doctorMode));
+    saveReadiness(projectRoot, state);
+    if (result.followUpItems.length > 0) {
+      note(formatFollowUpNote(result.followUpItems), "Follow-up");
+    }
+    outro(
+      result.success
+        ? "Cloud infrastructure setup complete."
+        : "Cloud infrastructure setup had issues.",
+    );
+    return;
   }
 
   // MCP Registry-only mode
