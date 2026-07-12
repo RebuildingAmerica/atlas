@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
@@ -92,6 +93,20 @@ async def verify_current_atproto_identity(
         return False
     also_known_as = did_doc.get("alsoKnownAs")
     return isinstance(also_known_as, list) and f"at://{normalized_handle}" in also_known_as
+
+
+async def verify_linked_atproto_identity(handle: str, did: str) -> bool:
+    """Verify a linked identity, including the explicit hermetic OAuth harness."""
+    if e2e_harness_identity_matches(handle, did):
+        return True
+    return await verify_current_atproto_identity(handle, did)
+
+
+def e2e_harness_identity_matches(handle: str, did: str) -> bool:
+    """Recognize only identities minted by the explicitly enabled E2E harness."""
+    if os.environ.get("ATLAS_ATPROTO_OAUTH_E2E_HARNESS") != "1":
+        return False
+    return did == f"did:web:{_normalize_handle(handle)}"
 
 
 async def resolve_current_atproto_identity(

@@ -36,7 +36,7 @@ async def _connect(
         return True
 
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.atproto_identities.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.atproto_identities.verify_linked_atproto_identity",
         verified,
     )
     response = Response()
@@ -179,7 +179,7 @@ async def test_link_rejects_unverified_oauth_result(
         return False
 
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.atproto_identities.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.atproto_identities.verify_linked_atproto_identity",
         unverified,
     )
     with pytest.raises(HTTPException) as error:

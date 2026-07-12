@@ -186,7 +186,7 @@ class TestProfileClaimAPI:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(
-            "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
+            "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
             _valid_atproto_identity,
         )
         identity, _control = await AtprotoIdentityControlCRUD.connect(

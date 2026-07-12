@@ -31,7 +31,7 @@ async def test_generic_atproto_handle_links_when_workspace_domain_verifies(
     test_settings.auth_internal_secret = "test-secret"
     test_settings.auth_membership_verification_url = "https://app.example"
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
         _valid_atproto_identity,
     )
     identity, _control = await AtprotoIdentityControlCRUD.connect(
@@ -114,7 +114,7 @@ async def test_stale_atproto_handle_does_not_link_when_workspace_domain_verifies
         return await verifier(handle, did)
 
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
         changing_identity,
     )
     identity, _control = await AtprotoIdentityControlCRUD.connect(
@@ -179,7 +179,7 @@ async def test_generic_atproto_handle_links_when_dns_domain_verifies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
         _valid_atproto_identity,
     )
     identity, _control = await AtprotoIdentityControlCRUD.connect(
@@ -241,7 +241,7 @@ async def test_generic_atproto_handle_requires_domain_or_workspace_backing(
         raise AssertionError
 
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
         fail_identity_check,
     )
     identity, _control = await AtprotoIdentityControlCRUD.connect(

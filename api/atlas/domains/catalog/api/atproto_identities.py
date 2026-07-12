@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -25,8 +24,9 @@ from atlas.domains.catalog.schemas.public import (
     AtprotoIdentityResponse,
 )
 from atlas.domains.catalog.services.atproto_identity import (
+    e2e_harness_identity_matches,
     resolve_current_atproto_identity,
-    verify_current_atproto_identity,
+    verify_linked_atproto_identity,
 )
 from atlas.platform.http.cache import apply_no_store_headers
 
@@ -241,13 +241,8 @@ async def _controlled_identity(
 
 
 async def _verify_linked_atproto_identity(handle: str, did: str) -> bool:
-    if _e2e_harness_identity_matches(handle, did):
-        return True
-    return await verify_current_atproto_identity(handle, did)
+    return await verify_linked_atproto_identity(handle, did)
 
 
 def _e2e_harness_identity_matches(handle: str, did: str) -> bool:
-    if os.environ.get("ATLAS_ATPROTO_OAUTH_E2E_HARNESS") != "1":
-        return False
-    normalized = handle.strip().lower().removeprefix("@")
-    return did == f"did:web:{normalized}"
+    return e2e_harness_identity_matches(handle, did)

@@ -16,7 +16,7 @@ from atlas.domains.catalog.models.profile_atproto_links import (
     ProfileAtprotoLinkEvidence,
 )
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
-from atlas.domains.catalog.services.atproto_identity import verify_current_atproto_identity
+from atlas.domains.catalog.services.atproto_identity import verify_linked_atproto_identity
 from atlas.domains.catalog.services.profile_claims import ProfileClaimPolicy, entry_claim_domains
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ async def link_entry_atproto_identity_if_current(
 ) -> bool:
     """Attach an ATProto identity only while its public handle/DID still agree."""
     identity = await AtprotoIdentityCRUD.get_by_id(db, identity_id)
-    if identity is None or not await verify_current_atproto_identity(
+    if identity is None or not await verify_linked_atproto_identity(
         identity.current_handle, identity.did
     ):
         return False
@@ -148,7 +148,7 @@ async def apply_atproto_claim_proof(  # noqa: PLR0913
                 "ATProto account."
             ),
         )
-    if not await verify_current_atproto_identity(identity.current_handle, identity.did):
+    if not await verify_linked_atproto_identity(identity.current_handle, identity.did):
         raise HTTPException(
             status_code=409,
             detail="Reconnect this ATProto account before using it for verification.",

@@ -31,7 +31,7 @@ async def test_matching_atproto_identity_is_rechecked_before_profile_verifies(
         return False
 
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
         fake_verify_current_identity,
         raising=False,
     )

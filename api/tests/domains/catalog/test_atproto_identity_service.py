@@ -35,6 +35,7 @@ from atlas.domains.catalog.services.atproto_identity import (
     resolve_current_atproto_identity,
     revalidate_linked_atproto_profiles,
     verify_current_atproto_identity,
+    verify_linked_atproto_identity,
 )
 from atlas.domains.catalog.services.profile_claims import ProfileClaimPolicy
 from atlas.models import EntryCRUD
@@ -246,6 +247,21 @@ async def test_verify_current_atproto_identity_requires_bidirectional_match() ->
     assert verified is True
     assert resolver.handles == ["org.example"]
     assert resolver.dids == ["did:plc:org"]
+
+
+@pytest.mark.asyncio
+async def test_linked_identity_verification_uses_only_explicit_harness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
+    assert await verify_linked_atproto_identity("Harness.Example", "did:web:harness.example")
+    monkeypatch.delenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS")
+
+    async def verified(_handle: str, _did: str) -> bool:
+        return True
+
+    monkeypatch.setattr(atproto_identity, "verify_current_atproto_identity", verified)
+    assert await verify_linked_atproto_identity("real.example", "did:plc:real")
 
 
 @pytest.mark.asyncio
@@ -596,7 +612,7 @@ async def test_link_atproto_proof_ignores_incomplete_or_stale_metadata(
         return False
 
     monkeypatch.setattr(
-        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_current_atproto_identity",
+        "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
         stale_identity,
     )
 
