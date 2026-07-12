@@ -85,6 +85,41 @@ describe("DataQualityBlock", () => {
     expect(screen.getByText("jane.example")).toBeInTheDocument();
   });
 
+  it("omits the verification date when the public identity has no timestamp", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          claim: {
+            status: "verified",
+            linked_atproto_handle: "jane.example",
+            linked_atproto_did: "did:plc:jane",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("jane.example")).toBeInTheDocument();
+    expect(screen.queryByText(/^Verified [A-Z][a-z]{2} \d{4}$/)).not.toBeInTheDocument();
+  });
+
+  it("omits an invalid public identity verification date", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          claim: {
+            status: "verified",
+            linked_atproto_handle: "jane.example",
+            linked_atproto_did: "did:plc:jane",
+            linked_atproto_verified_at: "not-a-date",
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("jane.example")).toBeInTheDocument();
+    expect(screen.queryByText(/^Verified [A-Z][a-z]{2} \d{4}$/)).not.toBeInTheDocument();
+  });
+
   it("shows identity health without publishing a stale handle", () => {
     render(
       <DataQualityBlock
