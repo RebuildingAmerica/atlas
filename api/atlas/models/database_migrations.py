@@ -303,6 +303,8 @@ async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
     entry_columns = await _table_columns(conn, "entries", backend=backend)
     control_columns = await _table_columns(conn, "user_atproto_controls", backend=backend)
     profile_link_columns = await _table_columns(conn, "profile_atproto_links", backend=backend)
+    claim_columns = await _table_columns(conn, "profile_claims", backend=backend)
+    proof_columns = await _table_columns(conn, "profile_claim_proofs", backend=backend)
     legacy_entry_columns = set(_LEGACY_ENTRY_ATPROTO_COLUMNS) & entry_columns
     has_legacy_identities = "user_id" in identity_columns
     has_global_identities = "resolution_status" in identity_columns
@@ -323,6 +325,8 @@ async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
                 ("atproto_identities", identity_columns),
                 ("profile_atproto_links", profile_link_columns),
                 ("user_atproto_controls", control_columns),
+                ("profile_claims", claim_columns),
+                ("profile_claim_proofs", proof_columns),
             )
             if columns
         ),
@@ -341,7 +345,11 @@ async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
         entry_columns=entry_columns,
     )
     legacy_identities = await _load_legacy_identities(conn) if has_legacy_identities else []
-    proof_links = await _load_matching_atproto_proofs(conn, backend=backend)
+    proof_links = await _load_matching_atproto_proofs(
+        conn,
+        claim_columns=claim_columns,
+        proof_columns=proof_columns,
+    )
 
     if has_legacy_identities:
         await _drop_existing_atproto_graph_children(
@@ -359,6 +367,9 @@ async def _migrate_atproto_identity_graph(conn: Any, *, backend: str) -> None:
         conn,
         rows=existing_graph_rows,
         identity_id_map=identity_rows.identity_id_map,
+        conflicting_identity_ids={
+            control[1] for control in identity_rows.controls if control[3] == "conflict"
+        },
     )
     migrated_controls = await _insert_missing_legacy_control_rows(
         conn,
@@ -454,11 +465,18 @@ async def _restore_existing_atproto_graph_rows(
     *,
     rows: _ExistingAtprotoGraphRows,
     identity_id_map: dict[str, str],
+    conflicting_identity_ids: set[str],
 ) -> _ExistingAtprotoGraphRows:
-    restored_controls = [
-        _remap_existing_identity_id(row, identity_id_map=identity_id_map, identity_index=1)
-        for row in rows.controls
-    ]
+    restored_controls = _deduplicate_existing_controls(
+        [
+            _reconcile_existing_control(
+                row,
+                identity_id_map=identity_id_map,
+                conflicting_identity_ids=conflicting_identity_ids,
+            )
+            for row in rows.controls
+        ]
+    )
     restored_links = [
         _remap_existing_identity_id(row, identity_id_map=identity_id_map, identity_index=2)
         for row in rows.links
@@ -476,6 +494,42 @@ async def _restore_existing_atproto_graph_rows(
             link,
         )
     return _ExistingAtprotoGraphRows(restored_controls, restored_links)
+
+
+def _deduplicate_existing_controls(rows: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
+    controls_by_user: dict[tuple[str, str], tuple[Any, ...]] = {}
+    for row in rows:
+        key = (row[1], row[2])
+        existing = controls_by_user.get(key)
+        preferred_id = _migration_id("control", row[1], row[2])
+        preference = (row[0] == preferred_id, row[7], row[0])
+        if existing is None:
+            controls_by_user[key] = row
+            continue
+        existing_preference = (
+            existing[0] == preferred_id,
+            existing[7],
+            existing[0],
+        )
+        if preference > existing_preference:
+            controls_by_user[key] = row
+    return sorted(controls_by_user.values(), key=lambda row: row[0])
+
+
+def _reconcile_existing_control(
+    row: tuple[Any, ...],
+    *,
+    identity_id_map: dict[str, str],
+    conflicting_identity_ids: set[str],
+) -> tuple[Any, ...]:
+    remapped = _remap_existing_identity_id(
+        row,
+        identity_id_map=identity_id_map,
+        identity_index=1,
+    )
+    if remapped[1] not in conflicting_identity_ids or remapped[3] != "active":
+        return remapped
+    return (*remapped[:3], "conflict", *remapped[4:])
 
 
 def _remap_existing_identity_id(
@@ -786,10 +840,9 @@ async def _load_legacy_entry_links(
 async def _load_matching_atproto_proofs(
     conn: Any,
     *,
-    backend: str,
+    claim_columns: set[str],
+    proof_columns: set[str],
 ) -> dict[tuple[str, str, str], tuple[str, str]]:
-    claim_columns = await _table_columns(conn, "profile_claims", backend=backend)
-    proof_columns = await _table_columns(conn, "profile_claim_proofs", backend=backend)
     if not claim_columns or not proof_columns:
         return {}
     cursor = await conn.execute(

@@ -131,6 +131,7 @@ async def _prepare_legacy_postgres_database(
     database_url: str,
     *,
     handle: str | None = "postgres.example",
+    with_verified_proof: bool = False,
 ) -> None:
     await init_db(database_url)
     raw_conn = await psycopg.AsyncConnection.connect(database_url, autocommit=True)
@@ -187,6 +188,32 @@ async def _prepare_legacy_postgres_database(
             """,
             (handle,),
         )
+        if with_verified_proof:
+            await conn.execute(
+                """
+                INSERT INTO profile_claims (
+                    id, entry_id, user_id, user_email, status, tier,
+                    verified_at, created_at, updated_at
+                ) VALUES (
+                    'claim-postgres', 'entry-postgres', 'user-postgres',
+                    'postgres@example.com', 'verified', 1,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO profile_claim_proofs (
+                    id, claim_id, proof_type, proof_status, proof_summary,
+                    proof_metadata_json, created_at, reviewed_at
+                ) VALUES (
+                    'proof-postgres', 'claim-postgres', 'atproto', 'verified',
+                    'ATProto evidence.',
+                    '{"did":"did:plc:postgres","handle":"postgres.example"}',
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                """
+            )
     finally:
         await raw_conn.close()
 
@@ -467,7 +494,10 @@ async def test_postgres_migration_locks_sources_before_reading_rows(
     postgres_database_url: str,
 ) -> None:
     """Old-runtime writes should block before the migration snapshots source rows."""
-    await _prepare_legacy_postgres_database(postgres_database_url)
+    await _prepare_legacy_postgres_database(
+        postgres_database_url,
+        with_verified_proof=True,
+    )
     migration_raw = await psycopg.AsyncConnection.connect(
         postgres_database_url,
         autocommit=False,
@@ -500,7 +530,10 @@ async def test_postgres_migration_locks_sources_before_reading_rows(
             JOIN pg_class AS relation ON relation.oid = locks.relation
             WHERE locks.pid = ?
               AND locks.granted
-              AND relation.relname IN ('entries', 'atproto_identities')
+              AND relation.relname IN (
+                  'entries', 'atproto_identities',
+                  'profile_claims', 'profile_claim_proofs'
+              )
             """,
             (pid_row[0],),
         )
@@ -508,12 +541,22 @@ async def test_postgres_migration_locks_sources_before_reading_rows(
         assert {
             ("entries", "AccessExclusiveLock"),
             ("atproto_identities", "AccessExclusiveLock"),
+            ("profile_claims", "AccessExclusiveLock"),
+            ("profile_claim_proofs", "AccessExclusiveLock"),
         } <= locks
 
         await observer_conn.execute("SET lock_timeout = '100ms'")
         with pytest.raises(psycopg.errors.LockNotAvailable):
             await observer_conn.execute(
                 "UPDATE entries SET updated_at = CURRENT_TIMESTAMP WHERE id = 'entry-postgres'"
+            )
+        with pytest.raises(psycopg.errors.LockNotAvailable):
+            await observer_conn.execute(
+                """
+                UPDATE profile_claim_proofs
+                SET proof_status = 'rejected'
+                WHERE id = 'proof-postgres'
+                """
             )
     finally:
         resume_source_read.set()
