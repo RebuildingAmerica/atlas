@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -194,7 +194,7 @@ def test_row_to_entry_accepts_postgres_date_values() -> None:
         "affiliated_org_id": None,
         "active": False,
         "verified": False,
-        "last_verified": date(2026, 1, 3),
+        "last_verified": datetime(2026, 1, 3, 14, 30, tzinfo=UTC),
         "contact_status": "not_contacted",
         "editorial_notes": None,
         "priority": None,
