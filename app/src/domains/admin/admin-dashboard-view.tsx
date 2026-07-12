@@ -1,5 +1,7 @@
 import {
+  AdminIndicatorPlaceholderCard,
   AdminIndicatorCard,
+  AdminInlineStatus,
   AdminPageHeader,
   AdminPageShell,
   AdminStatusBadge,
@@ -7,10 +9,20 @@ import {
 } from "./admin-portal";
 import type { AdminDashboardSummary } from "./admin-dashboard.functions";
 
-export function AdminDashboardView({ summary }: { summary: AdminDashboardSummary }) {
-  const apiTone = summary.api.status === "ok" ? "pass" : "block";
-  const discoveryTone = summary.discovery.failed_jobs > 0 ? "warn" : "pass";
-  const costTone = postureTone(summary.cloud_costs.posture);
+interface AdminDashboardViewProps {
+  errorMessage?: string;
+  isLoading?: boolean;
+  summary?: AdminDashboardSummary;
+}
+
+export function AdminDashboardView({
+  errorMessage,
+  isLoading = false,
+  summary,
+}: AdminDashboardViewProps) {
+  const apiTone = summary?.api.status === "ok" ? "pass" : "block";
+  const discoveryTone = summary && summary.discovery.failed_jobs > 0 ? "warn" : "pass";
+  const costTone = summary ? postureTone(summary.cloud_costs.posture) : "neutral";
 
   return (
     <AdminPageShell>
@@ -27,31 +39,14 @@ export function AdminDashboardView({ summary }: { summary: AdminDashboardSummary
             Signals from existing runtime health, discovery pipeline, and cost guardrails.
           </p>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <AdminIndicatorCard
-            label="API"
-            value={summary.api.status === "ok" ? "Healthy" : "Degraded"}
-            detail="Runtime health endpoint"
-            tone={apiTone}
-          />
-          <AdminIndicatorCard
-            label="Discovery pipeline"
-            value={`${summary.discovery.running_jobs} running`}
-            detail={
-              <span className="flex flex-wrap gap-x-3 gap-y-1">
-                <span>{summary.discovery.queued_jobs} queued</span>
-                <span>{summary.discovery.failed_jobs} failed</span>
-              </span>
-            }
-            tone={discoveryTone}
-          />
-          <AdminIndicatorCard
-            label="Cloud costs"
-            value={formatCostUsage(summary)}
-            detail="Rolling discovery spend"
-            tone={costTone}
-          />
-        </div>
+        <DashboardHealthPanel
+          apiTone={apiTone}
+          costTone={costTone}
+          discoveryTone={discoveryTone}
+          errorMessage={errorMessage}
+          isLoading={isLoading}
+          summary={summary}
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -75,6 +70,71 @@ export function AdminDashboardView({ summary }: { summary: AdminDashboardSummary
         />
       </section>
     </AdminPageShell>
+  );
+}
+
+function DashboardHealthPanel({
+  apiTone,
+  costTone,
+  discoveryTone,
+  errorMessage,
+  isLoading,
+  summary,
+}: {
+  apiTone: AdminIndicatorTone;
+  costTone: AdminIndicatorTone;
+  discoveryTone: AdminIndicatorTone;
+  errorMessage?: string;
+  isLoading: boolean;
+  summary?: AdminDashboardSummary;
+}) {
+  if (errorMessage || !summary) {
+    return (
+      <div className="space-y-3">
+        <AdminInlineStatus message={errorMessage} />
+        <div className="grid gap-4 md:grid-cols-3" aria-busy={isLoading}>
+          <AdminIndicatorPlaceholderCard label="API" detail="Runtime health endpoint" />
+          <AdminIndicatorPlaceholderCard
+            label="Discovery pipeline"
+            detail={
+              <span className="flex flex-wrap gap-x-3 gap-y-1">
+                <span>- queued</span>
+                <span>- failed</span>
+              </span>
+            }
+          />
+          <AdminIndicatorPlaceholderCard label="Cloud costs" detail="Rolling discovery spend" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-3">
+      <AdminIndicatorCard
+        label="API"
+        value={summary.api.status === "ok" ? "Healthy" : "Degraded"}
+        detail="Runtime health endpoint"
+        tone={apiTone}
+      />
+      <AdminIndicatorCard
+        label="Discovery pipeline"
+        value={`${summary.discovery.running_jobs} running`}
+        detail={
+          <span className="flex flex-wrap gap-x-3 gap-y-1">
+            <span>{summary.discovery.queued_jobs} queued</span>
+            <span>{summary.discovery.failed_jobs} failed</span>
+          </span>
+        }
+        tone={discoveryTone}
+      />
+      <AdminIndicatorCard
+        label="Cloud costs"
+        value={formatCostUsage(summary)}
+        detail="Rolling discovery spend"
+        tone={costTone}
+      />
+    </div>
   );
 }
 

@@ -265,3 +265,11 @@ system was trying to do.
 - **Frontend API mapping** lives in `app/src/lib/api.ts`. The `mapEntity()`
   function converts generated OpenAPI types to the internal `Entry` type. New
   API fields must be mapped here.
+- **Admin pages render the shell first.** Admin headers, navigation, and primary
+  review/action links come from static route state and must not be blocked by
+  optional admin data. Minimize loading UI: no full-screen loading states, no
+  large loading panels, and no loading copy when a stable placeholder or quiet
+  empty space will do. Async admin data belongs inside the smallest affected
+  panel with standardized placeholder cards or one inline status line. Do not
+  wrap errors in special alert boxes or duplicate the same error message across
+  page and panel layers.

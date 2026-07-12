@@ -9,11 +9,16 @@ import { AdminDashboardPage } from "@/domains/admin/admin-dashboard-page";
 import type { AdminDashboardSummary } from "@/domains/admin/admin-dashboard.functions";
 
 const mocks = vi.hoisted(() => ({
+  useHydrated: vi.fn(() => true),
   loadAdminDashboardSummary: vi.fn(),
 }));
 
 vi.mock("@/domains/admin/admin-dashboard.functions", () => ({
   loadAdminDashboardSummary: mocks.loadAdminDashboardSummary,
+}));
+
+vi.mock("@/platform/runtime/use-hydrated", () => ({
+  useHydrated: mocks.useHydrated,
 }));
 
 const dashboardSummary: AdminDashboardSummary = {
@@ -66,10 +71,35 @@ function renderAdminDashboardPage() {
 
 afterEach(() => {
   cleanup();
+  mocks.useHydrated.mockReset();
+  mocks.useHydrated.mockReturnValue(true);
   mocks.loadAdminDashboardSummary.mockReset();
 });
 
 describe("AdminDashboardPage", () => {
+  it("renders the admin shell while dashboard data is still loading", () => {
+    mocks.loadAdminDashboardSummary.mockReturnValue(new Promise(() => undefined));
+
+    renderAdminDashboardPage();
+
+    expect(screen.getByRole("heading", { name: "Admin" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review profile verifications" })).toBeInTheDocument();
+    expect(screen.getByText("API")).toBeInTheDocument();
+    expect(screen.getAllByText("-").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading")).not.toBeInTheDocument();
+  });
+
+  it("keeps the admin shell visible when dashboard data fails", async () => {
+    mocks.loadAdminDashboardSummary.mockRejectedValue(new Error("Admin summary unavailable"));
+
+    renderAdminDashboardPage();
+
+    expect(screen.getByRole("heading", { name: "Admin" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inspect cloud costs" })).toBeInTheDocument();
+    expect(await screen.findByText("Admin summary unavailable")).toBeInTheDocument();
+    expect(screen.getAllByText("Admin summary unavailable")).toHaveLength(1);
+  });
+
   it("renders service health indicators and links to detailed admin work", async () => {
     mocks.loadAdminDashboardSummary.mockResolvedValue(dashboardSummary);
 
@@ -77,9 +107,9 @@ describe("AdminDashboardPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Admin" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Service health" })).toBeInTheDocument();
+    expect(await screen.findByText("4 queued")).toBeInTheDocument();
     expect(screen.getByText("API")).toBeInTheDocument();
     expect(screen.getByText("Discovery pipeline")).toBeInTheDocument();
-    expect(screen.getByText("4 queued")).toBeInTheDocument();
     expect(screen.getByText("1 failed")).toBeInTheDocument();
     expect(screen.getByText("Cloud costs")).toBeInTheDocument();
     expect(screen.getByText("$8.00 of $10.00")).toBeInTheDocument();

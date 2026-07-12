@@ -2,6 +2,8 @@ import type { VerificationRecordResponse } from "@/lib/generated/atlas-schemas/a
 import type { VerificationUpdateRequest } from "@/lib/generated/atlas-schemas/access/verificationUpdateRequest";
 import {
   AdminIndicatorCard,
+  AdminIndicatorPlaceholderCard,
+  AdminInlineStatus,
   AdminPageHeader,
   AdminPageShell,
   AdminStatusBadge,
@@ -13,6 +15,8 @@ import { DISCOUNT_SEGMENT_LABELS } from "../../discount-segments";
 export type VerificationReviewStatus = VerificationUpdateRequest["status"];
 
 interface DiscountAdminViewProps {
+  errorMessage?: string;
+  isLoading?: boolean;
   onReview: (record: VerificationRecordResponse, status: VerificationReviewStatus) => void;
   records: VerificationRecordResponse[];
   reviewPending: boolean;
@@ -20,6 +24,8 @@ interface DiscountAdminViewProps {
 }
 
 export function DiscountAdminView({
+  errorMessage,
+  isLoading = false,
   onReview,
   records,
   reviewPending,
@@ -38,39 +44,55 @@ export function DiscountAdminView({
       />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <AdminIndicatorCard
-          label="Total requests"
-          value={String(total)}
-          detail="All records"
-          tone="neutral"
-        />
-        <AdminIndicatorCard
-          label="Pending review"
-          value={String(pending)}
-          detail="Needs operator decision"
-          tone={pending > 0 ? "warn" : "pass"}
-        />
-        <AdminIndicatorCard
-          label="Verified"
-          value={String(verified)}
-          detail="Approved"
-          tone="pass"
-        />
-        <AdminIndicatorCard
-          label="Rejected"
-          value={String(rejected)}
-          detail="Declined"
-          tone={rejected > 0 ? "neutral" : "pass"}
-        />
+        {isLoading ? (
+          <>
+            <AdminIndicatorPlaceholderCard label="Total requests" detail="All records" />
+            <AdminIndicatorPlaceholderCard
+              label="Pending review"
+              detail="Needs operator decision"
+            />
+            <AdminIndicatorPlaceholderCard label="Verified" detail="Approved" />
+            <AdminIndicatorPlaceholderCard label="Rejected" detail="Declined" />
+          </>
+        ) : (
+          <>
+            <AdminIndicatorCard
+              label="Total requests"
+              value={String(total)}
+              detail="All records"
+              tone="neutral"
+            />
+            <AdminIndicatorCard
+              label="Pending review"
+              value={String(pending)}
+              detail="Needs operator decision"
+              tone={pending > 0 ? "warn" : "pass"}
+            />
+            <AdminIndicatorCard
+              label="Verified"
+              value={String(verified)}
+              detail="Approved"
+              tone="pass"
+            />
+            <AdminIndicatorCard
+              label="Rejected"
+              value={String(rejected)}
+              detail="Declined"
+              tone={rejected > 0 ? "neutral" : "pass"}
+            />
+          </>
+        )}
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-3" aria-busy={isLoading}>
         <h2 className="type-title-large text-ink-strong">Verification requests</h2>
-        {records.length === 0 ? (
+        {errorMessage ? (
+          <AdminInlineStatus message={errorMessage} />
+        ) : records.length === 0 && !isLoading ? (
           <div className="border-border bg-surface-container-lowest rounded-lg border p-6 text-center">
             <p className="type-body-medium text-ink-soft">No verification requests yet.</p>
           </div>
-        ) : (
+        ) : records.length > 0 ? (
           <div className="grid gap-3">
             {records.map((record) => (
               <VerificationRecordCard
@@ -81,7 +103,7 @@ export function DiscountAdminView({
               />
             ))}
           </div>
-        )}
+        ) : null}
       </section>
     </AdminPageShell>
   );

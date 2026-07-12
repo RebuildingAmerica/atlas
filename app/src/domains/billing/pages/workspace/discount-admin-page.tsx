@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { VerificationRecordResponse } from "@/lib/generated/atlas-schemas/access/verificationRecordResponse";
 import type { VerificationUpdateRequest } from "@/lib/generated/atlas-schemas/access/verificationUpdateRequest";
-import { AdminErrorState, AdminLoadingState } from "@/domains/admin/admin-portal";
+import { useHydrated } from "@/platform/runtime/use-hydrated";
 import {
   listDiscountVerifications,
   reviewDiscountVerification,
@@ -18,7 +18,9 @@ interface VerificationReviewInput {
 
 export function DiscountAdminPage() {
   const queryClient = useQueryClient();
+  const hydrated = useHydrated();
   const verificationQuery = useQuery({
+    enabled: hydrated,
     queryKey: ["admin", "verifications"],
     queryFn: async () => {
       return await listDiscountVerifications({ data: {} });
@@ -36,24 +38,13 @@ export function DiscountAdminPage() {
     },
   });
 
-  if (verificationQuery.isPending) {
-    return <AdminLoadingState />;
-  }
-
-  if (verificationQuery.isError) {
-    return (
-      <AdminErrorState
-        message={
-          verificationQuery.error instanceof Error
-            ? verificationQuery.error.message
-            : "Discount verifications could not load."
-        }
-      />
-    );
-  }
-
   const records = verificationQuery.data?.records || [];
   const total = verificationQuery.data?.total || 0;
+  const errorMessage = verificationQuery.isError
+    ? verificationQuery.error instanceof Error
+      ? verificationQuery.error.message
+      : "Discount verifications could not load."
+    : undefined;
   const reviewRecord = (record: VerificationRecordResponse, status: VerificationReviewStatus) => {
     reviewMutation.mutate({
       notes: status === "verified" ? "Approved from admin review." : "Rejected from admin review.",
@@ -64,6 +55,8 @@ export function DiscountAdminPage() {
 
   return (
     <DiscountAdminView
+      errorMessage={errorMessage}
+      isLoading={verificationQuery.isPending}
       onReview={reviewRecord}
       records={records}
       reviewPending={reviewMutation.isPending}

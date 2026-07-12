@@ -2,6 +2,7 @@
  * React Query hooks around the profile-claim, manage, follow, lists, and feed APIs.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UseQueryOptions } from "@tanstack/react-query";
 import {
   approveProfileClaimReview,
   addSavedListItem,
@@ -83,8 +84,11 @@ export function useVerifyClaimDomain() {
   });
 }
 
-export function useProfileClaimReviews() {
+export function useProfileClaimReviews(
+  options?: Pick<UseQueryOptions<ProfileClaimReviewListResponse>, "enabled">,
+) {
   return useQuery<ProfileClaimReviewListResponse>({
+    enabled: options?.enabled,
     queryKey: CLAIM_REVIEW_KEY,
     queryFn: () => listProfileClaimReviews(),
   });

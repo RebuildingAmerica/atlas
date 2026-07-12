@@ -4,6 +4,7 @@ const claimReviewHooks = vi.hoisted(() => ({
   approve: vi.fn(),
   reject: vi.fn(),
   revalidateAtproto: vi.fn(),
+  useHydrated: vi.fn(() => true),
   useApproveProfileClaimReview: vi.fn(),
   useProfileClaimReviews: vi.fn(),
   useRejectProfileClaimReview: vi.fn(),
@@ -15,6 +16,10 @@ vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useProfileClaimReviews: claimReviewHooks.useProfileClaimReviews,
   useRejectProfileClaimReview: claimReviewHooks.useRejectProfileClaimReview,
   useRevalidateProfileAtprotoLinks: claimReviewHooks.useRevalidateProfileAtprotoLinks,
+}));
+
+vi.mock("@/platform/runtime/use-hydrated", () => ({
+  useHydrated: claimReviewHooks.useHydrated,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -31,6 +36,8 @@ export function setupProfileClaimReviewMocks(): void {
   claimReviewHooks.approve.mockReset();
   claimReviewHooks.reject.mockReset();
   claimReviewHooks.revalidateAtproto.mockReset();
+  claimReviewHooks.useHydrated.mockReset();
+  claimReviewHooks.useHydrated.mockReturnValue(true);
   claimReviewHooks.useApproveProfileClaimReview.mockReturnValue({
     mutate: claimReviewHooks.approve,
     isPending: false,
