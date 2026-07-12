@@ -261,22 +261,30 @@ treating existing monitors as new creates.
 Configure these in the Vercel dashboard for the `atlas` project:
 
 1. Open **Settings > Environments > Production > Branch Tracking**.
-2. Set the production branch to a reserved branch such as `production`, not
-   `main`.
-3. Open **Settings > Domains**.
-4. Assign `atlas.rebuildingus.org` to Production.
-5. Assign `atlas-staging.rebuildingus.org` to the `main` Preview branch.
-6. Open **Settings > Deployment Protection > Trusted Sources**.
-7. Add a GitHub Actions external service with:
-   - provider: `GitHub Actions`
-   - issuer: `https://token.actions.githubusercontent.com`
-   - account: `RebuildingAmerica`
-   - repository: `atlas`
-   - workflow: Any workflow
-   - branch: Any branch
-   - audience: `https://github.com/RebuildingAmerica`
-8. Add one environment mapping to `preview`.
-9. Add a second environment mapping to `production`.
+2. Leave the production branch as `main`.
+3. Turn **Auto-assign Custom Production Domains** off.
+4. Open **Settings > Environments**.
+5. Create or edit a custom environment named `staging`.
+6. Enable branch tracking for `main`.
+7. Attach `atlas-staging.rebuildingus.org` to the `staging` environment.
+8. Open **Settings > Domains**.
+9. Keep `atlas.rebuildingus.org` assigned to Production.
+10. Open **Settings > Deployment Protection > Trusted Sources**.
+11. Add a GitHub Actions external service with these values:
+
+| Field      | Value                                         |
+| ---------- | --------------------------------------------- |
+| Provider   | `GitHub Actions`                              |
+| Issuer     | `https://token.actions.githubusercontent.com` |
+| Account    | `RebuildingAmerica`                           |
+| Repository | `atlas`                                       |
+| Workflow   | Any workflow                                  |
+| Branch     | Any branch                                    |
+| Audience   | `https://github.com/RebuildingAmerica`        |
+
+12. Add one environment mapping to `staging` or `preview`, depending on how the
+    Vercel UI names the custom environment.
+13. Add a second environment mapping to `production`.
 
 Those settings make `main` the continuous staging target while keeping
 production behind explicit `v*` release tags.
@@ -290,7 +298,10 @@ Vercel has two different OIDC surfaces:
   for backend/cloud access. Atlas does not use that token for Vercel CLI
   deployments.
 
-The Vercel CLI still needs `VERCEL_TOKEN` for `vercel deploy --prod`.
+The Vercel CLI still needs `VERCEL_TOKEN` for `vercel deploy --prod`. Because
+Auto-assign Custom Production Domains is off, the production workflow deploys
+with `vercel deploy --prod` and then intentionally promotes that deployment with
+`vercel promote`.
 
 The project also keeps this Ignored Build Step as a safety guard:
 
@@ -298,8 +309,9 @@ The project also keeps this Ignored Build Step as a safety guard:
 if [ "$VERCEL_ENV" = "production" ] && [ "$VERCEL_GIT_COMMIT_REF" = "main" ]; then exit 0; else exit 1; fi
 ```
 
-That guard skips only production builds from `main`. After Branch Tracking moves
-production away from `main`, `main` Preview builds continue normally.
+That guard skips only Vercel Git production builds from `main`. Tag releases are
+not Vercel Git production builds; they deploy through GitHub Actions and
+`vercel deploy --prod`.
 
 Verify the Vercel project state with:
 
@@ -310,10 +322,12 @@ pnpm exec vercel api '/v9/projects/prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3?teamId=team_
 
 The expected final state is:
 
-- `productionBranch` is not `main`
+- `productionBranch` may still be `main`
 - `commandForIgnoringBuildStep` skips only production builds from `main`
+- Auto-assign Custom Production Domains is off
 - `atlas.rebuildingus.org` is a Production alias
-- `atlas-staging.rebuildingus.org` is a Preview alias for `main`
+- `atlas-staging.rebuildingus.org` is attached to the `staging` custom
+  environment tracking `main`
 
 Set `ATLAS_AUTH_JWT_AUDIENCES` to the production resource URL list the API
 accepts. Put the MCP resource first, for example:

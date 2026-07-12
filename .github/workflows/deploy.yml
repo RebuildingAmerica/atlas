@@ -61,6 +61,7 @@ jobs:
           python: "false"
 
       - name: Deploy Vercel production app
+        id: deploy-vercel
         working-directory: app
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -69,7 +70,21 @@ jobs:
             echo "::error title=Missing VERCEL_TOKEN::Vercel CLI production deploys still require a Vercel access token. GitHub OIDC is used for protected hosted smoke requests, not CLI authentication."
             exit 1
           fi
-          pnpm exec vercel deploy --prod --yes --scope rebuilding-america-project --token "$VERCEL_TOKEN"
+          deployment_output="$(pnpm exec vercel deploy --prod --yes --no-color --scope rebuilding-america-project --token "$VERCEL_TOKEN")"
+          printf '%s\n' "$deployment_output"
+          deployment_url="$(printf '%s\n' "$deployment_output" | awk '/https:\/\/.*\.vercel\.app/ { url = $0 } END { print url }')"
+          if [ -z "$deployment_url" ]; then
+            echo "::error title=Missing Vercel deployment URL::Vercel deploy did not print a deployment URL."
+            exit 1
+          fi
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+
+      - name: Promote Vercel production domains
+        working-directory: app
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.url }}
+        run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --scope rebuilding-america-project --token "$VERCEL_TOKEN"
 
       - name: Mint Vercel Trusted Source OIDC token
         id: vercel-oidc

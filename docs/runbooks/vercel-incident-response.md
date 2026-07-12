@@ -43,11 +43,13 @@ release tags through `.github/workflows/deploy.yml`.
 ## Deployment Model
 
 - `main` is the continuous staging lane.
-- Vercel Preview serves the staging app.
+- Vercel's `staging` custom environment serves the staging app.
 - `.github/workflows/deploy-staging.yml` deploys `atlas-api-staging` on `main`.
 - Production ships from `v*` tags through `.github/workflows/deploy.yml`.
 - GitHub Actions uses Vercel Trusted Sources for protected smoke checks.
 - The Vercel CLI production deploy still requires `VERCEL_TOKEN`.
+- Production domain auto-assignment is off; the release workflow promotes the
+  tagged Vercel deployment explicitly.
 
 The Vercel project keeps an Ignored Build Step that skips production Git builds
 from `main`:

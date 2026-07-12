@@ -75,11 +75,11 @@ explicit secrets when staging uses split hosted app and API origins.
 
 ## Vercel staging app
 
-Staging uses the Atlas Vercel Preview environment. Vercel builds the staging app
-from the `main` branch through its GitHub integration; GitHub Actions does not
-push branches or run `vercel deploy` for staging.
+Staging uses a Vercel custom environment named `staging`. Vercel builds the
+staging app from the `main` branch through environment branch tracking; GitHub
+Actions does not push branches or run `vercel deploy` for staging.
 
-Set the Vercel Preview env vars to the same app/API origins used by the GitHub
+Set the Vercel `staging` env vars to the same app/API origins used by the GitHub
 `staging` environment:
 
 ```env
@@ -95,8 +95,8 @@ If the staging app proxies docs through Mintlify, set `ATLAS_DOCS_URL` for the
 staging app as well.
 
 The staging app hostname must be available to the Rebuilding America Project
-Vercel team and assigned to the `main` Preview branch in Vercel. Verify that
-before relying on the workflow:
+Vercel team and assigned to the Vercel `staging` environment tracking `main`.
+Verify that before relying on the workflow:
 
 ```bash
 pnpm exec vercel domains ls --scope rebuilding-america-project
@@ -104,15 +104,10 @@ pnpm exec vercel inspect atlas-staging.rebuildingus.org --scope rebuilding-ameri
 pnpm exec vercel api '/v10/projects/prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3/domains/atlas-staging.rebuildingus.org?teamId=team_IA08hNlo8bXnaFX10JyZbNVz' --raw
 ```
 
-`atlas-staging.rebuildingus.org` must inspect as an `atlas` Preview deployment
-from `main`. If Vercel reports that the team does not own the domain, transfer
-or verify the staging hostname in the Rebuilding America Project Vercel team.
-
-If Vercel still reports `main` as the Production branch, change **Settings >
-Environments > Production > Branch Tracking** first. Atlas keeps an Ignored
-Build Step that prevents production Git builds from `main`, but Vercel will not
-create the desired `main` Preview deployment until the project stops treating
-`main` as production.
+`atlas-staging.rebuildingus.org` must inspect as an `atlas` staging/custom
+environment deployment from `main`. If Vercel reports that the team does not own
+the domain, transfer or verify the staging hostname in the Rebuilding America
+Project Vercel team.
 
 ## Deploy staging
 
@@ -149,7 +144,7 @@ Then, for a manual staging deploy:
 After the workflow completes, verify:
 
 1. `GET /health` returns `200` on the staging API.
-2. `atlas-staging.rebuildingus.org` points at the Vercel Preview deployment for
+2. `atlas-staging.rebuildingus.org` points at the Vercel staging deployment for
    `main`.
 3. The staging app loads data through the staging API proxy.
 4. `/.well-known/oauth-protected-resource/mcp` returns staging resource
