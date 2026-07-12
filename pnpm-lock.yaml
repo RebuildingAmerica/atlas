@@ -260,6 +260,13 @@ importers:
         version: 54.21.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(rollup@4.62.2)
 
   api:
+    dependencies:
+      '@rebuildingamerica/atlas-discovery-engine':
+        specifier: workspace:*
+        version: link:../libs/discovery-engine
+      '@rebuildingamerica/atlas-shared':
+        specifier: workspace:*
+        version: link:../libs/shared
     devDependencies:
       portless:
         specifier: 'catalog:'
@@ -455,7 +462,11 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(@edge-runtime/vm@3.2.0)(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.3(@types/node@26.1.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.8.3))
 
-  libs/discovery-engine: {}
+  libs/discovery-engine:
+    dependencies:
+      '@rebuildingamerica/atlas-shared':
+        specifier: workspace:*
+        version: link:../shared
 
   libs/shared: {}
 
@@ -604,7 +615,14 @@ importers:
         specifier: 'catalog:'
         version: 8.62.1(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3)
 
-  scout: {}
+  scout:
+    dependencies:
+      '@rebuildingamerica/atlas-discovery-engine':
+        specifier: workspace:*
+        version: link:../libs/discovery-engine
+      '@rebuildingamerica/atlas-shared':
+        specifier: workspace:*
+        version: link:../libs/shared
 
 packages:
 

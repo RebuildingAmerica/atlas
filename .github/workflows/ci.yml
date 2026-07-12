@@ -49,6 +49,7 @@ jobs:
       docs: ${{ steps.classify.outputs.docs }}
       compose: ${{ steps.classify.outputs.compose }}
       secrets_scan: ${{ steps.classify.outputs.secrets_scan }}
+      deploy_scripts: ${{ steps.classify.outputs.deploy_scripts }}
       staging_api_deploy: ${{ steps.classify.outputs.staging_api_deploy }}
       hosted_smoke: ${{ steps.classify.outputs.hosted_smoke }}
       use_affected: ${{ steps.classify.outputs.use_affected }}
@@ -80,6 +81,7 @@ jobs:
       - name: Validate Turbo task selectors
         run: pnpm run turbo:validate
       - name: Test deploy scripts
+        if: needs.changes.outputs.deploy_scripts == 'true'
         run: pnpm run deploy:test
       - name: Typecheck and lint
         env:
@@ -100,17 +102,23 @@ jobs:
       ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
       RUN_PYTHON_TESTS: ${{ needs.changes.outputs.python_tests }}
       RUN_APP_TESTS: ${{ needs.changes.outputs.app_tests }}
+      TURBO_AFFECTED_FLAG: ${{ needs.changes.outputs.use_affected == 'true' && '--affected' || '' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-toolchain
       - name: Run test suites
         run: |
+          affected_args=()
+          if [ -n "$TURBO_AFFECTED_FLAG" ]; then
+            affected_args=("$TURBO_AFFECTED_FLAG")
+          fi
+
           if [ "$RUN_PYTHON_TESTS" = "true" ]; then
-            pnpm exec turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test @rebuildingamerica/atlas-api#test
+            pnpm exec turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test @rebuildingamerica/atlas-api#test "${affected_args[@]}"
           fi
 
           if [ "$RUN_APP_TESTS" = "true" ]; then
-            pnpm exec turbo run '@rebuildingamerica/atlas-app#test' @rebuildingamerica/entity-widgets#test @rebuildingamerica/entity-widgets-mcp#test
+            pnpm exec turbo run '@rebuildingamerica/atlas-app#test' @rebuildingamerica/entity-widgets#test @rebuildingamerica/entity-widgets-mcp#test "${affected_args[@]}"
           fi
 
   acceptance:

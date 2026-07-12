@@ -9,5 +9,9 @@
   },
   "devDependencies": {
     "portless": "catalog:"
+  },
+  "dependencies": {
+    "@rebuildingamerica/atlas-discovery-engine": "workspace:*",
+    "@rebuildingamerica/atlas-shared": "workspace:*"
   }
 }
