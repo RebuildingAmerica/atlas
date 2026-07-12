@@ -62,8 +62,6 @@ jobs:
       - name: Mint Vercel Trusted Source OIDC token
         id: vercel-oidc
         uses: ./.github/actions/vercel-trusted-oidc
-        with:
-          audience: https://github.com/${{ github.repository_owner }}
 
       - name: Run hosted Cloudflare API smoke
         env:

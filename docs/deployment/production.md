@@ -285,6 +285,10 @@ Configure these in the Vercel dashboard for the `atlas` project:
 | Branch     | Any branch                                    |
 | Audience   | `https://github.com/RebuildingAmerica`        |
 
+Atlas workflows use GitHub's default OIDC audience. Do not enable **Use a custom
+audience** for this Trusted Sources rule unless the workflows are changed to
+pass the same custom value.
+
 12. Add one environment mapping to `staging` or `preview`, depending on how the
     Vercel UI names the custom environment.
 13. Add a second environment mapping to `production`.

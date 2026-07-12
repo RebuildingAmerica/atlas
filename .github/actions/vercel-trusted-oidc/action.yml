@@ -3,8 +3,9 @@ description: Mint a GitHub Actions OIDC token for Vercel Trusted Sources.
 
 inputs:
   audience:
-    description: OIDC audience configured in Vercel Trusted Sources.
-    required: true
+    description: Optional custom OIDC audience configured in Vercel Trusted Sources.
+    required: false
+    default: ""
 
 outputs:
   token:
@@ -20,7 +21,10 @@ runs:
         AUDIENCE: ${{ inputs.audience }}
       run: |
         set -euo pipefail
-        request_url="$(jq -nr --arg url "$ACTIONS_ID_TOKEN_REQUEST_URL" --arg audience "$AUDIENCE" '$url + (if ($url | contains("?")) then "&" else "?" end) + "audience=" + ($audience | @uri)')"
+        request_url="$ACTIONS_ID_TOKEN_REQUEST_URL"
+        if [ -n "$AUDIENCE" ]; then
+          request_url="$(jq -nr --arg url "$request_url" --arg audience "$AUDIENCE" '$url + (if ($url | contains("?")) then "&" else "?" end) + "audience=" + ($audience | @uri)')"
+        fi
         response="$(curl -fsSL -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "$request_url")"
         token="$(jq -r '.value // empty' <<<"$response")"
         if [ -z "$token" ]; then
