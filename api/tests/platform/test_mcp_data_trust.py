@@ -286,8 +286,23 @@ class TestEntityRecordClaimEvidence:
         )
 
         assert record["claim_evidence"]["summary"]["as_of"] == "2026-01-14"
-        assert record["freshness"]["created_at"] == "2026-01-01 12:00:00+00:00"
-        assert record["freshness"]["updated_at"] == "2026-01-15 12:00:00+00:00"
+        assert record["freshness"]["created_at"] == "2026-01-01T12:00:00+00:00"
+        assert record["freshness"]["updated_at"] == "2026-01-15T12:00:00+00:00"
+
+    def test_claim_evidence_accepts_postgres_datetime_latest_source_date(self) -> None:
+        """Postgres aggregate timestamps should serialize into public claim evidence."""
+        record = data_module._entity_record(  # noqa: SLF001
+            _build_entry(),
+            data_module.EntityRecordContext(
+                issue_area_ids=["mental_health_crisis_and_access"],
+                source_types=["news_article"],
+                source_count=1,
+                latest_source_date=datetime(2026, 1, 14, 12, 0, tzinfo=UTC),
+                independent_source_count=1,
+            ),
+        )
+
+        assert record["claim_evidence"]["summary"]["as_of"] == "2026-01-14"
 
     def test_claim_evidence_marks_fully_grounded_contact(self) -> None:
         entry = replace(

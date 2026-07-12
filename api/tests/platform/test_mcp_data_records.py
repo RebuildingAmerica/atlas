@@ -177,6 +177,21 @@ class TestEntityFreshnessFallbackChain:
         )
         assert info.staleness_status == "fresh"
 
+    def test_accepts_datetime_latest_source_date(self) -> None:
+        today = datetime.now(UTC).date()
+        entry = replace(_build_entry(), last_seen=date(2020, 1, 1))
+        info = data_module._entity_freshness(  # noqa: SLF001
+            entry=entry, latest_source_date=datetime.now(UTC)
+        )
+        assert info.latest_source_date == today.isoformat()
+        assert info.staleness_status == "fresh"
+
+    def test_invalid_latest_source_date_falls_back_to_last_seen(self) -> None:
+        entry = replace(_build_entry(), last_seen=datetime.now(UTC).date())
+        info = data_module._entity_freshness(entry=entry, latest_source_date="not-a-date")  # noqa: SLF001
+        assert info.latest_source_date is None
+        assert info.staleness_status == "fresh"
+
 
 class TestSourceFreshness:
     def test_published_date_fresh(self) -> None:
@@ -198,6 +213,34 @@ class TestSourceFreshness:
             }
         )
         assert info.staleness_status == "fresh"
+
+    def test_falls_back_to_created_at(self) -> None:
+        created_at = datetime.now(UTC).date() - timedelta(days=FRESHNESS_DAYS + 5)
+        info = data_module._source_freshness(  # noqa: SLF001
+            {
+                "published_date": None,
+                "ingested_at": None,
+                "created_at": created_at.isoformat(),
+            }
+        )
+        assert info.staleness_status == "aging"
+
+    def test_marks_old_sources_stale(self) -> None:
+        stale_date = datetime.now(UTC).date() - timedelta(days=data_module.AGING_DAYS + 5)
+        info = data_module._source_freshness(  # noqa: SLF001
+            {
+                "published_date": stale_date.isoformat(),
+                "ingested_at": None,
+                "created_at": None,
+            }
+        )
+        assert info.staleness_status == "stale"
+
+    def test_invalid_source_date_is_unknown(self) -> None:
+        info = data_module._source_freshness(  # noqa: SLF001
+            {"published_date": "not-a-date", "ingested_at": None, "created_at": None}
+        )
+        assert info.staleness_status == "unknown"
 
     def test_unknown_when_all_missing(self) -> None:
         info = data_module._source_freshness(  # noqa: SLF001

@@ -31,7 +31,6 @@ from .data_record_helpers import (
     AGING_DAYS,
     FRESHNESS_DAYS,
     EntityRecordContext,
-    _coerce_date,
     _discovery_run_record,
     _entity_freshness,
     _entity_record,
@@ -48,7 +47,6 @@ from .data_record_helpers import (
     _source_linked_entity_record,
     _source_record,
     _staleness,
-    _string_or_none,
 )
 from .data_service_entities import AtlasDataServiceEntityMixin
 from .data_service_places import AtlasDataServicePlaceMixin
@@ -91,7 +89,6 @@ __all__ = [
     "_claim_confidence",
     "_claim_evidence_set",
     "_clean_string",
-    "_coerce_date",
     "_contact_claim_confidence",
     "_contact_claim_source_count",
     "_contact_source_ids",
@@ -126,7 +123,6 @@ __all__ = [
     "_source_place_filter_clause",
     "_source_record",
     "_staleness",
-    "_string_or_none",
     "_tokenize",
     "_trust_inputs_from_sources",
     "_trust_level",

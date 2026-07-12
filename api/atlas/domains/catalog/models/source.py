@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
+from atlas.platform.dates import require_date
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -386,19 +387,10 @@ def _row_to_source(row: dict[str, Any]) -> SourceModel:
         url=row["url"],
         title=row["title"],
         publication=row["publication"],
-        published_date=_row_date(row["published_date"]) if row["published_date"] else None,
+        published_date=require_date(row["published_date"]) if row["published_date"] else None,
         type=row["type"],
         ingested_at=row["ingested_at"],
         extraction_method=row["extraction_method"],
         raw_content=row["raw_content"],
         created_at=row["created_at"],
     )
-
-
-def _row_date(value: date | datetime | str) -> date:
-    """Normalize SQLite/Postgres date column values to ``date``."""
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    return date.fromisoformat(value)

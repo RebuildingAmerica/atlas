@@ -17,6 +17,7 @@ from atlas.domains.catalog.schemas.public import (
     TrustInfo,
 )
 from atlas.models import EntryCRUD
+from atlas.platform.dates import coerce_date, date_string, row_timestamp_string
 from atlas.schemas import DiscoveryRunResponse
 
 from .data_place_helpers import _format_place
@@ -195,8 +196,8 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
         freshness=_entity_freshness(entry=entry, latest_source_date=context.latest_source_date),
         flag_summary=FlagSummary.model_validate(context.flag_summary or {}),
         slug=entry.slug,
-        created_at=_string_or_none(entry.created_at),
-        updated_at=_string_or_none(entry.updated_at),
+        created_at=row_timestamp_string(entry.created_at),
+        updated_at=row_timestamp_string(entry.updated_at),
         resource_uri=f"atlas://entities/{entry.id}",
         profile_url=_profile_url(entry, context.public_url),
     ).model_dump(mode="json")
@@ -298,21 +299,18 @@ async def _source_linked_entities_by_id(
 
 def _latest_source_date(sources: Sequence[Mapping[str, Any]], fallback: str) -> str:
     for source in sources:
-        published_date = source.get("published_date")
-        if published_date:
-            return str(published_date)
-        ingested_at = source.get("ingested_at")
-        if ingested_at:
-            return str(ingested_at)[:10]
+        latest = date_string(source.get("published_date")) or date_string(source.get("ingested_at"))
+        if latest:
+            return latest
     return fallback
 
 
 def _entity_freshness(
     *, entry: EntryModel, latest_source_date: date | datetime | str | None
 ) -> FreshnessInfo:
-    latest_source_date_value = _date_string(latest_source_date)
+    latest_source_date_value = date_string(latest_source_date)
     reference = (
-        (entry.last_confirmed_at[:10] if entry.last_confirmed_at else None)
+        date_string(entry.last_confirmed_at)
         or (entry.last_verified.isoformat() if entry.last_verified else None)
         or latest_source_date_value
         or entry.last_seen.isoformat()
@@ -320,8 +318,8 @@ def _entity_freshness(
     )
     status, reason = _staleness(reference, "entity data")
     return FreshnessInfo(
-        updated_at=_string_or_none(entry.updated_at),
-        created_at=_string_or_none(entry.created_at),
+        updated_at=row_timestamp_string(entry.updated_at),
+        created_at=row_timestamp_string(entry.created_at),
         last_seen=entry.last_seen.isoformat(),
         last_verified=entry.last_verified.isoformat() if entry.last_verified else None,
         latest_source_date=latest_source_date_value,
@@ -334,18 +332,18 @@ def _source_freshness(source: Mapping[str, Any]) -> FreshnessInfo:
     reference = (
         source.get("published_date") or source.get("ingested_at") or source.get("created_at")
     )
-    status, reason = _staleness(str(reference) if reference else None, "source record")
+    status, reason = _staleness(reference, "source record")
     return FreshnessInfo(
-        created_at=_string_or_none(source.get("created_at")),
-        published_date=_string_or_none(source.get("published_date")),
-        ingested_at=_string_or_none(source.get("ingested_at")),
+        created_at=row_timestamp_string(source.get("created_at")),
+        published_date=date_string(source.get("published_date")),
+        ingested_at=row_timestamp_string(source.get("ingested_at")),
         staleness_status=status,
         staleness_reason=reason,
     )
 
 
 def _staleness(reference: date | datetime | str | None, label: str) -> tuple[str, str]:
-    reference_date = _coerce_date(reference)
+    reference_date = coerce_date(reference)
     if reference_date is None:
         return "unknown", f"No date available for {label} freshness."
     age_days = (datetime.now(UTC).date() - reference_date).days
@@ -354,29 +352,6 @@ def _staleness(reference: date | datetime | str | None, label: str) -> tuple[str
     if age_days <= AGING_DAYS:
         return "aging", f"Most recent {label} date is more than {FRESHNESS_DAYS} days old."
     return "stale", f"Most recent {label} date is more than a year old."
-
-
-def _coerce_date(value: date | datetime | str | None) -> date | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    cleaned = value[:10]
-    try:
-        return date.fromisoformat(cleaned)
-    except ValueError:
-        return None
-
-
-def _string_or_none(value: object | None) -> str | None:
-    return None if value is None else str(value)
-
-
-def _date_string(value: date | datetime | str | None) -> str | None:
-    coerced = _coerce_date(value)
-    return coerced.isoformat() if coerced is not None else None
 
 
 def _rows_to_dicts(cursor: Any, rows: Iterable[Any]) -> list[dict[str, Any]]:

@@ -240,6 +240,12 @@ system was trying to do.
   `types.ts` buckets.
 - **No fallbacks or silent defaults.** Fail explicitly. Work against defined
   specs, not guessed defaults.
+- **Test behavior, not source text.** Tests should exercise observable behavior,
+  public contracts, generated artifacts, database effects, or user-visible
+  outcomes. Do not add one-off source scanning tests for implementation details
+  or plan enforcement. Rare categorical exceptions are allowed only when the
+  source text is itself the product contract, such as generated-code snapshots,
+  migration invariants, lint-rule fixtures, or repository policy tooling.
 - **No CSS `transform: scale()`.** Resize actual dimensions. No overlapping
   surfaces during transitions.
 - **Python:** Line length 100. Async everywhere for I/O. Docstrings with

@@ -5,10 +5,11 @@ proactive queue of discovered records held back from the public directory.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from atlas.platform.database import db
+from atlas.platform.dates import coerce_date, row_timestamp_string
 
 __all__ = ["ReviewQueueCRUD", "ReviewQueueItemModel"]
 
@@ -46,8 +47,8 @@ def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
         score=row[6],
         dedup_suspect=bool(row[7]),
         dedup_note=row[8],
-        created_at=_row_timestamp(row[9]),
-        reviewed_at=_row_timestamp(row[10]) if row[10] is not None else None,
+        created_at=row_timestamp_string(row[9]) or "",
+        reviewed_at=row_timestamp_string(row[10]),
         reviewed_by=row[11],
     )
 
@@ -56,13 +57,6 @@ _SELECT_COLUMNS = (
     "id, org_id, entity_id, kind, status, hold_reason, score, dedup_suspect, "
     "dedup_note, created_at, reviewed_at, reviewed_by"
 )
-
-
-def _row_timestamp(value: datetime | str) -> str:
-    """Normalize SQLite/Postgres timestamp column values to strings."""
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return value
 
 
 class ReviewQueueCRUD:
@@ -147,7 +141,7 @@ class ReviewQueueCRUD:
         threshold = datetime.now(UTC).date() - timedelta(days=stale_after_days)
         review_item_ids: list[str] = []
         for row_org_id, entity_id, latest_source_date, source_count in rows:
-            latest_date = _coerce_date(str(latest_source_date) if latest_source_date else None)
+            latest_date = coerce_date(latest_source_date)
             if latest_date is None or latest_date > threshold:
                 continue
             if await ReviewQueueCRUD._has_pending_staleness_item(
@@ -262,13 +256,3 @@ class ReviewQueueCRUD:
         cursor = await conn.execute("SELECT COUNT(*) FROM review_queue WHERE status = 'pending'")
         row = await cursor.fetchone()
         return int(row[0]) if row else 0
-
-
-def _coerce_date(value: str | None) -> date | None:
-    """Parse a stored ISO date or timestamp into a date."""
-    if value is None:
-        return None
-    try:
-        return date.fromisoformat(value[:10])
-    except ValueError:
-        return None

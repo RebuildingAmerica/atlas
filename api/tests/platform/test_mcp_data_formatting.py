@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 
+from atlas.platform.dates import coerce_date
 from atlas.platform.mcp import data as data_module
 
 from tests.platform.mcp_data_support import (
@@ -49,21 +50,13 @@ class TestStaleness:
 
 class TestCoerceDate:
     def test_none(self) -> None:
-        assert data_module._coerce_date(None) is None  # noqa: SLF001
+        assert coerce_date(None) is None
 
     def test_invalid(self) -> None:
-        assert data_module._coerce_date("not-a-date") is None  # noqa: SLF001
+        assert coerce_date("not-a-date") is None
 
     def test_iso(self) -> None:
-        assert data_module._coerce_date("2026-04-30") == date(2026, 4, 30)  # noqa: SLF001
-
-
-class TestStringOrNone:
-    def test_none_passthrough(self) -> None:
-        assert data_module._string_or_none(None) is None  # noqa: SLF001
-
-    def test_int_to_str(self) -> None:
-        assert data_module._string_or_none(42) == "42"  # noqa: SLF001
+        assert coerce_date("2026-04-30") == date(2026, 4, 30)
 
 
 class TestFormatPlace:

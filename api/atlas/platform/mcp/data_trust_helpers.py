@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from atlas.domains.catalog.models.entry import EntryModel, trust_tier
 from atlas.domains.catalog.schemas.public import ClaimEvidence, ClaimEvidenceSet
+from atlas.platform.dates import date_string
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from datetime import date, datetime
 
     from .data_record_helpers import EntityRecordContext
 
@@ -160,11 +161,7 @@ def _claim_evidence_set(
 
 def _claim_as_of(value: date | datetime | str | None) -> str | None:
     """Normalize latest-source values for public evidence metadata."""
-    if isinstance(value, datetime):
-        return value.date().isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    return value
+    return date_string(value)
 
 
 __all__ = [name for name in globals() if not name.startswith("__")]

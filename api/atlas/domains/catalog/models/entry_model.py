@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
+from atlas.platform.dates import require_date
+
+if TYPE_CHECKING:
+    from datetime import date
 
 __all__ = ["EntryModel", "_row_to_entry", "actor_quality", "trust_tier"]
 
@@ -141,12 +144,12 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         affiliated_org_id=row["affiliated_org_id"],
         active=bool(row["active"]),
         verified=bool(row["verified"]),
-        last_verified=_row_date(row["last_verified"]) if row["last_verified"] else None,
+        last_verified=require_date(row["last_verified"]) if row["last_verified"] else None,
         contact_status=row["contact_status"],
         editorial_notes=row["editorial_notes"],
         priority=row["priority"],
-        first_seen=_row_date(row["first_seen"]),
-        last_seen=_row_date(row["last_seen"]),
+        first_seen=require_date(row["first_seen"]),
+        last_seen=require_date(row["last_seen"]),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         slug=row.get("slug"),
@@ -162,15 +165,6 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         suppressed_source_ids=suppressed,
         preferred_contact_channel=row.get("preferred_contact_channel"),
     )
-
-
-def _row_date(value: date | datetime | str) -> date:
-    """Normalize SQLite/Postgres date column values to ``date``."""
-    if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
-        return value
-    return date.fromisoformat(value)
 
 
 _MIN_CORROBORATING_SOURCES = 2

@@ -136,8 +136,6 @@ def test_tokenize_and_freshness_helpers() -> None:
     assert data_module._staleness(today, "entity data")[0] == "fresh"  # noqa: SLF001
     stale_target = (datetime.now(UTC).date() - timedelta(days=AGING_DAYS + 5)).isoformat()
     assert data_module._staleness(stale_target, "entity data")[0] == "stale"  # noqa: SLF001
-    assert data_module._coerce_date("2026-04-30") == date(2026, 4, 30)  # noqa: SLF001
-    assert data_module._string_or_none(42) == "42"  # noqa: SLF001
 
 
 def test_latest_source_date_and_place_fallbacks() -> None:

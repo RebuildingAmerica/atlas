@@ -7,8 +7,9 @@ import pytest
 
 from atlas.domains.catalog.schemas.public_review import ReviewQueueItemResponse
 from atlas.domains.catalog.models.entry import EntryCRUD
-from atlas.domains.moderation.review_queue import ReviewQueueCRUD, _coerce_date, _row_to_item
+from atlas.domains.moderation.review_queue import ReviewQueueCRUD, _row_to_item
 from atlas.models.database import get_db_connection
+from atlas.platform.dates import coerce_date
 
 
 class _RecordingReviewQueueConnection:
@@ -301,6 +302,6 @@ async def test_count_pending_tracks_open_items(db_url: str) -> None:
 
 def test_coerce_date_handles_missing_and_invalid_values() -> None:
     """Review queue timestamps should parse conservatively."""
-    assert _coerce_date(None) is None
-    assert _coerce_date("not-a-date") is None
-    assert _coerce_date("2026-07-05T12:30:00Z") == date(2026, 7, 5)
+    assert coerce_date(None) is None
+    assert coerce_date("not-a-date") is None
+    assert coerce_date("2026-07-05T12:30:00Z") == date(2026, 7, 5)

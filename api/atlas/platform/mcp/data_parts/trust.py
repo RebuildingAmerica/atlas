@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 from atlas.domains.catalog.models.entry import trust_tier
 from atlas.domains.catalog.schemas.public import ClaimEvidence, ClaimEvidenceSet, ProfileAnswers
+from atlas.platform.dates import date_string
 from atlas.platform.mcp.data_parts.context import EntityRecordContext  # noqa: TC001
 from atlas.platform.mcp.data_parts.place_utils import _format_place
 
@@ -161,11 +162,7 @@ def _claim_evidence_set(
 
 def _claim_as_of(value: date | datetime | str | None) -> str | None:
     """Normalize latest-source values for public evidence metadata."""
-    if isinstance(value, datetime):
-        return value.date().isoformat()
-    if isinstance(value, date):
-        return value.isoformat()
-    return value
+    return date_string(value)
 
 
 def _humanize_identifier(value: str) -> str:
