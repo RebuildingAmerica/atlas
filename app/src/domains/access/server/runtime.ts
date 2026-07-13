@@ -19,6 +19,7 @@ export interface AuthRuntimeConfig {
   authJwtAudience: string | null;
   authJwtAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
+  atprotoPdsUrl: string | null;
   anonymousRateLimit: AnonymousRateLimitConfig;
   operatorAllowedEmails: Set<string>;
   apiBaseUrl: string | null;
@@ -177,6 +178,25 @@ function resolveApiBaseUrl(env: NodeJS.ProcessEnv): string | null {
   );
 }
 
+function resolveAtprotoPdsUrl(env: NodeJS.ProcessEnv): string | null {
+  const configuredUrl = env.ATLAS_PDS_PUBLIC_URL?.trim();
+  if (!configuredUrl) {
+    return null;
+  }
+
+  const pdsUrl = parseAbsoluteUrl(configuredUrl, "ATLAS_PDS_PUBLIC_URL");
+  if (pdsUrl.protocol !== "https:") {
+    throw new Error("ATLAS_PDS_PUBLIC_URL must use https.");
+  }
+  if (pdsUrl.username || pdsUrl.password || pdsUrl.search || pdsUrl.hash) {
+    throw new Error(
+      "ATLAS_PDS_PUBLIC_URL must be a public origin without credentials or fragments.",
+    );
+  }
+
+  return trimTrailingSlash(pdsUrl.toString());
+}
+
 /**
  * Resolves auth runtime config from the process environment.
  */
@@ -200,6 +220,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     authJwtAudiences,
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
+    atprotoPdsUrl: resolveAtprotoPdsUrl(env),
     anonymousRateLimit: resolveAnonymousRateLimitConfig(env),
     operatorAllowedEmails: normalizeEmailList(env.ATLAS_OPERATOR_ALLOWED_EMAILS),
     databaseUrl,

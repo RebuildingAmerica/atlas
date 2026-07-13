@@ -57,6 +57,7 @@ describe("runtime additional branches", () => {
         authJwtAudience: null,
         authJwtAudiences: [],
         apiBaseUrl: null,
+        atprotoPdsUrl: null,
         operatorAllowedEmails: new Set(),
         anonymousRateLimit: {
           enabled: true,

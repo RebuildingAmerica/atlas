@@ -4,6 +4,14 @@ import {
   setupAtprotoOAuthMocks,
 } from "./atproto-oauth-test-support";
 
+const managedPdsMocks = vi.hoisted(() => ({
+  provisionManagedAtprotoIdentity: vi.fn(),
+}));
+
+vi.mock("@/domains/access/server/atproto-pds", () => ({
+  provisionManagedAtprotoIdentity: managedPdsMocks.provisionManagedAtprotoIdentity,
+}));
+
 describe("atproto-oauth", () => {
   function configureHarnessCallback(returnTo: string, responseStatus = 201) {
     vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
@@ -32,6 +40,51 @@ describe("atproto-oauth", () => {
 
   beforeEach(() => {
     setupAtprotoOAuthMocks();
+    managedPdsMocks.provisionManagedAtprotoIdentity.mockReset();
+  });
+
+  it("persists only the public result of a managed PDS provisioning request", async () => {
+    managedPdsMocks.provisionManagedAtprotoIdentity.mockResolvedValue({
+      current_handle: "civic.atlas.test",
+      did: "did:plc:managed",
+      pds_url: "https://pds.atlas.test",
+    });
+    mocks().fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          current_handle: "civic.atlas.test",
+          did: "did:plc:managed",
+          id: "identity_managed",
+          pds_url: "https://pds.atlas.test",
+        }),
+        { status: 201 },
+      ),
+    );
+    const { provisionAndLinkManagedAtprotoIdentity } =
+      await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      provisionAndLinkManagedAtprotoIdentity({ handle: "civic.atlas.test" }),
+    ).resolves.toEqual({
+      current_handle: "civic.atlas.test",
+      did: "did:plc:managed",
+      id: "identity_managed",
+      pds_url: "https://pds.atlas.test",
+    });
+
+    expect(managedPdsMocks.provisionManagedAtprotoIdentity).toHaveBeenCalledWith({
+      handle: "civic.atlas.test",
+      userId: "user_1",
+    });
+    const [, request] = mocks().fetch.mock.calls[0] as [URL, RequestInit];
+    if (typeof request.body !== "string") {
+      throw new Error("Expected a JSON provisioning persistence body.");
+    }
+    expect(JSON.parse(request.body)).toEqual({
+      current_handle: "civic.atlas.test",
+      did: "did:plc:managed",
+      pds_url: "https://pds.atlas.test",
+    });
   });
 
   it("prunes old OAuth app-state rows before writing the next authorization state", async () => {

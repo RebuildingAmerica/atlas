@@ -8,6 +8,7 @@ import {
   createAtprotoOAuthStores,
   pruneAtprotoOAuthStores as pruneAtprotoOAuthStoreRows,
 } from "./atproto-oauth-stores";
+import { provisionManagedAtprotoIdentity } from "./atproto-pds";
 import { loadAtlasSession } from "./session-state";
 import { getAuthRuntimeConfig } from "./runtime";
 
@@ -86,6 +87,21 @@ export async function createAtprotoAuthorizationUrl(
   }
   const client = await getAtprotoOAuthClient();
   return await client.authorize(input.handle, { state });
+}
+
+/**
+ * Provisions an Atlas-hosted account for the signed-in user, then records its
+ * public identity through the same API used by external PDS OAuth linking.
+ */
+export async function provisionAndLinkManagedAtprotoIdentity(input: {
+  handle: string;
+}): Promise<LinkedAtprotoIdentity> {
+  const session = await requireSignedInAtlasSession();
+  const managedIdentity = await provisionManagedAtprotoIdentity({
+    handle: input.handle,
+    userId: session.user.id,
+  });
+  return await persistLinkedAtprotoIdentity(managedIdentity);
 }
 
 export function createAtprotoHarnessProviderCallbackUrl(params: URLSearchParams): URL {
