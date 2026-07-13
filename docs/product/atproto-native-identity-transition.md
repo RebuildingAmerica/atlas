@@ -156,9 +156,10 @@ Atlas civic AppView
 Atlas public experience
 ```
 
-Atlas should begin as an ATProto OAuth client, civic AppView, indexer, and
-review layer. Managed PDS hosting is optional later, not a prerequisite for
-identity, claiming, discovery, SSO, source submission, or public use.
+Atlas begins as an ATProto OAuth client, civic AppView, indexer, and review
+layer. Atlas also operates a managed-PDS foundation for people and workspaces
+that choose an Atlas identity, without making hosted PDS credentials an Atlas
+account recovery mechanism.
 
 ## Transition Step 1: Identity Graph Foundation
 
@@ -278,7 +279,8 @@ available for workspace access.
 
 - Add a public sign-in path that starts from handle entry.
 - Link verified DID to an existing user when safe.
-- Create a new Atlas user when the DID has no existing user.
+- Reject a DID that has no existing Atlas account control instead of creating a
+  new account from the provider callback.
 - Avoid implicit account takeover by requiring explicit linking when an email or
   SSO user already exists.
 - Update account setup so email is recommended but not mandatory for public
@@ -386,7 +388,7 @@ holder of their civic identity or contribution history.
   provenance metadata.
 - Atlas review state controls public presentation.
 
-## Transition Step 6: Optional Managed PDS
+## Transition Step 6: Atlas-Managed PDS Foundation
 
 ### System Shape
 
@@ -404,11 +406,12 @@ Same Atlas AppView and review layer
 
 ### Product Outcome
 
-Atlas can eventually help civic actors who want decentralized identity but do
-not want to choose or operate a PDS. This is a later service capability, not the
-core identity transition.
+Atlas can help civic actors who want decentralized identity but do not want to
+choose or operate a PDS. Atlas provisions the public DID through the same
+identity-control graph as external PDSes, then discards the generated PDS
+password and protocol sessions.
 
-### Requirements Before This Ships
+### Requirements Before Direct PDS Credential Access Is Advertised
 
 - Account portability guarantees.
 - Export and deletion paths.
@@ -564,7 +567,8 @@ Atlas is:
 - a civic AppView/indexer,
 - a review and trust layer,
 - an enterprise-capable workspace product,
-- and optionally, later, a managed PDS provider.
+- a managed-PDS identity foundation with explicit recovery and portability work
+  still required before direct PDS credential access is advertised.
 
 Atlas is not:
 
@@ -588,7 +592,8 @@ identity across the federated web.
   public artifacts?
 - Which Lexicon should ship first: source submission, field note, profile claim,
   or directory contribution?
-- What guarantees must exist before Atlas offers managed PDS hosting?
+- What recovery, export, and migration guarantees are required before Atlas
+  offers direct managed-PDS credential access?
 
 ## Implementation Sequencing
 
@@ -601,7 +606,7 @@ identity across the federated web.
 7. Federated source submissions.
 8. Field notes and outbound publishing.
 9. Atlas Lexicons.
-10. Optional managed PDS evaluation.
+10. Managed PDS recovery, export, and migration operations.
 
 Each step must preserve public discovery, profile trust, correction paths, and
 workspace SSO behavior before advancing.
@@ -617,6 +622,8 @@ separately attaches or removes the identity displayed on a public profile.
 Handles remain presentation data resolved from the DID. Resolution failures
 retain the relationship, mark it as needing attention, and suppress stale public
 links. Identity state is global to the user and must not change the active
-workspace or alter enterprise SSO boundaries. Atlas supports external ATProto
-providers first; an Atlas-managed PDS remains deferred until hosting, recovery,
-moderation, and portability guarantees are specified.
+workspace or alter enterprise SSO boundaries. Atlas supports both external
+providers and an Atlas-managed PDS through the same control graph. Atlas does
+not retain or expose managed-PDS passwords; recovery, moderation, and
+portability operations remain required before direct credential access is
+advertised.

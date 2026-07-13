@@ -1,6 +1,6 @@
 # Milestone 13: Delegated Identity and ATProto Sign-In
 
-**Status:** In progress
+**Status:** Ready for live verification
 
 ## ATProto-first sign-in
 
@@ -14,10 +14,15 @@ registered passkey, then uses Better Auth's own cookie/session implementation.
 Unknown, disconnected, conflict, unverified, and passkey-less identities all
 receive the same unavailable outcome.
 
+## Organization administration
+
+An owner or admin can make an existing controlled DID the organization identity,
+create-and-attach an Atlas-managed DID, grant a workspace member delegated
+administration, and revoke that grant immediately. The UI reads its active
+identity and delegation state from the typed organization contract; API
+authorization remains the enforcement boundary.
+
 ## Remaining work
 
-- Present account and organization identity selection with Atlas PDS as the
-  default and external-PDS connection as the parallel path.
-- Add organization delegate controls and immediate revocation feedback.
 - Run browser, staging, and production verification after the full user-facing
   flows are complete.

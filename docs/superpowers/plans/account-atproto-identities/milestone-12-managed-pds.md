@@ -1,6 +1,6 @@
 # Milestone 12: Atlas-Managed PDS Foundation
 
-**Status:** In progress
+**Status:** Ready for live verification
 
 ## Objective
 
@@ -17,6 +17,8 @@ graph or persisting protocol credentials in Atlas application storage.
       request-local random password.
 - [x] Discards the returned access and refresh tokens; only DID, current handle,
       and PDS URL pass to the existing Atlas identity-control API.
+- [x] Presents “Use an Atlas identity” as the default account and organization
+      path while retaining an explicit external-PDS OAuth connection path.
 
 ## Security boundary
 
@@ -27,9 +29,6 @@ browser or its callers.
 
 ## Remaining work
 
-- Add the account and organization UI that makes “Use an Atlas identity” the
-  default and retains the external-PDS connection path.
 - Define the managed-account credential recovery and migration operation before
   advertising direct PDS credential access.
-- Add passkey-gated ATProto-first sign-in after an existing Atlas account is
-  linked and ready.
+- Complete staging and production PDS health, creation, and callback proof.

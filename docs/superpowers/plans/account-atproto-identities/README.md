@@ -1,6 +1,6 @@
 # Account-First ATProto Identities Plan Set
 
-**Status:** In progress — managed-identity continuation
+**Status:** Ready for end-to-end and hosted verification
 
 This directory is the execution record for the external-provider ATProto
 identity milestone. The approved design remains in
