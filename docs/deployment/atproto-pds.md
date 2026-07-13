@@ -18,7 +18,8 @@ account repositories and blobs unsafe across revision changes.
 For each environment, provision all of the following before enabling managed
 identity creation:
 
-- a dedicated persistent host with Docker Compose and a disk mounted at `/pds`;
+- a dedicated persistent host with Docker Compose and a disk mounted at
+  `/var/lib/atlas-pds` (bound into the PDS container at `/pds`);
 - a unique HTTPS hostname (`pds-staging.rebuildingus.org` for staging and
   `pds.rebuildingus.org` for production) pointed at that host;
 - TLS termination for the PDS hostname and a reachable `GET /xrpc/_health`
@@ -53,6 +54,40 @@ PDS_PORT=2583
 stable for the life of the PDS. Treat the rotation key and the `/pds` backup as
 identity-recovery material. Rotating either without the upstream PDS recovery
 procedure can strand managed accounts.
+
+## Host release contract
+
+`services/atproto-pds/vm-release.sh` is the only host-side command that writes
+the runtime `pds.env` file. It requires the PDS VM's dedicated service account
+to have `roles/secretmanager.secretAccessor` on exactly these environment-named
+secrets:
+
+- `atlas-pds-<environment>-admin-password`;
+- `atlas-pds-<environment>-jwt-secret`;
+- `atlas-pds-<environment>-plc-rotation-key`.
+
+The script obtains an access token from the Compute metadata service, writes a
+mode-600 environment file in the root-owned deployment directory, validates the
+hosted Compose manifest, then starts it. Values must never be copied into the
+repository, VM metadata, or workflow logs. The host data mount also holds
+Caddy's certificate and configuration state, so the scheduled disk backup
+captures all persistent runtime state.
+
+For a release, copy only `compose.hosted.yaml`, `Caddyfile`, and `vm-release.sh`
+to the root-owned deployment directory, then invoke:
+
+```sh
+sudo env \
+  ATLAS_PDS_ENVIRONMENT=staging \
+  ATLAS_PDS_GCP_PROJECT=rap-atlas-prod \
+  ATLAS_PDS_HOSTNAME=pds-staging.example.org \
+  ATLAS_PDS_PUBLIC_URL=https://pds-staging.example.org \
+  ATLAS_PDS_DATA_DIRECTORY=/var/lib/atlas-pds \
+  /opt/atlas-pds/vm-release.sh
+```
+
+Production uses the same command with its own VM, persistent disk, service
+account, secret names, and public hostname.
 
 ## Verification and release
 
