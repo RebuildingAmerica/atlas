@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi import HTTPException, Response
 
@@ -98,6 +100,49 @@ async def test_organization_identity_rejects_wrong_workspace_or_uncontrolled_did
             db=test_db,
         )
     assert mismatch.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_delegate_to_a_non_member(
+    test_db: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="owner_1",
+        did="did:plc:non-member-delegation",
+        handle="non-member-delegation.atlas.localhost",
+        pds_url="https://pds.atlas.localhost",
+    )
+    await attach_organization_atproto_identity(
+        "org_1",
+        OrganizationAtprotoIdentityAttachRequest(identity_id=identity.id),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+
+    async def missing_membership(*_args: object) -> None:
+        return None
+
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.organization_atproto_identities.get_settings",
+        lambda: SimpleNamespace(auth_membership_verification_url="https://auth.example.test"),
+    )
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.organization_atproto_identities.verify_org_membership",
+        missing_membership,
+    )
+
+    with pytest.raises(HTTPException, match="workspace member") as rejected:
+        await grant_organization_atproto_delegation(
+            "org_1",
+            identity.id,
+            AtprotoIdentityDelegationRequest(delegate_user_id="outsider_1"),
+            Response(),
+            actor=_admin(),
+            db=test_db,
+        )
+    assert rejected.value.status_code == 403
 
 
 @pytest.mark.asyncio

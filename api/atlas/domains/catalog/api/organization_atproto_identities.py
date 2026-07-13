@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from atlas.domains.access.dependencies import require_org_role
+from atlas.domains.access.membership import verify_org_membership
 from atlas.domains.catalog.api.profile_claim_helpers import get_db
 from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.domains.catalog.models.atproto_identity_delegations import (
@@ -23,6 +24,7 @@ from atlas.domains.catalog.schemas.public import (
     OrganizationAtprotoIdentityAttachRequest,
     OrganizationAtprotoIdentityResponse,
 )
+from atlas.platform.config import get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
@@ -38,6 +40,21 @@ def _assert_organization_context(actor: AuthenticatedActor, organization_id: str
         raise HTTPException(
             status_code=403, detail="Organization context does not match this route."
         )
+
+
+async def _assert_delegate_is_member(delegate_user_id: str, organization_id: str) -> None:
+    """Require the delegated administrator to still belong to the workspace.
+
+    Local development intentionally has no remote membership authority. Hosted
+    deployments always configure it and therefore cannot grant authority to an
+    arbitrary Atlas account.
+    """
+    settings = get_settings()
+    if not settings.auth_membership_verification_url:
+        return
+    membership = await verify_org_membership(delegate_user_id, organization_id, settings)
+    if membership is None:
+        raise HTTPException(status_code=403, detail="Delegate must be a workspace member.")
 
 
 def _organization_response(row: object) -> OrganizationAtprotoIdentityResponse:
@@ -149,6 +166,7 @@ async def grant_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI depe
         raise HTTPException(
             status_code=403, detail="ATProto identity is not controlled for this organization."
         )
+    await _assert_delegate_is_member(payload.delegate_user_id, org_id)
     delegation = await AtprotoIdentityDelegationCRUD.grant(
         db,
         organization_id=org_id,
