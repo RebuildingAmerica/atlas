@@ -1,6 +1,10 @@
 # Account-First ATProto Identities and Profile Claims
 
-Status: Proposed Date: 2026-07-12 Owner: Rebuilding America Project
+**Status:** Implemented
+
+**Date:** 2026-07-12
+
+**Owner:** Rebuilding America Project
 
 ## Outcome
 
