@@ -1,6 +1,6 @@
 # Milestone 13: Delegated Identity and ATProto Sign-In
 
-**Status:** Ready for live verification
+**Status:** Repository complete; staging and production verification pending
 
 ## ATProto-first sign-in
 
@@ -18,11 +18,20 @@ receive the same unavailable outcome.
 
 An owner or admin can make an existing controlled DID the organization identity,
 create-and-attach an Atlas-managed DID, grant a workspace member delegated
-administration, and revoke that grant immediately. The UI reads its active
-identity and delegation state from the typed organization contract; API
+administration, and revoke that grant immediately. An active delegate can remove
+that organization's public DID association without gaining account-level DID
+control or authority over profile content. The removal remains auditable and the
+underlying identity stays connected to its controller. A revoked delegate is
+denied on the next removal attempt.
+
+The UI reads active identity and delegation state from the typed organization
+contract. It exposes identity selection and delegation controls only to owners
+and admins, while an active delegate sees only their scoped removal action. API
 authorization remains the enforcement boundary.
 
 ## Remaining work
 
-- Run browser, staging, and production verification after the full user-facing
-  flows are complete.
+- Deploy the paired API and app contract to staging, create and link a managed
+  organization identity, verify the passkey-gated sign-in path, then exercise
+  grant, delegated removal, and revocation denial through the browser.
+- Repeat the same route-level proof in production after staging is healthy.
