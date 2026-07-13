@@ -73,6 +73,13 @@ repository, VM metadata, or workflow logs. The host data mount also holds
 Caddy's certificate and configuration state, so the scheduled disk backup
 captures all persistent runtime state.
 
+PDS hosts use the `atlas-pds` network tag. Their firewall configuration permits
+ports 80 and 443 publicly, permits port 22 only from the IAP TCP forwarding
+range, and explicitly denies direct public SSH. Operators must use
+`gcloud compute ssh --tunnel-through-iap`; do not re-open TCP/22 to arbitrary
+source addresses. The release identity needs the corresponding IAP tunnel and
+Compute SSH permissions before it can update a host.
+
 For a release, copy only `compose.hosted.yaml`, `Caddyfile`, and `vm-release.sh`
 to the root-owned deployment directory, then invoke:
 
