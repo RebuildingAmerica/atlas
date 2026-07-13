@@ -1,0 +1,44 @@
+services:
+  atlas-pds:
+    image: ghcr.io/bluesky-social/pds@sha256:b686e3252d17d33af1912273ca3fef3632d1620dd52a4cbb0fd62ba888ac402a
+    restart: unless-stopped
+    environment:
+      PDS_HOSTNAME: ${ATLAS_PDS_HOSTNAME}
+      PDS_ADMIN_PASSWORD: ${PDS_ADMIN_PASSWORD}
+      PDS_JWT_SECRET: ${PDS_JWT_SECRET}
+      PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX}
+      PDS_DID_PLC_URL: ${PDS_DID_PLC_URL}
+      PDS_DATA_DIRECTORY: ${PDS_DATA_DIRECTORY}
+      PDS_BLOBSTORE_DISK_LOCATION: ${PDS_BLOBSTORE_DISK_LOCATION}
+      PDS_PORT: ${PDS_PORT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:2583/xrpc/_health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ${ATLAS_PDS_DATA_DIRECTORY}:/pds
+
+  atlas-pds-edge:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      atlas-pds:
+        condition: service_healthy
+    environment:
+      ATLAS_PDS_HOSTNAME: ${ATLAS_PDS_HOSTNAME}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

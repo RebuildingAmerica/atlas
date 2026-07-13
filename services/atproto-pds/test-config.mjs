@@ -4,6 +4,7 @@ import test from "node:test";
 
 const requiredKeys = [
   "ATLAS_PDS_PUBLIC_URL",
+  "ATLAS_PDS_DATA_DIRECTORY",
   "PDS_ADMIN_PASSWORD",
   "PDS_JWT_SECRET",
   "PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX",
@@ -32,4 +33,15 @@ test("managed PDS example declares a secure public endpoint and required secrets
   const parsed = new URL(publicUrl);
   assert.equal(parsed.protocol, "https:");
   assert.ok(parsed.hostname.includes("."));
+});
+
+test("hosted PDS manifest isolates durable PDS data behind its own TLS edge", async () => {
+  const source = await readFile(new URL("./compose.hosted.yaml", import.meta.url), "utf8");
+
+  assert.match(source, /^  atlas-pds:/m);
+  assert.match(source, /^  atlas-pds-edge:/m);
+  assert.match(source, /- \$\{ATLAS_PDS_DATA_DIRECTORY\}:\/pds/);
+  assert.match(source, /- "80:80"/);
+  assert.match(source, /- "443:443"/);
+  assert.match(source, /\.\/Caddyfile:\/etc\/caddy\/Caddyfile:ro/);
 });
