@@ -23071,11 +23071,11 @@
         "operationId": "getOrganizationAtprotoIdentity",
         "parameters": [
           {
-            "in": "query",
-            "name": "organization_id",
+            "in": "path",
+            "name": "org_id",
             "required": true,
             "schema": {
-              "title": "Organization Id",
+              "title": "Org Id",
               "type": "string"
             }
           },
@@ -23200,11 +23200,11 @@
         "operationId": "attachOrganizationAtprotoIdentity",
         "parameters": [
           {
-            "in": "query",
-            "name": "organization_id",
+            "in": "path",
+            "name": "org_id",
             "required": true,
             "schema": {
-              "title": "Organization Id",
+              "title": "Org Id",
               "type": "string"
             }
           },
@@ -23334,19 +23334,19 @@
         "parameters": [
           {
             "in": "path",
-            "name": "identity_id",
+            "name": "org_id",
             "required": true,
             "schema": {
-              "title": "Identity Id",
+              "title": "Org Id",
               "type": "string"
             }
           },
           {
-            "in": "query",
-            "name": "organization_id",
+            "in": "path",
+            "name": "identity_id",
             "required": true,
             "schema": {
-              "title": "Organization Id",
+              "title": "Identity Id",
               "type": "string"
             }
           },
@@ -23468,19 +23468,19 @@
         "parameters": [
           {
             "in": "path",
-            "name": "identity_id",
+            "name": "org_id",
             "required": true,
             "schema": {
-              "title": "Identity Id",
+              "title": "Org Id",
               "type": "string"
             }
           },
           {
-            "in": "query",
-            "name": "organization_id",
+            "in": "path",
+            "name": "identity_id",
             "required": true,
             "schema": {
-              "title": "Organization Id",
+              "title": "Identity Id",
               "type": "string"
             }
           },
@@ -23610,6 +23610,15 @@
         "parameters": [
           {
             "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
             "name": "identity_id",
             "required": true,
             "schema": {
@@ -23623,15 +23632,6 @@
             "required": true,
             "schema": {
               "title": "Delegate User Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "organization_id",
-            "required": true,
-            "schema": {
-              "title": "Organization Id",
               "type": "string"
             }
           },

@@ -47,6 +47,31 @@ async def test_openapi_includes_core_contract(test_client: object) -> None:
 
 
 @pytest.mark.asyncio
+async def test_organization_identity_operations_bind_the_mounted_org_path(
+    test_client: object,
+) -> None:
+    """Organization identity operations expose org_id as a path parameter, not a query field."""
+    response = await test_client.get("/openapi.json")
+    payload = response.json()
+    identity_paths = {
+        path: item
+        for path, item in payload["paths"].items()
+        if path.startswith("/api/orgs/{org_id}/atproto-identities")
+    }
+
+    assert identity_paths
+    for path_item in identity_paths.values():
+        for method in ("get", "post", "delete"):
+            operation = path_item.get(method)
+            if operation is None:
+                continue
+            assert any(
+                parameter["in"] == "path" and parameter["name"] == "org_id"
+                for parameter in operation["parameters"]
+            )
+
+
+@pytest.mark.asyncio
 async def test_openapi_declares_all_public_route_tags(test_client: object) -> None:
     """The schema should declare every tag used by public routes."""
     response = await test_client.get("/openapi.json")

@@ -61,14 +61,14 @@ def _delegation_response(row: object) -> AtprotoIdentityDelegationResponse:
     tags=["organization-identity"],
 )
 async def get_organization_atproto_identity(
-    organization_id: str,
+    org_id: str,
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_role("admin")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> OrganizationAtprotoIdentityResponse | None:
     """Return the active public identity for an organization, if it has one."""
-    _assert_organization_context(actor, organization_id)
-    relation = await OrganizationAtprotoIdentityCRUD.get_active(db, organization_id)
+    _assert_organization_context(actor, org_id)
+    relation = await OrganizationAtprotoIdentityCRUD.get_active(db, org_id)
     apply_no_store_headers(response)
     if relation is None:
         return None
@@ -83,7 +83,7 @@ async def get_organization_atproto_identity(
     tags=["organization-identity"],
 )
 async def attach_organization_atproto_identity(
-    organization_id: str,
+    org_id: str,
     payload: OrganizationAtprotoIdentityAttachRequest,
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_role("admin")),
@@ -94,7 +94,7 @@ async def attach_organization_atproto_identity(
     The caller must be an owner or admin in the matching workspace and must actively control the
     DID through Atlas. Atlas records the relationship without transferring personal DID control.
     """
-    _assert_organization_context(actor, organization_id)
+    _assert_organization_context(actor, org_id)
     control = await AtprotoIdentityControlCRUD.get_active_for_user_and_identity(
         db, user_id=actor.user_id, identity_id=payload.identity_id
     )
@@ -105,7 +105,7 @@ async def attach_organization_atproto_identity(
     try:
         relation = await OrganizationAtprotoIdentityCRUD.attach(
             db,
-            organization_id=organization_id,
+            organization_id=org_id,
             identity_id=payload.identity_id,
             attached_by=actor.user_id,
         )
@@ -126,7 +126,7 @@ async def attach_organization_atproto_identity(
     tags=["organization-identity"],
 )
 async def grant_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI dependency parameters
-    organization_id: str,
+    org_id: str,
     identity_id: str,
     payload: AtprotoIdentityDelegationRequest,
     response: Response,
@@ -138,9 +138,9 @@ async def grant_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI depe
     The controlling owner or admin retains account-level control; this relation only permits the
     named member to act for this workspace identity until an administrator explicitly revokes it.
     """
-    _assert_organization_context(actor, organization_id)
+    _assert_organization_context(actor, org_id)
     attached = await OrganizationAtprotoIdentityCRUD.get_for_organization_and_identity(
-        db, organization_id=organization_id, identity_id=identity_id
+        db, organization_id=org_id, identity_id=identity_id
     )
     control = await AtprotoIdentityControlCRUD.get_active_for_user_and_identity(
         db, user_id=actor.user_id, identity_id=identity_id
@@ -151,7 +151,7 @@ async def grant_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI depe
         )
     delegation = await AtprotoIdentityDelegationCRUD.grant(
         db,
-        organization_id=organization_id,
+        organization_id=org_id,
         identity_id=identity_id,
         controller_user_id=actor.user_id,
         delegate_user_id=payload.delegate_user_id,
@@ -175,21 +175,21 @@ async def grant_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI depe
     tags=["organization-identity"],
 )
 async def list_organization_atproto_delegations(
-    organization_id: str,
+    org_id: str,
     identity_id: str,
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_role("admin")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> list[AtprotoIdentityDelegationResponse]:
     """List active delegated administrators for the active organization identity."""
-    _assert_organization_context(actor, organization_id)
+    _assert_organization_context(actor, org_id)
     attached = await OrganizationAtprotoIdentityCRUD.get_for_organization_and_identity(
-        db, organization_id=organization_id, identity_id=identity_id
+        db, organization_id=org_id, identity_id=identity_id
     )
     if attached is None or attached.status != "active":
         raise HTTPException(status_code=404, detail="Organization ATProto identity not found.")
     delegations = await AtprotoIdentityDelegationCRUD.list_active(
-        db, organization_id=organization_id, identity_id=identity_id
+        db, organization_id=org_id, identity_id=identity_id
     )
     apply_no_store_headers(response)
     return [_delegation_response(delegation) for delegation in delegations]
@@ -202,7 +202,7 @@ async def list_organization_atproto_delegations(
     tags=["organization-identity"],
 )
 async def revoke_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI dependency parameters
-    organization_id: str,
+    org_id: str,
     identity_id: str,
     delegate_user_id: str,
     response: Response,
@@ -214,11 +214,11 @@ async def revoke_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI dep
     The revoked relation remains auditable, while all future actions requiring delegated authority
     fail until an authorized owner or admin grants a new active delegation for the same workspace.
     """
-    _assert_organization_context(actor, organization_id)
+    _assert_organization_context(actor, org_id)
     try:
         delegation = await AtprotoIdentityDelegationCRUD.revoke(
             db,
-            organization_id=organization_id,
+            organization_id=org_id,
             identity_id=identity_id,
             delegate_user_id=delegate_user_id,
             revoked_by=actor.user_id,
