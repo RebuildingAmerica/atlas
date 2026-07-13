@@ -16,6 +16,9 @@ from atlas.domains.catalog.api.entries import router as entries_router
 from atlas.domains.catalog.api.feed import router as feed_router
 from atlas.domains.catalog.api.org_annotations import router as org_annotations_router
 from atlas.domains.catalog.api.org_resources import router as org_resources_router
+from atlas.domains.catalog.api.organization_atproto_identities import (
+    router as organization_atproto_identities_router,
+)
 from atlas.domains.catalog.api.profiles import router as profiles_router
 from atlas.domains.catalog.api.public import router as public_router
 from atlas.domains.catalog.api.taxonomy import router as taxonomy_router
@@ -68,6 +71,10 @@ def create_router() -> APIRouter:
     # Org-scoped private resource routers
     router.include_router(org_resources_router, prefix="/api/orgs/{org_id}/entries")
     router.include_router(org_annotations_router, prefix="/api/orgs/{org_id}/annotations")
+    router.include_router(
+        organization_atproto_identities_router,
+        prefix="/api/orgs/{org_id}",
+    )
     router.include_router(org_discovery_router, prefix="/api/orgs/{org_id}/discovery-runs")
     router.include_router(org_briefs_router, prefix="/api/orgs/{org_id}/briefs")
     router.include_router(org_coverage_router, prefix="/api/orgs/{org_id}/coverage-targets")

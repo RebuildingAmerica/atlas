@@ -159,6 +159,14 @@ OPENAPI_TAGS = [
         ),
     },
     {
+        "name": "organization-identity",
+        "description": (
+            "Organization-scoped ATProto identity administration. Workspace owners and admins "
+            "attach a verified controlled DID, grant or revoke member delegation, and retain "
+            "an audit trail without transferring the person's underlying identity control."
+        ),
+    },
+    {
         "name": "org-briefs",
         "description": (
             "Private Atlas Brief artifacts for workspace teams. Briefs combine actors, sources, "
@@ -260,6 +268,7 @@ OPENAPI_TAG_GROUPS = [
             "org-coverage-targets",
             "org-coverage-reports",
             "org-annotations",
+            "organization-identity",
             "org-quality",
             "org-usage",
             "org-watches",

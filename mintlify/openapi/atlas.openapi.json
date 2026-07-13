@@ -260,6 +260,106 @@
         "title": "AnnotationUpdateRequest",
         "type": "object"
       },
+      "AtprotoIdentityDelegationRequest": {
+        "description": "Grant one member authority to administer an organization identity.",
+        "properties": {
+          "delegate_user_id": {
+            "description": "delegate user id for this atproto identity delegation.",
+            "title": "Delegate User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "delegate_user_id"
+        ],
+        "title": "AtprotoIdentityDelegationRequest",
+        "type": "object"
+      },
+      "AtprotoIdentityDelegationResponse": {
+        "description": "Workspace-scoped, revocable administration delegation.",
+        "properties": {
+          "controller_user_id": {
+            "description": "controller user id for this atproto identity delegation.",
+            "title": "Controller User Id",
+            "type": "string"
+          },
+          "delegate_user_id": {
+            "description": "delegate user id for this atproto identity delegation.",
+            "title": "Delegate User Id",
+            "type": "string"
+          },
+          "granted_at": {
+            "description": "granted at for this atproto identity delegation.",
+            "title": "Granted At",
+            "type": "string"
+          },
+          "granted_by": {
+            "description": "granted by for this atproto identity delegation.",
+            "title": "Granted By",
+            "type": "string"
+          },
+          "id": {
+            "description": "id for this atproto identity delegation.",
+            "title": "Id",
+            "type": "string"
+          },
+          "identity_id": {
+            "description": "identity id for this atproto identity delegation.",
+            "title": "Identity Id",
+            "type": "string"
+          },
+          "organization_id": {
+            "description": "organization id for this atproto identity delegation.",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "revoked at for this atproto identity delegation.",
+            "title": "Revoked At"
+          },
+          "revoked_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "revoked by for this atproto identity delegation.",
+            "title": "Revoked By"
+          },
+          "status": {
+            "description": "status for this atproto identity delegation.",
+            "enum": [
+              "active",
+              "revoked"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organization_id",
+          "identity_id",
+          "controller_user_id",
+          "delegate_user_id",
+          "status",
+          "granted_by",
+          "granted_at"
+        ],
+        "title": "AtprotoIdentityDelegationResponse",
+        "type": "object"
+      },
       "AtprotoIdentityLinkRequest": {
         "description": "Persist a DID-backed ATProto identity linked by the authenticated user.",
         "properties": {
@@ -9309,6 +9409,70 @@
           "watch"
         ],
         "title": "OrgWatchStatusResponse",
+        "type": "object"
+      },
+      "OrganizationAtprotoIdentityAttachRequest": {
+        "description": "Attach one verified account-controlled identity to an organization.",
+        "properties": {
+          "identity_id": {
+            "description": "identity id for this organization atproto identity attach.",
+            "title": "Identity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "identity_id"
+        ],
+        "title": "OrganizationAtprotoIdentityAttachRequest",
+        "type": "object"
+      },
+      "OrganizationAtprotoIdentityResponse": {
+        "description": "Auditable organization ownership state for one ATProto identity.",
+        "properties": {
+          "attached_at": {
+            "description": "attached at for this organization atproto identity.",
+            "title": "Attached At",
+            "type": "string"
+          },
+          "attached_by": {
+            "description": "attached by for this organization atproto identity.",
+            "title": "Attached By",
+            "type": "string"
+          },
+          "id": {
+            "description": "id for this organization atproto identity.",
+            "title": "Id",
+            "type": "string"
+          },
+          "identity_id": {
+            "description": "identity id for this organization atproto identity.",
+            "title": "Identity Id",
+            "type": "string"
+          },
+          "organization_id": {
+            "description": "organization id for this organization atproto identity.",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "status for this organization atproto identity.",
+            "enum": [
+              "active",
+              "removed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organization_id",
+          "identity_id",
+          "status",
+          "attached_by",
+          "attached_at"
+        ],
+        "title": "OrganizationAtprotoIdentityResponse",
         "type": "object"
       },
       "PageContent": {
@@ -22901,6 +23065,422 @@
         ]
       }
     },
+    "/api/orgs/{org_id}/atproto-identities": {
+      "post": {
+        "description": "Attach an account-controlled DID as the organization's active public identity.\n\nThe caller must be an owner or admin in the matching workspace and must actively control the\nDID through Atlas. Atlas records the relationship without transferring personal DID control.",
+        "operationId": "attachOrganizationAtprotoIdentity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "title": "Organization Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationAtprotoIdentityAttachRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationAtprotoIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Attach Organization Atproto Identity",
+        "tags": [
+          "organization-identity"
+        ]
+      }
+    },
+    "/api/orgs/{org_id}/atproto-identities/{identity_id}/delegations": {
+      "post": {
+        "description": "Grant a member revocable authority to administer this organization's active DID.\n\nThe controlling owner or admin retains account-level control; this relation only permits the\nnamed member to act for this workspace identity until an administrator explicitly revokes it.",
+        "operationId": "grantOrganizationAtprotoIdentityDelegation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity_id",
+            "required": true,
+            "schema": {
+              "title": "Identity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "title": "Organization Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtprotoIdentityDelegationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtprotoIdentityDelegationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Grant Organization Atproto Delegation",
+        "tags": [
+          "organization-identity"
+        ]
+      }
+    },
+    "/api/orgs/{org_id}/atproto-identities/{identity_id}/delegations/{delegate_user_id}": {
+      "delete": {
+        "description": "Revoke a member's organization-specific identity administration immediately.\n\nThe revoked relation remains auditable, while all future actions requiring delegated authority\nfail until an authorized owner or admin grants a new active delegation for the same workspace.",
+        "operationId": "revokeOrganizationAtprotoIdentityDelegation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity_id",
+            "required": true,
+            "schema": {
+              "title": "Identity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "delegate_user_id",
+            "required": true,
+            "schema": {
+              "title": "Delegate User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "organization_id",
+            "required": true,
+            "schema": {
+              "title": "Organization Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtprotoIdentityDelegationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Organization Atproto Delegation",
+        "tags": [
+          "organization-identity"
+        ]
+      }
+    },
     "/api/orgs/{org_id}/briefs": {
       "get": {
         "description": "List private Atlas Brief artifacts owned by the workspace.\n\nUse this brief operation to build or export a source-linked workspace artifact. Briefs should carry actors, sources, confidence notes, and review state together.",
@@ -31296,6 +31876,10 @@
       "name": "org-annotations"
     },
     {
+      "description": "Organization-scoped ATProto identity administration. Workspace owners and admins attach a verified controlled DID, grant or revoke member delegation, and retain an audit trail without transferring the person's underlying identity control.",
+      "name": "organization-identity"
+    },
+    {
       "description": "Private Atlas Brief artifacts for workspace teams. Briefs combine actors, sources, notes, confidence summaries, and exports so teams can act without separating claims from the evidence behind them.",
       "name": "org-briefs"
     },
@@ -31366,6 +31950,7 @@
         "org-coverage-targets",
         "org-coverage-reports",
         "org-annotations",
+        "organization-identity",
         "org-quality",
         "org-usage",
         "org-watches",

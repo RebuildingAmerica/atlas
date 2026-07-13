@@ -61,9 +61,13 @@ from .public_places import (
     PlaceTypeCount,
 )
 from .public_profiles import (
+    AtprotoIdentityDelegationRequest,
+    AtprotoIdentityDelegationResponse,
     AtprotoIdentityLinkRequest,
     AtprotoIdentityProfileSummary,
     AtprotoIdentityResponse,
+    OrganizationAtprotoIdentityAttachRequest,
+    OrganizationAtprotoIdentityResponse,
     ProfileAtprotoIdentityAttachRequest,
     ProfileAtprotoIdentityLinkResponse,
     ProfileAtprotoRevalidationResponse,
@@ -90,6 +94,8 @@ from .public_profiles import (
 __all__ = [
     "ActorQualityInfo",
     "Address",
+    "AtprotoIdentityDelegationRequest",
+    "AtprotoIdentityDelegationResponse",
     "AtprotoIdentityLinkRequest",
     "AtprotoIdentityProfileSummary",
     "AtprotoIdentityResponse",
@@ -125,6 +131,8 @@ __all__ = [
     "IssueSignalsResponse",
     "MapPoint",
     "MapPointCollectionResponse",
+    "OrganizationAtprotoIdentityAttachRequest",
+    "OrganizationAtprotoIdentityResponse",
     "PlaceCoverageResponse",
     "PlaceGovernmentLinkResponse",
     "PlaceGovernmentResponse",

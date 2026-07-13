@@ -69,6 +69,44 @@ class AtprotoIdentityProfileSummary(BaseModel):
     type: str
 
 
+class OrganizationAtprotoIdentityAttachRequest(BaseModel):
+    """Attach one verified account-controlled identity to an organization."""
+
+    identity_id: str
+
+
+class AtprotoIdentityDelegationRequest(BaseModel):
+    """Grant one member authority to administer an organization identity."""
+
+    delegate_user_id: str
+
+
+class OrganizationAtprotoIdentityResponse(BaseModel):
+    """Auditable organization ownership state for one ATProto identity."""
+
+    id: str
+    organization_id: str
+    identity_id: str
+    status: Literal["active", "removed"]
+    attached_by: str
+    attached_at: str
+
+
+class AtprotoIdentityDelegationResponse(BaseModel):
+    """Workspace-scoped, revocable administration delegation."""
+
+    id: str
+    organization_id: str
+    identity_id: str
+    controller_user_id: str
+    delegate_user_id: str
+    status: Literal["active", "revoked"]
+    granted_by: str
+    granted_at: str
+    revoked_by: str | None = None
+    revoked_at: str | None = None
+
+
 class ProfileClaimRequest(BaseModel):
     """Start profile verification."""
 
