@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, it } from "node:test";
 
 import { pdsHealthUrl, probePdsHealth } from "./pds-release.mjs";
+
+const rootDir = path.resolve(import.meta.dirname, "../..");
 
 void describe("PDS release health probe", () => {
   void it("targets the canonical XRPC health endpoint from an HTTPS PDS origin", () => {
@@ -39,5 +43,21 @@ void describe("PDS release health probe", () => {
         ),
       /PDS health response did not include a version/,
     );
+  });
+
+  void it("runs PDS checks through the root production verification gate", () => {
+    const packageManifest = JSON.parse(
+      readFileSync(path.join(rootDir, "package.json"), "utf8"),
+    );
+    const productionVerify = readFileSync(
+      path.join(rootDir, "scripts/deploy/prod-verify.sh"),
+      "utf8",
+    );
+
+    assert.equal(
+      packageManifest.scripts["pds:test"],
+      "node --test services/atproto-pds/test-config.mjs scripts/deploy/pds-release.test.mjs",
+    );
+    assert.match(productionVerify, /'\/\/\#pds:test'/);
   });
 });

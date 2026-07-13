@@ -139,6 +139,13 @@
         "deploy/Caddyfile"
       ]
     },
+    "//#pds:test": {
+      "inputs": [
+        "services/atproto-pds/**",
+        "scripts/deploy/pds-release.mjs",
+        "scripts/deploy/pds-release.test.mjs"
+      ]
+    },
     "//#secrets:scan": {
       "inputs": [
         ".secrets.baseline",

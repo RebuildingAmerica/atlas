@@ -34,6 +34,7 @@
     "test:e2e:headed": "pnpm --filter @rebuildingamerica/atlas-app run test:acceptance:headed",
     "contract:test": "sh ./scripts/contract-test.sh",
     "compose:validate": "sh ./scripts/compose-validate.sh",
+    "pds:test": "node --test services/atproto-pds/test-config.mjs scripts/deploy/pds-release.test.mjs",
     "scout-dev:install": "bash ./install-scout-dev.sh",
     "scout-dev:uninstall": "bash ./uninstall-scout-dev.sh",
     "scout-dev:test": "uv --directory ./scout run pytest --no-cov tests/e2e/test_scout_dev_installer.py -q",

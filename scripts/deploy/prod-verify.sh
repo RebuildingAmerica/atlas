@@ -12,6 +12,7 @@ pnpm exec turbo run \
   '@rebuildingamerica/atlas-api#test' \
   '//#contract:test' \
   '//#compose:validate' \
+  '//#pds:test' \
   '//#secrets:scan' \
   '@rebuildingamerica/atlas-app#api-client' \
   '@rebuildingamerica/atlas-app#openapi:lint' \
