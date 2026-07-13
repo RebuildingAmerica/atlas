@@ -56,6 +56,42 @@ CREATE INDEX IF NOT EXISTS idx_profile_atproto_links_identity
 CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_atproto_links_non_removed_entry
     ON profile_atproto_links(entry_id) WHERE status <> 'removed';
 
+CREATE TABLE IF NOT EXISTS organization_atproto_identities (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    identity_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('active', 'removed')),
+    attached_by TEXT NOT NULL,
+    attached_at TEXT NOT NULL,
+    detached_by TEXT,
+    detached_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(organization_id, identity_id),
+    FOREIGN KEY (identity_id) REFERENCES atproto_identities(id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_org_atproto_active_identity
+    ON organization_atproto_identities(organization_id) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS atproto_identity_delegations (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    identity_id TEXT NOT NULL,
+    controller_user_id TEXT NOT NULL,
+    delegate_user_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('active', 'revoked')),
+    granted_by TEXT NOT NULL,
+    granted_at TEXT NOT NULL,
+    revoked_by TEXT,
+    revoked_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(organization_id, identity_id, delegate_user_id),
+    FOREIGN KEY (identity_id) REFERENCES atproto_identities(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_atproto_delegations_delegate
+    ON atproto_identity_delegations(delegate_user_id, status);
+
 -- Discount verification records awaiting billing review.
 CREATE TABLE IF NOT EXISTS discount_verifications (
     id TEXT PRIMARY KEY,
