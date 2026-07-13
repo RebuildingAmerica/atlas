@@ -17,7 +17,7 @@ describe("AccountPage", () => {
     fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop script" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Create API key" }));
 
     await waitFor(() => {
       expect(mocks.createApiKey).toHaveBeenCalled();
@@ -34,7 +34,7 @@ describe("AccountPage", () => {
     fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop script" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Create API key" }));
 
     await waitFor(() => {
       expect(mocks.createApiKey).toHaveBeenCalled();
@@ -184,7 +184,7 @@ describe("AccountPage", () => {
     fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop script" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Create API key" }));
 
     await waitFor(() => {
       expect(mocks.createApiKey).toHaveBeenCalledWith({
