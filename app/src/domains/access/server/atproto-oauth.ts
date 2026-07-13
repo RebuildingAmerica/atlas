@@ -9,6 +9,7 @@ import {
   pruneAtprotoOAuthStores as pruneAtprotoOAuthStoreRows,
 } from "./atproto-oauth-stores";
 import { provisionManagedAtprotoIdentity } from "./atproto-pds";
+import { createAtprotoSessionForUser } from "./atproto-sign-in";
 import { loadAtlasSession } from "./session-state";
 import { getAuthRuntimeConfig } from "./runtime";
 
@@ -201,6 +202,67 @@ export async function completeAtprotoAuthorization(params: URLSearchParams): Pro
   }
 }
 
+/**
+ * Dispatches the shared provider callback according to the state that was
+ * written before redirecting to the provider. Both flows use the single
+ * registered redirect URI in Atlas's OAuth client metadata.
+ */
+export async function completeAtprotoOAuthCallback(params: URLSearchParams): Promise<Response> {
+  const stateKey = params.get("state") ?? "";
+  const state = stateKey ? await appStateStore.get(stateKey) : undefined;
+  if (state?.flow === "sign-in") {
+    return await completeAtprotoSignIn(params);
+  }
+  return Response.redirect(await completeAtprotoAuthorization(params), 302);
+}
+
+/**
+ * Completes an anonymous ATProto OAuth proof and hands a verified active
+ * controller to Better Auth's server-only, passkey-gated session endpoint.
+ */
+export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Response> {
+  await pruneAtprotoOAuthStores();
+  const client = await getAtprotoOAuthClient();
+  const result = await client.callback(params);
+  try {
+    const state = result.state ? await appStateStore.get(result.state) : undefined;
+    if (state?.flow !== "sign-in") {
+      throw new Error("ATProto sign-in is unavailable.");
+    }
+    await appStateStore.del(result.state ?? "");
+
+    const agent = new Agent(result.session);
+    const profile = await agent.getProfile({ actor: result.session.did });
+    if (
+      profile.data.did !== result.session.did ||
+      profile.data.handle.toLowerCase() !== state.requestedHandle.toLowerCase()
+    ) {
+      throw new Error("ATProto sign-in is unavailable.");
+    }
+    await verifyResolvedAtprotoIdentity(agent, {
+      did: result.session.did,
+      handle: profile.data.handle,
+    }).catch(() => {
+      throw new Error("ATProto sign-in is unavailable.");
+    });
+
+    const userId = await resolveAtprotoSignInController(result.session.did);
+    const sessionResponse = await createAtprotoSessionForUser(userId);
+    const headers = new Headers(sessionResponse.headers);
+    headers.set(
+      "Location",
+      new URL(state.returnTo, getAuthRuntimeConfig().publicBaseUrl).toString(),
+    );
+    return new Response(null, { headers, status: 302 });
+  } finally {
+    if (result.state) {
+      await appStateStore.del(result.state);
+      await stateStore.del(result.state);
+    }
+    await sessionStore.del(result.session.did);
+  }
+}
+
 async function completeE2EHarnessAuthorization(
   params: URLSearchParams,
   userId: string,
@@ -323,6 +385,30 @@ async function persistLinkedAtprotoIdentity(
     throw new Error("ATProto identity could not be linked.");
   }
   return (await response.json()) as LinkedAtprotoIdentity;
+}
+
+async function resolveAtprotoSignInController(did: string): Promise<string> {
+  const runtime = getAuthRuntimeConfig();
+  const target = runtime.apiBaseUrl ?? runtime.publicBaseUrl;
+  const response = await fetch(new URL("/api/atproto/identities/sign-in/resolve", target), {
+    body: JSON.stringify({ did }),
+    headers: {
+      "Content-Type": "application/json",
+      ...createInternalAuthHeaders(
+        { email: "atproto-sign-in@atlas.internal", id: "atproto-sign-in" },
+        runtime.internalSecret,
+      ),
+    },
+    method: "POST",
+  });
+  if (!response.ok) {
+    throw new Error("ATProto sign-in is unavailable.");
+  }
+  const payload = (await response.json()) as { user_id?: unknown };
+  if (typeof payload.user_id !== "string" || !payload.user_id) {
+    throw new Error("ATProto sign-in is unavailable.");
+  }
+  return payload.user_id;
 }
 
 export function parseAtprotoReturnTo(value: string): AtprotoReturnContext {

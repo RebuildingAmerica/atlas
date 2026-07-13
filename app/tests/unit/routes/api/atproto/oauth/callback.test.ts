@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   completeAtprotoAuthorization: vi.fn(),
+  completeAtprotoOAuthCallback: vi.fn(),
   parseAtprotoReturnTo: vi.fn(),
   pruneAtprotoOAuthStores: vi.fn(),
 }));
@@ -13,6 +14,7 @@ vi.mock("@tanstack/react-router", async () => {
 
 vi.mock("@/domains/access/server/atproto-oauth", () => ({
   completeAtprotoAuthorization: mocks.completeAtprotoAuthorization,
+  completeAtprotoOAuthCallback: mocks.completeAtprotoOAuthCallback,
   parseAtprotoReturnTo: mocks.parseAtprotoReturnTo,
   pruneAtprotoOAuthStores: mocks.pruneAtprotoOAuthStores,
 }));
@@ -20,13 +22,17 @@ vi.mock("@/domains/access/server/atproto-oauth", () => ({
 describe("routes/api/atproto/oauth/callback", () => {
   beforeEach(() => {
     mocks.completeAtprotoAuthorization.mockReset();
+    mocks.completeAtprotoOAuthCallback.mockReset();
     mocks.parseAtprotoReturnTo.mockReset();
     mocks.pruneAtprotoOAuthStores.mockReset();
   });
 
   it("completes ATProto OAuth and redirects back to profile verification", async () => {
-    mocks.completeAtprotoAuthorization.mockResolvedValue(
-      "https://atlas.test/claim/org?atprotoIdentityId=identity_1&atprotoHandle=org.example",
+    mocks.completeAtprotoOAuthCallback.mockResolvedValue(
+      Response.redirect(
+        "https://atlas.test/claim/org?atprotoIdentityId=identity_1&atprotoHandle=org.example",
+        302,
+      ),
     );
     const routeModule = await import("@/routes/api/atproto/oauth/callback");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -38,7 +44,7 @@ describe("routes/api/atproto/oauth/callback", () => {
       request: new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
     })) as Response;
 
-    const params = mocks.completeAtprotoAuthorization.mock.calls[0]?.[0] as URLSearchParams;
+    const params = mocks.completeAtprotoOAuthCallback.mock.calls[0]?.[0] as URLSearchParams;
     expect(params.get("code")).toBe("c");
     expect(params.get("state")).toBe("s");
     expect(response.status).toBe(302);
@@ -48,7 +54,9 @@ describe("routes/api/atproto/oauth/callback", () => {
   });
 
   it("leaves OAuth store pruning to the callback service", async () => {
-    mocks.completeAtprotoAuthorization.mockResolvedValue("https://atlas.test/claim/org");
+    mocks.completeAtprotoOAuthCallback.mockResolvedValue(
+      Response.redirect("https://atlas.test/claim/org", 302),
+    );
     const routeModule = await import("@/routes/api/atproto/oauth/callback");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
@@ -63,7 +71,7 @@ describe("routes/api/atproto/oauth/callback", () => {
   });
 
   it("redirects recoverable failures back to profile verification", async () => {
-    mocks.completeAtprotoAuthorization.mockRejectedValue(
+    mocks.completeAtprotoOAuthCallback.mockRejectedValue(
       Object.assign(new Error("ATProto identity could not be verified."), {
         attemptedHandle: "org.example",
         returnTo: "/claim/org",

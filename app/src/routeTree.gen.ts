@@ -87,6 +87,7 @@ import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './rou
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
 import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations/index'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
+import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/sign-in/start'
 import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
 import { Route as ApiAtprotoOauthClientMetadataDotjsonRouteImport } from './routes/api/atproto/oauth/client-metadata[.]json'
 import { Route as ApiAtprotoOauthCallbackRouteImport } from './routes/api/atproto/oauth/callback'
@@ -507,6 +508,11 @@ const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   path: '/api/auth/internal/api-key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAtprotoSignInStartRoute = ApiAtprotoSignInStartRouteImport.update({
+  id: '/api/atproto/sign-in/start',
+  path: '/api/atproto/sign-in/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAtprotoOauthStartRoute = ApiAtprotoOauthStartRouteImport.update({
   id: '/api/atproto/oauth/start',
   path: '/api/atproto/oauth/start',
@@ -702,6 +708,7 @@ export interface FileRoutesByFullPath {
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
+  '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people/': typeof PublicProfilesPeopleIndexRoute
@@ -791,6 +798,7 @@ export interface FileRoutesByTo {
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
+  '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people': typeof PublicProfilesPeopleIndexRoute
@@ -890,6 +898,7 @@ export interface FileRoutesById {
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
+  '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/_public/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/_public/profiles/people/': typeof PublicProfilesPeopleIndexRoute
@@ -986,6 +995,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
+    | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
     | '/profiles/organizations/'
     | '/profiles/people/'
@@ -1075,6 +1085,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
+    | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
     | '/profiles/organizations'
     | '/profiles/people'
@@ -1173,6 +1184,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
+    | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
     | '/_public/profiles/organizations/'
     | '/_public/profiles/people/'
@@ -1209,6 +1221,7 @@ export interface RootRouteChildren {
   ApiAtprotoOauthCallbackRoute: typeof ApiAtprotoOauthCallbackRoute
   ApiAtprotoOauthClientMetadataDotjsonRoute: typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   ApiAtprotoOauthStartRoute: typeof ApiAtprotoOauthStartRoute
+  ApiAtprotoSignInStartRoute: typeof ApiAtprotoSignInStartRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
   ApiAtprotoOauthHarnessAuthorizeRoute: typeof ApiAtprotoOauthHarnessAuthorizeRoute
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
@@ -1762,6 +1775,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/atproto/sign-in/start': {
+      id: '/api/atproto/sign-in/start'
+      path: '/api/atproto/sign-in/start'
+      fullPath: '/api/atproto/sign-in/start'
+      preLoaderRoute: typeof ApiAtprotoSignInStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/atproto/oauth/start': {
       id: '/api/atproto/oauth/start'
       path: '/api/atproto/oauth/start'
@@ -2183,6 +2203,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAtprotoOauthClientMetadataDotjsonRoute:
     ApiAtprotoOauthClientMetadataDotjsonRoute,
   ApiAtprotoOauthStartRoute: ApiAtprotoOauthStartRoute,
+  ApiAtprotoSignInStartRoute: ApiAtprotoSignInStartRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
   ApiAtprotoOauthHarnessAuthorizeRoute: ApiAtprotoOauthHarnessAuthorizeRoute,
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
@@ -2193,10 +2214,13 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
+
 import type { createStart } from '@tanstack/react-start'
+
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
+
     router: Awaited<ReturnType<typeof getRouter>>
   }
 }

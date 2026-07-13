@@ -6,9 +6,8 @@ async function completeAtprotoCallback(request: Request): Promise<Response> {
   }
 
   const requestUrl = new URL(request.url);
-  const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
-  const redirectUrl = await completeAtprotoAuthorization(requestUrl.searchParams);
-  return Response.redirect(redirectUrl, 302);
+  const { completeAtprotoOAuthCallback } = await import("@/domains/access/server/atproto-oauth");
+  return await completeAtprotoOAuthCallback(requestUrl.searchParams);
 }
 
 interface RecoverableAtprotoCallbackError {
