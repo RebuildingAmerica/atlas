@@ -45,3 +45,12 @@ test("hosted PDS manifest isolates durable PDS data behind its own TLS edge", as
   assert.match(source, /- "443:443"/);
   assert.match(source, /\.\/Caddyfile:\/etc\/caddy\/Caddyfile:ro/);
 });
+
+test("PDS VM bootstrap mounts the dedicated persistent disk before deploying containers", async () => {
+  const source = await readFile(new URL("./vm-startup.sh", import.meta.url), "utf8");
+
+  assert.match(source, /\/dev\/disk\/by-id\/google-atlas-pds-data/);
+  assert.match(source, /mkfs\.ext4/);
+  assert.match(source, /\/var\/lib\/atlas-pds/);
+  assert.match(source, /docker\.service/);
+});
