@@ -4,11 +4,14 @@ import { apiKey } from "@better-auth/api-key";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { passkey } from "@better-auth/passkey";
 import { scim } from "@better-auth/scim";
+import { createAuthEndpoint } from "better-auth/api";
+import { setSessionCookie } from "better-auth/cookies";
 import { betterAuth } from "better-auth";
 import { admin, bearer, deviceAuthorization, organization } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { z } from "zod";
 import { API_KEY_SCOPES, scopesToPermissions } from "../api-key-scopes";
 import { SUPPORTED_OAUTH_SCOPES } from "../oauth-as-metadata";
 import { buildAtlasAccessTokenClaims } from "./oauth-claims";
@@ -55,6 +58,46 @@ export async function canGenerateScimTokenForWorkspace(
 
   const activeProducts = await queryActiveProducts(organizationId);
   return activeProducts.includes("atlas_team");
+}
+
+function atprotoSignInSession() {
+  return {
+    id: "atlas-atproto-sign-in",
+    endpoints: {
+      completeAtprotoSignIn: createAuthEndpoint(
+        "/internal/atproto-sign-in",
+        {
+          body: z.object({ userId: z.string().min(1) }),
+          method: "POST",
+        },
+        async (ctx) => {
+          // This endpoint must only be reached through auth.api from the
+          // server-side OAuth callback; HTTP requests can otherwise nominate a
+          // user ID and bypass the DID-control proof.
+          if (ctx.request) {
+            throw ctx.error("FORBIDDEN", { message: "ATProto sign-in is unavailable." });
+          }
+
+          const user = await ctx.context.internalAdapter.findUserById(ctx.body.userId);
+          const passkeys = await ctx.context.adapter.findMany({
+            limit: 1,
+            model: "passkey",
+            where: [{ field: "userId", value: ctx.body.userId }],
+          });
+          if (!user?.emailVerified || passkeys.length === 0) {
+            throw ctx.error("UNAUTHORIZED", { message: "ATProto sign-in is unavailable." });
+          }
+
+          const session = await ctx.context.internalAdapter.createSession(ctx.body.userId);
+          if (!session) {
+            throw ctx.error("UNAUTHORIZED", { message: "ATProto sign-in is unavailable." });
+          }
+          await setSessionCookie(ctx, { session, user });
+          return ctx.json(null, { status: 204 });
+        },
+      ),
+    },
+  };
 }
 
 /**
@@ -223,6 +266,7 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
           enabled: false,
         },
       }),
+      atprotoSignInSession(),
       tanstackStartCookies(),
     ],
   });
