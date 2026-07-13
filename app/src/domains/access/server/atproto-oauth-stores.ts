@@ -4,9 +4,10 @@ import type { NodeSavedSession, NodeSavedState } from "@atproto/oauth-client-nod
 import { getAuthDatabase, getAuthPgPool } from "./auth";
 
 export interface AtprotoOAuthAppState {
+  flow?: "link" | "sign-in";
   requestedHandle: string;
   returnTo: string;
-  userId: string;
+  userId?: string;
 }
 
 interface JsonStoreOptions {

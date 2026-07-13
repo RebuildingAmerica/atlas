@@ -138,6 +138,24 @@ describe("atproto-oauth", () => {
     ).rejects.toThrow("Sign in before verifying an ATProto account.");
   });
 
+  it("starts an ATProto sign-in authorization without an existing Atlas session", async () => {
+    mocks().loadAtlasSession.mockResolvedValue(null);
+    const run = vi.fn();
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ run }),
+    });
+    const { createAtprotoSignInAuthorizationUrl } =
+      await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      createAtprotoSignInAuthorizationUrl({ handle: "person.example", returnTo: "/account" }),
+    ).resolves.toEqual(new URL("https://bsky.social/oauth/authorize"));
+
+    const insertedPayload = String(run.mock.calls.at(-1)?.[1]);
+    expect(insertedPayload).toContain('"flow":"sign-in"');
+    expect(insertedPayload).toContain('"requestedHandle":"person.example"');
+  });
+
   it("returns successful Account callbacks to the Identity section", async () => {
     configureHarnessCallback("/account#identity");
     const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");

@@ -78,9 +78,32 @@ export async function createAtprotoAuthorizationUrl(
   const session = await requireSignedInAtlasSession();
   const state = randomUUID();
   await appStateStore.set(state, {
+    flow: "link",
     requestedHandle: input.handle.trim(),
     returnTo: sanitizeReturnTo(input.returnTo),
     userId: session.user.id,
+  });
+  if (isE2EHarnessEnabled()) {
+    return e2eHarnessAuthorizeUrl(input.handle.trim(), state);
+  }
+  const client = await getAtprotoOAuthClient();
+  return await client.authorize(input.handle, { state });
+}
+
+/**
+ * Starts the same ATProto OAuth proof used for linking, but without an Atlas
+ * session. Its callback must resolve a pre-existing, passkey-ready controller
+ * before Better Auth is allowed to create a browser session.
+ */
+export async function createAtprotoSignInAuthorizationUrl(
+  input: AtprotoAuthorizationInput,
+): Promise<URL> {
+  await pruneAtprotoOAuthStores();
+  const state = randomUUID();
+  await appStateStore.set(state, {
+    flow: "sign-in",
+    requestedHandle: input.handle.trim(),
+    returnTo: sanitizeReturnTo(input.returnTo),
   });
   if (isE2EHarnessEnabled()) {
     return e2eHarnessAuthorizeUrl(input.handle.trim(), state);
