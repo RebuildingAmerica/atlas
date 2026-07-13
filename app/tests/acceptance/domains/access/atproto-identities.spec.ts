@@ -8,8 +8,11 @@ test.describe("Account ATProto identities", () => {
       await page.goto("/account#identity");
       const workspaceBefore = await activeWorkspace(page);
 
-      await page.getByRole("textbox", { name: "ATProto handle" }).fill(handle);
-      await page.getByRole("button", { name: "Connect ATProto account" }).click();
+      await expect(page.getByRole("heading", { name: "Use an Atlas identity" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Create Atlas identity" })).toBeDisabled();
+      await page.getByText("Connect an existing identity").click();
+      await page.getByRole("textbox", { name: "Existing ATProto handle" }).fill(handle);
+      await page.getByRole("button", { name: "Connect existing identity" }).click();
 
       await expect(page.getByText("ATProto account connected.")).toBeVisible();
       await expect(page.getByText(handle, { exact: true })).toBeVisible();
@@ -34,8 +37,9 @@ test.describe("Account ATProto identities", () => {
 
 async function connectFromAccount(page: Page, handle: string): Promise<void> {
   await page.goto("/account#identity");
-  await page.getByRole("textbox", { name: "ATProto handle" }).fill(handle);
-  await page.getByRole("button", { name: "Connect ATProto account" }).click();
+  await page.getByText("Connect an existing identity").click();
+  await page.getByRole("textbox", { name: "Existing ATProto handle" }).fill(handle);
+  await page.getByRole("button", { name: "Connect existing identity" }).click();
   await expect(page.getByText("ATProto account connected.")).toBeVisible();
 }
 
