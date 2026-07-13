@@ -83,6 +83,25 @@ class OrganizationAtprotoIdentityCRUD:
         return await _fetch(cursor)
 
     @staticmethod
+    async def detach(
+        conn: Any, *, relation_id: str, detached_by: str
+    ) -> OrganizationAtprotoIdentityModel:
+        """Remove the public organization association without touching DID control."""
+        now = db.now_iso()
+        await conn.execute(
+            """
+            UPDATE organization_atproto_identities
+            SET status = 'removed', detached_by = ?, detached_at = ?, updated_at = ?
+            WHERE id = ? AND status = 'active'
+            """,
+            (detached_by, now, now, relation_id),
+        )
+        result = await OrganizationAtprotoIdentityCRUD.get_by_id(conn, relation_id)
+        if result is None:
+            raise OrganizationAtprotoIdentityInvariantError
+        return result
+
+    @staticmethod
     async def get_for_organization_and_identity(
         conn: Any, *, organization_id: str, identity_id: str
     ) -> OrganizationAtprotoIdentityModel | None:

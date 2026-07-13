@@ -1,4 +1,4 @@
-"""Owner/admin APIs for organization-scoped ATProto identity administration."""
+"""Organization-scoped ATProto identity administration APIs."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from atlas.domains.catalog.models.atproto_identity_delegations import (
 from atlas.domains.catalog.models.organization_atproto_identities import (
     OrganizationAtprotoIdentityConflictError,
     OrganizationAtprotoIdentityCRUD,
+    OrganizationAtprotoIdentityModel,
 )
 from atlas.domains.catalog.schemas.public import (
     AtprotoIdentityDelegationRequest,
@@ -65,6 +66,36 @@ def _delegation_response(row: object) -> AtprotoIdentityDelegationResponse:
     return AtprotoIdentityDelegationResponse.model_validate(row, from_attributes=True)
 
 
+async def _require_identity_administrator(
+    db: aiosqlite.Connection,
+    *,
+    actor: AuthenticatedActor,
+    organization_id: str,
+    identity_id: str,
+) -> OrganizationAtprotoIdentityModel:
+    """Return an active relation when the actor may administer its organization link.
+
+    Owners and admins administer every workspace identity. A member needs an
+    active, identity-specific delegation; no delegation grants account-level
+    DID control or profile-content authority.
+    """
+    relation = await OrganizationAtprotoIdentityCRUD.get_for_organization_and_identity(
+        db, organization_id=organization_id, identity_id=identity_id
+    )
+    if relation is None or relation.status != "active":
+        raise HTTPException(status_code=404, detail="Organization ATProto identity not found.")
+    if actor.org_role in {"owner", "admin"}:
+        return relation
+    if await AtprotoIdentityDelegationCRUD.is_active_delegate(
+        db,
+        organization_id=organization_id,
+        identity_id=identity_id,
+        delegate_user_id=actor.user_id,
+    ):
+        return relation
+    raise HTTPException(status_code=403, detail="ATProto identity administration is not delegated.")
+
+
 @router.get(
     "/atproto-identities",
     response_model=OrganizationAtprotoIdentityResponse | None,
@@ -80,7 +111,7 @@ def _delegation_response(row: object) -> AtprotoIdentityDelegationResponse:
 async def get_organization_atproto_identity(
     org_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_org_role("admin")),
+    actor: AuthenticatedActor = Depends(require_org_role("member")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> OrganizationAtprotoIdentityResponse | None:
     """Return the active public identity for an organization, if it has one."""
@@ -90,6 +121,41 @@ async def get_organization_atproto_identity(
     if relation is None:
         return None
     return _organization_response(relation)
+
+
+@router.delete(
+    "/atproto-identities/{identity_id}",
+    response_model=OrganizationAtprotoIdentityResponse,
+    operation_id="detachOrganizationAtprotoIdentity",
+    summary="Remove the active organization ATProto identity",
+    description=(
+        "Remove only the public organization association. Owners and admins may always do this; "
+        "members need an active delegation for this exact identity. The underlying DID remains "
+        "controlled by its Atlas account."
+    ),
+    tags=["organization-identity"],
+)
+async def detach_organization_atproto_identity(
+    org_id: str,
+    identity_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_org_role("member")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> OrganizationAtprotoIdentityResponse:
+    """Remove an active organization association without transferring DID control."""
+    _assert_organization_context(actor, org_id)
+    relation = await _require_identity_administrator(
+        db,
+        actor=actor,
+        organization_id=org_id,
+        identity_id=identity_id,
+    )
+    detached = await OrganizationAtprotoIdentityCRUD.detach(
+        db, relation_id=relation.id, detached_by=actor.user_id
+    )
+    await db.commit()
+    apply_no_store_headers(response)
+    return _organization_response(detached)
 
 
 @router.post(
@@ -196,7 +262,7 @@ async def list_organization_atproto_delegations(
     org_id: str,
     identity_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_org_role("admin")),
+    actor: AuthenticatedActor = Depends(require_org_role("member")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> list[AtprotoIdentityDelegationResponse]:
     """List active delegated administrators for the active organization identity."""

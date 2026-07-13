@@ -104,6 +104,8 @@ class OrganizationAtprotoIdentityResponse(BaseModel):
     status: Literal["active", "removed"]
     attached_by: str
     attached_at: str
+    detached_by: str | None = None
+    detached_at: str | None = None
 
 
 class AtprotoIdentityDelegationResponse(BaseModel):
