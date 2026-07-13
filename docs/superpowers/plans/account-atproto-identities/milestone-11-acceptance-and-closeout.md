@@ -25,6 +25,16 @@ quality gates.
       workspace.
 - [x] Made PostgreSQL test URL propagation explicit in the API Turbo task.
 
+## Acceptance criteria
+
+- Account, claim, callback-recovery, and steward journeys pass in a real
+  browser.
+- SQLite and PostgreSQL suites prove the same identity invariants.
+- Generated API clients and both checked-in OpenAPI artifacts show no drift.
+- Product documents describe Account ownership, profile stewardship, and
+  workspace membership as separate relationships.
+- The complete pre-push gate passes without skipped PostgreSQL coverage.
+
 ## Verification record
 
 - App behavior: 2,453 tests passed after rebase.
