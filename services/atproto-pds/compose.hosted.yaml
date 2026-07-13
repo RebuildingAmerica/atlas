@@ -36,9 +36,5 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-
-volumes:
-  caddy-data:
-  caddy-config:
+      - ${ATLAS_PDS_DATA_DIRECTORY}/caddy-data:/data
+      - ${ATLAS_PDS_DATA_DIRECTORY}/caddy-config:/config

@@ -44,6 +44,8 @@ test("hosted PDS manifest isolates durable PDS data behind its own TLS edge", as
   assert.match(source, /- "80:80"/);
   assert.match(source, /- "443:443"/);
   assert.match(source, /\.\/Caddyfile:\/etc\/caddy\/Caddyfile:ro/);
+  assert.match(source, /\$\{ATLAS_PDS_DATA_DIRECTORY\}\/caddy-data:\/data/);
+  assert.match(source, /\$\{ATLAS_PDS_DATA_DIRECTORY\}\/caddy-config:\/config/);
 });
 
 test("PDS VM bootstrap mounts the dedicated persistent disk before deploying containers", async () => {
@@ -53,4 +55,18 @@ test("PDS VM bootstrap mounts the dedicated persistent disk before deploying con
   assert.match(source, /mkfs\.ext4/);
   assert.match(source, /\/var\/lib\/atlas-pds/);
   assert.match(source, /docker\.service/);
+});
+
+test("PDS VM release materializes scoped secrets without persisting them in source control", async () => {
+  const source = await readFile(new URL("./vm-release.sh", import.meta.url), "utf8");
+
+  assert.match(source, /metadata\.google\.internal\/computeMetadata\/v1/);
+  assert.match(source, /instance\/service-accounts\/default\/token/);
+  assert.match(source, /ENVIRONMENT=.*ATLAS_PDS_ENVIRONMENT/);
+  assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-admin-password/);
+  assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-jwt-secret/);
+  assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-plc-rotation-key/);
+  assert.match(source, /umask 077/);
+  assert.match(source, /pds\.env/);
+  assert.match(source, /docker compose --env-file pds\.env -f compose\.hosted\.yaml up -d/);
 });
