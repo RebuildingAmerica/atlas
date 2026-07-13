@@ -63,6 +63,16 @@ test("API image inputs redeploy staging and run hosted smoke", () => {
   assert.equal(outputs.hosted_smoke, true);
 });
 
+test("managed PDS changes use the root deployment and hosted verification lanes", () => {
+  const outputs = outputsFor(["services/atproto-pds/pds.env.example"]);
+
+  assert.equal(outputs.compose, true);
+  assert.equal(outputs.deploy_scripts, true);
+  assert.equal(outputs.staging_pds_deploy, true);
+  assert.equal(outputs.hosted_smoke, true);
+  assert.equal(outputs.browser_acceptance, false);
+});
+
 test("staging deploy workflow changes exercise the staging deploy path", () => {
   const outputs = outputsFor([".github/workflows/deploy-staging.yml"]);
 

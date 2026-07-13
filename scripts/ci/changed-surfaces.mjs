@@ -18,6 +18,7 @@ const TRUE_OUTPUTS = {
   actions_lint: true,
   deploy_scripts: true,
   staging_api_deploy: true,
+  staging_pds_deploy: true,
   hosted_smoke: true,
   use_affected: false,
 };
@@ -37,6 +38,7 @@ const FALSE_OUTPUTS = {
   actions_lint: false,
   deploy_scripts: false,
   staging_api_deploy: false,
+  staging_pds_deploy: false,
   hosted_smoke: false,
   use_affected: false,
 };
@@ -67,6 +69,8 @@ const APP_PATHS = [
   /^packages\/entity-widgets\//,
   /^packages\/entity-widgets-mcp\//,
 ];
+
+const PDS_PATHS = [/^services\/atproto-pds\//];
 
 const STRIPE_ACCEPTANCE_PATHS = [
   /^app\/src\/domains\/billing\//,
@@ -100,6 +104,7 @@ const DEPLOY_VALIDATION_PATHS = [
   /^scripts\/deploy\//,
   /^\.github\/actions\/build-attest-push\//,
   /^\.github\/actions\/deploy-atlas-api\//,
+  /^\.github\/actions\/deploy-atlas-pds\//,
   /^\.github\/workflows\/deploy-(?:staging|production)\.ya?ml$/,
 ];
 
@@ -109,6 +114,12 @@ const STAGING_API_DEPLOY_PATHS = [
   /^\.dockerignore$/,
   /^\.github\/actions\/build-attest-push\//,
   /^\.github\/actions\/deploy-atlas-api\//,
+  /^\.github\/workflows\/deploy-staging\.ya?ml$/,
+];
+
+const STAGING_PDS_DEPLOY_PATHS = [
+  ...PDS_PATHS,
+  /^\.github\/actions\/deploy-atlas-pds\//,
   /^\.github\/workflows\/deploy-staging\.ya?ml$/,
 ];
 
@@ -177,6 +188,7 @@ export function classifyChangedFiles(files, context = {}) {
 
   const touchesApi = normalized.some((file) => matchesAny(file, API_PATHS));
   const touchesApp = normalized.some((file) => matchesAny(file, APP_PATHS));
+  const touchesPds = normalized.some((file) => matchesAny(file, PDS_PATHS));
   const touchesStripeAcceptance = normalized.some((file) =>
     matchesAny(file, STRIPE_ACCEPTANCE_PATHS),
   );
@@ -197,6 +209,9 @@ export function classifyChangedFiles(files, context = {}) {
   const touchesStagingApiDeploy = normalized.some((file) =>
     matchesAny(file, STAGING_API_DEPLOY_PATHS),
   );
+  const touchesStagingPdsDeploy = normalized.some((file) =>
+    matchesAny(file, STAGING_PDS_DEPLOY_PATHS),
+  );
   const touchesHostedSmokeAutomation = normalized.some((file) =>
     matchesAny(file, HOSTED_SMOKE_AUTOMATION_PATHS),
   );
@@ -215,18 +230,21 @@ export function classifyChangedFiles(files, context = {}) {
     contract: touchesApi,
     openapi: touchesApi,
     docs: touchesDocs,
-    compose: touchesCompose,
+    compose: touchesCompose || touchesPds,
     credential_scan: true,
     actions_lint: touchesActions || touchesCiValidation,
     deploy_scripts:
       touchesDeployValidation ||
       touchesStagingApiDeploy ||
+      touchesStagingPdsDeploy ||
       touchesProductionDeployAutomation,
     staging_api_deploy: touchesApi || touchesStagingApiDeploy,
+    staging_pds_deploy: touchesStagingPdsDeploy,
     hosted_smoke:
       touchesApi ||
       touchesApp ||
       touchesStagingApiDeploy ||
+      touchesStagingPdsDeploy ||
       touchesHostedSmokeAutomation,
     use_affected:
       context.eventName === "pull_request" &&
