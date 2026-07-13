@@ -8,7 +8,9 @@ from fastapi import HTTPException, Response
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.api.organization_atproto_identities import (
     attach_organization_atproto_identity,
+    get_organization_atproto_identity,
     grant_organization_atproto_delegation,
+    list_organization_atproto_delegations,
     revoke_organization_atproto_delegation,
 )
 from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
@@ -96,3 +98,58 @@ async def test_organization_identity_rejects_wrong_workspace_or_uncontrolled_did
             db=test_db,
         )
     assert mismatch.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_reads_only_the_active_organization_identity_and_delegations(
+    test_db: object,
+) -> None:
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="owner_1",
+        did="did:plc:organization-authority",
+        handle="organization-authority.atlas.localhost",
+        pds_url="https://pds.atlas.localhost",
+    )
+    await attach_organization_atproto_identity(
+        "org_1",
+        OrganizationAtprotoIdentityAttachRequest(identity_id=identity.id),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+    await grant_organization_atproto_delegation(
+        "org_1",
+        identity.id,
+        AtprotoIdentityDelegationRequest(delegate_user_id="active_member"),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+    await grant_organization_atproto_delegation(
+        "org_1",
+        identity.id,
+        AtprotoIdentityDelegationRequest(delegate_user_id="revoked_member"),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+    await revoke_organization_atproto_delegation(
+        "org_1",
+        identity.id,
+        "revoked_member",
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+
+    active_identity = await get_organization_atproto_identity(
+        "org_1", Response(), actor=_admin(), db=test_db
+    )
+    active_delegations = await list_organization_atproto_delegations(
+        "org_1", identity.id, Response(), actor=_admin(), db=test_db
+    )
+
+    assert active_identity is not None
+    assert active_identity.identity_id == identity.id
+    assert [delegation.delegate_user_id for delegation in active_delegations] == ["active_member"]

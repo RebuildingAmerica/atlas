@@ -131,6 +131,18 @@ class AtprotoIdentityDelegationCRUD:
         return row is not None and row.status == "active"
 
     @staticmethod
+    async def list_active(
+        conn: Any, *, organization_id: str, identity_id: str
+    ) -> list[AtprotoIdentityDelegationModel]:
+        cursor = await conn.execute(
+            """SELECT * FROM atproto_identity_delegations
+               WHERE organization_id = ? AND identity_id = ? AND status = 'active'
+               ORDER BY granted_at ASC, id ASC""",
+            (organization_id, identity_id),
+        )
+        return await _fetch_all(cursor)
+
+    @staticmethod
     async def get(
         conn: Any, *, organization_id: str, identity_id: str, delegate_user_id: str
     ) -> AtprotoIdentityDelegationModel | None:
@@ -157,3 +169,9 @@ async def _fetch(cursor: Any) -> AtprotoIdentityDelegationModel | None:
         return None
     columns = [description[0] for description in cursor.description]
     return AtprotoIdentityDelegationModel(**dict(zip(columns, row, strict=True)))
+
+
+async def _fetch_all(cursor: Any) -> list[AtprotoIdentityDelegationModel]:
+    rows = await cursor.fetchall()
+    columns = [description[0] for description in cursor.description]
+    return [AtprotoIdentityDelegationModel(**dict(zip(columns, row, strict=True))) for row in rows]

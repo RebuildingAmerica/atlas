@@ -48,6 +48,33 @@ def _delegation_response(row: object) -> AtprotoIdentityDelegationResponse:
     return AtprotoIdentityDelegationResponse.model_validate(row, from_attributes=True)
 
 
+@router.get(
+    "/atproto-identities",
+    response_model=OrganizationAtprotoIdentityResponse | None,
+    operation_id="getOrganizationAtprotoIdentity",
+    summary="Get the active organization ATProto identity",
+    description=(
+        "Return the single active public identity assigned to this organization, or null when none "
+        "is assigned. The result is limited to the caller's active workspace and is no-store because "
+        "organization identity administration reveals an account-controlled DID relationship."
+    ),
+    tags=["organization-identity"],
+)
+async def get_organization_atproto_identity(
+    organization_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_org_role("admin")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> OrganizationAtprotoIdentityResponse | None:
+    """Return the active public identity for an organization, if it has one."""
+    _assert_organization_context(actor, organization_id)
+    relation = await OrganizationAtprotoIdentityCRUD.get_active(db, organization_id)
+    apply_no_store_headers(response)
+    if relation is None:
+        return None
+    return _organization_response(relation)
+
+
 @router.post(
     "/atproto-identities",
     response_model=OrganizationAtprotoIdentityResponse,
@@ -133,6 +160,39 @@ async def grant_organization_atproto_delegation(  # noqa: PLR0913 - FastAPI depe
     await db.commit()
     apply_no_store_headers(response)
     return _delegation_response(delegation)
+
+
+@router.get(
+    "/atproto-identities/{identity_id}/delegations",
+    response_model=list[AtprotoIdentityDelegationResponse],
+    operation_id="listOrganizationAtprotoIdentityDelegations",
+    summary="List active delegated identity administrators",
+    description=(
+        "Return only members who currently hold delegated authority for the organization's active "
+        "ATProto identity. Revoked grants remain auditable but are deliberately excluded, and callers "
+        "receive a privacy-safe not-found response when the DID is not the active organization identity."
+    ),
+    tags=["organization-identity"],
+)
+async def list_organization_atproto_delegations(
+    organization_id: str,
+    identity_id: str,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_org_role("admin")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> list[AtprotoIdentityDelegationResponse]:
+    """List active delegated administrators for the active organization identity."""
+    _assert_organization_context(actor, organization_id)
+    attached = await OrganizationAtprotoIdentityCRUD.get_for_organization_and_identity(
+        db, organization_id=organization_id, identity_id=identity_id
+    )
+    if attached is None or attached.status != "active":
+        raise HTTPException(status_code=404, detail="Organization ATProto identity not found.")
+    delegations = await AtprotoIdentityDelegationCRUD.list_active(
+        db, organization_id=organization_id, identity_id=identity_id
+    )
+    apply_no_store_headers(response)
+    return [_delegation_response(delegation) for delegation in delegations]
 
 
 @router.delete(
