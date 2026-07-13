@@ -11,6 +11,8 @@ afterward.
   and production verification
 - [Staging Deployment](./staging.md) — Automatic staging deploys, required
   environment secrets, and staging verification
+- [Atlas-managed ATProto PDS](./atproto-pds.md) — Persistent-host, recovery,
+  deployment, and live-verification contract for managed identities
 - [Stripe Billing Setup](./stripe-billing.md) — Product catalog, discounts,
   webhook setup, and local/staging/production billing bootstrap
 - [Email Domain Setup](./email-domain-setup.md) — Operator runbook for Resend
