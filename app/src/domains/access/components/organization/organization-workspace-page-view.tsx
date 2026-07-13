@@ -159,8 +159,10 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
                 }}
               />
 
-              {controller.canManageOrganization && controller.activeWorkspace ? (
+              {controller.canUseTeamFeatures && controller.activeWorkspace ? (
                 <OrganizationAtprotoIdentitySection
+                  canManageOrganization={controller.canManageOrganization}
+                  currentUserId={controller.session?.user.id}
                   members={controller.organization.members}
                   organizationId={controller.activeWorkspace.id}
                 />

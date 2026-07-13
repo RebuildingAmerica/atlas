@@ -17,8 +17,16 @@ vi.mock("@/platform/ui/toast", () => ({
 }));
 
 vi.mock("@/domains/access/components/organization/atproto-identity-section", () => ({
-  OrganizationAtprotoIdentitySection: ({ organizationId }: { organizationId: string }) => (
-    <div data-organization-id={organizationId}>Organization ATProto identity</div>
+  OrganizationAtprotoIdentitySection: ({
+    canManageOrganization,
+    organizationId,
+  }: {
+    canManageOrganization: boolean;
+    organizationId: string;
+  }) => (
+    <div data-can-manage-organization={canManageOrganization} data-organization-id={organizationId}>
+      Organization ATProto identity
+    </div>
   ),
 }));
 

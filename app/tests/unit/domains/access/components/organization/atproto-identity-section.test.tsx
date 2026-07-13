@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   attach: vi.fn(),
+  detach: vi.fn(),
   getIdentity: vi.fn(),
   grant: vi.fn(),
   listDelegations: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock("@/domains/access/atproto-identities", () => ({
 
 vi.mock("@/lib/generated/atlas/organization-identity/organization-identity", () => ({
   attachOrganizationAtprotoIdentity: mocks.attach,
+  detachOrganizationAtprotoIdentity: mocks.detach,
   getOrganizationAtprotoIdentity: mocks.getIdentity,
   grantOrganizationAtprotoIdentityDelegation: mocks.grant,
   listOrganizationAtprotoIdentityDelegations: mocks.listDelegations,
@@ -113,7 +115,14 @@ describe("OrganizationAtprotoIdentitySection", () => {
     const { OrganizationAtprotoIdentitySection } =
       await import("@/domains/access/components/organization/atproto-identity-section");
 
-    render(<OrganizationAtprotoIdentitySection members={members} organizationId="org-1" />);
+    render(
+      <OrganizationAtprotoIdentitySection
+        canManageOrganization
+        currentUserId="owner-1"
+        members={members}
+        organizationId="org-1"
+      />,
+    );
 
     expect(screen.getByRole("heading", { name: "Organization ATProto identity" })).not.toBeNull();
     expect(screen.getByText("Use an Atlas identity")).not.toBeNull();
@@ -179,7 +188,14 @@ describe("OrganizationAtprotoIdentitySection", () => {
     const { OrganizationAtprotoIdentitySection } =
       await import("@/domains/access/components/organization/atproto-identity-section");
 
-    render(<OrganizationAtprotoIdentitySection members={members} organizationId="org-1" />);
+    render(
+      <OrganizationAtprotoIdentitySection
+        canManageOrganization
+        currentUserId="owner-1"
+        members={members}
+        organizationId="org-1"
+      />,
+    );
 
     expect(screen.getByRole("combobox", { name: "Delegate member" })).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Revoke Delegate" }));
@@ -187,6 +203,72 @@ describe("OrganizationAtprotoIdentitySection", () => {
     await waitFor(() => {
       expect(mocks.revoke).toHaveBeenCalledWith("org-1", "identity-existing", "delegate-1");
       expect(screen.getByText("Delegated administration revoked for Delegate.")).not.toBeNull();
+    });
+  });
+
+  it("lets an active delegate remove the organization identity", async () => {
+    const members = [
+      {
+        createdAt: "2026-07-01T00:00:00.000Z",
+        email: "owner@atlas.test",
+        id: "membership-owner",
+        image: null,
+        name: "Owner",
+        role: "owner",
+        userId: "owner-1",
+      },
+      {
+        createdAt: "2026-07-01T00:00:00.000Z",
+        email: "delegate@atlas.test",
+        id: "membership-delegate",
+        image: null,
+        name: "Delegate",
+        role: "member",
+        userId: "delegate-1",
+      },
+    ];
+    mocks.useQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
+      if (queryKey.at(-1) === "identity") {
+        return {
+          data: { id: "organization-identity-1", identity_id: "identity-existing" },
+          isError: false,
+          isPending: false,
+        };
+      }
+      return {
+        data: [
+          {
+            delegate_user_id: "delegate-1",
+            id: "delegation-1",
+            identity_id: "identity-existing",
+          },
+        ],
+        isError: false,
+        isPending: false,
+      };
+    });
+    mocks.detach.mockResolvedValue({
+      detached_by: "delegate-1",
+      identity_id: "identity-existing",
+      status: "removed",
+    });
+    const { OrganizationAtprotoIdentitySection } =
+      await import("@/domains/access/components/organization/atproto-identity-section");
+
+    render(
+      <OrganizationAtprotoIdentitySection
+        canManageOrganization={false}
+        currentUserId="delegate-1"
+        members={members}
+        organizationId="org-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove organization identity" }));
+
+    await waitFor(() => {
+      expect(mocks.detach).toHaveBeenCalledWith("org-1", "identity-existing");
+      expect(screen.getByText("Organization ATProto identity removed.")).not.toBeNull();
     });
   });
 });
