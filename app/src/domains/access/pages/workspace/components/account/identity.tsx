@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useAtprotoIdentities,
   useDisconnectAtprotoIdentity,
+  useProvisionManagedAtprotoIdentity,
   useRefreshAtprotoIdentity,
 } from "@/domains/access/atproto-identities";
 import { Badge } from "@/platform/ui/badge";
@@ -28,14 +29,20 @@ function displayDate(value: string | null | undefined): string {
 }
 
 export function AccountIdentitySection() {
-  const [handle, setHandle] = useState("");
+  const [existingHandle, setExistingHandle] = useState("");
+  const [managedHandle, setManagedHandle] = useState("");
   const identities = useAtprotoIdentities();
   const refresh = useRefreshAtprotoIdentity();
   const disconnect = useDisconnectAtprotoIdentity();
+  const provisionManaged = useProvisionManagedAtprotoIdentity();
   const { confirm } = useConfirmDialog();
 
   const submitConnection = () => {
-    if (handle.trim()) startConnection(handle);
+    if (existingHandle.trim()) startConnection(existingHandle);
+  };
+
+  const submitManagedIdentity = () => {
+    if (managedHandle.trim()) provisionManaged.mutate(managedHandle.trim());
   };
 
   const confirmDisconnect = async (identityId: string, currentHandle: string) => {
@@ -57,21 +64,62 @@ export function AccountIdentitySection() {
         <AccountSurface>
           <div className="space-y-4 px-4 py-4">
             <p className="type-body-medium text-ink-soft">
-              Use an ATProto account for profile verification and public civic contributions.
+              Use an ATProto identity for profile verification and public civic contributions.
             </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1">
-                <Input
-                  label="ATProto handle"
-                  placeholder="person.example"
-                  value={handle}
-                  onChange={setHandle}
-                />
+            <div className="border-border bg-surface-container-low rounded-lg border p-4">
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <h4 className="type-title-small text-ink-strong">Use an Atlas identity</h4>
+                  <p className="type-body-small text-ink-soft">
+                    Create an identity on the Atlas PDS. Atlas does not expose or retain a PDS
+                    password; use your Atlas passkey to sign in here later.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="min-w-0 flex-1">
+                    <Input
+                      label="New Atlas handle"
+                      placeholder="person.atlas.example"
+                      value={managedHandle}
+                      onChange={setManagedHandle}
+                    />
+                  </div>
+                  <Button
+                    disabled={!managedHandle.trim() || provisionManaged.isPending}
+                    onClick={submitManagedIdentity}
+                  >
+                    Create Atlas identity
+                  </Button>
+                </div>
+                {provisionManaged.isError ? (
+                  <p className="type-body-small text-error" role="status">
+                    Atlas could not create that identity. Try a different handle.
+                  </p>
+                ) : null}
               </div>
-              <Button disabled={!handle.trim()} onClick={submitConnection}>
-                Connect ATProto account
-              </Button>
             </div>
+            <details>
+              <summary className="type-label-large text-ink-soft cursor-pointer">
+                Connect an existing identity
+              </summary>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1">
+                  <Input
+                    label="Existing ATProto handle"
+                    placeholder="person.example"
+                    value={existingHandle}
+                    onChange={setExistingHandle}
+                  />
+                </div>
+                <Button
+                  disabled={!existingHandle.trim()}
+                  variant="secondary"
+                  onClick={submitConnection}
+                >
+                  Connect existing identity
+                </Button>
+              </div>
+            </details>
           </div>
         </AccountSurface>
 

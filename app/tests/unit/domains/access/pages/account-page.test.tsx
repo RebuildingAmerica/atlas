@@ -45,10 +45,13 @@ describe("AccountPage", () => {
     expect(screen.getByRole("heading", { name: "Profile" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Identity" })).not.toBeNull();
     expect(screen.getByText("No ATProto accounts connected.")).not.toBeNull();
-    fireEvent.change(screen.getByRole("textbox", { name: "ATProto handle" }), {
+    expect(screen.getByRole("heading", { name: "Use an Atlas identity" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Create Atlas identity" })).not.toBeNull();
+    expect(screen.getByText("Connect an existing identity")).not.toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "Existing ATProto handle" }), {
       target: { value: "person.example" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Connect ATProto account" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect existing identity" }));
     expect(screen.getByText("Personal details")).not.toBeNull();
     expect(screen.getByText("Workspace context")).not.toBeNull();
     expect(screen.getByText("Atlas Team")).not.toBeNull();
@@ -77,7 +80,7 @@ describe("AccountPage", () => {
     fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop script" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Create API key" }));
 
     await waitFor(() => {
       expect(mocks.addPasskey).toHaveBeenCalledTimes(1);
@@ -292,9 +295,7 @@ describe("AccountPage", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "discovery:read" }));
 
-    const createButton = screen.getByRole("button", {
-      name: /Create/i,
-    });
+    const createButton = screen.getByRole("button", { name: "Create API key" });
     expect(createButton).toBeInstanceOf(HTMLButtonElement);
 
     if (!(createButton instanceof HTMLButtonElement)) {
@@ -363,7 +364,7 @@ describe("AccountPage", () => {
     fireEvent.change(screen.getByLabelText("Key name"), {
       target: { value: "Desktop script" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Create/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Create API key" }));
     await waitFor(() => {
       expect(
         screen.getByText("Atlas could not create that API key. Please try again."),
