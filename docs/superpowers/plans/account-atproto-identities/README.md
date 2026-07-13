@@ -21,6 +21,7 @@ The files here divide that design into independently reviewable milestones.
 10. [Steward management and public display](milestone-10-profile-identity-ui.md)
 11. [Acceptance and product alignment](milestone-11-acceptance-and-closeout.md)
 12. [Atlas-managed PDS foundation](milestone-12-managed-pds.md)
+13. [Delegated identity and ATProto sign-in](milestone-13-delegated-identity-and-sign-in.md)
 
 ## Boundary
 
