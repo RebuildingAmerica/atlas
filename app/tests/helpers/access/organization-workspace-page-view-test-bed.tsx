@@ -16,6 +16,12 @@ vi.mock("@/platform/ui/toast", () => ({
   }),
 }));
 
+vi.mock("@/domains/access/components/organization/atproto-identity-section", () => ({
+  OrganizationAtprotoIdentitySection: ({ organizationId }: { organizationId: string }) => (
+    <div data-organization-id={organizationId}>Organization ATProto identity</div>
+  ),
+}));
+
 export const buildController = (overrides = {}): OrganizationPageController => {
   const baseController: OrganizationPageController = {
     needsWorkspace: false,

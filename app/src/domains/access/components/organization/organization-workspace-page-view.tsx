@@ -2,6 +2,7 @@ import { hasSerializedCapability } from "@/domains/access/capabilities";
 import { canManageAtlasOrganizationRole } from "@/domains/access/organization-metadata";
 import { TeamSeatCostSection } from "@/domains/billing/components/team-seat-cost-section";
 import type { OrganizationPageController } from "./organization-page-controller";
+import { OrganizationAtprotoIdentitySection } from "./atproto-identity-section";
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";
 import { OrganizationPageFeedback } from "./organization-page-feedback";
@@ -157,6 +158,13 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
                   void controller.onProfileSave(e);
                 }}
               />
+
+              {controller.canManageOrganization && controller.activeWorkspace ? (
+                <OrganizationAtprotoIdentitySection
+                  members={controller.organization.members}
+                  organizationId={controller.activeWorkspace.id}
+                />
+              ) : null}
 
               {controller.session ? (
                 <WorkspacePackageSummarySection

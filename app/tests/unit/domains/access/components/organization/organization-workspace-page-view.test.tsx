@@ -33,6 +33,18 @@ describe("OrganizationWorkspacePageView", () => {
     expect(screen.getByDisplayValue("Atlas")).toBeInTheDocument();
   });
 
+  it("shows organization identity administration only to workspace managers", () => {
+    const { rerender } = render(<OrganizationWorkspacePageView controller={buildController()} />);
+    expect(screen.getByText("Organization ATProto identity")).toBeInTheDocument();
+
+    rerender(
+      <OrganizationWorkspacePageView
+        controller={buildController({ canManageOrganization: false })}
+      />,
+    );
+    expect(screen.queryByText("Organization ATProto identity")).toBeNull();
+  });
+
   it("shows loading state when requested", () => {
     const controller = buildController({
       organizationLoading: true,
