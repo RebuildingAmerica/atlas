@@ -119,6 +119,22 @@ describe("SignInPage", () => {
     expect(screen.getByRole("heading", { name: /Sign in to Atlas/i })).toBeInTheDocument();
   });
 
+  it("offers ATProto as a passkey-backed alternate sign-in path", () => {
+    render(<SignInPage />);
+
+    const handleInput = screen.getByLabelText("ATProto handle");
+    const submit = screen.getByRole("button", { name: "Continue with ATProto" });
+    expect(submit).toBeDisabled();
+    expect(screen.getByText(/existing Atlas account secured by a passkey/i)).toBeInTheDocument();
+
+    fireEvent.change(handleInput, { target: { value: "person.example" } });
+    fireEvent.click(submit);
+
+    expect(mockLocationAssign).toHaveBeenCalledWith(
+      "/api/atproto/sign-in/start?handle=person.example&returnTo=%2Faccount",
+    );
+  });
+
   it("does not accept account-existence claims from the URL", () => {
     expect(
       signInSearchSchema.parse({
