@@ -8,6 +8,8 @@ from typing import Any, ClassVar
 import pytest
 from fastapi import HTTPException
 
+from atlas.domains.access.principals import AuthenticatedActor
+from atlas.domains.catalog.api.atproto_identities import resolve_atproto_sign_in
 from atlas.domains.catalog.api.profile_claim_atproto_helpers import (
     apply_atproto_claim_proof,
     link_atproto_proof_if_present,
@@ -25,6 +27,7 @@ from atlas.domains.catalog.models.profile_atproto_links import (
     ProfileAtprotoLinkEvidence,
 )
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
+from atlas.domains.catalog.schemas.public import AtprotoIdentitySignInResolveRequest
 from atlas.domains.catalog.services import atproto_identity
 from atlas.domains.catalog.services.atproto_identity import (
     NetworkAtprotoIdentityResolver,
@@ -142,6 +145,29 @@ async def test_global_identity_control_lifecycle_is_independent_from_identity(
     assert refreshed.current_handle == "renamed.example"
     assert reconnected.id == control.id
     assert reconnected.status == "active"
+
+
+@pytest.mark.asyncio
+async def test_internal_sign_in_resolution_returns_only_the_active_controller(
+    test_db: object,
+) -> None:
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="user_1",
+        did="did:plc:sign-in",
+        handle="sign-in.example",
+    )
+    resolved = await resolve_atproto_sign_in(
+        AtprotoIdentitySignInResolveRequest(did=identity.did),
+        actor=AuthenticatedActor(
+            user_id="atlas-app",
+            email="app@atlas.test",
+            auth_type="internal",
+        ),
+        db=test_db,
+    )
+
+    assert resolved.user_id == "user_1"
 
 
 @pytest.mark.asyncio

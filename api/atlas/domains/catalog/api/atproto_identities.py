@@ -22,6 +22,8 @@ from atlas.domains.catalog.schemas.public import (
     AtprotoIdentityLinkRequest,
     AtprotoIdentityProfileSummary,
     AtprotoIdentityResponse,
+    AtprotoIdentitySignInResolveRequest,
+    AtprotoIdentitySignInResolveResponse,
 )
 from atlas.domains.catalog.services.atproto_identity import (
     resolve_current_atproto_identity,
@@ -43,6 +45,33 @@ def _require_app_actor(actor: AuthenticatedActor) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="ATProto identities must be managed through Atlas.",
         )
+
+
+@router.post(
+    "/sign-in/resolve",
+    response_model=AtprotoIdentitySignInResolveResponse,
+    operation_id="resolveAtprotoSignIn",
+    summary="Resolve an internal ATProto sign-in controller",
+    include_in_schema=False,
+)
+async def resolve_atproto_sign_in(
+    payload: AtprotoIdentitySignInResolveRequest,
+    actor: AuthenticatedActor = Depends(require_actor),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> AtprotoIdentitySignInResolveResponse:
+    """Return the active controller only to the internal app OAuth callback."""
+    _require_app_actor(actor)
+    identity = await AtprotoIdentityCRUD.get_by_did(db, payload.did)
+    control = (
+        await AtprotoIdentityControlCRUD.get_active_for_identity(db, identity.id)
+        if identity is not None and identity.resolution_status == "verified"
+        else None
+    )
+    if control is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="ATProto sign-in unavailable."
+        )
+    return AtprotoIdentitySignInResolveResponse(user_id=control.user_id)
 
 
 async def _identity_to_response(

@@ -12,6 +12,8 @@ __all__ = [
     "AtprotoIdentityLinkRequest",
     "AtprotoIdentityProfileSummary",
     "AtprotoIdentityResponse",
+    "AtprotoIdentitySignInResolveRequest",
+    "AtprotoIdentitySignInResolveResponse",
     "ProfileAtprotoIdentityAttachRequest",
     "ProfileAtprotoIdentityLinkResponse",
     "ProfileAtprotoRevalidationResponse",
@@ -58,6 +60,18 @@ class AtprotoIdentityResponse(BaseModel):
     last_checked_at: str | None = None
     last_resolution_error: str | None = None
     profiles: list[AtprotoIdentityProfileSummary] = Field(default_factory=list)
+
+
+class AtprotoIdentitySignInResolveRequest(BaseModel):
+    """Internal callback proof for resolving an active DID controller."""
+
+    did: str
+
+
+class AtprotoIdentitySignInResolveResponse(BaseModel):
+    """Internal-only Atlas account selected by a verified ATProto DID."""
+
+    user_id: str
 
 
 class AtprotoIdentityProfileSummary(BaseModel):
