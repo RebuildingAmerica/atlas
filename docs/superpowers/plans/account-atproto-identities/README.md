@@ -1,6 +1,6 @@
 # Account-First ATProto Identities Plan Set
 
-**Status:** Complete
+**Status:** In progress — managed-identity continuation
 
 This directory is the execution record for the external-provider ATProto
 identity milestone. The approved design remains in
@@ -20,12 +20,14 @@ The files here divide that design into independently reviewable milestones.
 9. [Person and organization claim selection](milestone-09-claim-identity-ui.md)
 10. [Steward management and public display](milestone-10-profile-identity-ui.md)
 11. [Acceptance and product alignment](milestone-11-acceptance-and-closeout.md)
+12. [Atlas-managed PDS foundation](milestone-12-managed-pds.md)
 
 ## Boundary
 
-This plan set ships external ATProto providers. Atlas-managed PDS accounts,
-ATProto-first sign-in, workspace-owned identities, delegated identity
-administration, and federated publishing remain explicitly deferred.
+Milestones 1–11 shipped external ATProto providers. The managed-identity
+continuation adds Atlas PDS hosting, workspace-owned identity authorization,
+delegated administration, and a passkey-gated ATProto sign-in path. Federated
+publishing remains explicitly deferred.
 
 ## Completion rule
 
