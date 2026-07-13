@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
   disconnect: vi.fn(),
   invalidateQueries: vi.fn(),
   list: vi.fn(),
+  provisionManaged: vi.fn(),
   refresh: vi.fn(),
   useMutation: vi.fn(),
   useQuery: vi.fn(),
@@ -14,6 +16,15 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: mocks.useMutation,
   useQuery: mocks.useQuery,
   useQueryClient: mocks.useQueryClient,
+}));
+
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
+
+vi.mock("@/domains/access/server/atproto-oauth", () => ({
+  provisionAndLinkManagedAtprotoIdentity: mocks.provisionManaged,
 }));
 
 vi.mock("@/lib/generated/atlas/identity/identity", () => ({
@@ -73,6 +84,37 @@ describe("ATProto identity hooks", () => {
     });
     expect(mocks.invalidateQueries).toHaveBeenNthCalledWith(2, {
       queryKey: atprotoIdentitiesQueryKey,
+    });
+  });
+
+  it("provisions the current user's managed identity and refreshes the collection", async () => {
+    const managedIdentity = {
+      current_handle: "civic.atlas.test",
+      did: "did:plc:managed",
+      id: "identity-managed",
+      pds_url: "https://pds.atlas.test",
+    };
+    mocks.provisionManaged.mockResolvedValue(managedIdentity);
+    const { provisionManagedAtprotoIdentityForCurrentUser, useProvisionManagedAtprotoIdentity } =
+      await import("@/domains/access/atproto-identities");
+
+    const response = (await provisionManagedAtprotoIdentityForCurrentUser.__executeServer({
+      method: "POST",
+      data: { handle: " civic.atlas.test " },
+    })) as ServerFnExecutionResponse;
+    useProvisionManagedAtprotoIdentity();
+    const provision = mocks.useMutation.mock.calls[0]?.[0] as {
+      mutationFn: (handle: string) => Promise<unknown>;
+      onSettled: () => Promise<void>;
+    };
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual(managedIdentity);
+    expect(mocks.provisionManaged).toHaveBeenCalledWith({ handle: "civic.atlas.test" });
+    await expect(provision.mutationFn("civic.atlas.test")).resolves.toEqual(managedIdentity);
+    await provision.onSettled();
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["auth", "atproto-identities"],
     });
   });
 });
