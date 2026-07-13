@@ -15,3 +15,8 @@
     reverse_proxy atlas-web:3000
   }
 }
+
+{$ATLAS_PDS_HOSTNAME} {
+  encode gzip zstd
+  reverse_proxy atlas-pds:2583
+}

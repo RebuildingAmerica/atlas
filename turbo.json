@@ -133,6 +133,7 @@
     "//#compose:validate": {
       "inputs": [
         "compose.yaml",
+        "services/atproto-pds/**",
         ".env.production.example",
         ".env.example",
         "deploy/Caddyfile"
