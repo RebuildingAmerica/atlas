@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { assertHostedE2EAuthorized } from "@/domains/access/server/hosted-e2e";
+import {
+  assertHostedE2EAuthorized,
+  buildHostedE2EAccountSeeds,
+  hostedE2EPayloadSchema,
+} from "@/domains/access/server/hosted-e2e";
 import {
   hostedE2ERequestWithSecret,
   hostedE2EResponsePayload,
@@ -69,5 +73,32 @@ describe("hosted E2E guard", () => {
     });
 
     expect(response).toBeNull();
+  });
+});
+
+describe("hosted E2E run scope", () => {
+  test("rejects unsafe run identifiers", () => {
+    expect(() => hostedE2EPayloadSchema.parse({ action: "prepare", runId: "../prod" })).toThrow();
+    expect(() => hostedE2EPayloadSchema.parse({ action: "prepare", runId: "" })).toThrow();
+  });
+
+  test("builds deterministic account seeds for a hosted run", () => {
+    const seeds = buildHostedE2EAccountSeeds("29364644020-1");
+
+    expect(seeds).toEqual({
+      delegate: {
+        email: "atlas-hosted-e2e+29364644020-1-delegate@atlas.test",
+        handle: "atlas-hosted-29364644020-1-delegate.atlas.test",
+        name: "Hosted E2E Delegate 29364644020-1",
+        role: "delegate",
+      },
+      owner: {
+        email: "atlas-hosted-e2e+29364644020-1-owner@atlas.test",
+        handle: "atlas-hosted-29364644020-1-owner.atlas.test",
+        name: "Hosted E2E Owner 29364644020-1",
+        role: "owner",
+      },
+      runId: "29364644020-1",
+    });
   });
 });
