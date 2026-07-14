@@ -92,6 +92,11 @@ function ClaimRoute() {
   const selectedAtprotoIdentity = atprotoIdentities.data?.find(
     (identity) => identity.id === atprotoIdentityId,
   );
+  const isResolvingAtprotoIdentity =
+    Boolean(atprotoIdentityId) &&
+    !atprotoIdentities.data &&
+    !atprotoIdentities.isError &&
+    (atprotoIdentities.isLoading || atprotoIdentities.isPending);
   const activeAtprotoIdentityId =
     selectedAtprotoIdentity?.control_status === "active" &&
     selectedAtprotoIdentity.resolution_status === "verified"
@@ -102,6 +107,9 @@ function ClaimRoute() {
     setErrorMessage(null);
     const domainProof = dnsDomain.trim();
     const workspaceProof = canUseActiveWorkspace && useActiveWorkspace;
+    if (isResolvingAtprotoIdentity) {
+      return;
+    }
     if (atprotoIdentityId && !activeAtprotoIdentityId) {
       setErrorMessage("Reconnect this ATProto account or choose another identity.");
       return;
@@ -239,6 +247,7 @@ function ClaimRoute() {
                 privateNote={privateNote}
                 atprotoIdentities={atprotoIdentities.data ?? []}
                 atprotoIdentitiesError={atprotoIdentities.isError}
+                isResolvingAtprotoIdentity={isResolvingAtprotoIdentity}
                 selectedAtprotoIdentityId={atprotoIdentityId}
                 dnsDomain={dnsDomain}
                 activeWorkspaceName={activeWorkspaceName}

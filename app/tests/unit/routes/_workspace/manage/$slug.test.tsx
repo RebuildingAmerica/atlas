@@ -476,6 +476,62 @@ describe("routes/_workspace/manage/$slug", () => {
     expect(detach).toHaveBeenCalledWith("jane");
   });
 
+  it("blocks overlapping public identity mutations", async () => {
+    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const identities = await import("@/domains/access/atproto-identities");
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: true,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
+      data: [
+        {
+          id: "identity-new",
+          did: "did:plc:new",
+          current_handle: "new.example",
+          resolution_status: "verified",
+          control_status: "active",
+        },
+      ],
+    } as unknown as ReturnType<typeof identities.useAtprotoIdentities>);
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "jane",
+        type: "person",
+        name: "Jane",
+        sources: [],
+        claim: { status: "verified", linked_atproto_handle: "old.example" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+
+    await renderManageRoute("jane");
+    fireEvent.change(screen.getByLabelText("ATProto identity"), {
+      target: { value: "identity-new" },
+    });
+    expect(screen.getByRole("button", { name: "Replace identity" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove identity" })).toBeDisabled();
+
+    vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAttachProfileAtprotoIdentity>);
+    vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: true,
+    } as unknown as ReturnType<typeof claims.useDetachProfileAtprotoIdentity>);
+    cleanup();
+    await renderManageRoute("jane");
+    fireEvent.change(screen.getByLabelText("ATProto identity"), {
+      target: { value: "identity-new" },
+    });
+
+    expect(screen.getByRole("button", { name: "Replace identity" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove identity" })).toBeDisabled();
+  });
+
   it("requires confirmation before replacing the public identity", async () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");

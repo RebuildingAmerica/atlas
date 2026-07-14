@@ -247,6 +247,49 @@ describe("routes/_public/claim/$slug submission", () => {
     expect(view.getByRole("button", { name: "Submitting..." })).toBeDisabled();
   });
 
+  it("keeps callback-selected ATProto identities from submitting before identity data resolves", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtprotoIdentities } = await import("@/domains/access/atproto-identities");
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: { user: { id: "u1" } },
+    } as unknown as ReturnType<typeof useAtlasSession>);
+    const initiateMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(claims.useInitiateClaim).mockReturnValue({
+      mutateAsync: initiateMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useInitiateClaim>);
+    vi.mocked(claims.useMyClaims).mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof claims.useMyClaims>);
+    vi.mocked(useAtprotoIdentities).mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: true,
+      isPending: true,
+    } as unknown as ReturnType<typeof useAtprotoIdentities>);
+
+    const { router, Route } = await loadClaimRoute();
+    router.useParams.mockReturnValue({ slug: "maya" });
+    router.useSearch.mockReturnValue({ atprotoIdentityId: "identity_maya" });
+    router.useLoaderData.mockReturnValue({
+      entry: { id: "e1", name: "Maya", slug: "maya", type: "person" },
+    });
+
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByRole("button", { name: "Submit verification" })).toBeDisabled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Submit verification" }));
+      await Promise.resolve();
+    });
+
+    expect(initiateMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("uses the generic initiate-failure copy when the rejection is not an Error", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     const claims = await import("@/domains/catalog/hooks/use-claims");

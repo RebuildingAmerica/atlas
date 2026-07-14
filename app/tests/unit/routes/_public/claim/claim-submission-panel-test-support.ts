@@ -27,6 +27,7 @@ export function createClaimSubmissionPanelProps(
     dnsDomain: "",
     evidence: "",
     isPending: false,
+    isResolvingAtprotoIdentity: false,
     onAtprotoIdentityChange: claimPanelNoop,
     onCancel: claimPanelNoop,
     onConnectAtproto: claimPanelNoop,

@@ -196,6 +196,7 @@ function ManageProfileRoute() {
   const profilePath = `/profiles/${entry.type === "organization" ? "organizations" : "people"}/${entry.slug}`;
   const verificationBadge =
     entry.type === "organization" ? "Verified representative" : "Verified person";
+  const identityMutationPending = attachIdentity.isPending || detachIdentity.isPending;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 py-12">
@@ -304,7 +305,7 @@ function ManageProfileRoute() {
         </label>
         <div className="flex flex-wrap gap-2">
           <Button
-            disabled={!selectedIdentityId || attachIdentity.isPending}
+            disabled={!selectedIdentityId || identityMutationPending}
             onClick={() => {
               void handleAttachIdentity();
             }}
@@ -313,7 +314,7 @@ function ManageProfileRoute() {
           </Button>
           {entry.claim.linked_atproto_handle ? (
             <Button
-              disabled={detachIdentity.isPending}
+              disabled={identityMutationPending}
               variant="ghost"
               onClick={() => {
                 void handleRemoveIdentity();

@@ -14,6 +14,7 @@ export interface ClaimSubmissionPanelProps {
   privateNote: string;
   atprotoIdentities: AtprotoIdentityResponse[];
   atprotoIdentitiesError: boolean;
+  isResolvingAtprotoIdentity: boolean;
   selectedAtprotoIdentityId: string;
   dnsDomain: string;
   activeWorkspaceName: string | null;
@@ -244,6 +245,7 @@ function PrivateContextStep({
   privateNote,
   showOrganizationProofs,
   isPending,
+  isResolvingAtprotoIdentity,
   useActiveWorkspace,
   onPrivateNoteChange,
   onCancel,
@@ -293,7 +295,10 @@ function PrivateContextStep({
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={isPending || Boolean(submitBlockReason)}>
+          <Button
+            onClick={onSubmit}
+            disabled={isPending || isResolvingAtprotoIdentity || Boolean(submitBlockReason)}
+          >
             {isPending ? "Submitting..." : "Submit verification"}
           </Button>
         </div>
