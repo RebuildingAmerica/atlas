@@ -103,7 +103,7 @@ test("hosted ATProto identity administration works without a personal browser se
   await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
   await page.waitForURL(/\/pricing/, { timeout: 15_000 });
   await page.goto("/organization", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: "Organization ATProto identity" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "Organization identity" })).toBeVisible({
     timeout: 20_000,
   });
 
@@ -111,7 +111,7 @@ test("hosted ATProto identity administration works without a personal browser se
     .getByRole("textbox", { name: "New Atlas handle" })
     .fill(`atlas-hosted-${run.runId}-org.atlas.test`);
   await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
-  await expect(page.getByText("Organization ATProto identity updated.")).toBeVisible({
+  await expect(page.getByText("Organization identity updated.")).toBeVisible({
     timeout: 20_000,
   });
 
@@ -127,11 +127,11 @@ test("hosted ATProto identity administration works without a personal browser se
 
   await signInHostedAccount(page, { email: run.delegate.email, runId: run.runId });
   await page.goto("/organization", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: "Organization ATProto identity" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "Organization identity" })).toBeVisible({
     timeout: 20_000,
   });
   await page.getByRole("button", { name: "Remove organization identity" }).click();
-  await expect(page.getByText("Organization ATProto identity removed.")).toBeVisible({
+  await expect(page.getByText("Organization identity removed.")).toBeVisible({
     timeout: 20_000,
   });
 

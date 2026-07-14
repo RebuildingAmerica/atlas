@@ -30,7 +30,7 @@ const organizationDelegationsQueryKey = (organizationId: string, identityId: str
   ["organization-atproto-identity", organizationId, identityId, "delegations"] as const;
 
 /**
- * Lets owners and admins manage the workspace's public ATProto identity, while
+ * Lets owners and admins manage the workspace's public identity, while
  * rendering the one delegated action available to an authorized member.
  */
 export function OrganizationAtprotoIdentitySection({
@@ -66,7 +66,7 @@ export function OrganizationAtprotoIdentitySection({
       setFeedback("Atlas could not use that identity for this organization.");
     },
     onSuccess: async () => {
-      setFeedback("Organization ATProto identity updated.");
+      setFeedback("Organization identity updated.");
       await queryClient.invalidateQueries({
         queryKey: organizationIdentityQueryKey(organizationId),
       });
@@ -74,7 +74,7 @@ export function OrganizationAtprotoIdentitySection({
   });
   const grant = useMutation({
     mutationFn: async (userId: string) => {
-      if (!activeIdentityId) throw new Error("Organization ATProto identity is unavailable.");
+      if (!activeIdentityId) throw new Error("Organization identity is unavailable.");
       return await grantOrganizationAtprotoIdentityDelegation(organizationId, activeIdentityId, {
         delegate_user_id: userId,
       });
@@ -94,7 +94,7 @@ export function OrganizationAtprotoIdentitySection({
   });
   const revoke = useMutation({
     mutationFn: async (userId: string) => {
-      if (!activeIdentityId) throw new Error("Organization ATProto identity is unavailable.");
+      if (!activeIdentityId) throw new Error("Organization identity is unavailable.");
       return await revokeOrganizationAtprotoIdentityDelegation(
         organizationId,
         activeIdentityId,
@@ -116,7 +116,7 @@ export function OrganizationAtprotoIdentitySection({
   });
   const detach = useMutation({
     mutationFn: async () => {
-      if (!activeIdentityId) throw new Error("Organization ATProto identity is unavailable.");
+      if (!activeIdentityId) throw new Error("Organization identity is unavailable.");
       return await detachOrganizationAtprotoIdentity(organizationId, activeIdentityId);
     },
     onError: () => {
@@ -125,7 +125,7 @@ export function OrganizationAtprotoIdentitySection({
       );
     },
     onSuccess: async () => {
-      setFeedback("Organization ATProto identity removed.");
+      setFeedback("Organization identity removed.");
       await queryClient.invalidateQueries({
         queryKey: organizationIdentityQueryKey(organizationId),
       });
@@ -160,11 +160,11 @@ export function OrganizationAtprotoIdentitySection({
   return (
     <section className="border-border bg-surface-container-lowest space-y-4 rounded-lg border p-5">
       <div className="space-y-1">
-        <h3 className="type-title-medium text-ink-strong">Organization ATProto identity</h3>
+        <h3 className="type-title-medium text-ink-strong">Organization identity</h3>
         <p className="type-body-small text-ink-soft">
           {canManageOrganization
             ? "Choose the DID Atlas presents for this workspace without moving account-level control."
-            : "Manage your delegated authority for this workspace's public ATProto identity."}
+            : "Manage your delegated authority for this workspace's public identity."}
         </p>
       </div>
 

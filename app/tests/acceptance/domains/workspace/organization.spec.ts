@@ -64,14 +64,14 @@ test.describe("organization management journey", () => {
     await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
     await page.waitForURL(/\/pricing/, { timeout: 15_000 });
     await page.goto("/organization", { waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "Organization ATProto identity" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Organization identity" })).toBeVisible({
       timeout: 15_000,
     });
 
     await page.getByRole("textbox", { name: "New Atlas handle" }).fill("workspace.atlas.test");
     await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
 
-    await expect(page.getByText("Organization ATProto identity updated.")).toBeVisible({
+    await expect(page.getByText("Organization identity updated.")).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.locator("p").filter({ hasText: /^workspace\.atlas\.test$/ })).toBeVisible();
@@ -91,7 +91,7 @@ test.describe("organization management journey", () => {
     await page.goto("/organization", { waitUntil: "networkidle" });
     await page.getByRole("textbox", { name: "New Atlas handle" }).fill("delegate-flow.atlas.test");
     await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
-    await expect(page.getByText("Organization ATProto identity updated.")).toBeVisible({
+    await expect(page.getByText("Organization identity updated.")).toBeVisible({
       timeout: 15_000,
     });
 
@@ -109,18 +109,18 @@ test.describe("organization management journey", () => {
     const delegatePage = await delegateContext.newPage();
     await performSignIn(delegatePage, { email: member.email });
     await delegatePage.goto("/organization", { waitUntil: "networkidle" });
-    await expect(
-      delegatePage.getByRole("heading", { name: "Organization ATProto identity" }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(delegatePage.getByRole("heading", { name: "Organization identity" })).toBeVisible({
+      timeout: 15_000,
+    });
     await delegatePage.getByRole("button", { name: "Remove organization identity" }).click();
-    await expect(delegatePage.getByText("Organization ATProto identity removed.")).toBeVisible({
+    await expect(delegatePage.getByText("Organization identity removed.")).toBeVisible({
       timeout: 15_000,
     });
 
     await page.goto("/organization", { waitUntil: "networkidle" });
     await page.getByRole("textbox", { name: "New Atlas handle" }).fill("revoked-flow.atlas.test");
     await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
-    await expect(page.getByText("Organization ATProto identity updated.")).toBeVisible({
+    await expect(page.getByText("Organization identity updated.")).toBeVisible({
       timeout: 15_000,
     });
     await page.getByRole("combobox", { name: "Delegate member" }).selectOption(member.userId);
@@ -134,9 +134,9 @@ test.describe("organization management journey", () => {
     });
 
     await delegatePage.goto("/organization", { waitUntil: "networkidle" });
-    await expect(
-      delegatePage.getByRole("heading", { name: "Organization ATProto identity" }),
-    ).toHaveCount(0);
+    await expect(delegatePage.getByRole("heading", { name: "Organization identity" })).toHaveCount(
+      0,
+    );
     await delegateContext.close();
   });
 });

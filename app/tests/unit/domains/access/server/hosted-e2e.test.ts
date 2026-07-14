@@ -14,7 +14,7 @@ describe("hosted E2E guard", () => {
   test("returns 404 when hosted E2E is disabled", async () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
       ATLAS_DEPLOY_MODE: "staging",
-      ATLAS_HOSTED_E2E_SECRET: "secret",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
     });
 
     expect(response?.status).toBe(404);
@@ -38,7 +38,7 @@ describe("hosted E2E guard", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("wrong"), {
       ATLAS_DEPLOY_MODE: "staging",
       ATLAS_HOSTED_E2E_ENABLED: "1",
-      ATLAS_HOSTED_E2E_SECRET: "secret",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
     });
 
     expect(response?.status).toBe(404);
@@ -48,7 +48,7 @@ describe("hosted E2E guard", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
       ATLAS_DEPLOY_MODE: "production",
       ATLAS_HOSTED_E2E_ENABLED: "1",
-      ATLAS_HOSTED_E2E_SECRET: "secret",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
     });
 
     expect(response?.status).toBe(404);
@@ -58,7 +58,7 @@ describe("hosted E2E guard", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
       ATLAS_DEPLOY_MODE: "staging",
       ATLAS_HOSTED_E2E_ENABLED: "1",
-      ATLAS_HOSTED_E2E_SECRET: "secret",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
       VERCEL_ENV: "production",
     });
 
@@ -69,7 +69,7 @@ describe("hosted E2E guard", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
       ATLAS_DEPLOY_MODE: "staging",
       ATLAS_HOSTED_E2E_ENABLED: "1",
-      ATLAS_HOSTED_E2E_SECRET: "secret",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
       VERCEL_ENV: "preview",
     });
 

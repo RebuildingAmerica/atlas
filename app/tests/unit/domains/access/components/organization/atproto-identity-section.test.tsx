@@ -124,7 +124,7 @@ describe("OrganizationAtprotoIdentitySection", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Organization ATProto identity" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Organization identity" })).not.toBeNull();
     expect(screen.getByText("Use an Atlas identity")).not.toBeNull();
     expect(screen.getByText("Use an existing controlled identity")).not.toBeNull();
     fireEvent.change(screen.getByRole("textbox", { name: "New Atlas handle" }), {
@@ -268,7 +268,7 @@ describe("OrganizationAtprotoIdentitySection", () => {
 
     await waitFor(() => {
       expect(mocks.detach).toHaveBeenCalledWith("org-1", "identity-existing");
-      expect(screen.getByText("Organization ATProto identity removed.")).not.toBeNull();
+      expect(screen.getByText("Organization identity removed.")).not.toBeNull();
     });
   });
 });
