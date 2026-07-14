@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { buildAtlasAuthJwtAudiences } from "./src/domains/access/oauth-resource-config";
@@ -23,6 +23,7 @@ const e2eDir = path.join(process.cwd(), "node_modules", ".cache", "e2e");
 mkdirSync(e2eDir, { recursive: true });
 const repoRoot = path.join(process.cwd(), "..");
 const e2eRunId = process.env.ATLAS_E2E_RUN_ID?.trim() || randomBytes(8).toString("hex");
+setDefaultEnv("ATLAS_E2E_RUN_ID", e2eRunId);
 const apiDbPath = path.join(e2eDir, `atlas-api-${e2eRunId}.sqlite`);
 const authDbPath = path.join(e2eDir, `atlas-auth-${e2eRunId}.sqlite`);
 const mailboxFile = path.join(e2eDir, `mailbox-${e2eRunId}.json`);
@@ -57,7 +58,8 @@ if (!apiPort) {
   throw new Error("ATLAS_E2E_API_URL must include an explicit port.");
 }
 const e2eInternalSecret =
-  process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || "atlas-e2e-internal-secret";
+  process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() ||
+  createHash("sha256").update(`atlas-e2e:${e2eRunId}`).digest("hex");
 setDefaultEnv("ATLAS_E2E_INTERNAL_SECRET", e2eInternalSecret);
 const atprotoOAuthHarness = resolveAtprotoOAuthHarnessMode(process.env);
 delete process.env.NO_COLOR;
@@ -79,6 +81,7 @@ const commonAuthEnv = {
   ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
   ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
   ATLAS_DEPLOY_MODE: "production",
+  ATLAS_E2E_WORKSPACE_SEED_ENABLED: "1",
   ATLAS_E2E_INTERNAL_SECRET: e2eInternalSecret,
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
   ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
@@ -124,6 +127,7 @@ export default defineConfig({
         ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
         ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
         ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
+        ATLAS_E2E_WORKSPACE_SEED_ENABLED: "1",
         ATLAS_E2E_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
         ATLAS_DEPLOY_MODE: "production",

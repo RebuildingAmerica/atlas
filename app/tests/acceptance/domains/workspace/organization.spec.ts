@@ -8,7 +8,10 @@ interface SeededWorkspaceMember {
 }
 
 async function seedWorkspaceMember(page: Page): Promise<SeededWorkspaceMember> {
-  const secret = process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || "atlas-e2e-internal-secret";
+  const secret = process.env.ATLAS_E2E_INTERNAL_SECRET?.trim();
+  if (!secret) {
+    throw new Error("ATLAS_E2E_INTERNAL_SECRET must be set for workspace member seeding.");
+  }
 
   const response = await page.request.post("/api/e2e/workspace/member", {
     data: { email: "delegate@atlas.test", name: "Delegate One" },

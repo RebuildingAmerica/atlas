@@ -95,10 +95,10 @@ async function upsertE2EMembership(
 }
 
 function assertE2ESeedAuthorized(request: Request): Response | null {
-  const expectedSecret =
-    process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || process.env.ATLAS_AUTH_INTERNAL_SECRET?.trim();
+  const seedEnabled = process.env.ATLAS_E2E_WORKSPACE_SEED_ENABLED === "1";
+  const expectedSecret = process.env.ATLAS_E2E_INTERNAL_SECRET?.trim();
   const actualSecret = request.headers.get("x-atlas-e2e-secret")?.trim();
-  if (!expectedSecret || actualSecret !== expectedSecret) {
+  if (!seedEnabled || !expectedSecret || actualSecret !== expectedSecret) {
     return Response.json(
       { error: "E2E workspace member seeding is unavailable." },
       { status: 404 },
