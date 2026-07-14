@@ -1,7 +1,7 @@
 # Milestone 12: Atlas-Managed PDS Foundation
 
 **Status:** Staging PDS deploy and public health verified; signed-in hosted
-managed-identity flow proof pending
+managed-identity lane implemented and awaiting staged run evidence
 
 ## Objective
 
@@ -42,7 +42,7 @@ browser or its callers.
 - Define the managed-account credential recovery and migration operation before
   advertising direct PDS credential access.
 - Prove signed-in managed-account creation and the OAuth callback through the
-  public staging PDS.
+  public staging PDS with the `hosted-identity` workflow lane.
 - Provision the corresponding production PDS host, DNS/TLS, deployment identity
   secrets, and prove the durable backup/restore operation against an isolated
   host.
@@ -59,4 +59,4 @@ browser or its callers.
   reporting upstream version `0.4.5009`.
 - Hosted smoke verified the public staging PDS health endpoint and public
   ATProto route metadata. It does not prove signed-in managed-account creation;
-  that remains the next required staging check.
+  the new `test:hosted-identity` lane is the required signed-in staging check.

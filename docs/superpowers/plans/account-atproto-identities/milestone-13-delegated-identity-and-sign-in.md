@@ -1,7 +1,8 @@
 # Milestone 13: Delegated Identity and ATProto Sign-In
 
 **Status:** Local browser delegated-identity coverage and staging deploy/smoke
-verified; signed-in hosted staging and production verification pending
+verified; signed-in hosted verification lane implemented and awaiting staged run
+evidence
 
 ## ATProto-first sign-in
 
@@ -48,12 +49,18 @@ authorization remains the enforcement boundary.
 - The managed-PDS adapter has focused unit coverage proving that the E2E harness
   returns only public DID, handle, and fixture PDS URL data without constructing
   an `AtpAgent` account session.
+- Hosted signed-in verification no longer depends on a developer's browser
+  session. The staging-only hosted identity helper prepares run-scoped,
+  synthetic passkey-backed accounts and the `test:hosted-identity` Playwright
+  suite drives the hosted UI through managed account identity creation, managed
+  organization identity creation, delegated grant/removal/revocation, and
+  ATProto-first username sign-in.
 
 ## Remaining work
 
-- In staging, create and link a managed organization identity against the hosted
-  PDS, then verify the passkey-gated sign-in path and the delegated
-  grant/removal/revocation journey against the hosted routes.
+- Run the new `hosted-identity` staging workflow lane after the staging Vercel
+  app has `ATLAS_HOSTED_E2E_ENABLED`, `ATLAS_HOSTED_E2E_SECRET`, and
+  `ATLAS_ATPROTO_OAUTH_E2E_HARNESS` configured. Record the passing run URL here.
 - Repeat the same route-level proof in production after staging is healthy.
 
 ## Hosted staging evidence

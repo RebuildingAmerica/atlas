@@ -1,7 +1,7 @@
 # Account-First ATProto Identities Plan Set
 
-**Status:** Staging deploy and hosted smoke verified; signed-in hosted
-identity-flow proof pending
+**Status:** Staging deploy and hosted smoke verified; repeatable signed-in
+hosted identity-flow proof implemented and awaiting staged run evidence
 
 This directory is the execution record for the external-provider ATProto
 identity milestone. The approved design remains in
@@ -52,3 +52,11 @@ acceptance criteria recorded in each file.
   challenge metadata, and Cloudflare-backed API health. It does not replace the
   remaining signed-in staging proof for managed identity creation, delegated
   organization identity administration, or passkey-gated ATProto-first sign-in.
+- Commit `94cd2091` adds the staging `hosted-identity` workflow lane and commit
+  `812df566` adds the Playwright suite it runs. That suite prepares run-scoped,
+  synthetic passkey-backed accounts through a staging-only helper route, drives
+  the hosted UI for managed account and organization identities, proves
+  delegated organization identity administration, and exercises ATProto-first
+  username sign-in without using a personal browser session. Passing GitHub
+  Actions evidence is still required before this plan can be marked
+  production-ready.

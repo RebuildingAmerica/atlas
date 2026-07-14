@@ -143,6 +143,26 @@ To intentionally verify hosted anonymous throttling after the edge is enabled:
 Add `ATLAS_HOSTED_EXPECT_EDGE=true` to require Cloudflare response headers in
 the hosted smoke suite.
 
+### Signed-in hosted identity verification
+
+The staging workflow also has a signed-in ATProto identity verification lane for
+auth, ATProto, workspace identity, managed PDS, and staging workflow changes.
+This lane does not use a developer's browser session. It runs
+`pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity` against
+the hosted staging app with a Vercel Trusted Source OIDC header.
+
+The staging app runtime must expose these Vercel environment variables before
+the lane can pass:
+
+- `ATLAS_HOSTED_E2E_ENABLED=1`
+- `ATLAS_HOSTED_E2E_SECRET=<same value as the GitHub staging environment secret>`
+- `ATLAS_ATPROTO_OAUTH_E2E_HARNESS=1`
+
+Do not set those variables in production. The helper route also refuses
+`ATLAS_DEPLOY_MODE=production` and `VERCEL_ENV=production`, so production stays
+limited to public, non-mutating smoke proof unless a separate production-safe
+synthetic tenant is designed.
+
 Then, for a manual staging deploy:
 
 1. Open GitHub Actions.
