@@ -13,7 +13,6 @@ import { recordSsoDiagnostics } from "@/domains/access/client/sso-diagnostics-lo
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
 import { signalUnknownPasskey } from "@/domains/access/passkey-signal";
 import { requestMagicLink } from "@/domains/access/session.functions";
-import { Button } from "@/platform/ui/button";
 import {
   buildAuthErrorLabels,
   describePasskeyError,
@@ -34,6 +33,14 @@ import { SignInPasskeyButton } from "./components/sign-in-passkey-button";
 import { SignInStatusBlocks } from "./components/sign-in-status-blocks";
 
 const MAGIC_LINK_ERROR_LABELS = buildAuthErrorLabels("sign-in");
+
+function normalizeUsernameInput(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("@")) return trimmed.slice(1).toLowerCase();
+  if (!trimmed.includes("@") && trimmed.includes(".")) return trimmed.toLowerCase();
+  return null;
+}
 
 /**
  * Search params accepted by the sign-in route.
@@ -164,6 +171,12 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
   const handleEmailContinue = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    const username = normalizeUsernameInput(email);
+    if (username) {
+      startUsernameSignIn(username);
+      return;
+    }
+
     if (!emailFallbackVisible) {
       setIsEmailFallbackVisible(true);
       return;
@@ -247,8 +260,7 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
     }
   };
 
-  const startUsernameSignIn = () => {
-    const handle = email.trim();
+  const startUsernameSignIn = (handle: string) => {
     if (!handle) return;
     const params = new URLSearchParams({ handle, returnTo: "/account" });
     window.location.assign(`/api/atproto/sign-in/start?${params.toString()}`);
@@ -281,23 +293,13 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
             void handleEmailContinue(e);
           }}
           passkeyAction={
-            <div className="space-y-3">
-              <SignInPasskeyButton
-                isLastUsed={lastMethod === "passkey"}
-                isPending={isPasskeyPending}
-                onClick={() => {
-                  void handlePasskey();
-                }}
-              />
-              <Button
-                className="w-full"
-                disabled={!email.trim()}
-                variant="secondary"
-                onClick={startUsernameSignIn}
-              >
-                Continue with username
-              </Button>
-            </div>
+            <SignInPasskeyButton
+              isLastUsed={lastMethod === "passkey"}
+              isPending={isPasskeyPending}
+              onClick={() => {
+                void handlePasskey();
+              }}
+            />
           }
         />
 

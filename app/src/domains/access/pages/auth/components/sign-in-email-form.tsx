@@ -63,17 +63,17 @@ export function SignInEmailForm({
       <div className="space-y-3 pt-1">
         {passkeyAction}
 
+        <Button
+          type="submit"
+          variant="secondary"
+          className="min-h-10 px-4"
+          disabled={isPending || !email.trim()}
+        >
+          {isPending ? "Sending..." : isEmailFallbackVisible ? "Continue with email" : "Continue"}
+        </Button>
+
         <div className="pt-1">
-          {isEmailFallbackVisible ? (
-            <Button
-              type="submit"
-              variant="secondary"
-              className="min-h-10 px-4"
-              disabled={isPending || !email.trim()}
-            >
-              {isPending ? "Sending..." : "Continue with email"}
-            </Button>
-          ) : (
+          {isEmailFallbackVisible ? null : (
             <button
               type="button"
               className="type-label-medium text-outline hover:text-on-surface cursor-pointer"

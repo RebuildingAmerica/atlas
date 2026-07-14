@@ -9,10 +9,14 @@ async function startAtprotoSignIn(request: Request): Promise<Response> {
   if (!handle) {
     return Response.json({ error: "ATProto handle is required." }, { status: 400 });
   }
+  const normalizedHandle = handle.replace(/^@/, "").toLowerCase();
   const returnTo = requestUrl.searchParams.get("returnTo") ?? "/account";
   const { createAtprotoSignInAuthorizationUrl } =
     await import("@/domains/access/server/atproto-oauth");
-  const authorizationUrl = await createAtprotoSignInAuthorizationUrl({ handle, returnTo });
+  const authorizationUrl = await createAtprotoSignInAuthorizationUrl({
+    handle: normalizedHandle,
+    returnTo,
+  });
   return Response.redirect(authorizationUrl.toString(), 302);
 }
 

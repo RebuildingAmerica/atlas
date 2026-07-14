@@ -123,17 +123,18 @@ describe("SignInPage", () => {
     render(<SignInPage />);
 
     const handleInput = screen.getByLabelText(/Email or username/i);
-    const submit = screen.getByRole("button", { name: "Continue with username" });
+    const submit = screen.getByRole("button", { name: "Continue" });
     expect(submit).toBeDisabled();
     expect(screen.queryByText(/existing Atlas account secured by a passkey/i)).toBeNull();
     expect(screen.queryByLabelText("ATProto handle")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Continue with username" })).toBeNull();
     expect(screen.queryByText(/ATProto/i)).toBeNull();
 
-    fireEvent.change(handleInput, { target: { value: "person.example" } });
+    fireEvent.change(handleInput, { target: { value: "@gwashington.org" } });
     fireEvent.click(submit);
 
     expect(mockLocationAssign).toHaveBeenCalledWith(
-      "/api/atproto/sign-in/start?handle=person.example&returnTo=%2Faccount",
+      "/api/atproto/sign-in/start?handle=gwashington.org&returnTo=%2Faccount",
     );
   });
 

@@ -98,6 +98,7 @@ describe("SignInEmailForm", () => {
       />,
     );
 
+    expect(screen.getByRole("button", { name: "Continue" }).hasAttribute("disabled")).toBe(false);
     expect(screen.queryByRole("button", { name: "Continue with email" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Can't use a passkey?" }));
     expect(onRevealEmailFallback).toHaveBeenCalledOnce();
@@ -117,6 +118,7 @@ describe("SignInEmailForm", () => {
     );
 
     expect(screen.getByRole("button", { name: "Sending..." })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Can't use a passkey?" })).toBeNull();
   });
 
   it("invokes onEmailChange with the suggested domain when the suggestion link is clicked", () => {

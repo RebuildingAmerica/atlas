@@ -33,4 +33,23 @@ describe("routes/api/atproto/sign-in/start", () => {
       returnTo: "/account",
     });
   });
+
+  it("normalizes username examples with a leading at sign", async () => {
+    mocks.createAtprotoSignInAuthorizationUrl.mockResolvedValue(
+      new URL("https://pds.example/oauth/authorize"),
+    );
+    const routeModule = await import("@/routes/api/atproto/sign-in/start");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const handlers = asRouteStub(routeModule.Route).options.server?.handlers;
+    if (!handlers?.GET) throw new Error("Expected GET handler");
+
+    await handlers.GET({
+      request: new Request("https://atlas.test/api/atproto/sign-in/start?handle=@GWashington.org"),
+    });
+
+    expect(mocks.createAtprotoSignInAuthorizationUrl).toHaveBeenCalledWith({
+      handle: "gwashington.org",
+      returnTo: "/account",
+    });
+  });
 });
