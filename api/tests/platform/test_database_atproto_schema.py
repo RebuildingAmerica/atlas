@@ -145,6 +145,8 @@ async def _prepare_legacy_postgres_database(
         for statement in (
             "DROP TABLE profile_atproto_links",
             "DROP TABLE user_atproto_controls",
+            "DROP TABLE atproto_identity_delegations",
+            "DROP TABLE organization_atproto_identities",
             "DROP TABLE atproto_identities",
             "ALTER TABLE entries ADD COLUMN linked_atproto_did TEXT",
             "ALTER TABLE entries ADD COLUMN linked_atproto_handle TEXT",
