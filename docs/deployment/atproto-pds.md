@@ -20,8 +20,11 @@ identity creation:
 
 - a dedicated persistent host with Docker Compose and a disk mounted at
   `/var/lib/atlas-pds` (bound into the PDS container at `/pds`);
-- a unique HTTPS hostname (`pds-staging.rebuildingus.org` for staging and
-  `pds.rebuildingus.org` for production) pointed at that host;
+- a unique, Atlas-named first-level HTTPS hostname
+  (`atlas-pds-staging.rebuildingus.org` for staging and
+  `atlas-pds.rebuildingus.org` for production) pointed at that host. This keeps
+  the PDS distinct from the organization-wide site while remaining eligible for
+  Cloudflare Free automatic TLS;
 - TLS termination for the PDS hostname and a reachable `GET /xrpc/_health`
   endpoint;
 - durable backups of the entire `/pds` directory, with a restore test against an
@@ -87,8 +90,8 @@ to the root-owned deployment directory, then invoke:
 sudo env \
   ATLAS_PDS_ENVIRONMENT=staging \
   ATLAS_PDS_GCP_PROJECT=rap-atlas-prod \
-  ATLAS_PDS_HOSTNAME=pds-staging.example.org \
-  ATLAS_PDS_PUBLIC_URL=https://pds-staging.example.org \
+  ATLAS_PDS_HOSTNAME=atlas-pds-staging.rebuildingus.org \
+  ATLAS_PDS_PUBLIC_URL=https://atlas-pds-staging.rebuildingus.org \
   ATLAS_PDS_DATA_DIRECTORY=/var/lib/atlas-pds \
   /opt/atlas-pds/vm-release.sh
 ```
