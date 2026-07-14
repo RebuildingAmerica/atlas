@@ -143,6 +143,11 @@ jobs:
         id: vercel-oidc
         uses: ./.github/actions/vercel-trusted-oidc
 
+      - name: Install Playwright browser
+        run: |
+          pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
+          timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
+
       - name: Run hosted ATProto identity verification
         env:
           ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
