@@ -37,6 +37,7 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+      artifact-metadata: write
       packages: write
 
     steps:
