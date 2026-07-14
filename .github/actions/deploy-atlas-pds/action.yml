@@ -80,7 +80,11 @@ runs:
         archive="$(mktemp -t atlas-pds-release.XXXXXX.tgz)"
         trap 'rm -f "$archive"' EXIT
 
-        tar -C services/atproto-pds -czf "$archive" compose.hosted.yaml Caddyfile vm-release.sh
+        tar -C services/atproto-pds -czf "$archive" \
+          compose.hosted.yaml \
+          Caddyfile \
+          vm-backup.sh \
+          vm-release.sh
         gcloud compute scp "$archive" "${INSTANCE_NAME}:/tmp/atlas-pds-release.tgz" \
           --zone "$INSTANCE_ZONE" \
           --tunnel-through-iap
@@ -107,6 +111,7 @@ runs:
         set -euo pipefail
         sudo install -d -m 0750 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY")
         sudo tar -xzf /tmp/atlas-pds-release.tgz -C $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY")
+        sudo chmod 0755 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-backup.sh")
         sudo chmod 0755 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh")
         sudo env \
           ATLAS_PDS_ENVIRONMENT=$(quote "$ATLAS_PDS_ENVIRONMENT") \

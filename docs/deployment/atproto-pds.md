@@ -27,8 +27,9 @@ identity creation:
   Cloudflare Free automatic TLS;
 - TLS termination for the PDS hostname and a reachable `GET /xrpc/_health`
   endpoint;
-- durable backups of the entire `/pds` directory, with a restore test against an
-  isolated PDS host;
+- durable backups of the entire mounted PDS data directory, created and restored
+  with `services/atproto-pds/vm-backup.sh` against an isolated PDS host before
+  promotion;
 - GitHub deployment access that can update the persistent host through
   `./.github/actions/deploy-atlas-pds` without exposing PDS secrets in
   repository files.
@@ -99,8 +100,8 @@ range, and explicitly denies direct public SSH. Operators must use
 source addresses. The release identity needs the corresponding IAP tunnel and
 Compute SSH permissions before it can update a host.
 
-For a release, copy only `compose.hosted.yaml`, `Caddyfile`, and `vm-release.sh`
-to the root-owned deployment directory, then invoke:
+For a release, copy only `compose.hosted.yaml`, `Caddyfile`, `vm-backup.sh`, and
+`vm-release.sh` to the root-owned deployment directory, then invoke:
 
 ```sh
 sudo env \
@@ -115,11 +116,52 @@ sudo env \
 Production uses the same command with its own VM, persistent disk, service
 account, secret names, and public hostname.
 
+## Backup and restore operation
+
+`services/atproto-pds/vm-backup.sh` is the host-side backup and restore entry
+point shipped with every PDS release bundle. It operates on the mounted
+persistent data directory, not the source checkout, and refuses to run unless
+`ATLAS_PDS_DATA_DIRECTORY` is an active mount. The backup command stops the PDS
+Compose stack, archives the directory with extended attributes and ACLs, writes
+a SHA-256 sidecar, copies both artifacts to `ATLAS_PDS_BACKUP_URI`, then starts
+the stack again.
+
+Use a `gs://` prefix for durable environment backups:
+
+```sh
+sudo env \
+  ATLAS_PDS_ENVIRONMENT=staging \
+  ATLAS_PDS_DATA_DIRECTORY=/var/lib/atlas-pds \
+  ATLAS_PDS_DEPLOY_DIRECTORY=/opt/atlas-pds \
+  ATLAS_PDS_BACKUP_URI=gs://atlas-pds-backups/staging/ \
+  /opt/atlas-pds/vm-backup.sh backup
+```
+
+The script also accepts a local `.tar.gz` path for isolated restore drills. A
+restore is intentionally noisy and requires an explicit confirmation value:
+
+```sh
+sudo env \
+  ATLAS_PDS_ENVIRONMENT=staging \
+  ATLAS_PDS_DATA_DIRECTORY=/var/lib/atlas-pds \
+  ATLAS_PDS_DEPLOY_DIRECTORY=/opt/atlas-pds \
+  ATLAS_PDS_BACKUP_URI=gs://atlas-pds-backups/staging/atlas-pds-staging-20260714T000000Z.tar.gz \
+  ATLAS_PDS_RESTORE_CONFIRM=restore-staging \
+  /opt/atlas-pds/vm-backup.sh restore
+```
+
+Restore stops the Compose stack, validates that the archive is readable, keeps
+the mounted data directory in place, moves its current contents to a timestamped
+`.restore-replaced-*` directory, extracts the archive, and starts the PDS. Do
+not run restore on the production host except during a declared recovery window.
+Prove each production backup by restoring it to an isolated host and checking
+`/xrpc/_health` before you treat the backup as launch evidence.
+
 ## Verification and release
 
 The root monorepo release gate includes `pnpm run pds:test`, which validates the
-PDS configuration contract and the reusable live health probe. After a hosted
-PDS deploy, run:
+PDS configuration, backup/restore, and reusable live health-probe contracts.
+After a hosted PDS deploy, run:
 
 ```sh
 ATLAS_PDS_PUBLIC_URL=https://pds.example.org \

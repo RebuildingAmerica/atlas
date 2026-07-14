@@ -40,3 +40,14 @@ test("production deploy releases the hosted PDS before hosted smoke", async () =
       < source.indexOf("Run hosted Cloudflare API smoke"),
   );
 });
+
+test("hosted PDS deploy bundle includes the backup and restore operator script", async () => {
+  const source = await workflowSource(".github/actions/deploy-atlas-pds/action.yml");
+
+  assert.match(source, /vm-backup\.sh/);
+  assert.match(source, /chmod 0755.*vm-backup\.sh/);
+  assert.ok(
+    source.indexOf("vm-backup.sh") < source.indexOf("vm-release.sh"),
+    "backup operation should ship with the same host bundle as release",
+  );
+});

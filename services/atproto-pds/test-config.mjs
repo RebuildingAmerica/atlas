@@ -70,3 +70,18 @@ test("PDS VM release materializes scoped secrets without persisting them in sour
   assert.match(source, /pds\.env/);
   assert.match(source, /docker compose --env-file pds\.env -f compose\.hosted\.yaml up -d/);
 });
+
+test("PDS VM backup script captures and restores only the mounted runtime state", async () => {
+  const source = await readFile(new URL("./vm-backup.sh", import.meta.url), "utf8");
+
+  assert.match(source, /ATLAS_PDS_BACKUP_URI/);
+  assert.match(source, /findmnt --target "\$DATA_DIRECTORY"/);
+  assert.match(source, /tar --one-file-system --xattrs --acls -C "\$DATA_DIRECTORY" -czf/);
+  assert.match(source, /sha256sum "\$archive"/);
+  assert.match(source, /gcloud storage cp "\$source" "\$destination"/);
+  assert.match(source, /ATLAS_PDS_RESTORE_CONFIRM=restore-\$ATLAS_PDS_ENVIRONMENT/);
+  assert.match(source, /compose_down/);
+  assert.match(source, /find "\$DATA_DIRECTORY"/);
+  assert.match(source, /-exec mv -t "\$replaced_directory" -- \{\} \+/);
+  assert.match(source, /tar --xattrs --acls -C "\$DATA_DIRECTORY" -xzf/);
+});

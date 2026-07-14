@@ -23,6 +23,10 @@ graph or persisting protocol credentials in Atlas application storage.
 - [x] Wires CI, staging deploy, and production release workflows through a
       reusable hosted PDS action so PDS changes can update the persistent host
       and prove public `/xrpc/_health` before hosted smoke verification.
+- [x] Ships a host-side backup and restore operation with the PDS release
+      bundle. The operation refuses non-mounted data directories, stops the
+      Compose stack around archive/restore work, writes SHA-256 backup sidecars,
+      and requires an explicit restore confirmation.
 
 ## Security boundary
 
@@ -38,5 +42,6 @@ browser or its callers.
 - Deploy the paired API and app contract to staging, then prove managed-account
   creation and the OAuth callback through the public PDS.
 - Provision the corresponding production PDS host, DNS/TLS, deployment identity
-  secrets, and durable backup/restore operation.
+  secrets, and prove the durable backup/restore operation against an isolated
+  host.
 - Complete staging and production PDS health, creation, and callback proof.
