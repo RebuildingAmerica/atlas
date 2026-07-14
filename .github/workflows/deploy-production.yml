@@ -43,7 +43,7 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: read
       id-token: write
@@ -106,6 +106,17 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.url }}
         run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --scope rebuilding-america-project --token "$VERCEL_TOKEN"
+
+      - uses: ./.github/actions/deploy-atlas-pds
+        with:
+          environment-name: production
+          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
+          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
+          pds-hostname: atlas-pds.rebuildingus.org
+          pds-public-url: https://atlas-pds.rebuildingus.org
 
       - name: Mint Vercel Trusted Source OIDC token
         id: vercel-oidc

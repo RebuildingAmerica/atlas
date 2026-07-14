@@ -29,13 +29,17 @@ identity creation:
   endpoint;
 - durable backups of the entire `/pds` directory, with a restore test against an
   isolated PDS host;
-- GitHub deployment access that can update the persistent host without exposing
-  PDS secrets in repository files.
+- GitHub deployment access that can update the persistent host through
+  `./.github/actions/deploy-atlas-pds` without exposing PDS secrets in
+  repository files.
 
-The current Google project deploy identity is authorized for Cloud Run only. It
-cannot provision or update a persistent PDS host. The PDS DNS names are also not
-currently published. Until both are deliberately provisioned, managed identity
-controls remain repository-complete but are not live-service-ready.
+The GitHub release workflows now deploy the PDS host after the reusable CI gate
+identifies a PDS change. Staging deploys `atlas-pds-staging.rebuildingus.org`
+only when PDS-relevant files change; production releases deploy
+`atlas-pds.rebuildingus.org` before hosted smoke verification. The deploy
+identity still needs Compute SSH through IAP, the target instance and zone in
+environment secrets, and the production DNS name published before production can
+be considered live-service-ready.
 
 ## Deployment configuration
 
@@ -75,6 +79,18 @@ hosted Compose manifest, then starts it. Values must never be copied into the
 repository, VM metadata, or workflow logs. The host data mount also holds
 Caddy's certificate and configuration state, so the scheduled disk backup
 captures all persistent runtime state.
+
+Each GitHub environment that can release a PDS host must define:
+
+- `GCP_PROJECT_ID`;
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`;
+- `GCP_SERVICE_ACCOUNT`;
+- `ATLAS_PDS_INSTANCE_NAME`;
+- `ATLAS_PDS_INSTANCE_ZONE`.
+
+The workflow passes only non-secret release coordinates to the VM. The VM reads
+the PDS admin password, JWT secret, and PLC rotation key from Secret Manager
+using its own service account, so GitHub never receives PDS runtime secrets.
 
 PDS hosts use the `atlas-pds` network tag. Their firewall configuration permits
 ports 80 and 443 publicly, permits port 22 only from the IAP TCP forwarding

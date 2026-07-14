@@ -60,11 +60,36 @@ jobs:
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
 
+  deploy-pds:
+    needs: ci
+    if: needs.ci.outputs.staging_pds_deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: ./.github/actions/deploy-atlas-pds
+        with:
+          environment-name: staging
+          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
+          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
+          pds-hostname: atlas-pds-staging.rebuildingus.org
+          pds-public-url: https://atlas-pds-staging.rebuildingus.org
+
   hosted-smoke:
     needs:
       - ci
       - deploy-api
-    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_smoke == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped')
+      - deploy-pds
+    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_smoke == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped')
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 15

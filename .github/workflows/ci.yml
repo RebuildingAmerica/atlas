@@ -22,6 +22,9 @@ on:
       staging_api_deploy:
         description: Whether staging should rebuild and deploy atlas-api.
         value: ${{ jobs.changes.outputs.staging_api_deploy }}
+      staging_pds_deploy:
+        description: Whether staging should deploy the Atlas-managed PDS host.
+        value: ${{ jobs.changes.outputs.staging_pds_deploy }}
       hosted_smoke:
         description: Whether hosted smoke should run after CI.
         value: ${{ jobs.changes.outputs.hosted_smoke }}
@@ -57,6 +60,7 @@ jobs:
       credential_scan: ${{ steps.classify.outputs.credential_scan }}
       deploy_scripts: ${{ steps.classify.outputs.deploy_scripts }}
       staging_api_deploy: ${{ steps.classify.outputs.staging_api_deploy }}
+      staging_pds_deploy: ${{ steps.classify.outputs.staging_pds_deploy }}
       hosted_smoke: ${{ steps.classify.outputs.hosted_smoke }}
       use_affected: ${{ steps.classify.outputs.use_affected }}
     steps:

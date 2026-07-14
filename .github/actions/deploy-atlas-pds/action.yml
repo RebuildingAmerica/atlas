@@ -1,0 +1,147 @@
+name: Deploy Atlas PDS
+description: Release the Atlas-managed ATProto PDS to a persistent Compute host.
+
+inputs:
+  environment-name:
+    description: Atlas runtime environment name.
+    required: true
+  gcp-project-id:
+    description: Google Cloud project that owns the PDS host and Secret Manager values.
+    required: true
+  workload-identity-provider:
+    description: GCP workload identity provider.
+    required: true
+  service-account:
+    description: GCP service account used for deployment.
+    required: true
+  instance-name:
+    description: Compute Engine instance name for the PDS host.
+    required: true
+  instance-zone:
+    description: Compute Engine zone for the PDS host.
+    required: true
+  pds-hostname:
+    description: Public PDS hostname.
+    required: true
+  pds-public-url:
+    description: Public HTTPS origin for the PDS.
+    required: true
+  pds-data-directory:
+    description: Host path mounted from the persistent PDS data disk.
+    required: false
+    default: /var/lib/atlas-pds
+  deploy-directory:
+    description: Root-owned host directory that receives release files.
+    required: false
+    default: /opt/atlas-pds
+
+runs:
+  using: composite
+  steps:
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+      with:
+        project_id: ${{ inputs.gcp-project-id }}
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+
+    - name: Set up gcloud
+      uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+    - name: Validate release inputs
+      shell: bash
+      env:
+        ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
+        ATLAS_PDS_HOSTNAME: ${{ inputs.pds-hostname }}
+      run: |
+        set -euo pipefail
+
+        node --input-type=module <<'NODE'
+        const publicUrl = new URL(process.env.ATLAS_PDS_PUBLIC_URL);
+        if (publicUrl.protocol !== "https:") {
+          throw new Error("pds-public-url must use HTTPS.");
+        }
+        if (publicUrl.username || publicUrl.password) {
+          throw new Error("pds-public-url must not contain credentials.");
+        }
+        if (publicUrl.hostname !== process.env.ATLAS_PDS_HOSTNAME) {
+          throw new Error("pds-hostname must match pds-public-url hostname.");
+        }
+        NODE
+
+    - name: Copy PDS release bundle to host
+      shell: bash
+      env:
+        INSTANCE_NAME: ${{ inputs.instance-name }}
+        INSTANCE_ZONE: ${{ inputs.instance-zone }}
+      run: |
+        set -euo pipefail
+
+        archive="$(mktemp -t atlas-pds-release.XXXXXX.tgz)"
+        trap 'rm -f "$archive"' EXIT
+
+        tar -C services/atproto-pds -czf "$archive" compose.hosted.yaml Caddyfile vm-release.sh
+        gcloud compute scp "$archive" "${INSTANCE_NAME}:/tmp/atlas-pds-release.tgz" \
+          --zone "$INSTANCE_ZONE" \
+          --tunnel-through-iap
+
+    - name: Release PDS on host
+      shell: bash
+      env:
+        ATLAS_PDS_DATA_DIRECTORY: ${{ inputs.pds-data-directory }}
+        ATLAS_PDS_DEPLOY_DIRECTORY: ${{ inputs.deploy-directory }}
+        ATLAS_PDS_ENVIRONMENT: ${{ inputs.environment-name }}
+        ATLAS_PDS_GCP_PROJECT: ${{ inputs.gcp-project-id }}
+        ATLAS_PDS_HOSTNAME: ${{ inputs.pds-hostname }}
+        ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
+        INSTANCE_NAME: ${{ inputs.instance-name }}
+        INSTANCE_ZONE: ${{ inputs.instance-zone }}
+      run: |
+        set -euo pipefail
+
+        quote() {
+          printf '%q' "$1"
+        }
+
+        remote_command="$(cat <<REMOTE
+        set -euo pipefail
+        sudo install -d -m 0750 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY")
+        sudo tar -xzf /tmp/atlas-pds-release.tgz -C $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY")
+        sudo chmod 0755 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh")
+        sudo env \
+          ATLAS_PDS_ENVIRONMENT=$(quote "$ATLAS_PDS_ENVIRONMENT") \
+          ATLAS_PDS_GCP_PROJECT=$(quote "$ATLAS_PDS_GCP_PROJECT") \
+          ATLAS_PDS_HOSTNAME=$(quote "$ATLAS_PDS_HOSTNAME") \
+          ATLAS_PDS_PUBLIC_URL=$(quote "$ATLAS_PDS_PUBLIC_URL") \
+          ATLAS_PDS_DATA_DIRECTORY=$(quote "$ATLAS_PDS_DATA_DIRECTORY") \
+          ATLAS_PDS_DEPLOY_DIRECTORY=$(quote "$ATLAS_PDS_DEPLOY_DIRECTORY") \
+          $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh")
+        REMOTE
+        )"
+
+        gcloud compute ssh "$INSTANCE_NAME" \
+          --zone "$INSTANCE_ZONE" \
+          --tunnel-through-iap \
+          --command "$remote_command"
+
+    - name: Verify public PDS health
+      shell: bash
+      env:
+        ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
+      run: node scripts/deploy/pds-release.mjs health
+
+    - name: Write deploy summary
+      if: always()
+      shell: bash
+      env:
+        ATLAS_PDS_ENVIRONMENT: ${{ inputs.environment-name }}
+        ATLAS_PDS_HOSTNAME: ${{ inputs.pds-hostname }}
+        ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
+      run: |
+        {
+          echo "### Atlas-managed PDS deploy"
+          echo ""
+          echo "- Environment: ${ATLAS_PDS_ENVIRONMENT}"
+          echo "- Hostname: ${ATLAS_PDS_HOSTNAME}"
+          echo "- Public URL: ${ATLAS_PDS_PUBLIC_URL}"
+        } >> "$GITHUB_STEP_SUMMARY"

@@ -20,6 +20,9 @@ graph or persisting protocol credentials in Atlas application storage.
       and PDS URL pass to the existing Atlas identity-control API.
 - [x] Presents “Use an Atlas identity” as the default account and organization
       path while retaining an explicit external-PDS OAuth connection path.
+- [x] Wires CI, staging deploy, and production release workflows through a
+      reusable hosted PDS action so PDS changes can update the persistent host
+      and prove public `/xrpc/_health` before hosted smoke verification.
 
 ## Security boundary
 
@@ -34,6 +37,6 @@ browser or its callers.
   advertising direct PDS credential access.
 - Deploy the paired API and app contract to staging, then prove managed-account
   creation and the OAuth callback through the public PDS.
-- Provision the corresponding production PDS host, DNS/TLS, deployment identity,
-  and durable backup/restore operation.
+- Provision the corresponding production PDS host, DNS/TLS, deployment identity
+  secrets, and durable backup/restore operation.
 - Complete staging and production PDS health, creation, and callback proof.
