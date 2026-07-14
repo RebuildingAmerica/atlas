@@ -305,6 +305,7 @@ const VERCEL_HOSTED_ENV_FILE_SPECS: VercelEnvFileSpec[] = [
   { key: "DATABASE_BACKEND", fallback: "postgres" },
   { key: "DATABASE_URL" },
   { key: "ATLAS_PUBLIC_URL" },
+  { key: "ATLAS_PDS_PUBLIC_URL" },
   { key: "ATLAS_DOCS_URL" },
   { key: "ATLAS_SERVER_API_PROXY_TARGET" },
   { key: "ATLAS_AUTH_JWT_AUDIENCES" },
