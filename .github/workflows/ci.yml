@@ -134,7 +134,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: postgres # pragma: allowlist secret - disposable CI service password
           POSTGRES_USER: postgres
         ports:
           - 5432:5432
@@ -144,7 +144,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      ATLAS_TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      ATLAS_TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres # pragma: allowlist secret - disposable CI service URL
       ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
       RUN_PYTHON_TESTS: ${{ needs.changes.outputs.python_tests }}
       RUN_APP_TESTS: ${{ needs.changes.outputs.app_tests }}
