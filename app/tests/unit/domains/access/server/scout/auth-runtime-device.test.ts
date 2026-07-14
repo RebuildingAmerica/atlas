@@ -126,6 +126,21 @@ describe("OAuth device auth runtime wiring", () => {
     await expect(options?.validateClient?.("unknown-client")).resolves.toBe(false);
   });
 
+  it("exempts the token polling endpoint from the general auth rate limit", async () => {
+    const mod = await import("@/domains/access/server/auth");
+    await mod.getAuth();
+
+    const options = mocks.betterAuth.mock.calls.at(0)?.[0] as
+      | {
+          rateLimit?: {
+            customRules?: Record<string, false>;
+          };
+        }
+      | undefined;
+
+    expect(options?.rateLimit?.customRules?.["/device/token"]).toBe(false);
+  });
+
   it("mints API JWTs with Atlas discovery write permissions", async () => {
     mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
     const mod = await import("@/domains/access/server/auth");

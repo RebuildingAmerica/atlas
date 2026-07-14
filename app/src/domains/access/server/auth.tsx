@@ -128,6 +128,15 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
     // token endpoint exposed by the oauthProvider plugin at
     // /api/auth/oauth2/token — that endpoint stays live.
     disabledPaths: ["/token"],
+    rateLimit: {
+      customRules: {
+        // OAuth device clients must poll this endpoint until browser approval.
+        // The opaque, high-entropy device code preserves the exchange boundary;
+        // applying the general request bucket here can otherwise make a normal
+        // Scout login fail before the user can finish approving it.
+        "/device/token": false,
+      },
+    },
     secret: runtime.internalSecret,
     trustedOrigins: buildAtlasTrustedOrigins(runtime.publicBaseUrl),
     emailAndPassword: {
