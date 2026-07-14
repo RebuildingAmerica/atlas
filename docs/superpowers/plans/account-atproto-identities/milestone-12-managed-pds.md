@@ -1,7 +1,7 @@
 # Milestone 12: Atlas-Managed PDS Foundation
 
-**Status:** Staging host provisioned; public DNS/TLS and live verification
-pending
+**Status:** Staging PDS public health and app configuration complete; deployed
+identity-flow verification pending
 
 ## Objective
 
@@ -32,8 +32,8 @@ browser or its callers.
 
 - Define the managed-account credential recovery and migration operation before
   advertising direct PDS credential access.
-- Publish the first-level, Atlas-named staging DNS record, complete TLS, and
-  configure the staging app's `ATLAS_PDS_PUBLIC_URL`.
+- Deploy the paired API and app contract to staging, then prove managed-account
+  creation and the OAuth callback through the public PDS.
 - Provision the corresponding production PDS host, DNS/TLS, deployment identity,
   and durable backup/restore operation.
 - Complete staging and production PDS health, creation, and callback proof.

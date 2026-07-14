@@ -93,10 +93,15 @@ ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_JWT_AUDIENCES=https://atlas-staging.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas-staging.rebuildingus.org/api/auth/internal/api-key
 ATLAS_AUTH_INTERNAL_SECRET=<same staging secret used by atlas-api-staging>
+ATLAS_PDS_PUBLIC_URL=https://atlas-pds-staging.rebuildingus.org
 ```
 
 If the staging app proxies docs through Mintlify, set `ATLAS_DOCS_URL` for the
 staging app as well.
+
+`ATLAS_PDS_PUBLIC_URL` must be the credential-free public HTTPS origin for the
+staging Atlas PDS. Keep its Cloudflare record DNS-only so the PDS edge can
+complete its own ACME certificate validation.
 
 The staging app hostname must be available to the Rebuilding America Project
 Vercel team and assigned to the Vercel `staging` environment tracking `main`.
