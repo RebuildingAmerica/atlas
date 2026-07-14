@@ -20,6 +20,7 @@ const TRUE_OUTPUTS = {
   staging_api_deploy: true,
   staging_pds_deploy: true,
   hosted_smoke: true,
+  hosted_identity: true,
   use_affected: false,
 };
 
@@ -40,6 +41,7 @@ const FALSE_OUTPUTS = {
   staging_api_deploy: false,
   staging_pds_deploy: false,
   hosted_smoke: false,
+  hosted_identity: false,
   use_affected: false,
 };
 
@@ -125,6 +127,17 @@ const STAGING_PDS_DEPLOY_PATHS = [
 
 const HOSTED_SMOKE_AUTOMATION_PATHS = [
   /^\.github\/workflows\/deploy-staging\.ya?ml$/,
+];
+
+const HOSTED_IDENTITY_PATHS = [
+  /^app\/playwright\.hosted-identity\.config\.ts$/,
+  /^app\/tests\/e2e\/atproto-identity-hosted\.spec\.ts$/,
+  /^app\/src\/domains\/access\//,
+  /^app\/src\/routes\/api\/atproto\//,
+  /^app\/src\/routes\/api\/e2e\/hosted\//,
+  /^app\/src\/routes\/_workspace\/manage\//,
+  /^\.github\/workflows\/deploy-staging\.ya?ml$/,
+  /^services\/atproto-pds\//,
 ];
 
 const PRODUCTION_DEPLOY_AUTOMATION_PATHS = [
@@ -215,6 +228,9 @@ export function classifyChangedFiles(files, context = {}) {
   const touchesHostedSmokeAutomation = normalized.some((file) =>
     matchesAny(file, HOSTED_SMOKE_AUTOMATION_PATHS),
   );
+  const touchesHostedIdentity = normalized.some((file) =>
+    matchesAny(file, HOSTED_IDENTITY_PATHS),
+  );
   const touchesProductionDeployAutomation = normalized.some((file) =>
     matchesAny(file, PRODUCTION_DEPLOY_AUTOMATION_PATHS),
   );
@@ -246,6 +262,7 @@ export function classifyChangedFiles(files, context = {}) {
       touchesStagingApiDeploy ||
       touchesStagingPdsDeploy ||
       touchesHostedSmokeAutomation,
+    hosted_identity: touchesHostedIdentity || touchesStagingPdsDeploy,
     use_affected:
       context.eventName === "pull_request" &&
       (touchesApi || touchesApp || touchesScout),

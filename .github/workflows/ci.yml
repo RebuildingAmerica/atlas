@@ -28,6 +28,9 @@ on:
       hosted_smoke:
         description: Whether hosted smoke should run after CI.
         value: ${{ jobs.changes.outputs.hosted_smoke }}
+      hosted_identity:
+        description: Whether signed-in hosted identity verification should run after staging deploy.
+        value: ${{ jobs.changes.outputs.hosted_identity }}
 
 permissions:
   contents: read
@@ -62,6 +65,7 @@ jobs:
       staging_api_deploy: ${{ steps.classify.outputs.staging_api_deploy }}
       staging_pds_deploy: ${{ steps.classify.outputs.staging_pds_deploy }}
       hosted_smoke: ${{ steps.classify.outputs.hosted_smoke }}
+      hosted_identity: ${{ steps.classify.outputs.hosted_identity }}
       use_affected: ${{ steps.classify.outputs.use_affected }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

@@ -117,3 +117,36 @@ jobs:
           ATLAS_HOSTED_PDS_URL: https://atlas-pds-staging.rebuildingus.org
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
+
+  hosted-identity:
+    needs:
+      - ci
+      - deploy-api
+      - deploy-pds
+      - hosted-smoke
+    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_identity == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped') && needs.hosted-smoke.result == 'success'
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+
+      - name: Mint Vercel Trusted Source OIDC token
+        id: vercel-oidc
+        uses: ./.github/actions/vercel-trusted-oidc
+
+      - name: Run hosted ATProto identity verification
+        env:
+          ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
+          ATLAS_HOSTED_E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
+        run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity

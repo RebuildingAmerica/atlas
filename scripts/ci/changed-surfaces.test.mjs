@@ -27,6 +27,28 @@ test("ordinary app changes run browser acceptance without Stripe acceptance", ()
   assert.equal(outputs.browser_acceptance, true);
   assert.equal(outputs.stripe_acceptance, false);
   assert.equal(outputs.hosted_smoke, true);
+  assert.equal(outputs.hosted_identity, false);
+});
+
+test("ATProto account app changes run hosted identity verification", () => {
+  const outputs = outputsFor([
+    "app/src/domains/access/server/atproto-oauth.ts",
+  ]);
+
+  assert.equal(outputs.app_tests, true);
+  assert.equal(outputs.browser_acceptance, true);
+  assert.equal(outputs.hosted_smoke, true);
+  assert.equal(outputs.hosted_identity, true);
+});
+
+test("workspace organization identity changes run hosted identity verification", () => {
+  const outputs = outputsFor([
+    "app/src/domains/access/components/organization/atproto-identity-section.tsx",
+  ]);
+
+  assert.equal(outputs.app_tests, true);
+  assert.equal(outputs.browser_acceptance, true);
+  assert.equal(outputs.hosted_identity, true);
 });
 
 test("billing app changes run browser and Stripe acceptance", () => {
@@ -70,6 +92,7 @@ test("managed PDS changes use the root deployment and hosted verification lanes"
   assert.equal(outputs.deploy_scripts, true);
   assert.equal(outputs.staging_pds_deploy, true);
   assert.equal(outputs.hosted_smoke, true);
+  assert.equal(outputs.hosted_identity, true);
   assert.equal(outputs.browser_acceptance, false);
 });
 
@@ -80,6 +103,7 @@ test("staging deploy workflow changes exercise the staging deploy path", () => {
   assert.equal(outputs.deploy_scripts, true);
   assert.equal(outputs.staging_api_deploy, true);
   assert.equal(outputs.hosted_smoke, true);
+  assert.equal(outputs.hosted_identity, true);
 });
 
 test("trusted-source helper changes lint actions without running hosted smoke", () => {
@@ -91,6 +115,7 @@ test("trusted-source helper changes lint actions without running hosted smoke", 
   assert.equal(outputs.deploy_scripts, false);
   assert.equal(outputs.staging_api_deploy, false);
   assert.equal(outputs.hosted_smoke, false);
+  assert.equal(outputs.hosted_identity, false);
 });
 
 test("CI classifier changes validate CI scripts without running app deploy gates", () => {
@@ -103,6 +128,20 @@ test("CI classifier changes validate CI scripts without running app deploy gates
   assert.equal(outputs.stripe_acceptance, false);
   assert.equal(outputs.staging_api_deploy, false);
   assert.equal(outputs.hosted_smoke, false);
+  assert.equal(outputs.hosted_identity, false);
+});
+
+test("docs-only changes do not run hosted identity verification", () => {
+  const outputs = outputsFor(["docs/deployment/staging.md"]);
+
+  assert.equal(outputs.docs, true);
+  assert.equal(outputs.hosted_identity, false);
+});
+
+test("manual workflow runs include hosted identity verification", () => {
+  const outputs = classifyChangedFiles([], { eventName: "workflow_dispatch" }).outputs;
+
+  assert.equal(outputs.hosted_identity, true);
 });
 
 test("production-only deploy workflow changes do not redeploy staging", () => {
