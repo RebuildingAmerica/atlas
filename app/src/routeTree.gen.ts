@@ -86,6 +86,7 @@ import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_
 import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './routes/[.]well-known/oauth-protected-resource/mcp'
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
 import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations/index'
+import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/sign-in/start'
 import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
@@ -503,6 +504,11 @@ const PublicProfilesOrganizationsIndexRoute =
     path: '/',
     getParentRoute: () => PublicProfilesOrganizationsRoute,
   } as any)
+const ApiE2eWorkspaceMemberRoute = ApiE2eWorkspaceMemberRouteImport.update({
+  id: '/api/e2e/workspace/member',
+  path: '/api/e2e/workspace/member',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   id: '/api/auth/internal/api-key',
   path: '/api/auth/internal/api-key',
@@ -710,6 +716,7 @@ export interface FileRoutesByFullPath {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people/': typeof PublicProfilesPeopleIndexRoute
   '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
@@ -800,6 +807,7 @@ export interface FileRoutesByTo {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people': typeof PublicProfilesPeopleIndexRoute
   '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
@@ -900,6 +908,7 @@ export interface FileRoutesById {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/_public/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/_public/profiles/people/': typeof PublicProfilesPeopleIndexRoute
   '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
@@ -997,6 +1006,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/e2e/workspace/member'
     | '/profiles/organizations/'
     | '/profiles/people/'
     | '/api/atproto/oauth/harness/authorize'
@@ -1087,6 +1097,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/e2e/workspace/member'
     | '/profiles/organizations'
     | '/profiles/people'
     | '/api/atproto/oauth/harness/authorize'
@@ -1186,6 +1197,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/e2e/workspace/member'
     | '/_public/profiles/organizations/'
     | '/_public/profiles/people/'
     | '/api/atproto/oauth/harness/authorize'
@@ -1223,6 +1235,7 @@ export interface RootRouteChildren {
   ApiAtprotoOauthStartRoute: typeof ApiAtprotoOauthStartRoute
   ApiAtprotoSignInStartRoute: typeof ApiAtprotoSignInStartRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
+  ApiE2eWorkspaceMemberRoute: typeof ApiE2eWorkspaceMemberRoute
   ApiAtprotoOauthHarnessAuthorizeRoute: typeof ApiAtprotoOauthHarnessAuthorizeRoute
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
@@ -1768,6 +1781,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfilesOrganizationsIndexRouteImport
       parentRoute: typeof PublicProfilesOrganizationsRoute
     }
+    '/api/e2e/workspace/member': {
+      id: '/api/e2e/workspace/member'
+      path: '/api/e2e/workspace/member'
+      fullPath: '/api/e2e/workspace/member'
+      preLoaderRoute: typeof ApiE2eWorkspaceMemberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/internal/api-key': {
       id: '/api/auth/internal/api-key'
       path: '/api/auth/internal/api-key'
@@ -2205,6 +2225,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAtprotoOauthStartRoute: ApiAtprotoOauthStartRoute,
   ApiAtprotoSignInStartRoute: ApiAtprotoSignInStartRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
+  ApiE2eWorkspaceMemberRoute: ApiE2eWorkspaceMemberRoute,
   ApiAtprotoOauthHarnessAuthorizeRoute: ApiAtprotoOauthHarnessAuthorizeRoute,
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
     ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute,
@@ -2214,13 +2235,10 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-
 import type { createStart } from '@tanstack/react-start'
-
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
-
     router: Awaited<ReturnType<typeof getRouter>>
   }
 }

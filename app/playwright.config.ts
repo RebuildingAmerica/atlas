@@ -57,7 +57,8 @@ if (!apiPort) {
   throw new Error("ATLAS_E2E_API_URL must include an explicit port.");
 }
 const e2eInternalSecret =
-  process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || randomBytes(32).toString("hex");
+  process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() || "atlas-e2e-internal-secret";
+setDefaultEnv("ATLAS_E2E_INTERNAL_SECRET", e2eInternalSecret);
 const atprotoOAuthHarness = resolveAtprotoOAuthHarnessMode(process.env);
 delete process.env.NO_COLOR;
 delete process.env.FORCE_COLOR;
@@ -78,6 +79,7 @@ const commonAuthEnv = {
   ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
   ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
   ATLAS_DEPLOY_MODE: "production",
+  ATLAS_E2E_INTERNAL_SECRET: e2eInternalSecret,
   ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
   ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
   ATLAS_EMAIL_PROVIDER: "capture",
@@ -122,6 +124,7 @@ export default defineConfig({
         ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
         ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
         ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
+        ATLAS_E2E_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
         ATLAS_DEPLOY_MODE: "production",
         ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
