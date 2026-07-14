@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   assertHostedE2EAuthorized,
   buildHostedE2EAccountSeeds,
+  buildHostedE2EPasskeySeed,
   hostedE2EPayloadSchema,
 } from "@/domains/access/server/hosted-e2e";
 import {
@@ -99,6 +100,19 @@ describe("hosted E2E run scope", () => {
         role: "owner",
       },
       runId: "29364644020-1",
+    });
+  });
+
+  test("builds a deterministic synthetic passkey seed", () => {
+    expect(buildHostedE2EPasskeySeed({ role: "owner", runId: "29364644020-1" })).toEqual({
+      aaguid: "00000000-0000-0000-0000-000000000000",
+      backedUp: false,
+      counter: 0,
+      credentialID: "atlas-hosted-e2e-29364644020-1-owner",
+      deviceType: "singleDevice",
+      name: "Hosted E2E passkey",
+      publicKey: "atlas-hosted-e2e-public-key",
+      transports: "internal",
     });
   });
 });
