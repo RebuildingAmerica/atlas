@@ -155,7 +155,15 @@ export function OrganizationAtprotoIdentitySection({
     }
   }
 
-  if (!canManageOrganization && !isActiveDelegate) return null;
+  if (!canManageOrganization && !isActiveDelegate) {
+    return feedback ? (
+      <section className="border-border bg-surface-container-lowest rounded-lg border p-5">
+        <p className="type-body-small text-ink-soft" role="status">
+          {feedback}
+        </p>
+      </section>
+    ) : null;
+  }
 
   return (
     <section className="border-border bg-surface-container-lowest space-y-4 rounded-lg border p-5">

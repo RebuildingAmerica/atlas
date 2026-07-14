@@ -255,7 +255,7 @@ describe("OrganizationAtprotoIdentitySection", () => {
     const { OrganizationAtprotoIdentitySection } =
       await import("@/domains/access/components/organization/atproto-identity-section");
 
-    render(
+    const view = render(
       <OrganizationAtprotoIdentitySection
         canManageOrganization={false}
         currentUserId="delegate-1"
@@ -270,5 +270,22 @@ describe("OrganizationAtprotoIdentitySection", () => {
       expect(mocks.detach).toHaveBeenCalledWith("org-1", "identity-existing");
       expect(screen.getByText("Organization identity removed.")).not.toBeNull();
     });
+
+    mocks.useQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
+      if (queryKey.at(-1) === "identity") {
+        return { data: null, isError: false, isPending: false };
+      }
+      return { data: [], isError: false, isPending: false };
+    });
+    view.rerender(
+      <OrganizationAtprotoIdentitySection
+        canManageOrganization={false}
+        currentUserId="delegate-1"
+        members={members}
+        organizationId="org-1"
+      />,
+    );
+
+    expect(screen.getByText("Organization identity removed.")).not.toBeNull();
   });
 });
