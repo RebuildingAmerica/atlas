@@ -1,7 +1,7 @@
 # Milestone 13: Delegated Identity and ATProto Sign-In
 
-**Status:** Local browser delegated-identity coverage added; staging and
-production verification pending
+**Status:** Local browser delegated-identity coverage and staging deploy/smoke
+verified; signed-in hosted staging and production verification pending
 
 ## ATProto-first sign-in
 
@@ -51,8 +51,21 @@ authorization remains the enforcement boundary.
 
 ## Remaining work
 
-- Deploy the paired API and app contract to staging, create and link a managed
-  organization identity against the hosted PDS, then verify the passkey-gated
-  sign-in path and the delegated grant/removal/revocation journey against the
-  hosted routes.
+- In staging, create and link a managed organization identity against the hosted
+  PDS, then verify the passkey-gated sign-in path and the delegated
+  grant/removal/revocation journey against the hosted routes.
 - Repeat the same route-level proof in production after staging is healthy.
+
+## Hosted staging evidence
+
+- 2026-07-14 staging run
+  [`29364644020`](https://github.com/RebuildingAmerica/atlas/actions/runs/29364644020)
+  completed successfully for `cf63aace0f22407ae0a1895555a84c6564998e3c`,
+  including CI, `deploy-api`, `deploy-pds`, and `hosted-smoke`.
+- Hosted smoke verified public ATProto OAuth client metadata, fail-closed
+  malformed ATProto sign-in start, staging PDS health, MCP challenge metadata,
+  and Cloudflare-backed API health.
+- That evidence proves the hosted public route and deploy contract, not the
+  signed-in account journey. The remaining staging check must exercise an
+  account with a passkey, managed organization identity creation through the
+  hosted PDS, delegated grant/removal/revocation, and ATProto-first sign-in.

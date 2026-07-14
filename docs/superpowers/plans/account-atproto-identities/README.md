@@ -1,6 +1,7 @@
 # Account-First ATProto Identities Plan Set
 
-**Status:** Ready for end-to-end and hosted verification
+**Status:** Staging deploy and hosted smoke verified; signed-in hosted
+identity-flow proof pending
 
 This directory is the execution record for the external-provider ATProto
 identity milestone. The approved design remains in
@@ -36,3 +37,18 @@ A milestone is complete only when its production behavior, focused tests,
 contract implications, and cross-database or browser evidence are present.
 Commit hashes identify the branch evidence; they are not substitutes for the
 acceptance criteria recorded in each file.
+
+## Latest hosted evidence
+
+- 2026-07-14 staging run
+  [`29364644020`](https://github.com/RebuildingAmerica/atlas/actions/runs/29364644020)
+  deployed branch head `cf63aace0f22407ae0a1895555a84c6564998e3c`. CI, API
+  deploy, PDS deploy, and hosted smoke all completed successfully.
+- The post-deploy staging PDS health probe passed against
+  `https://atlas-pds-staging.rebuildingus.org/xrpc/_health` with upstream PDS
+  version `0.4.5009`.
+- Hosted smoke currently proves public ATProto OAuth client metadata,
+  fail-closed malformed ATProto sign-in start, staging PDS health, MCP OAuth
+  challenge metadata, and Cloudflare-backed API health. It does not replace the
+  remaining signed-in staging proof for managed identity creation, delegated
+  organization identity administration, or passkey-gated ATProto-first sign-in.
