@@ -119,13 +119,15 @@ describe("SignInPage", () => {
     expect(screen.getByRole("heading", { name: /Sign in to Atlas/i })).toBeInTheDocument();
   });
 
-  it("offers ATProto as a passkey-backed alternate sign-in path", () => {
+  it("routes username sign-in through the shared email or username field", () => {
     render(<SignInPage />);
 
-    const handleInput = screen.getByLabelText("ATProto handle");
-    const submit = screen.getByRole("button", { name: "Continue with ATProto" });
+    const handleInput = screen.getByLabelText(/Email or username/i);
+    const submit = screen.getByRole("button", { name: "Continue with username" });
     expect(submit).toBeDisabled();
-    expect(screen.getByText(/existing Atlas account secured by a passkey/i)).toBeInTheDocument();
+    expect(screen.queryByText(/existing Atlas account secured by a passkey/i)).toBeNull();
+    expect(screen.queryByLabelText("ATProto handle")).toBeNull();
+    expect(screen.queryByText(/ATProto/i)).toBeNull();
 
     fireEvent.change(handleInput, { target: { value: "person.example" } });
     fireEvent.click(submit);
@@ -151,7 +153,7 @@ describe("SignInPage", () => {
   it("anchors passkey-first sign-in around the email field for conditional UI", () => {
     render(<SignInPage />);
 
-    const emailInput = screen.getByLabelText(/Email/i);
+    const emailInput = screen.getByLabelText(/Email or username/i);
     const passkeyButton = screen.getByRole("button", { name: /Sign in with passkey/i });
     const emailFallbackButton = screen.getByRole("button", { name: /Can't use a passkey/i });
 
@@ -173,7 +175,7 @@ describe("SignInPage", () => {
     render(<SignInPage />);
 
     await vi.waitFor(() => {
-      expect(screen.getByLabelText(/Email/i)).toHaveValue("stored@example.com");
+      expect(screen.getByLabelText(/Email or username/i)).toHaveValue("stored@example.com");
     });
     expect(screen.queryByText("Last used")).toBeNull();
     expect(screen.queryByRole("button", { name: /Continue with email/i })).toBeNull();
@@ -192,7 +194,9 @@ describe("SignInPage", () => {
   it("handles email sign-in", async () => {
     render(<SignInPage />);
 
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "user@atlas.test" } });
+    fireEvent.change(screen.getByLabelText(/Email or username/i), {
+      target: { value: "user@atlas.test" },
+    });
 
     const form = revealEmailFallback();
     await act(async () => {
@@ -224,7 +228,9 @@ describe("SignInPage", () => {
 
     render(<SignInPage />);
 
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "user@atlas.test" } });
+    fireEvent.change(screen.getByLabelText(/Email or username/i), {
+      target: { value: "user@atlas.test" },
+    });
     const form = revealEmailFallback();
     await act(async () => {
       fireEvent.submit(form);
@@ -283,7 +289,9 @@ describe("SignInPage", () => {
     mocks.requestMagicLink.mockRejectedValue(new Error("EMAIL_DELIVERY_FAILED"));
 
     render(<SignInPage />);
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "ops@acme.test" } });
+    fireEvent.change(screen.getByLabelText(/Email or username/i), {
+      target: { value: "ops@acme.test" },
+    });
     const form = revealEmailFallback();
     await act(async () => {
       fireEvent.submit(form);

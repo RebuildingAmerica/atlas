@@ -27,11 +27,13 @@ vi.mock("@/platform/ui/button", () => ({
 
 vi.mock("@/platform/ui/input", () => ({
   Input: ({
+    labelAdornment,
     label,
     onChange,
     placeholder,
     value,
   }: {
+    labelAdornment?: ReactNode;
     label?: string;
     onChange?: (value: string) => void;
     placeholder?: string;
@@ -39,6 +41,7 @@ vi.mock("@/platform/ui/input", () => ({
   }) => (
     <label>
       {label}
+      {labelAdornment}
       <input
         aria-label={label}
         placeholder={placeholder}
@@ -54,6 +57,28 @@ afterEach(() => {
 });
 
 describe("SignInEmailForm", () => {
+  it("keeps protocol-specific username help behind the info control", () => {
+    render(
+      <SignInEmailForm
+        domainSuggestion={null}
+        email=""
+        isEmailFallbackVisible={false}
+        isPending={false}
+        onEmailChange={vi.fn()}
+        onRevealEmailFallback={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText("you@example.com or @gwashington.org")).not.toBeNull();
+    expect(screen.queryByText(/ATProto handle/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "How usernames work" }));
+
+    expect(screen.getByText(/If you have an ATProto handle/i)).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Learn more" })).not.toBeNull();
+  });
+
   it("keeps email-link sign-in collapsed behind a passkey recovery control", () => {
     const onSubmit = vi.fn((event: React.FormEvent) => {
       event.preventDefault();

@@ -14,7 +14,6 @@ import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/sessio
 import { signalUnknownPasskey } from "@/domains/access/passkey-signal";
 import { requestMagicLink } from "@/domains/access/session.functions";
 import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
 import {
   buildAuthErrorLabels,
   describePasskeyError,
@@ -70,7 +69,6 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
   const [isEmailFallbackVisible, setIsEmailFallbackVisible] = useState(false);
   const [isEmailFlowPending, setIsEmailFlowPending] = useState(false);
   const [isPasskeyPending, setIsPasskeyPending] = useState(false);
-  const [atprotoHandle, setAtprotoHandle] = useState("");
 
   const isInvitationFlow = Boolean(invitationId);
   const emailFallbackVisible = isInvitationFlow || isEmailFallbackVisible;
@@ -249,8 +247,8 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
     }
   };
 
-  const startAtprotoSignIn = () => {
-    const handle = atprotoHandle.trim();
+  const startUsernameSignIn = () => {
+    const handle = email.trim();
     if (!handle) return;
     const params = new URLSearchParams({ handle, returnTo: "/account" });
     window.location.assign(`/api/atproto/sign-in/start?${params.toString()}`);
@@ -283,13 +281,23 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
             void handleEmailContinue(e);
           }}
           passkeyAction={
-            <SignInPasskeyButton
-              isLastUsed={lastMethod === "passkey"}
-              isPending={isPasskeyPending}
-              onClick={() => {
-                void handlePasskey();
-              }}
-            />
+            <div className="space-y-3">
+              <SignInPasskeyButton
+                isLastUsed={lastMethod === "passkey"}
+                isPending={isPasskeyPending}
+                onClick={() => {
+                  void handlePasskey();
+                }}
+              />
+              <Button
+                className="w-full"
+                disabled={!email.trim()}
+                variant="secondary"
+                onClick={startUsernameSignIn}
+              >
+                Continue with username
+              </Button>
+            </div>
           }
         />
 
@@ -301,32 +309,6 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
           ssoErrorMessage={ssoErrorMessage}
           statusMessage={statusMessage}
         />
-
-        <div className="border-border space-y-3 rounded-2xl border p-4">
-          <div className="space-y-1">
-            <p className="type-label-large text-on-surface">Continue with ATProto</p>
-            <p className="type-body-small text-outline">
-              Available only for an existing Atlas account secured by a passkey.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1">
-              <Input
-                label="ATProto handle"
-                placeholder="person.example"
-                value={atprotoHandle}
-                onChange={setAtprotoHandle}
-              />
-            </div>
-            <Button
-              disabled={!atprotoHandle.trim()}
-              variant="secondary"
-              onClick={startAtprotoSignIn}
-            >
-              Continue with ATProto
-            </Button>
-          </div>
-        </div>
       </div>
 
       {!isInvitationFlow ? (

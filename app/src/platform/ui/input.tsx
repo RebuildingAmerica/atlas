@@ -6,6 +6,7 @@ interface InputProps {
   onChange?: (value: string) => void;
   placeholder?: string;
   label?: string;
+  labelAdornment?: ReactNode;
   type?: string;
   disabled?: boolean;
   error?: string;
@@ -22,6 +23,7 @@ export function Input({
   onChange,
   placeholder,
   label,
+  labelAdornment,
   type = "text",
   disabled = false,
   error,
@@ -38,10 +40,13 @@ export function Input({
   return (
     <div className="space-y-1">
       {label && (
-        <label htmlFor={inputId} className="type-label-large text-ink-soft block">
-          {label}
-          {required && <span className="text-on-error-container">*</span>}
-        </label>
+        <div className="flex items-center gap-2">
+          <label htmlFor={inputId} className="type-label-large text-ink-soft block">
+            {label}
+            {required && <span className="text-on-error-container">*</span>}
+          </label>
+          {labelAdornment}
+        </div>
       )}
       <div className="relative">
         {icon && <div className="text-ink-muted absolute top-3 left-3">{icon}</div>}

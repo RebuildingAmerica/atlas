@@ -15,6 +15,15 @@ describe("Input", () => {
     expect(screen.getByText("*")).toBeInTheDocument();
   });
 
+  it("renders label adornment beside the field label", () => {
+    render(
+      <Input label="Username" labelAdornment={<button type="button">How usernames work</button>} />,
+    );
+
+    expect(screen.getByRole("button", { name: "How usernames work" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Username/i)).toBeInTheDocument();
+  });
+
   it("triggers onChange when value changes", () => {
     const handleChange = vi.fn();
     render(<Input label="Username" onChange={handleChange} />);
