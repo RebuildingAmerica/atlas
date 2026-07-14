@@ -129,5 +129,6 @@ jobs:
           ATLAS_HOSTED_EXPECT_CATALOG: "true"
           ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
+          ATLAS_HOSTED_PDS_URL: https://atlas-pds.rebuildingus.org
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke

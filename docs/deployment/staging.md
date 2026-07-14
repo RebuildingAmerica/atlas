@@ -127,7 +127,7 @@ actionlint
 pnpm run compose:validate
 (cd app && pnpm vitest run tests/unit/platform/config/hosted-env.test.ts tests/unit/domains/access/server/runtime.test.ts)
 (cd api && uv run pytest tests/platform/test_production_config.py tests/platform/test_mcp_server.py -q)
-(cd app && ATLAS_HOSTED_PUBLIC_URL=https://atlas-staging.rebuildingus.org ATLAS_HOSTED_API_URL=https://atlas-api-staging.rebuildingus.org pnpm run test:hosted-smoke)
+(cd app && ATLAS_HOSTED_PUBLIC_URL=https://atlas-staging.rebuildingus.org ATLAS_HOSTED_API_URL=https://atlas-api-staging.rebuildingus.org ATLAS_HOSTED_PDS_URL=https://atlas-pds-staging.rebuildingus.org pnpm run test:hosted-smoke)
 ```
 
 The staging deploy workflow uses `ATLAS_API_URL` for hosted smoke checks and
