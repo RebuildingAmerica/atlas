@@ -12,11 +12,16 @@ from atlas.domains.catalog.api.atproto_identities import (
     link_atproto_identity,
     list_atproto_identities,
     refresh_atproto_identity,
+    resolve_atproto_sign_in,
 )
 from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
-from atlas.domains.catalog.schemas.public import AtprotoIdentityLinkRequest, AtprotoIdentityResponse
+from atlas.domains.catalog.schemas.public import (
+    AtprotoIdentityLinkRequest,
+    AtprotoIdentityResponse,
+    AtprotoIdentitySignInResolveRequest,
+)
 from atlas.domains.catalog.services.atproto_identity import (
     AtprotoIdentityResolution,
     e2e_harness_identity_matches,
@@ -170,6 +175,18 @@ async def test_identity_api_rejects_external_api_actor(test_db: object) -> None:
     with pytest.raises(HTTPException) as error:
         await list_atproto_identities(Response(), actor=_actor(auth_type="oauth_jwt"), db=test_db)
     assert error.value.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.asyncio
+async def test_sign_in_resolution_hides_unverified_or_uncontrolled_dids(test_db: object) -> None:
+    with pytest.raises(HTTPException, match="sign-in unavailable") as missing:
+        await resolve_atproto_sign_in(
+            AtprotoIdentitySignInResolveRequest(did="did:plc:missing"),
+            actor=_actor(),
+            db=test_db,
+        )
+
+    assert missing.value.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio

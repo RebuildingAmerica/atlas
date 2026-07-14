@@ -116,6 +116,31 @@ async def test_active_delegate_can_remove_the_organization_identity(test_db: obj
 
 
 @pytest.mark.asyncio
+async def test_admin_can_remove_the_organization_identity(test_db: object) -> None:
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="owner_1",
+        did="did:plc:admin-removal",
+        handle="admin-removal.atlas.localhost",
+        pds_url="https://pds.atlas.localhost",
+    )
+    await attach_organization_atproto_identity(
+        "org_1",
+        OrganizationAtprotoIdentityAttachRequest(identity_id=identity.id),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+
+    removed = await detach_organization_atproto_identity(
+        "org_1", identity.id, Response(), actor=_admin(), db=test_db
+    )
+
+    assert removed.status == "removed"
+    assert removed.detached_by == "owner_1"
+
+
+@pytest.mark.asyncio
 async def test_revoked_delegate_cannot_remove_the_organization_identity(test_db: object) -> None:
     identity, _control = await AtprotoIdentityControlCRUD.connect(
         test_db,
@@ -227,6 +252,49 @@ async def test_admin_cannot_delegate_to_a_non_member(
 
 
 @pytest.mark.asyncio
+async def test_admin_can_delegate_when_the_hosted_membership_check_confirms_membership(
+    test_db: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="owner_1",
+        did="did:plc:confirmed-member-delegation",
+        handle="confirmed-member-delegation.atlas.localhost",
+        pds_url="https://pds.atlas.localhost",
+    )
+    await attach_organization_atproto_identity(
+        "org_1",
+        OrganizationAtprotoIdentityAttachRequest(identity_id=identity.id),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+
+    async def confirmed_membership(*_args: object) -> object:
+        return object()
+
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.organization_atproto_identities.get_settings",
+        lambda: SimpleNamespace(auth_membership_verification_url="https://auth.example.test"),
+    )
+    monkeypatch.setattr(
+        "atlas.domains.catalog.api.organization_atproto_identities.verify_org_membership",
+        confirmed_membership,
+    )
+
+    delegated = await grant_organization_atproto_delegation(
+        "org_1",
+        identity.id,
+        AtprotoIdentityDelegationRequest(delegate_user_id="member_1"),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+
+    assert delegated.delegate_user_id == "member_1"
+
+
+@pytest.mark.asyncio
 async def test_admin_reads_only_the_active_organization_identity_and_delegations(
     test_db: object,
 ) -> None:
@@ -279,3 +347,86 @@ async def test_admin_reads_only_the_active_organization_identity_and_delegations
     assert active_identity is not None
     assert active_identity.identity_id == identity.id
     assert [delegation.delegate_user_id for delegation in active_delegations] == ["active_member"]
+
+
+@pytest.mark.asyncio
+async def test_member_reads_empty_organization_identity_state(test_db: object) -> None:
+    result = await get_organization_atproto_identity(
+        "org_1", Response(), actor=_member(), db=test_db
+    )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_attach_rejects_replacing_an_active_organization_identity(test_db: object) -> None:
+    first, _first_control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="owner_1",
+        did="did:plc:organization-first",
+        handle="organization-first.atlas.localhost",
+        pds_url="https://pds.atlas.localhost",
+    )
+    second, _second_control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="owner_1",
+        did="did:plc:organization-second",
+        handle="organization-second.atlas.localhost",
+        pds_url="https://pds.atlas.localhost",
+    )
+    await attach_organization_atproto_identity(
+        "org_1",
+        OrganizationAtprotoIdentityAttachRequest(identity_id=first.id),
+        Response(),
+        actor=_admin(),
+        db=test_db,
+    )
+
+    with pytest.raises(HTTPException, match="different active") as conflict:
+        await attach_organization_atproto_identity(
+            "org_1",
+            OrganizationAtprotoIdentityAttachRequest(identity_id=second.id),
+            Response(),
+            actor=_admin(),
+            db=test_db,
+        )
+
+    assert conflict.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_delegation_routes_hide_missing_or_unattached_identities(test_db: object) -> None:
+    identity, _control = await AtprotoIdentityControlCRUD.connect(
+        test_db,
+        user_id="owner_1",
+        did="did:plc:unattached-delegation",
+        handle="unattached-delegation.atlas.localhost",
+        pds_url="https://pds.atlas.localhost",
+    )
+
+    with pytest.raises(HTTPException, match="not controlled for this organization") as grant:
+        await grant_organization_atproto_delegation(
+            "org_1",
+            identity.id,
+            AtprotoIdentityDelegationRequest(delegate_user_id="member_1"),
+            Response(),
+            actor=_admin(),
+            db=test_db,
+        )
+    with pytest.raises(HTTPException, match="identity not found") as listed:
+        await list_organization_atproto_delegations(
+            "org_1", identity.id, Response(), actor=_member(), db=test_db
+        )
+    with pytest.raises(HTTPException, match="delegation not found") as revoked:
+        await revoke_organization_atproto_delegation(
+            "org_1", identity.id, "member_1", Response(), actor=_admin(), db=test_db
+        )
+    with pytest.raises(HTTPException, match="identity not found") as detached:
+        await detach_organization_atproto_identity(
+            "org_1", identity.id, Response(), actor=_admin(), db=test_db
+        )
+
+    assert grant.value.status_code == 403
+    assert listed.value.status_code == 404
+    assert revoked.value.status_code == 404
+    assert detached.value.status_code == 404

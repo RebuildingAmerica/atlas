@@ -27,13 +27,14 @@ class _Connection:
         self.cursors = list(cursors or [])
         self.statements: list[str] = []
         self.in_transaction = True
+        self.rolled_back = False
 
     async def execute(self, statement: str, _params: object = None) -> _Cursor:
         self.statements.append(statement)
         return self.cursors.pop(0) if self.cursors else _Cursor()
 
     async def rollback(self) -> None:
-        return None
+        self.rolled_back = True
 
     async def commit(self) -> None:
         return None
@@ -43,6 +44,86 @@ class _Connection:
 async def test_migration_rejects_unknown_backend() -> None:
     with pytest.raises(ValueError, match="Unsupported database backend"):
         await migrations.migrate_atproto_identity_graph(_Connection(), backend="other")
+
+
+@pytest.mark.asyncio
+async def test_sqlite_migration_rolls_back_a_transaction_it_opened_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conn = _Connection()
+    conn.in_transaction = False
+
+    async def failed_graph_migration(*_args: object, **_kwargs: object) -> None:
+        msg = "simulated migration failure"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(migrations, "_migrate_atproto_identity_graph", failed_graph_migration)
+    with pytest.raises(RuntimeError, match="simulated migration failure"):
+        await migrations.migrate_atproto_identity_graph(conn, backend="sqlite")
+
+    assert conn.rolled_back
+
+
+@pytest.mark.asyncio
+async def test_sqlite_migration_preserves_the_callers_transaction_on_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conn = _Connection()
+
+    async def failed_graph_migration(*_args: object, **_kwargs: object) -> None:
+        msg = "simulated migration failure"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(migrations, "_migrate_atproto_identity_graph", failed_graph_migration)
+    with pytest.raises(RuntimeError, match="simulated migration failure"):
+        await migrations.migrate_atproto_identity_graph(conn, backend="sqlite")
+
+    assert not conn.rolled_back
+
+
+@pytest.mark.asyncio
+async def test_postgres_migration_acquires_the_transaction_advisory_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conn = _Connection()
+
+    async def global_identity_columns(_conn: object, table: str, *, backend: str) -> set[str]:
+        assert backend == "postgres"
+        return {"resolution_status"} if table == "atproto_identities" else set()
+
+    monkeypatch.setattr(migrations, "_table_columns", global_identity_columns)
+    await migrations._migrate_atproto_identity_graph(conn, backend="postgres")
+
+    assert conn.statements == ["SELECT pg_advisory_xact_lock(?)"]
+
+
+@pytest.mark.asyncio
+async def test_postgres_migration_helpers_use_information_schema_and_safe_ddl() -> None:
+    columns_conn = _Connection([_Cursor(all_rows=[("id",), ("linked_atproto_did",)])])
+    assert await migrations._table_columns(columns_conn, "entries", backend="postgres") == {
+        "id",
+        "linked_atproto_did",
+    }
+    assert "information_schema.columns" in columns_conn.statements[0]
+
+    removal_conn = _Connection()
+    await migrations._remove_legacy_atproto_storage(
+        removal_conn,
+        backend="postgres",
+        legacy_entry_columns={"linked_atproto_did"},
+        has_legacy_identities=False,
+    )
+    assert removal_conn.statements == [
+        "ALTER TABLE entries DROP COLUMN IF EXISTS linked_atproto_did"
+    ]
+
+    lock_conn = _Connection()
+    await migrations._lock_atproto_migration_sources(
+        lock_conn, backend="postgres", tables=("entries", "atproto_identities")
+    )
+    assert lock_conn.statements == [
+        "LOCK TABLE entries, atproto_identities IN ACCESS EXCLUSIVE MODE"
+    ]
 
 
 @pytest.mark.asyncio
