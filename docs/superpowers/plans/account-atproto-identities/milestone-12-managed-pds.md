@@ -20,6 +20,8 @@ graph or persisting protocol credentials in Atlas application storage.
       and PDS URL pass to the existing Atlas identity-control API.
 - [x] Presents “Use an Atlas identity” as the default account and organization
       path while retaining an explicit external-PDS OAuth connection path.
+- [x] Covers the organization managed-identity browser path in local acceptance
+      without storing credentials by using the explicit ATProto E2E harness.
 - [x] Wires CI, staging deploy, and production release workflows through a
       reusable hosted PDS action so PDS changes can update the persistent host
       and prove public `/xrpc/_health` before hosted smoke verification.

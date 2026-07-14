@@ -20,6 +20,7 @@ describe("provisionManagedAtprotoIdentity", () => {
     vi.resetModules();
     pdsMocks.createAccount.mockReset();
     pdsMocks.getAuthRuntimeConfig.mockReset();
+    vi.unstubAllEnvs();
   });
 
   it("requires an HTTPS Atlas PDS URL", async () => {
@@ -57,5 +58,20 @@ describe("provisionManagedAtprotoIdentity", () => {
       pds_url: "https://pds.atlas.test",
     });
     expect(pdsMocks.createAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses a credential-free managed identity fixture in the ATProto E2E harness", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({ atprotoPdsUrl: null });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await expect(
+      provisionManagedAtprotoIdentity({ handle: "Workspace.Atlas.Test", userId: "user_1" }),
+    ).resolves.toEqual({
+      current_handle: "workspace.atlas.test",
+      did: "did:web:workspace.atlas.test",
+      pds_url: "https://pds.atlas-e2e.test",
+    });
+    expect(pdsMocks.createAccount).not.toHaveBeenCalled();
   });
 });

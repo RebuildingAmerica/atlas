@@ -1,6 +1,7 @@
 # Milestone 13: Delegated Identity and ATProto Sign-In
 
-**Status:** Repository complete; staging and production verification pending
+**Status:** Browser organization managed-identity coverage added; staging and
+production verification pending
 
 ## ATProto-first sign-in
 
@@ -29,9 +30,22 @@ contract. It exposes identity selection and delegation controls only to owners
 and admins, while an active delegate sees only their scoped removal action. API
 authorization remains the enforcement boundary.
 
+## Verification added after UI closeout
+
+- Local browser acceptance now signs in through the real auth setup flow,
+  upgrades the workspace to team mode, creates an Atlas-managed organization
+  identity through the workspace page, attaches it to the organization, and
+  confirms the active organization handle is visible. The browser run uses the
+  explicit ATProto E2E harness for credential-free managed identity creation so
+  production and staging continue to require the real hosted PDS.
+- The managed-PDS adapter has focused unit coverage proving that the E2E harness
+  returns only public DID, handle, and fixture PDS URL data without constructing
+  an `AtpAgent` account session.
+
 ## Remaining work
 
 - Deploy the paired API and app contract to staging, create and link a managed
-  organization identity, verify the passkey-gated sign-in path, then exercise
-  grant, delegated removal, and revocation denial through the browser.
+  organization identity against the hosted PDS, verify the passkey-gated sign-in
+  path, then exercise grant, delegated removal, and revocation denial through
+  the browser.
 - Repeat the same route-level proof in production after staging is healthy.

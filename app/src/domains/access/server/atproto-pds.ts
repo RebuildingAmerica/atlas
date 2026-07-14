@@ -23,6 +23,15 @@ export interface ManagedAtprotoProvisionResult {
 export async function provisionManagedAtprotoIdentity(
   input: ManagedAtprotoProvisionInput,
 ): Promise<ManagedAtprotoProvisionResult> {
+  if (isE2EHarnessEnabled()) {
+    const handle = input.handle.trim().toLowerCase().replace(/^@/, "");
+    return {
+      current_handle: handle,
+      did: `did:web:${handle}`,
+      pds_url: "https://pds.atlas-e2e.test",
+    };
+  }
+
   const pdsUrl = getManagedAtprotoPdsUrl();
   const agent = new AtpAgent({ service: pdsUrl });
   const account = await agent.createAccount({
@@ -35,6 +44,10 @@ export async function provisionManagedAtprotoIdentity(
     did: account.data.did,
     pds_url: pdsUrl,
   };
+}
+
+function isE2EHarnessEnabled(): boolean {
+  return process.env.ATLAS_ATPROTO_OAUTH_E2E_HARNESS === "1";
 }
 
 function getManagedAtprotoPdsUrl(): string {

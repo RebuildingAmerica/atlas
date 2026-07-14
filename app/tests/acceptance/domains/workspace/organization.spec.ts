@@ -31,4 +31,28 @@ test.describe("organization management journey", () => {
         .first(),
     ).toBeVisible();
   });
+
+  test("creates an Atlas-managed organization identity from the workspace page", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "Virtual authenticator support requires Chromium.");
+
+    await performSignIn(page);
+    await page.goto("/organization", { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
+    await page.waitForURL(/\/pricing/, { timeout: 15_000 });
+    await page.goto("/organization", { waitUntil: "networkidle" });
+    await expect(page.getByRole("heading", { name: "Organization ATProto identity" })).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.getByRole("textbox", { name: "New Atlas handle" }).fill("workspace.atlas.test");
+    await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
+
+    await expect(page.getByText("Organization ATProto identity updated.")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator("p").filter({ hasText: /^workspace\.atlas\.test$/ })).toBeVisible();
+  });
 });
