@@ -13,7 +13,7 @@ test("auth e2e: magic-link sign-in lands on /account and sign-out returns home",
 
   await page.waitForURL((url) => url.pathname === "/account");
 
-  await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
   await expect(page.locator("#profile").getByText(account.email)).toBeVisible();
   await expect(page.getByText("Passkeys", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Workspace context" })).toBeVisible();

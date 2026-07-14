@@ -53,9 +53,7 @@ test.describe("ATProto profile verification handoff", () => {
     await connectAtprotoAccount(page, draftHandle);
 
     await page.reload();
-    expect(await page.getByRole("combobox", { name: "ATProto identity" }).inputValue()).not.toBe(
-      "",
-    );
+    await expect(page.getByRole("combobox", { name: "ATProto identity" })).not.toHaveValue("");
     await page.getByRole("textbox", { name: "Organization domain" }).fill(organizationDomain);
     await fulfillProfileVerificationSubmission(page);
 

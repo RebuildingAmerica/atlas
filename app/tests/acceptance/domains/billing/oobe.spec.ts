@@ -243,7 +243,7 @@ async function completeFreeAccount(page: Page): Promise<void> {
 
   await chapter(page, "Free: workspace ready", async () => {
     await page.goto("/account", { waitUntil: "networkidle" });
-    await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Workspace context" })).toBeVisible();
     await expect(page.locator("#profile").getByText("My Workspace", { exact: true })).toBeVisible();
   });
