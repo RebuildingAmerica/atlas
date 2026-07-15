@@ -135,8 +135,8 @@ jobs:
             echo "::error title=Missing Vercel project link::Set VERCEL_ORG_ID and VERCEL_PROJECT_ID in the production environment so CI deploys the Atlas app project instead of auto-linking by directory name."
             exit 1
           fi
-          mkdir -p app/.vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > app/.vercel/project.json
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
 
           required_env=(
             ATLAS_API_URL
@@ -165,7 +165,6 @@ jobs:
             --prod
             --yes
             --no-color
-            --cwd app
             --project "$VERCEL_PROJECT_ID"
             --token "$VERCEL_TOKEN"
           )
@@ -214,7 +213,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.url }}
-        run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --cwd app --token "$VERCEL_TOKEN"
+        run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --token "$VERCEL_TOKEN"
 
   hosted-smoke:
     needs: deploy
