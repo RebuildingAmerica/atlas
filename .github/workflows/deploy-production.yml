@@ -82,6 +82,23 @@ jobs:
         with:
           python: "false"
 
+      - name: Load PDS app provisioning secret
+        shell: bash
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+
+          pds_admin_password="$(gcloud secrets versions access latest \
+            --project "$GCP_PROJECT_ID" \
+            --secret "atlas-pds-production-admin-password")"
+          if [ -z "$pds_admin_password" ] || [[ "$pds_admin_password" == *$'\n'* ]] || [[ "$pds_admin_password" == *$'\r'* ]]; then
+            echo "::error title=Invalid PDS app provisioning secret::atlas-pds-production-admin-password must be a non-empty single-line Secret Manager value."
+            exit 1
+          fi
+          echo "::add-mask::$pds_admin_password"
+          echo "ATLAS_PDS_ADMIN_PASSWORD=$pds_admin_password" >> "$GITHUB_ENV"
+
       - name: Deploy Vercel production app
         id: deploy-vercel
         env:
@@ -114,6 +131,7 @@ jobs:
             ATLAS_API_URL
             ATLAS_AUTH_INTERNAL_SECRET
             ATLAS_AUTH_MEMBERSHIP_URL
+            ATLAS_PDS_ADMIN_PASSWORD
             ATLAS_PUBLIC_URL
             DATABASE_URL
           )
@@ -160,6 +178,7 @@ jobs:
           add_vercel_env ATLAS_HOSTED_E2E_PRODUCTION_ENABLED "1"
           add_vercel_env ATLAS_HOSTED_E2E_SECRET "$ATLAS_HOSTED_E2E_SECRET"
           add_vercel_env ATLAS_OPERATOR_ALLOWED_EMAILS "$ATLAS_OPERATOR_ALLOWED_EMAILS"
+          add_vercel_env ATLAS_PDS_ADMIN_PASSWORD "$ATLAS_PDS_ADMIN_PASSWORD"
           add_vercel_env ATLAS_PDS_PUBLIC_URL "$atlas_pds_public_url"
           add_vercel_env ATLAS_PUBLIC_URL "$atlas_public_origin"
           add_vercel_env ATLAS_SERVER_API_PROXY_TARGET "$atlas_api_origin"
@@ -233,6 +252,7 @@ jobs:
     environment: production
     timeout-minutes: 20
     permissions:
+      artifact-metadata: write
       contents: read
       id-token: write
 
@@ -260,3 +280,12 @@ jobs:
           ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity
+
+      - name: Upload hosted identity Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hosted-identity-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: app/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

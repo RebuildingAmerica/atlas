@@ -102,6 +102,12 @@ test("production deploy configures the hosted identity helper in Vercel", async 
     ".github/workflows/deploy-production.yml",
   );
 
+  assert.match(source, /Load PDS app provisioning secret/);
+  assert.match(
+    source,
+    /gcloud secrets versions access latest[\s\S]*--secret "atlas-pds-production-admin-password"/,
+  );
+  assert.match(source, /ATLAS_PDS_ADMIN_PASSWORD/);
   assert.match(
     source,
     /ATLAS_HOSTED_E2E_SECRET: \$\{\{ secrets\.ATLAS_HOSTED_E2E_SECRET \}\}/,
@@ -115,6 +121,25 @@ test("production deploy configures the hosted identity helper in Vercel", async 
     source,
     /add_vercel_env ATLAS_HOSTED_E2E_SECRET "\$ATLAS_HOSTED_E2E_SECRET"/,
   );
+  assert.match(
+    source,
+    /add_vercel_env ATLAS_PDS_ADMIN_PASSWORD "\$ATLAS_PDS_ADMIN_PASSWORD"/,
+  );
+});
+
+test("hosted identity jobs keep Playwright traces when production or staging proof fails", async () => {
+  for (const workflowPath of [
+    ".github/workflows/deploy-production.yml",
+    ".github/workflows/deploy-staging.yml",
+  ]) {
+    const source = await workflowSource(workflowPath);
+
+    assert.match(source, /artifact-metadata: write/);
+    assert.match(source, /Upload hosted identity Playwright traces/);
+    assert.match(source, /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/);
+    assert.match(source, /path: app\/test-results\//);
+    assert.match(source, /if-no-files-found: ignore/);
+  }
 });
 
 test("hosted PDS deploy bundle includes the backup and restore operator script", async () => {

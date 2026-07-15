@@ -2,6 +2,18 @@ import { expect, test, type Page } from "@playwright/test";
 import { performSignIn } from "../../helpers/auth";
 
 test.describe("Account ATProto identities", () => {
+  test("creates and displays an Atlas-managed identity", async ({ page }) => {
+    const handle = "managed-account.atlas.test";
+    await performSignIn(page);
+    await page.goto("/account#identity");
+
+    await page.getByRole("textbox", { name: "New Atlas handle" }).fill(handle);
+    await page.getByRole("button", { name: "Create Atlas identity" }).click();
+
+    await expect(page.getByText(handle, { exact: true })).toBeVisible();
+    await expect(page.getByText("Connected", { exact: true })).toBeVisible();
+  });
+
   for (const handle of ["account.bsky.social", "account.example"]) {
     test(`connects and displays ${handle} without changing workspaces`, async ({ page }) => {
       await performSignIn(page);

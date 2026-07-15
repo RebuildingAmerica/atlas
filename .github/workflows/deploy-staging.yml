@@ -75,6 +75,7 @@ jobs:
     environment: staging
     timeout-minutes: 20
     permissions:
+      artifact-metadata: write
       contents: read
       id-token: write
 
@@ -166,3 +167,12 @@ jobs:
           ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity
+
+      - name: Upload hosted identity Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hosted-identity-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: app/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
