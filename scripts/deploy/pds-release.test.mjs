@@ -8,6 +8,7 @@ import {
   pdsInviteBrokerUrl,
   probePdsHealth,
   probePdsInviteBrokerRoute,
+  waitForProbe,
 } from "./pds-release.mjs";
 
 const rootDir = path.resolve(import.meta.dirname, "../..");
@@ -86,6 +87,23 @@ void describe("PDS release health probe", () => {
         ),
       /PDS invite broker route probe failed with HTTP 404/,
     );
+  });
+
+  void it("retries transient edge startup failures before failing the deploy", async () => {
+    let attempts = 0;
+    const result = await waitForProbe(
+      async () => {
+        attempts += 1;
+        if (attempts < 3) {
+          throw new TypeError("fetch failed");
+        }
+        return { ok: true };
+      },
+      { attempts: 3, delayMs: 0 },
+    );
+
+    assert.equal(attempts, 3);
+    assert.deepEqual(result, { ok: true });
   });
 
   void it("runs PDS checks through the root production verification gate", () => {

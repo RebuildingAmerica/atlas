@@ -6,6 +6,22 @@ function requiredEnv(name) {
   return value;
 }
 
+function optionalPositiveIntegerEnv(name, fallback) {
+  const rawValue = process.env[name]?.trim();
+  if (!rawValue) return fallback;
+  const value = Number.parseInt(rawValue, 10);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer.`);
+  }
+  return value;
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
 export function pdsHealthUrl(pdsOrigin) {
   const origin = new URL(pdsOrigin);
   if (origin.protocol !== "https:") {
@@ -76,16 +92,41 @@ export async function probePdsInviteBrokerRoute(pdsOrigin, fetchImpl = fetch) {
   return { url };
 }
 
+export async function waitForProbe(probe, options = {}) {
+  const attempts = options.attempts ?? 12;
+  const delayMs = options.delayMs ?? 5_000;
+  let lastError;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await probe();
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 async function main() {
   const command = process.argv[2];
+  const attempts = optionalPositiveIntegerEnv("ATLAS_PDS_PROBE_ATTEMPTS", 12);
+  const delayMs = optionalPositiveIntegerEnv("ATLAS_PDS_PROBE_DELAY_MS", 5_000);
   if (command === "health") {
-    const result = await probePdsHealth(requiredEnv("ATLAS_PDS_PUBLIC_URL"));
+    const result = await waitForProbe(
+      () => probePdsHealth(requiredEnv("ATLAS_PDS_PUBLIC_URL")),
+      { attempts, delayMs },
+    );
     console.log(`PDS health probe passed: ${result.url} (${result.version})`);
     return;
   }
   if (command === "invite-broker-route") {
-    const result = await probePdsInviteBrokerRoute(
-      requiredEnv("ATLAS_PDS_PUBLIC_URL"),
+    const result = await waitForProbe(
+      () => probePdsInviteBrokerRoute(requiredEnv("ATLAS_PDS_PUBLIC_URL")),
+      { attempts, delayMs },
     );
     console.log(`PDS invite broker route probe passed: ${result.url}`);
     return;
