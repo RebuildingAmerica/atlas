@@ -228,6 +228,9 @@ importers:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*
         version: link:packages/eslint-config
+      '@rebuildingamerica/tsconfig':
+        specifier: workspace:*
+        version: link:packages/tsconfig
       eslint:
         specifier: 'catalog:'
         version: 10.6.0(jiti@2.7.0)
@@ -383,6 +386,9 @@ importers:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*
         version: link:../packages/eslint-config
+      '@rebuildingamerica/tsconfig':
+        specifier: workspace:*
+        version: link:../packages/tsconfig
       '@stoplight/spectral-cli':
         specifier: 'catalog:'
         version: 6.16.1
@@ -491,6 +497,9 @@ importers:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@rebuildingamerica/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       '@rebuildingamerica/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -515,6 +524,9 @@ importers:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@rebuildingamerica/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.9.1
@@ -576,6 +588,9 @@ importers:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@rebuildingamerica/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.2(vite@8.1.3(@types/node@26.1.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.8.3))
@@ -649,6 +664,8 @@ importers:
         specifier: 'catalog:'
         version: 8.62.1(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3)
 
+  packages/tsconfig: {}
+
   packages/vitest-config:
     dependencies:
       '@vitejs/plugin-react':
@@ -664,6 +681,9 @@ importers:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@rebuildingamerica/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       eslint:
         specifier: 'catalog:'
         version: 10.6.0(jiti@2.7.0)

@@ -94,6 +94,7 @@
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/tsconfig": "workspace:*",
     "@stoplight/spectral-cli": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/router-generator": "1.167.18",

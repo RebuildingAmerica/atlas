@@ -65,6 +65,7 @@
   "devDependencies": {
     "@clack/prompts": "catalog:",
     "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "picocolors": "catalog:",
     "portless": "catalog:",

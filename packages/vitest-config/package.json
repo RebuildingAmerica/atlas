@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "typescript": "catalog:"
   }

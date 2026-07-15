@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/tsconfig": "workspace:*",
     "@rebuildingamerica/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
