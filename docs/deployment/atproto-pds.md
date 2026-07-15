@@ -93,6 +93,13 @@ The workflow passes only non-secret release coordinates to the VM. The VM reads
 the PDS admin password, JWT secret, and PLC rotation key from Secret Manager
 using its own service account, so GitHub never receives PDS runtime secrets.
 
+The production app deploy has one narrower exception: the Vercel server
+environment also needs `ATLAS_PDS_ADMIN_PASSWORD` so Atlas can create
+Atlas-managed identities on the production PDS. The GitHub deploy service
+account must therefore have `roles/secretmanager.secretAccessor` on exactly
+`atlas-pds-production-admin-password`, not project-wide Secret Manager access.
+Bootstrap grants that secret-level binding for `atlas-deploy@<project>`.
+
 PDS hosts use the `atlas-pds` network tag. Their firewall configuration permits
 ports 80 and 443 publicly, permits port 22 only from the IAP TCP forwarding
 range, and explicitly denies direct public SSH. Operators must use

@@ -4,6 +4,7 @@ export const REQUIRED_APIS = [
   "artifactregistry.googleapis.com",
   "iam.googleapis.com",
   "iamcredentials.googleapis.com",
+  "secretmanager.googleapis.com",
 ];
 
 export const SERVICE_ACCOUNT_ROLES = [
@@ -16,3 +17,5 @@ export const REPO_NAME = "atlas-images";
 export const SA_NAME = "atlas-deploy";
 export const POOL_NAME = "github-pool";
 export const PROVIDER_NAME = "github-provider";
+export const PDS_APP_PROVISIONING_SECRET =
+  "atlas-pds-production-admin-password";

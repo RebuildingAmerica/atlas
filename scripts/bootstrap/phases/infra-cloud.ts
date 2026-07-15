@@ -4,6 +4,7 @@ import { commandOutput, runCommand } from "../lib/shell.js";
 import { logSubline } from "../lib/ui.js";
 
 import {
+  PDS_APP_PROVISIONING_SECRET,
   POOL_NAME,
   PROVIDER_NAME,
   REPO_NAME,
@@ -206,6 +207,67 @@ export function ensureServiceAccount(
   }
 
   s.stop(`IAM roles granted: ${SERVICE_ACCOUNT_ROLES.join(", ")}`);
+  ensurePdsAppProvisioningSecretAccess(
+    projectId,
+    saEmail,
+    doctorMode,
+    followUpItems,
+  );
+}
+
+function ensurePdsAppProvisioningSecretAccess(
+  projectId: string,
+  saEmail: string,
+  doctorMode: boolean,
+  followUpItems: string[],
+): void {
+  const member = `serviceAccount:${saEmail}`;
+  const checkResult = runCommand(
+    `gcloud secrets get-iam-policy "${PDS_APP_PROVISIONING_SECRET}" ` +
+      `--project="${projectId}" ` +
+      `--flatten="bindings[].members" ` +
+      `--filter="bindings.role:roles/secretmanager.secretAccessor AND bindings.members:${member}" ` +
+      `--format="value(bindings.members)" 2>/dev/null`,
+  );
+
+  if (checkResult.ok && checkResult.stdout.trim() === member) {
+    log.success(
+      `Deploy service account can read '${PDS_APP_PROVISIONING_SECRET}'`,
+    );
+    return;
+  }
+
+  if (doctorMode) {
+    log.warn(
+      `Deploy service account cannot read '${PDS_APP_PROVISIONING_SECRET}'`,
+    );
+    followUpItems.push(
+      `Grant Secret Manager access: gcloud secrets add-iam-policy-binding ${PDS_APP_PROVISIONING_SECRET} --project=${projectId} --member=${member} --role=roles/secretmanager.secretAccessor`,
+    );
+    return;
+  }
+
+  const s = spinner();
+  s.start("Granting PDS app provisioning secret access...");
+
+  const grantResult = runCommand(
+    `gcloud secrets add-iam-policy-binding "${PDS_APP_PROVISIONING_SECRET}" ` +
+      `--project="${projectId}" ` +
+      `--member="${member}" ` +
+      `--role="roles/secretmanager.secretAccessor" ` +
+      `--quiet`,
+  );
+
+  if (!grantResult.ok) {
+    s.stop(`Failed to grant access to '${PDS_APP_PROVISIONING_SECRET}'`);
+    log.error(commandOutput(grantResult));
+    followUpItems.push(
+      `Grant Secret Manager access: gcloud secrets add-iam-policy-binding ${PDS_APP_PROVISIONING_SECRET} --project=${projectId} --member=${member} --role=roles/secretmanager.secretAccessor`,
+    );
+    return;
+  }
+
+  s.stop(`Deploy service account can read '${PDS_APP_PROVISIONING_SECRET}'`);
 }
 
 export function ensureWorkloadIdentityFederation(
