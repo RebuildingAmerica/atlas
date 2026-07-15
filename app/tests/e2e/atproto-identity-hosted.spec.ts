@@ -131,6 +131,32 @@ async function openOrganizationIdentityControls(page: Page): Promise<void> {
   await expect(identityHeading).toBeVisible({ timeout: 20_000 });
 }
 
+async function createManagedIdentityFromField(
+  page: Page,
+  inputName: string,
+  buttonName: string,
+  handle: string,
+): Promise<void> {
+  const input = page.getByRole("textbox", { name: inputName }).first();
+  const button = page.getByRole("button", { name: buttonName });
+
+  await expect(input).toBeVisible({ timeout: 20_000 });
+  await expect(input).toBeEditable({ timeout: 20_000 });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await input.fill(handle);
+    await expect(input).toHaveValue(handle, { timeout: 5_000 });
+    if (await button.isEnabled()) {
+      break;
+    }
+    await page.waitForTimeout(500);
+  }
+
+  await expect(input).toHaveValue(handle, { timeout: 5_000 });
+  await expect(button).toBeEnabled({ timeout: 5_000 });
+  await button.click();
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("hosted ATProto identity administration works without a personal browser session", async ({
@@ -142,14 +168,22 @@ test("hosted ATProto identity administration works without a personal browser se
   await visitHostedRoute(page, "/account");
   await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
 
-  await page.getByRole("textbox", { name: "New Atlas handle" }).first().fill(run.owner.handle);
-  await page.getByRole("button", { name: "Create Atlas identity" }).click();
+  await createManagedIdentityFromField(
+    page,
+    "New Atlas handle",
+    "Create Atlas identity",
+    run.owner.handle,
+  );
   await expect(page.getByText(run.owner.handle, { exact: true })).toBeVisible({ timeout: 20_000 });
 
   await openOrganizationIdentityControls(page);
 
-  await page.getByRole("textbox", { name: "New Atlas handle" }).fill(organizationHandleForRun(run));
-  await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
+  await createManagedIdentityFromField(
+    page,
+    "New Atlas handle",
+    "Create and use Atlas identity",
+    organizationHandleForRun(run),
+  );
   await expect(page.getByText("Organization identity updated.")).toBeVisible({
     timeout: 20_000,
   });
