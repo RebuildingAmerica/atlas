@@ -98,7 +98,17 @@ environment also needs `ATLAS_PDS_ADMIN_PASSWORD` so Atlas can create
 Atlas-managed identities on the production PDS. The GitHub deploy service
 account must therefore have `roles/secretmanager.secretAccessor` on exactly
 `atlas-pds-production-admin-password`, not project-wide Secret Manager access.
-Bootstrap grants that secret-level binding for `atlas-deploy@<project>`.
+Bootstrap grants that secret-level binding for `atlas-deploy@<project>`. The
+production workflow verifies this binding in `pds-secret-preflight` before CI,
+image builds, or hosted deploy mutations run. If the preflight reports
+`secretmanager.versions.access` denied, repair only the secret-level binding:
+
+```sh
+gcloud secrets add-iam-policy-binding atlas-pds-production-admin-password \
+  --project=rap-atlas-prod \
+  --member=serviceAccount:atlas-deploy@rap-atlas-prod.iam.gserviceaccount.com \
+  --role=roles/secretmanager.secretAccessor
+```
 
 PDS hosts use the `atlas-pds` network tag. Their firewall configuration permits
 ports 80 and 443 publicly, permits port 22 only from the IAP TCP forwarding
