@@ -250,7 +250,7 @@ export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Re
       throw new Error("ATProto sign-in is unavailable.");
     });
 
-    const userId = await resolveAtprotoSignInController(result.session.did);
+    const userId = await resolveAtprotoSignInController({ did: result.session.did });
     const sessionResponse = await createAtprotoSessionForUser(userId);
     const headers = new Headers(sessionResponse.headers);
     headers.set(
@@ -278,7 +278,7 @@ async function completeE2EHarnessSignIn(params: URLSearchParams): Promise<Respon
     throw new Error("ATProto sign-in is unavailable.");
   }
   await appStateStore.del(stateKey);
-  const userId = await resolveAtprotoSignInController(e2eHarnessDid(handle));
+  const userId = await resolveAtprotoSignInController({ handle });
   const sessionResponse = await createAtprotoSessionForUser(userId);
   const headers = new Headers(sessionResponse.headers);
   headers.set("Location", new URL(state.returnTo, getAuthRuntimeConfig().publicBaseUrl).toString());
@@ -409,11 +409,13 @@ async function persistLinkedAtprotoIdentity(
   return (await response.json()) as LinkedAtprotoIdentity;
 }
 
-async function resolveAtprotoSignInController(did: string): Promise<string> {
+async function resolveAtprotoSignInController(
+  input: { did: string } | { handle: string },
+): Promise<string> {
   const runtime = getAuthRuntimeConfig();
   const target = runtime.apiBaseUrl ?? runtime.publicBaseUrl;
   const response = await fetch(new URL("/api/atproto/identities/sign-in/resolve", target), {
-    body: JSON.stringify({ did }),
+    body: JSON.stringify(input),
     headers: {
       "Content-Type": "application/json",
       ...createInternalAuthHeaders(

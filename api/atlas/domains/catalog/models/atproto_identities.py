@@ -94,6 +94,21 @@ class AtprotoIdentityCRUD:
         cursor = await conn.execute("SELECT * FROM atproto_identities WHERE did = ?", (did,))
         return await _fetch_identity(cursor)
 
+    @staticmethod
+    async def get_by_current_handle(conn: Any, handle: str) -> AtprotoIdentityModel | None:
+        """Fetch the verified identity currently using ``handle``."""
+        cursor = await conn.execute(
+            """
+            SELECT *
+            FROM atproto_identities
+            WHERE lower(current_handle) = lower(?)
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (handle,),
+        )
+        return await _fetch_identity(cursor)
+
 
 async def _fetch_identity(cursor: Any) -> AtprotoIdentityModel | None:
     row = await cursor.fetchone()

@@ -93,7 +93,11 @@ async def resolve_atproto_sign_in(
 ) -> AtprotoIdentitySignInResolveResponse:
     """Return the active controller only to the internal app OAuth callback."""
     _require_app_actor(actor)
-    identity = await AtprotoIdentityCRUD.get_by_did(db, payload.did)
+    identity = (
+        await AtprotoIdentityCRUD.get_by_did(db, payload.did)
+        if payload.did is not None
+        else await AtprotoIdentityCRUD.get_by_current_handle(db, payload.handle or "")
+    )
     control = (
         await AtprotoIdentityControlCRUD.get_active_for_identity(db, identity.id)
         if identity is not None and identity.resolution_status == "verified"

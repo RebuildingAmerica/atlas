@@ -63,9 +63,10 @@ class AtprotoIdentityResponse(BaseModel):
 
 
 class AtprotoIdentitySignInResolveRequest(BaseModel):
-    """Internal callback proof for resolving an active DID controller."""
+    """Internal callback proof for resolving an active ATProto controller."""
 
-    did: str
+    did: str | None = None
+    handle: str | None = None
 
 
 class AtprotoIdentitySignInResolveResponse(BaseModel):

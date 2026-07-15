@@ -217,6 +217,22 @@ async def test_sign_in_resolution_returns_active_controller(
 
 
 @pytest.mark.asyncio
+async def test_sign_in_resolution_returns_active_controller_by_handle_for_internal_harness(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linked, _ = await _connect(test_db, monkeypatch)
+
+    resolved = await resolve_atproto_sign_in(
+        AtprotoIdentitySignInResolveRequest(handle=linked.current_handle),
+        actor=_actor(),
+        db=test_db,
+    )
+
+    assert resolved.user_id == "user_1"
+
+
+@pytest.mark.asyncio
 async def test_link_rejects_unverified_oauth_result(
     test_db: object,
     monkeypatch: pytest.MonkeyPatch,

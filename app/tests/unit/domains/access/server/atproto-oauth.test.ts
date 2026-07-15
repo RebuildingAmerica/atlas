@@ -249,7 +249,7 @@ describe("atproto-oauth", () => {
     if (typeof requestInit.body !== "string") {
       throw new Error("Expected an internal sign-in resolution request body.");
     }
-    expect(JSON.parse(requestInit.body)).toEqual({ did: "did:web:person.example" });
+    expect(JSON.parse(requestInit.body)).toEqual({ handle: "person.example" });
   });
 
   it("returns successful Account callbacks to the Identity section", async () => {
