@@ -93,21 +93,55 @@ jobs:
           pds-hostname: atlas-pds-staging.rebuildingus.org
           pds-public-url: https://atlas-pds-staging.rebuildingus.org
 
-  deploy-vercel:
+  hosted-smoke:
     needs:
       - ci
       - deploy-api
-    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_identity == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped')
+      - deploy-pds
+    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_smoke == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped')
     runs-on: ubuntu-latest
     environment: staging
-    timeout-minutes: 30
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+
+      - name: Mint Vercel Trusted Source OIDC token
+        id: vercel-oidc
+        uses: ./.github/actions/vercel-trusted-oidc
+
+      - name: Run hosted Cloudflare API smoke
+        env:
+          ATLAS_HOSTED_EXPECT_EDGE: "true"
+          ATLAS_HOSTED_PUBLIC_URL: ${{ github.event.inputs.hosted_public_url || secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_HOSTED_EXPECTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
+          ATLAS_HOSTED_PDS_URL: https://atlas-pds-staging.rebuildingus.org
+          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
+          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
+        run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
+
+  hosted-identity:
+    needs:
+      - ci
+      - deploy-api
+      - deploy-pds
+      - hosted-smoke
+    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_identity == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped') && needs.hosted-smoke.result == 'success'
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
     permissions:
       artifact-metadata: write
       contents: read
       id-token: write
-
-    outputs:
-      url: ${{ steps.deploy-vercel.outputs.url }}
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -143,190 +177,70 @@ jobs:
           pds-public-url: https://atlas-pds-staging.rebuildingus.org
           invite-broker-secret: ${{ steps.pds-invite-broker.outputs.secret }}
 
-      - name: Deploy Vercel staging app
-        id: deploy-vercel
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          ATLAS_API_URL: ${{ secrets.ATLAS_API_URL }}
-          ATLAS_AUTH_INTERNAL_SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
-          ATLAS_AUTH_MEMBERSHIP_URL: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
-          ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
-          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
-          ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
-          ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
-        run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error title=Missing VERCEL_TOKEN::Staging app deploys require a Vercel access token before hosted identity proof can run against branch code."
-            exit 1
-          fi
-          if [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
-            echo "::error title=Missing Vercel project link::Set VERCEL_ORG_ID and VERCEL_PROJECT_ID in the staging environment so CI deploys the Atlas app project instead of auto-linking by directory name."
-            exit 1
-          fi
-          mkdir -p .vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-
-          required_env=(
-            ATLAS_API_URL
-            ATLAS_AUTH_INTERNAL_SECRET
-            ATLAS_AUTH_MEMBERSHIP_URL
-            ATLAS_PDS_INVITE_BROKER_SECRET
-            ATLAS_PUBLIC_URL
-            DATABASE_URL
-          )
-          for key in "${required_env[@]}"; do
-            if [ -z "${!key}" ]; then
-              echo "::error title=Missing Vercel app environment::$key is required to build and run the Atlas staging app deployment."
-              exit 1
-            fi
-          done
-
-          atlas_public_origin="${ATLAS_PUBLIC_URL%/}"
-          atlas_api_origin="${ATLAS_API_URL%/}"
-          atlas_auth_api_key_introspection_url="${atlas_public_origin}/api/auth/internal/api-key"
-          atlas_auth_jwt_audiences="${atlas_public_origin}/mcp,${atlas_api_origin}"
-          atlas_pds_public_url="https://atlas-pds-staging.rebuildingus.org"
-          atlas_pds_invite_broker_url="${atlas_pds_public_url}/_atlas/pds/invites"
-
-          vercel_args=(
-            deploy
-            --yes
-            --no-color
-            --scope rebuilding-america-project
-            --project "$VERCEL_PROJECT_ID"
-            --token "$VERCEL_TOKEN"
-          )
-
-          add_vercel_env() {
-            local key="$1"
-            local value="$2"
-            if [ -n "$value" ]; then
-              vercel_args+=(--build-env "$key=$value" --env "$key=$value")
-            fi
-          }
-
-          add_vercel_env ATLAS_ATPROTO_OAUTH_E2E_HARNESS "1"
-          add_vercel_env ATLAS_AUTH_API_KEY_INTROSPECTION_URL "$atlas_auth_api_key_introspection_url"
-          add_vercel_env ATLAS_AUTH_BASE_PATH "/api/auth"
-          add_vercel_env ATLAS_AUTH_INTERNAL_SECRET "$ATLAS_AUTH_INTERNAL_SECRET"
-          add_vercel_env ATLAS_AUTH_JWT_AUDIENCES "$atlas_auth_jwt_audiences"
-          add_vercel_env ATLAS_AUTH_MEMBERSHIP_URL "$ATLAS_AUTH_MEMBERSHIP_URL"
-          add_vercel_env ATLAS_DEPLOY_MODE "production"
-          add_vercel_env ATLAS_EMAIL_PROVIDER "resend"
-          add_vercel_env ATLAS_EMAIL_RESEND_API_KEY "$ATLAS_EMAIL_RESEND_API_KEY"
-          add_vercel_env ATLAS_HOSTED_E2E_ENABLED "1"
-          add_vercel_env ATLAS_HOSTED_E2E_SECRET "$ATLAS_HOSTED_E2E_SECRET"
-          add_vercel_env ATLAS_OPERATOR_ALLOWED_EMAILS "$ATLAS_OPERATOR_ALLOWED_EMAILS"
-          add_vercel_env ATLAS_PDS_INVITE_BROKER_SECRET "$ATLAS_PDS_INVITE_BROKER_SECRET"
-          add_vercel_env ATLAS_PDS_INVITE_BROKER_URL "$atlas_pds_invite_broker_url"
-          add_vercel_env ATLAS_PDS_PUBLIC_URL "$atlas_pds_public_url"
-          add_vercel_env ATLAS_PUBLIC_URL "$atlas_public_origin"
-          add_vercel_env ATLAS_SERVER_API_PROXY_TARGET "$atlas_api_origin"
-          add_vercel_env DATABASE_BACKEND "postgres"
-          add_vercel_env DATABASE_URL "$DATABASE_URL"
-          add_vercel_env NITRO_PRESET "vercel"
-          add_vercel_env STRIPE_API_KEY "$STRIPE_API_KEY"
-          add_vercel_env STRIPE_ATLAS_CATALOG "$STRIPE_ATLAS_CATALOG"
-
-          deployment_output="$(pnpm exec vercel "${vercel_args[@]}")"
-          printf '%s\n' "$deployment_output"
-          deployment_url="$(printf '%s\n' "$deployment_output" | awk '/https:\/\/.*\.vercel\.app/ { url = $0 } END { print url }')"
-          if [ -z "$deployment_url" ]; then
-            echo "::error title=Missing Vercel deployment URL::Vercel deploy did not print a deployment URL."
-            exit 1
-          fi
-          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
-
-      - name: Alias Vercel staging domain
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.url }}
-          ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
-        run: |
-          atlas_public_host="$(node -e 'console.log(new URL(process.env.ATLAS_PUBLIC_URL).host)')"
-          pnpm exec vercel alias set "$VERCEL_DEPLOYMENT_URL" "$atlas_public_host" --scope rebuilding-america-project --token "$VERCEL_TOKEN"
-
-  hosted-smoke:
-    needs:
-      - ci
-      - deploy-api
-      - deploy-pds
-      - deploy-vercel
-    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_smoke == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped') && (needs.deploy-vercel.result == 'success' || needs.deploy-vercel.result == 'skipped')
-    runs-on: ubuntu-latest
-    environment: staging
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
-
-      - name: Mint Vercel Trusted Source OIDC token
-        id: vercel-oidc
-        uses: ./.github/actions/vercel-trusted-oidc
-
-      - name: Run hosted Cloudflare API smoke
-        env:
-          ATLAS_HOSTED_EXPECT_EDGE: "true"
-          ATLAS_HOSTED_PUBLIC_URL: ${{ github.event.inputs.hosted_public_url || secrets.ATLAS_PUBLIC_URL }}
-          ATLAS_HOSTED_EXPECTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
-          ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
-          ATLAS_HOSTED_PDS_URL: https://atlas-pds-staging.rebuildingus.org
-          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
-          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
-        run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
-
-  hosted-identity:
-    needs:
-      - ci
-      - deploy-api
-      - deploy-pds
-      - deploy-vercel
-      - hosted-smoke
-    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_identity == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped') && needs.deploy-vercel.result == 'success' && needs.hosted-smoke.result == 'success'
-    runs-on: ubuntu-latest
-    environment: staging
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
-
-      - name: Mint Vercel Trusted Source OIDC token
-        id: vercel-oidc
-        uses: ./.github/actions/vercel-trusted-oidc
-
       - name: Install Playwright browser
         run: |
           pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
           timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
 
+      - name: Start branch app for hosted identity verification
+        env:
+          ATLAS_API_URL: ${{ secrets.ATLAS_API_URL }}
+          ATLAS_AUTH_INTERNAL_SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
+          ATLAS_AUTH_MEMBERSHIP_URL: http://127.0.0.1:3100
+          ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
+          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
+          ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          ATLAS_PUBLIC_URL: http://127.0.0.1:3100
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
+        run: |
+          set -euo pipefail
+
+          atlas_api_origin="${ATLAS_API_URL%/}"
+          atlas_public_origin="${ATLAS_PUBLIC_URL%/}"
+          export ATLAS_ATPROTO_OAUTH_E2E_HARNESS=1
+          export ATLAS_AUTH_API_KEY_INTROSPECTION_URL="${atlas_public_origin}/api/auth/internal/api-key"
+          export ATLAS_AUTH_BASE_PATH="/api/auth"
+          export ATLAS_AUTH_JWT_AUDIENCES="${atlas_public_origin}/mcp,${atlas_api_origin}"
+          export ATLAS_DEPLOY_MODE=production
+          export ATLAS_EMAIL_PROVIDER=resend
+          export ATLAS_HOSTED_E2E_ENABLED=1
+          export ATLAS_PDS_INVITE_BROKER_URL="https://atlas-pds-staging.rebuildingus.org/_atlas/pds/invites"
+          export ATLAS_PDS_PUBLIC_URL="https://atlas-pds-staging.rebuildingus.org"
+          export ATLAS_SERVER_API_PROXY_TARGET="$atlas_api_origin"
+          export DATABASE_BACKEND=postgres
+          export NODE_ENV=development
+          export PORT=3100
+
+          pnpm exec turbo run @rebuildingamerica/atlas-app#build --output-logs=errors-only
+          pnpm --filter @rebuildingamerica/atlas-app run start:e2e > "$RUNNER_TEMP/atlas-hosted-identity-app.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/atlas-hosted-identity-app.pid"
+
+          for _ in {1..60}; do
+            if curl -fsS "${atlas_public_origin}/sign-in" >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          cat "$RUNNER_TEMP/atlas-hosted-identity-app.log"
+          exit 1
+
       - name: Run hosted ATProto identity verification
         env:
-          ATLAS_HOSTED_PUBLIC_URL: ${{ github.event.inputs.hosted_public_url || secrets.ATLAS_PUBLIC_URL }}
-          ATLAS_HOSTED_EXPECTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_HOSTED_PUBLIC_URL: http://127.0.0.1:3100
+          ATLAS_HOSTED_EXPECTED_PUBLIC_URL: http://127.0.0.1:3100
           ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
           ATLAS_HOSTED_E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
-          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity
+
+      - name: Stop branch app
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/atlas-hosted-identity-app.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/atlas-hosted-identity-app.pid")" || true
+          fi
 
       - name: Upload hosted identity Playwright traces
         if: failure()
