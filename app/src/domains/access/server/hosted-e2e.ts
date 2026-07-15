@@ -88,8 +88,28 @@ function hostedE2EEmail(runId: string, role: HostedE2EAccountSeed["role"]): stri
   return `atlas-hosted-e2e+${runId}-${role}@atlas.test`;
 }
 
+function hostedE2EHandleSuffix(): string {
+  const configuredPdsUrl = process.env.ATLAS_PDS_PUBLIC_URL?.trim();
+  if (!configuredPdsUrl) return "atlas.test";
+
+  try {
+    return new URL(configuredPdsUrl).hostname.toLowerCase();
+  } catch {
+    throw new Error("ATLAS_PDS_PUBLIC_URL must be an absolute URL for hosted E2E handles.");
+  }
+}
+
+function compactHostedE2ERunId(runId: string): string {
+  return runId.replace(/[^a-z0-9]/g, "").slice(-12);
+}
+
 function hostedE2EHandle(runId: string, role: HostedE2EAccountSeed["role"]): string {
-  return `atlas-hosted-${runId}-${role}.atlas.test`;
+  const suffix = hostedE2EHandleSuffix();
+  if (suffix === "atlas.test") {
+    return `atlas-hosted-${runId}-${role}.${suffix}`;
+  }
+  const roleMarker = role === "delegate" ? "d" : "o";
+  return `a${compactHostedE2ERunId(runId)}${roleMarker}.${suffix}`;
 }
 
 /**

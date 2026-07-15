@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   assertHostedE2EAuthorized,
   buildHostedE2EAccountSeeds,
@@ -9,6 +9,10 @@ import {
   hostedE2ERequestWithSecret,
   hostedE2EResponsePayload,
 } from "../../../../helpers/access/hosted-e2e";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("hosted E2E guard", () => {
   test("returns 404 when hosted E2E is disabled", async () => {
@@ -101,6 +105,14 @@ describe("hosted E2E run scope", () => {
       },
       runId: "29364644020-1",
     });
+  });
+
+  test("uses short PDS-scoped handles when a hosted PDS URL is configured", () => {
+    vi.stubEnv("ATLAS_PDS_PUBLIC_URL", "https://atlas-pds-staging.rebuildingus.org");
+    const seeds = buildHostedE2EAccountSeeds("29364644020-1");
+
+    expect(seeds.delegate.handle).toBe("a293646440201d.atlas-pds-staging.rebuildingus.org");
+    expect(seeds.owner.handle).toBe("a293646440201o.atlas-pds-staging.rebuildingus.org");
   });
 
   test("builds a deterministic synthetic passkey seed", () => {

@@ -39,6 +39,22 @@ function helperHeaders(): Record<string, string> {
   };
 }
 
+function compactHostedRunId(runId: string): string {
+  return runId.replace(/[^a-z0-9]/g, "").slice(-12);
+}
+
+function handleSuffix(handle: string): string {
+  const [, ...suffixParts] = handle.split(".");
+  if (suffixParts.length === 0) {
+    throw new Error(`Cannot derive handle suffix from ${handle}.`);
+  }
+  return suffixParts.join(".");
+}
+
+function organizationHandleForRun(run: HostedIdentityRun): string {
+  return `a${compactHostedRunId(run.runId)}g.${handleSuffix(run.owner.handle)}`;
+}
+
 async function postHostedHelper(
   request: APIRequestContext,
   payload: Record<string, string>,
@@ -112,9 +128,7 @@ test("hosted ATProto identity administration works without a personal browser se
     timeout: 20_000,
   });
 
-  await page
-    .getByRole("textbox", { name: "New Atlas handle" })
-    .fill(`atlas-hosted-${run.runId}-org.atlas.test`);
+  await page.getByRole("textbox", { name: "New Atlas handle" }).fill(organizationHandleForRun(run));
   await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
   await expect(page.getByText("Organization identity updated.")).toBeVisible({
     timeout: 20_000,

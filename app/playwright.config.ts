@@ -3,7 +3,10 @@ import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { buildAtlasAuthJwtAudiences } from "./src/domains/access/oauth-resource-config";
-import { resolveAtprotoOAuthHarnessMode } from "./playwright-atproto-env";
+import {
+  resolveAtprotoOAuthHarnessMode,
+  resolveAtprotoPdsHarnessMode,
+} from "./playwright-atproto-env";
 
 function absoluteUrl(origin: string, pathname: string): string {
   return new URL(pathname, origin).toString().replace(/\/$/, "");
@@ -62,6 +65,7 @@ const e2eInternalSecret =
   createHash("sha256").update(`atlas-e2e:${e2eRunId}`).digest("hex");
 setDefaultEnv("ATLAS_E2E_INTERNAL_SECRET", e2eInternalSecret);
 const atprotoOAuthHarness = resolveAtprotoOAuthHarnessMode(process.env);
+const atprotoPdsHarness = resolveAtprotoPdsHarnessMode(process.env);
 delete process.env.NO_COLOR;
 delete process.env.FORCE_COLOR;
 const baseWebServerEnv = { ...process.env };
@@ -130,6 +134,7 @@ export default defineConfig({
         ATLAS_E2E_WORKSPACE_SEED_ENABLED: "1",
         ATLAS_E2E_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
+        ATLAS_ATPROTO_PDS_E2E_HARNESS: atprotoPdsHarness,
         ATLAS_DEPLOY_MODE: "production",
         ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
         ATLAS_PUBLIC_URL: appUrl,
@@ -154,6 +159,7 @@ export default defineConfig({
         ...commonAuthEnv,
         ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
+        ATLAS_ATPROTO_PDS_E2E_HARNESS: atprotoPdsHarness,
         NODE_ENV: "development",
         PORT: appPort,
         ATLAS_AUTH_DB_PATH: authDbPath,
