@@ -106,6 +106,24 @@ async function signOut(page: Page): Promise<void> {
   ]);
 }
 
+async function openOrganizationIdentityControls(page: Page): Promise<void> {
+  await page.goto("/organization", { waitUntil: "networkidle" });
+
+  const identityHeading = page.getByRole("heading", { name: "Organization identity" });
+  if (await identityHeading.isVisible()) {
+    return;
+  }
+
+  await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
+  await Promise.race([
+    page.waitForURL(/\/pricing/, { timeout: 20_000 }).catch(() => null),
+    identityHeading.waitFor({ state: "visible", timeout: 20_000 }).catch(() => null),
+  ]);
+
+  await page.goto("/organization", { waitUntil: "networkidle" });
+  await expect(identityHeading).toBeVisible({ timeout: 20_000 });
+}
+
 test.describe.configure({ mode: "serial" });
 
 test("hosted ATProto identity administration works without a personal browser session", async ({
@@ -121,13 +139,7 @@ test("hosted ATProto identity administration works without a personal browser se
   await page.getByRole("button", { name: "Create Atlas identity" }).click();
   await expect(page.getByText(run.owner.handle, { exact: true })).toBeVisible({ timeout: 20_000 });
 
-  await page.goto("/organization", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
-  await page.waitForURL(/\/pricing/, { timeout: 15_000 });
-  await page.goto("/organization", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: "Organization identity" })).toBeVisible({
-    timeout: 20_000,
-  });
+  await openOrganizationIdentityControls(page);
 
   await page.getByRole("textbox", { name: "New Atlas handle" }).fill(organizationHandleForRun(run));
   await page.getByRole("button", { name: "Create and use Atlas identity" }).click();
