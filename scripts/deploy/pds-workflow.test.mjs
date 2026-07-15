@@ -71,6 +71,31 @@ test("production deploy releases the hosted PDS before hosted smoke", async () =
   );
 });
 
+test("production deploy checks PDS app secret access before expensive gates", async () => {
+  const source = await workflowSource(
+    ".github/workflows/deploy-production.yml",
+  );
+
+  assert.match(source, /pds-secret-preflight:/);
+  assert.match(source, /Verify PDS app provisioning secret access/);
+  assert.match(
+    source,
+    /gcloud secrets versions access latest[\s\S]*--secret "atlas-pds-production-admin-password"/,
+  );
+  assert.match(
+    source,
+    /ci:\s*\n\s*needs:\s*\n\s*- guard-production-ref\s*\n\s*- pds-secret-preflight/,
+  );
+  assert.ok(
+    source.indexOf("pds-secret-preflight:") < source.indexOf("ci:"),
+    "PDS secret access must fail before production CI spends build minutes",
+  );
+  assert.ok(
+    source.indexOf("pds-secret-preflight:") < source.indexOf("deploy:"),
+    "PDS secret access must fail before production deploy mutates hosted services",
+  );
+});
+
 test("production deploy runs signed-in hosted identity proof after hosted smoke", async () => {
   const source = await workflowSource(
     ".github/workflows/deploy-production.yml",
@@ -136,7 +161,10 @@ test("hosted identity jobs keep Playwright traces when production or staging pro
 
     assert.match(source, /artifact-metadata: write/);
     assert.match(source, /Upload hosted identity Playwright traces/);
-    assert.match(source, /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/);
+    assert.match(
+      source,
+      /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/,
+    );
     assert.match(source, /path: app\/test-results\//);
     assert.match(source, /if-no-files-found: ignore/);
   }
@@ -165,7 +193,10 @@ test("hosted PDS deploy uploads each release bundle to a unique remote path", as
     /remote_archive="\/tmp\/atlas-pds-release-\$\{GITHUB_RUN_ID:-manual\}-\$\{GITHUB_RUN_ATTEMPT:-0\}-\$\{GITHUB_RUN_NUMBER:-0\}\.tgz"/,
   );
   assert.match(source, /ATLAS_PDS_REMOTE_ARCHIVE=\$remote_archive/);
-  assert.match(source, /gcloud compute scp "\$archive" "\$\{INSTANCE_NAME\}:\$\{remote_archive\}"/);
+  assert.match(
+    source,
+    /gcloud compute scp "\$archive" "\$\{INSTANCE_NAME\}:\$\{remote_archive\}"/,
+  );
   assert.match(source, /sudo tar -xzf "\\\$remote_archive"/);
   assert.doesNotMatch(source, /:\/tmp\/atlas-pds-release\.tgz/);
   assert.doesNotMatch(source, /tar -xzf \/tmp\/atlas-pds-release\.tgz/);
