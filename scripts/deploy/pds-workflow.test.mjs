@@ -181,6 +181,20 @@ test("production deploy updates the PDS invite broker before promoting the app",
   );
 });
 
+test("production Vercel deploy uses the linked app project instead of a hardcoded team scope", async () => {
+  const source = await workflowSource(
+    ".github/workflows/deploy-production.yml",
+  );
+
+  assert.match(source, /mkdir -p app\/\.vercel/);
+  assert.match(
+    source,
+    /printf '\{"orgId":"%s","projectId":"%s"\}\\n' "\$VERCEL_ORG_ID" "\$VERCEL_PROJECT_ID" > app\/\.vercel\/project\.json/,
+  );
+  assert.match(source, /--cwd app/);
+  assert.doesNotMatch(source, /--scope rebuilding-america-project/);
+});
+
 test("hosted identity jobs keep Playwright traces when production or staging proof fails", async () => {
   for (const workflowPath of [
     ".github/workflows/deploy-production.yml",
