@@ -117,7 +117,7 @@ def _integration_surface_sql() -> str:
     return """
         CASE
             WHEN resource_id = '/mcp'
-              OR LOWER(REPLACE(metadata_json, ' ', '')) LIKE '%"surface":"mcp"%'
+              OR LOWER(REPLACE(metadata_json, ' ', '')) LIKE ?
             THEN 'mcp'
             ELSE 'api'
         END
@@ -308,7 +308,7 @@ class OrgUsageEventCRUD:
             ) integration_events
             GROUP BY surface
             """,
-            (org_id,),
+            ('%"surface":"mcp"%', org_id),
         )
         rows = await cursor.fetchall()
         api_calls = 0
@@ -363,7 +363,7 @@ class OrgUsageEventCRUD:
             ORDER BY total_calls DESC, surface ASC, resource_id ASC
             LIMIT ?
             """,
-            (org_id, limit),
+            ('%"surface":"mcp"%', org_id, limit),
         )
         rows = await cursor.fetchall()
         return [_row_to_integration_resource_usage(row) for row in rows]

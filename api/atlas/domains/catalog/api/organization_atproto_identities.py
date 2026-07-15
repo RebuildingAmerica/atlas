@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
@@ -12,6 +13,7 @@ from atlas.domains.catalog.api.profile_claim_helpers import get_db
 from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.domains.catalog.models.atproto_identity_delegations import (
     AtprotoIdentityDelegationCRUD,
+    AtprotoIdentityDelegationModel,
     AtprotoIdentityDelegationNotFoundError,
 )
 from atlas.domains.catalog.models.organization_atproto_identities import (
@@ -34,6 +36,23 @@ if TYPE_CHECKING:
     from atlas.domains.access.principals import AuthenticatedActor
 
 router = APIRouter()
+
+OrganizationAtprotoIdentityResponseStatus = Literal["active", "removed"]
+AtprotoIdentityDelegationResponseStatus = Literal["active", "revoked"]
+
+
+class UnsupportedOrganizationIdentityTimestampError(TypeError):
+    """Raised when database timestamp values cannot be serialized."""
+
+    def __init__(self) -> None:
+        super().__init__("unsupported organization identity timestamp")
+
+
+class MissingOrganizationIdentityTimestampError(TypeError):
+    """Raised when a required response timestamp is absent."""
+
+    def __init__(self, field: str) -> None:
+        super().__init__(f"missing {field}")
 
 
 def _assert_organization_context(actor: AuthenticatedActor, organization_id: str) -> None:
@@ -58,12 +77,51 @@ async def _assert_delegate_is_member(delegate_user_id: str, organization_id: str
         raise HTTPException(status_code=403, detail="Delegate must be a workspace member.")
 
 
-def _organization_response(row: object) -> OrganizationAtprotoIdentityResponse:
-    return OrganizationAtprotoIdentityResponse.model_validate(row, from_attributes=True)
+def _organization_response(
+    row: OrganizationAtprotoIdentityModel,
+) -> OrganizationAtprotoIdentityResponse:
+    return OrganizationAtprotoIdentityResponse(
+        id=row.id,
+        organization_id=row.organization_id,
+        identity_id=row.identity_id,
+        status=cast("OrganizationAtprotoIdentityResponseStatus", row.status),
+        attached_by=row.attached_by,
+        attached_at=_required_response_timestamp(row.attached_at, field="attached_at"),
+        detached_by=row.detached_by,
+        detached_at=_response_timestamp(row.detached_at),
+    )
 
 
-def _delegation_response(row: object) -> AtprotoIdentityDelegationResponse:
-    return AtprotoIdentityDelegationResponse.model_validate(row, from_attributes=True)
+def _delegation_response(row: AtprotoIdentityDelegationModel) -> AtprotoIdentityDelegationResponse:
+    return AtprotoIdentityDelegationResponse(
+        id=row.id,
+        organization_id=row.organization_id,
+        identity_id=row.identity_id,
+        controller_user_id=row.controller_user_id,
+        delegate_user_id=row.delegate_user_id,
+        status=cast("AtprotoIdentityDelegationResponseStatus", row.status),
+        granted_by=row.granted_by,
+        granted_at=_required_response_timestamp(row.granted_at, field="granted_at"),
+        revoked_by=row.revoked_by,
+        revoked_at=_response_timestamp(row.revoked_at),
+    )
+
+
+def _response_timestamp(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    raise UnsupportedOrganizationIdentityTimestampError
+
+
+def _required_response_timestamp(value: object, *, field: str) -> str:
+    timestamp = _response_timestamp(value)
+    if timestamp is None:
+        raise MissingOrganizationIdentityTimestampError(field)
+    return timestamp
 
 
 async def _require_identity_administrator(

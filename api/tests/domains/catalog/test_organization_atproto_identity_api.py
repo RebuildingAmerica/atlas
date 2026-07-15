@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +10,10 @@ from fastapi import HTTPException, Response
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.api.organization_atproto_identities import (
+    MissingOrganizationIdentityTimestampError,
+    UnsupportedOrganizationIdentityTimestampError,
+    _delegation_response,
+    _organization_response,
     attach_organization_atproto_identity,
     detach_organization_atproto_identity,
     get_organization_atproto_identity,
@@ -41,6 +46,65 @@ def _member(org_id: str = "org_1") -> AuthenticatedActor:
         org_id=org_id,
         org_role="member",
     )
+
+
+def test_organization_identity_response_serializes_postgres_timestamps() -> None:
+    attached_at = datetime(2026, 7, 15, 1, 35, 56, tzinfo=UTC)
+    response = _organization_response(
+        SimpleNamespace(
+            id="relation_1",
+            organization_id="org_1",
+            identity_id="identity_1",
+            status="active",
+            attached_by="owner_1",
+            attached_at=attached_at,
+            detached_by=None,
+            detached_at=None,
+        )
+    )
+
+    assert response.attached_at == "2026-07-15T01:35:56+00:00"
+
+
+def test_delegation_response_serializes_postgres_timestamps() -> None:
+    granted_at = datetime(2026, 7, 15, 1, 35, 56, tzinfo=UTC)
+    response = _delegation_response(
+        SimpleNamespace(
+            id="delegation_1",
+            organization_id="org_1",
+            identity_id="identity_1",
+            controller_user_id="owner_1",
+            delegate_user_id="member_1",
+            status="active",
+            granted_by="owner_1",
+            granted_at=granted_at,
+            revoked_by=None,
+            revoked_at=None,
+        )
+    )
+
+    assert response.granted_at == "2026-07-15T01:35:56+00:00"
+
+
+def test_organization_identity_response_requires_supported_timestamps() -> None:
+    base_row = {
+        "id": "relation_1",
+        "organization_id": "org_1",
+        "identity_id": "identity_1",
+        "status": "active",
+        "attached_by": "owner_1",
+        "detached_by": None,
+        "detached_at": None,
+    }
+
+    with pytest.raises(MissingOrganizationIdentityTimestampError, match="missing attached_at"):
+        _organization_response(SimpleNamespace(**base_row, attached_at=None))
+
+    with pytest.raises(
+        UnsupportedOrganizationIdentityTimestampError,
+        match="unsupported organization identity timestamp",
+    ):
+        _organization_response(SimpleNamespace(**base_row, attached_at=object()))
 
 
 @pytest.mark.asyncio

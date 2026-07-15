@@ -8,6 +8,22 @@ import pytest
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
 
 
+class _EmptyCursor:
+    async def fetchall(self) -> list[tuple[object, ...]]:
+        return []
+
+
+class _CapturingConnection:
+    def __init__(self) -> None:
+        self.sql = ""
+        self.parameters: tuple[object, ...] = ()
+
+    async def execute(self, sql: str, parameters: tuple[object, ...] = ()) -> _EmptyCursor:
+        self.sql = sql
+        self.parameters = parameters
+        return _EmptyCursor()
+
+
 class TestUsageEvents:
     """Workspace usage-event helper branches."""
 
@@ -83,3 +99,14 @@ class TestUsageEvents:
         assert counts.api_calls == 1
         assert counts.mcp_calls == 1
         assert counts.last_seen_at == "2026-07-05T11:00:00Z"
+
+    @pytest.mark.asyncio
+    async def test_count_integration_calls_by_surface_parameterizes_json_pattern(self) -> None:
+        """Postgres must not parse the JSON LIKE pattern's percent signs as placeholders."""
+        conn = _CapturingConnection()
+
+        counts = await OrgUsageEventCRUD.count_integration_calls_by_surface(conn, org_id="org-1")
+
+        assert counts.total_calls == 0
+        assert 'LIKE \'%"surface":"mcp"%\'' not in conn.sql
+        assert conn.parameters == ('%"surface":"mcp"%', "org-1")
