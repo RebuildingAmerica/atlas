@@ -222,6 +222,9 @@ export async function completeAtprotoOAuthCallback(params: URLSearchParams): Pro
  */
 export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Response> {
   await pruneAtprotoOAuthStores();
+  if (isE2EHarnessEnabled() && params.get("code") === e2eHarnessCode) {
+    return await completeE2EHarnessSignIn(params);
+  }
   const client = await getAtprotoOAuthClient();
   const result = await client.callback(params);
   try {
@@ -261,6 +264,24 @@ export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Re
     }
     await sessionStore.del(result.session.did);
   }
+}
+
+async function completeE2EHarnessSignIn(params: URLSearchParams): Promise<Response> {
+  const stateKey = params.get("state") ?? "";
+  const handle = params.get("handle")?.trim() ?? "";
+  const state = stateKey ? await appStateStore.get(stateKey) : undefined;
+  if (state?.flow !== "sign-in" || !handle) {
+    throw new Error("ATProto sign-in is unavailable.");
+  }
+  if (state.requestedHandle.toLowerCase() !== handle.toLowerCase()) {
+    throw new Error("ATProto sign-in is unavailable.");
+  }
+  await appStateStore.del(stateKey);
+  const userId = await resolveAtprotoSignInController(e2eHarnessDid(handle));
+  const sessionResponse = await createAtprotoSessionForUser(userId);
+  const headers = new Headers(sessionResponse.headers);
+  headers.set("Location", new URL(state.returnTo, getAuthRuntimeConfig().publicBaseUrl).toString());
+  return new Response(null, { headers, status: 302 });
 }
 
 async function completeE2EHarnessAuthorization(
