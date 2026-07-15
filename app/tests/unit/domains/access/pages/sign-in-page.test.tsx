@@ -138,6 +138,19 @@ describe("SignInPage", () => {
     );
   });
 
+  it("preserves the original redirect for username sign-in", () => {
+    render(<SignInPage redirectTo="/profiles/people/george-washington" />);
+
+    fireEvent.change(screen.getByLabelText(/Email or username/i), {
+      target: { value: "@gwashington.org" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(mockLocationAssign).toHaveBeenCalledWith(
+      "/api/atproto/sign-in/start?handle=gwashington.org&returnTo=%2Fprofiles%2Fpeople%2Fgeorge-washington",
+    );
+  });
+
   it("does not accept account-existence claims from the URL", () => {
     expect(
       signInSearchSchema.parse({
