@@ -121,7 +121,7 @@ export default defineConfig({
       url: new URL("/health", `${mailboxUrl}/`).toString(),
     },
     {
-      command: "pnpm exec turbo run //#e2e:api --output-logs=errors-only",
+      command: "pnpm exec turbo run //#e2e:api --output-logs=full",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
@@ -151,8 +151,7 @@ export default defineConfig({
       url: absoluteUrl(apiUrl, "/health"),
     },
     {
-      command:
-        "pnpm exec turbo run @rebuildingamerica/atlas-app#start:e2e --output-logs=errors-only",
+      command: "pnpm exec turbo run @rebuildingamerica/atlas-app#start:e2e --output-logs=full",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,

@@ -27,6 +27,7 @@ describe("turbo config", () => {
     const config = loadRootTurboConfig();
 
     expect(envForTask(config, "//#e2e:api")).toContain("ATLAS_ATPROTO_OAUTH_E2E_HARNESS");
+    expect(envForTask(config, "//#e2e:api")).toContain("ATLAS_ATPROTO_PDS_E2E_HARNESS");
   });
 
   it("forwards hosted identity runtime configuration to the app build", () => {
