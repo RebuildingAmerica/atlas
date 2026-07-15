@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { absoluteHostedUrl, expectedHostedPublicOrigin } from "../helpers/hosted-endpoints";
 
 interface HostedIdentityAccount {
   email: string;
@@ -156,9 +157,12 @@ test("hosted ATProto identity administration works without a personal browser se
 
   await signOut(page);
 
-  await page.goto("/sign-in", { waitUntil: "networkidle" });
+  const signInOrigin = expectedHostedPublicOrigin();
+  await page.goto(absoluteHostedUrl(signInOrigin, "/sign-in"), { waitUntil: "networkidle" });
   await page.getByLabel("Email or username").fill(`@${run.owner.handle}`);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.waitForURL((url) => url.pathname === "/account", { timeout: 20_000 });
+  await page.waitForURL((url) => url.origin === signInOrigin && url.pathname === "/account", {
+    timeout: 20_000,
+  });
   await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
 });

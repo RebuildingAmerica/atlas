@@ -11,6 +11,13 @@ export function optionalHostedOrigin(name: string): string | null {
   return value ? new URL(value).origin : null;
 }
 
+export function expectedHostedPublicOrigin(): string {
+  return (
+    optionalHostedOrigin("ATLAS_HOSTED_EXPECTED_PUBLIC_URL") ??
+    requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL")
+  );
+}
+
 export function absoluteHostedUrl(origin: string, pathname: string): string {
   return new URL(pathname, origin).toString();
 }
