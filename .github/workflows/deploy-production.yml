@@ -119,6 +119,22 @@ jobs:
           pds-hostname: atlas-pds.rebuildingus.org
           pds-public-url: https://atlas-pds.rebuildingus.org
 
+  hosted-smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+
       - name: Mint Vercel Trusted Source OIDC token
         id: vercel-oidc
         uses: ./.github/actions/vercel-trusted-oidc
@@ -132,3 +148,37 @@ jobs:
           ATLAS_HOSTED_PDS_URL: https://atlas-pds.rebuildingus.org
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
+
+  hosted-identity:
+    needs:
+      - hosted-smoke
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+
+      - name: Mint Vercel Trusted Source OIDC token
+        id: vercel-oidc
+        uses: ./.github/actions/vercel-trusted-oidc
+
+      - name: Install Playwright browser
+        run: |
+          pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
+          timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
+
+      - name: Run hosted ATProto identity verification
+        env:
+          ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
+          ATLAS_HOSTED_E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
+        run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity

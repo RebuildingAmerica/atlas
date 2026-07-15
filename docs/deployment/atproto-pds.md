@@ -174,3 +174,11 @@ necessary but not sufficient for a launch: staging and production must also
 prove managed account creation, the OAuth callback, organization attachment,
 delegation/revocation, and passkey-gated ATProto-first sign-in against the
 actual public PDS.
+
+The signed-in hosted identity proof uses `/api/e2e/hosted/identity` to create
+run-scoped synthetic accounts and browser sessions without depending on an
+operator's personal browser. The route returns 404 unless
+`ATLAS_HOSTED_E2E_ENABLED=1` and `ATLAS_HOSTED_E2E_SECRET` matches the request
+header. Production must also set `ATLAS_HOSTED_E2E_PRODUCTION_ENABLED=1`; keep
+that variable reserved for release verification windows so the helper is not
+generally available.

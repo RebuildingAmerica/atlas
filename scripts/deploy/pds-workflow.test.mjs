@@ -71,6 +71,32 @@ test("production deploy releases the hosted PDS before hosted smoke", async () =
   );
 });
 
+test("production deploy runs signed-in hosted identity proof after hosted smoke", async () => {
+  const source = await workflowSource(
+    ".github/workflows/deploy-production.yml",
+  );
+
+  assert.match(source, /hosted-identity:/);
+  assert.match(source, /needs:\s*\n\s*- hosted-smoke/);
+  assert.match(source, /Run hosted ATProto identity verification/);
+  assert.match(
+    source,
+    /ATLAS_HOSTED_E2E_SECRET: \$\{\{ secrets\.ATLAS_HOSTED_E2E_SECRET \}\}/,
+  );
+  assert.match(
+    source,
+    /ATLAS_HOSTED_E2E_RUN_ID: \$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+  );
+  assert.match(
+    source,
+    /pnpm --filter @rebuildingamerica\/atlas-app run test:hosted-identity/,
+  );
+  assert.ok(
+    source.indexOf("Run hosted Cloudflare API smoke") <
+      source.indexOf("Run hosted ATProto identity verification"),
+  );
+});
+
 test("hosted PDS deploy bundle includes the backup and restore operator script", async () => {
   const source = await workflowSource(
     ".github/actions/deploy-atlas-pds/action.yml",

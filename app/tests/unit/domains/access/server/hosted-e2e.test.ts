@@ -48,7 +48,7 @@ describe("hosted E2E guard", () => {
     expect(response?.status).toBe(404);
   });
 
-  test("returns 404 in production deploy mode even when enabled", () => {
+  test("returns 404 in production deploy mode without explicit production proof access", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
       ATLAS_DEPLOY_MODE: "production",
       ATLAS_HOSTED_E2E_ENABLED: "1",
@@ -58,7 +58,7 @@ describe("hosted E2E guard", () => {
     expect(response?.status).toBe(404);
   });
 
-  test("returns 404 in Vercel production even when enabled", () => {
+  test("returns 404 in Vercel production without explicit production proof access", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
       ATLAS_DEPLOY_MODE: "staging",
       ATLAS_HOSTED_E2E_ENABLED: "1",
@@ -67,6 +67,18 @@ describe("hosted E2E guard", () => {
     });
 
     expect(response?.status).toBe(404);
+  });
+
+  test("allows production proof only when the production gate and shared secret match", () => {
+    const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
+      ATLAS_DEPLOY_MODE: "production",
+      ATLAS_HOSTED_E2E_ENABLED: "1",
+      ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
+      VERCEL_ENV: "production",
+    });
+
+    expect(response).toBeNull();
   });
 
   test("allows staging requests with the matching secret", () => {
