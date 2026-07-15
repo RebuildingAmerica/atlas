@@ -38,6 +38,16 @@ test("staging API deploy enables the ATProto OAuth harness for hosted identity p
   assert.match(action, /ATLAS_ATPROTO_OAUTH_E2E_HARNESS=\$\{\{ inputs\.atproto-oauth-e2e-harness \}\}/);
 });
 
+test("manual staging deploy can verify a fresh hosted preview URL", async () => {
+  const source = await workflowSource(".github/workflows/deploy-staging.yml");
+
+  assert.match(source, /hosted_public_url:/);
+  assert.match(
+    source,
+    /ATLAS_HOSTED_PUBLIC_URL: \$\{\{ github\.event\.inputs\.hosted_public_url \|\| secrets\.ATLAS_PUBLIC_URL \}\}/,
+  );
+});
+
 test("production deploy releases the hosted PDS before hosted smoke", async () => {
   const source = await workflowSource(".github/workflows/deploy-production.yml");
 
