@@ -95,6 +95,7 @@ describe("resolveAuthRuntimeConfig", () => {
         ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE: "12",
         ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR: "48",
         ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE: "4",
+        ATLAS_PDS_ADMIN_PASSWORD: " pds-admin ",
         ATLAS_TRUSTED_PROXY_HOPS: "2",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
         ATLAS_SERVER_API_PROXY_TARGET: "http://127.0.0.1:38000",
@@ -120,6 +121,7 @@ describe("resolveAuthRuntimeConfig", () => {
     expect(runtime.emailProvider).toBe("capture");
     expect(runtime.emailFrom).toBe("Atlas Ops <auth@atlas.example.com>");
     expect(runtime.internalSecret).toBe("internal-test-secret");
+    expect(runtime.atprotoPdsAdminPassword).toBe("pds-admin");
   });
 
   it("normalizes comma-separated OAuth resource audiences for MCP and API tokens", () => {

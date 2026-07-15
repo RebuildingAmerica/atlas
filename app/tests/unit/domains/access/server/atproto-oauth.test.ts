@@ -82,6 +82,7 @@ describe("atproto-oauth", () => {
     });
 
     expect(managedPdsMocks.provisionManagedAtprotoIdentity).toHaveBeenCalledWith({
+      email: "operator@atlas.test",
       handle: "civic.atlas.test",
       userId: "user_1",
     });

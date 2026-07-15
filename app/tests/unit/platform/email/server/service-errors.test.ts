@@ -22,6 +22,7 @@ describe("email service error branches", () => {
       authJwtAudiences: [],
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
+      atprotoPdsAdminPassword: null,
       atprotoPdsUrl: null,
       anonymousRateLimit: {
         enabled: true,

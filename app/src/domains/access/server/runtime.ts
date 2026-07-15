@@ -19,6 +19,7 @@ export interface AuthRuntimeConfig {
   authJwtAudience: string | null;
   authJwtAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
+  atprotoPdsAdminPassword: string | null;
   atprotoPdsUrl: string | null;
   anonymousRateLimit: AnonymousRateLimitConfig;
   operatorAllowedEmails: Set<string>;
@@ -220,6 +221,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     authJwtAudiences,
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
+    atprotoPdsAdminPassword: env.ATLAS_PDS_ADMIN_PASSWORD?.trim() || null,
     atprotoPdsUrl: resolveAtprotoPdsUrl(env),
     anonymousRateLimit: resolveAnonymousRateLimitConfig(env),
     operatorAllowedEmails: normalizeEmailList(env.ATLAS_OPERATOR_ALLOWED_EMAILS),

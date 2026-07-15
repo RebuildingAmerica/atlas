@@ -75,7 +75,7 @@ export function setupAtprotoOAuthMocks(): void {
   });
   atprotoOAuthMocks.getAuthPgPool.mockReturnValue(null);
   atprotoOAuthMocks.loadAtlasSession.mockResolvedValue({
-    user: { id: "user_1" },
+    user: { email: "operator@atlas.test", id: "user_1" },
     workspace: {},
   });
   atprotoOAuthMocks.authorize.mockResolvedValue(new URL("https://bsky.social/oauth/authorize"));

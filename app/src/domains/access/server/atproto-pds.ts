@@ -5,6 +5,7 @@ import { AtpAgent } from "@atproto/api";
 import { getAuthRuntimeConfig } from "./runtime";
 
 export interface ManagedAtprotoProvisionInput {
+  email: string;
   handle: string;
   userId: string;
 }
@@ -34,8 +35,11 @@ export async function provisionManagedAtprotoIdentity(
 
   const pdsUrl = getManagedAtprotoPdsUrl();
   const agent = new AtpAgent({ service: pdsUrl });
+  const inviteCode = await createManagedAtprotoInviteCode(pdsUrl);
   const account = await agent.createAccount({
+    email: input.email.trim(),
     handle: input.handle.trim(),
+    inviteCode,
     password: randomBytes(32).toString("base64url"),
   });
 
@@ -47,7 +51,34 @@ export async function provisionManagedAtprotoIdentity(
 }
 
 function isE2EHarnessEnabled(): boolean {
-  return process.env.ATLAS_ATPROTO_OAUTH_E2E_HARNESS === "1";
+  return process.env.ATLAS_ATPROTO_PDS_E2E_HARNESS === "1";
+}
+
+async function createManagedAtprotoInviteCode(pdsUrl: string): Promise<string | undefined> {
+  const adminPassword = getAuthRuntimeConfig().atprotoPdsAdminPassword;
+  if (!adminPassword) {
+    return undefined;
+  }
+
+  const response = await fetch(new URL("/xrpc/com.atproto.server.createInviteCode", pdsUrl), {
+    body: JSON.stringify({ useCount: 1 }),
+    headers: {
+      authorization: `Basic ${Buffer.from(`admin:${adminPassword}`).toString("base64")}`,
+      "content-type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Atlas PDS invite creation failed with HTTP ${response.status}.`);
+  }
+
+  const body = (await response.json()) as { code?: unknown };
+  if (typeof body.code !== "string" || !body.code.trim()) {
+    throw new Error("Atlas PDS invite creation did not return a code.");
+  }
+
+  return body.code;
 }
 
 function getManagedAtprotoPdsUrl(): string {

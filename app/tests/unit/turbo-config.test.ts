@@ -35,8 +35,10 @@ describe("turbo config", () => {
     expect(envForTask(config, "build")).toEqual(
       expect.arrayContaining([
         "ATLAS_ATPROTO_OAUTH_E2E_HARNESS",
+        "ATLAS_ATPROTO_PDS_E2E_HARNESS",
         "ATLAS_HOSTED_E2E_ENABLED",
         "ATLAS_HOSTED_E2E_SECRET",
+        "ATLAS_PDS_ADMIN_PASSWORD",
         "ATLAS_PDS_PUBLIC_URL",
       ]),
     );

@@ -122,6 +122,7 @@ export async function provisionAndLinkManagedAtprotoIdentity(input: {
 }): Promise<LinkedAtprotoIdentity> {
   const session = await requireSignedInAtlasSession();
   const managedIdentity = await provisionManagedAtprotoIdentity({
+    email: session.user.email,
     handle: input.handle,
     userId: session.user.id,
   });
