@@ -148,6 +148,12 @@ runs:
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
       run: node scripts/deploy/pds-release.mjs health
 
+    - name: Verify public PDS invite broker route
+      shell: bash
+      env:
+        ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
+      run: node scripts/deploy/pds-release.mjs invite-broker-route
+
     - name: Write deploy summary
       if: always()
       shell: bash

@@ -60,10 +60,7 @@ test("staging hosted identity proof runs against a branch app without Vercel dep
       source.indexOf("Run hosted ATProto identity verification"),
     "hosted identity proof must hit the branch app started by the workflow",
   );
-  assert.match(
-    source,
-    /ATLAS_HOSTED_PUBLIC_URL: http:\/\/127\.0\.0\.1:3100/,
-  );
+  assert.match(source, /ATLAS_HOSTED_PUBLIC_URL: http:\/\/127\.0\.0\.1:3100/);
   assert.match(
     source,
     /ATLAS_HOSTED_EXPECTED_PUBLIC_URL: http:\/\/127\.0\.0\.1:3100/,
@@ -106,10 +103,7 @@ test("production deploy avoids reading PDS admin secrets in GitHub", async () =>
   assert.doesNotMatch(source, /pds-secret-preflight:/);
   assert.doesNotMatch(source, /atlas-pds-production-admin-password/);
   assert.doesNotMatch(source, /ATLAS_PDS_ADMIN_PASSWORD/);
-  assert.match(
-    source,
-    /ci:\s*\n\s*needs:\s*\n\s*- guard-production-ref/,
-  );
+  assert.match(source, /ci:\s*\n\s*needs:\s*\n\s*- guard-production-ref/);
 });
 
 test("production deploy runs signed-in hosted identity proof after hosted smoke", async () => {
@@ -176,7 +170,10 @@ test("production deploy updates the PDS invite broker before promoting the app",
     ".github/workflows/deploy-production.yml",
   );
 
-  assert.match(source, /invite-broker-secret: \$\{\{ steps\.pds-invite-broker\.outputs\.secret \}\}/);
+  assert.match(
+    source,
+    /invite-broker-secret: \$\{\{ steps\.pds-invite-broker\.outputs\.secret \}\}/,
+  );
   assert.ok(
     source.indexOf("./.github/actions/deploy-atlas-pds") <
       source.indexOf("Deploy Vercel production app"),
@@ -213,6 +210,27 @@ test("hosted PDS deploy bundle includes the backup, restore, and invite broker s
   assert.ok(
     source.indexOf("vm-backup.sh") < source.indexOf("vm-release.sh"),
     "backup operation should ship with the same host bundle as release",
+  );
+});
+
+test("hosted PDS release reloads broker and edge bind-mounted files", async () => {
+  const source = await workflowSource("services/atproto-pds/vm-release.sh");
+
+  assert.match(
+    source,
+    /docker compose --env-file pds\.env -f compose\.hosted\.yaml up -d --force-recreate \\\n  atlas-pds-invite-broker \\\n  atlas-pds-edge/,
+  );
+});
+
+test("hosted PDS deploy verifies the public invite broker route", async () => {
+  const source = await workflowSource(
+    ".github/actions/deploy-atlas-pds/action.yml",
+  );
+
+  assert.match(source, /Verify public PDS invite broker route/);
+  assert.match(
+    source,
+    /node scripts\/deploy\/pds-release\.mjs invite-broker-route/,
   );
 });
 

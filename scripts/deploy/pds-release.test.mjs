@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { pdsHealthUrl, probePdsHealth } from "./pds-release.mjs";
+import {
+  pdsHealthUrl,
+  pdsInviteBrokerUrl,
+  probePdsHealth,
+  probePdsInviteBrokerRoute,
+} from "./pds-release.mjs";
 
 const rootDir = path.resolve(import.meta.dirname, "../..");
 
@@ -12,6 +17,13 @@ void describe("PDS release health probe", () => {
     assert.equal(
       pdsHealthUrl("https://pds.atlas.example/"),
       "https://pds.atlas.example/xrpc/_health",
+    );
+  });
+
+  void it("targets the Atlas invite broker route from an HTTPS PDS origin", () => {
+    assert.equal(
+      pdsInviteBrokerUrl("https://pds.atlas.example/"),
+      "https://pds.atlas.example/_atlas/pds/invites",
     );
   });
 
@@ -35,13 +47,44 @@ void describe("PDS release health probe", () => {
 
     await assert.rejects(
       () =>
-        probePdsHealth("https://pds.atlas.example", async () =>
-          new Response(JSON.stringify({}), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          }),
+        probePdsHealth(
+          "https://pds.atlas.example",
+          async () =>
+            new Response(JSON.stringify({}), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
         ),
       /PDS health response did not include a version/,
+    );
+  });
+
+  void it("requires the invite broker route to reject unauthenticated requests", async () => {
+    const result = await probePdsInviteBrokerRoute(
+      "https://pds.atlas.example",
+      async (url, init) => {
+        assert.equal(url, "https://pds.atlas.example/_atlas/pds/invites");
+        assert.deepEqual(init, {
+          body: JSON.stringify({ useCount: 1 }),
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        });
+        return Response.json({ error: "unauthorized" }, { status: 401 });
+      },
+    );
+
+    assert.deepEqual(result, {
+      url: "https://pds.atlas.example/_atlas/pds/invites",
+    });
+  });
+
+  void it("rejects a PDS 404 at the invite broker route", async () => {
+    await assert.rejects(
+      () =>
+        probePdsInviteBrokerRoute("https://pds.atlas.example", async () =>
+          Response.json({ error: "not_found" }, { status: 404 }),
+        ),
+      /PDS invite broker route probe failed with HTTP 404/,
     );
   });
 

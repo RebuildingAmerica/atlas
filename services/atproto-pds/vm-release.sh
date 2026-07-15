@@ -86,3 +86,6 @@ mv "$temporary_environment_file" "$ENVIRONMENT_FILE"
 
 docker compose --env-file pds.env -f compose.hosted.yaml config --quiet
 docker compose --env-file pds.env -f compose.hosted.yaml up -d
+docker compose --env-file pds.env -f compose.hosted.yaml up -d --force-recreate \
+  atlas-pds-invite-broker \
+  atlas-pds-edge
