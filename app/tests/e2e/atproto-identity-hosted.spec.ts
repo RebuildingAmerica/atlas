@@ -102,7 +102,7 @@ test("hosted ATProto identity administration works without a personal browser se
 
   await page.getByRole("textbox", { name: "New Atlas handle" }).first().fill(run.owner.handle);
   await page.getByRole("button", { name: "Create Atlas identity" }).click();
-  await expect(page.getByText(run.owner.handle)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(run.owner.handle, { exact: true })).toBeVisible({ timeout: 20_000 });
 
   await page.goto("/organization", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
