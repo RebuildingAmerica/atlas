@@ -2,10 +2,13 @@ import { expect, test } from "@playwright/test";
 import {
   absoluteHostedUrl,
   hostedPublicRequestInit,
+  optionalHostedOrigin,
   requiredHostedOrigin,
 } from "../helpers/hosted-endpoints";
 
 const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
+const expectedPublicOrigin =
+  optionalHostedOrigin("ATLAS_HOSTED_EXPECTED_PUBLIC_URL") ?? publicOrigin;
 const apiOrigin = requiredHostedOrigin("ATLAS_HOSTED_API_URL");
 const mcpPaths = ["/mcp", "/mcp/"] as const;
 
@@ -32,7 +35,7 @@ test.describe("hosted MCP endpoint", () => {
       expect(challenge).toMatch(/^Bearer /);
       expect(challenge).toContain(
         `resource_metadata="${absoluteHostedUrl(
-          publicOrigin,
+          expectedPublicOrigin,
           "/.well-known/oauth-protected-resource/mcp",
         )}"`,
       );

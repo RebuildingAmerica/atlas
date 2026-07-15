@@ -120,6 +120,7 @@ jobs:
         env:
           ATLAS_HOSTED_EXPECT_EDGE: "true"
           ATLAS_HOSTED_PUBLIC_URL: ${{ github.event.inputs.hosted_public_url || secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_HOSTED_EXPECTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
           ATLAS_HOSTED_PDS_URL: https://atlas-pds-staging.rebuildingus.org
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}

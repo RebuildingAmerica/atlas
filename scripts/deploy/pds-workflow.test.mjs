@@ -31,11 +31,16 @@ test("staging deploy consumes the PDS decision with a hosted PDS release job", a
 
 test("staging API deploy enables the ATProto OAuth harness for hosted identity proof", async () => {
   const workflow = await workflowSource(".github/workflows/deploy-staging.yml");
-  const action = await workflowSource(".github/actions/deploy-atlas-api/action.yml");
+  const action = await workflowSource(
+    ".github/actions/deploy-atlas-api/action.yml",
+  );
 
   assert.match(workflow, /atproto-oauth-e2e-harness: "1"/);
   assert.match(action, /atproto-oauth-e2e-harness:/);
-  assert.match(action, /ATLAS_ATPROTO_OAUTH_E2E_HARNESS=\$\{\{ inputs\.atproto-oauth-e2e-harness \}\}/);
+  assert.match(
+    action,
+    /ATLAS_ATPROTO_OAUTH_E2E_HARNESS=\$\{\{ inputs\.atproto-oauth-e2e-harness \}\}/,
+  );
 });
 
 test("manual staging deploy can verify a fresh hosted preview URL", async () => {
@@ -46,22 +51,30 @@ test("manual staging deploy can verify a fresh hosted preview URL", async () => 
     source,
     /ATLAS_HOSTED_PUBLIC_URL: \$\{\{ github\.event\.inputs\.hosted_public_url \|\| secrets\.ATLAS_PUBLIC_URL \}\}/,
   );
+  assert.match(
+    source,
+    /ATLAS_HOSTED_EXPECTED_PUBLIC_URL: \$\{\{ secrets\.ATLAS_PUBLIC_URL \}\}/,
+  );
 });
 
 test("production deploy releases the hosted PDS before hosted smoke", async () => {
-  const source = await workflowSource(".github/workflows/deploy-production.yml");
+  const source = await workflowSource(
+    ".github/workflows/deploy-production.yml",
+  );
 
   assert.match(source, /\.\/\.github\/actions\/deploy-atlas-pds/);
   assert.match(source, /atlas-pds\.rebuildingus\.org/);
   assert.match(source, /Run hosted Cloudflare API smoke/);
   assert.ok(
-    source.indexOf("./.github/actions/deploy-atlas-pds")
-      < source.indexOf("Run hosted Cloudflare API smoke"),
+    source.indexOf("./.github/actions/deploy-atlas-pds") <
+      source.indexOf("Run hosted Cloudflare API smoke"),
   );
 });
 
 test("hosted PDS deploy bundle includes the backup and restore operator script", async () => {
-  const source = await workflowSource(".github/actions/deploy-atlas-pds/action.yml");
+  const source = await workflowSource(
+    ".github/actions/deploy-atlas-pds/action.yml",
+  );
 
   assert.match(source, /vm-backup\.sh/);
   assert.match(source, /chmod 0755.*vm-backup\.sh/);

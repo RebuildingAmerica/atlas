@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   absoluteHostedUrl,
   hostedPublicRequestInit,
+  optionalHostedOrigin,
   requiredHostedOrigin,
 } from "../helpers/hosted-endpoints";
 
@@ -47,6 +48,8 @@ async function parseJsonResponse(response: Response, label: string): Promise<unk
 test.describe("hosted ATProto identity routes", () => {
   test("serves configured client metadata through the public app", async () => {
     const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
+    const expectedPublicOrigin =
+      optionalHostedOrigin("ATLAS_HOSTED_EXPECTED_PUBLIC_URL") ?? publicOrigin;
 
     const metadata = parseOAuthClientMetadata(
       await parseJsonResponse(
@@ -59,12 +62,12 @@ test.describe("hosted ATProto identity routes", () => {
     );
 
     expect(metadata.client_id).toBe(
-      absoluteHostedUrl(publicOrigin, "/api/atproto/oauth/client-metadata.json"),
+      absoluteHostedUrl(expectedPublicOrigin, "/api/atproto/oauth/client-metadata.json"),
     );
     expect(metadata.client_name).toBe("Atlas");
-    expect(metadata.client_uri).toBe(publicOrigin);
+    expect(metadata.client_uri).toBe(expectedPublicOrigin);
     expect(metadata.redirect_uris).toContain(
-      absoluteHostedUrl(publicOrigin, "/api/atproto/oauth/callback"),
+      absoluteHostedUrl(expectedPublicOrigin, "/api/atproto/oauth/callback"),
     );
     expect(metadata.scope).toBe("atproto");
   });

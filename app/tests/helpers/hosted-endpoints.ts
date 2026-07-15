@@ -6,6 +6,11 @@ export function requiredHostedOrigin(name: string): string {
   return new URL(value).origin;
 }
 
+export function optionalHostedOrigin(name: string): string | null {
+  const value = process.env[name]?.trim();
+  return value ? new URL(value).origin : null;
+}
+
 export function absoluteHostedUrl(origin: string, pathname: string): string {
   return new URL(pathname, origin).toString();
 }
