@@ -53,6 +53,15 @@ cd "$DEPLOY_DIRECTORY"
 readonly ADMIN_PASSWORD="$(read_secret "atlas-pds-${ENVIRONMENT}-admin-password")"
 readonly JWT_SECRET="$(read_secret "atlas-pds-${ENVIRONMENT}-jwt-secret")"
 readonly PLC_ROTATION_KEY="$(read_secret "atlas-pds-${ENVIRONMENT}-plc-rotation-key")"
+INVITE_BROKER_SECRET="${ATLAS_PDS_INVITE_BROKER_SECRET:-}"
+if [ -z "$INVITE_BROKER_SECRET" ]; then
+  INVITE_BROKER_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
+fi
+if [[ "$INVITE_BROKER_SECRET" == *$'\n'* ]] || [[ "$INVITE_BROKER_SECRET" == *$'\r'* ]]; then
+  echo "ATLAS_PDS_INVITE_BROKER_SECRET must be a single-line value." >&2
+  exit 1
+fi
+readonly INVITE_BROKER_SECRET
 
 umask 077
 readonly ENVIRONMENT_FILE="pds.env"
@@ -63,6 +72,7 @@ cat >"$temporary_environment_file" <<EOF
 ATLAS_PDS_PUBLIC_URL=$PDS_PUBLIC_URL
 ATLAS_PDS_HOSTNAME=$PDS_HOSTNAME
 ATLAS_PDS_DATA_DIRECTORY=$HOST_DATA_DIRECTORY
+ATLAS_PDS_INVITE_BROKER_SECRET=$INVITE_BROKER_SECRET
 PDS_ADMIN_PASSWORD=$ADMIN_PASSWORD
 PDS_JWT_SECRET=$JWT_SECRET
 PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX=$PLC_ROTATION_KEY

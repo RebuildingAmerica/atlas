@@ -23,6 +23,8 @@ describe("email service error branches", () => {
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "https://atlas.example.com/api/auth/internal/api-key",
       atprotoPdsAdminPassword: null,
+      atprotoPdsInviteBrokerSecret: null,
+      atprotoPdsInviteBrokerUrl: null,
       atprotoPdsUrl: null,
       anonymousRateLimit: {
         enabled: true,

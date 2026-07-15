@@ -1,3 +1,9 @@
 {$ATLAS_PDS_HOSTNAME} {
-  reverse_proxy atlas-pds:2583
+  handle /_atlas/pds/invites {
+    reverse_proxy atlas-pds-invite-broker:2584
+  }
+
+  handle {
+    reverse_proxy atlas-pds:2583
+  }
 }

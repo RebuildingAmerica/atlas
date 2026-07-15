@@ -20,6 +20,8 @@ export interface AuthRuntimeConfig {
   authJwtAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
   atprotoPdsAdminPassword: string | null;
+  atprotoPdsInviteBrokerSecret: string | null;
+  atprotoPdsInviteBrokerUrl: string | null;
   atprotoPdsUrl: string | null;
   anonymousRateLimit: AnonymousRateLimitConfig;
   operatorAllowedEmails: Set<string>;
@@ -198,6 +200,25 @@ function resolveAtprotoPdsUrl(env: NodeJS.ProcessEnv): string | null {
   return trimTrailingSlash(pdsUrl.toString());
 }
 
+function resolveAtprotoPdsInviteBrokerUrl(env: NodeJS.ProcessEnv): string | null {
+  const configuredUrl = env.ATLAS_PDS_INVITE_BROKER_URL?.trim();
+  if (!configuredUrl) {
+    return null;
+  }
+
+  const brokerUrl = parseAbsoluteUrl(configuredUrl, "ATLAS_PDS_INVITE_BROKER_URL");
+  if (brokerUrl.protocol !== "https:") {
+    throw new Error("ATLAS_PDS_INVITE_BROKER_URL must use https.");
+  }
+  if (brokerUrl.username || brokerUrl.password || brokerUrl.hash) {
+    throw new Error(
+      "ATLAS_PDS_INVITE_BROKER_URL must be a public URL without credentials or fragments.",
+    );
+  }
+
+  return trimTrailingSlash(brokerUrl.toString());
+}
+
 /**
  * Resolves auth runtime config from the process environment.
  */
@@ -222,6 +243,8 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     apiBaseUrl: resolveApiBaseUrl(env),
     apiKeyIntrospectionUrl: resolveApiKeyIntrospectionUrl(env),
     atprotoPdsAdminPassword: env.ATLAS_PDS_ADMIN_PASSWORD?.trim() || null,
+    atprotoPdsInviteBrokerSecret: env.ATLAS_PDS_INVITE_BROKER_SECRET?.trim() || null,
+    atprotoPdsInviteBrokerUrl: resolveAtprotoPdsInviteBrokerUrl(env),
     atprotoPdsUrl: resolveAtprotoPdsUrl(env),
     anonymousRateLimit: resolveAnonymousRateLimitConfig(env),
     operatorAllowedEmails: normalizeEmailList(env.ATLAS_OPERATOR_ALLOWED_EMAILS),

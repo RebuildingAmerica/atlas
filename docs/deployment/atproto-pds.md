@@ -93,22 +93,16 @@ The workflow passes only non-secret release coordinates to the VM. The VM reads
 the PDS admin password, JWT secret, and PLC rotation key from Secret Manager
 using its own service account, so GitHub never receives PDS runtime secrets.
 
-The production app deploy has one narrower exception: the Vercel server
-environment also needs `ATLAS_PDS_ADMIN_PASSWORD` so Atlas can create
-Atlas-managed identities on the production PDS. The GitHub deploy service
-account must therefore have `roles/secretmanager.secretAccessor` on exactly
-`atlas-pds-production-admin-password`, not project-wide Secret Manager access.
-Bootstrap grants that secret-level binding for `atlas-deploy@<project>`. The
-production workflow verifies this binding in `pds-secret-preflight` before CI,
-image builds, or hosted deploy mutations run. If the preflight reports
-`secretmanager.versions.access` denied, repair only the secret-level binding:
-
-```sh
-gcloud secrets add-iam-policy-binding atlas-pds-production-admin-password \
-  --project=rap-atlas-prod \
-  --member=serviceAccount:atlas-deploy@rap-atlas-prod.iam.gserviceaccount.com \
-  --role=roles/secretmanager.secretAccessor
-```
+Production account creation uses a narrower boundary instead of giving GitHub or
+Vercel the PDS admin password. The PDS release includes a private invite broker
+at `POST /_atlas/pds/invites`. The production workflow generates a single-use
+deploy-time `ATLAS_PDS_INVITE_BROKER_SECRET`, updates the PDS host with that
+bearer secret, and passes the same value plus `ATLAS_PDS_INVITE_BROKER_URL` to
+the Vercel server environment before promoting the app. The broker runs beside
+the PDS, calls the local PDS admin endpoint with the host-only
+`PDS_ADMIN_PASSWORD`, and returns only a one-use invite code. Do not grant the
+GitHub deploy service account Secret Manager access to
+`atlas-pds-production-admin-password` for app provisioning.
 
 PDS hosts use the `atlas-pds` network tag. Their firewall configuration permits
 ports 80 and 443 publicly, permits port 22 only from the IAP TCP forwarding
@@ -117,8 +111,9 @@ range, and explicitly denies direct public SSH. Operators must use
 source addresses. The release identity needs the corresponding IAP tunnel and
 Compute SSH permissions before it can update a host.
 
-For a release, copy only `compose.hosted.yaml`, `Caddyfile`, `vm-backup.sh`, and
-`vm-release.sh` to the root-owned deployment directory, then invoke:
+For a release, copy only `compose.hosted.yaml`, `Caddyfile`,
+`invite-broker.mjs`, `vm-backup.sh`, and `vm-release.sh` to the root-owned
+deployment directory, then invoke:
 
 ```sh
 sudo env \
@@ -126,6 +121,7 @@ sudo env \
   ATLAS_PDS_GCP_PROJECT=rap-atlas-prod \
   ATLAS_PDS_HOSTNAME=atlas-pds-staging.rebuildingus.org \
   ATLAS_PDS_PUBLIC_URL=https://atlas-pds-staging.rebuildingus.org \
+  ATLAS_PDS_INVITE_BROKER_SECRET=<deploy-generated-bearer-secret> \
   ATLAS_PDS_DATA_DIRECTORY=/var/lib/atlas-pds \
   /opt/atlas-pds/vm-release.sh
 ```

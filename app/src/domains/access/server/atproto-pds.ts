@@ -75,7 +75,15 @@ function managedPdsAccountEmail(input: ManagedAtprotoProvisionInput): string {
 }
 
 async function createManagedAtprotoInviteCode(pdsUrl: string): Promise<string | undefined> {
-  const adminPassword = getAuthRuntimeConfig().atprotoPdsAdminPassword;
+  const runtime = getAuthRuntimeConfig();
+  if (runtime.atprotoPdsInviteBrokerUrl && runtime.atprotoPdsInviteBrokerSecret) {
+    return createInviteCodeThroughBroker(
+      runtime.atprotoPdsInviteBrokerUrl,
+      runtime.atprotoPdsInviteBrokerSecret,
+    );
+  }
+
+  const adminPassword = runtime.atprotoPdsAdminPassword;
   if (!adminPassword) {
     return undefined;
   }
@@ -96,6 +104,31 @@ async function createManagedAtprotoInviteCode(pdsUrl: string): Promise<string | 
   const body = (await response.json()) as { code?: unknown };
   if (typeof body.code !== "string" || !body.code.trim()) {
     throw new Error("Atlas PDS invite creation did not return a code.");
+  }
+
+  return body.code;
+}
+
+async function createInviteCodeThroughBroker(
+  brokerUrl: string,
+  brokerSecret: string,
+): Promise<string> {
+  const response = await fetch(new URL(brokerUrl), {
+    body: JSON.stringify({ useCount: 1 }),
+    headers: {
+      authorization: `Bearer ${brokerSecret}`,
+      "content-type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Atlas PDS invite broker failed with HTTP ${response.status}.`);
+  }
+
+  const body = (await response.json()) as { code?: unknown };
+  if (typeof body.code !== "string" || !body.code.trim()) {
+    throw new Error("Atlas PDS invite broker did not return a code.");
   }
 
   return body.code;

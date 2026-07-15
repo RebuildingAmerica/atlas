@@ -96,6 +96,9 @@ describe("resolveAuthRuntimeConfig", () => {
         ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR: "48",
         ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE: "4",
         ATLAS_PDS_ADMIN_PASSWORD: " pds-admin ",
+        ATLAS_PDS_INVITE_BROKER_SECRET: " invite-broker-secret ",
+        ATLAS_PDS_INVITE_BROKER_URL: "https://pds.atlas.test/_atlas/pds/invites",
+        ATLAS_PDS_PUBLIC_URL: "https://pds.atlas.test",
         ATLAS_TRUSTED_PROXY_HOPS: "2",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
         ATLAS_SERVER_API_PROXY_TARGET: "http://127.0.0.1:38000",
@@ -122,6 +125,33 @@ describe("resolveAuthRuntimeConfig", () => {
     expect(runtime.emailFrom).toBe("Atlas Ops <auth@atlas.example.com>");
     expect(runtime.internalSecret).toBe("internal-test-secret");
     expect(runtime.atprotoPdsAdminPassword).toBe("pds-admin");
+    expect(runtime.atprotoPdsInviteBrokerSecret).toBe("invite-broker-secret");
+    expect(runtime.atprotoPdsInviteBrokerUrl).toBe("https://pds.atlas.test/_atlas/pds/invites");
+    expect(runtime.atprotoPdsUrl).toBe("https://pds.atlas.test");
+  });
+
+  it("rejects insecure PDS invite broker URLs", () => {
+    expect(() =>
+      resolveAuthRuntimeConfig(
+        {
+          ATLAS_PDS_INVITE_BROKER_URL: "http://pds.atlas.test/_atlas/pds/invites",
+          ATLAS_PUBLIC_URL: "https://atlas.example.com",
+        },
+        "/workspace/atlas/app",
+      ),
+    ).toThrow("ATLAS_PDS_INVITE_BROKER_URL must use https.");
+  });
+
+  it("rejects credentialed PDS invite broker URLs", () => {
+    expect(() =>
+      resolveAuthRuntimeConfig(
+        {
+          ATLAS_PDS_INVITE_BROKER_URL: "https://atlas:secret@pds.atlas.test/_atlas/pds/invites",
+          ATLAS_PUBLIC_URL: "https://atlas.example.com",
+        },
+        "/workspace/atlas/app",
+      ),
+    ).toThrow("ATLAS_PDS_INVITE_BROKER_URL must be a public URL without credentials or fragments.");
   });
 
   it("normalizes comma-separated OAuth resource audiences for MCP and API tokens", () => {

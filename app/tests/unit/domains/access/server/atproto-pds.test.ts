@@ -162,6 +162,68 @@ describe("provisionManagedAtprotoIdentity", () => {
     expect(accountInput.inviteCode).toBe("invite-code");
   });
 
+  it("mints a one-use Atlas PDS invite through the broker when configured", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({
+      atprotoPdsAdminPassword: "fallback-admin-password", // pragma: allowlist secret
+      atprotoPdsInviteBrokerSecret: "broker-secret", // pragma: allowlist secret
+      atprotoPdsInviteBrokerUrl: "https://pds.atlas.test/_atlas/pds/invites",
+      atprotoPdsUrl: "https://pds.atlas.test",
+    });
+    pdsMocks.fetch.mockResolvedValue({
+      json: () => Promise.resolve({ code: "broker-invite-code" }),
+      ok: true,
+    });
+    pdsMocks.createAccount.mockResolvedValue({
+      data: {
+        did: "did:plc:managed",
+        handle: "civic.atlas.test",
+      },
+    });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await provisionManagedAtprotoIdentity({
+      email: "operator@atlas.test",
+      handle: "civic.atlas.test",
+      userId: "user_1",
+    });
+
+    const [inviteUrl, inviteRequest] = pdsMocks.fetch.mock.calls[0] as [URL, RequestInit];
+    expect(inviteUrl).toEqual(new URL("https://pds.atlas.test/_atlas/pds/invites"));
+    expect(inviteRequest.body).toBe(JSON.stringify({ useCount: 1 }));
+    expect(inviteRequest.method).toBe("POST");
+    expect(inviteRequest.headers).toEqual({
+      authorization: "Bearer broker-secret", // pragma: allowlist secret
+      "content-type": "application/json",
+    });
+    const [accountInput] = pdsMocks.createAccount.mock.calls[0] as unknown as [
+      { inviteCode?: string },
+    ];
+    expect(accountInput.inviteCode).toBe("broker-invite-code");
+  });
+
+  it("fails explicitly when Atlas PDS invite broker creation is rejected", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({
+      atprotoPdsAdminPassword: null,
+      atprotoPdsInviteBrokerSecret: "broker-secret", // pragma: allowlist secret
+      atprotoPdsInviteBrokerUrl: "https://pds.atlas.test/_atlas/pds/invites",
+      atprotoPdsUrl: "https://pds.atlas.test",
+    });
+    pdsMocks.fetch.mockResolvedValue({
+      ok: false,
+      status: 502,
+    });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await expect(
+      provisionManagedAtprotoIdentity({
+        email: "operator@atlas.test",
+        handle: "civic.atlas.test",
+        userId: "user_1",
+      }),
+    ).rejects.toThrow("Atlas PDS invite broker failed with HTTP 502.");
+    expect(pdsMocks.createAccount).not.toHaveBeenCalled();
+  });
+
   it("fails explicitly when Atlas PDS invite creation is rejected", async () => {
     pdsMocks.getAuthRuntimeConfig.mockReturnValue({
       atprotoPdsAdminPassword: "admin-password", // pragma: allowlist secret

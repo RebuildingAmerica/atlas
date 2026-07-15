@@ -23,12 +23,29 @@ services:
     volumes:
       - ${ATLAS_PDS_DATA_DIRECTORY}:/pds
 
+  atlas-pds-invite-broker:
+    image: node:24-alpine
+    restart: unless-stopped
+    depends_on:
+      atlas-pds:
+        condition: service_healthy
+    environment:
+      ATLAS_PDS_INVITE_BROKER_SECRET: ${ATLAS_PDS_INVITE_BROKER_SECRET}
+      ATLAS_PDS_INTERNAL_URL: http://atlas-pds:2583
+      ATLAS_PDS_INVITE_BROKER_PORT: 2584
+      PDS_ADMIN_PASSWORD: ${PDS_ADMIN_PASSWORD}
+    command: ["node", "/app/invite-broker.mjs"]
+    volumes:
+      - ./invite-broker.mjs:/app/invite-broker.mjs:ro
+
   atlas-pds-edge:
     image: caddy:2.10-alpine
     restart: unless-stopped
     depends_on:
       atlas-pds:
         condition: service_healthy
+      atlas-pds-invite-broker:
+        condition: service_started
     environment:
       ATLAS_PDS_HOSTNAME: ${ATLAS_PDS_HOSTNAME}
     ports:

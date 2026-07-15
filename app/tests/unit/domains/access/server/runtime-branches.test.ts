@@ -58,6 +58,8 @@ describe("runtime additional branches", () => {
         authJwtAudiences: [],
         apiBaseUrl: null,
         atprotoPdsAdminPassword: null,
+        atprotoPdsInviteBrokerSecret: null,
+        atprotoPdsInviteBrokerUrl: null,
         atprotoPdsUrl: null,
         operatorAllowedEmails: new Set(),
         anonymousRateLimit: {

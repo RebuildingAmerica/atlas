@@ -29,45 +29,9 @@ jobs:
               ;;
           esac
 
-  pds-secret-preflight:
-    needs: guard-production-ref
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
-
-      - name: Verify PDS app provisioning secret access
-        shell: bash
-        env:
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: |
-          set -euo pipefail
-
-          pds_admin_password="$(gcloud secrets versions access latest \
-            --project "$GCP_PROJECT_ID" \
-            --secret "atlas-pds-production-admin-password")"
-          if [ -z "$pds_admin_password" ] || [[ "$pds_admin_password" == *$'\n'* ]] || [[ "$pds_admin_password" == *$'\r'* ]]; then
-            echo "::error title=Invalid PDS app provisioning secret::atlas-pds-production-admin-password must be a non-empty single-line Secret Manager value."
-            exit 1
-          fi
-          echo "::add-mask::$pds_admin_password"
-          echo "PDS app provisioning secret is readable by the production deploy identity."
-
   ci:
     needs:
       - guard-production-ref
-      - pds-secret-preflight
     uses: ./.github/workflows/ci.yml
     with:
       profile: production
@@ -119,22 +83,32 @@ jobs:
         with:
           python: "false"
 
-      - name: Load PDS app provisioning secret
+      - name: Generate PDS invite broker secret
+        id: pds-invite-broker
         shell: bash
-        env:
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           set -euo pipefail
 
-          pds_admin_password="$(gcloud secrets versions access latest \
-            --project "$GCP_PROJECT_ID" \
-            --secret "atlas-pds-production-admin-password")"
-          if [ -z "$pds_admin_password" ] || [[ "$pds_admin_password" == *$'\n'* ]] || [[ "$pds_admin_password" == *$'\r'* ]]; then
-            echo "::error title=Invalid PDS app provisioning secret::atlas-pds-production-admin-password must be a non-empty single-line Secret Manager value."
+          broker_secret="$(openssl rand -base64 48 | tr -d '\n')"
+          if [ -z "$broker_secret" ] || [[ "$broker_secret" == *$'\n'* ]] || [[ "$broker_secret" == *$'\r'* ]]; then
+            echo "::error title=Invalid PDS invite broker secret::Generated PDS invite broker secret must be a non-empty single-line value."
             exit 1
           fi
-          echo "::add-mask::$pds_admin_password"
-          echo "ATLAS_PDS_ADMIN_PASSWORD=$pds_admin_password" >> "$GITHUB_ENV"
+          echo "::add-mask::$broker_secret"
+          echo "secret=$broker_secret" >> "$GITHUB_OUTPUT"
+          echo "ATLAS_PDS_INVITE_BROKER_SECRET=$broker_secret" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/deploy-atlas-pds
+        with:
+          environment-name: production
+          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
+          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
+          pds-hostname: atlas-pds.rebuildingus.org
+          pds-public-url: https://atlas-pds.rebuildingus.org
+          invite-broker-secret: ${{ steps.pds-invite-broker.outputs.secret }}
 
       - name: Deploy Vercel production app
         id: deploy-vercel
@@ -168,7 +142,7 @@ jobs:
             ATLAS_API_URL
             ATLAS_AUTH_INTERNAL_SECRET
             ATLAS_AUTH_MEMBERSHIP_URL
-            ATLAS_PDS_ADMIN_PASSWORD
+            ATLAS_PDS_INVITE_BROKER_SECRET
             ATLAS_PUBLIC_URL
             DATABASE_URL
           )
@@ -184,6 +158,7 @@ jobs:
           atlas_auth_api_key_introspection_url="${atlas_public_origin}/api/auth/internal/api-key"
           atlas_auth_jwt_audiences="${atlas_public_origin}/mcp,${atlas_api_origin}"
           atlas_pds_public_url="https://atlas-pds.rebuildingus.org"
+          atlas_pds_invite_broker_url="${atlas_pds_public_url}/_atlas/pds/invites"
 
           vercel_args=(
             deploy
@@ -215,7 +190,8 @@ jobs:
           add_vercel_env ATLAS_HOSTED_E2E_PRODUCTION_ENABLED "1"
           add_vercel_env ATLAS_HOSTED_E2E_SECRET "$ATLAS_HOSTED_E2E_SECRET"
           add_vercel_env ATLAS_OPERATOR_ALLOWED_EMAILS "$ATLAS_OPERATOR_ALLOWED_EMAILS"
-          add_vercel_env ATLAS_PDS_ADMIN_PASSWORD "$ATLAS_PDS_ADMIN_PASSWORD"
+          add_vercel_env ATLAS_PDS_INVITE_BROKER_SECRET "$ATLAS_PDS_INVITE_BROKER_SECRET"
+          add_vercel_env ATLAS_PDS_INVITE_BROKER_URL "$atlas_pds_invite_broker_url"
           add_vercel_env ATLAS_PDS_PUBLIC_URL "$atlas_pds_public_url"
           add_vercel_env ATLAS_PUBLIC_URL "$atlas_public_origin"
           add_vercel_env ATLAS_SERVER_API_PROXY_TARGET "$atlas_api_origin"
@@ -239,17 +215,6 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.url }}
         run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --scope rebuilding-america-project --token "$VERCEL_TOKEN"
-
-      - uses: ./.github/actions/deploy-atlas-pds
-        with:
-          environment-name: production
-          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
-          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
-          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
-          pds-hostname: atlas-pds.rebuildingus.org
-          pds-public-url: https://atlas-pds.rebuildingus.org
 
   hosted-smoke:
     needs: deploy

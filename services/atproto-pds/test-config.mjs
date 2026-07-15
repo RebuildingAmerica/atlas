@@ -5,6 +5,7 @@ import test from "node:test";
 const requiredKeys = [
   "ATLAS_PDS_PUBLIC_URL",
   "ATLAS_PDS_DATA_DIRECTORY",
+  "ATLAS_PDS_INVITE_BROKER_SECRET",
   "PDS_ADMIN_PASSWORD",
   "PDS_JWT_SECRET",
   "PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX",
@@ -39,13 +40,30 @@ test("hosted PDS manifest isolates durable PDS data behind its own TLS edge", as
   const source = await readFile(new URL("./compose.hosted.yaml", import.meta.url), "utf8");
 
   assert.match(source, /^  atlas-pds:/m);
+  assert.match(source, /^  atlas-pds-invite-broker:/m);
   assert.match(source, /^  atlas-pds-edge:/m);
   assert.match(source, /- \$\{ATLAS_PDS_DATA_DIRECTORY\}:\/pds/);
+  assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET: \$\{ATLAS_PDS_INVITE_BROKER_SECRET\}/);
+  assert.match(source, /PDS_ADMIN_PASSWORD: \$\{PDS_ADMIN_PASSWORD\}/);
+  assert.match(source, /\.\/invite-broker\.mjs:\/app\/invite-broker\.mjs:ro/);
+  assert.doesNotMatch(source, /2584:2584/);
   assert.match(source, /- "80:80"/);
   assert.match(source, /- "443:443"/);
   assert.match(source, /\.\/Caddyfile:\/etc\/caddy\/Caddyfile:ro/);
   assert.match(source, /\$\{ATLAS_PDS_DATA_DIRECTORY\}\/caddy-data:\/data/);
   assert.match(source, /\$\{ATLAS_PDS_DATA_DIRECTORY\}\/caddy-config:\/config/);
+});
+
+test("hosted PDS edge exposes only the invite broker route before proxying PDS traffic", async () => {
+  const source = await readFile(new URL("./Caddyfile", import.meta.url), "utf8");
+
+  assert.match(source, /handle \/_atlas\/pds\/invites/);
+  assert.match(source, /reverse_proxy atlas-pds-invite-broker:2584/);
+  assert.match(source, /handle\s*\{\s*reverse_proxy atlas-pds:2583\s*\}/);
+  assert.ok(
+    source.indexOf("atlas-pds-invite-broker:2584") < source.indexOf("atlas-pds:2583"),
+    "invite broker route must be matched before the catch-all PDS proxy",
+  );
 });
 
 test("PDS VM bootstrap mounts the dedicated persistent disk before deploying containers", async () => {
@@ -66,9 +84,25 @@ test("PDS VM release materializes scoped secrets without persisting them in sour
   assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-admin-password/);
   assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-jwt-secret/);
   assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-plc-rotation-key/);
+  assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET/);
+  assert.match(source, /secrets\.token_urlsafe\(48\)/);
   assert.match(source, /umask 077/);
   assert.match(source, /pds\.env/);
   assert.match(source, /docker compose --env-file pds\.env -f compose\.hosted\.yaml up -d/);
+});
+
+test("invite broker implementation only mints one-use invites for authorized callers", async () => {
+  const source = await readFile(new URL("./invite-broker.mjs", import.meta.url), "utf8");
+
+  assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET/);
+  assert.match(source, /PDS_ADMIN_PASSWORD/);
+  assert.match(source, /\/_atlas\/pds\/invites/);
+  assert.match(source, /request\.headers\.authorization !== `Bearer \$\{brokerSecret\}`/);
+  assert.match(source, /JSON\.stringify\(\{ useCount \}\)/);
+  assert.match(source, /useCount < 1 \|\| useCount > 1/);
+  assert.match(source, /com\.atproto\.server\.createInviteCode/);
+  assert.doesNotMatch(source, /console\.log\(.*brokerSecret/);
+  assert.doesNotMatch(source, /console\.log\(.*pdsAdminPassword/);
 });
 
 test("PDS VM backup script captures and restores only the mounted runtime state", async () => {

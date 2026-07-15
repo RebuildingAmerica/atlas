@@ -28,7 +28,10 @@ Compose service, moves existing mounted-directory contents into a timestamped
 Test restore before rotating the PLC key.
 
 The service health endpoint is `GET /xrpc/_health`. Caddy terminates TLS for
-`ATLAS_PDS_HOSTNAME` and sends traffic only to `atlas-pds:2583`.
+`ATLAS_PDS_HOSTNAME`, sends normal PDS traffic to `atlas-pds:2583`, and sends
+`POST /_atlas/pds/invites` to the private invite broker. The broker accepts only
+the deployment-provided bearer secret, mints one-use invite codes with the local
+PDS admin password, and never exposes the admin password to the Atlas app.
 
 ## Local validation
 

@@ -26,6 +26,10 @@ inputs:
   pds-public-url:
     description: Public HTTPS origin for the PDS.
     required: true
+  invite-broker-secret:
+    description: Optional bearer secret used by Atlas app servers to request one-use PDS invite codes.
+    required: false
+    default: ""
   pds-data-directory:
     description: Host path mounted from the persistent PDS data disk.
     required: false
@@ -83,6 +87,7 @@ runs:
         tar -C services/atproto-pds -czf "$archive" \
           compose.hosted.yaml \
           Caddyfile \
+          invite-broker.mjs \
           vm-backup.sh \
           vm-release.sh
 
@@ -101,6 +106,7 @@ runs:
         ATLAS_PDS_ENVIRONMENT: ${{ inputs.environment-name }}
         ATLAS_PDS_GCP_PROJECT: ${{ inputs.gcp-project-id }}
         ATLAS_PDS_HOSTNAME: ${{ inputs.pds-hostname }}
+        ATLAS_PDS_INVITE_BROKER_SECRET: ${{ inputs.invite-broker-secret }}
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
         INSTANCE_NAME: ${{ inputs.instance-name }}
         INSTANCE_ZONE: ${{ inputs.instance-zone }}
@@ -124,6 +130,7 @@ runs:
           ATLAS_PDS_GCP_PROJECT=$(quote "$ATLAS_PDS_GCP_PROJECT") \
           ATLAS_PDS_HOSTNAME=$(quote "$ATLAS_PDS_HOSTNAME") \
           ATLAS_PDS_PUBLIC_URL=$(quote "$ATLAS_PDS_PUBLIC_URL") \
+          ATLAS_PDS_INVITE_BROKER_SECRET=$(quote "$ATLAS_PDS_INVITE_BROKER_SECRET") \
           ATLAS_PDS_DATA_DIRECTORY=$(quote "$ATLAS_PDS_DATA_DIRECTORY") \
           ATLAS_PDS_DEPLOY_DIRECTORY=$(quote "$ATLAS_PDS_DEPLOY_DIRECTORY") \
           $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh")

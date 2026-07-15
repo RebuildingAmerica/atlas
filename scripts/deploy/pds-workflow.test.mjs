@@ -71,28 +71,17 @@ test("production deploy releases the hosted PDS before hosted smoke", async () =
   );
 });
 
-test("production deploy checks PDS app secret access before expensive gates", async () => {
+test("production deploy avoids reading PDS admin secrets in GitHub", async () => {
   const source = await workflowSource(
     ".github/workflows/deploy-production.yml",
   );
 
-  assert.match(source, /pds-secret-preflight:/);
-  assert.match(source, /Verify PDS app provisioning secret access/);
+  assert.doesNotMatch(source, /pds-secret-preflight:/);
+  assert.doesNotMatch(source, /atlas-pds-production-admin-password/);
+  assert.doesNotMatch(source, /ATLAS_PDS_ADMIN_PASSWORD/);
   assert.match(
     source,
-    /gcloud secrets versions access latest[\s\S]*--secret "atlas-pds-production-admin-password"/,
-  );
-  assert.match(
-    source,
-    /ci:\s*\n\s*needs:\s*\n\s*- guard-production-ref\s*\n\s*- pds-secret-preflight/,
-  );
-  assert.ok(
-    source.indexOf("pds-secret-preflight:") < source.indexOf("ci:"),
-    "PDS secret access must fail before production CI spends build minutes",
-  );
-  assert.ok(
-    source.indexOf("pds-secret-preflight:") < source.indexOf("deploy:"),
-    "PDS secret access must fail before production deploy mutates hosted services",
+    /ci:\s*\n\s*needs:\s*\n\s*- guard-production-ref/,
   );
 });
 
@@ -127,12 +116,10 @@ test("production deploy configures the hosted identity helper in Vercel", async 
     ".github/workflows/deploy-production.yml",
   );
 
-  assert.match(source, /Load PDS app provisioning secret/);
-  assert.match(
-    source,
-    /gcloud secrets versions access latest[\s\S]*--secret "atlas-pds-production-admin-password"/,
-  );
-  assert.match(source, /ATLAS_PDS_ADMIN_PASSWORD/);
+  assert.match(source, /Generate PDS invite broker secret/);
+  assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET/);
+  assert.match(source, /ATLAS_PDS_INVITE_BROKER_URL/);
+  assert.match(source, /\/_atlas\/pds\/invites/);
   assert.match(
     source,
     /ATLAS_HOSTED_E2E_SECRET: \$\{\{ secrets\.ATLAS_HOSTED_E2E_SECRET \}\}/,
@@ -148,7 +135,25 @@ test("production deploy configures the hosted identity helper in Vercel", async 
   );
   assert.match(
     source,
-    /add_vercel_env ATLAS_PDS_ADMIN_PASSWORD "\$ATLAS_PDS_ADMIN_PASSWORD"/,
+    /add_vercel_env ATLAS_PDS_INVITE_BROKER_SECRET "\$ATLAS_PDS_INVITE_BROKER_SECRET"/,
+  );
+  assert.match(
+    source,
+    /add_vercel_env ATLAS_PDS_INVITE_BROKER_URL "\$atlas_pds_invite_broker_url"/,
+  );
+  assert.doesNotMatch(source, /add_vercel_env ATLAS_PDS_ADMIN_PASSWORD/);
+});
+
+test("production deploy updates the PDS invite broker before promoting the app", async () => {
+  const source = await workflowSource(
+    ".github/workflows/deploy-production.yml",
+  );
+
+  assert.match(source, /invite-broker-secret: \$\{\{ steps\.pds-invite-broker\.outputs\.secret \}\}/);
+  assert.ok(
+    source.indexOf("./.github/actions/deploy-atlas-pds") <
+      source.indexOf("Deploy Vercel production app"),
+    "PDS broker must accept the generated secret before the Vercel app is promoted with it",
   );
 });
 
@@ -170,12 +175,13 @@ test("hosted identity jobs keep Playwright traces when production or staging pro
   }
 });
 
-test("hosted PDS deploy bundle includes the backup and restore operator script", async () => {
+test("hosted PDS deploy bundle includes the backup, restore, and invite broker scripts", async () => {
   const source = await workflowSource(
     ".github/actions/deploy-atlas-pds/action.yml",
   );
 
   assert.match(source, /vm-backup\.sh/);
+  assert.match(source, /invite-broker\.mjs/);
   assert.match(source, /chmod 0755.*vm-backup\.sh/);
   assert.ok(
     source.indexOf("vm-backup.sh") < source.indexOf("vm-release.sh"),
