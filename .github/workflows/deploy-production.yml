@@ -212,8 +212,9 @@ jobs:
       - name: Promote Vercel production domains
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.url }}
-        run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --token "$VERCEL_TOKEN"
+        run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
 
   hosted-smoke:
     needs: deploy

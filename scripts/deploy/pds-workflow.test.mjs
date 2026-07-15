@@ -191,6 +191,10 @@ test("production Vercel deploy uses the linked project root instead of a hardcod
     source,
     /printf '\{"orgId":"%s","projectId":"%s"\}\\n' "\$VERCEL_ORG_ID" "\$VERCEL_PROJECT_ID" > \.vercel\/project\.json/,
   );
+  assert.match(
+    source,
+    /vercel promote "\$VERCEL_DEPLOYMENT_URL" --yes --scope "\$VERCEL_ORG_ID" --token "\$VERCEL_TOKEN"/,
+  );
   assert.doesNotMatch(source, /--cwd app/);
   assert.doesNotMatch(source, /--scope rebuilding-america-project/);
 });
