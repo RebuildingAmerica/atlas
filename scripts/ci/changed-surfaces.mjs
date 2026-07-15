@@ -45,6 +45,14 @@ const FALSE_OUTPUTS = {
   use_affected: false,
 };
 
+const STAGING_MANUAL_OUTPUTS = {
+  ...FALSE_OUTPUTS,
+  staging_api_deploy: true,
+  staging_pds_deploy: true,
+  hosted_smoke: true,
+  hosted_identity: true,
+};
+
 const GLOBAL_PATHS = [
   /^scripts\/validate-turbo-selectors\.mjs$/,
   /^package\.json$/,
@@ -162,7 +170,9 @@ function isAllZeroSha(value) {
 function isForcedFullRun(context) {
   if (context.profile === "production") return "production release";
   if (context.eventName === "schedule") return "scheduled CI";
-  if (context.eventName === "workflow_dispatch") return "manual workflow run";
+  if (context.eventName === "workflow_dispatch" && context.profile !== "staging") {
+    return "manual workflow run";
+  }
   if (context.ref?.startsWith("refs/tags/v")) return "release tag";
   if (isAllZeroSha(context.beforeSha)) return "new branch or missing base SHA";
   return "";
@@ -171,6 +181,14 @@ function isForcedFullRun(context) {
 export function classifyChangedFiles(files, context = {}) {
   const normalized = normalizeFiles(files);
   const forcedReason = isForcedFullRun(context);
+
+  if (context.eventName === "workflow_dispatch" && context.profile === "staging") {
+    return {
+      reason: "manual staging deploy",
+      files: normalized,
+      outputs: { ...STAGING_MANUAL_OUTPUTS },
+    };
+  }
 
   if (forcedReason) {
     return {

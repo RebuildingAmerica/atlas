@@ -138,9 +138,24 @@ test("docs-only changes do not run hosted identity verification", () => {
   assert.equal(outputs.hosted_identity, false);
 });
 
-test("manual workflow runs include hosted identity verification", () => {
-  const outputs = classifyChangedFiles([], { eventName: "workflow_dispatch" }).outputs;
+test("manual staging workflow runs deploy and verify hosted identity without full CI", () => {
+  const outputs = classifyChangedFiles([], {
+    eventName: "workflow_dispatch",
+    profile: "staging",
+  }).outputs;
 
+  assert.equal(outputs.quality, false);
+  assert.equal(outputs.python_tests, false);
+  assert.equal(outputs.app_tests, false);
+  assert.equal(outputs.browser_acceptance, false);
+  assert.equal(outputs.stripe_acceptance, false);
+  assert.equal(outputs.contract, false);
+  assert.equal(outputs.openapi, false);
+  assert.equal(outputs.docs, false);
+  assert.equal(outputs.credential_scan, false);
+  assert.equal(outputs.staging_api_deploy, true);
+  assert.equal(outputs.staging_pds_deploy, true);
+  assert.equal(outputs.hosted_smoke, true);
   assert.equal(outputs.hosted_identity, true);
 });
 
