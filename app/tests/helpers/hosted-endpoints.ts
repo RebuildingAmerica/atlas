@@ -16,12 +16,18 @@ export function absoluteHostedUrl(origin: string, pathname: string): string {
 }
 
 export function hostedPublicRequestInit(init: RequestInit = {}): RequestInit {
+  const bypassSecret = process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET?.trim();
   const trustedOidcToken = process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN?.trim();
-  if (!trustedOidcToken) {
+  if (!bypassSecret && !trustedOidcToken) {
     return init;
   }
 
   const headers = new Headers(init.headers);
-  headers.set("x-vercel-trusted-oidc-idp-token", trustedOidcToken);
+  if (bypassSecret) {
+    headers.set("x-vercel-protection-bypass", bypassSecret);
+  }
+  if (trustedOidcToken) {
+    headers.set("x-vercel-trusted-oidc-idp-token", trustedOidcToken);
+  }
   return { ...init, headers };
 }

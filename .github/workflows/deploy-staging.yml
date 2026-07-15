@@ -123,6 +123,7 @@ jobs:
           ATLAS_HOSTED_EXPECTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
           ATLAS_HOSTED_PDS_URL: https://atlas-pds-staging.rebuildingus.org
+          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
 
@@ -161,5 +162,6 @@ jobs:
           ATLAS_HOSTED_PUBLIC_URL: ${{ github.event.inputs.hosted_public_url || secrets.ATLAS_PUBLIC_URL }}
           ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
           ATLAS_HOSTED_E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity
