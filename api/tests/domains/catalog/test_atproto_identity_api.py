@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from fastapi import HTTPException, Response, status
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.api.atproto_identities import (
+    _identity_to_response,
+    _required_response_timestamp,
+    _response_timestamp,
     _verify_linked_atproto_identity,
     disconnect_atproto_identity,
     link_atproto_identity,
@@ -14,8 +19,14 @@ from atlas.domains.catalog.api.atproto_identities import (
     refresh_atproto_identity,
     resolve_atproto_sign_in,
 )
-from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
-from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
+from atlas.domains.catalog.models.atproto_identities import (
+    AtprotoIdentityCRUD,
+    AtprotoIdentityModel,
+)
+from atlas.domains.catalog.models.atproto_identity_controls import (
+    AtprotoIdentityControlCRUD,
+    AtprotoIdentityControlModel,
+)
 from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
 from atlas.domains.catalog.schemas.public import (
     AtprotoIdentityLinkRequest,
@@ -190,6 +201,22 @@ async def test_sign_in_resolution_hides_unverified_or_uncontrolled_dids(test_db:
 
 
 @pytest.mark.asyncio
+async def test_sign_in_resolution_returns_active_controller(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    linked, _ = await _connect(test_db, monkeypatch)
+
+    resolved = await resolve_atproto_sign_in(
+        AtprotoIdentitySignInResolveRequest(did=linked.did),
+        actor=_actor(),
+        db=test_db,
+    )
+
+    assert resolved.user_id == "user_1"
+
+
+@pytest.mark.asyncio
 async def test_link_rejects_unverified_oauth_result(
     test_db: object,
     monkeypatch: pytest.MonkeyPatch,
@@ -238,6 +265,60 @@ async def test_list_skips_a_control_whose_identity_was_removed(
     monkeypatch.setattr(AtprotoIdentityControlCRUD, "list_for_user", controls)
     monkeypatch.setattr(AtprotoIdentityCRUD, "get_by_id", missing)
     assert await list_atproto_identities(Response(), actor=_actor(), db=test_db) == []
+
+
+def test_identity_timestamp_serialization_rejects_invalid_values() -> None:
+    assert _response_timestamp(None) is None
+    assert _response_timestamp("2026-07-15T00:48:07Z") == "2026-07-15T00:48:07Z"
+
+    with pytest.raises(TypeError, match="unsupported timestamp"):
+        _response_timestamp(object())
+
+    with pytest.raises(TypeError, match="missing connected_at"):
+        _required_response_timestamp(None, field="connected_at")
+
+
+@pytest.mark.asyncio
+async def test_identity_response_serializes_postgres_timestamps(
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    timestamp = datetime(2026, 7, 15, 0, 48, 7, tzinfo=UTC)
+
+    async def no_profiles(_db: object, _identity_id: str) -> list[object]:
+        return []
+
+    monkeypatch.setattr(ProfileAtprotoLinkCRUD, "list_profile_summaries", no_profiles)
+
+    response = await _identity_to_response(
+        test_db,
+        AtprotoIdentityModel(
+            id="identity_1",
+            did="did:web:person.example",
+            current_handle="person.example",
+            pds_url="https://pds.example",
+            resolution_status="verified",
+            did_resolved_at=timestamp,  # type: ignore[arg-type]
+            handle_verified_at=timestamp,  # type: ignore[arg-type]
+            last_resolution_error=None,
+            created_at=timestamp,  # type: ignore[arg-type]
+            updated_at=timestamp,  # type: ignore[arg-type]
+        ),
+        AtprotoIdentityControlModel(
+            id="control_1",
+            identity_id="identity_1",
+            user_id="user_1",
+            status="active",
+            verified_at=timestamp,  # type: ignore[arg-type]
+            disconnected_at=None,
+            created_at=timestamp,  # type: ignore[arg-type]
+            updated_at=timestamp,  # type: ignore[arg-type]
+        ),
+    )
+
+    assert response.connected_at == "2026-07-15T00:48:07+00:00"
+    assert response.verified_at == "2026-07-15T00:48:07+00:00"
+    assert response.last_checked_at == "2026-07-15T00:48:07+00:00"
 
 
 def test_e2e_harness_match_is_explicit_and_normalized(

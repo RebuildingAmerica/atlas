@@ -25,6 +25,11 @@ function requiredEnv(name: string): string {
 function helperHeaders(): Record<string, string> {
   return {
     "x-atlas-hosted-e2e-secret": requiredEnv("ATLAS_HOSTED_E2E_SECRET"),
+    ...(process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET?.trim()
+      ? {
+          "x-vercel-protection-bypass": process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET.trim(),
+        }
+      : {}),
     ...(process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN?.trim()
       ? {
           "x-vercel-trusted-oidc-idp-token":

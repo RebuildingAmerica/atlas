@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -39,12 +40,43 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
+class UnsupportedAtprotoTimestampError(TypeError):
+    """Raised when database timestamp values cannot be serialized."""
+
+    def __init__(self) -> None:
+        super().__init__("unsupported timestamp")
+
+
+class MissingAtprotoTimestampError(TypeError):
+    """Raised when a required response timestamp is absent."""
+
+    def __init__(self, field: str) -> None:
+        super().__init__(f"missing {field}")
+
+
 def _require_app_actor(actor: AuthenticatedActor) -> None:
     if actor.auth_type != "internal" and not actor.is_local:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="ATProto identities must be managed through Atlas.",
         )
+
+
+def _response_timestamp(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    raise UnsupportedAtprotoTimestampError
+
+
+def _required_response_timestamp(value: object, *, field: str) -> str:
+    timestamp = _response_timestamp(value)
+    if timestamp is None:
+        raise MissingAtprotoTimestampError(field)
+    return timestamp
 
 
 @router.post(
@@ -87,9 +119,9 @@ async def _identity_to_response(
         pds_url=identity.pds_url,
         resolution_status=identity.resolution_status,
         control_status=control.status,
-        connected_at=control.created_at,
-        verified_at=control.verified_at,
-        last_checked_at=identity.did_resolved_at,
+        connected_at=_required_response_timestamp(control.created_at, field="connected_at"),
+        verified_at=_response_timestamp(control.verified_at),
+        last_checked_at=_response_timestamp(identity.did_resolved_at),
         last_resolution_error=identity.last_resolution_error,
         profiles=[
             AtprotoIdentityProfileSummary(

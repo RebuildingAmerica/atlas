@@ -9,11 +9,12 @@ function hostedPublicUrl(): string {
 }
 
 function trustedSourceHeaders(): Record<string, string> {
+  const bypass = process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET?.trim();
   const token = process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN?.trim();
-  if (!token) {
-    return {};
-  }
-  return { "x-vercel-trusted-oidc-idp-token": token };
+  return {
+    ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}),
+    ...(token ? { "x-vercel-trusted-oidc-idp-token": token } : {}),
+  };
 }
 
 export default defineConfig({
