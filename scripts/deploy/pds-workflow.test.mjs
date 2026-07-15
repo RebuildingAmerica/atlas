@@ -109,3 +109,19 @@ test("hosted PDS deploy bundle includes the backup and restore operator script",
     "backup operation should ship with the same host bundle as release",
   );
 });
+
+test("hosted PDS deploy uploads each release bundle to a unique remote path", async () => {
+  const source = await workflowSource(
+    ".github/actions/deploy-atlas-pds/action.yml",
+  );
+
+  assert.match(
+    source,
+    /remote_archive="\/tmp\/atlas-pds-release-\$\{GITHUB_RUN_ID:-manual\}-\$\{GITHUB_RUN_ATTEMPT:-0\}-\$\{GITHUB_RUN_NUMBER:-0\}\.tgz"/,
+  );
+  assert.match(source, /ATLAS_PDS_REMOTE_ARCHIVE=\$remote_archive/);
+  assert.match(source, /gcloud compute scp "\$archive" "\$\{INSTANCE_NAME\}:\$\{remote_archive\}"/);
+  assert.match(source, /sudo tar -xzf "\\\$remote_archive"/);
+  assert.doesNotMatch(source, /:\/tmp\/atlas-pds-release\.tgz/);
+  assert.doesNotMatch(source, /tar -xzf \/tmp\/atlas-pds-release\.tgz/);
+});

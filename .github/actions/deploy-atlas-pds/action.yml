@@ -85,7 +85,11 @@ runs:
           Caddyfile \
           vm-backup.sh \
           vm-release.sh
-        gcloud compute scp "$archive" "${INSTANCE_NAME}:/tmp/atlas-pds-release.tgz" \
+
+        remote_archive="/tmp/atlas-pds-release-${GITHUB_RUN_ID:-manual}-${GITHUB_RUN_ATTEMPT:-0}-${GITHUB_RUN_NUMBER:-0}.tgz"
+        echo "ATLAS_PDS_REMOTE_ARCHIVE=$remote_archive" >> "$GITHUB_ENV"
+
+        gcloud compute scp "$archive" "${INSTANCE_NAME}:${remote_archive}" \
           --zone "$INSTANCE_ZONE" \
           --tunnel-through-iap
 
@@ -109,8 +113,10 @@ runs:
 
         remote_command="$(cat <<REMOTE
         set -euo pipefail
+        readonly remote_archive=$(quote "$ATLAS_PDS_REMOTE_ARCHIVE")
+        trap 'sudo rm -f "\$remote_archive"' EXIT
         sudo install -d -m 0750 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY")
-        sudo tar -xzf /tmp/atlas-pds-release.tgz -C $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY")
+        sudo tar -xzf "\$remote_archive" -C $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY")
         sudo chmod 0755 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-backup.sh")
         sudo chmod 0755 $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh")
         sudo env \
