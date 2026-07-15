@@ -57,6 +57,7 @@ jobs:
           edge-origin-secret: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           auth-api-key-introspection-url: ${{ secrets.ATLAS_AUTH_API_KEY_INTROSPECTION_URL }}
           auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
+          auth-membership-protection-bypass-secret: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}

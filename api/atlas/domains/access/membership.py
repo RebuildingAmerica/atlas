@@ -61,6 +61,16 @@ def _set_cached(user_id: str, org_id: str, result: MembershipResult) -> None:
     )
 
 
+def _membership_request_headers(settings: Settings) -> dict[str, str]:
+    headers = {
+        "X-Atlas-Internal-Secret": settings.auth_internal_secret,
+    }
+    bypass_secret = settings.auth_membership_protection_bypass_secret.strip()
+    if bypass_secret:
+        headers["x-vercel-protection-bypass"] = bypass_secret
+    return headers
+
+
 async def verify_org_membership(
     user_id: str, org_id: str, settings: Settings
 ) -> MembershipResult | None:
@@ -82,9 +92,7 @@ async def verify_org_membership(
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 url,
-                headers={
-                    "X-Atlas-Internal-Secret": settings.auth_internal_secret,
-                },
+                headers=_membership_request_headers(settings),
             )
     except Exception:
         logger.exception(

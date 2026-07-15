@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     )
     """Base URL for the membership verification endpoint."""
 
+    auth_membership_protection_bypass_secret: str = Field(
+        default="", validation_alias="ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET"
+    )
+    """Optional edge-protection bypass secret for server-to-server membership checks."""
+
     auth_jwt_issuer: str = Field(default="", validation_alias="ATLAS_PUBLIC_URL")
     """JWT issuer (typically the public URL of the auth server)."""
 

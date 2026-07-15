@@ -51,6 +51,10 @@ inputs:
     description: App origin the API calls for workspace membership checks. Defaults to atlas-public-url when omitted.
     required: false
     default: ""
+  auth-membership-protection-bypass-secret:
+    description: Optional Vercel automation bypass secret for protected membership checks.
+    required: false
+    default: ""
   atlas-public-url:
     description: Public Atlas app origin for this environment.
     required: true
@@ -180,6 +184,7 @@ runs:
           ATLAS_EDGE_ORIGIN_SECRET=${{ inputs.edge-origin-secret }}
           ATLAS_AUTH_API_KEY_INTROSPECTION_URL=${{ steps.hosted-auth.outputs.auth-api-key-introspection-url }}
           ATLAS_AUTH_MEMBERSHIP_URL=${{ steps.hosted-auth.outputs.auth-membership-url }}
+          ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET=${{ inputs.auth-membership-protection-bypass-secret }}
           ATLAS_PUBLIC_URL=${{ inputs.atlas-public-url }}
           ATLAS_AUTH_JWT_AUDIENCES=${{ steps.hosted-auth.outputs.atlas-api-audience }}
           ATLAS_OPERATOR_ALLOWED_EMAILS=${{ inputs.operator-allowed-emails }}

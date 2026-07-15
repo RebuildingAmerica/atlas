@@ -18,10 +18,12 @@ from atlas.platform.config import Settings
 def _make_settings(
     url: str = "http://localhost:3000",
     secret: str = "test-secret",
+    bypass_secret: str = "",
 ) -> MagicMock:
     settings = MagicMock(spec=Settings)
     settings.auth_membership_verification_url = url
     settings.auth_internal_secret = secret
+    settings.auth_membership_protection_bypass_secret = bypass_secret
     return settings
 
 
@@ -149,6 +151,45 @@ async def test_cache_miss_makes_http_get(
     )
     assert client_instance.last_headers == {"X-Atlas-Internal-Secret": "test-secret"}
     assert result is not None
+
+
+async def test_membership_request_includes_configured_edge_bypass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hosted membership checks should carry an edge-protection bypass when configured."""
+    settings = _make_settings(bypass_secret="vercel-bypass")
+    response = httpx.Response(
+        200,
+        json={
+            "role": "member",
+            "slug": "my-org",
+            "name": "My Org",
+            "workspaceType": "team",
+            "activeProducts": [],
+        },
+        request=httpx.Request(
+            "GET",
+            "http://localhost:3000/api/auth/internal/memberships/org_2/members/user_2",
+        ),
+    )
+    client_instance = _FakeAsyncClient(response)
+
+    def factory(*, timeout: float) -> _FakeAsyncClient:
+        del timeout
+        return client_instance
+
+    monkeypatch.setattr(
+        "atlas.domains.access.membership.httpx.AsyncClient",
+        factory,
+    )
+
+    result = await verify_org_membership("user_2", "org_2", settings)
+
+    assert result is not None
+    assert client_instance.last_headers == {
+        "X-Atlas-Internal-Secret": "test-secret",
+        "x-vercel-protection-bypass": "vercel-bypass",
+    }
 
 
 async def test_404_response_returns_none(
