@@ -21,6 +21,13 @@ ATPROTO_HANDLE_TXT_PREFIX = "did="
 PLC_DIRECTORY_BASE_URL = "https://plc.directory"
 
 
+class InvalidAtprotoPdsUrlError(ValueError):
+    """Raised when a PDS URL is not an absolute HTTP(S) origin."""
+
+    def __init__(self) -> None:
+        super().__init__("PDS URL must be an absolute HTTP(S) origin.")
+
+
 class AtprotoIdentityResolver(Protocol):
     """Resolver capable of checking a handle/DID pair against current ATProto identity."""
 
@@ -95,11 +102,18 @@ async def verify_current_atproto_identity(
     return isinstance(also_known_as, list) and f"at://{normalized_handle}" in also_known_as
 
 
-async def verify_linked_atproto_identity(handle: str, did: str) -> bool:
+async def verify_linked_atproto_identity(
+    handle: str,
+    did: str,
+    *,
+    pds_url: str | None = None,
+) -> bool:
     """Verify a linked identity, including the explicit hermetic OAuth harness."""
     if e2e_harness_identity_matches(handle, did):
         return True
-    return await verify_current_atproto_identity(handle, did)
+    if await verify_current_atproto_identity(handle, did):
+        return True
+    return await _verify_pds_handle_resolution(handle, did, pds_url)
 
 
 def e2e_harness_identity_matches(handle: str, did: str) -> bool:
@@ -107,6 +121,35 @@ def e2e_harness_identity_matches(handle: str, did: str) -> bool:
     if os.environ.get("ATLAS_ATPROTO_OAUTH_E2E_HARNESS") != "1":
         return False
     return did == f"did:web:{_normalize_handle(handle)}"
+
+
+async def _verify_pds_handle_resolution(handle: str, did: str, pds_url: str | None) -> bool:
+    if not pds_url:
+        return False
+    try:
+        endpoint = _pds_resolve_handle_url(pds_url, _normalize_handle(handle))
+    except ValueError:
+        return False
+    async with httpx.AsyncClient(timeout=ATPROTO_IDENTITY_TIMEOUT_SECONDS) as client:
+        try:
+            response = await client.get(endpoint)
+        except httpx.HTTPError:
+            return False
+    if response.status_code != httpx.codes.OK:
+        return False
+    try:
+        payload = response.json()
+    except ValueError:
+        return False
+    return isinstance(payload, dict) and payload.get("did") == did
+
+
+def _pds_resolve_handle_url(pds_url: str, handle: str) -> str:
+    url = httpx.URL(pds_url)
+    if url.scheme not in {"http", "https"} or not url.host:
+        raise InvalidAtprotoPdsUrlError
+    url = url.copy_with(path="/xrpc/com.atproto.identity.resolveHandle", query=None)
+    return str(url.copy_add_param("handle", handle))
 
 
 async def resolve_current_atproto_identity(

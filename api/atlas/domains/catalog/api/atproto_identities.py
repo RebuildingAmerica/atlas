@@ -184,7 +184,9 @@ async def link_atproto_identity(
 ) -> AtprotoIdentityResponse:
     """Persist a reverified app-server OAuth result and active control relation."""
     _require_app_actor(actor)
-    if not await _verify_linked_atproto_identity(payload.current_handle, payload.did):
+    if not await _verify_linked_atproto_identity(
+        payload.current_handle, payload.did, pds_url=payload.pds_url
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="ATProto identity could not be verified.",
@@ -300,5 +302,5 @@ async def _controlled_identity(
     return identity, control
 
 
-async def _verify_linked_atproto_identity(handle: str, did: str) -> bool:
-    return await verify_linked_atproto_identity(handle, did)
+async def _verify_linked_atproto_identity(handle: str, did: str, *, pds_url: str | None) -> bool:
+    return await verify_linked_atproto_identity(handle, did, pds_url=pds_url)

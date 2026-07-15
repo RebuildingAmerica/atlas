@@ -50,7 +50,7 @@ def _actor(user_id: str = "user_1", *, auth_type: str = "internal") -> Authentic
 async def _connect(
     test_db: object, monkeypatch: pytest.MonkeyPatch, *, user_id: str = "user_1"
 ) -> tuple[AtprotoIdentityResponse, Response]:
-    async def verified(_handle: str, _did: str) -> bool:
+    async def verified(_handle: str, _did: str, **_kwargs: object) -> bool:
         return True
 
     monkeypatch.setattr(
@@ -221,7 +221,7 @@ async def test_link_rejects_unverified_oauth_result(
     test_db: object,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def unverified(_handle: str, _did: str) -> bool:
+    async def unverified(_handle: str, _did: str, **_kwargs: object) -> bool:
         return False
 
     monkeypatch.setattr(
@@ -335,7 +335,9 @@ async def test_e2e_harness_verification_short_circuits_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
-    assert await _verify_linked_atproto_identity("Person.Example", "did:web:person.example")
+    assert await _verify_linked_atproto_identity(
+        "Person.Example", "did:web:person.example", pds_url=None
+    )
 
 
 @pytest.mark.asyncio

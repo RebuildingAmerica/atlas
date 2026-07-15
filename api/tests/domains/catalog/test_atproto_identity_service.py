@@ -291,6 +291,66 @@ async def test_linked_identity_verification_uses_only_explicit_harness(
 
 
 @pytest.mark.asyncio
+async def test_linked_identity_verification_accepts_managed_pds_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def unverified(_handle: str, _did: str) -> bool:
+        return False
+
+    monkeypatch.setattr(atproto_identity, "verify_current_atproto_identity", unverified)
+    _FakeHttpClient.requests = []
+    _FakeHttpClient.responses = [_FakeHttpResponse(status_code=200, payload={"did": "did:plc:pds"})]
+    monkeypatch.setattr(atproto_identity.httpx, "AsyncClient", _FakeHttpClient)
+
+    assert await verify_linked_atproto_identity(
+        "Person.PDS.Example",
+        "did:plc:pds",
+        pds_url="https://pds.example",
+    )
+    assert _FakeHttpClient.requests == [
+        "https://pds.example/xrpc/com.atproto.identity.resolveHandle?handle=person.pds.example"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_linked_identity_verification_rejects_invalid_pds_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def unverified(_handle: str, _did: str) -> bool:
+        return False
+
+    monkeypatch.setattr(atproto_identity, "verify_current_atproto_identity", unverified)
+    monkeypatch.setattr(atproto_identity.httpx, "AsyncClient", _FakeHttpClient)
+
+    assert not await verify_linked_atproto_identity("person.example", "did:plc:person")
+    assert not await verify_linked_atproto_identity(
+        "person.example", "did:plc:person", pds_url="://not-a-url"
+    )
+
+    _FakeHttpClient.responses = [atproto_identity.httpx.HTTPError("network")]
+    assert not await verify_linked_atproto_identity(
+        "person.example", "did:plc:person", pds_url="https://pds.example"
+    )
+
+    _FakeHttpClient.responses = [_FakeHttpResponse(status_code=500)]
+    assert not await verify_linked_atproto_identity(
+        "person.example", "did:plc:person", pds_url="https://pds.example"
+    )
+
+    _FakeHttpClient.responses = [_FakeHttpResponse(status_code=200, payload=ValueError())]
+    assert not await verify_linked_atproto_identity(
+        "person.example", "did:plc:person", pds_url="https://pds.example"
+    )
+
+    _FakeHttpClient.responses = [
+        _FakeHttpResponse(status_code=200, payload={"did": "did:plc:other"})
+    ]
+    assert not await verify_linked_atproto_identity(
+        "person.example", "did:plc:person", pds_url="https://pds.example"
+    )
+
+
+@pytest.mark.asyncio
 async def test_verify_current_atproto_identity_rejects_missing_reverse_alias() -> None:
     resolver = _Resolver(
         did="did:plc:org",
