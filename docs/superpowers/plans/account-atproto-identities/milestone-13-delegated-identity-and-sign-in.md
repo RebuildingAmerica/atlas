@@ -1,8 +1,7 @@
 # Milestone 13: Delegated Identity and ATProto Sign-In
 
-**Status:** Local browser delegated-identity coverage and staging deploy/smoke
-verified; signed-in hosted verification lane implemented and awaiting staged run
-evidence
+**Status:** Local browser delegated-identity coverage, staging deploy/smoke, and
+signed-in hosted verification verified; production proof still pending
 
 ## ATProto-first sign-in
 
@@ -58,13 +57,20 @@ authorization remains the enforcement boundary.
 
 ## Remaining work
 
-- Run the new `hosted-identity` staging workflow lane after the staging Vercel
-  app has `ATLAS_HOSTED_E2E_ENABLED`, `ATLAS_HOSTED_E2E_SECRET`, and
-  `ATLAS_ATPROTO_OAUTH_E2E_HARNESS` configured. Record the passing run URL here.
 - Repeat the same route-level proof in production after staging is healthy.
 
 ## Hosted staging evidence
 
+- 2026-07-14/15 staging run
+  [`29384065031`](https://github.com/RebuildingAmerica/atlas/actions/runs/29384065031)
+  completed successfully for `f0b3b98fba2da7e8c47a3b658948fa0bcb249c9d`,
+  including CI, `deploy-api`, `deploy-pds`, `hosted-smoke`, and
+  `hosted-identity`.
+- The `hosted-identity` job ran the signed-in browser proof against the hosted
+  staging app and passed in 1.4 minutes. It exercised managed account identity
+  creation, managed organization identity creation, delegated organization
+  identity administration, delegated removal/revocation, and ATProto-first
+  username sign-in through the shared “Email or username” sign-in field.
 - 2026-07-14 staging run
   [`29364644020`](https://github.com/RebuildingAmerica/atlas/actions/runs/29364644020)
   completed successfully for `cf63aace0f22407ae0a1895555a84c6564998e3c`,
@@ -72,7 +78,8 @@ authorization remains the enforcement boundary.
 - Hosted smoke verified public ATProto OAuth client metadata, fail-closed
   malformed ATProto sign-in start, staging PDS health, MCP challenge metadata,
   and Cloudflare-backed API health.
-- That evidence proves the hosted public route and deploy contract, not the
-  signed-in account journey. The remaining staging check must exercise an
-  account with a passkey, managed organization identity creation through the
-  hosted PDS, delegated grant/removal/revocation, and ATProto-first sign-in.
+- That earlier evidence proved the hosted public route and deploy contract, not
+  the signed-in account journey. Run `29384065031` adds the signed-in staging
+  proof for a passkey-backed account, managed organization identity creation
+  through the hosted PDS, delegated grant/removal/revocation, and ATProto-first
+  sign-in.

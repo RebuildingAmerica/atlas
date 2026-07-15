@@ -1,7 +1,7 @@
 # Milestone 12: Atlas-Managed PDS Foundation
 
-**Status:** Staging PDS deploy and public health verified; signed-in hosted
-managed-identity lane implemented and awaiting staged run evidence
+**Status:** Staging PDS deploy, public health, and signed-in hosted managed
+identity proof verified; production proof still pending
 
 ## Objective
 
@@ -41,8 +41,6 @@ browser or its callers.
 
 - Define the managed-account credential recovery and migration operation before
   advertising direct PDS credential access.
-- Prove signed-in managed-account creation and the OAuth callback through the
-  public staging PDS with the `hosted-identity` workflow lane.
 - Provision the corresponding production PDS host, DNS/TLS, deployment identity
   secrets, and prove the durable backup/restore operation against an isolated
   host.
@@ -50,6 +48,15 @@ browser or its callers.
 
 ## Hosted staging evidence
 
+- 2026-07-14/15 staging run
+  [`29384065031`](https://github.com/RebuildingAmerica/atlas/actions/runs/29384065031)
+  completed successfully for `f0b3b98fba2da7e8c47a3b658948fa0bcb249c9d`,
+  including CI, `deploy-api`, `deploy-pds`, `hosted-smoke`, and
+  `hosted-identity`.
+- The `hosted-identity` job passed the hosted browser proof in 1.4 minutes. For
+  this milestone, that proves signed-in managed account identity creation and
+  organization managed identity creation through the public staging app and
+  staging PDS without persisting PDS credentials in Atlas application storage.
 - 2026-07-14 staging run
   [`29364644020`](https://github.com/RebuildingAmerica/atlas/actions/runs/29364644020)
   completed successfully for `cf63aace0f22407ae0a1895555a84c6564998e3c`,
@@ -58,5 +65,5 @@ browser or its callers.
   `ATLAS_PDS_PUBLIC_URL=https://atlas-pds-staging.rebuildingus.org node scripts/deploy/pds-release.mjs health`,
   reporting upstream version `0.4.5009`.
 - Hosted smoke verified the public staging PDS health endpoint and public
-  ATProto route metadata. It does not prove signed-in managed-account creation;
-  the new `test:hosted-identity` lane is the required signed-in staging check.
+  ATProto route metadata. Run `29384065031` adds the required signed-in staging
+  check.
