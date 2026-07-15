@@ -46,7 +46,7 @@ describe("provisionManagedAtprotoIdentity", () => {
     });
     pdsMocks.createAccount.mockImplementation(
       (input: { email: string; handle: string; password: string }) => {
-        expect(input.email).toBe("operator@atlas.test");
+        expect(input.email).toMatch(/^operator\+atlas-[a-f0-9]{16}@atlas\.test$/);
         expect(input.handle).toBe("civic.atlas.test");
         expect(input.password).toHaveLength(43);
         return Promise.resolve({
@@ -74,6 +74,45 @@ describe("provisionManagedAtprotoIdentity", () => {
     });
     expect(pdsMocks.createAccount).toHaveBeenCalledTimes(1);
     expect(pdsMocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("uses a unique managed PDS email for each Atlas identity owned by the same user", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({
+      atprotoPdsAdminPassword: null,
+      atprotoPdsUrl: "https://pds.atlas.test",
+    });
+    pdsMocks.createAccount.mockImplementation(
+      (input: { email: string; handle: string; password: string }) =>
+        Promise.resolve({
+          data: {
+            did: `did:plc:${input.handle.split(".")[0]}`,
+            handle: input.handle,
+          },
+        }),
+    );
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await provisionManagedAtprotoIdentity({
+      email: "operator@atlas.test",
+      handle: "person.atlas.test",
+      userId: "user_1",
+    });
+    await provisionManagedAtprotoIdentity({
+      email: "operator@atlas.test",
+      handle: "organization.atlas.test",
+      userId: "user_1",
+    });
+
+    const emails = pdsMocks.createAccount.mock.calls.map((call) => {
+      const input = call[0] as { email: string };
+      return input.email;
+    });
+    expect(emails).toHaveLength(2);
+    expect(emails[0]).not.toBe("operator@atlas.test");
+    expect(emails[1]).not.toBe("operator@atlas.test");
+    expect(emails[0]).not.toBe(emails[1]);
+    expect(emails[0]).toMatch(/^operator\+atlas-[a-f0-9]{16}@atlas\.test$/);
+    expect(emails[1]).toMatch(/^operator\+atlas-[a-f0-9]{16}@atlas\.test$/);
   });
 
   it("mints a one-use Atlas PDS invite when the admin password is configured", async () => {
@@ -114,13 +153,13 @@ describe("provisionManagedAtprotoIdentity", () => {
       authorization: `Basic ${Buffer.from("admin:admin-password").toString("base64")}`, // pragma: allowlist secret
       "content-type": "application/json",
     });
-    expect(pdsMocks.createAccount).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: "operator@atlas.test",
-        handle: "civic.atlas.test",
-        inviteCode: "invite-code",
-      }),
-    );
+    expect(pdsMocks.createAccount).toHaveBeenCalledTimes(1);
+    const [accountInput] = pdsMocks.createAccount.mock.calls[0] as unknown as [
+      { email: string; handle: string; inviteCode?: string },
+    ];
+    expect(accountInput.email).toMatch(/^operator\+atlas-[a-f0-9]{16}@atlas\.test$/);
+    expect(accountInput.handle).toBe("civic.atlas.test");
+    expect(accountInput.inviteCode).toBe("invite-code");
   });
 
   it("fails explicitly when Atlas PDS invite creation is rejected", async () => {

@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { AtpAgent } from "@atproto/api";
 import { getAuthRuntimeConfig } from "./runtime";
 
@@ -37,7 +37,7 @@ export async function provisionManagedAtprotoIdentity(
   const agent = new AtpAgent({ service: pdsUrl });
   const inviteCode = await createManagedAtprotoInviteCode(pdsUrl);
   const account = await agent.createAccount({
-    email: input.email.trim(),
+    email: managedPdsAccountEmail(input),
     handle: input.handle.trim(),
     inviteCode,
     password: randomBytes(32).toString("base64url"),
@@ -52,6 +52,26 @@ export async function provisionManagedAtprotoIdentity(
 
 function isE2EHarnessEnabled(): boolean {
   return process.env.ATLAS_ATPROTO_PDS_E2E_HARNESS === "1";
+}
+
+function managedPdsAccountEmail(input: ManagedAtprotoProvisionInput): string {
+  const accountEmail = input.email.trim().toLowerCase();
+  const atIndex = accountEmail.lastIndexOf("@");
+  const domain = accountEmail.slice(atIndex + 1);
+  if (atIndex <= 0 || !domain) {
+    throw new Error("Atlas account email is required to provision an Atlas identity.");
+  }
+
+  const localPart =
+    accountEmail
+      .slice(0, atIndex)
+      .replace(/[^a-z0-9.!#$%&'*+/=?^_`{|}~-]/g, "")
+      .slice(0, 40) || "atlas";
+  const identityDigest = createHash("sha256")
+    .update(`${input.userId.trim()}:${input.handle.trim().toLowerCase().replace(/^@/, "")}`)
+    .digest("hex")
+    .slice(0, 16);
+  return `${localPart}+atlas-${identityDigest}@${domain}`;
 }
 
 async function createManagedAtprotoInviteCode(pdsUrl: string): Promise<string | undefined> {
