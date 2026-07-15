@@ -40,6 +40,21 @@ acceptance criteria recorded in each file.
 
 ## Latest hosted evidence
 
+- 2026-07-15 staging run
+  [`29395971561`](https://github.com/RebuildingAmerica/atlas/actions/runs/29395971561)
+  deployed branch head `7751b8d35075d53a72366370456560dba4f13fc5` and verified a
+  fresh staging-target Vercel preview,
+  `https://atlas-p453uqrvf-rebuilding-america-project.vercel.app`. API deploy,
+  PDS deploy, hosted smoke, and hosted identity verification all completed
+  successfully.
+- The `hosted-smoke` job verified 7 hosted checks against the Cloudflare-backed
+  staging API and `https://atlas-pds-staging.rebuildingus.org`.
+- The `hosted-identity` job ran `app/tests/e2e/atproto-identity-hosted.spec.ts`
+  against the fresh hosted preview. Its single serial browser proof passed in
+  1.2 minutes, exercising run-scoped passkey-backed accounts, managed account
+  identity creation, managed organization identity creation, delegated
+  organization identity removal/revocation, and ATProto-first username sign-in
+  without using a developer browser session.
 - 2026-07-14/15 staging run
   [`29384065031`](https://github.com/RebuildingAmerica/atlas/actions/runs/29384065031)
   deployed branch head `f0b3b98fba2da7e8c47a3b658948fa0bcb249c9d`. CI, API
@@ -62,9 +77,9 @@ acceptance criteria recorded in each file.
   version `0.4.5009`.
 - Hosted smoke currently proves public ATProto OAuth client metadata,
   fail-closed malformed ATProto sign-in start, staging PDS health, MCP OAuth
-  challenge metadata, and Cloudflare-backed API health. It does not replace the
-  remaining signed-in staging proof for managed identity creation, delegated
-  organization identity administration, or passkey-gated ATProto-first sign-in.
+  challenge metadata, and Cloudflare-backed API health. The signed-in
+  `hosted-identity` lane separately proves managed identity creation, delegated
+  organization identity administration, and passkey-gated ATProto-first sign-in.
 - Commit `94cd2091` adds the staging `hosted-identity` workflow lane and commit
   `812df566` adds the Playwright suite it runs. That suite prepares run-scoped,
   synthetic passkey-backed accounts through a staging-only helper route, drives

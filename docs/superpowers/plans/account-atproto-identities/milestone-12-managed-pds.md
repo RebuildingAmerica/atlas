@@ -48,6 +48,16 @@ browser or its callers.
 
 ## Hosted staging evidence
 
+- 2026-07-15 staging run
+  [`29395971561`](https://github.com/RebuildingAmerica/atlas/actions/runs/29395971561)
+  completed successfully for `7751b8d35075d53a72366370456560dba4f13fc5`,
+  including `deploy-api`, `deploy-pds`, `hosted-smoke`, and `hosted-identity`
+  against the fresh staging-target preview
+  `https://atlas-p453uqrvf-rebuilding-america-project.vercel.app`.
+- The `hosted-identity` job passed the hosted browser proof in 1.2 minutes. For
+  this milestone, that re-proves signed-in managed account identity creation and
+  organization managed identity creation through the public staging app and
+  staging PDS without persisting PDS credentials in Atlas application storage.
 - 2026-07-14/15 staging run
   [`29384065031`](https://github.com/RebuildingAmerica/atlas/actions/runs/29384065031)
   completed successfully for `f0b3b98fba2da7e8c47a3b658948fa0bcb249c9d`,
@@ -65,5 +75,5 @@ browser or its callers.
   `ATLAS_PDS_PUBLIC_URL=https://atlas-pds-staging.rebuildingus.org node scripts/deploy/pds-release.mjs health`,
   reporting upstream version `0.4.5009`.
 - Hosted smoke verified the public staging PDS health endpoint and public
-  ATProto route metadata. Run `29384065031` adds the required signed-in staging
-  check.
+  ATProto route metadata. Runs `29384065031` and `29395971561` add the required
+  signed-in staging check.

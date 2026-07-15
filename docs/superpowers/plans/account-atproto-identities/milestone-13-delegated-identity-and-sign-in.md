@@ -61,6 +61,17 @@ authorization remains the enforcement boundary.
 
 ## Hosted staging evidence
 
+- 2026-07-15 staging run
+  [`29395971561`](https://github.com/RebuildingAmerica/atlas/actions/runs/29395971561)
+  completed successfully for `7751b8d35075d53a72366370456560dba4f13fc5`,
+  including `deploy-api`, `deploy-pds`, `hosted-smoke`, and `hosted-identity`
+  against the fresh staging-target preview
+  `https://atlas-p453uqrvf-rebuilding-america-project.vercel.app`.
+- The `hosted-identity` job ran the signed-in browser proof against that hosted
+  preview and passed in 1.2 minutes. It exercised managed account identity
+  creation, managed organization identity creation, delegated organization
+  identity administration, delegated removal/revocation, and ATProto-first
+  username sign-in through the shared “Email or username” sign-in field.
 - 2026-07-14/15 staging run
   [`29384065031`](https://github.com/RebuildingAmerica/atlas/actions/runs/29384065031)
   completed successfully for `f0b3b98fba2da7e8c47a3b658948fa0bcb249c9d`,
@@ -78,8 +89,7 @@ authorization remains the enforcement boundary.
 - Hosted smoke verified public ATProto OAuth client metadata, fail-closed
   malformed ATProto sign-in start, staging PDS health, MCP challenge metadata,
   and Cloudflare-backed API health.
-- That earlier evidence proved the hosted public route and deploy contract, not
-  the signed-in account journey. Run `29384065031` adds the signed-in staging
-  proof for a passkey-backed account, managed organization identity creation
-  through the hosted PDS, delegated grant/removal/revocation, and ATProto-first
-  sign-in.
+- Run `29384065031` added the first signed-in staging proof for a passkey-backed
+  account, managed organization identity creation through the hosted PDS,
+  delegated grant/removal/revocation, and ATProto-first sign-in. Run
+  `29395971561` re-proves that path on the latest branch head.
