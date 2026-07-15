@@ -78,7 +78,7 @@ describe("provisionManagedAtprotoIdentity", () => {
 
   it("mints a one-use Atlas PDS invite when the admin password is configured", async () => {
     pdsMocks.getAuthRuntimeConfig.mockReturnValue({
-      atprotoPdsAdminPassword: "admin-password",
+      atprotoPdsAdminPassword: "admin-password", // pragma: allowlist secret
       atprotoPdsUrl: "https://pds.atlas.test",
     });
     pdsMocks.fetch.mockResolvedValue({
@@ -111,7 +111,7 @@ describe("provisionManagedAtprotoIdentity", () => {
     expect(inviteRequest.body).toBe(JSON.stringify({ useCount: 1 }));
     expect(inviteRequest.method).toBe("POST");
     expect(inviteRequest.headers).toEqual({
-      authorization: `Basic ${Buffer.from("admin:admin-password").toString("base64")}`,
+      authorization: `Basic ${Buffer.from("admin:admin-password").toString("base64")}`, // pragma: allowlist secret
       "content-type": "application/json",
     });
     expect(pdsMocks.createAccount).toHaveBeenCalledWith(
@@ -125,7 +125,7 @@ describe("provisionManagedAtprotoIdentity", () => {
 
   it("fails explicitly when Atlas PDS invite creation is rejected", async () => {
     pdsMocks.getAuthRuntimeConfig.mockReturnValue({
-      atprotoPdsAdminPassword: "admin-password",
+      atprotoPdsAdminPassword: "admin-password", // pragma: allowlist secret
       atprotoPdsUrl: "https://pds.atlas.test",
     });
     pdsMocks.fetch.mockResolvedValue({
