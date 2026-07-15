@@ -60,6 +60,7 @@ jobs:
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          atproto-oauth-e2e-harness: "1"
 
   deploy-pds:
     needs: ci

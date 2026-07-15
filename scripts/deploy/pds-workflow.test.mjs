@@ -29,6 +29,15 @@ test("staging deploy consumes the PDS decision with a hosted PDS release job", a
   assert.match(source, /atlas-pds-staging\.rebuildingus\.org/);
 });
 
+test("staging API deploy enables the ATProto OAuth harness for hosted identity proof", async () => {
+  const workflow = await workflowSource(".github/workflows/deploy-staging.yml");
+  const action = await workflowSource(".github/actions/deploy-atlas-api/action.yml");
+
+  assert.match(workflow, /atproto-oauth-e2e-harness: "1"/);
+  assert.match(action, /atproto-oauth-e2e-harness:/);
+  assert.match(action, /ATLAS_ATPROTO_OAUTH_E2E_HARNESS=\$\{\{ inputs\.atproto-oauth-e2e-harness \}\}/);
+});
+
 test("production deploy releases the hosted PDS before hosted smoke", async () => {
   const source = await workflowSource(".github/workflows/deploy-production.yml");
 

@@ -70,6 +70,10 @@ inputs:
     description: Optional OpenStatus API key for synthetic checks.
     required: false
     default: ""
+  atproto-oauth-e2e-harness:
+    description: Enable the explicit ATProto OAuth E2E harness for staging-only synthetic identity verification.
+    required: false
+    default: "0"
 
 outputs:
   api-url:
@@ -179,6 +183,7 @@ runs:
           ATLAS_PUBLIC_URL=${{ inputs.atlas-public-url }}
           ATLAS_AUTH_JWT_AUDIENCES=${{ steps.hosted-auth.outputs.atlas-api-audience }}
           ATLAS_OPERATOR_ALLOWED_EMAILS=${{ inputs.operator-allowed-emails }}
+          ATLAS_ATPROTO_OAUTH_E2E_HARNESS=${{ inputs.atproto-oauth-e2e-harness }}
           ATLAS_ANON_RATE_LIMIT_ENABLED=true
           ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE=30
           ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE=10
