@@ -106,21 +106,28 @@ async function signOut(page: Page): Promise<void> {
   ]);
 }
 
+async function visitHostedRoute(page: Page, path: string): Promise<void> {
+  await page.goto(path, { waitUntil: "domcontentloaded" });
+}
+
 async function openOrganizationIdentityControls(page: Page): Promise<void> {
-  await page.goto("/organization", { waitUntil: "networkidle" });
+  await visitHostedRoute(page, "/organization");
 
   const identityHeading = page.getByRole("heading", { name: "Organization identity" });
+  const upgradeButton = page.getByRole("button", { name: /Upgrade to a team workspace/i });
+  await expect(identityHeading.or(upgradeButton)).toBeVisible({ timeout: 20_000 });
+
   if (await identityHeading.isVisible()) {
     return;
   }
 
-  await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
+  await upgradeButton.click();
   await Promise.race([
     page.waitForURL(/\/pricing/, { timeout: 20_000 }).catch(() => null),
     identityHeading.waitFor({ state: "visible", timeout: 20_000 }).catch(() => null),
   ]);
 
-  await page.goto("/organization", { waitUntil: "networkidle" });
+  await visitHostedRoute(page, "/organization");
   await expect(identityHeading).toBeVisible({ timeout: 20_000 });
 }
 
@@ -132,7 +139,7 @@ test("hosted ATProto identity administration works without a personal browser se
   const run = await prepareHostedRun(page.request);
 
   await signInHostedAccount(page, { email: run.owner.email, runId: run.runId });
-  await page.goto("/account", { waitUntil: "networkidle" });
+  await visitHostedRoute(page, "/account");
   await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
 
   await page.getByRole("textbox", { name: "New Atlas handle" }).first().fill(run.owner.handle);
@@ -148,7 +155,7 @@ test("hosted ATProto identity administration works without a personal browser se
   });
 
   await seedDelegateMembership(page, run);
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("combobox", { name: "Delegate member" }).selectOption(run.delegate.userId);
   await page.getByRole("button", { name: "Grant administration" }).click();
   await expect(page.getByText("Delegated administration granted.")).toBeVisible({
@@ -158,7 +165,7 @@ test("hosted ATProto identity administration works without a personal browser se
   await signOut(page);
 
   await signInHostedAccount(page, { email: run.delegate.email, runId: run.runId });
-  await page.goto("/organization", { waitUntil: "networkidle" });
+  await visitHostedRoute(page, "/organization");
   await expect(page.getByRole("heading", { name: "Organization identity" })).toBeVisible({
     timeout: 20_000,
   });
@@ -170,7 +177,7 @@ test("hosted ATProto identity administration works without a personal browser se
   await signOut(page);
 
   const signInOrigin = expectedHostedPublicOrigin();
-  await page.goto(absoluteHostedUrl(signInOrigin, "/sign-in"), { waitUntil: "networkidle" });
+  await page.goto(absoluteHostedUrl(signInOrigin, "/sign-in"), { waitUntil: "domcontentloaded" });
   await page.getByLabel("Email or username").fill(`@${run.owner.handle}`);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.waitForURL((url) => url.origin === signInOrigin && url.pathname === "/account", {
