@@ -62,6 +62,20 @@ authorization remains the enforcement boundary.
 ## Hosted staging evidence
 
 - 2026-07-15 staging run
+  [`29415016261`](https://github.com/RebuildingAmerica/atlas/actions/runs/29415016261)
+  completed successfully for `242e06fbccb9ffba32ee4a90e16bd250ba5c9c0d`,
+  including `deploy-api`, `deploy-pds`, `hosted-smoke`, and `hosted-identity`.
+- The `hosted-identity` job ran the signed-in browser proof against the branch
+  app started inside the workflow and passed. It exercised managed account
+  identity creation, managed organization identity creation, delegated
+  organization identity administration, delegated removal/revocation, and
+  ATProto-first username sign-in through the shared “Email or username” sign-in
+  field.
+- Local focused verification for the same head passed the sign-in form tests,
+  sign-in page username-routing tests, ATProto sign-in/OAuth/PDS tests, account
+  identity hook tests, organization identity/delegation tests, deploy workflow
+  tests, and PDS release tests before the hosted evidence was recorded.
+- 2026-07-15 staging run
   [`29395971561`](https://github.com/RebuildingAmerica/atlas/actions/runs/29395971561)
   completed successfully for `7751b8d35075d53a72366370456560dba4f13fc5`,
   including `deploy-api`, `deploy-pds`, `hosted-smoke`, and `hosted-identity`
@@ -92,4 +106,5 @@ authorization remains the enforcement boundary.
 - Run `29384065031` added the first signed-in staging proof for a passkey-backed
   account, managed organization identity creation through the hosted PDS,
   delegated grant/removal/revocation, and ATProto-first sign-in. Run
-  `29395971561` re-proves that path on the latest branch head.
+  `29415016261` re-proves that path on the latest branch head after the PDS
+  invite-broker route and edge-readiness fixes.

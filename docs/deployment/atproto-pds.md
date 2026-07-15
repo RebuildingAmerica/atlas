@@ -188,6 +188,20 @@ prove managed account creation, the OAuth callback, organization attachment,
 delegation/revocation, and passkey-gated ATProto-first sign-in against the
 actual public PDS.
 
+The release action also probes the Atlas invite-broker edge route:
+
+```sh
+ATLAS_PDS_PUBLIC_URL=https://pds.example.org \
+  node scripts/deploy/pds-release.mjs invite-broker-route
+```
+
+That probe intentionally sends an unauthenticated invite request and requires
+the broker's `401` JSON response. A `404` means Caddy is proxying the request to
+the upstream PDS instead of the Atlas invite broker, so managed account creation
+will fail even when `/xrpc/_health` is healthy. The deploy script retries both
+public probes to absorb the short edge restart window after the broker or edge
+container is force-recreated.
+
 The signed-in hosted identity proof uses `/api/e2e/hosted/identity` to create
 run-scoped synthetic accounts and browser sessions without depending on an
 operator's personal browser. The route returns 404 unless

@@ -41,6 +41,24 @@ acceptance criteria recorded in each file.
 ## Latest hosted evidence
 
 - 2026-07-15 staging run
+  [`29415016261`](https://github.com/RebuildingAmerica/atlas/actions/runs/29415016261)
+  deployed branch head `242e06fbccb9ffba32ee4a90e16bd250ba5c9c0d`. API deploy,
+  PDS deploy, hosted smoke, and hosted identity verification all completed
+  successfully after the PDS release action proved both public PDS health and
+  the invite-broker route.
+- The `hosted-identity` job ran `app/tests/e2e/atproto-identity-hosted.spec.ts`
+  against the branch app started inside GitHub Actions at
+  `http://127.0.0.1:3100`. Its single serial browser proof exercised run-scoped
+  passkey-backed accounts, managed account identity creation, managed
+  organization identity creation, delegated organization identity
+  removal/revocation, and ATProto-first username sign-in without using a
+  developer browser session.
+- Local verification for this head covered the same failure classes before
+  relying on CI: focused sign-in UI/unit tests, ATProto OAuth/PDS/session tests,
+  organization identity/delegation tests, PDS release tests, deploy workflow
+  tests, actionlint for staging/production workflows, shell syntax for the PDS
+  release script, and `git diff --check`.
+- 2026-07-15 staging run
   [`29395971561`](https://github.com/RebuildingAmerica/atlas/actions/runs/29395971561)
   deployed branch head `7751b8d35075d53a72366370456560dba4f13fc5` and verified a
   fresh staging-target Vercel preview,

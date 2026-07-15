@@ -49,6 +49,21 @@ browser or its callers.
 ## Hosted staging evidence
 
 - 2026-07-15 staging run
+  [`29415016261`](https://github.com/RebuildingAmerica/atlas/actions/runs/29415016261)
+  completed successfully for `242e06fbccb9ffba32ee4a90e16bd250ba5c9c0d`,
+  including `deploy-api`, `deploy-pds`, `hosted-smoke`, and `hosted-identity`.
+- The PDS release action proved
+  `https://atlas-pds-staging.rebuildingus.org/xrpc/_health` and then proved the
+  public invite-broker route by requiring
+  `POST https://atlas-pds-staging.rebuildingus.org/_atlas/pds/invites` to return
+  the broker's unauthenticated `401` JSON response instead of the upstream PDS
+  `404`.
+- The `hosted-identity` job passed the hosted browser proof after the branch app
+  was configured with the fresh broker secret. For this milestone, that
+  re-proves signed-in managed account identity creation and organization managed
+  identity creation through the public staging PDS without persisting PDS
+  credentials in Atlas application storage.
+- 2026-07-15 staging run
   [`29395971561`](https://github.com/RebuildingAmerica/atlas/actions/runs/29395971561)
   completed successfully for `7751b8d35075d53a72366370456560dba4f13fc5`,
   including `deploy-api`, `deploy-pds`, `hosted-smoke`, and `hosted-identity`
