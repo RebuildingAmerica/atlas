@@ -43,6 +43,27 @@ test("staging API deploy enables the ATProto OAuth harness for hosted identity p
   );
 });
 
+test("staging deploy serves hosted identity proof from a branch app with the OAuth harness", async () => {
+  const source = await workflowSource(".github/workflows/deploy-staging.yml");
+
+  assert.match(source, /deploy-vercel:/);
+  assert.match(source, /Deploy Vercel staging app/);
+  assert.match(source, /Alias Vercel staging domain/);
+  assert.match(source, /add_vercel_env ATLAS_ATPROTO_OAUTH_E2E_HARNESS "1"/);
+  assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET/);
+  assert.match(source, /ATLAS_PDS_INVITE_BROKER_URL/);
+  assert.ok(
+    source.indexOf("Deploy Vercel staging app") <
+      source.indexOf("Run hosted ATProto identity verification"),
+    "hosted identity proof must hit the freshly deployed branch app, not a stale staging app",
+  );
+  assert.match(source, /- deploy-vercel/);
+  assert.match(
+    source,
+    /ATLAS_HOSTED_EXPECTED_PUBLIC_URL: \$\{\{ secrets\.ATLAS_PUBLIC_URL \}\}/,
+  );
+});
+
 test("manual staging deploy can verify a fresh hosted preview URL", async () => {
   const source = await workflowSource(".github/workflows/deploy-staging.yml");
 
