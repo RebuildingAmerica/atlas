@@ -32,6 +32,7 @@ const REQUEST_HEADERS_TO_DROP = new Set([
 
 const RESPONSE_HEADERS_TO_DROP = new Set([
   "connection",
+  "content-encoding",
   "content-length",
   "set-cookie",
   "transfer-encoding",

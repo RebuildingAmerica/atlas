@@ -173,4 +173,25 @@ describe("proxyAtlasApiRequest forwarding", () => {
       }),
     );
   });
+
+  it("drops upstream content encoding after decoding the proxied response body", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        headers: {
+          "content-encoding": "br",
+          "content-type": "application/json",
+        },
+        status: 200,
+      }),
+    );
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    const response = await proxyAtlasApiRequest(new Request("https://atlas.test/api/entities"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(response.headers.get("content-encoding")).toBeNull();
+    expect(response.headers.get("content-type")).toBe("application/json");
+  });
 });
