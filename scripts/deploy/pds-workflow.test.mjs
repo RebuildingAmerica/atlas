@@ -97,6 +97,26 @@ test("production deploy runs signed-in hosted identity proof after hosted smoke"
   );
 });
 
+test("production deploy configures the hosted identity helper in Vercel", async () => {
+  const source = await workflowSource(
+    ".github/workflows/deploy-production.yml",
+  );
+
+  assert.match(
+    source,
+    /ATLAS_HOSTED_E2E_SECRET: \$\{\{ secrets\.ATLAS_HOSTED_E2E_SECRET \}\}/,
+  );
+  assert.match(source, /add_vercel_env ATLAS_HOSTED_E2E_ENABLED "1"/);
+  assert.match(
+    source,
+    /add_vercel_env ATLAS_HOSTED_E2E_PRODUCTION_ENABLED "1"/,
+  );
+  assert.match(
+    source,
+    /add_vercel_env ATLAS_HOSTED_E2E_SECRET "\$ATLAS_HOSTED_E2E_SECRET"/,
+  );
+});
+
 test("hosted PDS deploy bundle includes the backup and restore operator script", async () => {
   const source = await workflowSource(
     ".github/actions/deploy-atlas-pds/action.yml",

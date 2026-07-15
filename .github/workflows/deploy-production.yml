@@ -92,6 +92,7 @@ jobs:
           ATLAS_AUTH_INTERNAL_SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
           ATLAS_AUTH_MEMBERSHIP_URL: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
           ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
+          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
           ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
           ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -155,6 +156,9 @@ jobs:
           add_vercel_env ATLAS_DEPLOY_MODE "production"
           add_vercel_env ATLAS_EMAIL_PROVIDER "resend"
           add_vercel_env ATLAS_EMAIL_RESEND_API_KEY "$ATLAS_EMAIL_RESEND_API_KEY"
+          add_vercel_env ATLAS_HOSTED_E2E_ENABLED "1"
+          add_vercel_env ATLAS_HOSTED_E2E_PRODUCTION_ENABLED "1"
+          add_vercel_env ATLAS_HOSTED_E2E_SECRET "$ATLAS_HOSTED_E2E_SECRET"
           add_vercel_env ATLAS_OPERATOR_ALLOWED_EMAILS "$ATLAS_OPERATOR_ALLOWED_EMAILS"
           add_vercel_env ATLAS_PDS_PUBLIC_URL "$atlas_pds_public_url"
           add_vercel_env ATLAS_PUBLIC_URL "$atlas_public_origin"
