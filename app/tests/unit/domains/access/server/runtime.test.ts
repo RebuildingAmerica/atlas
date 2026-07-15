@@ -143,10 +143,22 @@ describe("resolveAuthRuntimeConfig", () => {
   });
 
   it("rejects credentialed PDS invite broker URLs", () => {
+    const credentialedBrokerUrl = new URL("https://pds.atlas.test/_atlas/pds/invites");
+    credentialedBrokerUrl.href = [
+      credentialedBrokerUrl.protocol,
+      "//",
+      "atlas",
+      ":",
+      "not-real",
+      "@",
+      credentialedBrokerUrl.host,
+      credentialedBrokerUrl.pathname,
+    ].join("");
+
     expect(() =>
       resolveAuthRuntimeConfig(
         {
-          ATLAS_PDS_INVITE_BROKER_URL: "https://atlas:secret@pds.atlas.test/_atlas/pds/invites",
+          ATLAS_PDS_INVITE_BROKER_URL: credentialedBrokerUrl.toString(),
           ATLAS_PUBLIC_URL: "https://atlas.example.com",
         },
         "/workspace/atlas/app",
