@@ -103,9 +103,9 @@ if [ $FAILED -eq 0 ]; then
     fi
 fi
 
-# 4. Run full quality suite via turbo (typecheck + lint + test for all packages)
+# 4. Run full quality suite (static checks + explicit cacheable test selectors)
 if [ $FAILED -eq 0 ]; then
-    print_info "Running full quality suite (turbo run typecheck lint test)..."
+    print_info "Running full quality suite (pnpm run quality)..."
     if ! (cd "$ROOT_DIR" && TURBO_UI=0 pnpm run quality 2>&1); then
         print_error "Quality checks failed"
         echo ""
