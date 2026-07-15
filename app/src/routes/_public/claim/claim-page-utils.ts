@@ -1,5 +1,5 @@
-import type { ProfileClaimResponse } from "@/lib/generated/atlas";
-import type { Entry } from "@/types";
+import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export interface ClaimStatusInfo {
   label: string;

@@ -1,10 +1,10 @@
 import { Eye, FileText, Globe, LockKeyhole, Mail, MapPin, ShieldQuestion } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import type { ProfileClaimResponse } from "@/lib/generated/atlas";
+import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Badge } from "@/platform/ui/badge";
 import { SurfaceSection } from "@/platform/ui/surface-section";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export interface ClaimContextRailProps {
   entry: Entry;

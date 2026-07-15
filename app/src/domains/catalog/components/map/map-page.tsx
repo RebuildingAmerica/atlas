@@ -28,7 +28,7 @@ import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summar
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
 import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
 import type { MapRouteSearch } from "@/domains/catalog/search-state";
-import type { MapPointCollection } from "@/types";
+import type { MapPointCollection } from "@rebuildingamerica/atlas-api-client";
 
 const MAP_NOTICE_POSITION_CLASS = "absolute top-24 right-3 sm:top-24 sm:right-4";
 

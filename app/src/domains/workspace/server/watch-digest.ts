@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { WatchDigestItem, WatchDigestResponse } from "@/lib/generated/atlas";
+import type {
+  WatchDigestItem,
+  WatchDigestResponse,
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type WorkspaceWatchDigest = WatchDigestResponse;

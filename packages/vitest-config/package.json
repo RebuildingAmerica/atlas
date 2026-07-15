@@ -1,0 +1,26 @@
+{
+  "name": "@rebuildingamerica/vitest-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./node": "./node.ts",
+    "./react": "./react.ts"
+  },
+  "scripts": {
+    "build": "node -e \"\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint *.ts --max-warnings 0",
+    "test": "node -e \"\""
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "devDependencies": {
+    "@rebuildingamerica/eslint-config": "workspace:*",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

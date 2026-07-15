@@ -14,7 +14,7 @@ import {
   formatStatCount,
   profileHref,
 } from "./home-page-data";
-import type { Entry, EntrySearchFacets } from "@/types";
+import type { Entry, EntrySearchFacets } from "@rebuildingamerica/atlas-api-client";
 import { HomeDiscoverySection } from "./home-page-discovery";
 
 interface HomeHeroActionsProps {

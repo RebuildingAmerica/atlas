@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type * as GeneratedAtlas from "@/lib/generated/atlas";
+import type * as GeneratedAtlas from "@rebuildingamerica/atlas-api-client/generated/atlas";
 
-vi.mock("@/lib/orval/fetcher", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/orval/fetcher", () => ({
   atlasFetch: vi.fn(),
 }));
 
@@ -9,16 +9,18 @@ const mapMocks = vi.hoisted(() => ({
   getEntitiesMap: vi.fn(),
 }));
 
-vi.mock("@/lib/generated/atlas", async () => {
-  const actual = await vi.importActual<typeof GeneratedAtlas>("@/lib/generated/atlas");
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", async () => {
+  const actual = await vi.importActual<typeof GeneratedAtlas>(
+    "@rebuildingamerica/atlas-api-client/generated/atlas",
+  );
   return {
     ...actual,
     getEntitiesMap: mapMocks.getEntitiesMap,
   };
 });
 
-import { api } from "@/lib/api";
-import { atlasFetch } from "@/lib/orval/fetcher";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import { atlasFetch } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 
 describe("api.entries.getBySlug and getConnections", () => {
   const fetchMock = atlasFetch as unknown as ReturnType<typeof vi.fn>;

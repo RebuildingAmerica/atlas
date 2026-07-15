@@ -8,7 +8,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { humanize } from "@/domains/catalog/catalog";
-import type { Entry, Source } from "@/types";
+import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 interface WorkSectionProps {
   entry: Entry;

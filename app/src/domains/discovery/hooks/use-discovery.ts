@@ -10,7 +10,7 @@ import type {
   DiscoveryRun,
   DiscoveryRunListResponse,
   StartDiscoveryRequest,
-} from "@/types";
+} from "@rebuildingamerica/atlas-api-client";
 
 export function discoveryRunsQueryOptions() {
   return queryOptions<DiscoveryRunListResponse>({

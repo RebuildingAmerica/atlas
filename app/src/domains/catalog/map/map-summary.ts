@@ -1,4 +1,4 @@
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** Pluralize a noun against a count, English-style. */
 function plural(count: number, singular: string): string {

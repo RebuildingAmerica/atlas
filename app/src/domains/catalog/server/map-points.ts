@@ -1,8 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { api } from "@/lib/api";
+import { api } from "@rebuildingamerica/atlas-api-client";
 import { CONUS_BBOX_BOUNDS, boundsFromSearch } from "@/domains/catalog/map/map-viewport";
-import type { EntryType, MapPointCollection, SourcePattern, SourceType } from "@/types";
+import type {
+  EntryType,
+  MapPointCollection,
+  SourcePattern,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 
 export { CONUS_BBOX_BOUNDS };
 

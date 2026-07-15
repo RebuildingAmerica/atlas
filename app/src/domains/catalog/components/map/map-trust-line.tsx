@@ -1,5 +1,5 @@
 import { CheckCircle2, ShieldCheck, ShieldQuestion } from "lucide-react";
-import type { EntryType, TrustLevel } from "@/types";
+import type { EntryType, TrustLevel } from "@rebuildingamerica/atlas-api-client";
 
 interface MapTrustLineProps {
   /** The actor type lets subject verification use person/org-specific language. */

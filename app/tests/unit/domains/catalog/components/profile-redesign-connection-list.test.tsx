@@ -6,7 +6,7 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
-import type { ConnectedActor, ConnectionNetwork } from "@/types";
+import type { ConnectedActor, ConnectionNetwork } from "@rebuildingamerica/atlas-api-client";
 import { createEntryFixture as buildEntry } from "../../../../fixtures/catalog/entries";
 
 describe("ConnectionList", () => {

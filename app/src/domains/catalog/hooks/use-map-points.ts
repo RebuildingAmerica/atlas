@@ -1,7 +1,11 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import type { MapBounds, MapPointCollection, MapPointParams } from "@/types";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import type {
+  MapBounds,
+  MapPointCollection,
+  MapPointParams,
+} from "@rebuildingamerica/atlas-api-client";
 
 /** How long a viewport must hold still before we refetch its actors. */
 export const MAP_POINTS_DEBOUNCE_MS = 300;

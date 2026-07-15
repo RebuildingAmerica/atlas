@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./base": "./base.js",
+    "./typescript": "./typescript.js",
     "./react": "./react.js",
     "./node": "./node.js",
     "./tests": "./tests.js"

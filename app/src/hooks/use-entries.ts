@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import type { Entry, EntryFilterParams, EntryListResponse } from "@/types";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import type {
+  Entry,
+  EntryFilterParams,
+  EntryListResponse,
+} from "@rebuildingamerica/atlas-api-client";
 
 export function useEntries(params?: EntryFilterParams) {
   return useQuery<EntryListResponse>({

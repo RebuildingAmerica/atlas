@@ -3,7 +3,7 @@ import { GitBranch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { loadPublicDirectory } from "@/domains/catalog/server/public-directory";
 import { buildPageHead } from "@/platform/seo";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export const Route = createFileRoute("/_public/directories/$orgId")({
   loader: async ({ params }) => {

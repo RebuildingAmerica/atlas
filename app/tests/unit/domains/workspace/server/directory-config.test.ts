@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DirectoryConfigRequest } from "@/lib/generated/atlas";
+import type { DirectoryConfigRequest } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),

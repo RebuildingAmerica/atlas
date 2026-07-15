@@ -8,7 +8,7 @@
  * page can render honest empty states instead of leaking a raw error.
  */
 import { createServerFn } from "@tanstack/react-start";
-import type { DiscoveryRunListResponse } from "@/types";
+import type { DiscoveryRunListResponse } from "@rebuildingamerica/atlas-api-client";
 import { requestWorkspaceApi } from "./workspace-api";
 import {
   buildWatchlists,

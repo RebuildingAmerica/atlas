@@ -8,7 +8,7 @@ import type {
   OrgWatchResponse,
   OrgWatchResponseResourceType,
   OrgWatchStatusResponse,
-} from "@/lib/generated/atlas";
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type WorkspaceWatchResourceType = OrgWatchResponseResourceType;

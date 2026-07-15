@@ -6,7 +6,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiscountAdminPage } from "@/domains/billing/pages/workspace/discount-admin-page";
-import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
+import type { VerificationListResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationListResponse";
 
 const mocks = vi.hoisted(() => ({
   useHydrated: vi.fn(() => true),

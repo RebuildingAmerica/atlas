@@ -1,4 +1,9 @@
-import type { EntryType, PlaceActorSort, PlaceRelatedSummary, SourceType } from "@/types";
+import type {
+  EntryType,
+  PlaceActorSort,
+  PlaceRelatedSummary,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 
 interface SectionNavItem {
   id: string;

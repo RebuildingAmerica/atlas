@@ -3,7 +3,7 @@ import type {
   DiscoveryResearchSummary,
   DiscoveryRun,
   DiscoveryStatus,
-} from "@/types";
+} from "@rebuildingamerica/atlas-api-client";
 
 export interface AgentResearchArtifactRun {
   id: string;

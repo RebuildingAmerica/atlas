@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MapResultsList } from "@/domains/catalog/components/map/map-results-list";
 import { makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");

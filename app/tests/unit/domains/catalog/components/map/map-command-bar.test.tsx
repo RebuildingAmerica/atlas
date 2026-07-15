@@ -5,7 +5,7 @@ import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
 import { renderCommandBar } from "../../../../../helpers/catalog/map-command-bar-harness";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 afterEach(cleanup);
 

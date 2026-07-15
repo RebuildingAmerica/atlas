@@ -7,12 +7,12 @@ import type {
   EntryType,
   MapPoint,
   Source,
-} from "@/types";
+} from "./contracts";
 import type {
   EntityDetailResponse,
   EntityResponse,
   MapPoint as MapPointResponse,
-} from "@/lib/generated/atlas";
+} from "./generated/atlas";
 
 const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   day: "numeric",

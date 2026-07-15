@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summary";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 describe("map-summary", () => {
   describe("sparsityPill", () => {

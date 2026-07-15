@@ -25,7 +25,7 @@ vi.mock("@/domains/workspace/hooks/use-coverage-targets", () => ({
   useWorkspaceCoverage: mocks.useWorkspaceCoverage,
 }));
 
-vi.mock("@/lib/generated/atlas", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", () => ({
   exportOrgCoverageTargets: mocks.exportOrgCoverageTargets,
   getExportOrgCoverageTargetsUrl: mocks.getExportOrgCoverageTargetsUrl,
 }));

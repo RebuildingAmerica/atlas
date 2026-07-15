@@ -6,7 +6,7 @@
  * null when no quote-bearing source is available so the panel doesn't appear
  * for thin profiles.
  */
-import type { Source } from "@/types";
+import type { Source } from "@rebuildingamerica/atlas-api-client";
 
 interface SignatureQuoteProps {
   sources: Source[];

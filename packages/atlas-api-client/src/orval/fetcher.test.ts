@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { atlasFetch } from "@/lib/orval/fetcher";
+import { atlasFetch } from "./fetcher";
 
 describe("atlasFetch", () => {
   const originalWindow = globalThis.window;

@@ -5,7 +5,10 @@ import {
   useImportCoverageTargets,
   useWorkspaceCoverage,
 } from "@/domains/workspace/hooks/use-coverage-targets";
-import { exportOrgCoverageTargets, getExportOrgCoverageTargetsUrl } from "@/lib/generated/atlas";
+import {
+  exportOrgCoverageTargets,
+  getExportOrgCoverageTargetsUrl,
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Badge } from "@/platform/ui/badge";
 import { Textarea } from "@/platform/ui/textarea";
 import type { ImportFeedback } from "./coverage-page-utils";

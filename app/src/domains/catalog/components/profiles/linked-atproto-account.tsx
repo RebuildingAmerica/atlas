@@ -1,5 +1,5 @@
 import { AtSign } from "lucide-react";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface LinkedAtprotoAccountProps {
   entry: Entry;

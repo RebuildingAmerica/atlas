@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-query", () => ({
   keepPreviousData: vi.fn(),
 }));
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: {
     entries: {
       list: mocks.apiList,

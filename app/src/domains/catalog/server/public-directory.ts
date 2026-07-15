@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getServerApiBaseUrl } from "@/platform/config/app-config";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export interface PublicDirectoryWorkspace {
   id: string;

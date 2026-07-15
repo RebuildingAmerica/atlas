@@ -1,5 +1,5 @@
 import { Contact, Globe, LockKeyhole, UserCheck } from "lucide-react";
-import type { AtprotoIdentityResponse } from "@/lib/generated/atlas-schemas";
+import type { AtprotoIdentityResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas";
 import { Button } from "@/platform/ui/button";
 import { Select } from "@/platform/ui/select";
 import { SurfaceSection } from "@/platform/ui/surface-section";

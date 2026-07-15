@@ -1,5 +1,5 @@
 import type { BrowseSearchState } from "@/domains/catalog/search-state";
-import type { MapBounds, MapPointParams } from "@/types";
+import type { MapBounds, MapPointParams } from "@rebuildingamerica/atlas-api-client";
 
 /** The continental-US bounding box used across the map tests. */
 export const CONUS_BOUNDS: MapBounds = {

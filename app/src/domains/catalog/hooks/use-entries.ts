@@ -1,6 +1,11 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import type { Entry, EntryFilterParams, EntryListResponse, EntrySlugScope } from "@/types";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import type {
+  Entry,
+  EntryFilterParams,
+  EntryListResponse,
+  EntrySlugScope,
+} from "@rebuildingamerica/atlas-api-client";
 
 interface UseEntriesOptions {
   /** Pause the catalog query until a deliberate retry or new route load. */

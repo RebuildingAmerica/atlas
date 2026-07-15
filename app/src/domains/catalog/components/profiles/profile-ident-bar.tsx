@@ -7,7 +7,7 @@
  * navigation, not decoration.
  */
 import { Link } from "@tanstack/react-router";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfileIdentBarProps {
   entry: Entry;

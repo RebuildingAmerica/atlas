@@ -1,5 +1,5 @@
-import type { VerificationRecordResponse } from "@/lib/generated/atlas-schemas/access/verificationRecordResponse";
-import type { VerificationUpdateRequest } from "@/lib/generated/atlas-schemas/access/verificationUpdateRequest";
+import type { VerificationRecordResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationRecordResponse";
+import type { VerificationUpdateRequest } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationUpdateRequest";
 import {
   AdminIndicatorCard,
   AdminIndicatorPlaceholderCard,

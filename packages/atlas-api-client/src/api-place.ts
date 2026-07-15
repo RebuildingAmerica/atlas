@@ -12,7 +12,7 @@ import {
   type PlacePageContextResponse,
   type PlaceProfileResponse,
   type SourceResponse,
-} from "@/lib/generated/atlas";
+} from "./generated/atlas";
 import type {
   PlaceActorList,
   PlaceActorParams,
@@ -27,7 +27,7 @@ import type {
   PlacePageParams,
   PlaceRelatedSummary,
   Source,
-} from "@/types";
+} from "./contracts";
 import {
   mapEntity,
   mapPlaceActor,
@@ -36,7 +36,7 @@ import {
   firstDefinedString,
   formatShortDate,
   routeSegmentForEntryType,
-} from "@/lib/api-entry";
+} from "./api-entry";
 
 const PLACE_LATEST_PAGE_SIZE = 10;
 

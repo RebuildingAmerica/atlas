@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { OrgQualitySummaryResponse } from "@/lib/generated/atlas";
+import type { OrgQualitySummaryResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type WorkspaceQualitySummary = OrgQualitySummaryResponse;

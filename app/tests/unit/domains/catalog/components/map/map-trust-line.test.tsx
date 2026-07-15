@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MapTrustLine } from "@/domains/catalog/components/map/map-trust-line";
-import type { TrustLevel } from "@/types";
+import type { TrustLevel } from "@rebuildingamerica/atlas-api-client";
 
 afterEach(cleanup);
 

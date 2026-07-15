@@ -3,7 +3,7 @@ import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-q
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
 import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@/platform/ui/badge";
-import type { Entry, EntryType, SourceType } from "@/types";
+import type { Entry, EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
 
 export interface EntryDiscoveryContext {
   issueAreas?: string[];

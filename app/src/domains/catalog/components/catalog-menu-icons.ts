@@ -18,7 +18,7 @@ import {
   Users,
   Video,
 } from "lucide-react";
-import type { EntryType, SourceType } from "@/types";
+import type { EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
 
 export const ISSUE_FILTER_ICON = Tags;
 export const TYPE_FILTER_ICON = Users;

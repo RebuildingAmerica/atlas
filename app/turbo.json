@@ -1,5 +1,7 @@
 {
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
@@ -25,7 +27,9 @@
     },
     "start:e2e": {
       "cache": false,
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "env": [
         "ATLAS_OPERATOR_ALLOWED_EMAILS",
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -59,11 +63,17 @@
     },
     "e2e:mail": {
       "cache": false,
-      "env": ["MAIL_CAPTURE_FILE", "MAIL_CAPTURE_HOST", "MAIL_CAPTURE_PORT"],
+      "env": [
+        "MAIL_CAPTURE_FILE",
+        "MAIL_CAPTURE_HOST",
+        "MAIL_CAPTURE_PORT"
+      ],
       "persistent": true
     },
     "build": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "env": [
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_AUTH_BASE_PATH",
@@ -82,56 +92,54 @@
         "ATLAS_PUBLIC_URL",
         "ATLAS_SERVER_API_PROXY_TARGET"
       ],
-      "outputs": [".output/**", ".vercel/output/**"]
-    },
-    "api-client": {
-      "dependsOn": ["//#openapi"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/openapi/atlas.openapi.json",
-        "orval.config.ts",
-        "scripts/generate-api-client-barrel.mjs",
-        "src/lib/orval/**"
-      ],
-      "env": [
-        "ATLAS_AUTH_BASE_PATH",
-        "ATLAS_AUTH_JWT_AUDIENCES",
-        "ATLAS_DOCS_URL",
-        "ATLAS_EMAIL_PROVIDER",
-        "ATLAS_PUBLIC_URL",
-        "ATLAS_SERVER_API_PROXY_TARGET"
-      ],
       "outputs": [
-        "src/lib/generated/atlas/**/*",
-        "src/lib/generated/atlas-schemas/**/*"
+        ".output/**",
+        ".vercel/output/**"
       ]
     },
     "openapi:lint": {
-      "dependsOn": ["//#openapi"],
-      "inputs": [".spectral.yaml", "$TURBO_ROOT$/openapi/atlas.openapi.json"],
+      "dependsOn": [
+        "//#openapi"
+      ],
+      "inputs": [
+        ".spectral.yaml",
+        "$TURBO_ROOT$/openapi/atlas.openapi.json"
+      ],
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "lint": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "format:check": {
       "outputs": []
     },
     "quality": {
-      "dependsOn": ["typecheck", "lint", "format:check"],
+      "dependsOn": [
+        "typecheck",
+        "lint",
+        "format:check"
+      ],
       "outputs": []
     },
     "test": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "test:unit:access": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -146,7 +154,6 @@
         "src/routes/api/atproto/**",
         "src/routes/api/auth/**",
         "src/styles/**",
-        "src/types/**",
         "tests/helpers/**",
         "tests/setup.ts",
         "tests/unit/domains/access/**",
@@ -159,7 +166,9 @@
       "outputs": []
     },
     "test:unit:business": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -175,7 +184,6 @@
         "src/routes/_public/pricing.tsx",
         "src/routes/_public/request-discount.tsx",
         "src/styles/**",
-        "src/types/**",
         "tests/helpers/**",
         "tests/setup.ts",
         "tests/unit/domains/admin/**",
@@ -185,7 +193,9 @@
       "outputs": []
     },
     "test:unit:catalog": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -202,7 +212,6 @@
         "src/routes/_public/**",
         "src/routes/firehose[.]rss.ts",
         "src/styles/**",
-        "src/types/**",
         "tests/helpers/**",
         "tests/setup.ts",
         "tests/unit/domains/catalog/**",
@@ -216,7 +225,9 @@
       "outputs": []
     },
     "test:unit:platform": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -232,7 +243,6 @@
         "src/routes/__root.tsx",
         "src/routeTree.gen.ts",
         "src/styles/**",
-        "src/types/**",
         "tests/helpers/**",
         "tests/setup.ts",
         "tests/unit/components/**",
@@ -248,7 +258,9 @@
       "outputs": []
     },
     "test:unit:workspace": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -265,7 +277,6 @@
         "src/routes/_workspace/**",
         "src/routes/dashboard.tsx",
         "src/styles/**",
-        "src/types/**",
         "tests/helpers/**",
         "tests/setup.ts",
         "tests/unit/domains/onboarding/**",
@@ -278,7 +289,9 @@
       "outputs": []
     },
     "test:unit:system": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -298,7 +311,6 @@
         "src/routes/robots[.]txt.ts",
         "src/routes/sitemap[.]xml.ts",
         "src/styles/**",
-        "src/types/**",
         "tests/helpers/**",
         "tests/setup.ts",
         "tests/unit/acceptance/**",
@@ -318,19 +330,29 @@
       "outputs": []
     },
     "test:coverage": {
-      "dependsOn": ["api-client", "^build"],
-      "outputs": ["coverage/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
     },
     "test:unit": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "test:integration": {
-      "dependsOn": ["api-client", "^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "test:e2e": {
-      "dependsOn": ["api-client"],
+      "dependsOn": [
+        "^build"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -338,11 +360,16 @@
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
         "ATLAS_E2E_MAILBOX_URL"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:e2e:headed": {
-      "dependsOn": ["api-client"],
+      "dependsOn": [
+        "^build"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -350,11 +377,17 @@
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
         "ATLAS_E2E_MAILBOX_URL"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance": {
-      "dependsOn": ["api-client", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -365,11 +398,17 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance:browser": {
-      "dependsOn": ["api-client", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -378,11 +417,17 @@
         "ATLAS_E2E_WORKERS",
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance:stripe": {
-      "dependsOn": ["api-client", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -393,11 +438,17 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance:headed": {
-      "dependsOn": ["api-client", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -408,7 +459,10 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     }
   }

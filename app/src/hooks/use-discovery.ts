@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import type { DiscoveryRun, DiscoveryRunListResponse, StartDiscoveryRequest } from "@/types";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import type {
+  DiscoveryRun,
+  DiscoveryRunListResponse,
+  StartDiscoveryRequest,
+} from "@rebuildingamerica/atlas-api-client";
 
 export function useDiscoveryRuns() {
   return useQuery<DiscoveryRunListResponse>({

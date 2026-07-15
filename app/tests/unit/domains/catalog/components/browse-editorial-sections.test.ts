@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEntryFixture } from "@/../tests/fixtures/catalog/entries";
 import { buildBrowseEditorialSections } from "@/domains/catalog/components/browse/browse-editorial-sections";
-import type { EntryListResponse } from "@/types";
+import type { EntryListResponse } from "@rebuildingamerica/atlas-api-client";
 
 describe("buildBrowseEditorialSections", () => {
   const responseFixture = (overrides: Partial<EntryListResponse> = {}): EntryListResponse => ({

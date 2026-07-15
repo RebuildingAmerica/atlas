@@ -1,4 +1,4 @@
-import type { FacetOption } from "@/types";
+import type { FacetOption } from "@rebuildingamerica/atlas-api-client";
 
 export interface StateDensity {
   state: string;

@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requestAtlasApi } from "./server/api-client";
-import type { DiscoveryJobQueueResponse, DiscoveryRun, DiscoveryRunListResponse } from "@/types";
+import type {
+  DiscoveryJobQueueResponse,
+  DiscoveryRun,
+  DiscoveryRunListResponse,
+} from "@rebuildingamerica/atlas-api-client";
 
 const discoveryPayloadSchema = z.object({
   issue_areas: z.array(z.string()).min(1),

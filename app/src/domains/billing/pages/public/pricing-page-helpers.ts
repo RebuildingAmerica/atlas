@@ -2,8 +2,8 @@ import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 export type {
   PricingCheckoutInterval,
   PricingCheckoutParams,
-} from "@/domains/billing/checkout-types";
-import type { PricingCheckoutInterval } from "@/domains/billing/checkout-types";
+} from "@/domains/billing/checkout-intervals";
+import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 
 /**
  * Readable error string for the checkout error banner.  Falls back to a

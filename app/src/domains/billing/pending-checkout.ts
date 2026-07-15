@@ -1,5 +1,5 @@
 import { SELF_SERVE_PRODUCTS, type AtlasSelfServeProduct } from "@/domains/access/capabilities";
-import type { PricingCheckoutInterval } from "./checkout-types";
+import { PRICING_CHECKOUT_INTERVALS, type PricingCheckoutInterval } from "./checkout-intervals";
 
 /**
  * localStorage key Atlas uses to remember a checkout that the operator
@@ -34,20 +34,14 @@ interface RawPendingCheckoutRecord {
   startedAt?: unknown;
 }
 
-const RECOGNISED_INTERVALS: readonly PendingCheckoutRecord["interval"][] = [
-  "monthly",
-  "yearly",
-  "four_month",
-  "once",
-  "weekly",
-];
-
 function isRecognisedProduct(value: unknown): value is AtlasSelfServeProduct {
   return typeof value === "string" && (SELF_SERVE_PRODUCTS as readonly string[]).includes(value);
 }
 
 function isRecognisedInterval(value: unknown): value is PendingCheckoutRecord["interval"] {
-  return typeof value === "string" && (RECOGNISED_INTERVALS as readonly string[]).includes(value);
+  return (
+    typeof value === "string" && (PRICING_CHECKOUT_INTERVALS as readonly string[]).includes(value)
+  );
 }
 
 /**

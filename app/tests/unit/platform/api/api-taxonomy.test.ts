@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listIssueAreasMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/generated/atlas", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", () => ({
   getEntity: vi.fn(),
   listEntities: vi.fn(),
   listIssueAreas: listIssueAreasMock,
@@ -43,7 +43,7 @@ describe("api.taxonomy.list", () => {
         total: 2,
       });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     const taxonomy = await api.taxonomy.list();
 
     expect(listIssueAreasMock).toHaveBeenNthCalledWith(1, { cursor: undefined, limit: 100 });
@@ -73,7 +73,7 @@ describe("api.taxonomy.list", () => {
       total: 0,
     });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     await expect(api.taxonomy.list()).resolves.toEqual({});
 
     expect(listIssueAreasMock).toHaveBeenCalledWith({ cursor: undefined, limit: 100 });

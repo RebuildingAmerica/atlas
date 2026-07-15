@@ -27,7 +27,7 @@ vi.mock("@/domains/access/server/atproto-oauth", () => ({
   provisionAndLinkManagedAtprotoIdentity: mocks.provisionManaged,
 }));
 
-vi.mock("@/lib/generated/atlas/identity/identity", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas/identity/identity", () => ({
   disconnectAtprotoIdentity: mocks.disconnect,
   listAtprotoIdentities: mocks.list,
   refreshAtprotoIdentity: mocks.refresh,

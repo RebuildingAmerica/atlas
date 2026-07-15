@@ -1,5 +1,5 @@
 import type { BrowseRouteSearch } from "@/domains/catalog/search-state";
-import type { EntryType } from "@/types";
+import type { EntryType } from "@rebuildingamerica/atlas-api-client";
 
 export interface BrowsePageContent {
   description: string;

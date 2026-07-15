@@ -6,7 +6,7 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { createEntryFixture as buildEntry } from "../../../../fixtures/catalog/entries";
 
 describe("DataQualityBlock", () => {

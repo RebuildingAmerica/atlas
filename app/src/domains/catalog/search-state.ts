@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { EntryType, SourceType } from "@/types";
+import type { EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
 
 export const browseSearchSchema = z.object({
   query: z.string().optional(),

@@ -3,7 +3,7 @@ import { ArrowRight, MapPin } from "lucide-react";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { MapTrustLine } from "./map-trust-line";
 import { profileRouteFor } from "@/domains/catalog/map/profile-route";
-import type { EntryType, MapPoint } from "@/types";
+import type { EntryType, MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** Map an actor type to the two avatar shapes Atlas draws (people vs. everything else). */
 function avatarType(type: EntryType): "person" | "organization" {

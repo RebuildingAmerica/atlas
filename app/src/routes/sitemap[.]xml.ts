@@ -6,8 +6,8 @@
  * it directly.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import type { Entry, EntryType } from "@/types";
-import { api } from "@/lib/api";
+import type { Entry, EntryType } from "@rebuildingamerica/atlas-api-client";
+import { api } from "@rebuildingamerica/atlas-api-client";
 import { buildCanonicalUrl } from "@/platform/seo";
 
 const ONE_HOUR = 3600;

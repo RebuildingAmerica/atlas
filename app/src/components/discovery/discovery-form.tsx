@@ -1,4 +1,4 @@
-import type { StartDiscoveryRequest } from "@/types";
+import type { StartDiscoveryRequest } from "@rebuildingamerica/atlas-api-client";
 
 interface DiscoveryFormProps {
   onSubmit: (data: StartDiscoveryRequest) => void;

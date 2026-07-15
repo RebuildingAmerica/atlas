@@ -32,14 +32,17 @@ vi.mock("@/domains/access/atproto-identities", () => ({
   }),
 }));
 
-vi.mock("@/lib/generated/atlas/organization-identity/organization-identity", () => ({
-  attachOrganizationAtprotoIdentity: mocks.attach,
-  detachOrganizationAtprotoIdentity: mocks.detach,
-  getOrganizationAtprotoIdentity: mocks.getIdentity,
-  grantOrganizationAtprotoIdentityDelegation: mocks.grant,
-  listOrganizationAtprotoIdentityDelegations: mocks.listDelegations,
-  revokeOrganizationAtprotoIdentityDelegation: mocks.revoke,
-}));
+vi.mock(
+  "@rebuildingamerica/atlas-api-client/generated/atlas/organization-identity/organization-identity",
+  () => ({
+    attachOrganizationAtprotoIdentity: mocks.attach,
+    detachOrganizationAtprotoIdentity: mocks.detach,
+    getOrganizationAtprotoIdentity: mocks.getIdentity,
+    grantOrganizationAtprotoIdentityDelegation: mocks.grant,
+    listOrganizationAtprotoIdentityDelegations: mocks.listDelegations,
+    revokeOrganizationAtprotoIdentityDelegation: mocks.revoke,
+  }),
+);
 
 describe("OrganizationAtprotoIdentitySection", () => {
   beforeEach(() => {

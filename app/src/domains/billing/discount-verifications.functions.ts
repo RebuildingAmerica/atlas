@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requestAtlasApi } from "@/domains/discovery/server/api-client";
-import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
-import type { VerificationUpdateRequest } from "@/lib/generated/atlas-schemas/access/verificationUpdateRequest";
-import type { VerificationUpdateResponse } from "@/lib/generated/atlas-schemas/access/verificationUpdateResponse";
+import type { VerificationListResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationListResponse";
+import type { VerificationUpdateRequest } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationUpdateRequest";
+import type { VerificationUpdateResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationUpdateResponse";
 import {
   sendDiscountRequestOperatorNotification,
   sendDiscountReviewResultEmail,

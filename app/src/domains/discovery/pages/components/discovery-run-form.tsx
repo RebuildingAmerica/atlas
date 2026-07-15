@@ -1,7 +1,7 @@
 import { Handshake, Map, MapPin, Network, Play, Tags, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/platform/ui/button";
-import type { DiscoveryResearchGoal } from "@/types";
+import type { DiscoveryResearchGoal } from "@rebuildingamerica/atlas-api-client";
 
 interface DiscoveryIssueAreaOption {
   description?: string | null;

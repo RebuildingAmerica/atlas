@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { EntryCard } from "@/components/entries/entry-card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface EntryListProps {
   entries: Entry[];

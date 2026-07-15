@@ -1,0 +1,39 @@
+{
+  "name": "@rebuildingamerica/atlas-api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./entry": "./src/contracts/entry.ts",
+    "./source": "./src/contracts/source.ts",
+    "./place": "./src/contracts/place.ts",
+    "./discovery": "./src/contracts/discovery.ts",
+    "./taxonomy": "./src/contracts/taxonomy.ts",
+    "./generated/atlas": "./src/generated/atlas/index.ts",
+    "./generated/atlas/*": "./src/generated/atlas/*.ts",
+    "./generated/atlas-schemas": "./src/generated/atlas-schemas/index.ts",
+    "./generated/atlas-schemas/*": "./src/generated/atlas-schemas/*.ts",
+    "./orval/fetcher": "./src/orval/fetcher.ts"
+  },
+  "scripts": {
+    "api-client": "orval --config orval.config.ts && node scripts/generate-api-client-barrel.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src orval.config.ts --max-warnings 0",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "orval": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

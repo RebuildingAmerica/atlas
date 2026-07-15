@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
 import type { BrowseFilterKey, BrowseRouteSearch } from "@/domains/catalog/search-state";
-import type { EntryListResponse, EntryType } from "@/types";
+import type { EntryListResponse, EntryType } from "@rebuildingamerica/atlas-api-client";
 import type { BrowsePageContent } from "@/domains/catalog/components/browse/browse-page-content";
 import type {
   BrowseIssueBrief,

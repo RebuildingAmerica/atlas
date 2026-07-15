@@ -1,5 +1,5 @@
 import { humanize } from "@/domains/catalog/catalog";
-import type { SourcePattern } from "@/types";
+import type { SourcePattern } from "@rebuildingamerica/atlas-api-client";
 
 const SOURCE_PATTERN_BRIEF_LABELS: Record<SourcePattern, string> = {
   multi_source: "Multi-source confirmation",

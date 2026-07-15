@@ -13,7 +13,7 @@ import {
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
 import { LinkedAtprotoAccount } from "@/domains/catalog/components/profiles/linked-atproto-account";
-import type { ClaimEvidenceInfo, Entry } from "@/types";
+import type { ClaimEvidenceInfo, Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface DataQualityBlockProps {
   entry: Entry;

@@ -3,15 +3,15 @@ import { defineConfig } from "orval";
 export default defineConfig({
   atlas: {
     input: {
-      target: "../openapi/atlas.openapi.json",
+      target: "../../openapi/atlas.openapi.json",
     },
     output: {
       mode: "tags-split",
-      target: "./src/lib/generated/atlas/index.ts",
+      target: "./src/generated/atlas/index.ts",
       client: "fetch",
       clean: true,
       schemas: {
-        path: "./src/lib/generated/atlas-schemas",
+        path: "./src/generated/atlas-schemas",
         splitByTags: true,
       },
       override: {
@@ -19,7 +19,7 @@ export default defineConfig({
           includeHttpResponseReturnType: false,
         },
         mutator: {
-          path: "./src/lib/orval/fetcher.ts",
+          path: "./src/orval/fetcher.ts",
           name: "atlasFetch",
         },
       },

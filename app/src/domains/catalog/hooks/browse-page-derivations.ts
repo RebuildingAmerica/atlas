@@ -2,7 +2,7 @@ import { ENTITY_TYPE_LABELS, humanize, SOURCE_TYPE_LABELS } from "@/domains/cata
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
 import type { BrowseRouteSearch, BrowseFilterKey } from "@/domains/catalog/search-state";
 import { serializeList } from "@/domains/catalog/search-state";
-import type { EntryType, SourceType } from "@/types";
+import type { EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
 import type {
   BrowseCollectionFunnel,
   BrowseIssueStarter,

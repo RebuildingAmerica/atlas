@@ -2,8 +2,8 @@ import { Eye, FileText, Globe, LockKeyhole, Mail, MapPin, ShieldQuestion } from 
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge } from "@/platform/ui/badge";
-import type { ProfileClaimResponse } from "@/lib/generated/atlas";
-import type { Entry } from "@/types";
+import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import {
   claimStatusLabel,
   entryTypeLabel,

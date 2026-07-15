@@ -1,0 +1,31 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "api-client": {
+      "dependsOn": ["//#openapi"],
+      "inputs": [
+        "$TURBO_ROOT$/openapi/atlas.openapi.json",
+        "orval.config.ts",
+        "scripts/generate-api-client-barrel.mjs",
+        "src/orval/**"
+      ],
+      "outputs": ["src/generated/atlas/**/*", "src/generated/atlas-schemas/**/*"]
+    },
+    "build": {
+      "dependsOn": ["api-client"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "lint": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    }
+  }
+}

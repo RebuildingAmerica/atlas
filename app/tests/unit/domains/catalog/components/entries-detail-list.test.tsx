@@ -5,8 +5,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { EntryDetail } from "@/domains/catalog/components/entries/entry-detail";
 import { EntryFilters } from "@/domains/catalog/components/entries/entry-filters";
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
-import type { Entry } from "@/types/entry";
-import type { Source } from "@/types/source";
+import type { Entry } from "@rebuildingamerica/atlas-api-client/entry";
+import type { Source } from "@rebuildingamerica/atlas-api-client/source";
 import type { MockLinkProps } from "../../../../helpers/router-harness";
 
 vi.mock("@tanstack/react-router", () => ({

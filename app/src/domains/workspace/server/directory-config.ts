@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { DirectoryConfigRequest, DirectoryConfigResponse } from "@/lib/generated/atlas";
+import type {
+  DirectoryConfigRequest,
+  DirectoryConfigResponse,
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type WorkspaceDirectoryConfig = DirectoryConfigResponse;

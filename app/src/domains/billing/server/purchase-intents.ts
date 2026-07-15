@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { getAuthDatabase, getAuthPgPool } from "@/domains/access/server/auth";
 import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
-import type { PricingCheckoutInterval } from "@/domains/billing/checkout-types";
+import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 
 export type PurchaseIntentStatus =
   | "started"

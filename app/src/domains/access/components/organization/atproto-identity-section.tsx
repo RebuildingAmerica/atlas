@@ -12,7 +12,7 @@ import {
   grantOrganizationAtprotoIdentityDelegation,
   listOrganizationAtprotoIdentityDelegations,
   revokeOrganizationAtprotoIdentityDelegation,
-} from "@/lib/generated/atlas/organization-identity/organization-identity";
+} from "@rebuildingamerica/atlas-api-client/generated/atlas/organization-identity/organization-identity";
 import { Button } from "@/platform/ui/button";
 import { Input } from "@/platform/ui/input";
 

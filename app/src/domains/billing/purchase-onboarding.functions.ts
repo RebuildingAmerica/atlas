@@ -6,7 +6,7 @@ import {
 } from "@/domains/access/organization-metadata";
 import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
-import type { PricingCheckoutInterval } from "@/domains/billing/checkout-types";
+import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 import { getAtlasBillingProducts } from "@/domains/billing/products";
 import type { AtlasBillingProducts } from "@/domains/billing/products";
 import type { PurchaseIntentRecord } from "@/domains/billing/server/purchase-intents";

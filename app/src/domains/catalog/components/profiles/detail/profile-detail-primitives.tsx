@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export function formatProfileLocation(entry: Entry): string {
   if (entry.city && entry.state) {

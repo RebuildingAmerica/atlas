@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import type { PlaceFact, PlacePageData, PlaceScopeLink } from "@/types";
+import type { PlaceFact, PlacePageData, PlaceScopeLink } from "@rebuildingamerica/atlas-api-client";
 import { ActorDirectory } from "./place-page-actors";
 import { LatestFeed } from "./place-page-latest";
 import { GovernmentList, IssueGrid, PlaceGrid, PlaceHighlights } from "./place-page-places";

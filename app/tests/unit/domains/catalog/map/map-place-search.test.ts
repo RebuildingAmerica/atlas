@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { searchActors, searchPlaces } from "@/domains/catalog/map/map-place-search";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 describe("map-place-search", () => {
   describe("searchPlaces", () => {

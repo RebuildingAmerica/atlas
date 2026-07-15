@@ -1,7 +1,7 @@
 import { type Mock, vi } from "vitest";
 import type { FakeMap } from "./fake-map";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
-import type { MapPointCollection, MapPointParams } from "@/types";
+import type { MapPointCollection, MapPointParams } from "@rebuildingamerica/atlas-api-client";
 import type { ReadableMap } from "@/domains/catalog/map/map-readout";
 
 /** The minimal move/load event the page reads a viewport off of. */

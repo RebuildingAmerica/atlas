@@ -7,7 +7,7 @@ import {
   SquarePen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Entry, Source } from "@/types";
+import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfileHistoryProps {
   entry: Entry;

@@ -116,7 +116,7 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: accountPageMocks.useAtlasSession,
 }));
 
-vi.mock("@/lib/generated/atlas/identity/identity", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas/identity/identity", () => ({
   disconnectAtprotoIdentity: accountPageMocks.disconnectAtprotoIdentity,
   listAtprotoIdentities: accountPageMocks.listAtprotoIdentities,
   refreshAtprotoIdentity: accountPageMocks.refreshAtprotoIdentity,

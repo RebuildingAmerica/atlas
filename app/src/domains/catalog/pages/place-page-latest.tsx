@@ -1,9 +1,14 @@
 import { useRef, useState, type FormEvent } from "react";
 import { ExternalLink, Search } from "lucide-react";
-import { api } from "@/lib/api";
+import { api } from "@rebuildingamerica/atlas-api-client";
 import { cn } from "@/lib/utils";
 import { LATEST_SOURCE_TYPES, formatSourceType, latestStatusText } from "./place-page-utils";
-import type { PlaceKind, PlaceLatestItem, PlaceLatestList, SourceType } from "@/types";
+import type {
+  PlaceKind,
+  PlaceLatestItem,
+  PlaceLatestList,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 
 interface LatestListProps {
   items: PlaceLatestItem[];

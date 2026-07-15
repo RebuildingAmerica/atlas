@@ -4,7 +4,7 @@ import { makePoint } from "./map-clustering-harness";
 import { MapCommandBar } from "@/domains/catalog/components/map/map-command-bar";
 import type { MapCommandBarProps } from "@/domains/catalog/components/map/map-command-bar";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** The command bar's callbacks, grouped so a test can override just the spies. */
 export interface MapCommandBarHandlers {

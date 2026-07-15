@@ -10,7 +10,7 @@ import {
   profileHref,
   TYPE_LABELS,
 } from "./home-page-data";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface HomeDiscoverySectionProps {
   entries: Entry[];

@@ -5,7 +5,7 @@ import {
   type AnnotationCreateRequest,
   type AnnotationResponse,
   type ListOrgAnnotationsParams,
-} from "@/lib/generated/atlas";
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 
 const ORG_ANNOTATIONS_KEY = ["org-annotations"] as const;
 

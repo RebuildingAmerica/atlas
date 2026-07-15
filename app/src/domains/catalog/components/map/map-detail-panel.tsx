@@ -13,7 +13,7 @@ import {
   type MapSelection,
   isActorSelection,
 } from "@/domains/catalog/map/map-selection";
-import type { EntryType, MapPoint } from "@/types";
+import type { EntryType, MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** Human-readable type labels for the panel's type badge and avatar shape. */
 const TYPE_LABEL: Record<EntryType, string> = {

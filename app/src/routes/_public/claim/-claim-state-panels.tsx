@@ -1,10 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Clock, ShieldCheck } from "lucide-react";
-import type { ProfileClaimProofResponse, ProfileClaimResponse } from "@/lib/generated/atlas";
+import type {
+  ProfileClaimProofResponse,
+  ProfileClaimResponse,
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Badge } from "@/platform/ui/badge";
 import { Button } from "@/platform/ui/button";
 import { SurfaceSection } from "@/platform/ui/surface-section";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { ClaimDnsRecordPanel, type DnsRecordMetadata } from "./-claim-dns-record-panel";
 
 export interface ClaimHeroProps {

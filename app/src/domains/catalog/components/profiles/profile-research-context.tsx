@@ -12,7 +12,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { humanize } from "@/domains/catalog/catalog";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfileResearchContextProps {
   entry: Entry;

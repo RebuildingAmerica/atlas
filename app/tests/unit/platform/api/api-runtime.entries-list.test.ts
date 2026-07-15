@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   listIssueAreas: vi.fn(),
 }));
 
-vi.mock("@/lib/generated/atlas", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", () => ({
   getEntity: mocks.getEntity,
   listEntities: mocks.listEntities,
   listIssueAreas: mocks.listIssueAreas,
@@ -71,7 +71,7 @@ describe("api runtime adapters", () => {
       total: 1,
     });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     const result = await api.entries.list({
       limit: 20,
       offset: 20,
@@ -164,7 +164,7 @@ describe("api runtime adapters", () => {
       total: 0,
     });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     await expect(api.entries.list()).resolves.toEqual({
       data: [],
       facets: {

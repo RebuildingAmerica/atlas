@@ -1,13 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { normalizeAtlasOrganizationMetadata } from "../access/organization-metadata";
-import type { PricingCheckoutInterval } from "./checkout-types";
+import { PRICING_CHECKOUT_INTERVALS, type PricingCheckoutInterval } from "./checkout-intervals";
 import { getAtlasBillingProducts } from "./products";
 import type { AtlasBillingProducts } from "./products";
 
 const checkoutInputSchema = z.object({
   product: z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]),
-  interval: z.enum(["monthly", "yearly", "four_month", "once", "weekly"]),
+  interval: z.enum(PRICING_CHECKOUT_INTERVALS),
 });
 
 async function loadCheckoutServerModules() {

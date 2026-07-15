@@ -1,5 +1,11 @@
 import type { BrowseSearchState } from "@/domains/catalog/search-state";
-import type { EntryType, MapBounds, MapPointParams, SourcePattern, SourceType } from "@/types";
+import type {
+  EntryType,
+  MapBounds,
+  MapPointParams,
+  SourcePattern,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 
 /**
  * Build the viewport query from the shared browse filters and the bounding box.

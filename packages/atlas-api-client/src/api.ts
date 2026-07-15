@@ -2,7 +2,7 @@ import {
   listIssueAreas,
   listPublicDirectories as listPublicDirectoryRecords,
   type PublicDirectoryIndexResponse,
-} from "@/lib/generated/atlas";
+} from "./generated/atlas";
 import {
   mapPoints,
   buildEntityListParams,
@@ -11,9 +11,9 @@ import {
   getEntryBySlug,
   getConnections,
   listEntries,
-} from "@/lib/api-entry";
-import { getPlacePage, listPlaceActors, listPlaceLatest } from "@/lib/api-place";
-import type { DiscoveryRun, DiscoveryRunListResponse, TaxonomyResponse } from "@/types";
+} from "./api-entry";
+import { getPlacePage, listPlaceActors, listPlaceLatest } from "./api-place";
+import type { DiscoveryRun, DiscoveryRunListResponse, TaxonomyResponse } from "./contracts";
 
 const TAXONOMY_PAGE_SIZE = 100;
 

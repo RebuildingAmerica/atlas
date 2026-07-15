@@ -1,6 +1,6 @@
 import { EntryDetail } from "@/domains/catalog/components/entries/entry-detail";
 import { buildPageHead } from "@/platform/seo";
-import type { Entry, EntrySlugScope } from "@/types";
+import type { Entry, EntrySlugScope } from "@rebuildingamerica/atlas-api-client";
 
 interface NonActorProfilePageProps {
   entry: Entry;

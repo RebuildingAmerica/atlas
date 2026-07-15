@@ -10,7 +10,7 @@ import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar"
 import { ProfileIdentBar } from "@/domains/catalog/components/profiles/profile-ident-bar";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { cn } from "@/lib/utils";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfileHeroProps {
   entry: Entry;

@@ -1,7 +1,7 @@
 import type { Ref, ReactNode } from "react";
 import { MapResultsList } from "@/domains/catalog/components/map/map-results-list";
 import { cn } from "@/lib/utils";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 export const MAP_RESULTS_LIST_ID = "map-results-list";
 

@@ -5,7 +5,7 @@ import type {
   DiscoveryResearchLead,
   DiscoveryResearchSummary,
   DiscoveryRun,
-} from "@/types";
+} from "@rebuildingamerica/atlas-api-client";
 
 export interface DiscoveryRunRecord extends DiscoveryRun {
   error_message?: string | null;

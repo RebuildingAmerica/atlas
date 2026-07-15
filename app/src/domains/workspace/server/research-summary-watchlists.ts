@@ -1,4 +1,4 @@
-import type { DiscoveryRunListResponse } from "@/types";
+import type { DiscoveryRunListResponse } from "@rebuildingamerica/atlas-api-client";
 import type { SavedListSummary, WatchlistSummary } from "./research-summary";
 
 function runCountLabel(count: number): string {

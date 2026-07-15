@@ -11,8 +11,8 @@ import {
   disconnectAtprotoIdentity,
   listAtprotoIdentities,
   refreshAtprotoIdentity,
-} from "@/lib/generated/atlas/identity/identity";
-import type { AtprotoIdentityResponse } from "@/lib/generated/atlas-schemas";
+} from "@rebuildingamerica/atlas-api-client/generated/atlas/identity/identity";
+import type { AtprotoIdentityResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas";
 
 export const atprotoIdentitiesQueryKey = ["auth", "atproto-identities"] as const;
 

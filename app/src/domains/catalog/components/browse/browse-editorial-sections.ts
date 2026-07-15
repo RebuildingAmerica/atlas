@@ -1,7 +1,12 @@
 import { humanize } from "@/domains/catalog/catalog";
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
 import type { BrowseFilterKey } from "@/domains/catalog/search-state";
-import type { Entry, EntryListResponse, EntryType, FacetOption } from "@/types";
+import type {
+  Entry,
+  EntryListResponse,
+  EntryType,
+  FacetOption,
+} from "@rebuildingamerica/atlas-api-client";
 
 export interface BrowseEditorialFacet {
   actorCount?: number;

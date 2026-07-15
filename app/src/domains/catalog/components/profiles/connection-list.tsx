@@ -11,7 +11,12 @@ import { ArrowUpRight } from "lucide-react";
 import { humanize } from "@/domains/catalog/catalog";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { cn } from "@/lib/utils";
-import type { ConnectedActor, ConnectionNetwork, ConnectionTier, Entry } from "@/types";
+import type {
+  ConnectedActor,
+  ConnectionNetwork,
+  ConnectionTier,
+  Entry,
+} from "@rebuildingamerica/atlas-api-client";
 
 interface ConnectionListProps {
   entry: Entry;

@@ -3,7 +3,7 @@ import { makeBrowseSearchState } from "../../fixtures/catalog/map";
 import type { MapNavigate, useMapPage } from "@/domains/catalog/hooks/use-map-page";
 import type { MapRouteSearch } from "@/domains/catalog/search-state";
 import type { MapSelection } from "@/domains/catalog/map/map-selection";
-import type { MapBounds, MapPoint, TaxonomyResponse } from "@/types";
+import type { MapBounds, MapPoint, TaxonomyResponse } from "@rebuildingamerica/atlas-api-client";
 
 /** The continental-US bounds the page hook reports until a test nulls them. */
 const DEFAULT_BOUNDS: MapBounds = { minLng: -125, minLat: 24, maxLng: -66.5, maxLat: 49.5 };

@@ -1,4 +1,4 @@
-import type { Entry, Source } from "@/types";
+import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 /**
  * Builds a baseline person `Entry` fixture used by profile component tests.

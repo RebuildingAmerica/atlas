@@ -16,7 +16,7 @@ import {
   type ProfileBrowseScope,
 } from "@/domains/catalog/profile-browse";
 import { PageLayout } from "@/platform/layout/page-layout";
-import type { Entry, EntryListResponse } from "@/types";
+import type { Entry, EntryListResponse } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfilesOverviewPageProps {
   scope?: ProfileBrowseScope;

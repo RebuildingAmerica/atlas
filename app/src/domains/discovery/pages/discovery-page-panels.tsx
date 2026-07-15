@@ -1,4 +1,7 @@
-import type { DiscoveryJobQueueItem, DiscoveryJobQueueResponse } from "@/types";
+import type {
+  DiscoveryJobQueueItem,
+  DiscoveryJobQueueResponse,
+} from "@rebuildingamerica/atlas-api-client";
 import type { WorkspaceQualitySummary } from "@/domains/workspace/server/quality-summary";
 import {
   confidenceCount,

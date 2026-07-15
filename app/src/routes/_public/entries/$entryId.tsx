@@ -7,8 +7,8 @@
  * source-linked detail pages.
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { api } from "@/lib/api";
-import type { EntryType } from "@/types";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import type { EntryType } from "@rebuildingamerica/atlas-api-client";
 
 interface DetailRedirectTarget {
   to: string;

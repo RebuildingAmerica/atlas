@@ -7,7 +7,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: {
     entries: {
       get: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("@/lib/api", () => ({
 
 describe("routes/_public/entries/$entryId", () => {
   it("redirects person entries to the canonical people profile URL", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.entries.get).mockResolvedValueOnce({
       type: "person",
       slug: "jane-doe",
@@ -37,7 +37,7 @@ describe("routes/_public/entries/$entryId", () => {
   });
 
   it("redirects organization entries to the canonical organization profile URL", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.entries.get).mockResolvedValueOnce({
       type: "organization",
       slug: "acme",
@@ -60,7 +60,7 @@ describe("routes/_public/entries/$entryId", () => {
     ["campaign", "/profiles/campaigns/$slug"],
     ["event", "/profiles/events/$slug"],
   ])("redirects %s entries to their dedicated detail URL", async (type, expectedRoute) => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.entries.get).mockResolvedValueOnce({
       type,
       slug: `${type}-slug`,
@@ -79,7 +79,7 @@ describe("routes/_public/entries/$entryId", () => {
   });
 
   it("falls back to /browse for non-actor entries with no canonical detail URL", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.entries.get).mockResolvedValueOnce({
       type: "initiative",
       slug: null,
@@ -97,7 +97,7 @@ describe("routes/_public/entries/$entryId", () => {
   });
 
   it("falls back to /browse when person entries lack a slug", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.entries.get).mockResolvedValueOnce({
       type: "person",
       slug: null,

@@ -1,4 +1,4 @@
-import type { ProfileClaimProofResponse } from "@/lib/generated/atlas";
+import type { ProfileClaimProofResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 
 export interface EvidenceDetail {
   label: string;

@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-query", () => ({
   useQuery: mocks.useQuery,
 }));
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: mocks.api,
 }));
 

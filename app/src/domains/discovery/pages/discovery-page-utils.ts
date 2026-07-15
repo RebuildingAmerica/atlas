@@ -2,7 +2,7 @@ import type {
   DiscoveryJobProgress,
   DiscoveryJobQueueItem,
   DiscoveryJobQueueResponse,
-} from "@/types";
+} from "@rebuildingamerica/atlas-api-client";
 import type { WorkspaceQualitySummary } from "@/domains/workspace/server/quality-summary";
 
 type StalePreviewItems = WorkspaceQualitySummary["stale_records"]["records"];

@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: mocks.api,
 }));
 

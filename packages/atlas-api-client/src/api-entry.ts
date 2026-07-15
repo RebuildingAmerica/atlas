@@ -5,8 +5,8 @@ import {
   type EntityDetailResponse,
   type GetEntitiesMapParams,
   type ListEntitiesParams,
-} from "@/lib/generated/atlas";
-import { atlasFetch } from "@/lib/orval/fetcher";
+} from "./generated/atlas";
+import { atlasFetch } from "./orval/fetcher";
 import type {
   ConnectionNetwork,
   Entry,
@@ -15,7 +15,7 @@ import type {
   EntrySlugScope,
   MapPointCollection,
   MapPointParams,
-} from "@/types";
+} from "./contracts";
 import {
   actorWork,
   entityHref,
@@ -29,7 +29,7 @@ import {
   mapMapPoint,
   mapSource,
   routeSegmentForEntryType,
-} from "@/lib/api-entry-mappers";
+} from "./api-entry-mappers";
 
 export function buildEntityListParams(filters: EntryFilterParams = {}): ListEntitiesParams {
   return {

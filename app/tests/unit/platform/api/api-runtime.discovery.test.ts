@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   listIssueAreas: vi.fn(),
 }));
 
-vi.mock("@/lib/generated/atlas", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", () => ({
   getEntity: mocks.getEntity,
   listEntities: mocks.listEntities,
   listIssueAreas: mocks.listIssueAreas,
@@ -21,7 +21,7 @@ describe("api runtime adapters", () => {
   });
 
   it("keeps discovery reads and writes routed through authenticated server functions", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
 
     await expect(api.discovery.list()).resolves.toEqual({
       items: [],

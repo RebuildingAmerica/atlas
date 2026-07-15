@@ -5,9 +5,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { notFound } from "@tanstack/react-router";
 import { z } from "zod";
 import { lockedEntryTypesForScope } from "@/domains/catalog/profile-browse";
-import { api } from "@/lib/api";
-import { AtlasApiError } from "@/lib/orval/fetcher";
-import type { Entry, EntryListResponse } from "@/types";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import { AtlasApiError } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
+import type { Entry, EntryListResponse } from "@rebuildingamerica/atlas-api-client";
 
 const profileSlugSchema = z.object({
   type: z.enum(["people", "organizations", "initiatives", "campaigns", "events"]),

@@ -1,5 +1,5 @@
 import Supercluster from "supercluster";
-import type { MapBounds, MapPoint } from "@/types";
+import type { MapBounds, MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /**
  * The widest a co-located actor is nudged from its true coordinate, in degrees.

@@ -3,7 +3,7 @@ import { z } from "zod";
 import type {
   OrgIntegrationMonitoringResponse,
   OrgUsageSummaryResponse,
-} from "@/lib/generated/atlas";
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { requestWorkspaceApi, requireActiveWorkspaceId } from "./workspace-api";
 
 export type WorkspaceUsageSummary = OrgUsageSummaryResponse;

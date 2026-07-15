@@ -1,4 +1,9 @@
-import type { Entry, EntryListResponse, EntrySearchFacets, EntryType } from "@/types";
+import type {
+  Entry,
+  EntryListResponse,
+  EntrySearchFacets,
+  EntryType,
+} from "@rebuildingamerica/atlas-api-client";
 import { expect } from "vitest";
 
 const EMPTY_FACETS: EntrySearchFacets = {

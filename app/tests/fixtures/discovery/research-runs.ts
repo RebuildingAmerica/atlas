@@ -1,4 +1,8 @@
-import type { DiscoveryResearchLead, DiscoveryResearchSummary, DiscoveryRun } from "@/types";
+import type {
+  DiscoveryResearchLead,
+  DiscoveryResearchSummary,
+  DiscoveryRun,
+} from "@rebuildingamerica/atlas-api-client";
 
 export function createCompletedResearchRunFixture(
   overrides: Partial<DiscoveryRun> = {},

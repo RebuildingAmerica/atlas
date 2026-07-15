@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { EntrySearchFacets, FacetOption } from "@/types";
+import type { EntrySearchFacets, FacetOption } from "@rebuildingamerica/atlas-api-client";
 
 type FilterKey = "states" | "cities" | "regions" | "issue_areas" | "entry_types" | "source_types";
 

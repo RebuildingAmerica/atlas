@@ -9,7 +9,11 @@ import {
   hasCoordinates,
   relatedCoordinatePlaces,
 } from "./place-page-utils";
-import type { PlaceGovernmentSummary, PlaceIssueSummary, PlaceRelatedSummary } from "@/types";
+import type {
+  PlaceGovernmentSummary,
+  PlaceIssueSummary,
+  PlaceRelatedSummary,
+} from "@rebuildingamerica/atlas-api-client";
 
 interface IssueLineProps {
   label: string;

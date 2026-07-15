@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BetterAuthOptions } from "better-auth/types";
+import type { BetterAuthOptions } from "better-auth";
 import type { ApiKeyOptions as ApiKeyPluginOptions } from "@better-auth/api-key";
 import type { OAuthOptions as OAuthProviderOptions } from "@better-auth/oauth-provider";
 import type { PasskeyOptions as PasskeyPluginOptions } from "@better-auth/passkey";

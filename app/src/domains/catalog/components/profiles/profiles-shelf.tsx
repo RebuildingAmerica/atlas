@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { SectionHeading, ShelfCard } from "./profile-showcase-primitives";
 
 interface ProfilesShelfProps {

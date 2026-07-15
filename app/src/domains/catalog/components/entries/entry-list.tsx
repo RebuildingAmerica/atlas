@@ -4,7 +4,7 @@ import { EntryCard } from "@/domains/catalog/components/entries/entry-card";
 import type { EntryDiscoveryContext } from "@/domains/catalog/components/entries/entry-card";
 import { Button } from "@/platform/ui/button";
 import { Spinner } from "@/platform/ui/spinner";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export interface EmptyRecoveryAction {
   label: string;

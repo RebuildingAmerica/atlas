@@ -1,4 +1,4 @@
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export interface DiscoveryRankingContext {
   cities?: string[];

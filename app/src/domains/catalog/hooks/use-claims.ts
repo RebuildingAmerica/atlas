@@ -40,7 +40,7 @@ import {
   type SavedListItemRequest,
   type SavedListItemResponse,
   type SavedListResponse,
-} from "@/lib/generated/atlas";
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 
 const CLAIMS_KEY = ["profile-claims"] as const;
 const CLAIM_REVIEW_KEY = ["profile-claim-review"] as const;

@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { humanize } from "@/domains/catalog/catalog";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/platform/ui/badge";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import type { ProfileBrowseScope } from "@/domains/catalog/profile-browse";
 import {
   ProfileImage,

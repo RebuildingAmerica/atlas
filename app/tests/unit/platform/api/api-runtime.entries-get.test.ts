@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   listIssueAreas: vi.fn(),
 }));
 
-vi.mock("@/lib/generated/atlas", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", () => ({
   getEntity: mocks.getEntity,
   listEntities: mocks.listEntities,
   listIssueAreas: mocks.listIssueAreas,
@@ -87,7 +87,7 @@ describe("api runtime adapters", () => {
       verified: true,
     });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     const entry = await api.entries.get("entity_123");
     expect(entry).toEqual(
       expect.objectContaining({
@@ -205,7 +205,7 @@ describe("api runtime adapters", () => {
       verified: true,
     });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     const entry = await api.entries.get("entity_456");
     expect(entry).toEqual(
       expect.objectContaining({
@@ -289,7 +289,7 @@ describe("api runtime adapters", () => {
       verified: true,
     });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     await expect(api.entries.get("entity_789")).resolves.toMatchObject({
       id: "entity_789",
       sources: [],
@@ -363,7 +363,7 @@ describe("api runtime adapters", () => {
       verified: true,
     });
 
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     await expect(api.entries.get("entity_999")).resolves.toMatchObject({
       id: "entity_999",
       sources: [

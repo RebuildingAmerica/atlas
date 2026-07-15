@@ -20,7 +20,7 @@ import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { buildCanonicalUrl } from "@/platform/seo";
-import type { ConnectionNetwork, Entry } from "@/types";
+import type { ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface OrgProfilePageProps {
   entry: Entry;

@@ -1,6 +1,6 @@
-import { api } from "@/lib/api";
+import { api } from "@rebuildingamerica/atlas-api-client";
 import { buildPageHead, type PageHead } from "@/platform/seo";
-import type { PlaceKind, PlacePageData } from "@/types";
+import type { PlaceKind, PlacePageData } from "@rebuildingamerica/atlas-api-client";
 
 export interface PlaceRouteParams {
   placeSlug: string;

@@ -5,7 +5,7 @@ import {
   jitterOffset,
   readLngLat,
 } from "@/domains/catalog/map/map-clustering";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 import {
   CONUS_BOUNDS,
   makePoint,

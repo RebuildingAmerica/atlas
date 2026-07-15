@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/platform/ui/card";
 import { formatFreshness } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface EntryDetailProps {
   entry?: Entry;

@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render } from "@testing-library/react";
 import { placePageFixture } from "@/../tests/fixtures/catalog/place-page";
 import type { PageHead } from "@/platform/seo";
-import type { PlacePageData } from "@/types";
+import type { PlacePageData } from "@rebuildingamerica/atlas-api-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -20,7 +20,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: mocks.api,
 }));
 

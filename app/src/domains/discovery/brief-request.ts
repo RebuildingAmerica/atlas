@@ -8,7 +8,7 @@ import type {
   AtlasBriefConfidenceState,
   AtlasBriefCreateInput,
 } from "@/domains/workspace/server/briefs";
-import type { DiscoveryResearchSummary } from "@/types";
+import type { DiscoveryResearchSummary } from "@rebuildingamerica/atlas-api-client";
 
 function uniqueValues(values: string[]): string[] {
   const seen = new Set<string>();

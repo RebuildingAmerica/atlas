@@ -11,7 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   listLatest: vi.fn(),
 }));
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: {
     places: {
       listActors: apiMocks.listActors,

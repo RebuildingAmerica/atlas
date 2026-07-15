@@ -14,8 +14,8 @@ import type { ReactNode } from "react";
 import { Badge } from "@/platform/ui/badge";
 import { Button } from "@/platform/ui/button";
 import { Select } from "@/platform/ui/select";
-import type { ProfileClaimResponse } from "@/lib/generated/atlas";
-import type { Entry } from "@/types";
+import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export function ClaimHero({ entry }: { entry: Entry }) {
   return (

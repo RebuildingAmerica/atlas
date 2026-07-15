@@ -18,7 +18,10 @@ import {
   buildMarkdownBriefExport,
 } from "@/domains/discovery/research-artifacts";
 import { copyToClipboard } from "@/lib/clipboard";
-import type { DiscoveryResearchGoal, DiscoveryResearchSummary } from "@/types";
+import type {
+  DiscoveryResearchGoal,
+  DiscoveryResearchSummary,
+} from "@rebuildingamerica/atlas-api-client";
 
 export interface CreatedBriefLink {
   id: string;

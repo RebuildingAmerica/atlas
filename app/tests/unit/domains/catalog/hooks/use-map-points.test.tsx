@@ -7,7 +7,7 @@ import {
   roundBounds,
   useMapPoints,
 } from "@/domains/catalog/hooks/use-map-points";
-import type { MapPointParams } from "@/types";
+import type { MapPointParams } from "@rebuildingamerica/atlas-api-client";
 import { HOUSING_VIEWPORT, JITTERED_BOUNDS } from "../../../../fixtures/catalog/map";
 import { lastQueryConfig } from "../../../../helpers/catalog/use-map-points-harness";
 
@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-query", () => ({
   keepPreviousData: mocks.keepPreviousData,
 }));
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: {
     entries: {
       mapPoints: mocks.mapPoints,

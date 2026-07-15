@@ -5,7 +5,7 @@
  * schema.org Person or Organization markup. Included in the profile
  * page body so search engines can extract rich results.
  */
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { buildCanonicalUrl } from "@/platform/seo";
 
 interface ProfileJsonLdProps {

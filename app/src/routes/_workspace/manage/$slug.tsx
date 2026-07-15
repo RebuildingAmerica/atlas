@@ -13,7 +13,7 @@ import { Badge } from "@/platform/ui/badge";
 import { Button } from "@/platform/ui/button";
 import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
 import { Select } from "@/platform/ui/select";
-import type { Entry, Source } from "@/types";
+import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 export const Route = createFileRoute("/_workspace/manage/$slug")({
   component: ManageProfileRoute,

@@ -21,7 +21,13 @@ import {
   toggleValue,
 } from "@/domains/catalog/search-state";
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
-import type { Entry, EntryListResponse, EntryType, SourcePattern, SourceType } from "@/types";
+import type {
+  Entry,
+  EntryListResponse,
+  EntryType,
+  SourcePattern,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 import { type BrowsePageContent, DEFAULT_BROWSE_PAGE_CONTENT } from "./browse-page-content";
 export type { BrowsePageContent } from "./browse-page-content";
 

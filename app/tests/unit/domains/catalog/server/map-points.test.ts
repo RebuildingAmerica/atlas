@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CONUS_BBOX_BOUNDS, loadMapPoints } from "@/domains/catalog/server/map-points";
-import type { MapPointCollection, MapPointParams } from "@/types";
+import type { MapPointCollection, MapPointParams } from "@rebuildingamerica/atlas-api-client";
 
 const mocks = vi.hoisted(() => ({
   mapPoints: vi.fn<(params: MapPointParams) => Promise<MapPointCollection>>(),
@@ -11,7 +11,7 @@ vi.mock("@tanstack/react-start", async () => {
   return { createServerFn: createServerFnStub() };
 });
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: { entries: { mapPoints: mocks.mapPoints } },
 }));
 

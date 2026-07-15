@@ -1,4 +1,4 @@
-import type { DiscoveryRun } from "@/types";
+import type { DiscoveryRun } from "@rebuildingamerica/atlas-api-client";
 
 interface DiscoveryStatusProps {
   run: DiscoveryRun;

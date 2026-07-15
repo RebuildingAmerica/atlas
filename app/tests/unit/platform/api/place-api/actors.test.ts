@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type * as GeneratedAtlas from "@/lib/generated/atlas";
+import type * as GeneratedAtlas from "@rebuildingamerica/atlas-api-client/generated/atlas";
 
 const placeMocks = vi.hoisted(() => ({
   getPlace: vi.fn(),
@@ -10,8 +10,10 @@ const placeMocks = vi.hoisted(() => ({
   listPlaceSources: vi.fn(),
 }));
 
-vi.mock("@/lib/generated/atlas", async () => {
-  const actual = await vi.importActual<typeof GeneratedAtlas>("@/lib/generated/atlas");
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", async () => {
+  const actual = await vi.importActual<typeof GeneratedAtlas>(
+    "@rebuildingamerica/atlas-api-client/generated/atlas",
+  );
   return {
     ...actual,
     getPlace: placeMocks.getPlace,
@@ -23,7 +25,7 @@ vi.mock("@/lib/generated/atlas", async () => {
   };
 });
 
-import { api } from "@/lib/api";
+import { api } from "@rebuildingamerica/atlas-api-client";
 
 describe("api.places actors", () => {
   beforeEach(() => {

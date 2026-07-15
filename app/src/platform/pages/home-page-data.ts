@@ -1,7 +1,13 @@
 import { ArrowRight, ExternalLink, MapPinned } from "lucide-react";
 import { ENTITY_TYPE_LABELS, SOURCE_TYPE_LABELS, humanize } from "@/domains/catalog/catalog";
 import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
-import type { Entry, EntrySearchFacets, EntryType, FacetOption, SourceType } from "@/types";
+import type {
+  Entry,
+  EntrySearchFacets,
+  EntryType,
+  FacetOption,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 
 export interface HomeFacetTile {
   count: string;

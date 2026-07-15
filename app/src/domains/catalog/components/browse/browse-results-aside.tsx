@@ -3,7 +3,7 @@ import type { EntryDiscoveryContext } from "@/domains/catalog/components/entries
 import type { EmptyRecoveryAction } from "@/domains/catalog/components/entries/entry-list";
 import { Button } from "@/platform/ui/button";
 import type { BrowsePageContent } from "./browse-page-content";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface PaginationState {
   has_more: boolean;

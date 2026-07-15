@@ -32,7 +32,7 @@ import { useEntry } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
 import { humanize } from "@/domains/catalog/catalog";
 import { buildCanonicalUrl } from "@/platform/seo";
-import type { ConnectionNetwork, Entry } from "@/types";
+import type { ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface PersonProfilePageProps {
   entry: Entry;

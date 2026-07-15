@@ -26,7 +26,7 @@ import {
   serializeList,
   toggleValue,
 } from "@/domains/catalog/search-state";
-import type { MapBounds, MapPoint, MapPointCollection } from "@/types";
+import type { MapBounds, MapPoint, MapPointCollection } from "@rebuildingamerica/atlas-api-client";
 
 /** The zoom the camera settles at after flying to a searched city. */
 const CITY_FLY_ZOOM = 10;

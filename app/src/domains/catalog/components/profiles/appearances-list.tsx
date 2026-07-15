@@ -9,7 +9,7 @@ import { FreshnessChip } from "@/domains/catalog/components/profiles/detail/prof
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@/platform/ui/badge";
-import type { Source, SourceType } from "@/types";
+import type { Source, SourceType } from "@rebuildingamerica/atlas-api-client";
 
 type AppearancesMode = "person" | "organization";
 

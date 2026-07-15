@@ -9,7 +9,10 @@ import {
 import { useAtlasSession } from "@/domains/access";
 import { buildNewsroomAssignmentPacket } from "@/domains/workspace/newsroom-handoff";
 import { buildNonprofitSystemsPacket } from "@/domains/workspace/nonprofit-systems-bridge";
-import { exportSavedList, getExportSavedListUrl } from "@/lib/generated/atlas";
+import {
+  exportSavedList,
+  getExportSavedListUrl,
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Badge } from "@/platform/ui/badge";
 import {
   buildCrmHandoffPacket,

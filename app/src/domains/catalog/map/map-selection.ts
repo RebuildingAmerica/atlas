@@ -1,4 +1,4 @@
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** A longitude/latitude the camera should keep in view beside the open panel. */
 export interface SelectionAnchor {

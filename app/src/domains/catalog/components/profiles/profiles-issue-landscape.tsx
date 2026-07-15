@@ -1,5 +1,5 @@
 import { Building2 } from "lucide-react";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import {
   ProfileEntryLink,
   SectionHeading,

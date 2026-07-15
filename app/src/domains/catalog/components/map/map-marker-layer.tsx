@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { Marker } from "react-map-gl/maplibre";
-import type { MapBounds, MapPoint } from "@/types";
+import type { MapBounds, MapPoint } from "@rebuildingamerica/atlas-api-client";
 import { buildClusterIndex, deriveMapFeatures } from "@/domains/catalog/map/map-clustering";
 import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
 import { CivicDotMarker } from "./civic-dot-marker";

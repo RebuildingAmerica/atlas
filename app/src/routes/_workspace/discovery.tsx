@@ -3,7 +3,7 @@ import { z } from "zod";
 import { taxonomyQueryOptions } from "@/domains/catalog/hooks/use-taxonomy";
 import { DiscoveryPage } from "@/domains/discovery";
 import { discoveryRunsQueryOptions } from "@/domains/discovery/hooks/use-discovery";
-import type { DiscoveryResearchGoal } from "@/types";
+import type { DiscoveryResearchGoal } from "@rebuildingamerica/atlas-api-client";
 
 interface DiscoverySearch {
   issue_areas?: string;

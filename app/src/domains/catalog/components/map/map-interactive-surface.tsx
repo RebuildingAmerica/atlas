@@ -9,7 +9,7 @@ import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
 import type { MapSelection } from "@/domains/catalog/map/map-selection";
 import type { MapView } from "@/domains/catalog/map/map-viewport";
 import type { MapViewportEvent } from "@/domains/catalog/hooks/use-map-page";
-import type { MapBounds, MapPoint } from "@/types";
+import type { MapBounds, MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** The detail panel's width in pixels, used to inset the camera beside it. */
 const PANEL_WIDTH_PX = 384;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { VerificationListResponse } from "@/lib/generated/atlas-schemas/access/verificationListResponse";
+import type { VerificationListResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationListResponse";
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),

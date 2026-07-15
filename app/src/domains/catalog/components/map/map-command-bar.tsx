@@ -16,7 +16,7 @@ import {
 import { searchActors, searchPlaces } from "@/domains/catalog/map/map-place-search";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
 import type { BrowseFilterKey } from "@/domains/catalog/search-state";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 import type {
   CommandBarActiveCounts,
   CommandOption,

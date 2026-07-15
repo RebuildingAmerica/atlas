@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { CompanionSpotlight, SectionHeading } from "./profile-showcase-primitives";
 import { SpotlightCard } from "./spotlight-card";
 

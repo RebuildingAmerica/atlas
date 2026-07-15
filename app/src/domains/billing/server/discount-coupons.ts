@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
-import type { PricingCheckoutInterval } from "../checkout-types";
+import type { PricingCheckoutInterval } from "../checkout-intervals";
 import type { DiscountSegment } from "../discount-segments";
 import { getAtlasDiscountCouponIds } from "../products";
 import type { AtlasDiscountCouponIds } from "../products";

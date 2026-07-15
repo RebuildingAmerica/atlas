@@ -1,7 +1,7 @@
 import { MapPin, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useId } from "react";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 import type { ActorMatch, PlaceMatch } from "@/domains/catalog/map/map-place-search";
 
 export interface QuickIssueArea {

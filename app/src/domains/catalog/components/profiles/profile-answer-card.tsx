@@ -1,6 +1,6 @@
 import { humanize } from "@/domains/catalog/catalog";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import type { ClaimEvidenceInfo, Entry, Source } from "@/types";
+import type { ClaimEvidenceInfo, Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfileAnswerCardProps {
   entry: Entry;

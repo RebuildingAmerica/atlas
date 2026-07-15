@@ -1,6 +1,6 @@
 import { ClipboardList, FileJson, Newspaper, Users } from "lucide-react";
 import { pluralize } from "@/lib/pluralize";
-import type { DiscoveryRun } from "@/types";
+import type { DiscoveryRun } from "@rebuildingamerica/atlas-api-client";
 
 interface SyncReadinessPanelProps {
   run: DiscoveryRun;

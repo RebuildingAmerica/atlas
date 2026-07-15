@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEntityListParams, buildMapPointParams } from "@/lib/api";
+import { buildEntityListParams, buildMapPointParams } from "@rebuildingamerica/atlas-api-client";
 import { CONUS_BOUNDS } from "../../../../fixtures/catalog/map";
 
 describe("buildEntityListParams", () => {

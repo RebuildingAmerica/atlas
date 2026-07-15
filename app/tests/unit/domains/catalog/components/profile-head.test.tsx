@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 describe("ProfileJsonLd", () => {
   const mockPerson: Entry = {

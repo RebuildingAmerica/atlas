@@ -1,4 +1,4 @@
-import type { EntryType, MapPoint, TrustLevel } from "@/types";
+import type { EntryType, MapPoint, TrustLevel } from "@rebuildingamerica/atlas-api-client";
 import { FALLBACK_ISSUE_COLOR, issueColor } from "./issue-colors";
 
 /**

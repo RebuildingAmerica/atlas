@@ -12,7 +12,7 @@ vi.mock("@/domains/catalog/server/profiles/profile-loaders", () => ({
   loadEntryBySlugAny: vi.fn(),
 }));
 
-vi.mock("@/lib/generated/atlas", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas", () => ({
   createEntityFlag: vi.fn(),
 }));
 
@@ -44,7 +44,8 @@ describe("routes/_public/feedback/$slug", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
-    const { createEntityFlag } = await import("@/lib/generated/atlas");
+    const { createEntityFlag } =
+      await import("@rebuildingamerica/atlas-api-client/generated/atlas");
     vi.mocked(createEntityFlag).mockReset();
     vi.mocked(createEntityFlag).mockResolvedValue({
       id: "flag-1",
@@ -98,7 +99,8 @@ describe("routes/_public/feedback/$slug", () => {
   });
 
   it("submits stale or incorrect feedback to the entity flag review loop", async () => {
-    const { createEntityFlag } = await import("@/lib/generated/atlas");
+    const { createEntityFlag } =
+      await import("@rebuildingamerica/atlas-api-client/generated/atlas");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const router = readRouterMocks();
     router.useParams.mockReturnValue({ slug: "acme" });

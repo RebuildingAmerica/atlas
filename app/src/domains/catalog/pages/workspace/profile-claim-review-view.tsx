@@ -9,7 +9,7 @@ import {
   AdminPageShell,
   AdminStatusBadge,
 } from "@/domains/admin/admin-portal";
-import type { ProfileClaimResponse } from "@/lib/generated/atlas";
+import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Button } from "@/platform/ui/button";
 import {
   evidenceDetails,

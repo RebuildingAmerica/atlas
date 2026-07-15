@@ -5,7 +5,7 @@ import {
   buildBrowseSearch,
   type BrowseRouteSearch,
 } from "@/domains/catalog/search-state";
-import { api } from "@/lib/api";
+import { api } from "@rebuildingamerica/atlas-api-client";
 import { isRecoverablePublicLoaderError } from "@/platform/routes/public-loader-errors";
 import { buildPageHead } from "@/platform/seo";
 import type {
@@ -14,7 +14,7 @@ import type {
   EntryType,
   SourcePattern,
   SourceType,
-} from "@/types";
+} from "@rebuildingamerica/atlas-api-client";
 
 interface BrowseLoaderDeps {
   search: BrowseRouteSearch;

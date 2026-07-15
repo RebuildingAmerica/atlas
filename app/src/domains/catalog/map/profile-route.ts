@@ -1,4 +1,4 @@
-import type { EntryType } from "@/types";
+import type { EntryType } from "@rebuildingamerica/atlas-api-client";
 
 /** A typed link target into a canonical profile page. */
 export interface ProfileRoute {

@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/lib/api", () => ({
+vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: {
     entries: {
       list: vi.fn(),
@@ -31,7 +31,7 @@ describe("routes/sitemap.xml", () => {
   });
 
   it("emits an XML sitemap with profile URLs and skips entries without a slug", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({
       directories: [
         {
@@ -73,7 +73,7 @@ describe("routes/sitemap.xml", () => {
   });
 
   it("paginates entry lists inside the public API limit", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
     vi.mocked(api.entries.list).mockImplementation((params) => {
       if (params?.entry_types?.includes("person") && params.offset === 100) {
@@ -127,7 +127,7 @@ describe("routes/sitemap.xml", () => {
 
   it("uses the configured public origin for sitemap URLs", async () => {
     vi.stubEnv("ATLAS_PUBLIC_URL", "https://preview.atlas.example/app");
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
     vi.mocked(api.entries.list).mockResolvedValue(
       buildSitemapEntryListResponse([buildSitemapEntry({ type: "person", slug: "jane-doe" })]),
@@ -141,7 +141,7 @@ describe("routes/sitemap.xml", () => {
   });
 
   it("renders the static sitemap header when no entries are returned", async () => {
-    const { api } = await import("@/lib/api");
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
     vi.mocked(api.entries.list).mockResolvedValue(buildSitemapEntryListResponse([]));
 

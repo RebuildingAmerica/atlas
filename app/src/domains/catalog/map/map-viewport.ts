@@ -1,4 +1,4 @@
-import type { MapBounds } from "@/types";
+import type { MapBounds } from "@rebuildingamerica/atlas-api-client";
 import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
 
 /** A camera position: where the map is centered and how far it is zoomed in. */

@@ -1,4 +1,4 @@
-import type { PlacePageData } from "@/types";
+import type { PlacePageData } from "@rebuildingamerica/atlas-api-client";
 
 export const placePageFixture = {
   identity: {

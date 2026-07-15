@@ -22,7 +22,7 @@ import { DiscoveryRunForm } from "./components/discovery-run-form";
 import { DiscoveryRunsPanel } from "./components/discovery-runs-panel";
 import { IngestionQualityPanel, ResearchOperationsPanel } from "./discovery-page-panels";
 import { prefilledIssueAreas } from "./discovery-page-utils";
-import type { DiscoveryResearchGoal } from "@/types";
+import type { DiscoveryResearchGoal } from "@rebuildingamerica/atlas-api-client";
 import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
 import type { AtlasBriefCreateInput } from "@/domains/workspace/server/briefs";
 import type { CoverageTargetCreateInput } from "@/domains/workspace/server/coverage-targets";

@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Search } from "lucide-react";
-import { api } from "@/lib/api";
+import { api } from "@rebuildingamerica/atlas-api-client";
 import { cn } from "@/lib/utils";
 import { ACTOR_SORTS, ACTOR_TYPES, actorStatusText } from "./place-page-utils";
 import type {
@@ -10,7 +10,7 @@ import type {
   PlaceActorSort,
   PlaceActorSummary,
   PlaceKind,
-} from "@/types";
+} from "@rebuildingamerica/atlas-api-client";
 
 interface ActorCardProps {
   actor: PlaceActorSummary;

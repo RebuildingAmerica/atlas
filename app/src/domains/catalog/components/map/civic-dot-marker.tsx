@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { MapPoint } from "@/types";
+import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 import {
   DOT_CORE_PX,
   DOT_HOVER_SCALE,

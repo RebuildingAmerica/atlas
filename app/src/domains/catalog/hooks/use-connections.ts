@@ -5,8 +5,8 @@
  * HTML; the client only revalidates.
  */
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import type { ConnectionNetwork } from "@/types";
+import { api } from "@rebuildingamerica/atlas-api-client";
+import type { ConnectionNetwork } from "@rebuildingamerica/atlas-api-client";
 
 interface UseConnectionsOptions {
   /** Hydrate the cache with a server-side payload to skip the first fetch. */

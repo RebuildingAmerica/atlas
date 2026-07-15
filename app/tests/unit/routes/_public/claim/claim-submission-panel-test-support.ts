@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import type { ClaimSubmissionPanelProps } from "@/routes/_public/claim/-claim-submission-panel";
-import type { Entry } from "@/types";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export const claimPanelNoop = vi.fn();
 
