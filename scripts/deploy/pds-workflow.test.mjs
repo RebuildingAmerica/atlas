@@ -51,6 +51,7 @@ test("staging hosted identity proof runs against a branch app without Vercel dep
   assert.doesNotMatch(source, /Deploy Vercel staging app/);
   assert.match(source, /Start branch app for hosted identity verification/);
   assert.match(source, /ATLAS_ATPROTO_OAUTH_E2E_HARNESS=1/);
+  assert.match(source, /ATLAS_HOSTED_E2E_PRODUCTION_ENABLED=1/);
   assert.doesNotMatch(hostedIdentityJob, /python: "false"/);
   assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET/);
   assert.match(source, /ATLAS_PDS_INVITE_BROKER_URL/);
