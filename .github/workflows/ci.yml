@@ -172,7 +172,17 @@ jobs:
           fi
 
           if [ "$RUN_APP_TESTS" = "true" ]; then
-            pnpm exec turbo run '@rebuildingamerica/atlas-app#test' @rebuildingamerica/entity-widgets#test @rebuildingamerica/entity-widgets-mcp#test "${affected_args[@]}"
+            pnpm exec turbo run \
+              '@rebuildingamerica/atlas-app#test:unit:access' \
+              '@rebuildingamerica/atlas-app#test:unit:business' \
+              '@rebuildingamerica/atlas-app#test:unit:catalog' \
+              '@rebuildingamerica/atlas-app#test:unit:platform' \
+              '@rebuildingamerica/atlas-app#test:unit:workspace' \
+              '@rebuildingamerica/atlas-app#test:unit:system' \
+              @rebuildingamerica/entity-widgets#test \
+              @rebuildingamerica/entity-widgets-mcp#test \
+              --concurrency=1 \
+              "${affected_args[@]}"
           fi
 
   acceptance:

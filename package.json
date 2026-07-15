@@ -28,7 +28,7 @@
     "api:test": "turbo run @rebuildingamerica/atlas-api#test",
     "python:test": "turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test @rebuildingamerica/atlas-api#test",
     "quality": "turbo run typecheck lint test",
-    "test:ci": "turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test @rebuildingamerica/atlas-api#test '@rebuildingamerica/atlas-app#test'",
+    "test:ci": "turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test @rebuildingamerica/atlas-api#test '@rebuildingamerica/atlas-app#test:unit:access' '@rebuildingamerica/atlas-app#test:unit:business' '@rebuildingamerica/atlas-app#test:unit:catalog' '@rebuildingamerica/atlas-app#test:unit:platform' '@rebuildingamerica/atlas-app#test:unit:workspace' '@rebuildingamerica/atlas-app#test:unit:system' --concurrency=1",
     "test:coverage": "turbo run @rebuildingamerica/atlas-shared#test @rebuildingamerica/atlas-discovery-engine#test @rebuildingamerica/atlas-scout#test @rebuildingamerica/atlas-api#test '@rebuildingamerica/atlas-app#test:coverage'",
     "test:e2e": "pnpm --filter @rebuildingamerica/atlas-app run test:acceptance",
     "test:e2e:headed": "pnpm --filter @rebuildingamerica/atlas-app run test:acceptance:headed",
