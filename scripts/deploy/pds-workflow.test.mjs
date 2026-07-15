@@ -45,11 +45,13 @@ test("staging API deploy enables the ATProto OAuth harness for hosted identity p
 
 test("staging hosted identity proof runs against a branch app without Vercel deploy credentials", async () => {
   const source = await workflowSource(".github/workflows/deploy-staging.yml");
+  const hostedIdentityJob = source.slice(source.indexOf("hosted-identity:"));
 
   assert.doesNotMatch(source, /VERCEL_TOKEN/);
   assert.doesNotMatch(source, /Deploy Vercel staging app/);
   assert.match(source, /Start branch app for hosted identity verification/);
   assert.match(source, /ATLAS_ATPROTO_OAUTH_E2E_HARNESS=1/);
+  assert.doesNotMatch(hostedIdentityJob, /python: "false"/);
   assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET/);
   assert.match(source, /ATLAS_PDS_INVITE_BROKER_URL/);
   assert.ok(
