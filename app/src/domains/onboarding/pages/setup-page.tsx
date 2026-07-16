@@ -14,8 +14,17 @@ import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_PRODUCT = "atlas_team";
+import {
+  DEFAULT_ONBOARDING_PRODUCT,
+  buildOnboardingStartRedirect,
+  canUsePurchaseWorkspace,
+  defaultOnboardingInterval,
+  isValidOnboardingSelection,
+  onboardingWorkspaceSlug,
+  type PurchaseOnboardingIntent,
+  type SetupInterval,
+  type SetupProduct,
+} from "@rebuildingamerica/atlas-access/onboarding/setup-state";
 
 export const setupSearchSchema = z.object({
   interval: z.enum(["monthly", "yearly", "four_month", "once", "weekly"]).optional(),
@@ -25,19 +34,6 @@ export const setupSearchSchema = z.object({
 });
 
 type SetupSearch = z.infer<typeof setupSearchSchema>;
-type SetupProduct = NonNullable<SetupSearch["product"]>;
-type SetupInterval = NonNullable<SetupSearch["interval"]>;
-
-interface PurchaseOnboardingIntent {
-  expiresAt: string;
-  id: string;
-  interval: SetupInterval;
-  product: SetupProduct;
-  status: string;
-  stripeCheckoutSessionId: string | null;
-  userId: string;
-  workspaceId: string | null;
-}
 
 interface SetupPageProps {
   interval?: SetupSearch["interval"];
@@ -46,46 +42,8 @@ interface SetupPageProps {
   step?: SetupSearch["step"];
 }
 
-function buildStartRedirect(product: string, interval: string): string {
-  const params = new URLSearchParams({ product, interval });
-  return `/onboarding?${params.toString()}`;
-}
-
-function defaultIntervalForProduct(product: SetupProduct) {
-  return product === "atlas_research_pass" ? "once" : "monthly";
-}
-
-function isValidProductInterval(product: SetupProduct, interval: SetupInterval): boolean {
-  if (product === "atlas_pro") {
-    return interval === "monthly" || interval === "yearly" || interval === "four_month";
-  }
-  if (product === "atlas_team") {
-    return interval === "monthly" || interval === "yearly";
-  }
-  return interval === "once" || interval === "weekly";
-}
-
 function initialWorkspaceName(): string {
   return "Team Workspace";
-}
-
-function purchaseStatusCanUseWorkspace(status: string): boolean {
-  return status === "started" || status === "account_ready" || status === "workspace_ready";
-}
-
-function purchaseIntentIsUsable(intent: PurchaseOnboardingIntent): boolean {
-  return purchaseStatusCanUseWorkspace(intent.status) && Date.parse(intent.expiresAt) > Date.now();
-}
-
-function slugify(value: string): string {
-  return (
-    value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .replace(/-{2,}/g, "-") || "team-workspace"
-  );
 }
 
 type PurchaseStepId = "account" | "security" | "workspace" | "payment";
@@ -240,10 +198,10 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
   const session = useAtlasSession();
   const [purchaseIntent, setPurchaseIntent] = useState<PurchaseOnboardingIntent | null>(null);
   const [purchaseLookupFailed, setPurchaseLookupFailed] = useState(false);
-  const selectedProduct = purchaseIntent?.product ?? product ?? DEFAULT_PRODUCT;
+  const selectedProduct = purchaseIntent?.product ?? product ?? DEFAULT_ONBOARDING_PRODUCT;
   const selectedInterval =
-    purchaseIntent?.interval ?? interval ?? defaultIntervalForProduct(selectedProduct);
-  const validSelection = isValidProductInterval(selectedProduct, selectedInterval);
+    purchaseIntent?.interval ?? interval ?? defaultOnboardingInterval(selectedProduct);
+  const validSelection = isValidOnboardingSelection(selectedProduct, selectedInterval);
   const sessionData = session.data;
   const [workspaceName, setWorkspaceName] = useState(initialWorkspaceName());
   const [isPending, setIsPending] = useState(false);
@@ -252,7 +210,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
   const purchaseId = purchaseIntent?.id ?? purchase ?? null;
   const productLabel = PRODUCT_LABELS[selectedProduct];
   const startRedirect = useMemo(
-    () => buildStartRedirect(selectedProduct, selectedInterval),
+    () => buildOnboardingStartRedirect(selectedProduct, selectedInterval),
     [selectedInterval, selectedProduct],
   );
   const isReady = Boolean(sessionData?.accountReady && sessionData.hasPasskey);
@@ -264,7 +222,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
   const purchaseLookupPending = Boolean(purchase && !purchaseIntent && !purchaseLookupFailed);
   const purchaseUnavailable =
     Boolean(purchase) &&
-    (purchaseLookupFailed || (purchaseIntent !== null && !purchaseIntentIsUsable(purchaseIntent)));
+    (purchaseLookupFailed || (purchaseIntent !== null && !canUsePurchaseWorkspace(purchaseIntent)));
 
   useEffect(() => {
     if (!sessionData || !purchase) {
@@ -337,7 +295,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
       const created = await createWorkspace({
         data: {
           name: workspaceName,
-          slug: slugify(workspaceName),
+          slug: onboardingWorkspaceSlug(workspaceName),
           workspaceType: selectedProduct === "atlas_team" ? "team" : "individual",
         },
       });
