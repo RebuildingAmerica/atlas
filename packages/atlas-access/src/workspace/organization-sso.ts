@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AtlasSsoPrimaryHistoryEntry } from "./organization-metadata";
 import type { AtlasWorkspaceSSOSetupValues } from "./organization-sso-defaults";
 
 export {
@@ -146,16 +147,6 @@ export interface AtlasWorkspaceSSOProvider {
 /**
  * Full SSO state Atlas renders inside organization management.
  */
-/**
- * One row of the workspace's primary-SSO-provider audit trail, as exposed
- * to the UI.  Mirrors the shape persisted in workspace metadata.
- */
-export interface AtlasSsoPrimaryHistoryEntry {
-  changedAt: string;
-  changedByEmail: string | null;
-  providerId: string | null;
-}
-
 export interface AtlasWorkspaceSSOState {
   primaryHistory: AtlasSsoPrimaryHistoryEntry[];
   primaryProviderId: string | null;

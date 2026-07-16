@@ -4,10 +4,10 @@ import {
   buildWorkspaceSSODomainVerificationHost,
   workspaceSSOProviderMatchesDomain,
 } from "./organization-sso-defaults";
+import type { AtlasSsoPrimaryHistoryEntry } from "./organization-metadata";
 import type {
   AtlasSAMLProviderCertificate,
   AtlasSSOProviderType,
-  AtlasSsoPrimaryHistoryEntry,
   AtlasWorkspaceSSOProvider,
   AtlasWorkspaceSSOState,
 } from "./organization-sso";
