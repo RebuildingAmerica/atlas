@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCompletedResearchRunFixture } from "@rebuildingamerica/atlas-catalog/testing/discovery";
-import { SyncReadinessPanel } from "@/domains/discovery/pages/components/sync-readiness-panel";
+import { SyncReadinessPanel } from "@rebuildingamerica/atlas-catalog/discovery/components";
 
 describe("SyncReadinessPanel", () => {
   afterEach(() => {

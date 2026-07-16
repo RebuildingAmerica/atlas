@@ -17,7 +17,6 @@ import {
   buildLeadCsvExport,
   buildMarkdownBriefExport,
 } from "@rebuildingamerica/atlas-catalog/discovery/research-artifacts";
-import { copyToClipboard } from "@/lib/clipboard";
 import type {
   DiscoveryResearchGoal,
   DiscoveryResearchSummary,
@@ -31,6 +30,19 @@ export interface CreatedBriefLink {
 export interface CreatedCoverageTargetLink {
   id: string;
   name: string;
+}
+
+async function copyToClipboard(value: string): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.clipboard) {
+    return false;
+  }
+
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 interface ResearchSummaryBlockProps {

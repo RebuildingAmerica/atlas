@@ -1,6 +1,9 @@
 import { ClipboardList, FileJson, Newspaper, Users } from "lucide-react";
-import { pluralize } from "@/lib/pluralize";
 import type { DiscoveryRun } from "@rebuildingamerica/atlas-api-client";
+
+function pluralize(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
 
 interface SyncReadinessPanelProps {
   run: DiscoveryRun;

@@ -20,9 +20,12 @@ import { useCreateWorkspaceBrief } from "@/domains/workspace/hooks/use-briefs";
 import { useCreateCoverageTarget } from "@/domains/workspace/hooks/use-coverage-targets";
 import { useWatchWorkspaceResource } from "@/domains/workspace/hooks/use-workspace-watches";
 import { useWorkspaceQualitySummary } from "@/domains/workspace/hooks/use-workspace-quality-summary";
-import { DiscoverySetupNotice, DiscoveryUpgradePrompt } from "./components/discovery-hero";
-import { DiscoveryRunForm } from "./components/discovery-run-form";
-import { DiscoveryRunsPanel } from "./components/discovery-runs-panel";
+import {
+  DiscoveryRunForm,
+  DiscoveryRunsPanel,
+  DiscoverySetupNotice,
+  DiscoveryUpgradePrompt,
+} from "@rebuildingamerica/atlas-catalog/discovery/components";
 import { IngestionQualityPanel, ResearchOperationsPanel } from "./discovery-page-panels";
 import { prefilledIssueAreas } from "@rebuildingamerica/atlas-catalog/discovery/page-utils";
 import type { DiscoveryResearchGoal } from "@rebuildingamerica/atlas-api-client";
