@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Card } from "@rebuildingamerica/atlas-ui/ui/card";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import type { EntrySearchFacets, FacetOption } from "@rebuildingamerica/atlas-api-client";
 
 type FilterKey = "states" | "cities" | "regions" | "issue_areas" | "entry_types" | "source_types";
 
-interface EntryFiltersProps {
+export interface EntryFiltersProps {
   query: string;
   onQueryChange: (value: string) => void;
   onSearchSubmit: () => void;

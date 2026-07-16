@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./catalog": "./src/catalog.ts",
+    "./entries/*": "./src/entries/*.tsx",
     "./search-state": "./src/search-state.ts",
     "./surface-model": "./src/surface-model.ts",
     "./taxonomy-domains": "./src/taxonomy-domains.ts",
@@ -34,6 +35,7 @@
   },
   "dependencies": {
     "@tanstack/react-virtual": "catalog:",
+    "@tanstack/react-router": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@rebuildingamerica/atlas-api-client": "workspace:*",
     "clsx": "catalog:",

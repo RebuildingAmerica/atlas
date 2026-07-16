@@ -1,11 +1,11 @@
 import { AlertCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { EntryCard } from "@/components/entries/entry-card";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { EntryCard } from "./entry-card";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Spinner } from "@rebuildingamerica/atlas-ui/ui/spinner";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
-interface EntryListProps {
+export interface EntryListProps {
   entries: Entry[];
   total?: number;
   isLoading?: boolean;

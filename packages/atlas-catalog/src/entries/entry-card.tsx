@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Card } from "@rebuildingamerica/atlas-ui/ui/card";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
-interface EntryCardProps {
+export interface EntryCardProps {
   entry: Entry;
   issueAreaLabels?: Record<string, string>;
 }

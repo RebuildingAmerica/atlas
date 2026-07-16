@@ -1,8 +1,8 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@rebuildingamerica/atlas-ui/ui/card";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
-interface EntryDetailProps {
+export interface EntryDetailProps {
   entry?: Entry;
   isLoading?: boolean;
   error?: Error | null;
