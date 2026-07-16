@@ -1,7 +1,10 @@
 import "@tanstack/react-start/server-only";
 
 import { createInternalAuthHeaders } from "@/domains/access/config";
-import { AtlasApiError, classifyAtlasApiStatus } from "@/domains/discovery/api-errors";
+import {
+  AtlasApiError,
+  classifyAtlasApiStatus,
+} from "@rebuildingamerica/atlas-catalog/discovery/api-errors";
 import { requireReadyAtlasSessionState } from "@/domains/access/server/session-state";
 import {
   getServerApiBaseUrl as getConfiguredServerApiBaseUrl,

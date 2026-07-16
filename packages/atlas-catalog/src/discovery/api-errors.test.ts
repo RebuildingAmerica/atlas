@@ -6,7 +6,7 @@ import {
   extractAtlasApiErrorCode,
   isAtLimitError,
   resolveStartRunErrorMessage,
-} from "@/domains/discovery/api-errors";
+} from "./api-errors";
 
 describe("discovery api-errors", () => {
   describe("AtlasApiError", () => {

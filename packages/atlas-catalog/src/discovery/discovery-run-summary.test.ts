@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   blindSpotsForSummary,
   confidenceFromLead,
-} from "@/domains/discovery/discovery-run-summary";
+} from "./discovery-run-summary";
 import {
   createDiscoveryResearchLeadFixture,
   createDiscoveryResearchSummaryFixture,
-} from "../../../fixtures/discovery/research-runs";
+} from "../testing/discovery";
 
 describe("discovery run summary derivation", () => {
   it("uses explicit confidence before deriving a fallback from source count", () => {

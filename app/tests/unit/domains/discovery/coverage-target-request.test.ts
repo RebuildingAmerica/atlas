@@ -4,7 +4,7 @@ import {
   canCreateCoverageTargetFromRun,
   topLeadEntryIdsFromRun,
 } from "@/domains/discovery/coverage-target-request";
-import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
+import type { DiscoveryRunRecord } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 
 describe("coverage target request conversion", () => {
   const completedRun = (): DiscoveryRunRecord => ({

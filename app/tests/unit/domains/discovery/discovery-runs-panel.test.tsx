@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { DiscoveryRunsPanel } from "@/domains/discovery/pages/components/discovery-runs-panel";
-import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
+import type { DiscoveryRunRecord } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({

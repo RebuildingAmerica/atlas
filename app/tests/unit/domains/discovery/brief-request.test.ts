@@ -3,7 +3,7 @@ import {
   buildBriefCreateInputFromRun,
   canCreateBriefFromRun,
 } from "@/domains/discovery/brief-request";
-import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
+import type { DiscoveryRunRecord } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 
 describe("brief request conversion", () => {
   const completedRun = (): DiscoveryRunRecord => ({

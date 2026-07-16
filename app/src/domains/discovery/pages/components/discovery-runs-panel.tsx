@@ -2,7 +2,7 @@ import { Clipboard } from "lucide-react";
 import {
   RESEARCH_GOAL_LABELS,
   type DiscoveryRunRecord,
-} from "@/domains/discovery/discovery-run-summary";
+} from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 import type { CreatedBriefLink, CreatedCoverageTargetLink } from "./discovery-runs-panel-parts";
 import { DiscoveryRunsPanelSummary } from "./discovery-runs-panel-parts";
 

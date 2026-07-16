@@ -3,7 +3,7 @@ import {
   confidenceFromLead,
   RESEARCH_GOAL_LABELS,
   type DiscoveryRunRecord,
-} from "@/domains/discovery/discovery-run-summary";
+} from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 import type {
   AtlasBriefConfidenceState,
   AtlasBriefCreateInput,

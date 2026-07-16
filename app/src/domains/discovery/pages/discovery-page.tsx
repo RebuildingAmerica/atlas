@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { useAtlasSession } from "@/domains/access";
 import { hasSerializedCapability } from "@/domains/access/capabilities";
-import { isAtLimitError, resolveStartRunErrorMessage } from "@/domains/discovery/api-errors";
+import {
+  isAtLimitError,
+  resolveStartRunErrorMessage,
+} from "@rebuildingamerica/atlas-catalog/discovery/api-errors";
 import { buildBriefCreateInputFromRun } from "@/domains/discovery/brief-request";
 import {
   buildCoverageTargetCreateInputFromRun,
@@ -23,7 +26,7 @@ import { DiscoveryRunsPanel } from "./components/discovery-runs-panel";
 import { IngestionQualityPanel, ResearchOperationsPanel } from "./discovery-page-panels";
 import { prefilledIssueAreas } from "./discovery-page-utils";
 import type { DiscoveryResearchGoal } from "@rebuildingamerica/atlas-api-client";
-import type { DiscoveryRunRecord } from "@/domains/discovery/discovery-run-summary";
+import type { DiscoveryRunRecord } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 import type { AtlasBriefCreateInput } from "@/domains/workspace/server/briefs";
 import type { CoverageTargetCreateInput } from "@/domains/workspace/server/coverage-targets";
 

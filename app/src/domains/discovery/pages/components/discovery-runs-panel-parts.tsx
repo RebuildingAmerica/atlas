@@ -11,12 +11,12 @@ import {
   CONFIDENCE_LABELS,
   confidenceFromLead,
   type DiscoveryRunRecord,
-} from "@/domains/discovery/discovery-run-summary";
+} from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 import {
   buildAgentJsonExport,
   buildLeadCsvExport,
   buildMarkdownBriefExport,
-} from "@/domains/discovery/research-artifacts";
+} from "@rebuildingamerica/atlas-catalog/discovery/research-artifacts";
 import { copyToClipboard } from "@/lib/clipboard";
 import type {
   DiscoveryResearchGoal,

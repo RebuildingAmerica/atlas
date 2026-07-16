@@ -3,8 +3,8 @@ import {
   buildAgentResearchArtifact,
   buildLeadCsvExport,
   buildMarkdownBriefExport,
-} from "@/domains/discovery/research-artifacts";
-import { createCompletedResearchRunFixture } from "../../../fixtures/discovery/research-runs";
+} from "./research-artifacts";
+import { createCompletedResearchRunFixture } from "../testing/discovery";
 
 describe("research artifact exports", () => {
   it("builds a stable agent JSON artifact for completed research runs", () => {

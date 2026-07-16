@@ -11,8 +11,10 @@
     "./taxonomy-domains": "./src/taxonomy-domains.ts",
     "./us-map": "./src/us-map.ts",
     "./us-state-grid": "./src/us-state-grid.ts",
+    "./discovery/*": "./src/discovery/*.ts",
     "./hooks/*": "./src/hooks/*.ts",
-    "./map/*": "./src/map/*.ts"
+    "./map/*": "./src/map/*.ts",
+    "./testing/discovery": "./src/testing/discovery.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

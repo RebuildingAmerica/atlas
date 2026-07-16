@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCompletedResearchRunFixture } from "@/../tests/fixtures/discovery/research-runs";
+import { createCompletedResearchRunFixture } from "@rebuildingamerica/atlas-catalog/testing/discovery";
 import { SyncReadinessPanel } from "@/domains/discovery/pages/components/sync-readiness-panel";
 
 describe("SyncReadinessPanel", () => {

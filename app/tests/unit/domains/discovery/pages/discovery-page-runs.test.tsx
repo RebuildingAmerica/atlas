@@ -198,7 +198,8 @@ describe("DiscoveryPage runs and status", () => {
   });
 
   it("surfaces an in-the-moment upgrade prompt when a run is blocked at the limit", async () => {
-    const { AtlasApiError, ATLAS_API_ERROR_CODE } = await import("@/domains/discovery/api-errors");
+    const { AtlasApiError, ATLAS_API_ERROR_CODE } =
+      await import("@rebuildingamerica/atlas-catalog/discovery/api-errors");
     mocks.useStartDiscovery.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
@@ -215,7 +216,8 @@ describe("DiscoveryPage runs and status", () => {
   });
 
   it("shows safe retry copy when Atlas is temporarily unavailable", async () => {
-    const { AtlasApiError, ATLAS_API_ERROR_CODE } = await import("@/domains/discovery/api-errors");
+    const { AtlasApiError, ATLAS_API_ERROR_CODE } =
+      await import("@rebuildingamerica/atlas-catalog/discovery/api-errors");
     mocks.useStartDiscovery.mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
