@@ -1,5 +1,5 @@
 import type { AtlasWorkspaceSSOSetupValues } from "../../organization-sso-defaults";
-import { isLikelyFreeEmailDomain } from "../../sso-form-helpers";
+import { isLikelyFreeEmailDomain } from "@rebuildingamerica/atlas-access/sso-form-helpers";
 import type { WorkspaceOIDCSetupFormState } from "./organization-page-controller";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 import { WorkspaceSSODomainHint } from "./workspace-sso-domain-hint";

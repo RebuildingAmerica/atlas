@@ -5,7 +5,7 @@ import {
   permissionsToScopes,
   scopesToPermissions,
   type ApiKeyScope,
-} from "./api-key-scopes";
+} from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { hasSerializedCapability } from "./capabilities";
 import type { AtlasSessionPayload } from "./organization-contracts";
 import { createdApiKeySchema, listedApiKeysResponseSchema } from "./server/api-key-schema";

@@ -1,5 +1,5 @@
 import { redirect } from "@tanstack/react-router";
-import { sanitizeAtlasRedirectPath } from "../redirect-paths";
+import { sanitizeAtlasRedirectPath } from "@rebuildingamerica/atlas-access/redirect-paths";
 import { getAtlasDeployMode, getAtlasSession } from "../session.functions";
 
 /**

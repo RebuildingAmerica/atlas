@@ -1,4 +1,7 @@
-import { assessCertExpiry, severityToFillClass } from "../../cert-expiry-helpers";
+import {
+  assessCertExpiry,
+  severityToFillClass,
+} from "@rebuildingamerica/atlas-access/cert-expiry-helpers";
 
 interface CertLifecycleBarProps {
   notAfter: string | null | undefined;

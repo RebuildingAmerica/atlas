@@ -3,7 +3,7 @@ import "@tanstack/react-start/server-only";
 import { timingSafeEqual } from "node:crypto";
 import { verifyApiKeyResultSchema } from "./api-key-schema";
 import { ensureAuthReady } from "./auth";
-import { permissionsToScopes } from "../api-key-scopes";
+import { permissionsToScopes } from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { getAuthRuntimeConfig } from "./runtime";
 import { queryActiveProducts } from "./workspace-products";
 

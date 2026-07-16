@@ -2,7 +2,7 @@ import {
   assessCertExpiry,
   describeCertExpiryAction,
   severityToBannerPalette,
-} from "../../cert-expiry-helpers";
+} from "@rebuildingamerica/atlas-access/cert-expiry-helpers";
 
 interface CertExpiryBannerProps {
   notAfter: string | null | undefined;

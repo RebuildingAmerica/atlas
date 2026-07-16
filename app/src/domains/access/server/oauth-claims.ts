@@ -1,8 +1,12 @@
 import "@tanstack/react-start/server-only";
 
-import { API_KEY_SCOPES, scopesToPermissions, type ApiKeyScope } from "../api-key-scopes";
+import {
+  API_KEY_SCOPES,
+  scopesToPermissions,
+  type ApiKeyScope,
+} from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { resolveCapabilities, type AtlasCapability, type AtlasProduct } from "../capabilities";
-import { MCP_ENTERPRISE_SCOPE } from "../oauth-as-metadata";
+import { MCP_ENTERPRISE_SCOPE } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 
 /**
  * Prefix used by OAuth clients to request organization context in access

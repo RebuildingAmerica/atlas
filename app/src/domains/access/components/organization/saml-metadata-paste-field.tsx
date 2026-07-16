@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { parseSamlIdpMetadata } from "../../saml-metadata-parser";
+import { parseSamlIdpMetadata } from "@rebuildingamerica/atlas-access/saml-metadata-parser";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 

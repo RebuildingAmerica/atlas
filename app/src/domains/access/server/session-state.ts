@@ -15,7 +15,7 @@ import {
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
-import { AtlasAuthError, AUTH_ERROR_CODE } from "../auth-errors";
+import { AtlasAuthError, AUTH_ERROR_CODE } from "@rebuildingamerica/atlas-access/auth-errors";
 import type { AtlasSessionPayload } from "../organization-contracts";
 
 const LOCAL_WORKSPACE_ID = "local";

@@ -3,7 +3,7 @@ import {
   classifyPemCertificate,
   extractIssuerOrigin,
   isLikelyFreeEmailDomain,
-} from "../../sso-form-helpers";
+} from "@rebuildingamerica/atlas-access/sso-form-helpers";
 import type { WorkspaceSAMLSetupFormState } from "./organization-page-controller";
 import { SamlMetadataPasteField } from "./saml-metadata-paste-field";
 import { flashClassName, usePrefillFlash } from "./use-prefill-flash";

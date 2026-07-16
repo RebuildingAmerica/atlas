@@ -12,8 +12,11 @@ import { jwt } from "better-auth/plugins/jwt";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { z } from "zod";
-import { API_KEY_SCOPES, scopesToPermissions } from "../api-key-scopes";
-import { SUPPORTED_OAUTH_SCOPES } from "../oauth-as-metadata";
+import {
+  API_KEY_SCOPES,
+  scopesToPermissions,
+} from "@rebuildingamerica/atlas-access/api-key-scopes";
+import { SUPPORTED_OAUTH_SCOPES } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 import { buildAtlasAccessTokenClaims } from "./oauth-claims";
 import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
 import { queryActiveProducts } from "./workspace-products";
