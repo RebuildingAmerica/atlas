@@ -1,4 +1,4 @@
-import type { AtlasProduct } from "@/domains/access/capabilities";
+import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 
 /**
  * Canonical display labels for Atlas products.

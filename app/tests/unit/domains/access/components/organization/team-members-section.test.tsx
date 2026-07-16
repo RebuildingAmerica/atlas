@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { TeamMembersSection } from "@/domains/access/components/organization/team-members-section";
-import type { AtlasOrganizationMemberRecord } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationMemberRecord } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 describe("TeamMembersSection", () => {
   const members: AtlasOrganizationMemberRecord[] = [

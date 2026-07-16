@@ -1,13 +1,13 @@
 import "@tanstack/react-start/server-only";
 
 import { z } from "zod";
-import { resolveCapabilities, serializeResolvedCapabilities } from "../capabilities";
+import { resolveCapabilities, serializeResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import {
   buildAtlasWorkspaceCapabilities,
   normalizeAtlasOrganizationMetadata,
-} from "../organization-metadata";
+} from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { queryActiveProducts } from "./workspace-products";
-import type { AtlasSessionPayload } from "../organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { AtlasWorkspaceStateAuth } from "./auth";
 import type { atlasSessionSchema } from "./session-schema";
 

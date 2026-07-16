@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildOidcProvider } from "./support";
-import { buildWorkspaceSSOState } from "@/domains/access/organization-sso";
+import { buildWorkspaceSSOState } from "../organization-sso";
 
 describe("buildWorkspaceSSOState", () => {
   it("filters providers to the requested workspace and reuses the unique provider domain", () => {

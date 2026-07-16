@@ -4,7 +4,7 @@ import {
   useAtprotoIdentities,
   useProvisionManagedAtprotoIdentity,
 } from "@/domains/access/atproto-identities";
-import type { AtlasOrganizationMemberRecord } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationMemberRecord } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import {
   attachOrganizationAtprotoIdentity,
   detachOrganizationAtprotoIdentity,

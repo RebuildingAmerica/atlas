@@ -4,7 +4,7 @@ import {
   workspaceSSOProviderMatchesDomain,
   type AtlasSSOSignInResolution,
   type AtlasSSOProviderType,
-} from "./organization-sso";
+} from "@rebuildingamerica/atlas-access/workspace/organization-sso";
 import type {
   StoredWorkspaceIdentity,
   StoredWorkspaceSSOProvider,

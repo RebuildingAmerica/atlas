@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AtlasOrganizationDetails } from "../../organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { WorkspaceSSOProviderCard } from "./workspace-sso-provider-card";

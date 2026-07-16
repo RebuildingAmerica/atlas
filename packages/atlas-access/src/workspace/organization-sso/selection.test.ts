@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { makeAtlasWorkspaceSSOProvider } from "./support";
-import { selectPreferredWorkspaceSSOProvider } from "@/domains/access/organization-sso";
+import { selectPreferredWorkspaceSSOProvider } from "../organization-sso";
 
 describe("selectPreferredWorkspaceSSOProvider", () => {
   it("returns the workspace primary provider when available", () => {

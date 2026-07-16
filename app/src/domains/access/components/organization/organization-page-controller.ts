@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type {
   AtlasOrganizationDetails,
   AtlasSessionPayload,
-} from "@/domains/access/organization-contracts";
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { TeamSeatCostSummary } from "@/domains/billing/team-cost";
 import { useOrganizationPageData } from "./use-organization-page-data";
 import { useOrganizationPageForms } from "./use-organization-page-forms";

@@ -1,5 +1,5 @@
 import { WorkspaceBillingSection } from "@/domains/billing/components/workspace-billing-section";
-import type { AtlasProduct } from "@/domains/access/capabilities";
+import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 
 interface AccountBillingSectionProps {
   activeProducts: AtlasProduct[];

@@ -4,9 +4,9 @@ import {
   toAtlasOrganizationDetails,
   toIsoString,
   type organizationDetailsSchema,
-} from "@/domains/access/organization-contracts";
-import type { AtlasWorkspaceSSOState } from "@/domains/access/organization-sso";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
+} from "./organization-contracts";
+import type { AtlasWorkspaceSSOState } from "./organization-sso";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "./testing/session-fixtures";
 
 describe("organization-contracts", () => {
   type OrganizationDetails = z.infer<typeof organizationDetailsSchema>;

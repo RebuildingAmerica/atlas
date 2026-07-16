@@ -6,8 +6,8 @@ import {
   scopesToPermissions,
   type ApiKeyScope,
 } from "@rebuildingamerica/atlas-access/api-key-scopes";
-import { hasSerializedCapability } from "./capabilities";
-import type { AtlasSessionPayload } from "./organization-contracts";
+import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { createdApiKeySchema, listedApiKeysResponseSchema } from "./server/api-key-schema";
 import type { AuthRuntimeConfig } from "./server/runtime";
 

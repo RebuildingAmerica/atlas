@@ -14,7 +14,7 @@ vi.mock("@/domains/access/server/auth", () => ({
 vi.mock("@/domains/billing/server/stripe-client", () => ({
   getStripeClient: mocks.getStripeClient,
 }));
-vi.mock("@/domains/access/organization-metadata", () => ({
+vi.mock("@rebuildingamerica/atlas-access/workspace/organization-metadata", () => ({
   normalizeAtlasOrganizationMetadata: mocks.normalizeAtlasOrganizationMetadata,
   mergeAtlasOrganizationMetadata: mocks.mergeAtlasOrganizationMetadata,
 }));

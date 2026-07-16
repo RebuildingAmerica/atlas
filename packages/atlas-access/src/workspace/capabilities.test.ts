@@ -11,7 +11,7 @@ import {
   hasCapability,
   hasSerializedCapability,
   resolveCapabilities,
-} from "@/domains/access/capabilities";
+} from "./capabilities";
 
 describe("capabilities", () => {
   describe("resolveCapabilities", () => {

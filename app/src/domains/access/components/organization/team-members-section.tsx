@@ -1,4 +1,4 @@
-import type { AtlasOrganizationDetails } from "../../organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { Shield, Trash2, Users } from "lucide-react";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";

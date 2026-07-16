@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
+import type { AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { clearPendingCheckout } from "@/domains/billing/pending-checkout";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";

@@ -1,4 +1,4 @@
-import type { AtlasWorkspaceInvitation } from "@/domains/access/organization-contracts";
+import type { AtlasWorkspaceInvitation } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**

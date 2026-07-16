@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
+import type { AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { PricingCheckoutInterval, PricingCheckoutParams } from "../pricing-page-helpers";
 

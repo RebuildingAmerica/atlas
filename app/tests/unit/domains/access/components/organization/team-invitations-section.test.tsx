@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { TeamInvitationsSection } from "@/domains/access/components/organization/team-invitations-section";
-import type { AtlasOrganizationInvitationRecord } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationInvitationRecord } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 describe("TeamInvitationsSection", () => {
   const invitations: AtlasOrganizationInvitationRecord[] = [

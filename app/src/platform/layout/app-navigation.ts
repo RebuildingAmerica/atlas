@@ -1,4 +1,4 @@
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 /**
  * Navigation tab configuration shared by public and workspace shells.

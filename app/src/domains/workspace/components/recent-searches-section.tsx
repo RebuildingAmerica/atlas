@@ -9,7 +9,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
-import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
+import type { SerializedResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type { RecentRunSummary } from "../server/research-summary";
 import { ResearchValueNudge } from "./research-value-nudge";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import {
   buildInvitationSignInPath,
   resolveInvitationDecision,

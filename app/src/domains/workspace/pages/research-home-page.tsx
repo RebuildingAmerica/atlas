@@ -9,7 +9,7 @@
  * shell, and degrades to honest empty states.
  */
 import { useAtlasSession } from "@/domains/access";
-import type { AtlasWorkspaceType } from "@/domains/access/organization-metadata";
+import type { AtlasWorkspaceType } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { useWorkspaceBriefs } from "../hooks/use-briefs";
 import { useWorkspaceCoverageTargets } from "../hooks/use-coverage-targets";
 import { useResearchSummary } from "../hooks/use-research-summary";

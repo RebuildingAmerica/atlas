@@ -1,6 +1,6 @@
 import { vi } from "vitest";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { createOrganizationDetailsFixture } from "../../fixtures/access/organizations";
 import { createAtlasSessionFixture, createAtlasWorkspace } from "../../fixtures/access/sessions";
 import { createMutationHookStub } from "../../helpers/react-query-stubs";

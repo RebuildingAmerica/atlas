@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import { timingSafeEqual } from "node:crypto";
-import { normalizeAtlasOrganizationMetadata } from "../organization-metadata";
+import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { getAuthDatabase, getAuthPgPool } from "./auth";
 import { getAuthRuntimeConfig } from "./runtime";
 import { queryActiveProducts } from "./workspace-products";

@@ -9,7 +9,7 @@ import { resolvePasskeyName } from "@rebuildingamerica/atlas-access/passkey-name
 import { updatePasskey } from "@/domains/access/passkeys.functions";
 import { getRpLogoutRedirect, sendVerificationEmail } from "@/domains/access/session.functions";
 import { describePasskeyError } from "@rebuildingamerica/atlas-access/auth-errors";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import {
   deriveSoloWorkspaceSlug,
   resolveReadyDestination,

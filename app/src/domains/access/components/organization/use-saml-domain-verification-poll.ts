@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { verifyWorkspaceSSODomain } from "@/domains/access/sso.functions";
 
 const POLL_INTERVAL_MS = 30 * 1000;

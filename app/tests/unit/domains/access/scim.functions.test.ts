@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveCapabilities, serializeResolvedCapabilities } from "@/domains/access/capabilities";
+import { resolveCapabilities, serializeResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { requireWorkspaceScimAccess } from "@/domains/access/scim.functions";
 import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
 

@@ -9,7 +9,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
-import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
+import type { SerializedResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type { ActivitySummary, FeedActivityItem } from "../server/research-summary";
 import { ResearchValueNudge } from "./research-value-nudge";
 

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { OAuthConsentPage } from "@/domains/access/pages/auth/oauth-consent-page";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 const mocks = vi.hoisted(() => ({
   getAuthClient: vi.fn(),

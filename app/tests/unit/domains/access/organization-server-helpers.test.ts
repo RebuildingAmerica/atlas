@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { createServerOnlyFnStub } from "../../../helpers/server-fn-stub";
 import {
   assertOrganizationManagementEnabled,
@@ -20,7 +20,7 @@ vi.mock("@tanstack/react-start", () => ({
   createServerOnlyFn: createServerOnlyFnStub(),
 }));
 
-vi.mock("@/domains/access/organization-metadata", () => ({
+vi.mock("@rebuildingamerica/atlas-access/workspace/organization-metadata", () => ({
   canManageAtlasOrganizationRole: mocks.canManageAtlasOrganizationRole,
 }));
 

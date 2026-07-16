@@ -3,7 +3,7 @@ import {
   type AtlasCapability,
   type AtlasProduct,
   type SerializedResolvedCapabilities,
-} from "@/domains/access/capabilities";
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 
 /**

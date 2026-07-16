@@ -1,5 +1,5 @@
 import { useDirtyFormGuard } from "@rebuildingamerica/atlas-ui/hooks/use-dirty-form-guard";
-import type { AtlasOrganizationDetails } from "../../organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type {
   WorkspaceOIDCSetupFormState,
   WorkspaceSAMLSetupFormState,

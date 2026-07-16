@@ -1,9 +1,9 @@
-import type { AtlasProduct, SerializedResolvedCapabilities } from "@/domains/access/capabilities";
+import type { AtlasProduct, SerializedResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type {
   AtlasSessionPayload,
   AtlasWorkspaceMembership,
   AtlasWorkspaceState,
-} from "@/domains/access/organization-contracts";
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 /**
  * Default resolved capabilities for a free-tier workspace with no active

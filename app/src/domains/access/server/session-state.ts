@@ -5,7 +5,7 @@ import {
   resolveCapabilities,
   serializeResolvedCapabilities,
   type AtlasProduct,
-} from "../capabilities";
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import {
   canEmailAccessAtlas,
   ensureAuthReady,
@@ -16,7 +16,7 @@ import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
 import { AtlasAuthError, AUTH_ERROR_CODE } from "@rebuildingamerica/atlas-access/auth-errors";
-import type { AtlasSessionPayload } from "../organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 const LOCAL_WORKSPACE_ID = "local";
 const LOCAL_ACTIVE_PRODUCTS: AtlasProduct[] = ["atlas_team"];

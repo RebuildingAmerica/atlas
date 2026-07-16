@@ -9,7 +9,7 @@ import { atlasSessionQueryKey } from "@/domains/access/client/use-atlas-session"
 import { setActiveWorkspace } from "@/domains/access/organizations.functions";
 import { requireReadyAtlasSession } from "@/domains/access/server";
 import { getRpLogoutRedirect } from "@/domains/access/session.functions";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { ResumeCheckoutBanner } from "@/domains/billing/components/resume-checkout-banner";
 
 import { buildAuthenticatedAppNav } from "@/platform/layout/app-navigation";

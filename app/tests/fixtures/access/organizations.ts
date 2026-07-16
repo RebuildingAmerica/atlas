@@ -2,11 +2,11 @@ import type {
   AtlasOrganizationDetails,
   AtlasOrganizationInvitationRecord,
   AtlasOrganizationMemberRecord,
-} from "@/domains/access/organization-contracts";
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type {
   AtlasWorkspaceSSOProvider,
   AtlasWorkspaceSSOState,
-} from "@/domains/access/organization-sso";
+} from "@rebuildingamerica/atlas-access/workspace/organization-sso";
 
 /**
  * Builds a fully loaded workspace member fixture for organization-management

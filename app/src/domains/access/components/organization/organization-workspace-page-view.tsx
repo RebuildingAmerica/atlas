@@ -1,5 +1,5 @@
-import { hasSerializedCapability } from "@/domains/access/capabilities";
-import { canManageAtlasOrganizationRole } from "@/domains/access/organization-metadata";
+import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { TeamSeatCostSection } from "@/domains/billing/components/team-seat-cost-section";
 import type { OrganizationPageController } from "./organization-page-controller";
 import { OrganizationAtprotoIdentitySection } from "./atproto-identity-section";

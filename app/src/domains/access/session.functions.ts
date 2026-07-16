@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-export type { AtlasSessionPayload } from "./organization-contracts";
+export type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 async function loadRuntimeModule() {
   if (import.meta.env.SSR) {

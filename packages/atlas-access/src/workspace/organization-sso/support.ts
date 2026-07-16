@@ -1,4 +1,4 @@
-import type { AtlasWorkspaceSSOProvider } from "@/domains/access/organization-sso";
+import type { AtlasWorkspaceSSOProvider } from "../organization-sso";
 
 export interface RawWorkspaceSSOProvider {
   domain: string;

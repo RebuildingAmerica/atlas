@@ -20,7 +20,7 @@ vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
 }));
 
 import { WorkspaceSSOProviderList } from "@/domains/access/components/organization/workspace-sso-provider-list";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 describe("WorkspaceSSOProviderList", () => {
   const providers = [

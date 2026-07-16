@@ -18,7 +18,8 @@
   "dependencies": {
     "@headlessui/react": "catalog:",
     "@rebuildingamerica/atlas-ui": "workspace:*",
-    "lucide-react": "catalog:"
+    "lucide-react": "catalog:",
+    "zod": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",

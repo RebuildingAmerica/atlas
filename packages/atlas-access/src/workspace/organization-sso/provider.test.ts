@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildOidcProvider, buildSamlProvider } from "./support";
-import { toAtlasWorkspaceSSOProvider } from "@/domains/access/organization-sso";
+import { toAtlasWorkspaceSSOProvider } from "../organization-sso";
 
 describe("toAtlasWorkspaceSSOProvider", () => {
   it("normalizes a fully populated OIDC provider", () => {

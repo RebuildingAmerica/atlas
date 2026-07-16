@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type Database from "better-sqlite3";
-import type { AtlasProduct } from "../capabilities";
+import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { getAuthDatabase, getAuthPgPool } from "./auth";
 
 /**

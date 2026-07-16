@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import type { Pool } from "pg";
-import { GOOGLE_WORKSPACE_ISSUER } from "../organization-sso";
+import { GOOGLE_WORKSPACE_ISSUER } from "@rebuildingamerica/atlas-access/workspace/organization-sso";
 import {
   ClientIdMetadataError,
   isClientIdMetadataDocumentUrl,

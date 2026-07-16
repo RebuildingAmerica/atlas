@@ -508,6 +508,9 @@ importers:
       lucide-react:
         specifier: 'catalog:'
         version: 1.23.0(react@19.2.7)
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
     devDependencies:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*

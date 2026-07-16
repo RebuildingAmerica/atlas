@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { atprotoIdentitiesQueryKey } from "@/domains/access/atproto-identities";
 import { createApiKey, deleteApiKey, listApiKeys } from "@/domains/access/api-keys.functions";
 import { type ApiKeyScope } from "@rebuildingamerica/atlas-access/api-key-scopes";
-import { hasSerializedCapability } from "@/domains/access/capabilities";
+import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { resolvePasskeyName } from "@rebuildingamerica/atlas-access/passkey-names";

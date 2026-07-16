@@ -5,7 +5,7 @@ import {
   scopesToPermissions,
   type ApiKeyScope,
 } from "@rebuildingamerica/atlas-access/api-key-scopes";
-import { resolveCapabilities, type AtlasCapability, type AtlasProduct } from "../capabilities";
+import { resolveCapabilities, type AtlasCapability, type AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { MCP_ENTERPRISE_SCOPE } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 
 /**

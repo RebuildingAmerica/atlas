@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { WorkspaceProfileSection } from "@/domains/access/components/organization/workspace-profile-section";
 
 describe("WorkspaceProfileSection", () => {

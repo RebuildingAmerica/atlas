@@ -13,7 +13,7 @@ vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
 }));
 
 import { WorkspaceSSOOidcForm } from "@/domains/access/components/organization/workspace-sso-oidc-form";
-import type { AtlasWorkspaceSSOSetupValues } from "@/domains/access/organization-sso-defaults";
+import type { AtlasWorkspaceSSOSetupValues } from "@rebuildingamerica/atlas-access/workspace/organization-sso-defaults";
 import type { WorkspaceOIDCSetupFormState } from "@/domains/access/components/organization/organization-page-controller";
 
 interface SetupOverrides {

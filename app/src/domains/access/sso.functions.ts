@@ -7,11 +7,11 @@ import {
   buildWorkspaceSamlAcsUrl,
   buildWorkspaceSamlEntityId,
   buildWorkspaceSamlMetadataUrl,
-} from "./organization-sso";
+} from "@rebuildingamerica/atlas-access/workspace/organization-sso";
 import {
   mergeAtlasOrganizationMetadata,
   normalizeAtlasOrganizationMetadata,
-} from "./organization-metadata";
+} from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import {
   loadOrganizationRequestContext,
   requireManagedTeamWorkspace,

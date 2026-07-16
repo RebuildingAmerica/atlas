@@ -1,4 +1,4 @@
-import type { AtlasProduct } from "@/domains/access/capabilities";
+import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { sanitizeAtlasRedirectPath } from "@rebuildingamerica/atlas-access/redirect-paths";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 

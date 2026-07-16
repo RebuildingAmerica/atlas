@@ -12,7 +12,7 @@ vi.mock("@/domains/access/sso.functions", () => ({
 }));
 
 import { useSamlDomainVerificationPoll } from "@/domains/access/components/organization/use-saml-domain-verification-poll";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 interface TestProvider {
   providerId: string;

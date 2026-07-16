@@ -5,7 +5,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResearchHomePage } from "@/domains/workspace/pages/research-home-page";
 import type { ResearchSummary } from "@/domains/workspace/server/research-summary";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { NextActionsWorkspaceState } from "@/domains/workspace/components/next-actions-section";
 import type { AtlasBriefCollection } from "@/domains/workspace/server/briefs";
 import type { CoverageTargetCollection } from "@/domains/workspace/server/coverage-targets";

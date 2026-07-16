@@ -1,4 +1,4 @@
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { useOrganizationPageController } from "@/domains/access/components/organization/organization-page-controller";
 import { OrganizationSSOPageView } from "@/domains/access/components/organization/organization-sso-page-view";
 

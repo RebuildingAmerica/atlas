@@ -1,4 +1,4 @@
-import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
+import type { AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 
 export const PRICING_CHECKOUT_INTERVALS = [
   "monthly",

@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type {
   rawWorkspaceSSOProviderSchema,
   AtlasSSOSignInResolution,
-} from "@/domains/access/organization-sso";
+} from "@rebuildingamerica/atlas-access/workspace/organization-sso";
 import type {
   StoredWorkspaceIdentity,
   StoredWorkspaceSSOProvider,

@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
-import type { AtlasProduct } from "../capabilities";
-import { mergeAtlasOrganizationMetadata } from "../organization-metadata";
+import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import { mergeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { ensureAuthReady, type AtlasAuthAdapter, type AtlasAuthInternalAdapter } from "./auth";
 import { grantWorkspaceProduct } from "./workspace-products";
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAtlasSession } from "@/domains/access";
-import { hasSerializedCapability } from "@/domains/access/capabilities";
+import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import {
   isAtLimitError,
   resolveStartRunErrorMessage,

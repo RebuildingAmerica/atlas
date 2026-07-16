@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { canManageAtlasOrganizationRole } from "../organization-metadata";
+import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { requireActiveWorkspace } from "../organization-server-helpers";
 import { ensureAuthReady, type AtlasAuthAdapter, type AtlasAuthInternalAdapter } from "./auth";
 import { requireAtlasSessionState } from "./session-state";

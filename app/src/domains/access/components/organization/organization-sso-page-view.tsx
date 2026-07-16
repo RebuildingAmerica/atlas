@@ -1,4 +1,4 @@
-import { hasSerializedCapability } from "@/domains/access/capabilities";
+import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type { OrganizationPageController } from "./organization-page-controller";
 import { OrganizationEmptyState } from "./organization-empty-state";
 import { OrganizationLoadingState } from "./organization-loading-state";

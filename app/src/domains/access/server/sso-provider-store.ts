@@ -6,8 +6,8 @@ import {
   buildWorkspaceSamlMetadataUrl,
   rawWorkspaceSSOProviderSchema,
   toAtlasWorkspaceSSOProvider,
-} from "../organization-sso";
-import { normalizeAtlasOrganizationMetadata } from "../organization-metadata";
+} from "@rebuildingamerica/atlas-access/workspace/organization-sso";
+import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 
 interface StoredWorkspaceRow {
   id: string;

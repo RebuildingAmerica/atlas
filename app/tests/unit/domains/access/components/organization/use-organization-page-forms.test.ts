@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useOrganizationPageForms } from "@/domains/access/components/organization/use-organization-page-forms";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 describe("useOrganizationPageForms", () => {
   const organization = {

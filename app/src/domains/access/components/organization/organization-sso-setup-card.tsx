@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Circle, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import type { AtlasOrganizationDetails } from "../../organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 /**
  * Props for the enterprise sign-in summary card on the workspace page.

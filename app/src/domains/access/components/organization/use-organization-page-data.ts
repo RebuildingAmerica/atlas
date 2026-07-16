@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { hasSerializedCapability } from "@/domains/access/capabilities";
+import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
-import { canManageAtlasOrganizationRole } from "@/domains/access/organization-metadata";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import {
   getOrganizationDetails,
   getTeamSeatCostSummary,

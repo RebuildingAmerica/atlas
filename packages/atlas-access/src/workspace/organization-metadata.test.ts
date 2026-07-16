@@ -3,7 +3,7 @@ import {
   buildAtlasWorkspaceCapabilities,
   mergeAtlasOrganizationMetadata,
   normalizeAtlasOrganizationMetadata,
-} from "@/domains/access/organization-metadata";
+} from "./organization-metadata";
 
 describe("organization-metadata", () => {
   describe("normalizeAtlasOrganizationMetadata", () => {

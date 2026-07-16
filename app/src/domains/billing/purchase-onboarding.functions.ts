@@ -3,9 +3,9 @@ import { z } from "zod";
 import {
   canManageAtlasOrganizationRole,
   normalizeAtlasOrganizationMetadata,
-} from "@/domains/access/organization-metadata";
-import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+} from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
+import type { AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 import { getAtlasBillingProducts } from "@/domains/billing/products";
 import type { AtlasBillingProducts } from "@/domains/billing/products";

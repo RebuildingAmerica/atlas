@@ -1,4 +1,4 @@
-import type { AtlasWorkspaceMembership } from "@/domains/access/organization-contracts";
+import type { AtlasWorkspaceMembership } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 interface OAuthWorkspacePickerProps {
   memberships: AtlasWorkspaceMembership[];

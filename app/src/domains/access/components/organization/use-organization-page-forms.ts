@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { WorkspaceDirectoryConfig } from "@/domains/workspace/server/directory-config";
 import { buildWorkspaceSlugCandidate } from "./organization-page-helpers";
 import type {

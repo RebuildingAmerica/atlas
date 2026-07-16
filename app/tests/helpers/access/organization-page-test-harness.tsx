@@ -1,7 +1,7 @@
 import { beforeEach, vi } from "vitest";
 import { render } from "@testing-library/react";
-import type { AtlasOrganizationDetails } from "@/domains/access/organization-contracts";
-import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
+import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { QueryKey } from "@tanstack/react-query";
 import {
   TestButton,

@@ -6,7 +6,7 @@ import { getAtlasSession } from "@/domains/access/session.functions";
 import type {
   AtlasSessionPayload,
   AtlasWorkspaceMembership,
-} from "@/domains/access/organization-contracts";
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import {
   safeRedirectHostname,
   scopeAlreadyPinsOrg,

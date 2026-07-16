@@ -1,7 +1,7 @@
 import type {
   AtlasSessionPayload,
   AtlasWorkspaceInvitation,
-} from "@/domains/access/organization-contracts";
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 /**
  * Terminal outcomes the one-click acceptance page renders after a signed-in

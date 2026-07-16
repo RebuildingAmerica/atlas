@@ -9,7 +9,7 @@ import type {
   FeedActivityItem,
 } from "@/domains/workspace/server/research-summary";
 import type { ResearchValueGate } from "@/domains/workspace/components/research-value-nudge";
-import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
+import type { SerializedResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({

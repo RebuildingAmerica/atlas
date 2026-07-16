@@ -7,8 +7,8 @@ import {
   ResearchValueNudge,
   type ResearchValueGate,
 } from "@/domains/workspace/components/research-value-nudge";
-import type { SerializedResolvedCapabilities } from "@/domains/access/capabilities";
-import type { AtlasCapability } from "@/domains/access/capabilities";
+import type { SerializedResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import type { AtlasCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({

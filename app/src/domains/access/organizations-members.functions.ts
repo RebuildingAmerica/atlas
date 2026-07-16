@@ -4,7 +4,7 @@ import {
   invitationResultSchema,
   organizationDetailsSchema,
   workspaceSlugSchema,
-} from "./organization-contracts";
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import {
   loadOrganizationRequestContext,
   requireManagedTeamWorkspace,

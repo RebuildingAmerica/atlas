@@ -12,7 +12,7 @@ import {
   getSerializedLimit,
   hasSerializedCapability,
   type SerializedResolvedCapabilities,
-} from "@/domains/access/capabilities";
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type { PricingSearch } from "@/domains/billing/pages/public/pricing-page";
 
 /** Pricing intent the nudge routes to, matching the pricing route's enum. */

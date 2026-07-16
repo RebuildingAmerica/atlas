@@ -1,4 +1,4 @@
-import type { AtlasWorkspaceSSOSetupValues } from "@/domains/access/organization-sso-defaults";
+import type { AtlasWorkspaceSSOSetupValues } from "@rebuildingamerica/atlas-access/workspace/organization-sso-defaults";
 import type { WorkspaceSAMLSetupFormState } from "@/domains/access/components/organization/organization-page-controller";
 
 export interface SetupOverrides {
