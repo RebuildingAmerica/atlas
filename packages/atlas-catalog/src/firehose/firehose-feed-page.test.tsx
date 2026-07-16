@@ -3,8 +3,8 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeFirehoseSignal } from "../../../helpers/firehose/signals";
-import { installIntersectionObserverMock } from "../../../helpers/intersection-observer";
+import { makeFirehoseSignal } from "../testing/firehose/signals";
+import { installIntersectionObserverMock } from "../testing/intersection-observer";
 
 describe("FirehoseFeedView", () => {
   beforeEach(() => {
@@ -23,8 +23,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("renders a simple live-file feed with timestamps and source links", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
 
     render(
       <FirehoseFeedView
@@ -57,8 +57,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("lets the page scroll with the feed while keeping jump navigation viewport-bounded", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
 
     render(
       <FirehoseFeedView
@@ -80,8 +80,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("gives mobile jump navigation a clear horizontal affordance", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
 
     const { container } = render(
       <FirehoseFeedView liveState="live" snapshot={listPublicFirehoseSignals({})} />,
@@ -94,8 +94,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("switches density without losing source access", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const snapshot = listPublicFirehoseSignals({ place: "detroit-mi" });
     const user = userEvent.setup();
 
@@ -111,8 +111,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("shows a buffered update control instead of moving the reader", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const applyPendingSignals = vi.fn();
     const user = userEvent.setup();
 
@@ -131,8 +131,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("tracks whether the reader is at the latest item from the page scroll position", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const readingLatestChange = vi.fn();
 
     render(
@@ -157,8 +157,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("shows a Latest button after the reader scrolls away from the newest signals", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const user = userEvent.setup();
 
     render(<FirehoseFeedView liveState="live" snapshot={listPublicFirehoseSignals({})} />);
@@ -177,8 +177,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("marks the active jump bucket as the reader moves through the feed", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const baseSnapshot = listPublicFirehoseSignals({});
     const latest = baseSnapshot.signals[0];
     if (!latest) throw new Error("Expected Firehose fixture");
@@ -222,8 +222,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("pauses infinite loading after the page cap so the footer remains reachable", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const base = listPublicFirehoseSignals({}).signals[0];
     if (!base) throw new Error("Expected Firehose fixture");
     const snapshot = {
@@ -274,8 +274,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("lets manually updated feeds refresh on demand", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const refreshSignals = vi.fn();
     const user = userEvent.setup();
 
@@ -293,8 +293,8 @@ describe("FirehoseFeedView", () => {
   });
 
   it("renders a plain empty state", async () => {
-    const { FirehoseFeedView } = await import("@/domains/firehose/firehose-feed-page");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { FirehoseFeedView } = await import("./firehose-feed-page");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
 
     render(
       <FirehoseFeedView

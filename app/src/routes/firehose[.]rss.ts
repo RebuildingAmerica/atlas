@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  fetchPublicFirehoseSignals,
-  type PublicFirehoseSearchInput,
-} from "@/domains/firehose/public-feed";
-import { buildFirehoseRss } from "@/domains/firehose/rss";
+import { type PublicFirehoseSearchInput } from "@rebuildingamerica/atlas-catalog/firehose/public-feed";
+import { buildFirehoseRss } from "@rebuildingamerica/atlas-catalog/firehose/rss";
+import { fetchPublicFirehoseSignals } from "@/platform/firehose/public-feed";
 
 const RSS_CACHE_SECONDS = 60;
 

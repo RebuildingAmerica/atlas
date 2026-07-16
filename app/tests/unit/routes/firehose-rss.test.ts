@@ -10,11 +10,11 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/firehose/public-feed", () => ({
+vi.mock("@/platform/firehose/public-feed", () => ({
   fetchPublicFirehoseSignals: mocks.fetchPublicFirehoseSignals,
 }));
 
-vi.mock("@/domains/firehose/rss", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/firehose/rss", () => ({
   buildFirehoseRss: mocks.buildFirehoseRss,
 }));
 

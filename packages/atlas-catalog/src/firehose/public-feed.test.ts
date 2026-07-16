@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 describe("public Firehose feed provider", () => {
   it("fetches public signals from the Firehose API", async () => {
     const { fetchPublicFirehoseSignals, listPublicFirehoseSignals } =
-      await import("@/domains/firehose/public-feed");
+      await import("./public-feed");
     const snapshot = listPublicFirehoseSignals({
       issue: "transit",
       limit: 1,
@@ -37,7 +37,7 @@ describe("public Firehose feed provider", () => {
   });
 
   it("returns only public-safe signals newest first", async () => {
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
 
     const snapshot = listPublicFirehoseSignals({});
 
@@ -53,7 +53,7 @@ describe("public Firehose feed provider", () => {
   });
 
   it("filters by place, issue, signal type, source class, and limit", async () => {
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
 
     const snapshot = listPublicFirehoseSignals({
       issue: "transit",
@@ -76,7 +76,7 @@ describe("public Firehose feed provider", () => {
 
   it("dedupes socket signals before prepending them to the feed", async () => {
     const { mergePublicFirehoseSignal, listPublicFirehoseSignals } =
-      await import("@/domains/firehose/public-feed");
+      await import("./public-feed");
     const snapshot = listPublicFirehoseSignals({ limit: 2 });
     const duplicate = snapshot.signals[1];
     if (!duplicate) throw new Error("Expected duplicate fixture signal");

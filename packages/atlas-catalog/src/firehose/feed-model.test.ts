@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { makeFirehoseSignal } from "../../../helpers/firehose/signals";
+import { makeFirehoseSignal } from "../testing/firehose/signals";
 
 describe("Firehose feed model", () => {
   it("groups high-volume signals into stable time buckets and jump targets", async () => {
-    const { buildFirehoseFeedModel } = await import("@/domains/firehose/feed-model");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+    const { buildFirehoseFeedModel } = await import("./feed-model");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const base = listPublicFirehoseSignals({ place: "detroit-mi" }).signals[0];
     if (!base) throw new Error("Expected fixture signal");
 
@@ -52,8 +52,8 @@ describe("Firehose feed model", () => {
 
   it("buffers incoming signals when the reader is away from the latest items", async () => {
     const { applyIncomingFirehoseSignal, flushPendingFirehoseSignals } =
-      await import("@/domains/firehose/feed-model");
-    const { listPublicFirehoseSignals } = await import("@/domains/firehose/public-feed");
+      await import("./feed-model");
+    const { listPublicFirehoseSignals } = await import("./public-feed");
     const base = listPublicFirehoseSignals({ place: "detroit-mi" }).signals[0];
     if (!base) throw new Error("Expected fixture signal");
     const incoming = makeFirehoseSignal(base, "incoming", "2026-07-06T22:11:00Z");

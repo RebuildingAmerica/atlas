@@ -1,4 +1,4 @@
-import type { PublicFirehoseSignal } from "@/domains/firehose/public-feed";
+import type { PublicFirehoseSignal } from "../../firehose/public-feed";
 
 export function makeFirehoseSignal(
   base: PublicFirehoseSignal,

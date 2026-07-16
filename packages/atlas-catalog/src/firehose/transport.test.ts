@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 describe("Firehose live transport policy", () => {
   it("uses WebSocket on a healthy normal browser connection", async () => {
-    const { chooseFirehoseLiveTransport } = await import("@/domains/firehose/transport");
+    const { chooseFirehoseLiveTransport } = await import("./transport");
 
     expect(
       chooseFirehoseLiveTransport({
@@ -18,7 +18,7 @@ describe("Firehose live transport policy", () => {
   });
 
   it("uses SSE when the user is saving data or WebSocket recently failed", async () => {
-    const { chooseFirehoseLiveTransport } = await import("@/domains/firehose/transport");
+    const { chooseFirehoseLiveTransport } = await import("./transport");
 
     expect(
       chooseFirehoseLiveTransport({
@@ -45,7 +45,7 @@ describe("Firehose live transport policy", () => {
   });
 
   it("falls back to polling or pauses when live transport cannot run", async () => {
-    const { chooseFirehoseLiveTransport } = await import("@/domains/firehose/transport");
+    const { chooseFirehoseLiveTransport } = await import("./transport");
 
     expect(
       chooseFirehoseLiveTransport({

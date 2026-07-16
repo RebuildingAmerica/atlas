@@ -1,5 +1,5 @@
 {
-  "extends": "@rebuildingamerica/tsconfig/dom.json",
+  "extends": "@rebuildingamerica/tsconfig/react.json",
   "compilerOptions": {
     "types": ["node"]
   },

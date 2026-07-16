@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FirehoseFeedPage } from "@/domains/firehose/firehose-feed-page";
+import { FirehoseFeedPage } from "@rebuildingamerica/atlas-catalog/firehose/firehose-feed-page";
 import {
-  fetchPublicFirehoseSignals,
   publicFirehoseSearchSchema,
   type PublicFirehoseSnapshot,
-} from "@/domains/firehose/public-feed";
+} from "@rebuildingamerica/atlas-catalog/firehose/public-feed";
+import { fetchPublicFirehoseSignals } from "@/platform/firehose/public-feed";
 import { buildCanonicalUrl, buildPageHead } from "@/platform/seo";
 
 interface FirehoseLoaderDeps {

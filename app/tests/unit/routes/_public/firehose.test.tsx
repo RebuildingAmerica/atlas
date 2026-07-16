@@ -14,18 +14,21 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/firehose/firehose-feed-page", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/firehose/firehose-feed-page", () => ({
   FirehoseFeedPage: (props: { initialSnapshot: unknown }) => {
     mocks.firehosePageProps(props);
     return <div data-testid="firehose-page" />;
   },
 }));
 
-vi.mock("@/domains/firehose/public-feed", () => ({
-  fetchPublicFirehoseSignals: mocks.fetchPublicFirehoseSignals,
+vi.mock("@rebuildingamerica/atlas-catalog/firehose/public-feed", () => ({
   publicFirehoseSearchSchema: {
     parse: vi.fn((input: unknown) => input),
   },
+}));
+
+vi.mock("@/platform/firehose/public-feed", () => ({
+  fetchPublicFirehoseSignals: mocks.fetchPublicFirehoseSignals,
 }));
 
 describe("routes/_public/firehose", () => {
