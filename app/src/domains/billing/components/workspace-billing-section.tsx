@@ -4,7 +4,7 @@ import {
   AccountRow,
   AccountSurface,
 } from "@/domains/access/pages/workspace/components/account/rows";
-import type { AtlasProduct } from "../../access/capabilities";
+import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { createPortalSession } from "../billing.functions";
 import { PRODUCT_LABELS } from "../product-labels";
 

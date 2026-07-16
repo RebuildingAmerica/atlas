@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { WorkspaceFrame } from "@rebuildingamerica/atlas-ui";
+import { WorkspaceFrame as AtlasWorkspaceFrame } from "@rebuildingamerica/atlas-ui";
 import type { AppNavItem } from "./app-navigation";
 import { AtlasMenuGlyph } from "./top-nav-chrome";
 import { WorkspaceNav } from "./workspace-nav";
@@ -23,8 +23,6 @@ interface WorkspaceFrameInput {
 interface WorkbenchMenuProps {
   items: AppNavItem[];
 }
-
-type WorkspaceShellResolver<Props> = (props: Props) => WorkspaceFrameProps;
 
 const DEFAULT_WORKSPACE_TABS: AppNavItem[] = [
   { label: "Home", to: "/home" },
@@ -57,7 +55,7 @@ function withWorkspaceShell<Props extends { children: ReactNode }>(
   resolveSlots: WorkspaceShellResolver<Props>,
 ) {
   return function WorkspaceShell(props: Props) {
-    return <WorkspaceFrame {...resolveSlots(props)}>{props.children}</WorkspaceFrame>;
+    return <AtlasWorkspaceFrame {...resolveSlots(props)}>{props.children}</AtlasWorkspaceFrame>;
   };
 }
 

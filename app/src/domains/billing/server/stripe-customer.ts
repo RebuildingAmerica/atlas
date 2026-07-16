@@ -4,7 +4,7 @@ import { getStripeClient } from "./stripe-client";
 import {
   mergeAtlasOrganizationMetadata,
   normalizeAtlasOrganizationMetadata,
-} from "../../access/organization-metadata";
+} from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { ensureAuthReady } from "../../access/server/auth";
 
 /**

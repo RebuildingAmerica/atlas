@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { normalizeAtlasOrganizationMetadata } from "../access/organization-metadata";
+import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { PRICING_CHECKOUT_INTERVALS, type PricingCheckoutInterval } from "./checkout-intervals";
 import { getAtlasBillingProducts } from "./products";
 import type { AtlasBillingProducts } from "./products";

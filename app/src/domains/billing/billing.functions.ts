@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { normalizeAtlasOrganizationMetadata } from "../access/organization-metadata";
+import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 
 async function loadBillingServerModules() {
   if (import.meta.env.SSR) {

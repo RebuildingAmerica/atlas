@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import type Stripe from "stripe";
 import { getStripeClient, getStripeWebhookSecret } from "./stripe-client";
-import { mergeAtlasOrganizationMetadata } from "../../access/organization-metadata";
+import { mergeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { ensureAuthReady } from "../../access/server/auth";
 import { getAuthDatabase, getAuthPgPool } from "../../access/server/auth";
 import { markPurchaseIntentPaid } from "./purchase-intents";
