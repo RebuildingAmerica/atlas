@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { WorkspaceFrame } from "@rebuildingamerica/atlas-ui";
 import type { AppNavItem } from "./app-navigation";
 import { AtlasMenuGlyph } from "./top-nav-chrome";
 import { WorkspaceNav } from "./workspace-nav";
@@ -11,12 +12,6 @@ interface WorkspaceLayoutProps {
   children: ReactNode;
   identitySlot?: ReactNode;
   tabs?: AppNavItem[];
-}
-
-interface WorkspaceFrameProps {
-  mainSlot: ReactNode;
-  railSlot: ReactNode;
-  topNavSlot: ReactNode;
 }
 
 interface WorkspaceFrameInput {
@@ -51,31 +46,27 @@ export function WorkspaceLayout({
   return <WorkspaceFrame children={children} identitySlot={identitySlot} railItems={railItems} />;
 }
 
-function WorkspaceFrameShell({ mainSlot, railSlot, topNavSlot }: WorkspaceFrameProps) {
-  return (
-    <div className="flex min-h-screen flex-col">
-      {topNavSlot}
-      <div className="mx-auto grid w-full max-w-[88rem] flex-1 lg:grid-cols-[15rem_minmax(0,1fr)]">
-        {railSlot}
-        {mainSlot}
-      </div>
-    </div>
-  );
+interface WorkspaceFrameSlots {
+  rail: ReactNode;
+  topNavigation: ReactNode;
 }
 
-function withWorkspaceShell<Props extends object>(resolveSlots: WorkspaceShellResolver<Props>) {
+type WorkspaceShellResolver<Props> = (props: Props) => WorkspaceFrameSlots;
+
+function withWorkspaceShell<Props extends { children: ReactNode }>(
+  resolveSlots: WorkspaceShellResolver<Props>,
+) {
   return function WorkspaceShell(props: Props) {
-    return <WorkspaceFrameShell {...resolveSlots(props)} />;
+    return <WorkspaceFrame {...resolveSlots(props)}>{props.children}</WorkspaceFrame>;
   };
 }
 
 const WorkspaceFrame = withWorkspaceShell<WorkspaceFrameInput>(
-  ({ children, identitySlot, railItems }) => ({
-    topNavSlot: (
+  ({ identitySlot, railItems }) => ({
+    topNavigation: (
       <WorkspaceNav identitySlot={identitySlot} menuSlot={<WorkbenchMenu items={railItems} />} />
     ),
-    railSlot: <WorkbenchRail items={railItems} />,
-    mainSlot: <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>,
+    rail: <WorkbenchRail items={railItems} />,
   }),
 );
 

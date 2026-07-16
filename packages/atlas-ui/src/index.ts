@@ -1,5 +1,9 @@
 export { useDirtyFormGuard } from "./hooks/use-dirty-form-guard";
 export { PageLayout } from "./layout/page-layout";
+export { AuthFlowFrame } from "./layout/auth-flow-frame";
+export type { AuthFlowFrameProps } from "./layout/auth-flow-frame";
+export { WorkspaceFrame } from "./layout/workspace-frame";
+export type { WorkspaceFrameProps } from "./layout/workspace-frame";
 export { getTypographyClass, typographyScale } from "./styles/typography";
 export { Badge } from "./ui/badge";
 export { Button } from "./ui/button";

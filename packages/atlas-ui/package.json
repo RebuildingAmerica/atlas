@@ -7,6 +7,8 @@
     ".": "./src/index.ts",
     "./ui/*": "./src/ui/*.tsx",
     "./layout/page-layout": "./src/layout/page-layout.tsx",
+    "./layout/auth-flow-frame": "./src/layout/auth-flow-frame.tsx",
+    "./layout/workspace-frame": "./src/layout/workspace-frame.tsx",
     "./hooks/use-dirty-form-guard": "./src/hooks/use-dirty-form-guard.ts",
     "./styles/typography": "./src/styles/typography.ts"
   },

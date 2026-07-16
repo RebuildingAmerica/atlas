@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { AuthFlowFrame } from "@rebuildingamerica/atlas-ui";
 import { AuthBrandHeader, AuthBrandPanel } from "./auth-brand-panel";
 
 interface AuthFlowLayoutProps {
@@ -14,33 +15,26 @@ interface AuthFlowLayoutProps {
  */
 export function AuthFlowLayout({ children }: AuthFlowLayoutProps) {
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      {/* Mobile brand header */}
-      <div className="lg:hidden">
-        <AuthBrandHeader />
-      </div>
+    <AuthFlowFrame
+      desktopBrand={<AuthBrandPanel />}
+      footer={<AuthFlowFooter />}
+      mobileBrand={<AuthBrandHeader />}
+    >
+      {children}
+    </AuthFlowFrame>
+  );
+}
 
-      {/* Desktop brand panel */}
-      <div className="hidden lg:block lg:w-2/5">
-        <AuthBrandPanel />
-      </div>
-
-      {/* Form content */}
-      <div className="bg-surface flex flex-1 flex-col lg:w-3/5">
-        <main className="flex flex-1 items-start justify-center px-6 pt-16 pb-12 sm:pt-20 lg:px-12 lg:pt-32 lg:pb-16">
-          <div className="w-full max-w-[30rem]">{children}</div>
-        </main>
-
-        <div className="flex items-center justify-center gap-4 px-6 pb-8">
-          <Link to="/privacy" className="type-body-small text-ink-muted hover:text-ink">
-            Privacy policy
-          </Link>
-          <span className="text-ink-muted text-xs">·</span>
-          <Link to="/terms" className="type-body-small text-ink-muted hover:text-ink">
-            Terms of service
-          </Link>
-        </div>
-      </div>
-    </div>
+function AuthFlowFooter() {
+  return (
+    <>
+      <Link to="/privacy" className="type-body-small text-ink-muted hover:text-ink">
+        Privacy policy
+      </Link>
+      <span className="text-ink-muted text-xs">·</span>
+      <Link to="/terms" className="type-body-small text-ink-muted hover:text-ink">
+        Terms of service
+      </Link>
+    </>
   );
 }
