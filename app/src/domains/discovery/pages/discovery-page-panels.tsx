@@ -4,11 +4,13 @@ import type {
 } from "@rebuildingamerica/atlas-api-client";
 import type { WorkspaceQualitySummary } from "@/domains/workspace/server/quality-summary";
 import {
-  confidenceCount,
   formatPercent,
   formatProgressStep,
   formatQueueStatus,
   queueItems,
+} from "@rebuildingamerica/atlas-catalog/discovery/page-utils";
+import {
+  confidenceCount,
   stalePreviewItems,
 } from "./discovery-page-utils";
 

@@ -585,6 +585,9 @@ importers:
       '@rebuildingamerica/atlas-api-client':
         specifier: workspace:*
         version: link:../atlas-api-client
+      '@rebuildingamerica/atlas-ui':
+        specifier: workspace:*
+        version: link:../atlas-ui
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.101.2(react@19.2.7)
@@ -597,6 +600,9 @@ importers:
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.23.0(react@19.2.7)
       supercluster:
         specifier: 'catalog:'
         version: 8.0.1
