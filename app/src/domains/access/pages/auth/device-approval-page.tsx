@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { z } from "zod";
-import { normalizeDeviceUserCode } from "@/domains/access/device-code";
-import { deviceAuthPath, deviceResultPath } from "@/domains/access/device-auth-paths";
+import { normalizeDeviceUserCode } from "@rebuildingamerica/atlas-access/device-code";
+import {
+  deviceAuthPath,
+  deviceResultPath,
+} from "@rebuildingamerica/atlas-access/device-auth-paths";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 const DEVICE_APPROVAL_RESULTS = ["denied", "failed"] as const;

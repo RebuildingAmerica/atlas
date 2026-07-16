@@ -44,7 +44,9 @@ const PRIVACY_AAGUID = "00000000-0000-0000-0000-000000000000";
 /**
  * Returns a display name for the given AAGUID, or null if unknown.
  */
-export function nameFromAaguid(aaguid: string | null | undefined): string | null {
+export function nameFromAaguid(
+  aaguid: string | null | undefined,
+): string | null {
   if (!aaguid || aaguid === PRIVACY_AAGUID) return null;
   return AAGUID_NAMES[aaguid.toLowerCase()] ?? null;
 }
@@ -64,7 +66,8 @@ export function resolvePasskeyName(
 
   // UA fallback — less precise but better than a generic label
   if (nav) {
-    const uaPlatform = (nav as { userAgentData?: { platform?: string } }).userAgentData?.platform;
+    const uaPlatform = (nav as { userAgentData?: { platform?: string } })
+      .userAgentData?.platform;
     const platform = uaPlatform ?? nav.platform ?? "";
     const ua = nav.userAgent ?? "";
 

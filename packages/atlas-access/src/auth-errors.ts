@@ -14,7 +14,8 @@ export const AUTH_ERROR_CODE = {
   LOCAL_MODE: "LOCAL_MODE",
 } as const;
 
-export type AuthErrorCode = (typeof AUTH_ERROR_CODE)[keyof typeof AUTH_ERROR_CODE];
+export type AuthErrorCode =
+  (typeof AUTH_ERROR_CODE)[keyof typeof AUTH_ERROR_CODE];
 
 export class AtlasAuthError extends Error {
   constructor(public readonly code: AuthErrorCode) {
@@ -31,14 +32,18 @@ export class AtlasAuthError extends Error {
 export function extractAuthErrorCode(error: unknown): AuthErrorCode | null {
   if (!(error instanceof Error)) return null;
   const msg = error.message;
-  return (Object.values(AUTH_ERROR_CODE) as string[]).includes(msg) ? (msg as AuthErrorCode) : null;
+  return (Object.values(AUTH_ERROR_CODE) as string[]).includes(msg)
+    ? (msg as AuthErrorCode)
+    : null;
 }
 
 /**
  * Builds a Record mapping every `AuthErrorCode` to a human-readable string for
  * a given flow noun ("sign-in" or "sign-up").
  */
-export function buildAuthErrorLabels(action: "sign-in" | "sign-up"): Record<AuthErrorCode, string> {
+export function buildAuthErrorLabels(
+  action: "sign-in" | "sign-up",
+): Record<AuthErrorCode, string> {
   const verb = action === "sign-in" ? "Sign-in" : "Sign-up";
   const linkNoun = action === "sign-in" ? "sign-in link" : "sign-up link";
   return {
@@ -57,14 +62,19 @@ export interface PasskeySignInError {
  * Maps a raw WebAuthn or BetterAuth passkey error to a safe, user-facing
  * string. Never surfaces internal error details.
  */
-export function describePasskeyError(error: PasskeySignInError | undefined): string {
+export function describePasskeyError(
+  error: PasskeySignInError | undefined,
+): string {
   if (error?.code === "PASSKEY_NOT_FOUND") {
     return "This passkey is no longer linked to your account. Please sign in another way.";
   }
 
   const rawMessage = error?.message;
   if (!rawMessage) return "Passkey authentication failed. Please try again.";
-  if (rawMessage.includes("NotAllowedError") || rawMessage.includes("AbortError")) {
+  if (
+    rawMessage.includes("NotAllowedError") ||
+    rawMessage.includes("AbortError")
+  ) {
     return "Passkey authentication was cancelled.";
   }
   if (rawMessage.includes("NotSupportedError")) {

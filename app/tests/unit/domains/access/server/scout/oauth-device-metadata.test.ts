@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { deviceAuthUrl } from "@/domains/access/device-auth-paths";
-import { buildAuthorizationServerMetadata } from "@/domains/access/oauth-as-metadata";
+import { deviceAuthUrl } from "@rebuildingamerica/atlas-access/device-auth-paths";
+import { buildAuthorizationServerMetadata } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 
 describe("Scout CLI device auth metadata", () => {
   it("advertises the device authorization endpoint", () => {

@@ -138,7 +138,7 @@ vi.mock("@/domains/access/passkeys.functions", () => ({
   updatePasskey: accountPageMocks.updatePasskey,
 }));
 
-vi.mock("@/domains/access/passkey-signal", () => ({
+vi.mock("@rebuildingamerica/atlas-access/passkey-signal", () => ({
   signalUnknownPasskey: accountPageMocks.signalUnknownPasskey,
 }));
 

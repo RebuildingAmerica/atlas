@@ -1,4 +1,4 @@
-import type { ApiKeyScope } from "@/domains/access/api-key-scopes";
+import type { ApiKeyScope } from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { AccountApiKeys, type AccountApiKeyRecord } from "./keys";
 import { AccountNotice } from "./notice";
 import { AccountSection, AccountSubsection } from "./rows";

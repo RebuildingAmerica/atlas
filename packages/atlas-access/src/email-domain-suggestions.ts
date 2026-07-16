@@ -74,7 +74,11 @@ export function suggestEmailDomainCorrection(email: string): string | null {
   let bestDistance = SUGGESTION_DISTANCE_THRESHOLD + 1;
   for (const candidate of COMMON_EMAIL_DOMAINS) {
     const distance = levenshteinDistance(domain, candidate);
-    if (distance > 0 && distance <= SUGGESTION_DISTANCE_THRESHOLD && distance < bestDistance) {
+    if (
+      distance > 0 &&
+      distance <= SUGGESTION_DISTANCE_THRESHOLD &&
+      distance < bestDistance
+    ) {
       bestDistance = distance;
       bestMatch = candidate;
     }

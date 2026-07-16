@@ -5,7 +5,7 @@ import {
   buildAuthErrorLabels,
   describePasskeyError,
   extractAuthErrorCode,
-} from "@/domains/access/auth-errors";
+} from "@rebuildingamerica/atlas-access/auth-errors";
 
 describe("extractAuthErrorCode", () => {
   it("returns null for non-Error values", () => {

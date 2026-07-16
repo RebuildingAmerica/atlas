@@ -5,10 +5,10 @@ import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { waitForAtlasPasskeyRegistration } from "@/domains/access/client/session-confirmation";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { createWorkspace } from "@/domains/access/organizations.functions";
-import { resolvePasskeyName } from "@/domains/access/passkey-names";
+import { resolvePasskeyName } from "@rebuildingamerica/atlas-access/passkey-names";
 import { updatePasskey } from "@/domains/access/passkeys.functions";
 import { getRpLogoutRedirect, sendVerificationEmail } from "@/domains/access/session.functions";
-import { describePasskeyError } from "@/domains/access/auth-errors";
+import { describePasskeyError } from "@rebuildingamerica/atlas-access/auth-errors";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
 import {
   deriveSoloWorkspaceSlug,

@@ -15,7 +15,7 @@ const parserMocks = vi.hoisted(() => ({
   parseSamlIdpMetadata: vi.fn(),
 }));
 
-vi.mock("@/domains/access/saml-metadata-parser", () => ({
+vi.mock("@rebuildingamerica/atlas-access/saml-metadata-parser", () => ({
   parseSamlIdpMetadata: parserMocks.parseSamlIdpMetadata,
 }));
 

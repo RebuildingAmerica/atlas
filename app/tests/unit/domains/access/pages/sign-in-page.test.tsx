@@ -44,7 +44,7 @@ vi.mock("@/domains/access/client/last-used-email", () => ({
   readLastUsedAtlasEmail: mocks.readLastUsedAtlasEmail,
 }));
 
-vi.mock("@/domains/access/passkey-signal", () => ({
+vi.mock("@rebuildingamerica/atlas-access/passkey-signal", () => ({
   signalUnknownPasskey: mocks.signalUnknownPasskey,
 }));
 

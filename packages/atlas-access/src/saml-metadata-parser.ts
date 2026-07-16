@@ -15,7 +15,8 @@ export interface ParsedSamlIdpMetadata {
 export type SamlMetadataParseResult =
   { ok: true; metadata: ParsedSamlIdpMetadata } | { ok: false; error: string };
 
-const HTTP_REDIRECT_BINDING = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect";
+const HTTP_REDIRECT_BINDING =
+  "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect";
 const HTTP_POST_BINDING = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST";
 
 /**
@@ -35,7 +36,11 @@ function wrapCertificateAsPem(base64Body: string): string {
   for (let offset = 0; offset < trimmed.length; offset += 64) {
     lines.push(trimmed.slice(offset, offset + 64));
   }
-  return ["-----BEGIN CERTIFICATE-----", ...lines, "-----END CERTIFICATE-----"].join("\n");
+  return [
+    "-----BEGIN CERTIFICATE-----",
+    ...lines,
+    "-----END CERTIFICATE-----",
+  ].join("\n");
 }
 
 /**
@@ -46,14 +51,18 @@ function wrapCertificateAsPem(base64Body: string): string {
  * @param document - The parsed metadata XML document.
  */
 function selectSingleSignOnLocation(document: Document): string {
-  const candidates = Array.from(document.getElementsByTagNameNS("*", "SingleSignOnService"));
+  const candidates = Array.from(
+    document.getElementsByTagNameNS("*", "SingleSignOnService"),
+  );
   const redirect = candidates.find(
     (node) => node.getAttribute("Binding") === HTTP_REDIRECT_BINDING,
   );
   if (redirect) {
     return redirect.getAttribute("Location") ?? "";
   }
-  const post = candidates.find((node) => node.getAttribute("Binding") === HTTP_POST_BINDING);
+  const post = candidates.find(
+    (node) => node.getAttribute("Binding") === HTTP_POST_BINDING,
+  );
   if (post) {
     return post.getAttribute("Location") ?? "";
   }
@@ -68,13 +77,19 @@ function selectSingleSignOnLocation(document: Document): string {
  * @param document - The parsed metadata XML document.
  */
 function selectSigningCertificate(document: Document): string {
-  const keyDescriptors = Array.from(document.getElementsByTagNameNS("*", "KeyDescriptor"));
+  const keyDescriptors = Array.from(
+    document.getElementsByTagNameNS("*", "KeyDescriptor"),
+  );
   const signingDescriptor =
-    keyDescriptors.find((node) => node.getAttribute("use") === "signing") ?? keyDescriptors[0];
+    keyDescriptors.find((node) => node.getAttribute("use") === "signing") ??
+    keyDescriptors[0];
   if (!signingDescriptor) {
     return "";
   }
-  const certNode = signingDescriptor.getElementsByTagNameNS("*", "X509Certificate")[0];
+  const certNode = signingDescriptor.getElementsByTagNameNS(
+    "*",
+    "X509Certificate",
+  )[0];
   if (!certNode?.textContent) {
     return "";
   }
@@ -91,7 +106,10 @@ function selectSigningCertificate(document: Document): string {
 export function parseSamlIdpMetadata(xml: string): SamlMetadataParseResult {
   const trimmed = xml.trim();
   if (!trimmed) {
-    return { ok: false, error: "Paste the IdP metadata XML to prefill the SAML fields." };
+    return {
+      ok: false,
+      error: "Paste the IdP metadata XML to prefill the SAML fields.",
+    };
   }
 
   // DOMParser surfaces malformed input as a `parsererror` element rather
@@ -99,10 +117,16 @@ export function parseSamlIdpMetadata(xml: string): SamlMetadataParseResult {
   const document = new DOMParser().parseFromString(trimmed, "application/xml");
 
   if (document.getElementsByTagName("parsererror").length > 0) {
-    return { ok: false, error: "Atlas could not parse that XML. Check that it is well-formed." };
+    return {
+      ok: false,
+      error: "Atlas could not parse that XML. Check that it is well-formed.",
+    };
   }
 
-  const entityDescriptor = document.getElementsByTagNameNS("*", "EntityDescriptor")[0];
+  const entityDescriptor = document.getElementsByTagNameNS(
+    "*",
+    "EntityDescriptor",
+  )[0];
   if (!entityDescriptor) {
     return {
       ok: false,
@@ -117,7 +141,8 @@ export function parseSamlIdpMetadata(xml: string): SamlMetadataParseResult {
   if (!issuer && !entryPoint && !certificate) {
     return {
       ok: false,
-      error: "The pasted XML does not contain any SAML IdP fields Atlas can use.",
+      error:
+        "The pasted XML does not contain any SAML IdP fields Atlas can use.",
     };
   }
 

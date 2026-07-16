@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { buildAuthorizationServerMetadata } from "@/domains/access/oauth-as-metadata";
+import { buildAuthorizationServerMetadata } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 
 async function loadRuntimeModule() {
   if (import.meta.env.SSR) {

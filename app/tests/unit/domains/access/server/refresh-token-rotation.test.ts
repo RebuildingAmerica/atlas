@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAuthorizationServerMetadata } from "@/domains/access/oauth-as-metadata";
+import { buildAuthorizationServerMetadata } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 
 /**
  * Smoke checks that pin Atlas's OAuth 2.1 §4.3.1 refresh-token rotation

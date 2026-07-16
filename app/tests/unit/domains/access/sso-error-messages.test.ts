@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeSsoError } from "@/domains/access/sso-error-messages";
+import { describeSsoError } from "@rebuildingamerica/atlas-access/sso-error-messages";
 
 describe("describeSsoError", () => {
   it("returns null for unknown or missing codes", () => {

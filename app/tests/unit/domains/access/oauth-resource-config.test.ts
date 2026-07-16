@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildAtlasAuthJwtAudiences,
   buildMcpResourceUrl,
-} from "@/domains/access/oauth-resource-config";
+} from "@rebuildingamerica/atlas-access/oauth-resource-config";
 
 describe("OAuth resource config", () => {
   it("builds the canonical MCP resource without preserving trailing slashes", () => {

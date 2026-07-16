@@ -39,15 +39,21 @@ export const SUPPORTED_OAUTH_SCOPES = [
   MCP_ENTERPRISE_SCOPE,
 ] as const;
 
-const PROTECTED_RESOURCE_SCOPES = ["discovery:read", MCP_ENTERPRISE_SCOPE] as const;
-const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code" as const;
+const PROTECTED_RESOURCE_SCOPES = [
+  "discovery:read",
+  MCP_ENTERPRISE_SCOPE,
+] as const;
+const DEVICE_CODE_GRANT_TYPE =
+  "urn:ietf:params:oauth:grant-type:device_code" as const;
 
 function mcpResourceUrl(publicBaseUrl: string): string {
   return new URL("/mcp", publicBaseUrl).toString().replace(/\/$/, "");
 }
 
 function authUrl(publicBaseUrl: string, pathname: string): string {
-  return new URL(`/api/auth${pathname}`, publicBaseUrl).toString().replace(/\/$/, "");
+  return new URL(`/api/auth${pathname}`, publicBaseUrl)
+    .toString()
+    .replace(/\/$/, "");
 }
 
 function protectedResourceScopes(): string[] {
@@ -81,7 +87,11 @@ export function buildAuthorizationServerMetadata(input: MetadataInput) {
       "client_credentials",
       DEVICE_CODE_GRANT_TYPE,
     ],
-    token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],
+    token_endpoint_auth_methods_supported: [
+      "client_secret_basic",
+      "client_secret_post",
+      "none",
+    ],
     code_challenge_methods_supported: ["S256"],
     id_token_signing_alg_values_supported: ["RS256", "ES256"],
     subject_types_supported: ["public"],
@@ -111,6 +121,9 @@ export function buildProtectedResourceMetadata(input: MetadataInput) {
     authorization_servers: [authUrl(input.publicBaseUrl, "")],
     bearer_methods_supported: ["header"],
     scopes_supported: protectedResourceScopes(),
-    resource_documentation: new URL("/docs/mcp", input.publicBaseUrl).toString(),
+    resource_documentation: new URL(
+      "/docs/mcp",
+      input.publicBaseUrl,
+    ).toString(),
   };
 }

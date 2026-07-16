@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { API_KEY_SCOPES, type ApiKeyScope } from "@/domains/access/api-key-scopes";
+import { API_KEY_SCOPES, type ApiKeyScope } from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { AccountRow, AccountSurface } from "./rows";

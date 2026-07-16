@@ -41,7 +41,9 @@ export function isLikelyFreeEmailDomain(domain: string): boolean {
 }
 
 export type PemCertificateClassification =
-  { kind: "empty" } | { kind: "ok"; bodyLines: number } | { kind: "invalid"; reason: string };
+  | { kind: "empty" }
+  | { kind: "ok"; bodyLines: number }
+  | { kind: "invalid"; reason: string };
 
 /**
  * Lightweight check that the pasted X.509 certificate at least has PEM
@@ -52,7 +54,9 @@ export type PemCertificateClassification =
  *
  * @param certificate - The candidate certificate text from the SAML form.
  */
-export function classifyPemCertificate(certificate: string): PemCertificateClassification {
+export function classifyPemCertificate(
+  certificate: string,
+): PemCertificateClassification {
   const trimmed = certificate.trim();
   if (!trimmed) {
     return { kind: "empty" };

@@ -7,17 +7,17 @@ import {
   rememberLastUsedAtlasEmail,
   readLastUsedAtlasEmail,
 } from "@/domains/access/client/last-used-email";
-import { suggestEmailDomainCorrection } from "@/domains/access/email-domain-suggestions";
-import { describeSsoError } from "@/domains/access/sso-error-messages";
+import { suggestEmailDomainCorrection } from "@rebuildingamerica/atlas-access/email-domain-suggestions";
+import { describeSsoError } from "@rebuildingamerica/atlas-access/sso-error-messages";
 import { recordSsoDiagnostics } from "@/domains/access/client/sso-diagnostics-log";
 import { waitForAtlasAuthenticatedSession } from "@/domains/access/client/session-confirmation";
-import { signalUnknownPasskey } from "@/domains/access/passkey-signal";
+import { signalUnknownPasskey } from "@rebuildingamerica/atlas-access/passkey-signal";
 import { requestMagicLink } from "@/domains/access/session.functions";
 import {
   buildAuthErrorLabels,
   describePasskeyError,
   extractAuthErrorCode,
-} from "@/domains/access/auth-errors";
+} from "@rebuildingamerica/atlas-access/auth-errors";
 import { resolveWorkspaceSSOSignIn } from "@/domains/access/sso.functions";
 import {
   buildMagicLinkStatusMessage,

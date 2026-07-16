@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { parseSamlIdpMetadata } from "@/domains/access/saml-metadata-parser";
+import { parseSamlIdpMetadata } from "@rebuildingamerica/atlas-access/saml-metadata-parser";
 
 describe("parseSamlIdpMetadata", () => {
   const COMPLETE_METADATA = `<?xml version="1.0" encoding="UTF-8"?>

@@ -6,8 +6,11 @@ import {
   DeviceApprovalCompletePage,
   DeviceApprovalPage,
 } from "@/domains/access/pages/auth/device-approval-page";
-import { normalizeDeviceUserCode } from "@/domains/access/device-code";
-import { deviceAuthPath, deviceResultPath } from "@/domains/access/device-auth-paths";
+import { normalizeDeviceUserCode } from "@rebuildingamerica/atlas-access/device-code";
+import {
+  deviceAuthPath,
+  deviceResultPath,
+} from "@rebuildingamerica/atlas-access/device-auth-paths";
 
 describe("DeviceApprovalPage", () => {
   function jsonResponse(payload: object): Response {

@@ -25,7 +25,10 @@ export function splitVerificationHost(
   if (trimmedDomain && lowered.endsWith(`.${trimmedDomain}`)) {
     return {
       fqdn: trimmedHost,
-      relative: trimmedHost.slice(0, trimmedHost.length - trimmedDomain.length - 1),
+      relative: trimmedHost.slice(
+        0,
+        trimmedHost.length - trimmedDomain.length - 1,
+      ),
     };
   }
   if (trimmedDomain && lowered === trimmedDomain) {

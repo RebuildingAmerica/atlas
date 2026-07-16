@@ -66,6 +66,7 @@
     "@openstatus/react": "catalog:",
     "@react-email/render": "catalog:",
     "@rebuildingamerica/atlas-api-client": "workspace:*",
+    "@rebuildingamerica/atlas-access": "workspace:*",
     "@rebuildingamerica/atlas-catalog": "workspace:*",
     "@rebuildingamerica/atlas-ui": "workspace:*",
     "@rebuildingamerica/entity-widgets": "workspace:*",

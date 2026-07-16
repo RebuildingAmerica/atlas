@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
-import { sanitizeAtlasRedirectPath } from "@/domains/access/redirect-paths";
+import { sanitizeAtlasRedirectPath } from "@rebuildingamerica/atlas-access/redirect-paths";
 
 /**
  * Renders the relative time elapsed since `timestamp`, refreshing once

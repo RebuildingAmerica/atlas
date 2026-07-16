@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { signalUnknownPasskey } from "@/domains/access/passkey-signal";
+import { signalUnknownPasskey } from "@rebuildingamerica/atlas-access/passkey-signal";
 
 describe("signalUnknownPasskey", () => {
   afterEach(() => {

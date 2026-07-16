@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestEmailDomainCorrection } from "@/domains/access/email-domain-suggestions";
+import { suggestEmailDomainCorrection } from "@rebuildingamerica/atlas-access/email-domain-suggestions";
 
 describe("suggestEmailDomainCorrection", () => {
   it("returns null for blank or partial inputs", () => {

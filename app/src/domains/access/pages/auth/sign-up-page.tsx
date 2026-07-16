@@ -2,13 +2,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import { sanitizeAtlasRedirectPath } from "@/domains/access/redirect-paths";
+import { sanitizeAtlasRedirectPath } from "@rebuildingamerica/atlas-access/redirect-paths";
 import { checkAccountExists, requestMagicLink } from "@/domains/access/session.functions";
 import {
   AUTH_ERROR_CODE,
   buildAuthErrorLabels,
   extractAuthErrorCode,
-} from "@/domains/access/auth-errors";
+} from "@rebuildingamerica/atlas-access/auth-errors";
 import { buildSignInCallbackURL } from "./sign-in-page-helpers";
 import { SignUpFormPanel } from "./components/sign-up-form-panel";
 import { SignUpSentPanel } from "./components/sign-up-sent-panel";

@@ -5,7 +5,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access/oauth-as-metadata", () => ({
+vi.mock("@rebuildingamerica/atlas-access/oauth-as-metadata", () => ({
   buildAuthorizationServerMetadata: vi.fn(() => ({
     issuer: "https://atlas.test/api/auth",
   })),

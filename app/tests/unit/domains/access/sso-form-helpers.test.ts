@@ -3,7 +3,7 @@ import {
   classifyPemCertificate,
   extractIssuerOrigin,
   isLikelyFreeEmailDomain,
-} from "@/domains/access/sso-form-helpers";
+} from "@rebuildingamerica/atlas-access/sso-form-helpers";
 
 describe("isLikelyFreeEmailDomain", () => {
   it("returns true for the consumer-mailbox hosts in the allowlist", () => {

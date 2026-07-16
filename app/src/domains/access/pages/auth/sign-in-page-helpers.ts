@@ -1,5 +1,5 @@
 import type { AtlasProduct } from "@/domains/access/capabilities";
-import { sanitizeAtlasRedirectPath } from "@/domains/access/redirect-paths";
+import { sanitizeAtlasRedirectPath } from "@rebuildingamerica/atlas-access/redirect-paths";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 
 interface SignInHeadingCopy {

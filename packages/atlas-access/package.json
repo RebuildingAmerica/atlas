@@ -1,0 +1,25 @@
+{
+  "name": "@rebuildingamerica/atlas-access",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/tsconfig": "workspace:*",
+    "@rebuildingamerica/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

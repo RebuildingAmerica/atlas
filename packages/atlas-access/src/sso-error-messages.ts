@@ -17,7 +17,8 @@ export const SSO_ERROR_CODES = {
   USER_NOT_PROVISIONED: "user_not_provisioned",
 } as const;
 
-export type AtlasSsoErrorCode = (typeof SSO_ERROR_CODES)[keyof typeof SSO_ERROR_CODES];
+export type AtlasSsoErrorCode =
+  (typeof SSO_ERROR_CODES)[keyof typeof SSO_ERROR_CODES];
 
 const MESSAGES: Record<AtlasSsoErrorCode, string> = {
   [SSO_ERROR_CODES.ACCESS_DENIED]:
@@ -48,9 +49,13 @@ const MESSAGES: Record<AtlasSsoErrorCode, string> = {
  * "couldn't complete sign-in" message and surface the raw code separately
  * for support purposes.
  */
-export function describeSsoError(rawCode: string | null | undefined): string | null {
+export function describeSsoError(
+  rawCode: string | null | undefined,
+): string | null {
   if (!rawCode) return null;
   const normalized = rawCode.toLowerCase();
-  const knownCode = Object.values(SSO_ERROR_CODES).find((code) => code === normalized);
+  const knownCode = Object.values(SSO_ERROR_CODES).find(
+    (code) => code === normalized,
+  );
   return knownCode ? MESSAGES[knownCode] : null;
 }

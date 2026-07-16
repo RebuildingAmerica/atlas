@@ -3,7 +3,7 @@ import {
   buildAuthorizationServerMetadata,
   buildProtectedResourceMetadata,
   SUPPORTED_OAUTH_SCOPES,
-} from "@/domains/access/oauth-as-metadata";
+} from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 
 describe("buildAuthorizationServerMetadata", () => {
   it("derives every endpoint from the supplied public origin", () => {

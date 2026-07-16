@@ -84,7 +84,10 @@ export function severityToFillClass(severity: CertExpirySeverity): string {
  * so the rendered field stays narrow without depending on the operator's
  * locale.
  */
-export function formatCertificateExpiry(isoTimestamp: string, now?: number): string {
+export function formatCertificateExpiry(
+  isoTimestamp: string,
+  now?: number,
+): string {
   const assessment = assessCertExpiry(isoTimestamp, now);
   if (!assessment) return isoTimestamp;
   const datePart = isoTimestamp.slice(0, 10);
@@ -99,7 +102,9 @@ export function formatCertificateExpiry(isoTimestamp: string, now?: number): str
  * current expiry severity.  Returns null for the `ok` bucket — callers
  * skip the banner entirely there.
  */
-export function describeCertExpiryAction(assessment: CertExpiryAssessment): string | null {
+export function describeCertExpiryAction(
+  assessment: CertExpiryAssessment,
+): string | null {
   switch (assessment.severity) {
     case "expired":
       return "Certificate expired — rotate now to keep sign-ins working.";

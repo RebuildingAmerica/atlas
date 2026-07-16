@@ -1,7 +1,9 @@
 /**
  * Returns the candidate path when it is safe to use as an app-local redirect.
  */
-export function sanitizeAtlasRedirectPath(candidate: string | undefined): string | null {
+export function sanitizeAtlasRedirectPath(
+  candidate: string | undefined,
+): string | null {
   if (!candidate || typeof candidate !== "string") {
     return null;
   }

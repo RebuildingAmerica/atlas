@@ -5,7 +5,7 @@ import {
   formatCertificateExpiry,
   severityToBannerPalette,
   severityToFillClass,
-} from "@/domains/access/cert-expiry-helpers";
+} from "@rebuildingamerica/atlas-access/cert-expiry-helpers";
 
 describe("assessCertExpiry", () => {
   const now = new Date("2026-04-28T00:00:00Z").getTime();

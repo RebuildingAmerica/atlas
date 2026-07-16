@@ -3,7 +3,7 @@ import {
   permissionsToScopes,
   scopeToPermission,
   scopesToPermissions,
-} from "@/domains/access/api-key-scopes";
+} from "@rebuildingamerica/atlas-access/api-key-scopes";
 
 describe("scopeToPermission", () => {
   it("splits an Atlas scope into resource and action", () => {

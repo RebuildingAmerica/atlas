@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
-import { nameFromAaguid, resolvePasskeyName } from "@/domains/access/passkey-names";
+import { nameFromAaguid, resolvePasskeyName } from "@rebuildingamerica/atlas-access/passkey-names";
 
 describe("passkey names", () => {
   it("maps known authenticator AAGUIDs and ignores privacy-preserving values", () => {

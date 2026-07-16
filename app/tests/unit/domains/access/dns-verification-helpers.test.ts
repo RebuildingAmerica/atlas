@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DNS_PROVIDER_GUIDES,
   splitVerificationHost,
-} from "@/domains/access/dns-verification-helpers";
+} from "@rebuildingamerica/atlas-access/dns-verification-helpers";
 
 describe("splitVerificationHost", () => {
   it("returns blank fields when the verification host is empty", () => {
