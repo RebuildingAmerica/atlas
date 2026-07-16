@@ -99,7 +99,7 @@ pnpm dev
 # Quality
 cd app && pnpm run typecheck
 cd app && pnpm run lint
-cd app && pnpm run test:unit
+cd app && pnpm run test
 cd app && pnpm run build
 
 # Regenerate TypeScript API client after OpenAPI changes

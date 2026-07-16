@@ -1,5 +1,7 @@
 {
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
@@ -48,7 +50,9 @@
     },
     "start:e2e": {
       "cache": false,
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "env": [
         "ATLAS_OPERATOR_ALLOWED_EMAILS",
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -82,11 +86,17 @@
     },
     "e2e:mail": {
       "cache": false,
-      "env": ["MAIL_CAPTURE_FILE", "MAIL_CAPTURE_HOST", "MAIL_CAPTURE_PORT"],
+      "env": [
+        "MAIL_CAPTURE_FILE",
+        "MAIL_CAPTURE_HOST",
+        "MAIL_CAPTURE_PORT"
+      ],
       "persistent": true
     },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "env": [
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_AUTH_BASE_PATH",
@@ -105,31 +115,51 @@
         "ATLAS_PUBLIC_URL",
         "ATLAS_SERVER_API_PROXY_TARGET"
       ],
-      "outputs": [".output/**", ".vercel/output/**"]
+      "outputs": [
+        ".output/**",
+        ".vercel/output/**"
+      ]
     },
     "openapi:lint": {
-      "dependsOn": ["//#openapi"],
-      "inputs": [".spectral.yaml", "$TURBO_ROOT$/openapi/atlas.openapi.json"],
+      "dependsOn": [
+        "//#openapi"
+      ],
+      "inputs": [
+        ".spectral.yaml",
+        "$TURBO_ROOT$/openapi/atlas.openapi.json"
+      ],
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["^build"],
-      "env": ["ATLAS_DEPLOY_MODE"],
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "ATLAS_DEPLOY_MODE"
+      ],
       "outputs": []
     },
     "lint": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "format:check": {
       "outputs": []
     },
     "quality": {
-      "dependsOn": ["typecheck", "lint", "format:check"],
+      "dependsOn": [
+        "typecheck",
+        "lint",
+        "format:check"
+      ],
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "env": [
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
         "ATLAS_AUTH_INTERNAL_SECRET",
@@ -143,201 +173,24 @@
       ],
       "outputs": []
     },
-    "test:unit:access": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "package.json",
-        "tsconfig.json",
-        "vitest.config.ts",
-        "scripts/unit-test-shards.ts",
-        "src/components/**",
-        "src/domains/access/**",
-        "src/lib/**",
-        "src/platform/**",
-        "src/routes/_auth.tsx",
-        "src/routes/_auth/**",
-        "src/routes/api/atproto/**",
-        "src/routes/api/auth/**",
-        "src/styles/**",
-        "tests/helpers/**",
-        "tests/setup.ts",
-        "tests/unit/domains/access/**",
-        "tests/unit/playwright-atproto-env.test.ts",
-        "tests/unit/routes/_auth.test.tsx",
-        "tests/unit/routes/_auth/**",
-        "tests/unit/routes/api/atproto/**",
-        "tests/unit/routes/api/auth/**"
-      ],
-      "outputs": []
-    },
-    "test:unit:business": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "package.json",
-        "tsconfig.json",
-        "vitest.config.ts",
-        "scripts/unit-test-shards.ts",
-        "src/components/**",
-        "src/domains/admin/**",
-        "src/domains/billing/**",
-        "src/lib/**",
-        "src/platform/**",
-        "src/routes/_workspace/admin/**",
-        "src/routes/api/stripe/**",
-        "src/routes/_public/pricing.tsx",
-        "src/routes/_public/request-discount.tsx",
-        "src/styles/**",
-        "tests/helpers/**",
-        "tests/setup.ts",
-        "tests/unit/domains/admin/**",
-        "tests/unit/domains/billing/**",
-        "tests/unit/routes/api/stripe/**"
-      ],
-      "outputs": []
-    },
-    "test:unit:catalog": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "package.json",
-        "tsconfig.json",
-        "vitest.config.ts",
-        "scripts/unit-test-shards.ts",
-        "src/components/**",
-        "src/domains/catalog/**",
-        "src/domains/discovery/**",
-        "src/domains/firehose/**",
-        "src/hooks/**",
-        "src/lib/**",
-        "src/platform/**",
-        "src/routes/_public.tsx",
-        "src/routes/_public/**",
-        "src/routes/firehose[.]rss.ts",
-        "src/styles/**",
-        "tests/helpers/**",
-        "tests/setup.ts",
-        "tests/unit/domains/catalog/**",
-        "tests/unit/domains/discovery/**",
-        "tests/unit/domains/firehose/**",
-        "tests/unit/routes/_public.test.tsx",
-        "tests/unit/routes/_public/**",
-        "tests/unit/routes/firehose-rss.test.ts",
-        "tests/unit/routes/public-home-page.test.tsx"
-      ],
-      "outputs": []
-    },
-    "test:unit:platform": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "package.json",
-        "tsconfig.json",
-        "vite.config.ts",
-        "vitest.config.ts",
-        "scripts/unit-test-shards.ts",
-        "src/components/**",
-        "src/entry.client.tsx",
-        "src/entry.server.tsx",
-        "src/lib/**",
-        "src/platform/**",
-        "src/router.tsx",
-        "src/routes/__root.tsx",
-        "src/routeTree.gen.ts",
-        "src/styles/**",
-        "tests/helpers/**",
-        "tests/setup.ts",
-        "tests/unit/components/**",
-        "tests/unit/entry.client.test.tsx",
-        "tests/unit/entry.server.test.ts",
-        "tests/unit/lib/**",
-        "tests/unit/platform/**",
-        "tests/unit/router.test.tsx",
-        "tests/unit/routes/__root.test.tsx",
-        "tests/unit/turbo-config.test.ts",
-        "tests/unit/vite-config-route-rules.test.ts"
-      ],
-      "outputs": []
-    },
-    "test:unit:workspace": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "package.json",
-        "tsconfig.json",
-        "vitest.config.ts",
-        "scripts/unit-test-shards.ts",
-        "src/components/**",
-        "src/domains/onboarding/**",
-        "src/domains/workspace/**",
-        "src/lib/**",
-        "src/platform/**",
-        "src/routes/_onboarding.tsx",
-        "src/routes/_onboarding/**",
-        "src/routes/_workspace.tsx",
-        "src/routes/_workspace/**",
-        "src/routes/dashboard.tsx",
-        "src/styles/**",
-        "tests/helpers/**",
-        "tests/setup.ts",
-        "tests/unit/domains/onboarding/**",
-        "tests/unit/domains/workspace/**",
-        "tests/unit/routes/_onboarding/**",
-        "tests/unit/routes/_workspace*.test.tsx",
-        "tests/unit/routes/_workspace/**",
-        "tests/unit/routes/dashboard.test.tsx"
-      ],
-      "outputs": []
-    },
-    "test:unit:system": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "package.json",
-        "tsconfig.json",
-        "vitest.config.ts",
-        "scripts/unit-test-shards.ts",
-        "src/components/**",
-        "src/lib/**",
-        "src/platform/**",
-        "src/routes/[.]well-known/**",
-        "src/routes/api/**",
-        "src/routes/device/**",
-        "src/routes/docs.tsx",
-        "src/routes/docs/**",
-        "src/routes/health.ts",
-        "src/routes/llms[.]txt.ts",
-        "src/routes/openapi[.]json.ts",
-        "src/routes/robots[.]txt.ts",
-        "src/routes/sitemap[.]xml.ts",
-        "src/styles/**",
-        "tests/helpers/**",
-        "tests/setup.ts",
-        "tests/unit/acceptance/**",
-        "tests/unit/routes/[.]well-known/**",
-        "tests/unit/routes/api/$.test.ts",
-        "tests/unit/routes/api/health.test.ts",
-        "tests/unit/routes/device/**",
-        "tests/unit/routes/docs.test.ts",
-        "tests/unit/routes/docs/**",
-        "tests/unit/routes/health.test.ts",
-        "tests/unit/routes/llms-txt.test.ts",
-        "tests/unit/routes/openapi-json.test.ts",
-        "tests/unit/routes/robots-txt.test.ts",
-        "tests/unit/routes/sitemap-xml.test.ts",
-        "tests/unit/scripts/**"
-      ],
-      "outputs": []
-    },
     "test:coverage": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
-    },
-    "test:unit": {
-      "dependsOn": ["^build"],
-      "outputs": []
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
     },
     "test:integration": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     },
     "test:e2e": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -345,11 +198,16 @@
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
         "ATLAS_E2E_MAILBOX_URL"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:e2e:headed": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -357,11 +215,17 @@
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
         "ATLAS_E2E_MAILBOX_URL"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance": {
-      "dependsOn": ["^build", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -372,11 +236,17 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance:browser": {
-      "dependsOn": ["^build", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -385,11 +255,17 @@
         "ATLAS_E2E_WORKERS",
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance:stripe": {
-      "dependsOn": ["^build", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -400,11 +276,17 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     },
     "test:acceptance:headed": {
-      "dependsOn": ["^build", "e2e:cleanup"],
+      "dependsOn": [
+        "^build",
+        "e2e:cleanup"
+      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -415,7 +297,10 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": ["playwright-report/**", "test-results/**"],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
       "cache": false
     }
   }

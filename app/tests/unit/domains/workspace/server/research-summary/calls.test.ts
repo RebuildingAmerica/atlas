@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { executeLoader } from "./support";
 
 const mocks = vi.hoisted(() => ({
-  requestAtlasApi: vi.fn(),
+  requestWorkspaceApi: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", async () => {
@@ -11,14 +11,14 @@ vi.mock("@tanstack/react-start", async () => {
   return { createServerFn: createServerFnStub() };
 });
 
-vi.mock("@/domains/discovery/server/api-client", () => ({
-  requestAtlasApi: mocks.requestAtlasApi,
+vi.mock("@/domains/workspace/server/workspace-api", () => ({
+  requestWorkspaceApi: mocks.requestWorkspaceApi,
 }));
 
 describe("research-summary loader calls", () => {
   beforeEach(() => {
     vi.resetModules();
-    mocks.requestAtlasApi.mockReset();
+    mocks.requestWorkspaceApi.mockReset();
   });
 
   afterEach(() => {
@@ -26,7 +26,7 @@ describe("research-summary loader calls", () => {
   });
 
   it("calls lists, feed, and discovery-run endpoints in parallel with the user's identity", async () => {
-    mocks.requestAtlasApi.mockImplementation((path: string) => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
       if (path === "/lists") return Promise.resolve([]);
       if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
       if (path === "/discovery-runs") return Promise.resolve({ items: [], total: 0 });
@@ -36,13 +36,13 @@ describe("research-summary loader calls", () => {
     const response = await executeLoader();
 
     expect(response.error).toBeUndefined();
-    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/lists");
-    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/feed/following?limit=50");
-    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/discovery-runs");
+    expect(mocks.requestWorkspaceApi).toHaveBeenCalledWith("/lists");
+    expect(mocks.requestWorkspaceApi).toHaveBeenCalledWith("/feed/following?limit=50");
+    expect(mocks.requestWorkspaceApi).toHaveBeenCalledWith("/discovery-runs");
   });
 
   it("returns an empty-but-valid summary when an upstream call fails", async () => {
-    mocks.requestAtlasApi.mockRejectedValue(new Error("Atlas API request failed (503)"));
+    mocks.requestWorkspaceApi.mockRejectedValue(new Error("Workspace API request failed (503)"));
 
     const response = await executeLoader();
 

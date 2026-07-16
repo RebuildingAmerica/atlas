@@ -10,7 +10,7 @@ import {
 } from "./support";
 
 const mocks = vi.hoisted(() => ({
-  requestAtlasApi: vi.fn(),
+  requestWorkspaceApi: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", async () => {
@@ -18,8 +18,8 @@ vi.mock("@tanstack/react-start", async () => {
   return { createServerFn: createServerFnStub() };
 });
 
-vi.mock("@/domains/discovery/server/api-client", () => ({
-  requestAtlasApi: mocks.requestAtlasApi,
+vi.mock("@/domains/workspace/server/workspace-api", () => ({
+  requestWorkspaceApi: mocks.requestWorkspaceApi,
 }));
 
 describe("research-summary activity", () => {
@@ -27,7 +27,7 @@ describe("research-summary activity", () => {
 
   beforeEach(() => {
     vi.resetModules();
-    mocks.requestAtlasApi.mockReset();
+    mocks.requestWorkspaceApi.mockReset();
     vi.useFakeTimers();
     vi.setSystemTime(REFERENCE_NOW);
   });
@@ -37,7 +37,7 @@ describe("research-summary activity", () => {
   });
 
   it("projects lists and totals across saved lists, defaulting a missing item_count to zero", async () => {
-    mocks.requestAtlasApi.mockImplementation((path: string) => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
       if (path === "/lists") {
         return Promise.resolve([
           makeList({ id: "list_1", item_count: 4 }),
@@ -58,7 +58,7 @@ describe("research-summary activity", () => {
   });
 
   it("counts only sources ingested within the trailing week and limits inline items to five", async () => {
-    mocks.requestAtlasApi.mockImplementation((path: string) => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
       if (path === "/lists") return Promise.resolve([]);
       if (path === "/feed/following?limit=50") {
         return Promise.resolve({
@@ -89,7 +89,7 @@ describe("research-summary activity", () => {
   });
 
   it("derives the followed-actor count from the distinct feed entries and maps nullable fields", async () => {
-    mocks.requestAtlasApi.mockImplementation((path: string) => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
       if (path === "/lists") return Promise.resolve([]);
       if (path === "/feed/following?limit=50") {
         return Promise.resolve({
@@ -126,7 +126,7 @@ describe("research-summary activity", () => {
   });
 
   it("limits recent runs to three and projects their summary fields", async () => {
-    mocks.requestAtlasApi.mockImplementation((path: string) => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
       if (path === "/lists") return Promise.resolve([]);
       if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
       return Promise.resolve({
@@ -175,7 +175,7 @@ describe("research-summary activity", () => {
   });
 
   it("counts only the discovery runs started in the reference calendar month", async () => {
-    mocks.requestAtlasApi.mockImplementation((path: string) => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
       if (path === "/lists") return Promise.resolve([]);
       if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
       return Promise.resolve({

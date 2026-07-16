@@ -15,7 +15,7 @@ This is the current build and runtime dependency map for the Atlas web app.
    - verifies TypeScript across app source, tests, scripts, and route modules
 4. `cd app && pnpm run lint`
    - runs ESLint across `src` and `tests`
-5. `cd app && pnpm run test:unit`
+5. `cd app && pnpm run test`
    - runs Vitest unit tests
 6. `cd app && pnpm run build`
    - builds the TanStack Start/Nitro output in `.output/`
