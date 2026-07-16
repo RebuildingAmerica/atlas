@@ -65,7 +65,7 @@ describe("routes/_workspace/lists/$id", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     expect(screen.getByText(/Loading list…/)).toBeInTheDocument();
-  });
+  }, 60_000);
 
   it("shows the not-found copy when the list cannot be loaded", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");

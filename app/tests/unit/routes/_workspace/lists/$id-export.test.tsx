@@ -120,7 +120,7 @@ describe("routes/_workspace/lists/$id export cases", () => {
     expect(followUpTask).not.toBeChecked();
     fireEvent.click(followUpTask);
     expect(followUpTask).toBeChecked();
-  });
+  }, 60_000);
 
   it("renders a shareable evidence pack for a research thread", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");

@@ -36,11 +36,6 @@ export default defineConfig({
       },
     },
     setupFiles: ["tests/setup.ts"],
-    // The route-heavy app suite has shared module/mock edges that are safe when
-    // each file owns the process in order, but can deadlock dynamic route
-    // imports under Vitest's file-level worker pool. Keep app parallelism at the
-    // Turbo package boundary until those route harnesses are isolated further.
-    maxWorkers: 1,
     // The pre-push gate runs every workspace's suite concurrently via Turbo;
     // under that CPU contention the heaviest auth-flow tests drift just past
     // vitest's 5s default and time out. A generous ceiling keeps a green suite

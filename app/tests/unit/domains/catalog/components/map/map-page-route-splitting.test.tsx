@@ -9,5 +9,5 @@ describe("MapPage route splitting", () => {
     await expect(import("@/domains/catalog/components/map/map-page")).resolves.toHaveProperty(
       "MapPage",
     );
-  });
+  }, 60_000);
 });

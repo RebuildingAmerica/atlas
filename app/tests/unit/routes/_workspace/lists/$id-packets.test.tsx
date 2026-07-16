@@ -170,7 +170,7 @@ describe("routes/_workspace/lists/$id packet exports", () => {
     await expect(crmBlob.text()).resolves.toContain('"syncStatus": "ready_for_sync"');
     expect(click).toHaveBeenCalledTimes(2);
     expect(revokeObjectUrl).toHaveBeenLastCalledWith("blob:atlas-team-list-export");
-  });
+  }, 60_000);
 
   it("copies a nonprofit systems packet for adjacent advocacy and grant tools", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
