@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 
 function dryRun(task) {
@@ -30,6 +31,37 @@ test("app remains in the standard test graph", () => {
       (task) => task.taskId === "@rebuildingamerica/atlas-app#test",
     ),
     true,
+  );
+});
+
+test("app test cache follows the behavior packages it consumes", () => {
+  const graph = dryRun("@rebuildingamerica/atlas-app#test");
+  const appTest = graph.tasks.find(
+    (task) => task.taskId === "@rebuildingamerica/atlas-app#test",
+  );
+
+  assert.ok(appTest);
+  assert.deepEqual(
+    appTest.dependencies.filter((taskId) => taskId.endsWith("#build")),
+    [
+      "@rebuildingamerica/atlas-access#build",
+      "@rebuildingamerica/atlas-api-client#build",
+      "@rebuildingamerica/atlas-catalog#build",
+      "@rebuildingamerica/atlas-ui#build",
+      "@rebuildingamerica/entity-widgets#build",
+      "@rebuildingamerica/eslint-config#build",
+      "@rebuildingamerica/tsconfig#build",
+    ],
+  );
+});
+
+test("behavior stays colocated instead of accumulating in a shared types bucket", () => {
+  assert.equal(existsSync("app/src/types"), false);
+  assert.equal(
+    readdirSync("packages", { withFileTypes: true }).some(
+      (entry) => entry.isDirectory() && entry.name.includes("types"),
+    ),
+    false,
   );
 });
 
