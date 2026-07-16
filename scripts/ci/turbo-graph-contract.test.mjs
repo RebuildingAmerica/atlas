@@ -34,25 +34,14 @@ test("app remains in the standard test graph", () => {
   );
 });
 
-test("app test cache follows the behavior packages it consumes", () => {
+test("app test has no artificial dependency build chain", () => {
   const graph = dryRun("@rebuildingamerica/atlas-app#test");
   const appTest = graph.tasks.find(
     (task) => task.taskId === "@rebuildingamerica/atlas-app#test",
   );
 
   assert.ok(appTest);
-  assert.deepEqual(
-    appTest.dependencies.filter((taskId) => taskId.endsWith("#build")),
-    [
-      "@rebuildingamerica/atlas-access#build",
-      "@rebuildingamerica/atlas-api-client#build",
-      "@rebuildingamerica/atlas-catalog#build",
-      "@rebuildingamerica/atlas-ui#build",
-      "@rebuildingamerica/entity-widgets#build",
-      "@rebuildingamerica/eslint-config#build",
-      "@rebuildingamerica/tsconfig#build",
-    ],
-  );
+  assert.deepEqual(appTest.dependencies.filter((taskId) => taskId.endsWith("#build")), []);
 });
 
 test("behavior stays colocated instead of accumulating in a shared types bucket", () => {

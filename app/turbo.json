@@ -94,9 +94,6 @@
       "persistent": true
     },
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
       "env": [
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_AUTH_BASE_PATH",
@@ -131,18 +128,12 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": [
-        "^build"
-      ],
       "env": [
         "ATLAS_DEPLOY_MODE"
       ],
       "outputs": []
     },
     "lint": {
-      "dependsOn": [
-        "^build"
-      ],
       "outputs": []
     },
     "format:check": {
@@ -157,9 +148,6 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": [
-        "^build"
-      ],
       "env": [
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
         "ATLAS_AUTH_INTERNAL_SECRET",
@@ -174,23 +162,14 @@
       "outputs": []
     },
     "test:coverage": {
-      "dependsOn": [
-        "^build"
-      ],
       "outputs": [
         "coverage/**"
       ]
     },
     "test:integration": {
-      "dependsOn": [
-        "^build"
-      ],
       "outputs": []
     },
     "test:e2e": {
-      "dependsOn": [
-        "^build"
-      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -205,9 +184,6 @@
       "cache": false
     },
     "test:e2e:headed": {
-      "dependsOn": [
-        "^build"
-      ],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -223,7 +199,6 @@
     },
     "test:acceptance": {
       "dependsOn": [
-        "^build",
         "e2e:cleanup"
       ],
       "env": [
@@ -244,7 +219,6 @@
     },
     "test:acceptance:browser": {
       "dependsOn": [
-        "^build",
         "e2e:cleanup"
       ],
       "env": [
@@ -263,7 +237,6 @@
     },
     "test:acceptance:stripe": {
       "dependsOn": [
-        "^build",
         "e2e:cleanup"
       ],
       "env": [
@@ -284,7 +257,6 @@
     },
     "test:acceptance:headed": {
       "dependsOn": [
-        "^build",
         "e2e:cleanup"
       ],
       "env": [

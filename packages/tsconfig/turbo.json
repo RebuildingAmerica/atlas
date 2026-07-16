@@ -1,8 +1,6 @@
 {
-  "extends": ["//"],
-  "tasks": {
-    "build": {
-      "outputs": []
-    }
-  }
+  "extends": [
+    "//"
+  ],
+  "tasks": {}
 }
