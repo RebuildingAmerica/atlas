@@ -94,6 +94,9 @@
       "persistent": true
     },
     "build": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-api-client#api-client"
+      ],
       "env": [
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_AUTH_BASE_PATH",
@@ -128,6 +131,9 @@
       "outputs": []
     },
     "typecheck": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-api-client#api-client"
+      ],
       "env": [
         "ATLAS_DEPLOY_MODE"
       ],
@@ -148,6 +154,9 @@
       "outputs": []
     },
     "test": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-api-client#api-client"
+      ],
       "env": [
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
         "ATLAS_AUTH_INTERNAL_SECRET",
