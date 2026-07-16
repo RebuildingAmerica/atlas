@@ -16,6 +16,7 @@
     "./discovery/brief-request": "./src/discovery/brief-request.ts",
     "./discovery/coverage-target-request": "./src/discovery/coverage-target-request.ts",
     "./discovery/page-utils": "./src/discovery/page-utils.ts",
+    "./discovery/create-discovery-hooks": "./src/discovery/create-discovery-hooks.ts",
     "./discovery/components": "./src/discovery/components/index.ts",
     "./discovery/hooks/use-discovery": "./src/discovery/hooks/use-discovery.ts",
     "./firehose/feed-model": "./src/firehose/feed-model.ts",
