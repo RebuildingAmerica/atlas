@@ -1,4 +1,4 @@
-import { groupIssueAreasByDomain } from "@/domains/catalog/taxonomy-domains";
+import { groupIssueAreasByDomain } from "@rebuildingamerica/atlas-catalog/taxonomy-domains";
 
 interface IssueFootprintProps {
   issueAreas: string[];

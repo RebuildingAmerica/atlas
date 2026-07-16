@@ -1,4 +1,4 @@
-import type { StateDensity } from "@/domains/catalog/surface-model";
+import type { StateDensity } from "@rebuildingamerica/atlas-catalog/surface-model";
 
 export interface StateMapStyle {
   count: number;
@@ -59,7 +59,9 @@ const STATE_CODE_BY_FIPS: Record<string, string> = {
   "56": "WY",
 };
 
-export function getStateCodeFromFips(fips: string | number | undefined): string | undefined {
+export function getStateCodeFromFips(
+  fips: string | number | undefined,
+): string | undefined {
   if (fips === undefined) {
     return undefined;
   }
@@ -68,7 +70,9 @@ export function getStateCodeFromFips(fips: string | number | undefined): string 
   return STATE_CODE_BY_FIPS[normalized];
 }
 
-export function buildUsMapStateStyles(states: StateDensity[]): Record<string, StateMapStyle> {
+export function buildUsMapStateStyles(
+  states: StateDensity[],
+): Record<string, StateMapStyle> {
   return Object.fromEntries(
     states.map((state) => [
       state.state,

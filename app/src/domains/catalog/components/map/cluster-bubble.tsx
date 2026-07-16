@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { clusterBubbleStyle } from "@/domains/catalog/map/marker-style";
+import { clusterBubbleStyle } from "@rebuildingamerica/atlas-catalog/map/marker-style";
 
 /** The fraction of full size a bubble starts at before it grows into place. */
 const REVEAL_START_FRACTION = 0.85;

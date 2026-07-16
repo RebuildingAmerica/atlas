@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import usAtlasStates from "us-atlas/states-10m.json";
-import { FALLBACK_ISSUE_COLOR, issueColor } from "@/domains/catalog/map/issue-colors";
+import {
+  FALLBACK_ISSUE_COLOR,
+  issueColor,
+} from "@rebuildingamerica/atlas-catalog/map/issue-colors";
 import { api } from "@rebuildingamerica/atlas-api-client";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { CITY_COORDS } from "./city-coords";

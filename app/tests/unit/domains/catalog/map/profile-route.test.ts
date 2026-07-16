@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { profileRouteFor } from "@/domains/catalog/map/profile-route";
+import { profileRouteFor } from "@rebuildingamerica/atlas-catalog/map/profile-route";
 
 describe("profileRouteFor", () => {
   it("routes an organization to its organization profile", () => {

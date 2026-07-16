@@ -8,7 +8,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
-import { humanize } from "@/domains/catalog/catalog";
+import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { cn } from "@/lib/utils";
 import type {

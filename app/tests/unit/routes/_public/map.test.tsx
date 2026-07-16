@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, cleanup } from "@testing-library/react";
 import type { PageHead } from "@/platform/seo";
-import type * as CatalogSearchState from "@/domains/catalog/search-state";
+import type * as CatalogSearchState from "@rebuildingamerica/atlas-catalog/search-state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
@@ -35,7 +35,7 @@ vi.mock("@/domains/catalog/components/map/map-page", () => ({
   ),
 }));
 
-vi.mock("@/domains/catalog/search-state", async (importOriginal) => {
+vi.mock("@rebuildingamerica/atlas-catalog/search-state", async (importOriginal) => {
   const actual = await importOriginal<typeof CatalogSearchState>();
   return {
     ...actual,
@@ -58,7 +58,7 @@ afterEach(cleanup);
 describe("routes/_public/map", () => {
   it("registers the map search schema and disables SSR for the WebGL canvas", async () => {
     const routeModule = await import("@/routes/_public/map");
-    const { mapSearchSchema } = await import("@/domains/catalog/search-state");
+    const { mapSearchSchema } = await import("@rebuildingamerica/atlas-catalog/search-state");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 

@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
+import type {
+  EntryType,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 
 export const browseSearchSchema = z.object({
   query: z.string().optional(),
@@ -81,7 +84,12 @@ interface IntentMatchResult<Value extends string> {
 }
 
 const ISSUE_SYNONYMS: Partial<Record<string, string[]>> = {
-  civic_participation: ["democracy", "voting", "voter access", "local elections"],
+  civic_participation: [
+    "democracy",
+    "voting",
+    "voter access",
+    "local elections",
+  ],
   healthcare_access: ["health care", "healthcare", "clinics", "medical access"],
   housing_affordability: [
     "renters",
@@ -91,22 +99,52 @@ const ISSUE_SYNONYMS: Partial<Record<string, string[]>> = {
     "tenant organizing",
     "tenant union",
   ],
-  worker_power: ["labor", "worker", "workers", "union", "unions", "workplace organizing"],
+  worker_power: [
+    "labor",
+    "worker",
+    "workers",
+    "union",
+    "unions",
+    "workplace organizing",
+  ],
 };
 
 const ENTRY_TYPE_SYNONYMS: Partial<Record<EntryType, string[]>> = {
   campaign: ["campaign", "campaigns"],
   event: ["event", "events"],
   initiative: ["initiative", "initiatives", "project", "projects"],
-  organization: ["organization", "organizations", "org", "orgs", "group", "groups"],
-  person: ["person", "people", "organizer", "organizers", "advocate", "advocates"],
+  organization: [
+    "organization",
+    "organizations",
+    "org",
+    "orgs",
+    "group",
+    "groups",
+  ],
+  person: [
+    "person",
+    "people",
+    "organizer",
+    "organizers",
+    "advocate",
+    "advocates",
+  ],
 };
 
 const SOURCE_TYPE_SYNONYMS: Partial<Record<SourceType, string[]>> = {
   community_archive: ["community archive", "archive", "archives"],
-  government_record: ["government record", "government records", "public record"],
+  government_record: [
+    "government record",
+    "government records",
+    "public record",
+  ],
   news_article: ["local news", "news article", "news", "article", "articles"],
-  org_website: ["organization site", "organization website", "website", "websites"],
+  org_website: [
+    "organization site",
+    "organization website",
+    "website",
+    "websites",
+  ],
   podcast: ["podcast", "podcasts", "show", "shows"],
   report: ["report", "reports"],
   social_media: ["social media", "social"],
@@ -133,10 +171,14 @@ export function serializeList(values: string[]): string | undefined {
 }
 
 export function toggleValue(values: string[], value: string): string[] {
-  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+  return values.includes(value)
+    ? values.filter((item) => item !== value)
+    : [...values, value];
 }
 
-export function buildBrowseSearch(search: BrowseRouteSearch): BrowseSearchState {
+export function buildBrowseSearch(
+  search: BrowseRouteSearch,
+): BrowseSearchState {
   return {
     query: search.query,
     view: search.view ?? "list",
@@ -214,7 +256,9 @@ function matchCandidates<Value extends string>(
 
   normalizedCandidates(candidates).forEach((candidate) => {
     const flags = candidate.caseSensitive ? "" : "i";
-    if (new RegExp(`\\b${escapeRegex(candidate.label)}\\b`, flags).test(nextQuery)) {
+    if (
+      new RegExp(`\\b${escapeRegex(candidate.label)}\\b`, flags).test(nextQuery)
+    ) {
       matches.push(candidate.value);
       nextQuery = removePhrase(nextQuery, candidate.label);
     }
@@ -230,14 +274,18 @@ function placeCandidates(values: string[]): IntentCandidate<string>[] {
   return values.map((value) => ({ label: value, value }));
 }
 
-function stateCandidates(stateNameByCode: Record<string, string>): IntentCandidate<string>[] {
+function stateCandidates(
+  stateNameByCode: Record<string, string>,
+): IntentCandidate<string>[] {
   return Object.entries(stateNameByCode).flatMap(([code, name]) => [
     { label: name, value: code },
     { caseSensitive: true, label: code, value: code },
   ]);
 }
 
-function issueCandidates(issueAreaLabels: Record<string, string>): IntentCandidate<string>[] {
+function issueCandidates(
+  issueAreaLabels: Record<string, string>,
+): IntentCandidate<string>[] {
   return Object.entries(issueAreaLabels).flatMap(([slug, label]) => {
     const labelTerms = label.split(/\s+/).filter((term) => term.length > 3);
     const synonyms = ISSUE_SYNONYMS[slug] ?? [];
@@ -250,22 +298,24 @@ function issueCandidates(issueAreaLabels: Record<string, string>): IntentCandida
 function entryTypeCandidates(
   labels: Partial<Record<EntryType, string>> = {},
 ): IntentCandidate<EntryType>[] {
-  return (Object.entries(ENTRY_TYPE_SYNONYMS) as [EntryType, string[]][]).flatMap(
-    ([entryType, synonyms]) =>
-      [labels[entryType], ...synonyms]
-        .filter((candidate): candidate is string => Boolean(candidate))
-        .map((candidate) => ({ label: candidate, value: entryType })),
+  return (
+    Object.entries(ENTRY_TYPE_SYNONYMS) as [EntryType, string[]][]
+  ).flatMap(([entryType, synonyms]) =>
+    [labels[entryType], ...synonyms]
+      .filter((candidate): candidate is string => Boolean(candidate))
+      .map((candidate) => ({ label: candidate, value: entryType })),
   );
 }
 
 function sourceTypeCandidates(
   labels: Partial<Record<SourceType, string>> = {},
 ): IntentCandidate<SourceType>[] {
-  return (Object.entries(SOURCE_TYPE_SYNONYMS) as [SourceType, string[]][]).flatMap(
-    ([sourceType, synonyms]) =>
-      [labels[sourceType], ...synonyms]
-        .filter((candidate): candidate is string => Boolean(candidate))
-        .map((candidate) => ({ label: candidate, value: sourceType })),
+  return (
+    Object.entries(SOURCE_TYPE_SYNONYMS) as [SourceType, string[]][]
+  ).flatMap(([sourceType, synonyms]) =>
+    [labels[sourceType], ...synonyms]
+      .filter((candidate): candidate is string => Boolean(candidate))
+      .map((candidate) => ({ label: candidate, value: sourceType })),
   );
 }
 
@@ -274,16 +324,28 @@ export function resolveBrowseSearchIntent(
   options: BrowseSearchIntentOptions,
 ): BrowseSearchIntent {
   let residualQuery = rawQuery.trim();
-  const cityMatch = matchCandidates(residualQuery, placeCandidates(options.cityNames ?? []));
+  const cityMatch = matchCandidates(
+    residualQuery,
+    placeCandidates(options.cityNames ?? []),
+  );
   residualQuery = cityMatch.query;
 
-  const regionMatch = matchCandidates(residualQuery, placeCandidates(options.regionNames ?? []));
+  const regionMatch = matchCandidates(
+    residualQuery,
+    placeCandidates(options.regionNames ?? []),
+  );
   residualQuery = regionMatch.query;
 
-  const stateMatch = matchCandidates(residualQuery, stateCandidates(options.stateNameByCode));
+  const stateMatch = matchCandidates(
+    residualQuery,
+    stateCandidates(options.stateNameByCode),
+  );
   residualQuery = stateMatch.query;
 
-  const issueMatch = matchCandidates(residualQuery, issueCandidates(options.issueAreaLabels));
+  const issueMatch = matchCandidates(
+    residualQuery,
+    issueCandidates(options.issueAreaLabels),
+  );
   residualQuery = issueMatch.query;
 
   const entryTypeMatch = matchCandidates(

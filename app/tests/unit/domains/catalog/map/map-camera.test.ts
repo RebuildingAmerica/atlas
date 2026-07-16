@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLY_TO_DURATION_MS, flyToPlace } from "@/domains/catalog/map/map-camera";
+import { FLY_TO_DURATION_MS, flyToPlace } from "@rebuildingamerica/atlas-catalog/map/map-camera";
 import { createFlyToHarness } from "../../../../helpers/catalog/map-camera-harness";
 
 describe("flyToPlace", () => {

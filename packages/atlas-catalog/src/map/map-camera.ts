@@ -1,4 +1,4 @@
-import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
+import type { SelectionAnchor } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 
 /** How long the gentle parabolic fly-to arc runs, in milliseconds. */
 export const FLY_TO_DURATION_MS = 900;
@@ -68,5 +68,11 @@ export function flyToPlace(
     map.jumpTo({ center, zoom });
     return;
   }
-  map.flyTo({ center, zoom, duration: FLY_TO_DURATION_MS, curve: FLY_TO_CURVE, essential: true });
+  map.flyTo({
+    center,
+    zoom,
+    duration: FLY_TO_DURATION_MS,
+    curve: FLY_TO_CURVE,
+    essential: true,
+  });
 }

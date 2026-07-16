@@ -1,4 +1,4 @@
-import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
+import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
 
 export interface BrowseSurfaceState {
   count: number;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summary";
+import { announceViewport, sparsityPill } from "@rebuildingamerica/atlas-catalog/map/map-summary";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
 import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 

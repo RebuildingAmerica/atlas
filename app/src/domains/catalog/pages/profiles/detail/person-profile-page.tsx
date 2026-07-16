@@ -30,7 +30,7 @@ import { WorkSection } from "@/domains/catalog/components/profiles/work-section"
 import { useConnections } from "@/domains/catalog/hooks/use-connections";
 import { useEntry } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
-import { humanize } from "@/domains/catalog/catalog";
+import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import { buildCanonicalUrl } from "@/platform/seo";
 import type { ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-client";
 

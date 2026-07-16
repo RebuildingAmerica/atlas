@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readViewport } from "@/domains/catalog/map/map-readout";
+import { readViewport } from "@rebuildingamerica/atlas-catalog/map/map-readout";
 import { makeFakeMap } from "../../../../helpers/catalog/fake-map";
 
 describe("readViewport", () => {

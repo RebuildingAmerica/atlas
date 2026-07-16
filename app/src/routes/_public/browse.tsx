@@ -4,7 +4,7 @@ import {
   browseSearchSchema,
   buildBrowseSearch,
   type BrowseRouteSearch,
-} from "@/domains/catalog/search-state";
+} from "@rebuildingamerica/atlas-catalog/search-state";
 import { api } from "@rebuildingamerica/atlas-api-client";
 import { isRecoverablePublicLoaderError } from "@/platform/routes/public-loader-errors";
 import { buildPageHead } from "@/platform/seo";

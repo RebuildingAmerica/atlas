@@ -21,8 +21,10 @@ export function sparsityPill(points: MapPoint[]): string | null {
   if (points.length === 0) {
     return null;
   }
-  const places = new Set(points.map((point) => `${point.lng},${point.lat}`)).size;
-  const groupWord = points.length === 1 ? "person or group" : "people and groups";
+  const places = new Set(points.map((point) => `${point.lng},${point.lat}`))
+    .size;
+  const groupWord =
+    points.length === 1 ? "person or group" : "people and groups";
   const placeWord = plural(places, "place");
   return `${points.length} ${groupWord} in ${places} ${placeWord}`;
 }

@@ -5,7 +5,7 @@ import {
   isClusterSelection,
   selectActor,
   selectCluster,
-} from "@/domains/catalog/map/map-selection";
+} from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
 
 describe("map-selection", () => {

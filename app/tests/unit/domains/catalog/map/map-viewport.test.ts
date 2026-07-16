@@ -6,7 +6,7 @@ import {
   boundsFromCorners,
   viewFromSearch,
   viewToSearch,
-} from "@/domains/catalog/map/map-viewport";
+} from "@rebuildingamerica/atlas-catalog/map/map-viewport";
 
 describe("map-viewport", () => {
   describe("viewFromSearch", () => {

@@ -10,7 +10,7 @@ import {
   Tags,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { humanize } from "@/domains/catalog/catalog";
+import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 

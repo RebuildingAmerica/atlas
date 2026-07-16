@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupIssueAreasByDomain } from "@/domains/catalog/taxonomy-domains";
+import { groupIssueAreasByDomain } from "@rebuildingamerica/atlas-catalog/taxonomy-domains";
 
 describe("taxonomy-domains", () => {
   it("groups known issue areas by their domain", () => {

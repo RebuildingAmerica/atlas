@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MapPage } from "@/domains/catalog/components/map/map-page";
-import { buildBrowseSearch } from "@/domains/catalog/search-state";
+import { buildBrowseSearch } from "@rebuildingamerica/atlas-catalog/search-state";
 import { loadMapPoints } from "@/domains/catalog/server/map-points";
 import { isRecoverablePublicLoaderError } from "@/platform/routes/public-loader-errors";
 import { buildPageHead } from "@/platform/seo";
-import { mapSearchSchema, type MapRouteSearch } from "@/domains/catalog/search-state";
+import {
+  mapSearchSchema,
+  type MapRouteSearch,
+} from "@rebuildingamerica/atlas-catalog/search-state";
 
 export const Route = createFileRoute("/_public/map")({
   ssr: false,

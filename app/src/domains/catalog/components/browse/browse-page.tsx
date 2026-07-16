@@ -9,7 +9,11 @@ import type { BrowseIntentChip } from "@/domains/catalog/components/browse/brows
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
 import { useEntries } from "@/domains/catalog/hooks/use-entries";
 import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
-import { ENTITY_TYPE_LABELS, SOURCE_TYPE_LABELS, humanize } from "@/domains/catalog/catalog";
+import {
+  ENTITY_TYPE_LABELS,
+  SOURCE_TYPE_LABELS,
+  humanize,
+} from "@rebuildingamerica/atlas-catalog/catalog";
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
 import {
   type BrowseFilterKey,
@@ -19,8 +23,8 @@ import {
   resolveBrowseSearchIntent,
   serializeList,
   toggleValue,
-} from "@/domains/catalog/search-state";
-import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
+} from "@rebuildingamerica/atlas-catalog/search-state";
+import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
 import type {
   Entry,
   EntryListResponse,

@@ -1,0 +1,37 @@
+{
+  "name": "@rebuildingamerica/atlas-catalog",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalog": "./src/catalog.ts",
+    "./search-state": "./src/search-state.ts",
+    "./surface-model": "./src/surface-model.ts",
+    "./taxonomy-domains": "./src/taxonomy-domains.ts",
+    "./us-map": "./src/us-map.ts",
+    "./us-state-grid": "./src/us-state-grid.ts",
+    "./map/*": "./src/map/*.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@rebuildingamerica/atlas-api-client": "workspace:*",
+    "supercluster": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/tsconfig": "workspace:*",
+    "@rebuildingamerica/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/supercluster": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

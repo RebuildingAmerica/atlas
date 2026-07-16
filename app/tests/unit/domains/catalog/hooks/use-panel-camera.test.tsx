@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, renderHook } from "@testing-library/react";
 import { PANEL_CAMERA_DURATION_MS, usePanelCamera } from "@/domains/catalog/hooks/use-panel-camera";
-import { selectActor, selectCluster } from "@/domains/catalog/map/map-selection";
+import { selectActor, selectCluster } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
 import {
   createPanelCameraControl,

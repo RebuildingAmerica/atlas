@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MapDetailPanel } from "@/domains/catalog/components/map/map-detail-panel";
-import { selectActor, selectCluster } from "@/domains/catalog/map/map-selection";
+import { selectActor, selectCluster } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import { makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
 import {
   PANEL_CLUSTER_MEMBERS,

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildUsMapStateStyles, getStateCodeFromFips } from "@/domains/catalog/us-map";
+import {
+  buildUsMapStateStyles,
+  getStateCodeFromFips,
+} from "@rebuildingamerica/atlas-catalog/us-map";
 
 describe("getStateCodeFromFips", () => {
   it("maps Census FIPS ids to Atlas state codes", () => {

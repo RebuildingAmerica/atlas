@@ -20,7 +20,10 @@ export interface ProfileRoute {
  * @param slug The actor's profile slug, or `null` when it has none.
  * @returns The profile route, or `null` when no profile page exists.
  */
-export function profileRouteFor(type: EntryType, slug: string | null): ProfileRoute | null {
+export function profileRouteFor(
+  type: EntryType,
+  slug: string | null,
+): ProfileRoute | null {
   if (slug === null) {
     return null;
   }

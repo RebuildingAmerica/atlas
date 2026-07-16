@@ -43,7 +43,10 @@ export type MapSelection = ActorSelection | ClusterSelection;
  * @param anchor The actor's rendered coordinate, so the camera frames it.
  * @returns An actor selection.
  */
-export function selectActor(point: MapPoint, anchor: SelectionAnchor): ActorSelection {
+export function selectActor(
+  point: MapPoint,
+  anchor: SelectionAnchor,
+): ActorSelection {
   return { kind: "actor", point, anchor };
 }
 
@@ -64,11 +67,15 @@ export function selectCluster(
 }
 
 /** Narrow a selection to the single-actor branch. */
-export function isActorSelection(selection: MapSelection): selection is ActorSelection {
+export function isActorSelection(
+  selection: MapSelection,
+): selection is ActorSelection {
   return selection.kind === "actor";
 }
 
 /** Narrow a selection to the cluster branch. */
-export function isClusterSelection(selection: MapSelection): selection is ClusterSelection {
+export function isClusterSelection(
+  selection: MapSelection,
+): selection is ClusterSelection {
   return selection.kind === "cluster";
 }

@@ -24,10 +24,10 @@ import {
   ATLAS_BASEMAP_BACKGROUND_TOKEN,
   atlasBasemapStyle,
 } from "@/domains/catalog/map/map-config";
-import { announceViewport, sparsityPill } from "@/domains/catalog/map/map-summary";
+import { announceViewport, sparsityPill } from "@rebuildingamerica/atlas-catalog/map/map-summary";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
-import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
-import type { MapRouteSearch } from "@/domains/catalog/search-state";
+import type { FlyToCamera } from "@rebuildingamerica/atlas-catalog/map/map-camera";
+import type { MapRouteSearch } from "@rebuildingamerica/atlas-catalog/search-state";
 import type { MapPointCollection } from "@rebuildingamerica/atlas-api-client";
 
 const MAP_NOTICE_POSITION_CLASS = "absolute top-24 right-3 sm:top-24 sm:right-4";

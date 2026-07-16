@@ -1,8 +1,8 @@
 import { type Mock, vi } from "vitest";
 import { makeBrowseSearchState } from "../../fixtures/catalog/map";
 import type { MapNavigate, useMapPage } from "@/domains/catalog/hooks/use-map-page";
-import type { MapRouteSearch } from "@/domains/catalog/search-state";
-import type { MapSelection } from "@/domains/catalog/map/map-selection";
+import type { MapRouteSearch } from "@rebuildingamerica/atlas-catalog/search-state";
+import type { MapSelection } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import type { MapBounds, MapPoint, TaxonomyResponse } from "@rebuildingamerica/atlas-api-client";
 
 /** The continental-US bounds the page hook reports until a test nulls them. */

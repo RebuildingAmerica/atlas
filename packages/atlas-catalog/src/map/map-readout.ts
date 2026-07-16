@@ -1,6 +1,6 @@
-import { boundsFromCorners } from "@/domains/catalog/map/map-viewport";
-import type { MapView } from "@/domains/catalog/map/map-viewport";
-import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
+import { boundsFromCorners } from "@rebuildingamerica/atlas-catalog/map/map-viewport";
+import type { MapView } from "@rebuildingamerica/atlas-catalog/map/map-viewport";
+import type { SelectionAnchor } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import type { MapBounds } from "@rebuildingamerica/atlas-api-client";
 
 /** A MapLibre bounds object, narrowed to the corners the readout needs. */

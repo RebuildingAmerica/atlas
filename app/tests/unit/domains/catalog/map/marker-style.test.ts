@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CIVIC_NAVY, clusterBubbleStyle, dotMarkerStyle } from "@/domains/catalog/map/marker-style";
-import { ISSUE_COLORS } from "@/domains/catalog/map/issue-colors";
+import {
+  CIVIC_NAVY,
+  clusterBubbleStyle,
+  dotMarkerStyle,
+} from "@rebuildingamerica/atlas-catalog/map/marker-style";
+import { ISSUE_COLORS } from "@rebuildingamerica/atlas-catalog/map/issue-colors";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
 
 describe("dotMarkerStyle", () => {

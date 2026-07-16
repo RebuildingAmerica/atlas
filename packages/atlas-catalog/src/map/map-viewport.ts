@@ -1,5 +1,5 @@
 import type { MapBounds } from "@rebuildingamerica/atlas-api-client";
-import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
+import type { SelectionAnchor } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 
 /** A camera position: where the map is centered and how far it is zoomed in. */
 export interface MapView {
@@ -70,7 +70,9 @@ function lngToWorldX(lng: number, zoom: number): number {
 function latToWorldY(lat: number, zoom: number): number {
   const clamped = clamp(lat, -WEB_MERCATOR_MAX_LAT, WEB_MERCATOR_MAX_LAT);
   const sin = Math.sin((clamped * Math.PI) / 180);
-  return (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * worldSize(zoom);
+  return (
+    (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * worldSize(zoom)
+  );
 }
 
 function worldXToLng(x: number, zoom: number): number {
@@ -79,7 +81,9 @@ function worldXToLng(x: number, zoom: number): number {
 
 function worldYToLat(y: number, zoom: number): number {
   const value = Math.PI - (2 * Math.PI * y) / worldSize(zoom);
-  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(value) - Math.exp(-value)));
+  return (
+    (180 / Math.PI) * Math.atan(0.5 * (Math.exp(value) - Math.exp(-value)))
+  );
 }
 
 /**
@@ -93,7 +97,11 @@ function worldYToLat(y: number, zoom: number): number {
  * @returns The camera to open the map at.
  */
 export function viewFromSearch(search: ViewportSearch): MapView {
-  if (search.z === undefined || search.lat === undefined || search.lng === undefined) {
+  if (
+    search.z === undefined ||
+    search.lat === undefined ||
+    search.lng === undefined
+  ) {
     return CONUS_VIEW;
   }
   return { center: { lng: search.lng, lat: search.lat }, zoom: search.z };
@@ -104,8 +112,14 @@ export function boundsFromView(view: MapView): MapBounds {
   const centerY = latToWorldY(view.center.lat, view.zoom);
   const west = worldXToLng(centerX - INITIAL_VIEWPORT_WIDTH_PX / 2, view.zoom);
   const east = worldXToLng(centerX + INITIAL_VIEWPORT_WIDTH_PX / 2, view.zoom);
-  const north = worldYToLat(centerY - INITIAL_VIEWPORT_HEIGHT_PX / 2, view.zoom);
-  const south = worldYToLat(centerY + INITIAL_VIEWPORT_HEIGHT_PX / 2, view.zoom);
+  const north = worldYToLat(
+    centerY - INITIAL_VIEWPORT_HEIGHT_PX / 2,
+    view.zoom,
+  );
+  const south = worldYToLat(
+    centerY + INITIAL_VIEWPORT_HEIGHT_PX / 2,
+    view.zoom,
+  );
   return boundsFromCorners(
     { lng: clamp(west, -180, 180), lat: clamp(south, -90, 90) },
     { lng: clamp(east, -180, 180), lat: clamp(north, -90, 90) },
@@ -113,7 +127,11 @@ export function boundsFromView(view: MapView): MapBounds {
 }
 
 export function boundsFromSearch(search: ViewportSearch): MapBounds {
-  if (search.z === undefined || search.lat === undefined || search.lng === undefined) {
+  if (
+    search.z === undefined ||
+    search.lat === undefined ||
+    search.lng === undefined
+  ) {
     return CONUS_BBOX_BOUNDS;
   }
   return boundsFromView(viewFromSearch(search));
@@ -148,7 +166,10 @@ export function viewToSearch(view: MapView): Required<ViewportSearch> {
  * @param b The opposite corner of the viewport.
  * @returns The normalized bounding box.
  */
-export function boundsFromCorners(a: SelectionAnchor, b: SelectionAnchor): MapBounds {
+export function boundsFromCorners(
+  a: SelectionAnchor,
+  b: SelectionAnchor,
+): MapBounds {
   return {
     minLng: Math.min(a.lng, b.lng),
     minLat: Math.min(a.lat, b.lat),

@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
-import { CONUS_VIEW } from "@/domains/catalog/map/map-viewport";
+import { CONUS_VIEW } from "@rebuildingamerica/atlas-catalog/map/map-viewport";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
 import { makeFakeMap } from "../../../../helpers/catalog/fake-map";
 import {

@@ -7,7 +7,7 @@
  * for the entry's issue areas.
  */
 import { Link } from "@tanstack/react-router";
-import { humanize } from "@/domains/catalog/catalog";
+import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 interface WorkSectionProps {

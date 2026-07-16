@@ -98,7 +98,9 @@ export const ISSUE_AREA_TO_DOMAIN: Record<string, TaxonomyDomain> = {
  * Returns a Map preserving insertion order so domains appear in the order
  * their first issue area was encountered.
  */
-export function groupIssueAreasByDomain(issueAreas: string[]): Map<TaxonomyDomain, string[]> {
+export function groupIssueAreasByDomain(
+  issueAreas: string[],
+): Map<TaxonomyDomain, string[]> {
   const groups = new Map<TaxonomyDomain, string[]>();
 
   for (const slug of issueAreas) {

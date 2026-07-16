@@ -80,7 +80,10 @@ function isClusterFeature(
  * @param feature A raw supercluster feature.
  * @returns The longitude/latitude tuple.
  */
-export function readLngLat(feature: RawClusterFeature): { lng: number; lat: number } {
+export function readLngLat(feature: RawClusterFeature): {
+  lng: number;
+  lat: number;
+} {
   const [lng, lat] = feature.geometry.coordinates;
   if (lng === undefined || lat === undefined) {
     throw new Error("Clustered feature is missing a coordinate.");
@@ -146,17 +149,18 @@ export function buildClusterIndex(points: MapPoint[]): ClusterIndex {
     radius: CLUSTER_RADIUS_PX,
     maxZoom: CLUSTER_MAX_ZOOM,
   });
-  const features: Supercluster.PointFeature<MapFeatureProperties>[] = points.map((point) => {
-    const { dLng, dLat } = jitterOffset(point.id);
-    return {
-      type: "Feature",
-      properties: { point },
-      geometry: {
-        type: "Point",
-        coordinates: [point.lng + dLng, point.lat + dLat],
-      },
-    };
-  });
+  const features: Supercluster.PointFeature<MapFeatureProperties>[] =
+    points.map((point) => {
+      const { dLng, dLat } = jitterOffset(point.id);
+      return {
+        type: "Feature",
+        properties: { point },
+        geometry: {
+          type: "Point",
+          coordinates: [point.lng + dLng, point.lat + dLat],
+        },
+      };
+    });
   index.load(features);
   return index;
 }

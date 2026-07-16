@@ -1,4 +1,4 @@
-import { humanize } from "@/domains/catalog/catalog";
+import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import type {
   BrowseIssueBrief,
   BrowsePlaceBrief,

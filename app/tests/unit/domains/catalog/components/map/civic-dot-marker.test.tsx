@@ -3,8 +3,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { CivicDotMarker } from "@/domains/catalog/components/map/civic-dot-marker";
-import { ISSUE_COLORS } from "@/domains/catalog/map/issue-colors";
-import { CIVIC_NAVY } from "@/domains/catalog/map/marker-style";
+import { ISSUE_COLORS } from "@rebuildingamerica/atlas-catalog/map/issue-colors";
+import { CIVIC_NAVY } from "@rebuildingamerica/atlas-catalog/map/marker-style";
 import { makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
 
 afterEach(cleanup);

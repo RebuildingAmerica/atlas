@@ -12,7 +12,7 @@ import {
   FEATURED_ENTRY_TYPES,
   FEATURED_SOURCE_TYPES,
   SOURCE_TYPE_LABELS,
-} from "@/domains/catalog/catalog";
+} from "@rebuildingamerica/atlas-catalog/catalog";
 import {
   ENTRY_TYPE_ICONS,
   ISSUE_FILTER_ICON,
@@ -20,7 +20,10 @@ import {
   SOURCE_TYPE_ICONS,
   TYPE_FILTER_ICON,
 } from "@/domains/catalog/components/catalog-menu-icons";
-import type { BrowseFilterKey, BrowseRouteSearch } from "@/domains/catalog/search-state";
+import type {
+  BrowseFilterKey,
+  BrowseRouteSearch,
+} from "@rebuildingamerica/atlas-catalog/search-state";
 
 interface BrowseSearchHeaderProps {
   activeCounts: { issues: number; types: number; sources: number };

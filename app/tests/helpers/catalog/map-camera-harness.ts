@@ -1,4 +1,4 @@
-import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
+import type { FlyToCamera } from "@rebuildingamerica/atlas-catalog/map/map-camera";
 
 /** A captured `flyTo` invocation from {@link flyToPlace}. */
 export interface CapturedFly {

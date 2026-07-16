@@ -26,7 +26,7 @@ vi.mock("@rebuildingamerica/atlas-api-client", () => ({
   api: mocks.api,
 }));
 
-vi.mock("@/domains/catalog/search-state", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/search-state", () => ({
   buildBrowseSearch: mocks.buildBrowseSearch,
   browseSearchSchema: mocks.browseSearchSchema,
 }));
@@ -59,7 +59,7 @@ describe("routes/_public/browse", () => {
 
   it("registers the browse search schema without opting out of SSR", async () => {
     const routeModule = await import("@/routes/_public/browse");
-    const { browseSearchSchema } = await import("@/domains/catalog/search-state");
+    const { browseSearchSchema } = await import("@rebuildingamerica/atlas-catalog/search-state");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 

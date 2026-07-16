@@ -1,4 +1,4 @@
-import { humanize } from "@/domains/catalog/catalog";
+import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import type { ClaimEvidenceInfo, Entry, Source } from "@rebuildingamerica/atlas-api-client";
 

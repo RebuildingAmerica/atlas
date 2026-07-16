@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, Info } from "lucide-react";
-import { CIVIC_NAVY, darken } from "@/domains/catalog/map/marker-style";
-import { FALLBACK_ISSUE_COLOR } from "@/domains/catalog/map/issue-colors";
+import { CIVIC_NAVY, darken } from "@rebuildingamerica/atlas-catalog/map/marker-style";
+import { FALLBACK_ISSUE_COLOR } from "@rebuildingamerica/atlas-catalog/map/issue-colors";
 
 /** One trust tier's swatch and the honest sentence describing it. */
 interface TrustRow {

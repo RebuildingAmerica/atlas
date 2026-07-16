@@ -4,15 +4,15 @@ import { ArrowRight, Network, X } from "lucide-react";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
-import { issueColor } from "@/domains/catalog/map/issue-colors";
-import { profileRouteFor } from "@/domains/catalog/map/profile-route";
+import { issueColor } from "@rebuildingamerica/atlas-catalog/map/issue-colors";
+import { profileRouteFor } from "@rebuildingamerica/atlas-catalog/map/profile-route";
 import { MapTrustLine } from "./map-trust-line";
 import {
   type ActorSelection,
   type ClusterSelection,
   type MapSelection,
   isActorSelection,
-} from "@/domains/catalog/map/map-selection";
+} from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import type { EntryType, MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** Human-readable type labels for the panel's type badge and avatar shape. */

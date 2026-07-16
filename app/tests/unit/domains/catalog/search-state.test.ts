@@ -6,7 +6,7 @@ import {
   resolveBrowseSearchIntent,
   serializeList,
   toggleValue,
-} from "@/domains/catalog/search-state";
+} from "@rebuildingamerica/atlas-catalog/search-state";
 
 describe("parseList", () => {
   it("splits comma-separated values and trims whitespace", () => {

@@ -4,7 +4,7 @@ import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-csp-worker.js?url";
 import Map from "react-map-gl/maplibre";
 import type { MapEvent, ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { LngLatBoundsLike, StyleSpecification } from "maplibre-gl";
-import type { MapView } from "@/domains/catalog/map/map-viewport";
+import type { MapView } from "@rebuildingamerica/atlas-catalog/map/map-viewport";
 
 /**
  * The continental US framing the map opens on.

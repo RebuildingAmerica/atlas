@@ -1,4 +1,4 @@
-import type { BrowseSearchState } from "@/domains/catalog/search-state";
+import type { BrowseSearchState } from "@rebuildingamerica/atlas-catalog/search-state";
 import type { MapBounds, MapPointParams } from "@rebuildingamerica/atlas-api-client";
 
 /** The continental-US bounding box used across the map tests. */

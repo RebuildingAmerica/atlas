@@ -1,4 +1,4 @@
-import type { BrowseSearchState } from "@/domains/catalog/search-state";
+import type { BrowseSearchState } from "@rebuildingamerica/atlas-catalog/search-state";
 import type {
   EntryType,
   MapBounds,
@@ -19,7 +19,10 @@ import type {
  * @param bounds The current viewport bounding box.
  * @returns The params for the `/api/entities/map` query.
  */
-export function mapPointParamsFor(search: BrowseSearchState, bounds: MapBounds): MapPointParams {
+export function mapPointParamsFor(
+  search: BrowseSearchState,
+  bounds: MapBounds,
+): MapPointParams {
   return {
     bounds,
     query: search.query ? search.query : undefined,

@@ -1,6 +1,6 @@
 import { type Mock, vi } from "vitest";
-import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
-import type { ReadableMap } from "@/domains/catalog/map/map-readout";
+import type { SelectionAnchor } from "@rebuildingamerica/atlas-catalog/map/map-selection";
+import type { ReadableMap } from "@rebuildingamerica/atlas-catalog/map/map-readout";
 
 /** A south-west / north-east corner pair, as MapLibre's bounds expose them. */
 export interface FakeBoundsConfig {

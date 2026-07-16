@@ -5,7 +5,7 @@ import {
   FEATURED_ENTRY_TYPES,
   FEATURED_SOURCE_TYPES,
   SOURCE_TYPE_LABELS,
-} from "@/domains/catalog/catalog";
+} from "@rebuildingamerica/atlas-catalog/catalog";
 import {
   ENTRY_TYPE_ICONS,
   ISSUE_FILTER_ICON,
@@ -15,7 +15,7 @@ import {
 } from "@/domains/catalog/components/catalog-menu-icons";
 import { searchActors, searchPlaces } from "@/domains/catalog/map/map-place-search";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
-import type { BrowseFilterKey } from "@/domains/catalog/search-state";
+import type { BrowseFilterKey } from "@rebuildingamerica/atlas-catalog/search-state";
 import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 import type {
   CommandBarActiveCounts,

@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MapMarkerLayer } from "@/domains/catalog/components/map/map-marker-layer";
-import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
+import type { SelectionAnchor } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 import { CONUS_BOUNDS, makePoint } from "../../../../../helpers/catalog/map-clustering-harness";
 import {

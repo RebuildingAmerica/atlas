@@ -1,6 +1,6 @@
-import { humanize } from "@/domains/catalog/catalog";
-import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
-import type { BrowseFilterKey } from "@/domains/catalog/search-state";
+import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
+import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
+import type { BrowseFilterKey } from "@rebuildingamerica/atlas-catalog/search-state";
 import type {
   Entry,
   EntryListResponse,

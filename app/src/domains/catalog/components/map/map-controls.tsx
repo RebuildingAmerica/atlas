@@ -1,7 +1,7 @@
 import { useMap } from "react-map-gl/maplibre";
 import { Minus, Plus, Locate } from "lucide-react";
-import { flyToPlace } from "@/domains/catalog/map/map-camera";
-import { CONUS_VIEW } from "@/domains/catalog/map/map-viewport";
+import { flyToPlace } from "@rebuildingamerica/atlas-catalog/map/map-camera";
+import { CONUS_VIEW } from "@rebuildingamerica/atlas-catalog/map/map-viewport";
 
 interface MapControlsProps {
   /** Cut motion for visitors who prefer it: recenter jumps instead of gliding. */

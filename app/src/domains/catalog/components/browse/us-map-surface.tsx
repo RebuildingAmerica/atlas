@@ -1,8 +1,11 @@
 import { useMemo, type KeyboardEvent } from "react";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import usAtlasStates from "us-atlas/states-10m.json";
-import { buildUsMapStateStyles, getStateCodeFromFips } from "@/domains/catalog/us-map";
-import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
+import {
+  buildUsMapStateStyles,
+  getStateCodeFromFips,
+} from "@rebuildingamerica/atlas-catalog/us-map";
+import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
 
 interface UsMapSurfaceProps {
   stateDensity: { state: string; count: number; intensity: number }[];

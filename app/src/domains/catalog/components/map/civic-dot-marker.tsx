@@ -5,8 +5,8 @@ import {
   DOT_HOVER_SCALE,
   DOT_RING_PX,
   dotMarkerStyle,
-} from "@/domains/catalog/map/marker-style";
-import type { DotShape } from "@/domains/catalog/map/marker-style";
+} from "@rebuildingamerica/atlas-catalog/map/marker-style";
+import type { DotShape } from "@rebuildingamerica/atlas-catalog/map/marker-style";
 
 /** The SVG box the dot is drawn in, leaving room for the ring and the hover lift. */
 const APPROX_LOCATION_HALO_PX = 3;

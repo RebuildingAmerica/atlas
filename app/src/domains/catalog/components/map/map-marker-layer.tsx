@@ -1,8 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { Marker } from "react-map-gl/maplibre";
 import type { MapBounds, MapPoint } from "@rebuildingamerica/atlas-api-client";
-import { buildClusterIndex, deriveMapFeatures } from "@/domains/catalog/map/map-clustering";
-import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
+import {
+  buildClusterIndex,
+  deriveMapFeatures,
+} from "@rebuildingamerica/atlas-catalog/map/map-clustering";
+import type { SelectionAnchor } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import { CivicDotMarker } from "./civic-dot-marker";
 import { ClusterBubble } from "./cluster-bubble";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStateDensity } from "@/domains/catalog/surface-model";
+import { buildStateDensity } from "@rebuildingamerica/atlas-catalog/surface-model";
 
 describe("buildStateDensity", () => {
   it("normalizes state facet counts for the atlas map surface", () => {

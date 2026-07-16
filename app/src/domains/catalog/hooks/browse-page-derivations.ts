@@ -1,7 +1,14 @@
-import { ENTITY_TYPE_LABELS, humanize, SOURCE_TYPE_LABELS } from "@/domains/catalog/catalog";
-import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
-import type { BrowseRouteSearch, BrowseFilterKey } from "@/domains/catalog/search-state";
-import { serializeList } from "@/domains/catalog/search-state";
+import {
+  ENTITY_TYPE_LABELS,
+  humanize,
+  SOURCE_TYPE_LABELS,
+} from "@rebuildingamerica/atlas-catalog/catalog";
+import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
+import type {
+  BrowseRouteSearch,
+  BrowseFilterKey,
+} from "@rebuildingamerica/atlas-catalog/search-state";
+import { serializeList } from "@rebuildingamerica/atlas-catalog/search-state";
 import type { EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
 import type {
   BrowseCollectionFunnel,

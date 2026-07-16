@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { BrowseRouteSearch } from "@/domains/catalog/search-state";
+import type { BrowseRouteSearch } from "@rebuildingamerica/atlas-catalog/search-state";
 
 interface ScopeTab {
   isActive?: boolean;

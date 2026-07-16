@@ -5,8 +5,8 @@ import {
   FEATURED_SOURCE_TYPES,
   SOURCE_TYPE_LABELS,
   humanize,
-} from "@/domains/catalog/catalog";
-import { STATE_NAME_BY_CODE, US_STATE_GRID } from "@/domains/catalog/us-state-grid";
+} from "@rebuildingamerica/atlas-catalog/catalog";
+import { STATE_NAME_BY_CODE, US_STATE_GRID } from "@rebuildingamerica/atlas-catalog/us-state-grid";
 
 describe("catalog surface data", () => {
   it("exposes human-readable labels for entry and source types", () => {

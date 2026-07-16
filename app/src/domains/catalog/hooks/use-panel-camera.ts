@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useMap } from "react-map-gl/maplibre";
-import type { MapSelection } from "@/domains/catalog/map/map-selection";
+import type { MapSelection } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 
 /** How long the camera takes to glide the selection beside the panel, in ms. */
 export const PANEL_CAMERA_DURATION_MS = 240;

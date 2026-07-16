@@ -5,7 +5,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { UsMapSurface } from "@/domains/catalog/components/browse/us-map-surface";
-import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
+import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
 
 vi.mock("react-simple-maps", () => ({
   ComposableMap: ({ children }: { children: ReactNode }) => <div>{children}</div>,

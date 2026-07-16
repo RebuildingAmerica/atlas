@@ -1,5 +1,5 @@
 import type { MapBounds, MapPoint } from "@rebuildingamerica/atlas-api-client";
-import type { RawClusterFeature } from "@/domains/catalog/map/map-clustering";
+import type { RawClusterFeature } from "@rebuildingamerica/atlas-catalog/map/map-clustering";
 
 /** A whole-CONUS viewport so a tiny fixture isn't clipped out by the bbox. */
 export const CONUS_BOUNDS: MapBounds = {

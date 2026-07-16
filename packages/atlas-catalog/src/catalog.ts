@@ -1,4 +1,7 @@
-import type { EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
+import type {
+  EntryType,
+  SourceType,
+} from "@rebuildingamerica/atlas-api-client";
 
 export const ENTITY_TYPE_LABELS: Record<EntryType, string> = {
   person: "People",

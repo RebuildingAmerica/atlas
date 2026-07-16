@@ -1,6 +1,6 @@
 import { CITY_COORDS } from "@/platform/layout/city-coords";
-import { US_STATE_GRID } from "@/domains/catalog/us-state-grid";
-import type { SelectionAnchor } from "@/domains/catalog/map/map-selection";
+import { US_STATE_GRID } from "@rebuildingamerica/atlas-catalog/us-state-grid";
+import type { SelectionAnchor } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import type { MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** How many matches each command-bar group shows before truncating. */

@@ -1,4 +1,8 @@
-import type { EntryType, MapPoint, TrustLevel } from "@rebuildingamerica/atlas-api-client";
+import type {
+  EntryType,
+  MapPoint,
+  TrustLevel,
+} from "@rebuildingamerica/atlas-api-client";
 import { FALLBACK_ISSUE_COLOR, issueColor } from "./issue-colors";
 
 /**
@@ -116,7 +120,10 @@ function shapeForType(type: EntryType): DotShape {
 }
 
 /** Resolve the trust ring (color + width) for a trust tier over a given fill. */
-function ringForTrust(level: TrustLevel, fill: string): { ringColor: string; ringWidth: number } {
+function ringForTrust(
+  level: TrustLevel,
+  fill: string,
+): { ringColor: string; ringWidth: number } {
   if (level === "subject_verified" || level === "atlas_verified") {
     return { ringColor: CIVIC_NAVY, ringWidth: DOT_RING_PX };
   }
@@ -140,10 +147,19 @@ function ringForTrust(level: TrustLevel, fill: string): { ringColor: string; rin
  */
 export function dotMarkerStyle(point: MapPoint): DotMarkerStyle {
   const primaryIssue = point.issue_areas[0];
-  const fill = primaryIssue === undefined ? FALLBACK_ISSUE_COLOR : issueColor(primaryIssue);
+  const fill =
+    primaryIssue === undefined
+      ? FALLBACK_ISSUE_COLOR
+      : issueColor(primaryIssue);
   const { ringColor, ringWidth } = ringForTrust(point.trust_level, fill);
   const opacity = point.trust_level === "unverified" ? 0.8 : 1;
-  return { fill, ringColor, ringWidth, opacity, shape: shapeForType(point.type) };
+  return {
+    fill,
+    ringColor,
+    ringWidth,
+    opacity,
+    shape: shapeForType(point.type),
+  };
 }
 
 /** The smallest and largest a count bubble is ever drawn, in pixels. */
@@ -180,7 +196,11 @@ export function abbreviateCount(count: number): string {
  * @returns The bubble's diameter, fill, and count label.
  */
 export function clusterBubbleStyle(pointCount: number): ClusterBubbleStyle {
-  const density = clamp(Math.log10(pointCount) / Math.log10(CLUSTER_DENSITY_CEILING), 0, 1);
+  const density = clamp(
+    Math.log10(pointCount) / Math.log10(CLUSTER_DENSITY_CEILING),
+    0,
+    1,
+  );
   const diameter = CLUSTER_MIN_PX + (CLUSTER_MAX_PX - CLUSTER_MIN_PX) * density;
   return {
     diameter,

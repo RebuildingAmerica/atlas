@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, MapPin } from "lucide-react";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { MapTrustLine } from "./map-trust-line";
-import { profileRouteFor } from "@/domains/catalog/map/profile-route";
+import { profileRouteFor } from "@rebuildingamerica/atlas-catalog/map/profile-route";
 import type { EntryType, MapPoint } from "@rebuildingamerica/atlas-api-client";
 
 /** Map an actor type to the two avatar shapes Atlas draws (people vs. everything else). */

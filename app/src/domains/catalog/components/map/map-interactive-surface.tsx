@@ -5,9 +5,9 @@ import { MapControls } from "@/domains/catalog/components/map/map-controls";
 import { MapMarkerLayer } from "@/domains/catalog/components/map/map-marker-layer";
 import { useMapStyle } from "@/domains/catalog/components/map/map-style-context";
 import { usePanelCamera } from "@/domains/catalog/hooks/use-panel-camera";
-import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
-import type { MapSelection } from "@/domains/catalog/map/map-selection";
-import type { MapView } from "@/domains/catalog/map/map-viewport";
+import type { FlyToCamera } from "@rebuildingamerica/atlas-catalog/map/map-camera";
+import type { MapSelection } from "@rebuildingamerica/atlas-catalog/map/map-selection";
+import type { MapView } from "@rebuildingamerica/atlas-catalog/map/map-viewport";
 import type { MapViewportEvent } from "@/domains/catalog/hooks/use-map-page";
 import type { MapBounds, MapPoint } from "@rebuildingamerica/atlas-api-client";
 

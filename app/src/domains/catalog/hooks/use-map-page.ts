@@ -1,23 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMapPoints } from "@/domains/catalog/hooks/use-map-points";
-import { flyToPlace } from "@/domains/catalog/map/map-camera";
-import { mapPointParamsFor } from "@/domains/catalog/map/map-filters";
-import { readViewport } from "@/domains/catalog/map/map-readout";
-import type { FlyToCamera } from "@/domains/catalog/map/map-camera";
-import type { ReadableMap } from "@/domains/catalog/map/map-readout";
+import { flyToPlace } from "@rebuildingamerica/atlas-catalog/map/map-camera";
+import { mapPointParamsFor } from "@rebuildingamerica/atlas-catalog/map/map-filters";
+import { readViewport } from "@rebuildingamerica/atlas-catalog/map/map-readout";
+import type { FlyToCamera } from "@rebuildingamerica/atlas-catalog/map/map-camera";
+import type { ReadableMap } from "@rebuildingamerica/atlas-catalog/map/map-readout";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
 import {
   type MapSelection,
   type SelectionAnchor,
   selectActor,
   selectCluster,
-} from "@/domains/catalog/map/map-selection";
+} from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import {
   CONUS_VIEW,
   boundsFromSearch,
   viewFromSearch,
   viewToSearch,
-} from "@/domains/catalog/map/map-viewport";
+} from "@rebuildingamerica/atlas-catalog/map/map-viewport";
 import {
   type BrowseFilterKey,
   type MapRouteSearch,
@@ -25,7 +25,7 @@ import {
   hasActiveBrowseSearch,
   serializeList,
   toggleValue,
-} from "@/domains/catalog/search-state";
+} from "@rebuildingamerica/atlas-catalog/search-state";
 import type { MapBounds, MapPoint, MapPointCollection } from "@rebuildingamerica/atlas-api-client";
 
 /** The zoom the camera settles at after flying to a searched city. */

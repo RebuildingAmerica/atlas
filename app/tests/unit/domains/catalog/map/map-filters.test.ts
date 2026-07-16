@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapPointParamsFor } from "@/domains/catalog/map/map-filters";
+import { mapPointParamsFor } from "@rebuildingamerica/atlas-catalog/map/map-filters";
 import { CONUS_BOUNDS, makeBrowseSearchState } from "../../../../fixtures/catalog/map";
 
 describe("mapPointParamsFor", () => {

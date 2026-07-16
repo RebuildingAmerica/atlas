@@ -1,6 +1,6 @@
 import { Compass, MapPin, Tags, Users } from "lucide-react";
-import { ENTITY_TYPE_LABELS } from "@/domains/catalog/catalog";
-import { STATE_NAME_BY_CODE } from "@/domains/catalog/us-state-grid";
+import { ENTITY_TYPE_LABELS } from "@rebuildingamerica/atlas-catalog/catalog";
+import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
 import type { EntryType } from "@rebuildingamerica/atlas-api-client";
 import type { BrowseSurfaceState } from "./browse-surfaces";
 
