@@ -34,6 +34,19 @@ test("app remains in the standard test graph", () => {
   );
 });
 
+test("behavior packages participate in the native test graph", () => {
+  const graph = dryRun("test");
+  const taskIds = new Set(graph.tasks.map((task) => task.taskId));
+
+  for (const taskId of [
+    "@rebuildingamerica/atlas-ui#test",
+    "@rebuildingamerica/atlas-catalog#test",
+    "@rebuildingamerica/atlas-access#test",
+  ]) {
+    assert.equal(taskIds.has(taskId), true, `${taskId} must be runnable through turbo run test`);
+  }
+});
+
 test("app test has no artificial dependency build chain", () => {
   const graph = dryRun("@rebuildingamerica/atlas-app#test");
   const appTest = graph.tasks.find(
