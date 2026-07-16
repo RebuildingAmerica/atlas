@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
-import { buildAtlasAuthJwtAudiences } from "./src/domains/access/oauth-resource-config";
+import { buildAtlasAuthJwtAudiences } from "@rebuildingamerica/atlas-access/oauth-resource-config";
 import {
   resolveAtprotoOAuthHarnessMode,
   resolveAtprotoPdsHarnessMode,
