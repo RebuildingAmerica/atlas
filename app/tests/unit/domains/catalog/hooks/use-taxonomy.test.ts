@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { taxonomyQueryOptions, useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import {
+  taxonomyQueryOptions,
+  useTaxonomy,
+} from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 
 const mocks = vi.hoisted(() => ({
   queryOptions: vi.fn((options: unknown) => options),

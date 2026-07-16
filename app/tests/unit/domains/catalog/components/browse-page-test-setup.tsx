@@ -97,11 +97,11 @@ vi.mock("@/domains/catalog/components/entries/entry-list", () => ({
   ),
 }));
 
-vi.mock("@/domains/catalog/hooks/use-entries", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
   useEntries: mocks.useEntries,
 }));
 
-vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
   useTaxonomy: mocks.useTaxonomy,
 }));
 

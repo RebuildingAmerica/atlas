@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { taxonomyQueryOptions } from "@/domains/catalog/hooks/use-taxonomy";
+import { taxonomyQueryOptions } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import { DiscoveryPage } from "@/domains/discovery";
 import { discoveryRunsQueryOptions } from "@/domains/discovery/hooks/use-discovery";
 import type { DiscoveryResearchGoal } from "@rebuildingamerica/atlas-api-client";

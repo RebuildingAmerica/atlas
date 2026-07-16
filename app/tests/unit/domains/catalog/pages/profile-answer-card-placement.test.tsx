@@ -22,7 +22,7 @@ vi.mock("@/domains/access", () => ({
   useAtlasSession: () => ({ data: null }),
 }));
 
-vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
   useTaxonomy: () => ({
     data: {
       Housing: [
@@ -35,11 +35,11 @@ vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
   }),
 }));
 
-vi.mock("@/domains/catalog/hooks/use-connections", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-connections", () => ({
   useConnections: () => ({ data: undefined, isLoading: false }),
 }));
 
-vi.mock("@/domains/catalog/hooks/use-entries", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
   useEntries: () => ({ data: { data: [] } }),
   useEntry: () => ({ data: null }),
 }));

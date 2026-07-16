@@ -16,7 +16,10 @@ interface UseEntriesOptions {
   retry?: boolean;
 }
 
-export function useEntries(params?: EntryFilterParams, options?: UseEntriesOptions) {
+export function useEntries(
+  params?: EntryFilterParams,
+  options?: UseEntriesOptions,
+) {
   return useQuery<EntryListResponse>({
     queryKey: ["entries", params],
     queryFn: () => api.entries.list(params),
@@ -43,7 +46,11 @@ export function useEntry(id: string, options?: UseEntryOptions) {
   });
 }
 
-export function useEntryBySlug(type: EntrySlugScope, slug: string, options?: UseEntryOptions) {
+export function useEntryBySlug(
+  type: EntrySlugScope,
+  slug: string,
+  options?: UseEntryOptions,
+) {
   return useQuery<Entry>({
     queryKey: ["entries", "by-slug", type, slug],
     queryFn: () => api.entries.getBySlug(type, slug),

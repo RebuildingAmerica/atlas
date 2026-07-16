@@ -51,7 +51,7 @@ vi.mock("@/domains/discovery/hooks/use-discovery", () => ({
   useStartDiscovery: mocks.useStartDiscovery,
 }));
 
-vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
   useTaxonomy: mocks.useTaxonomy,
 }));
 

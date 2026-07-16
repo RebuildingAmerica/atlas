@@ -14,3 +14,6 @@ export * from "./map/map-summary";
 export * from "./map/map-viewport";
 export * from "./map/marker-style";
 export * from "./map/profile-route";
+export * from "./hooks/use-connections";
+export * from "./hooks/use-entries";
+export * from "./hooks/use-taxonomy";

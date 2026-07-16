@@ -43,7 +43,7 @@ vi.mock("@/domains/catalog/hooks/use-panel-camera", () => ({
   usePanelCamera: () => undefined,
 }));
 
-vi.mock("@/domains/catalog/hooks/use-taxonomy", async () => {
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", async () => {
   const { currentMapPageTaxonomy } =
     await import("../../../../../helpers/catalog/map-page-component-harness");
   return { useTaxonomy: () => ({ data: currentMapPageTaxonomy() }) };

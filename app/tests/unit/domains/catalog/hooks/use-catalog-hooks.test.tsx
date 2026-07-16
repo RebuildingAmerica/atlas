@@ -43,7 +43,7 @@ describe("catalog hooks", () => {
   });
 
   it("queries entry collections and individual entries", async () => {
-    const mod = await import("@/domains/catalog/hooks/use-entries");
+    const mod = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     mod.useEntries({ query: "housing" });
     mod.useEntry("entry_123");
     await Promise.resolve();
@@ -53,7 +53,7 @@ describe("catalog hooks", () => {
   });
 
   it("queries taxonomy data when invoked", async () => {
-    const mod = await import("@/domains/catalog/hooks/use-taxonomy");
+    const mod = await import("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy");
     mod.useTaxonomy();
     await Promise.resolve();
     expect(mocks.api.taxonomy.list).toHaveBeenCalledTimes(1);

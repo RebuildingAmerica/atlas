@@ -16,7 +16,7 @@ vi.mock("@/domains/discovery/hooks/use-discovery", () => ({
   discoveryRunsQueryOptions: vi.fn(() => ({ queryKey: ["discovery", "runs"] })),
 }));
 
-vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
   taxonomyQueryOptions: vi.fn(() => ({ queryKey: ["taxonomy"] })),
 }));
 
@@ -71,7 +71,7 @@ describe("routes/_workspace/discovery", () => {
 
   it("preloads discovery runs and taxonomy into the router query cache", async () => {
     const discoveryHooks = await import("@/domains/discovery/hooks/use-discovery");
-    const taxonomyHooks = await import("@/domains/catalog/hooks/use-taxonomy");
+    const taxonomyHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy");
     const ensureQueryData = vi
       .fn()
       .mockResolvedValueOnce({ items: [], total: 0 })

@@ -33,7 +33,7 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
 }));
 
-vi.mock("@/domains/catalog/hooks/use-entries", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
   useEntries: mocks.useEntries,
 }));
 

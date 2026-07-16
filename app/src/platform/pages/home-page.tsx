@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import { useEntries } from "@/domains/catalog/hooks/use-entries";
+import { useEntries } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
 import { HomePageShell } from "./home-page-sections";
 
 export function HomePage() {

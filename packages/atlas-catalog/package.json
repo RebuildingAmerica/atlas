@@ -11,6 +11,7 @@
     "./taxonomy-domains": "./src/taxonomy-domains.ts",
     "./us-map": "./src/us-map.ts",
     "./us-state-grid": "./src/us-state-grid.ts",
+    "./hooks/*": "./src/hooks/*.ts",
     "./map/*": "./src/map/*.ts"
   },
   "scripts": {
@@ -20,6 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tanstack/react-query": "catalog:",
     "@rebuildingamerica/atlas-api-client": "workspace:*",
     "supercluster": "catalog:",
     "zod": "catalog:"

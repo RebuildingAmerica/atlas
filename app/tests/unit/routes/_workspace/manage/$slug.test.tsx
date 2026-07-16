@@ -27,7 +27,7 @@ vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: vi.fn(),
 }));
 
-vi.mock("@/domains/catalog/hooks/use-entries", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
   useEntryBySlug: vi.fn(),
 }));
 
@@ -105,7 +105,7 @@ describe("routes/_workspace/manage/$slug", () => {
   }
 
   it("shows the loading copy while neither person nor org query has data", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -116,7 +116,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("shows the not-yours-to-manage copy when claim status is not verified", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
       data: {
         id: "e1",
@@ -141,7 +141,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("renders the verified-management form with sources and saves trimmed input", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const saveMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(claims.useManageProfile).mockReturnValue({
@@ -214,7 +214,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("toggles a source off when re-clicked and clears bio/photo when emptied", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const saveMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(claims.useManageProfile).mockReturnValue({
@@ -262,7 +262,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("updates the bio, photo URL, and preferred contact channel through controlled inputs", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const saveMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(claims.useManageProfile).mockReturnValue({
@@ -307,7 +307,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("uses the generic save-error fallback when the rejection is not an Error", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(claims.useManageProfile).mockReturnValue({
       mutateAsync: vi.fn().mockRejectedValue("string-fail"),
@@ -337,7 +337,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("renders the saving label while the manage mutation is pending", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(claims.useManageProfile).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
@@ -363,7 +363,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("surfaces an error message when the save mutation rejects", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(claims.useManageProfile).mockReturnValue({
       mutateAsync: vi.fn().mockRejectedValue(new Error("nope")),
@@ -395,7 +395,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("attaches a verified controlled identity", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
     const attach = vi.fn().mockResolvedValue(undefined);
@@ -441,7 +441,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("confirms and removes a public identity without disconnecting it", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     const detach = vi.fn().mockResolvedValue(undefined);
@@ -477,7 +477,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("blocks overlapping public identity mutations", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
     vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
@@ -533,7 +533,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("requires confirmation before replacing the public identity", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
     const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
@@ -585,7 +585,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("keeps the existing public identity when replacement is cancelled", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
     const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
@@ -636,7 +636,7 @@ describe("routes/_workspace/manage/$slug", () => {
     [new Error("Identity is already attached."), "Identity is already attached."],
     ["rejected", "Could not update public identity."],
   ])("surfaces attachment failures without changing the public identity", async (failure, copy) => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
     vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
@@ -679,7 +679,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("keeps the public identity when removal is cancelled", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     const detach = vi.fn();
@@ -717,7 +717,7 @@ describe("routes/_workspace/manage/$slug", () => {
   ])(
     "surfaces removal failures without disconnecting the account identity",
     async (failure, copy) => {
-      const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+      const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
       const claims = await import("@/domains/catalog/hooks/use-claims");
       vi.mocked(claims.useDetachProfileAtprotoIdentity).mockReturnValue({
         mutateAsync: vi.fn().mockRejectedValue(failure),
@@ -746,7 +746,7 @@ describe("routes/_workspace/manage/$slug", () => {
   );
 
   it("starts account OAuth with a return to the managed profile", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
       data: {
         id: "e1",
@@ -769,7 +769,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("ignores identity actions when their required selection is empty", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const attach = vi.fn();
     vi.mocked(claims.useAttachProfileAtprotoIdentity).mockReturnValue({
@@ -796,7 +796,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it("excludes disconnected and attention-required identities", async () => {
-    const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const identities = await import("@/domains/access/atproto-identities");
     vi.mocked(identities.useAtprotoIdentities).mockReturnValue({
       data: [

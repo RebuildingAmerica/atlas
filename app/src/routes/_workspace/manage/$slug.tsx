@@ -8,7 +8,7 @@ import {
   useDetachProfileAtprotoIdentity,
   useManageProfile,
 } from "@/domains/catalog/hooks/use-claims";
-import { useEntryBySlug } from "@/domains/catalog/hooks/use-entries";
+import { useEntryBySlug } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";

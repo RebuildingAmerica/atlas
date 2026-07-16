@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useEntries, useEntry, useEntryBySlug } from "@/domains/catalog/hooks/use-entries";
+import {
+  useEntries,
+  useEntry,
+  useEntryBySlug,
+} from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
 
 const mocks = vi.hoisted(() => ({
   useQuery: vi.fn(),

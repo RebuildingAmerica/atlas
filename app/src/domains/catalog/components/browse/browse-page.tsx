@@ -7,8 +7,8 @@ import {
 } from "@/domains/catalog/components/browse/browse-editorial-sections";
 import type { BrowseIntentChip } from "@/domains/catalog/components/browse/browse-intent-chips";
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
-import { useEntries } from "@/domains/catalog/hooks/use-entries";
-import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import { useEntries } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
+import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import {
   ENTITY_TYPE_LABELS,
   SOURCE_TYPE_LABELS,

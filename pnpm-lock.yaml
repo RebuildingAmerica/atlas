@@ -557,6 +557,9 @@ importers:
       '@rebuildingamerica/atlas-api-client':
         specifier: workspace:*
         version: link:../atlas-api-client
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.101.2(react@19.2.7)
       supercluster:
         specifier: 'catalog:'
         version: 8.0.1

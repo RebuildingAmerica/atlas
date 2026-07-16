@@ -14,7 +14,10 @@ interface UseConnectionsOptions {
 }
 
 /** Fetch and cache the ranked connection network for a profile. */
-export function useConnections(entryId: string, options?: UseConnectionsOptions) {
+export function useConnections(
+  entryId: string,
+  options?: UseConnectionsOptions,
+) {
   return useQuery<ConnectionNetwork>({
     queryKey: ["connections", entryId],
     queryFn: () => api.entries.getConnections(entryId),

@@ -7,7 +7,7 @@ import {
   buildCoverageTargetCreateInputFromRun,
   topLeadEntryIdsFromRun,
 } from "@/domains/discovery/coverage-target-request";
-import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import {
   useDiscoveryJobQueue,
   useDiscoveryRuns,

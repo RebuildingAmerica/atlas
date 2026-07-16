@@ -9,8 +9,8 @@ import {
   ProfilesShelf,
   type IssueLandscapeGroup,
 } from "@/domains/catalog/components/profiles/profile-showcase";
-import { useEntries } from "@/domains/catalog/hooks/use-entries";
-import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import { useEntries } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
+import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import {
   lockedEntryTypesForScope,
   type ProfileBrowseScope,

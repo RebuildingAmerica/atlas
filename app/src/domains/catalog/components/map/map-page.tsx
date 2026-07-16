@@ -19,7 +19,7 @@ import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
 import { useMapReveal } from "@/domains/catalog/hooks/use-map-reveal";
 import { useDeviceColorScheme } from "@/domains/catalog/hooks/use-device-color-scheme";
 import { useReducedMotion } from "@/domains/catalog/hooks/use-reduced-motion";
-import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import {
   ATLAS_BASEMAP_BACKGROUND_TOKEN,
   atlasBasemapStyle,

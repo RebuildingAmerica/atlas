@@ -16,9 +16,9 @@ import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stat
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
 import { ProfileSection } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { useConnections } from "@/domains/catalog/hooks/use-connections";
-import { useEntries } from "@/domains/catalog/hooks/use-entries";
-import { useTaxonomy } from "@/domains/catalog/hooks/use-taxonomy";
+import { useConnections } from "@rebuildingamerica/atlas-catalog/hooks/use-connections";
+import { useEntries } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
+import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import { buildCanonicalUrl } from "@/platform/seo";
 import type { ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-client";
 

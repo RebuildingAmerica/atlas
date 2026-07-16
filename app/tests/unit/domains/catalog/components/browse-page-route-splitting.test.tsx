@@ -36,11 +36,11 @@ vi.mock("@/domains/catalog/components/entries/entry-list", () => ({
   EntryList: ({ total }: { total?: number }) => <div>Entry list total: {total ?? 0}</div>,
 }));
 
-vi.mock("@/domains/catalog/hooks/use-entries", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
   useEntries: mocks.useEntries,
 }));
 
-vi.mock("@/domains/catalog/hooks/use-taxonomy", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
   useTaxonomy: mocks.useTaxonomy,
 }));
 
