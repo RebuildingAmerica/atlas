@@ -19,7 +19,7 @@
         "!.venv/**",
         "!htmlcov/**",
         "!node_modules/**",
-        "!.turbo/**",
+        "!**/.turbo/**",
         "!atlas.db",
         "!$TURBO_ROOT$/libs/shared/**/*.pyc",
         "!$TURBO_ROOT$/libs/shared/**/__pycache__/**",

@@ -48,7 +48,7 @@
         "!.venv/**",
         "!htmlcov/**",
         "!node_modules/**",
-        "!.turbo/**",
+        "!**/.turbo/**",
         "!atlas.db",
         "!openapi/**",
         "!$TURBO_ROOT$/libs/**/*.pyc",

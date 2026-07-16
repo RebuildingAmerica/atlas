@@ -28,7 +28,15 @@ workspace that exposes a runnable task owns that task's configuration:
 | `turbo.json`                                           | Root-only `//#` operations, strict mode, and global dependencies |
 | `api/turbo.json`, `app/turbo.json`, `scout/turbo.json` | Service task inputs, outputs, and runtime environment            |
 | `libs/*/turbo.json`                                    | Python library test boundaries                                   |
-| `packages/*/turbo.json`                                | Build, lint, typecheck, and test boundaries for shared packages  |
+| `packages/atlas-api-client/turbo.json`                 | Generated API client and its checks                               |
+| `packages/atlas-ui/turbo.json`                         | Shared presentation behavior and checks                           |
+| `packages/atlas-catalog/turbo.json`                    | Catalog, discovery, and firehose behavior and checks              |
+| `packages/atlas-access/turbo.json`                     | Access, identity, and workspace policy checks                     |
+| `packages/entity-widgets/turbo.json`                   | Consumer widget checks                                            |
+| `packages/entity-widgets-mcp/turbo.json`               | MCP widget adapter checks                                         |
+| `packages/eslint-config/turbo.json`                    | Config package (no runnable tasks)                                |
+| `packages/vitest-config/turbo.json`                    | Shared Vitest-config typecheck and lint                           |
+| `packages/tsconfig/turbo.json`                         | Config package (no runnable tasks)                                |
 
 Turbo tasks are declared only by packages that have the matching package script.
 This keeps `turbo run test` free of placeholder tasks and lets the graph cache
@@ -118,8 +126,8 @@ excluded (dev servers, E2E tests). The cache key includes:
 
 ### Local Cache
 
-The local cache lives in `node_modules/.cache/turbo`. It works out of the box
-with no setup.
+The local fallback cache lives in `.turbo/cache`. It works out of the box with
+no setup.
 
 To clear it:
 
@@ -130,7 +138,7 @@ pnpm turbo run build --force  # Ignore cache for this run
 Or delete the cache directory:
 
 ```bash
-rm -rf node_modules/.cache/turbo
+rm -rf .turbo/cache
 ```
 
 ### Remote Cache
@@ -146,6 +154,10 @@ pnpm turbo link
 ```
 
 Once linked, cached results are shared across all team members and CI runs.
+GitHub Actions uses `TURBO_TOKEN` and `TURBO_TEAM` as the primary remote-cache
+connection and restores `.turbo/cache` only as a secondary fallback. Run
+`pnpm bootstrap --ci-cache --doctor` to inspect local authentication without
+creating tokens or changing CI credentials.
 
 ### GitHub Actions Cost Control
 
@@ -255,8 +267,8 @@ pnpm turbo run typecheck --summarize
 ## Adding a New Task
 
 1. Add the script to the relevant `package.json`
-2. Add the task definition to `turbo.json` (root tasks) or `app/turbo.json` (app
-   tasks)
+2. Add the task definition to that runnable package's `turbo.json`. Reserve the
+   root config for `//#` root-owned tasks only.
 3. Specify `inputs` if the task only reads a subset of files
 4. Specify `outputs` if the task produces files (e.g., `dist/**`, `coverage/**`)
 5. Specify `env` if the task reads environment variables (required by strict env

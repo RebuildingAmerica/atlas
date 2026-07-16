@@ -23,7 +23,7 @@
         "!.venv/**",
         "!htmlcov/**",
         "!node_modules/**",
-        "!.turbo/**",
+        "!**/.turbo/**",
         "!atlas.db",
         "!$TURBO_ROOT$/libs/**/*.pyc",
         "!$TURBO_ROOT$/libs/**/__pycache__/**",

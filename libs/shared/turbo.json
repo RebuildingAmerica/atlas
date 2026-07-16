@@ -17,7 +17,7 @@
         "!.venv/**",
         "!htmlcov/**",
         "!node_modules/**",
-        "!.turbo/**",
+        "!**/.turbo/**",
         "!atlas.db"
       ]
     }
