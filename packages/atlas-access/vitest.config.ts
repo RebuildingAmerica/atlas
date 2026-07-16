@@ -1,5 +1,5 @@
-import { nodeVitestConfig } from "@rebuildingamerica/vitest-config/node";
+import { reactVitestConfig } from "@rebuildingamerica/vitest-config/react";
 
-export default nodeVitestConfig({
-  test: { include: ["src/**/*.test.ts"] },
+export default reactVitestConfig({
+  test: { include: ["src/**/*.test.ts", "src/**/*.test.tsx"] },
 });

@@ -498,6 +498,16 @@ importers:
         version: 4.2.667(@radix-ui/react-popover@1.1.15(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@types/node@26.1.0)(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(typescript@6.0.3)
 
   packages/atlas-access:
+    dependencies:
+      '@headlessui/react':
+        specifier: 'catalog:'
+        version: 2.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@rebuildingamerica/atlas-ui':
+        specifier: workspace:*
+        version: link:../atlas-ui
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.23.0(react@19.2.7)
     devDependencies:
       '@rebuildingamerica/eslint-config':
         specifier: workspace:*
@@ -508,12 +518,30 @@ importers:
       '@rebuildingamerica/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@testing-library/react':
+        specifier: 'catalog:'
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.0
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.17)
       eslint:
         specifier: 'catalog:'
         version: 10.6.0(jiti@2.7.0)
+      jsdom:
+        specifier: 'catalog:'
+        version: 29.1.1(@noble/hashes@2.2.0)
+      react:
+        specifier: 19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: 19.2.7
+        version: 19.2.7(react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

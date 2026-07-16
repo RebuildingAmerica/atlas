@@ -28,7 +28,7 @@ import {
   parsePricingIntent,
   resolveSignInHeadingCopy,
 } from "./sign-in-page-helpers";
-import { SignInEmailForm } from "./components/sign-in-email-form";
+import { SignInEmailForm } from "@rebuildingamerica/atlas-access/components/sign-in-email-form";
 import { SignInPasskeyButton } from "./components/sign-in-passkey-button";
 import { SignInStatusBlocks } from "./components/sign-in-status-blocks";
 

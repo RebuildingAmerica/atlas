@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    "./*": "./src/*.ts",
+    "./components/sign-in-email-form": "./src/components/sign-in-email-form.tsx"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -13,12 +14,27 @@
     "lint": "eslint src --max-warnings 0",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@headlessui/react": "catalog:",
+    "@rebuildingamerica/atlas-ui": "workspace:*",
+    "lucide-react": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
   "devDependencies": {
     "@rebuildingamerica/eslint-config": "workspace:*",
     "@rebuildingamerica/tsconfig": "workspace:*",
     "@rebuildingamerica/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "eslint": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

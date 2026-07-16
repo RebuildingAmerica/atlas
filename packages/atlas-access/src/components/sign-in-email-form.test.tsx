@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { SignInEmailForm } from "@/domains/access/pages/auth/components/sign-in-email-form";
+import { SignInEmailForm } from "./sign-in-email-form";
 
 vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
