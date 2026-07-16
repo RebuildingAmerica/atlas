@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 
-interface SignInEmailFormProps {
+export interface SignInEmailFormProps {
   domainSuggestion: string | null;
   email: string;
   isEmailFallbackVisible: boolean;

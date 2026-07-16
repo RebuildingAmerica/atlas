@@ -12,3 +12,5 @@ export * from "./redirect-paths";
 export * from "./saml-metadata-parser";
 export * from "./sso-error-messages";
 export * from "./sso-form-helpers";
+export { SignInEmailForm } from "./components/sign-in-email-form";
+export type { SignInEmailFormProps } from "./components/sign-in-email-form";
