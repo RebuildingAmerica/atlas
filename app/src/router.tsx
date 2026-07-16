@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { ConfirmDialogProvider } from "./platform/ui/confirm-dialog";
-import { ToastProvider } from "./platform/ui/toast";
+import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
+import { ToastProvider } from "@rebuildingamerica/atlas-ui/ui/toast";
 import { routeTree } from "./routeTree.gen";
 
 /**
