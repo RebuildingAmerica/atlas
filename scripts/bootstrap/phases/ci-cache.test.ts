@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   ciCacheSecretStatusAfterMintFailure,
+  formatTurboRemoteCacheDiagnostic,
   formatTurboTeamPromptMessage,
   formatVercelTokenMintFailureFollowUp,
 } from "./ci-cache.js";
@@ -26,5 +27,22 @@ void describe("CI cache prompt guidance", () => {
     assert.match(message, /Existing TURBO_TOKEN was kept/);
     assert.match(message, /Create a Vercel token named atlas-ci-remote-cache/);
     assert.match(message, /gh secret set TURBO_TOKEN/);
+  });
+
+  void it("recognizes an authenticated local Turbo remote cache", () => {
+    assert.match(
+      formatTurboRemoteCacheDiagnostic("Remote caching enabled"),
+      /authenticated and enabled locally/,
+    );
+  });
+
+  void it("gives non-mutating local setup steps when Turbo is unauthenticated", () => {
+    const diagnostic = formatTurboRemoteCacheDiagnostic(
+      "Remote caching disabled",
+    );
+
+    assert.match(diagnostic, /pnpm turbo login/);
+    assert.match(diagnostic, /pnpm turbo link/);
+    assert.match(diagnostic, /does not create or rotate CI credentials/);
   });
 });

@@ -59,11 +59,30 @@ export function formatVercelTokenMintFailureFollowUp(
   ].join("\n");
 }
 
+/**
+ * Turn Turbo's local status output into actionable, non-mutating cache setup guidance.
+ */
+export function formatTurboRemoteCacheDiagnostic(turboInfo: string): string {
+  if (/remote caching enabled/i.test(turboInfo)) {
+    return "Turbo remote cache: authenticated and enabled locally.";
+  }
+
+  return [
+    "Turbo remote cache: not authenticated locally.",
+    "Run `pnpm turbo login`, then `pnpm turbo link` to connect this checkout.",
+    "This only configures your local Turbo client; it does not create or rotate CI credentials.",
+  ].join("\n");
+}
+
 export async function runCiCachePhase(
   projectRoot: string,
   doctorMode: boolean,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
+
+  if (doctorMode) {
+    return reportLocalTurboCacheStatus();
+  }
 
   if (!runCommand("command -v gh").ok) {
     log.warn(
@@ -112,10 +131,6 @@ export async function runCiCachePhase(
 
   const appDir = `${projectRoot}/app`;
   const lookup = fetchTeamLookup(appDir);
-
-  if (doctorMode) {
-    return reportStatus(repo.nameWithOwner, lookup.linked?.slug);
-  }
 
   const proceed = await promptConfirm(
     [
@@ -167,6 +182,26 @@ export async function runCiCachePhase(
   return { success: true, followUpItems };
 }
 
+function reportLocalTurboCacheStatus(): PhaseResult {
+  const result = runCommand("pnpm exec turbo info");
+  const diagnostic = formatTurboRemoteCacheDiagnostic(commandOutput(result));
+  const remoteCachingEnabled = diagnostic.includes(
+    "authenticated and enabled locally",
+  );
+
+  diagnostic.split("\n").forEach((line) => {
+    logSubline(line);
+  });
+  return {
+    success: remoteCachingEnabled,
+    followUpItems: remoteCachingEnabled
+      ? []
+      : [
+          "Run `pnpm turbo login`, then `pnpm turbo link` to enable local remote caching",
+        ],
+  };
+}
+
 // ── Detection ────────────────────────────────────────────────────────────────
 
 function detectRepo(): RepoIdentity | undefined {
@@ -199,31 +234,6 @@ function listVercelTeams(): VercelTeam[] {
   } catch {
     return [];
   }
-}
-
-function reportStatus(
-  nameWithOwner: string,
-  teamSlug: string | undefined,
-): PhaseResult {
-  const secretSet = repoHasSecret(nameWithOwner, SECRET_NAME);
-  const variableSet = repoHasVariable(nameWithOwner, VAR_NAME);
-
-  logSubline(
-    `${SECRET_NAME}: ${secretSet ? pc.green("set") : pc.yellow("missing")}`,
-  );
-  logSubline(
-    `${VAR_NAME}: ${variableSet ? pc.green("set") : pc.yellow("missing")}${
-      teamSlug ? pc.dim(` (detected: ${teamSlug})`) : ""
-    }`,
-  );
-
-  return {
-    success: secretSet && variableSet,
-    followUpItems:
-      secretSet && variableSet
-        ? []
-        : ["Run `pnpm bootstrap --ci-cache` to configure Vercel Remote Cache"],
-  };
 }
 
 // ── Secret ───────────────────────────────────────────────────────────────────
