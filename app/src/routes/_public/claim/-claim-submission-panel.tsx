@@ -1,8 +1,8 @@
 import { Contact, Globe, LockKeyhole, UserCheck } from "lucide-react";
 import type { AtprotoIdentityResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas";
-import { Button } from "@/platform/ui/button";
-import { Select } from "@/platform/ui/select";
-import { SurfaceSection } from "@/platform/ui/surface-section";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
+import { SurfaceSection } from "@rebuildingamerica/atlas-ui/ui/surface-section";
 import { ClaimVisibilitySummary, FieldBlock } from "./-claim-form-fields";
 import { ClaimAtprotoIdentityField } from "./-claim-atproto-identity-field";
 

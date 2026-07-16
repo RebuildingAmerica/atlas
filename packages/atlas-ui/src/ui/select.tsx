@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../utils";
 
 interface Option {
   value: string;
@@ -44,7 +44,10 @@ export function Select({
   return (
     <div className="space-y-1">
       {label && (
-        <label htmlFor={selectId} className="type-label-large text-ink-soft block">
+        <label
+          htmlFor={selectId}
+          className="type-label-large text-ink-soft block"
+        >
           {label}
           {required && <span className="text-on-error-container">*</span>}
         </label>
@@ -86,7 +89,11 @@ export function Select({
         </span>
       </div>
       {error && (
-        <span id={errorId} role="alert" className="type-body-small text-on-error-container">
+        <span
+          id={errorId}
+          role="alert"
+          className="type-body-small text-on-error-container"
+        >
           {error}
         </span>
       )}

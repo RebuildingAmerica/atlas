@@ -22,7 +22,7 @@ vi.mock("@/domains/access", () => ({
   useAtlasSession: vi.fn(),
 }));
 
-vi.mock("@/platform/ui/badge", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/badge", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 

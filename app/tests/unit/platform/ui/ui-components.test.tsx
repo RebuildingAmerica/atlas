@@ -3,13 +3,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { cn } from "@/lib/utils";
-import { PageLayout } from "@/platform/layout/page-layout";
-import { Badge } from "@/platform/ui/badge";
-import { Button } from "@/platform/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/platform/ui/card";
-import { Input } from "@/platform/ui/input";
-import { Select } from "@/platform/ui/select";
-import { Spinner } from "@/platform/ui/spinner";
+import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@rebuildingamerica/atlas-ui/ui/card";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
+import { Spinner } from "@rebuildingamerica/atlas-ui/ui/spinner";
 
 afterEach(() => {
   cleanup();

@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "../utils";
 
 interface SpinnerProps {
   size?: "sm" | "md" | "lg";
@@ -14,7 +14,12 @@ export function Spinner({ size = "md", className }: SpinnerProps) {
 
   return (
     <div className={cn("flex items-center justify-center", className)}>
-      <div className={cn("border-primary animate-spin rounded-full border-b-2", sizes[size])} />
+      <div
+        className={cn(
+          "border-primary animate-spin rounded-full border-b-2",
+          sizes[size],
+        )}
+      />
     </div>
   );
 }

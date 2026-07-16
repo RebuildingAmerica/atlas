@@ -1,5 +1,5 @@
 import { LogOut, RefreshCw } from "lucide-react";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 interface AccountSetupNextStepCardProps {
   isRefreshing: boolean;

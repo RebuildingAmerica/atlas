@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { Check, ExternalLink, ListPlus, MapPinned, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useAddSavedListItem, useSavedLists } from "@/domains/catalog/hooks/use-claims";
-import { Badge } from "@/platform/ui/badge";
-import { Select } from "@/platform/ui/select";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import type {
   AtlasBriefExport,
   AtlasBriefExportDiscoveryRun,

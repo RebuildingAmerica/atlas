@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 
-vi.mock("@/platform/ui/confirm-dialog", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({
     confirm: () => Promise.resolve(true),
   }),
 }));
 
-vi.mock("@/platform/ui/toast", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
   useToast: () => ({
     show: vi.fn(),
     success: vi.fn(),

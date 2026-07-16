@@ -3,7 +3,7 @@ import { ExternalLink } from "lucide-react";
 import { useWorkspaceWatchDigest } from "@/domains/workspace/hooks/use-workspace-watch-digest";
 import type { WorkspaceWatchDigestItem } from "@/domains/workspace/server/watch-digest";
 import { pluralize } from "@/lib/pluralize";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 
 export const Route = createFileRoute("/_workspace/feed")({
   component: FeedRoute,

@@ -2,8 +2,8 @@ import { AlertCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { EntryCard } from "@/domains/catalog/components/entries/entry-card";
 import type { EntryDiscoveryContext } from "@/domains/catalog/components/entries/entry-card";
-import { Button } from "@/platform/ui/button";
-import { Spinner } from "@/platform/ui/spinner";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Spinner } from "@rebuildingamerica/atlas-ui/ui/spinner";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export interface EmptyRecoveryAction {

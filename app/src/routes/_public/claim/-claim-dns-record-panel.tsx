@@ -1,8 +1,8 @@
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { copyToClipboard } from "@/lib/clipboard";
-import { Button } from "@/platform/ui/button";
-import { useToast } from "@/platform/ui/toast";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { useToast } from "@rebuildingamerica/atlas-ui/ui/toast";
 
 export interface DnsRecordMetadata {
   challenge_host?: string;

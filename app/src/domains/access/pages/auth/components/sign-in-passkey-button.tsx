@@ -1,5 +1,5 @@
 import { KeyRound } from "lucide-react";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 interface SignInPasskeyButtonProps {
   isLastUsed: boolean;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AtprotoIdentityResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { FieldBlock } from "./-claim-form-fields";
 
 interface ClaimAtprotoIdentityFieldProps {

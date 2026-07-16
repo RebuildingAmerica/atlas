@@ -53,11 +53,11 @@ vi.mock("@headlessui/react", () => ({
   PopoverPanel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/platform/layout/page-layout", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/layout/page-layout", () => ({
   PageLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     children,
     disabled,

@@ -5,7 +5,7 @@ import {
   useCreateOrgAnnotation,
   useOrgAnnotations,
 } from "@/domains/catalog/hooks/use-org-annotations";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 
 type PrivateNoteTargetType = "entry" | "source";
 

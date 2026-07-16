@@ -3,7 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { normalizeDeviceUserCode } from "@/domains/access/device-code";
 import { deviceAuthPath, deviceResultPath } from "@/domains/access/device-auth-paths";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 const DEVICE_APPROVAL_RESULTS = ["denied", "failed"] as const;
 const DEVICE_AUTH_STATUSES = ["pending", "approved", "denied"] as const;

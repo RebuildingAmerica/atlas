@@ -1,5 +1,11 @@
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 import { Button } from "./button";
 
 /**
@@ -21,7 +27,9 @@ interface ConfirmDialogContextValue {
   confirm: (options: ConfirmDialogOptions) => Promise<boolean>;
 }
 
-const ConfirmDialogContext = createContext<ConfirmDialogContextValue | null>(null);
+const ConfirmDialogContext = createContext<ConfirmDialogContextValue | null>(
+  null,
+);
 
 /**
  * Mounts the singleton confirmation dialog and exposes a `confirm()` helper
@@ -34,11 +42,14 @@ const ConfirmDialogContext = createContext<ConfirmDialogContextValue | null>(nul
 export function ConfirmDialogProvider(props: { children: ReactNode }) {
   const [request, setRequest] = useState<ResolvableConfirmRequest | null>(null);
 
-  const confirm = useCallback((options: ConfirmDialogOptions): Promise<boolean> => {
-    return new Promise<boolean>((resolve) => {
-      setRequest({ ...options, resolve });
-    });
-  }, []);
+  const confirm = useCallback(
+    (options: ConfirmDialogOptions): Promise<boolean> => {
+      return new Promise<boolean>((resolve) => {
+        setRequest({ ...options, resolve });
+      });
+    },
+    [],
+  );
 
   const settle = useCallback(
     (confirmed: boolean) => {
@@ -74,7 +85,9 @@ export function ConfirmDialogProvider(props: { children: ReactNode }) {
               <DialogTitle className="type-title-large text-on-surface">
                 {request.title}
               </DialogTitle>
-              <div className="type-body-medium text-outline">{request.body}</div>
+              <div className="type-body-medium text-outline">
+                {request.body}
+              </div>
               <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
                 <Button
                   variant="ghost"

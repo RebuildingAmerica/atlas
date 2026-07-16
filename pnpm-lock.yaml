@@ -307,6 +307,9 @@ importers:
       '@rebuildingamerica/atlas-api-client':
         specifier: workspace:*
         version: link:../packages/atlas-api-client
+      '@rebuildingamerica/atlas-ui':
+        specifier: workspace:*
+        version: link:../packages/atlas-ui
       '@rebuildingamerica/entity-widgets':
         specifier: workspace:*
         version: link:../packages/entity-widgets
@@ -512,6 +515,58 @@ importers:
       orval:
         specifier: 'catalog:'
         version: 8.20.0(prettier@3.9.4)(typescript@6.0.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@edge-runtime/vm@3.2.0)(@opentelemetry/api@1.9.1)(@types/node@26.1.0)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.1.3(@types/node@26.1.0)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.8.3))
+
+  packages/atlas-ui:
+    dependencies:
+      '@headlessui/react':
+        specifier: 'catalog:'
+        version: 2.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      clsx:
+        specifier: 'catalog:'
+        version: 2.1.1
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.23.0(react@19.2.7)
+      tailwind-merge:
+        specifier: 'catalog:'
+        version: 3.6.0
+    devDependencies:
+      '@rebuildingamerica/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@rebuildingamerica/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@rebuildingamerica/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.0
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.17)
+      eslint:
+        specifier: 'catalog:'
+        version: 10.6.0(jiti@2.7.0)
+      jsdom:
+        specifier: 'catalog:'
+        version: 29.1.1(@noble/hashes@2.2.0)
+      react:
+        specifier: 19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: 19.2.7
+        version: 19.2.7(react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

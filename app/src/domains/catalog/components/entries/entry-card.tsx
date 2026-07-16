@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
 import { pluralize } from "@/lib/pluralize";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Entry, EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
 
 export interface EntryDiscoveryContext {

@@ -1,5 +1,5 @@
 import { MapPinOff, RotateCcw, Sparkles, ZoomOut } from "lucide-react";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /** Where the shimmer placeholders sit while the first dots load, in percentages. */
 const SKELETON_SPOTS = [

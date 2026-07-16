@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Badge } from "@/platform/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/platform/ui/card";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@rebuildingamerica/atlas-ui/ui/card";
 import { formatFreshness } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";

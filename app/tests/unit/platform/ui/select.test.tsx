@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { Building2 } from "lucide-react";
-import { Select } from "@/platform/ui/select";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 
 describe("Select", () => {
   const options = [

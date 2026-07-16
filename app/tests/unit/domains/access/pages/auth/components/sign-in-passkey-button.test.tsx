@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SignInPasskeyButton } from "@/domains/access/pages/auth/components/sign-in-passkey-button";
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     children,
     disabled,

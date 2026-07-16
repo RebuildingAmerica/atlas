@@ -6,9 +6,9 @@ import {
   loadWorkspaceSCIMSetup,
   type AtlasWorkspaceSCIMTokenResult,
 } from "@/domains/access/scim.functions";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
-import { useToast } from "@/platform/ui/toast";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { useToast } from "@rebuildingamerica/atlas-ui/ui/toast";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 
 export const workspaceScimSetupQueryKey = ["auth", "scim-setup"] as const;

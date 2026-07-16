@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**
  * Decorative right panel — map grid with a location pin.

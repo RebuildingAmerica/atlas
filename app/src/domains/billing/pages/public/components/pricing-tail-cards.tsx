@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { checkoutKey, type PricingCheckoutInterval } from "../pricing-page-helpers";
 
 interface ResearchPassCardProps {

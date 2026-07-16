@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ToastProvider, useToast } from "@/platform/ui/toast";
+import { ToastProvider, useToast } from "@rebuildingamerica/atlas-ui/ui/toast";
 
 describe("ToastProvider", () => {
   function ToastButtons() {

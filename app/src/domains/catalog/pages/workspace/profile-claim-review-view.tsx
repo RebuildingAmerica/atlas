@@ -10,7 +10,7 @@ import {
   AdminStatusBadge,
 } from "@/domains/admin/admin-portal";
 import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import {
   evidenceDetails,
   proofDetail,

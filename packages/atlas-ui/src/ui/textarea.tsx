@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../utils";
 
 interface TextareaProps {
   autoComplete?: string;
@@ -56,7 +56,10 @@ export function Textarea({
   return (
     <div className="space-y-1">
       {label ? (
-        <label htmlFor={textareaId} className="type-label-large text-ink-soft block">
+        <label
+          htmlFor={textareaId}
+          className="type-label-large text-ink-soft block"
+        >
           {label}
           {required ? <span className="text-on-error-container">*</span> : null}
         </label>
@@ -81,7 +84,11 @@ export function Textarea({
         )}
       />
       {error ? (
-        <span id={errorId} role="alert" className="type-body-small text-on-error-container">
+        <span
+          id={errorId}
+          role="alert"
+          className="type-body-small text-on-error-container"
+        >
           {error}
         </span>
       ) : null}

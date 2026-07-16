@@ -1,5 +1,5 @@
 import type { AtlasWorkspaceInvitation } from "@/domains/access/organization-contracts";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**
  * Props for the pending-invitations section.

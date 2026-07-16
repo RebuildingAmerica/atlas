@@ -5,13 +5,13 @@ import "@testing-library/jest-dom/vitest";
 
 const confirmMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
-vi.mock("@/platform/ui/confirm-dialog", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({
     confirm: confirmMock,
   }),
 }));
 
-vi.mock("@/platform/ui/toast", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
   useToast: () => ({
     show: vi.fn(),
     success: vi.fn(),

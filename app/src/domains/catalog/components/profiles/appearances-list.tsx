@@ -8,7 +8,7 @@
 import { FreshnessChip } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Source, SourceType } from "@rebuildingamerica/atlas-api-client";
 
 type AppearancesMode = "person" | "organization";

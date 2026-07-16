@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../utils";
 
 interface BadgeProps {
   children: ReactNode;
@@ -7,7 +7,11 @@ interface BadgeProps {
   className?: string;
 }
 
-export function Badge({ children, variant = "default", className }: BadgeProps) {
+export function Badge({
+  children,
+  variant = "default",
+  className,
+}: BadgeProps) {
   const variants = {
     default: "bg-surface-alt text-on-surface-variant",
     success: "bg-success-container text-on-success-container",

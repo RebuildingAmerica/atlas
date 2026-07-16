@@ -1,7 +1,7 @@
 import { Globe2 } from "lucide-react";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
-import { Textarea } from "@/platform/ui/textarea";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 
 interface WorkspaceDirectoryConfigSectionProps {
   canManageOrganization: boolean;

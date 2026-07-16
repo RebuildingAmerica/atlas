@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useDirtyFormGuard } from "@/platform/hooks/use-dirty-form-guard";
+import { useDirtyFormGuard } from "@rebuildingamerica/atlas-ui/hooks/use-dirty-form-guard";
 
 describe("useDirtyFormGuard", () => {
   afterEach(() => {

@@ -2,7 +2,10 @@
 import "@testing-library/jest-dom/vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConfirmDialogProvider, useConfirmDialog } from "@/platform/ui/confirm-dialog";
+import {
+  ConfirmDialogProvider,
+  useConfirmDialog,
+} from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 
 describe("ConfirmDialogProvider", () => {
   function ConfirmTrigger(props: { onResult: (confirmed: boolean) => void }) {

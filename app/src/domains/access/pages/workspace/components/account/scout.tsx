@@ -1,5 +1,5 @@
 import { MonitorUp, Trash2 } from "lucide-react";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { AccountRow, AccountSection, AccountSubsection, AccountSurface } from "./rows";
 
 export interface AccountScoutDeviceRecord {

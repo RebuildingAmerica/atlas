@@ -3,7 +3,7 @@ import {
   type AtlasSAMLProviderHealth,
   checkWorkspaceSAMLProviderHealth,
 } from "../../sso.functions";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**
  * Returns true when a health-check result indicates a healthy SAML

@@ -4,9 +4,9 @@ import type {
   ProfileClaimProofResponse,
   ProfileClaimResponse,
 } from "@rebuildingamerica/atlas-api-client/generated/atlas";
-import { Badge } from "@/platform/ui/badge";
-import { Button } from "@/platform/ui/button";
-import { SurfaceSection } from "@/platform/ui/surface-section";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { SurfaceSection } from "@rebuildingamerica/atlas-ui/ui/surface-section";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { ClaimDnsRecordPanel, type DnsRecordMetadata } from "./-claim-dns-record-panel";
 

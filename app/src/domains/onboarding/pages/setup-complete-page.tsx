@@ -5,7 +5,7 @@ import { z } from "zod";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { loadPurchaseOnboarding } from "@/domains/billing/purchase-onboarding.functions";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { PurchaseIntentRecord } from "@/domains/billing/server/purchase-intents";
 
 export const setupCompleteSearchSchema = z.object({

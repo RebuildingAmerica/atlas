@@ -5,7 +5,7 @@ import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PublicTopNavSafe } from "@/platform/layout/public-nav";
 import { PublicFooter } from "@/platform/layout/public-footer";
 import { ATLAS_STATUS_PAGE_URL } from "@/platform/status/status-config";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**
  * Decorative right panel — muted grid with a signal ring.

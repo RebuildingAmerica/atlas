@@ -1,4 +1,4 @@
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { DevMailCaptureBanner } from "../dev-mail-capture-banner";
 
 function formatExpiryCountdown(totalSeconds: number): string {

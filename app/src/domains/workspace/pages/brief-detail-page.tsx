@@ -17,8 +17,8 @@ import {
   useUpdateWorkspaceBrief,
 } from "@/domains/workspace/hooks/use-briefs";
 import type { AtlasBriefExport, AtlasBriefUpdateInput } from "@/domains/workspace/server/briefs";
-import { Badge } from "@/platform/ui/badge";
-import { Select } from "@/platform/ui/select";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import {
   briefExportCsvFilename,
   briefExportFilename,

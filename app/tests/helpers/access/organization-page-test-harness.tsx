@@ -21,19 +21,19 @@ import {
   prepareOrganizationPageTestState,
 } from "./organization-page-test-state";
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: TestButton,
 }));
 
-vi.mock("@/platform/ui/input", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/input", () => ({
   Input: TestInput,
 }));
 
-vi.mock("@/platform/ui/select", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/select", () => ({
   Select: TestSelect,
 }));
 
-vi.mock("@/platform/ui/textarea", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/textarea", () => ({
   Textarea: TestTextarea,
 }));
 
@@ -48,13 +48,13 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => () => undefined,
 }));
 
-vi.mock("@/platform/ui/confirm-dialog", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({
     confirm: () => Promise.resolve(true),
   }),
 }));
 
-vi.mock("@/platform/ui/toast", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
   useToast: () => ({
     show: vi.fn(),
     success: vi.fn(),

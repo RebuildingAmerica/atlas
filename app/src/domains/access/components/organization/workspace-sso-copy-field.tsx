@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { copyToClipboard } from "@/lib/clipboard";
-import { useToast } from "@/platform/ui/toast";
+import { useToast } from "@rebuildingamerica/atlas-ui/ui/toast";
 import { cn } from "@/lib/utils";
 
 interface WorkspaceSSOCopyFieldProps {

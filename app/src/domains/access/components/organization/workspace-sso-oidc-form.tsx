@@ -4,7 +4,7 @@ import type { WorkspaceOIDCSetupFormState } from "./organization-page-controller
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 import { WorkspaceSSODomainHint } from "./workspace-sso-domain-hint";
 import { SaveButtonWithMissingFields } from "./workspace-sso-save-button";
-import { Input } from "@/platform/ui/input";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 
 interface WorkspaceSSOOidcFormProps {
   canManageOrganization: boolean;

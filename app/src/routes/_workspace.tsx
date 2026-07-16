@@ -14,7 +14,7 @@ import { ResumeCheckoutBanner } from "@/domains/billing/components/resume-checko
 
 import { buildAuthenticatedAppNav } from "@/platform/layout/app-navigation";
 import { WorkspaceLayout } from "@/platform/layout/workspace-layout";
-import { Select } from "@/platform/ui/select";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 
 interface AppBarIdentityMenuProps {
   session: AtlasSessionPayload;

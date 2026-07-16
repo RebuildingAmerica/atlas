@@ -13,7 +13,7 @@ import {
   useWatchWorkspaceResource,
   useWorkspaceWatchStatus,
 } from "@/domains/workspace/hooks/use-workspace-watches";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { CoverageTargetDetail } from "@/domains/workspace/server/coverage-targets";
 import type { WorkspaceFirehoseSourceTargetCollection } from "@/domains/workspace/server/firehose";
 import {

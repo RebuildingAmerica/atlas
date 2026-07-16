@@ -9,8 +9,8 @@ import {
   exportOrgCoverageTargets,
   getExportOrgCoverageTargetsUrl,
 } from "@rebuildingamerica/atlas-api-client/generated/atlas";
-import { Badge } from "@/platform/ui/badge";
-import { Textarea } from "@/platform/ui/textarea";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 import type { ImportFeedback } from "./coverage-page-utils";
 import {
   COVERAGE_TARGET_CSV_COLUMNS,

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SignInEmailForm } from "@/domains/access/pages/auth/components/sign-in-email-form";
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     children,
     className,
@@ -25,7 +25,7 @@ vi.mock("@/platform/ui/button", () => ({
   ),
 }));
 
-vi.mock("@/platform/ui/input", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/input", () => ({
   Input: ({
     labelAdornment,
     label,

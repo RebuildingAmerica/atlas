@@ -9,7 +9,7 @@ import {
   AdminStatusBadge,
   type AdminIndicatorTone,
 } from "@/domains/admin/admin-portal";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { DISCOUNT_SEGMENT_LABELS } from "../../discount-segments";
 
 export type VerificationReviewStatus = VerificationUpdateRequest["status"];

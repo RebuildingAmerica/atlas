@@ -13,7 +13,7 @@ import {
   exportSavedList,
   getExportSavedListUrl,
 } from "@rebuildingamerica/atlas-api-client/generated/atlas";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import {
   buildCrmHandoffPacket,
   buildEvidencePack,

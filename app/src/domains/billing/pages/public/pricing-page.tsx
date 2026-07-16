@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import { PageLayout } from "@/platform/layout/page-layout";
+import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 import type { BillingPeriod, PlanCardLinkCta } from "./components/plan-card";
 import { PricingComparisonTable } from "./components/pricing-comparison-table";
 import { PricingPlansGrid } from "./components/pricing-plans-grid";

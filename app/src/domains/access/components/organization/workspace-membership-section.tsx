@@ -1,5 +1,5 @@
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**
  * Props for the workspace-membership section.

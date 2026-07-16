@@ -10,8 +10,8 @@ import { flashClassName, usePrefillFlash } from "./use-prefill-flash";
 import { WorkspaceSSOCopyField } from "./workspace-sso-copy-field";
 import { WorkspaceSSODomainHint } from "./workspace-sso-domain-hint";
 import { WorkspaceSSOSamlSavePreview } from "./workspace-sso-saml-save-preview";
-import { Input } from "@/platform/ui/input";
-import { Textarea } from "@/platform/ui/textarea";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 
 interface WorkspaceSSOSamlFormProps {
   canManageOrganization: boolean;

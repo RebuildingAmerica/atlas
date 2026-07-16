@@ -13,7 +13,7 @@ import {
   useSavedListMembership,
   useSavedLists,
 } from "@/domains/catalog/hooks/use-claims";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 interface SaveListPickerProps {
   entryId: string;

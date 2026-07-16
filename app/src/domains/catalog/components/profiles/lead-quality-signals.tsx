@@ -1,4 +1,4 @@
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface LeadQualitySignalsProps {

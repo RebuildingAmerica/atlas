@@ -21,7 +21,7 @@ vi.mock("@/domains/access/scim.functions", () => ({
   loadWorkspaceSCIMSetup: mocks.loadWorkspaceSCIMSetup,
 }));
 
-vi.mock("@/platform/ui/confirm-dialog", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({
     confirm: () => Promise.resolve(true),
   }),

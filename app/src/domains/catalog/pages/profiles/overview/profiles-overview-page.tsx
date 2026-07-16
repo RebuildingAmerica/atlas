@@ -15,7 +15,7 @@ import {
   lockedEntryTypesForScope,
   type ProfileBrowseScope,
 } from "@/domains/catalog/profile-browse";
-import { PageLayout } from "@/platform/layout/page-layout";
+import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 import type { Entry, EntryListResponse } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfilesOverviewPageProps {

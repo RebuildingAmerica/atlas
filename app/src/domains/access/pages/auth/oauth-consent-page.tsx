@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { getAuthClient } from "@/domains/access/client/auth-client";
 import { getAtlasSession } from "@/domains/access/session.functions";
 import type {

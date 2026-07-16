@@ -9,7 +9,7 @@ const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock("@/platform/ui/toast", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
   useToast: () => toastMocks,
 }));
 

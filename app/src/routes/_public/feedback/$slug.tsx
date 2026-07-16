@@ -4,9 +4,9 @@ import { useState, type FormEvent } from "react";
 import { z } from "zod";
 import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
 import { createEntityFlag } from "@rebuildingamerica/atlas-api-client/generated/atlas";
-import { PageLayout } from "@/platform/layout/page-layout";
+import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 import { buildPageHead } from "@/platform/seo";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 const feedbackKindSchema = z.enum(["incorrect", "missing_context", "representation"]);
 

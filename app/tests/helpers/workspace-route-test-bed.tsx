@@ -71,7 +71,7 @@ vi.mock("@/platform/layout/workspace-layout", () => ({
   ),
 }));
 
-vi.mock("@/platform/ui/select", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/select", () => ({
   Select: ({
     onChange,
     options,

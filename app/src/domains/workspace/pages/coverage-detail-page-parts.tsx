@@ -11,7 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type {
   CoverageTargetDetail,
   CoverageTargetStatus,

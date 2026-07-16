@@ -2,7 +2,7 @@ import { CheckCircle2, Clock } from "lucide-react";
 import type { AtlasWorkspaceSSOProvider } from "../../organization-sso";
 import { formatCertificateExpiry } from "../../cert-expiry-helpers";
 import { DNS_PROVIDER_GUIDES, splitVerificationHost } from "../../dns-verification-helpers";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { CertExpiryBanner } from "./cert-expiry-banner";
 import { CertLifecycleBar } from "./cert-lifecycle-bar";
 import { SamlCertificateRotationForm } from "./saml-certificate-rotation-form";

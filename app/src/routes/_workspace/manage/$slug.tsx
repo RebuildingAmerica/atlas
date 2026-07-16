@@ -9,10 +9,10 @@ import {
   useManageProfile,
 } from "@/domains/catalog/hooks/use-claims";
 import { useEntryBySlug } from "@/domains/catalog/hooks/use-entries";
-import { Badge } from "@/platform/ui/badge";
-import { Button } from "@/platform/ui/button";
-import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
-import { Select } from "@/platform/ui/select";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 export const Route = createFileRoute("/_workspace/manage/$slug")({

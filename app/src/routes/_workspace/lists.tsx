@@ -7,8 +7,8 @@ import {
   useDeleteSavedList,
   useSavedLists,
 } from "@/domains/catalog/hooks/use-claims";
-import { Badge } from "@/platform/ui/badge";
-import { Button } from "@/platform/ui/button";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 export const Route = createFileRoute("/_workspace/lists")({
   component: ListsRoute,

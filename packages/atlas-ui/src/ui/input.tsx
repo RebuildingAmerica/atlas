@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../utils";
 
 interface InputProps {
   value?: string;
@@ -41,7 +41,10 @@ export function Input({
     <div className="space-y-1">
       {label && (
         <div className="flex items-center gap-2">
-          <label htmlFor={inputId} className="type-label-large text-ink-soft block">
+          <label
+            htmlFor={inputId}
+            className="type-label-large text-ink-soft block"
+          >
             {label}
             {required && <span className="text-on-error-container">*</span>}
           </label>
@@ -49,7 +52,9 @@ export function Input({
         </div>
       )}
       <div className="relative">
-        {icon && <div className="text-ink-muted absolute top-3 left-3">{icon}</div>}
+        {icon && (
+          <div className="text-ink-muted absolute top-3 left-3">{icon}</div>
+        )}
         <input
           id={inputId}
           type={type}
@@ -71,7 +76,11 @@ export function Input({
         />
       </div>
       {error && (
-        <span id={errorId} role="alert" className="type-body-small text-on-error-container">
+        <span
+          id={errorId}
+          role="alert"
+          className="type-body-small text-on-error-container"
+        >
           {error}
         </span>
       )}

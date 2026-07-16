@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { MapPin, ShieldCheck } from "lucide-react";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type {
   CoverageTarget,
   CoverageTargetStatus,

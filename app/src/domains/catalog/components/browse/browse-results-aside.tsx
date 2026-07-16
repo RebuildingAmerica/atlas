@@ -1,7 +1,7 @@
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
 import type { EntryDiscoveryContext } from "@/domains/catalog/components/entries/entry-card";
 import type { EmptyRecoveryAction } from "@/domains/catalog/components/entries/entry-list";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { BrowsePageContent } from "./browse-page-content";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 

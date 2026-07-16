@@ -90,8 +90,8 @@ describe("router", () => {
 
   it("Wrap mounts QueryClient, ToastProvider, and ConfirmDialogProvider for descendants", async () => {
     const { getRouter } = await import("@/router");
-    const { useToast } = await import("@/platform/ui/toast");
-    const { useConfirmDialog } = await import("@/platform/ui/confirm-dialog");
+    const { useToast } = await import("@rebuildingamerica/atlas-ui/ui/toast");
+    const { useConfirmDialog } = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     const { useQueryClient } = await import("@tanstack/react-query");
 
     getRouter();

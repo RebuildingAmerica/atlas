@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Textarea } from "@/platform/ui/textarea";
+import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 
 describe("Textarea", () => {
   afterEach(() => {

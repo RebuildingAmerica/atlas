@@ -5,10 +5,10 @@ import {
   useProvisionManagedAtprotoIdentity,
   useRefreshAtprotoIdentity,
 } from "@/domains/access/atproto-identities";
-import { Badge } from "@/platform/ui/badge";
-import { Button } from "@/platform/ui/button";
-import { useConfirmDialog } from "@/platform/ui/confirm-dialog";
-import { Input } from "@/platform/ui/input";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { AccountRow, AccountSection, AccountSubsection, AccountSurface } from "./rows";
 
 function connectUrl(handle: string): string {

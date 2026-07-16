@@ -23,7 +23,7 @@ vi.mock("@/domains/access/atproto-identities", () => ({
   useAtprotoIdentities: vi.fn(),
 }));
 
-vi.mock("@/platform/ui/confirm-dialog", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: vi.fn(),
 }));
 
@@ -31,11 +31,11 @@ vi.mock("@/domains/catalog/hooks/use-entries", () => ({
   useEntryBySlug: vi.fn(),
 }));
 
-vi.mock("@/platform/ui/badge", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/badge", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     children,
     onClick,
@@ -65,7 +65,7 @@ describe("routes/_workspace/manage/$slug", () => {
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
-    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     vi.mocked(claims.useManageProfile).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,
@@ -443,7 +443,7 @@ describe("routes/_workspace/manage/$slug", () => {
   it("confirms and removes a public identity without disconnecting it", async () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     const detach = vi.fn().mockResolvedValue(undefined);
     const confirm = vi.fn().mockResolvedValue(true);
     vi.mocked(dialogs.useConfirmDialog).mockReturnValue({
@@ -536,7 +536,7 @@ describe("routes/_workspace/manage/$slug", () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
-    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     const attach = vi.fn().mockResolvedValue(undefined);
     const confirm = vi.fn().mockResolvedValue(true);
     vi.mocked(dialogs.useConfirmDialog).mockReturnValue({ confirm });
@@ -588,7 +588,7 @@ describe("routes/_workspace/manage/$slug", () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const identities = await import("@/domains/access/atproto-identities");
-    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     const attach = vi.fn();
     vi.mocked(dialogs.useConfirmDialog).mockReturnValue({
       confirm: vi.fn().mockResolvedValue(false),
@@ -681,7 +681,7 @@ describe("routes/_workspace/manage/$slug", () => {
   it("keeps the public identity when removal is cancelled", async () => {
     const entriesHooks = await import("@/domains/catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const dialogs = await import("@/platform/ui/confirm-dialog");
+    const dialogs = await import("@rebuildingamerica/atlas-ui/ui/confirm-dialog");
     const detach = vi.fn();
     vi.mocked(dialogs.useConfirmDialog).mockReturnValue({
       confirm: vi.fn().mockResolvedValue(false),

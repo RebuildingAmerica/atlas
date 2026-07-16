@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Plus, ShieldCheck } from "lucide-react";
 import { useWorkspaceBriefCollection } from "@/domains/workspace/hooks/use-briefs";
 import type { AtlasBrief } from "@/domains/workspace/server/briefs";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 
 interface CountLabelOptions {
   plural?: string;

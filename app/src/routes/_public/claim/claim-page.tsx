@@ -7,7 +7,7 @@ import {
   useMyClaims,
   useVerifyClaimEmail,
 } from "@/domains/catalog/hooks/use-claims";
-import { PageLayout } from "@/platform/layout/page-layout";
+import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import {
   ClaimHero,

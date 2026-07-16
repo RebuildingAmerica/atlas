@@ -7,7 +7,7 @@ import {
   setActiveWorkspace,
 } from "@/domains/access/organizations.functions";
 import type { AtlasSessionPayload } from "@/domains/access/organization-contracts";
-import { Spinner } from "@/platform/ui/spinner";
+import { Spinner } from "@rebuildingamerica/atlas-ui/ui/spinner";
 import {
   ACCEPT_INVITATION_OUTCOME,
   buildInvitationSignInPath,

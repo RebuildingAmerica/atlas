@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTypographyClass, typographyScale } from "@/styles/typography";
+import { getTypographyClass, typographyScale } from "@rebuildingamerica/atlas-ui/styles/typography";
 
 describe("typographyScale", () => {
   it("uses MD3 role names with semantic class names", () => {

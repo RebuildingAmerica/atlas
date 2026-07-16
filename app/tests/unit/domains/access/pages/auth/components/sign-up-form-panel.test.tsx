@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     children,
     disabled,
@@ -28,7 +28,7 @@ vi.mock("@/platform/ui/button", () => ({
   ),
 }));
 
-vi.mock("@/platform/ui/input", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/input", () => ({
   Input: ({
     label,
     onChange,

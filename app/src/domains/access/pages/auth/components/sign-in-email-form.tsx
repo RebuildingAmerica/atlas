@@ -2,8 +2,8 @@ import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { Info } from "lucide-react";
 import { Mail } from "lucide-react";
 import type { ReactNode } from "react";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 
 interface SignInEmailFormProps {
   domainSuggestion: string | null;

@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../utils";
 
 type SurfaceSectionTone = "default" | "plain" | "success";
 
@@ -33,7 +33,9 @@ export function SurfaceSection({
   const hasHeader = Icon || marker || title || description || actions;
 
   return (
-    <section className={cn(TONE_CLASS[tone], "rounded-[1rem] p-5 sm:p-6", className)}>
+    <section
+      className={cn(TONE_CLASS[tone], "rounded-[1rem] p-5 sm:p-6", className)}
+    >
       {hasHeader ? (
         <div className="mb-4 flex items-start gap-3">
           {marker ? (
@@ -41,10 +43,16 @@ export function SurfaceSection({
               {marker}
             </div>
           ) : null}
-          {Icon ? <Icon className="text-accent mt-1 h-5 w-5 shrink-0" aria-hidden /> : null}
+          {Icon ? (
+            <Icon className="text-accent mt-1 h-5 w-5 shrink-0" aria-hidden />
+          ) : null}
           <div className="min-w-0 flex-1 space-y-1">
-            {title ? <h2 className="type-title-medium text-ink-strong">{title}</h2> : null}
-            {description ? <p className="type-body-medium text-ink-soft">{description}</p> : null}
+            {title ? (
+              <h2 className="type-title-medium text-ink-strong">{title}</h2>
+            ) : null}
+            {description ? (
+              <p className="type-body-medium text-ink-soft">{description}</p>
+            ) : null}
           </div>
           {actions ? <div className="shrink-0">{actions}</div> : null}
         </div>

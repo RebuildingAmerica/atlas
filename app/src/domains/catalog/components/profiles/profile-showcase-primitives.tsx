@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { humanize } from "@/domains/catalog/catalog";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import type { ProfileBrowseScope } from "@/domains/catalog/profile-browse";
 import {

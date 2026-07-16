@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { PricingCheckoutInterval, PricingCheckoutParams } from "../pricing-page-helpers";
 
 export type BillingPeriod = "monthly" | "annual" | "student";

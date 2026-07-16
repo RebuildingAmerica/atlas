@@ -13,8 +13,8 @@ import {
   listOrganizationAtprotoIdentityDelegations,
   revokeOrganizationAtprotoIdentityDelegation,
 } from "@rebuildingamerica/atlas-api-client/generated/atlas/organization-identity/organization-identity";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 
 interface OrganizationAtprotoIdentitySectionProps {
   canManageOrganization: boolean;

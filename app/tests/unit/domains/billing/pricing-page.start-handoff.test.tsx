@@ -20,11 +20,11 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
 }));
 
-vi.mock("@/platform/layout/page-layout", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/layout/page-layout", () => ({
   PageLayout: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
-vi.mock("@/platform/ui/confirm-dialog", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({ confirm: mocks.confirm }),
 }));
 

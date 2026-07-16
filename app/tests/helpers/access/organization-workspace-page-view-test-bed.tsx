@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({}),
 }));
 
-vi.mock("@/platform/ui/toast", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
   useToast: () => ({
     show: vi.fn(),
     success: vi.fn(),

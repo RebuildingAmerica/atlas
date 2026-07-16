@@ -5,7 +5,7 @@ import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/u
 import type { AtlasSelfServeProduct } from "@/domains/access/capabilities";
 import { clearPendingCheckout } from "@/domains/billing/pending-checkout";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 const POLL_INTERVAL_MS = 1500;
 const TIMEOUT_MS = 30_000;

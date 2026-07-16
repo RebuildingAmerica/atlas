@@ -14,7 +14,7 @@ vi.mock("lucide-react", () => {
   };
 });
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     ariaLabel,
     children,

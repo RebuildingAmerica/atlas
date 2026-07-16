@@ -31,22 +31,22 @@ vi.mock("@/lib/clipboard", () => ({
   copyToClipboard: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("@/platform/ui/toast", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
   useToast: () => ({
     error: vi.fn(),
     success: vi.fn(),
   }),
 }));
 
-vi.mock("@/platform/layout/page-layout", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/layout/page-layout", () => ({
   PageLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/platform/ui/badge", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/badge", () => ({
   Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     children,
     onClick,

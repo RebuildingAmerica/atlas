@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import {
   clearSsoDiagnostics,
   readSsoDiagnostics,

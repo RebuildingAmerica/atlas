@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { copyToClipboard } from "@/lib/clipboard";
-import { useToast } from "@/platform/ui/toast";
-import { Button } from "@/platform/ui/button";
+import { useToast } from "@rebuildingamerica/atlas-ui/ui/toast";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**
  * Builds the deep link an admin can paste in chat or email to invite their

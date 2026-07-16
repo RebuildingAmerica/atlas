@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { Button } from "@/platform/ui/button";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { IndependentJournalistVerificationData } from "./discount-verification-payload";
 
 type IndependentJournalistErrorField = keyof IndependentJournalistVerificationData;

@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Building2 } from "lucide-react";
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 
 /**
  * Props for the workspace-profile section.

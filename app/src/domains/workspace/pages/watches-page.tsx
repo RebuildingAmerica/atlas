@@ -3,7 +3,7 @@ import { MapPinned, ShieldCheck } from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
 import { useWorkspaceWatches } from "@/domains/workspace/hooks/use-workspace-watches";
 import { pluralize } from "@/lib/pluralize";
-import { Badge } from "@/platform/ui/badge";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 
 function preferenceLabel(preference: string): string {
   if (preference === "immediate") return "Immediate";

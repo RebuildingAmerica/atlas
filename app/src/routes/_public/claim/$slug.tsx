@@ -11,7 +11,7 @@ import {
   useVerifyClaimEmail,
 } from "@/domains/catalog/hooks/use-claims";
 import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
-import { PageLayout } from "@/platform/layout/page-layout";
+import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 import { buildPageHead } from "@/platform/seo";
 import {
   ClaimContextRail,

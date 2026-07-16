@@ -1,6 +1,6 @@
 import { Check, KeyRound, Pencil, Trash2, X } from "lucide-react";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { AccountRow, AccountSurface } from "./rows";
 
 export interface AccountPasskeyRecord {

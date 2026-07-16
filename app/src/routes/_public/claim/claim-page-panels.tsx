@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Badge } from "@/platform/ui/badge";
-import { Button } from "@/platform/ui/button";
-import { Select } from "@/platform/ui/select";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 

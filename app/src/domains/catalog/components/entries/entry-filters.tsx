@@ -1,6 +1,6 @@
-import { Button } from "@/platform/ui/button";
-import { Card } from "@/platform/ui/card";
-import { Input } from "@/platform/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Card } from "@rebuildingamerica/atlas-ui/ui/card";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import type { EntrySearchFacets, FacetOption } from "@rebuildingamerica/atlas-api-client";
 
 type FilterKey =

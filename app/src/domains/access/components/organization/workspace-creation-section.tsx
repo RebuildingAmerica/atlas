@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { checkWorkspaceSlugAvailability } from "@/domains/access/organizations.functions";
 
 /**

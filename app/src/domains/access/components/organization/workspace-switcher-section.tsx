@@ -1,5 +1,5 @@
 import { ArrowRightLeft, Building2 } from "lucide-react";
-import { Select } from "@/platform/ui/select";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 
 /**
  * Props for the workspace-switcher section.

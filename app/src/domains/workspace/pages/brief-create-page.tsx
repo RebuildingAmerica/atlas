@@ -4,8 +4,8 @@ import type { FormEvent } from "react";
 import { useId, useMemo, useState } from "react";
 import { useCreateWorkspaceBrief } from "@/domains/workspace/hooks/use-briefs";
 import type { AtlasBriefConfidenceState } from "@/domains/workspace/server/briefs";
-import { Badge } from "@/platform/ui/badge";
-import { Select } from "@/platform/ui/select";
+import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import type { BriefCreateStateFields } from "./brief-create-page-utils";
 import {
   buildBriefCreateInput,

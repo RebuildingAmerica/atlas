@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { parseSamlIdpMetadata } from "../../saml-metadata-parser";
-import { Button } from "@/platform/ui/button";
-import { Textarea } from "@/platform/ui/textarea";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 
 interface SamlMetadataPasteFieldProps {
   onPrefill: (metadata: { certificate: string; entryPoint: string; issuer: string }) => void;

@@ -41,11 +41,11 @@ vi.mock("lucide-react", () => {
   };
 });
 
-vi.mock("@/platform/layout/page-layout", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/layout/page-layout", () => ({
   PageLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/platform/ui/button", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({
     ariaLabel,
     children,
@@ -73,7 +73,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-vi.mock("@/platform/ui/input", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/input", () => ({
   Input: ({
     label,
     onChange,
@@ -122,7 +122,7 @@ vi.mock("@rebuildingamerica/atlas-api-client/generated/atlas/identity/identity",
   refreshAtprotoIdentity: accountPageMocks.refreshAtprotoIdentity,
 }));
 
-vi.mock("@/platform/ui/confirm-dialog", () => ({
+vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({ confirm: accountPageMocks.confirm }),
 }));
 

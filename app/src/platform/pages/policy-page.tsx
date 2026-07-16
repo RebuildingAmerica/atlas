@@ -1,4 +1,4 @@
-import { PageLayout } from "@/platform/layout/page-layout";
+import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 
 interface PolicySection {
   title: string;

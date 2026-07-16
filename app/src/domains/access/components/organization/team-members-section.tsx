@@ -1,7 +1,7 @@
 import type { AtlasOrganizationDetails } from "../../organization-contracts";
 import { Shield, Trash2, Users } from "lucide-react";
-import { Button } from "@/platform/ui/button";
-import { Select } from "@/platform/ui/select";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import { memberRoleOptions } from "./organization-page-helpers";
 
 /**

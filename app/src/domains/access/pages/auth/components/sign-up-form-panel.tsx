@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Mail } from "lucide-react";
-import { Button } from "@/platform/ui/button";
-import { Input } from "@/platform/ui/input";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 
 interface SignUpFormPanelProps {
   effectiveRedirect: string | undefined;
