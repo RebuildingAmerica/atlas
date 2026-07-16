@@ -4,11 +4,29 @@ import {
   RESEARCH_GOAL_LABELS,
   type DiscoveryRunRecord,
 } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
-import type {
-  AtlasBriefConfidenceState,
-  AtlasBriefCreateInput,
-} from "@/domains/workspace/server/briefs";
 import type { DiscoveryResearchSummary } from "@rebuildingamerica/atlas-api-client";
+
+export type AtlasBriefConfidenceState = "corroborated" | "partial" | "unverified";
+
+export interface AtlasBriefCreateInput {
+  confidence_summary: {
+    review_status: string;
+    source_count: number;
+    state: AtlasBriefConfidenceState;
+  };
+  gaps: { detail: string; label: string }[];
+  linked_discovery_run_ids: string[];
+  linked_entry_ids: string[];
+  linked_source_ids: string[];
+  scope: {
+    actor_types: string[];
+    geography: string;
+    issue_areas: string[];
+    source_types: string[];
+  };
+  summary: string;
+  title: string;
+}
 
 function uniqueValues(values: string[]): string[] {
   const seen = new Set<string>();

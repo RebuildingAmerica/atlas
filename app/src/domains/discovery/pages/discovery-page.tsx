@@ -5,11 +5,11 @@ import {
   isAtLimitError,
   resolveStartRunErrorMessage,
 } from "@rebuildingamerica/atlas-catalog/discovery/api-errors";
-import { buildBriefCreateInputFromRun } from "@/domains/discovery/brief-request";
+import { buildBriefCreateInputFromRun } from "@rebuildingamerica/atlas-catalog/discovery/brief-request";
 import {
   buildCoverageTargetCreateInputFromRun,
   topLeadEntryIdsFromRun,
-} from "@/domains/discovery/coverage-target-request";
+} from "@rebuildingamerica/atlas-catalog/discovery/coverage-target-request";
 import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import {
   useDiscoveryJobQueue,

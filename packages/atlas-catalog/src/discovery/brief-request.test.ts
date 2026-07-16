@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildBriefCreateInputFromRun,
   canCreateBriefFromRun,
-} from "@/domains/discovery/brief-request";
+} from "./brief-request";
 import type { DiscoveryRunRecord } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 
 describe("brief request conversion", () => {

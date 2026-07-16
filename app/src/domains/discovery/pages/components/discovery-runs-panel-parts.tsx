@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { BellPlus, FileJson2, FilePlus, FileText, Table2, Target } from "lucide-react";
-import { canCreateBriefFromRun } from "@/domains/discovery/brief-request";
+import { canCreateBriefFromRun } from "@rebuildingamerica/atlas-catalog/discovery/brief-request";
 import {
   canCreateCoverageTargetFromRun,
   topLeadEntryIdsFromRun,
-} from "@/domains/discovery/coverage-target-request";
+} from "@rebuildingamerica/atlas-catalog/discovery/coverage-target-request";
 import {
   blindSpotsForSummary,
   CONFIDENCE_LABELS,

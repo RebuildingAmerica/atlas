@@ -3,7 +3,7 @@ import {
   buildCoverageTargetCreateInputFromRun,
   canCreateCoverageTargetFromRun,
   topLeadEntryIdsFromRun,
-} from "@/domains/discovery/coverage-target-request";
+} from "./coverage-target-request";
 import type { DiscoveryRunRecord } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 
 describe("coverage target request conversion", () => {

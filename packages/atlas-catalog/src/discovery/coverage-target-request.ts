@@ -3,9 +3,20 @@ import {
   RESEARCH_GOAL_LABELS,
   type DiscoveryRunRecord,
 } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
-import type { CoverageTargetCreateInput } from "@/domains/workspace/server/coverage-targets";
-
 const MAX_WATCHED_LEADS = 3;
+
+export interface CoverageTargetCreateInput {
+  actor_types: string[];
+  gaps: { detail: string; label: string }[];
+  geography: string;
+  issue_areas: string[];
+  linked_discovery_run_ids: string[];
+  linked_entry_ids: string[];
+  name: string;
+  next_actions: string[];
+  review_state: "needs_research" | "in_review" | "ready_for_delivery";
+  source_types: string[];
+}
 
 function uniqueValues(values: string[]): string[] {
   const seen = new Set<string>();
