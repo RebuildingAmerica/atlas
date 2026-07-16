@@ -4,6 +4,7 @@
     "test": {
       "dependsOn": ["@rebuildingamerica/atlas-shared#test"],
       "env": [],
+      "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/libs/shared/**",
@@ -18,6 +19,8 @@
         "!.venv/**",
         "!htmlcov/**",
         "!node_modules/**",
+        "!.turbo/**",
+        "!atlas.db",
         "!$TURBO_ROOT$/libs/shared/**/*.pyc",
         "!$TURBO_ROOT$/libs/shared/**/__pycache__/**",
         "!$TURBO_ROOT$/libs/shared/.coverage",
@@ -28,7 +31,9 @@
         "!$TURBO_ROOT$/libs/shared/.ruff_cache/**",
         "!$TURBO_ROOT$/libs/shared/.venv/**",
         "!$TURBO_ROOT$/libs/shared/htmlcov/**",
-        "!$TURBO_ROOT$/libs/shared/node_modules/**"
+        "!$TURBO_ROOT$/libs/shared/node_modules/**",
+        "!$TURBO_ROOT$/libs/shared/.turbo/**",
+        "!$TURBO_ROOT$/libs/shared/atlas.db"
       ]
     }
   }

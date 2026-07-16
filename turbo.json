@@ -2,27 +2,6 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "envMode": "strict",
-  "globalEnv": [
-    "ATLAS_DEPLOY_MODE",
-    "ATLAS_PUBLIC_URL",
-    "ATLAS_AUTH_JWT_AUDIENCES",
-    "ATLAS_EMAIL_PROVIDER",
-    "ATLAS_SERVER_API_PROXY_TARGET",
-    "ATLAS_DOCS_URL",
-    "ATLAS_AUTH_MEMBERSHIP_URL",
-    "DATABASE_BACKEND"
-  ],
-  "globalPassThroughEnv": [
-    "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
-    "ATLAS_AUTH_INTERNAL_SECRET",
-    "ATLAS_OPERATOR_ALLOWED_EMAILS",
-    "ATLAS_EMAIL_FROM",
-    "ATLAS_EMAIL_RESEND_API_KEY",
-    "DATABASE_URL",
-    "STRIPE_API_KEY",
-    "STRIPE_WEBHOOK_SECRET",
-    "STRIPE_ATLAS_CATALOG"
-  ],
   "globalDependencies": [
     "pnpm-workspace.yaml",
     "package.json",
@@ -30,70 +9,6 @@
     ".env.example"
   ],
   "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": [".output/**", "dist/**"],
-      "env": [
-        "ATLAS_DEPLOY_MODE",
-        "ATLAS_PUBLIC_URL",
-        "ATLAS_AUTH_BASE_PATH",
-        "ATLAS_AUTH_JWT_AUDIENCES",
-        "ATLAS_DOCS_URL",
-        "ATLAS_EMAIL_PROVIDER",
-        "ATLAS_SERVER_API_PROXY_TARGET",
-        "NITRO_PRESET"
-      ]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "typecheck": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "tsconfig.json",
-        "package.json",
-        "pyproject.toml",
-        "uv.lock"
-      ],
-      "env": ["ATLAS_DEPLOY_MODE"]
-    },
-    "lint": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "eslint.config.js",
-        ".eslintrc.*",
-        "pyproject.toml",
-        "ruff.toml"
-      ]
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "vitest.config.ts",
-        "pytest.ini",
-        "pyproject.toml",
-        "uv.lock"
-      ],
-      "env": [
-        "DATABASE_URL",
-        "ATLAS_DEPLOY_MODE",
-        "ATLAS_AUTH_JWT_AUDIENCES",
-        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
-        "ATLAS_AUTH_MEMBERSHIP_URL",
-        "ATLAS_AUTH_INTERNAL_SECRET",
-        "ENVIRONMENT",
-        "LOG_LEVEL",
-        "ATLAS_PUBLIC_URL"
-      ]
-    },
-    "quality": {
-      "dependsOn": ["typecheck", "lint", "test"]
-    },
     "//#openapi": {
       "inputs": ["api/atlas/**/*.py", "api/pyproject.toml", "api/uv.lock"],
       "outputs": [
@@ -126,6 +41,8 @@
         "!api/**/*.pyc",
         "!api/htmlcov/**",
         "!api/node_modules/**",
+        "!api/.turbo/**",
+        "!api/atlas.db",
         "!api/openapi/**",
         "openapi/atlas.openapi.json"
       ]
@@ -172,6 +89,8 @@
         "!api/**/*.pyc",
         "!api/htmlcov/**",
         "!api/node_modules/**",
+        "!api/.turbo/**",
+        "!api/atlas.db",
         "!api/openapi/**",
         "openapi/atlas.openapi.json"
       ],
@@ -195,6 +114,7 @@
         "PORT",
         "SEARCH_API_KEY"
       ],
+      "cache": false,
       "persistent": true
     }
   }

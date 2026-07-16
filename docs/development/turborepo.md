@@ -20,12 +20,19 @@ This means unchanged tasks complete in milliseconds on repeat runs.
 
 ## Configuration
 
-There are two config files:
+The root config owns repository tasks and cache-wide dependencies. Each
+workspace that exposes a runnable task owns that task's configuration:
 
-| File             | Purpose                                                                 |
-| ---------------- | ----------------------------------------------------------------------- |
-| `turbo.json`     | Root config. Defines shared package task defaults and narrow root tasks |
-| `app/turbo.json` | App package config. Extends root, adds app-specific tasks               |
+| Config                                                 | Purpose                                                          |
+| ------------------------------------------------------ | ---------------------------------------------------------------- |
+| `turbo.json`                                           | Root-only `//#` operations, strict mode, and global dependencies |
+| `api/turbo.json`, `app/turbo.json`, `scout/turbo.json` | Service task inputs, outputs, and runtime environment            |
+| `libs/*/turbo.json`                                    | Python library test boundaries                                   |
+| `packages/*/turbo.json`                                | Build, lint, typecheck, and test boundaries for shared packages  |
+
+Turbo tasks are declared only by packages that have the matching package script.
+This keeps `turbo run test` free of placeholder tasks and lets the graph cache
+only real work.
 
 ### Env Mode
 
@@ -39,7 +46,8 @@ These files invalidate the cache for every task when changed:
 
 - `pnpm-workspace.yaml`
 - `package.json`
-- `api/pyproject.toml`
+- `pnpm-lock.yaml`
+- `.env.example`
 
 ## Task Graph
 
@@ -69,28 +77,28 @@ that read repo-level files outside a single workspace package.
 
 These run within workspace packages:
 
-| Task            | Purpose                                      | Key Detail                                     |
-| --------------- | -------------------------------------------- | ---------------------------------------------- |
-| `build`         | Production build                             | Depends on `api-client`                        |
-| `api-client`    | Generate TypeScript client from OpenAPI spec | Output: `src/lib/generated/atlas.ts`           |
-| `openapi:lint`  | Lint the OpenAPI spec                        | Uses `.spectral.yaml`                          |
-| `typecheck`     | TypeScript type checking                     | Depends on `api-client`                        |
-| `lint`          | ESLint                                       | Depends on `api-client`                        |
-| `test`          | Vitest unit tests                            | Depends on `api-client`                        |
-| `test:coverage` | Tests with coverage report                   | Output: `coverage/**`                          |
-| `test:e2e`      | Playwright E2E tests                         | Not cached                                     |
-| `quality`       | All quality checks                           | Depends on `typecheck`, `lint`, `format:check` |
-| `dev`           | Dev server                                   | Persistent, not cached                         |
+| Task            | Purpose                                      | Key Detail                                           |
+| --------------- | -------------------------------------------- | ---------------------------------------------------- |
+| `build`         | Production build                             | Declared by packages that produce artifacts          |
+| `api-client`    | Generate TypeScript client from OpenAPI spec | Output: `packages/atlas-api-client/src/generated/**` |
+| `openapi:lint`  | Lint the OpenAPI spec                        | Uses `.spectral.yaml`                                |
+| `typecheck`     | TypeScript type checking                     | Depends on `api-client`                              |
+| `lint`          | ESLint                                       | Depends on `api-client`                              |
+| `test`          | Vitest unit tests                            | Depends on `api-client`                              |
+| `test:coverage` | Tests with coverage report                   | Output: `coverage/**`                                |
+| `test:e2e`      | Playwright E2E tests                         | Not cached                                           |
+| `quality`       | All quality checks                           | Depends on `typecheck`, `lint`, `format:check`       |
+| `dev`           | Dev server                                   | Persistent, not cached                               |
 
 ### Dependency Chain
 
-Many app tasks depend on `api-client`, which depends on `//#openapi`. This means
-changing Python API code triggers:
+Many app tasks depend on the API client package, which depends on `//#openapi`.
+This means changing Python API code triggers:
 
 ```
 Python source changed
   → //#openapi (re-export spec)
-    → app#api-client (re-generate TS client)
+  → atlas-api-client#api-client (re-generate TS client)
       → app#typecheck, app#lint, app#test, app#build
 ```
 

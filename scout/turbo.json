@@ -7,6 +7,7 @@
         "@rebuildingamerica/atlas-shared#test"
       ],
       "env": ["ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"],
+      "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/libs/discovery-engine/**",
@@ -22,6 +23,8 @@
         "!.venv/**",
         "!htmlcov/**",
         "!node_modules/**",
+        "!.turbo/**",
+        "!atlas.db",
         "!$TURBO_ROOT$/libs/**/*.pyc",
         "!$TURBO_ROOT$/libs/**/__pycache__/**",
         "!$TURBO_ROOT$/libs/**/.coverage",
@@ -32,7 +35,9 @@
         "!$TURBO_ROOT$/libs/**/.ruff_cache/**",
         "!$TURBO_ROOT$/libs/**/.venv/**",
         "!$TURBO_ROOT$/libs/**/htmlcov/**",
-        "!$TURBO_ROOT$/libs/**/node_modules/**"
+        "!$TURBO_ROOT$/libs/**/node_modules/**",
+        "!$TURBO_ROOT$/libs/**/.turbo/**",
+        "!$TURBO_ROOT$/libs/**/atlas.db"
       ]
     }
   }

@@ -3,6 +3,7 @@
   "tasks": {
     "test": {
       "env": [],
+      "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         "!*.pyc",
@@ -15,7 +16,9 @@
         "!.ruff_cache/**",
         "!.venv/**",
         "!htmlcov/**",
-        "!node_modules/**"
+        "!node_modules/**",
+        "!.turbo/**",
+        "!atlas.db"
       ]
     }
   }

@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "portless api.atlas --force uv run python -m atlas.main",
+    "setup": "uv sync --extra dev",
     "typecheck": "uv run mypy atlas",
     "lint": "uv run ruff check atlas",
     "test": "uv run --extra dev pytest -n auto --dist loadfile tests"

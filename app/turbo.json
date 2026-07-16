@@ -1,10 +1,31 @@
 {
-  "extends": [
-    "//"
-  ],
+  "extends": ["//"],
   "tasks": {
     "dev": {
       "cache": false,
+      "env": [
+        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+        "ATLAS_AUTH_BASE_PATH",
+        "ATLAS_AUTH_DB_PATH",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "ATLAS_AUTH_JWT_AUDIENCES",
+        "ATLAS_AUTH_MEMBERSHIP_URL",
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_DOCS_URL",
+        "ATLAS_EMAIL_FROM",
+        "ATLAS_EMAIL_CAPTURE_URL",
+        "ATLAS_EMAIL_PROVIDER",
+        "ATLAS_EMAIL_RESEND_API_KEY",
+        "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        "ATLAS_PUBLIC_URL",
+        "ATLAS_DEV_API_PROXY_TARGET",
+        "ATLAS_SERVER_API_PROXY_TARGET",
+        "DATABASE_BACKEND",
+        "DATABASE_URL",
+        "STRIPE_API_KEY",
+        "STRIPE_ATLAS_CATALOG",
+        "STRIPE_WEBHOOK_SECRET"
+      ],
       "persistent": true
     },
     "dev:e2e": {
@@ -27,9 +48,7 @@
     },
     "start:e2e": {
       "cache": false,
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "env": [
         "ATLAS_OPERATOR_ALLOWED_EMAILS",
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -63,17 +82,11 @@
     },
     "e2e:mail": {
       "cache": false,
-      "env": [
-        "MAIL_CAPTURE_FILE",
-        "MAIL_CAPTURE_HOST",
-        "MAIL_CAPTURE_PORT"
-      ],
+      "env": ["MAIL_CAPTURE_FILE", "MAIL_CAPTURE_HOST", "MAIL_CAPTURE_PORT"],
       "persistent": true
     },
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "env": [
         "ATLAS_AUTH_JWT_AUDIENCES",
         "ATLAS_AUTH_BASE_PATH",
@@ -92,54 +105,46 @@
         "ATLAS_PUBLIC_URL",
         "ATLAS_SERVER_API_PROXY_TARGET"
       ],
-      "outputs": [
-        ".output/**",
-        ".vercel/output/**"
-      ]
+      "outputs": [".output/**", ".vercel/output/**"]
     },
     "openapi:lint": {
-      "dependsOn": [
-        "//#openapi"
-      ],
-      "inputs": [
-        ".spectral.yaml",
-        "$TURBO_ROOT$/openapi/atlas.openapi.json"
-      ],
+      "dependsOn": ["//#openapi"],
+      "inputs": [".spectral.yaml", "$TURBO_ROOT$/openapi/atlas.openapi.json"],
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
+      "env": ["ATLAS_DEPLOY_MODE"],
       "outputs": []
     },
     "lint": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "format:check": {
       "outputs": []
     },
     "quality": {
-      "dependsOn": [
-        "typecheck",
-        "lint",
-        "format:check"
-      ],
+      "dependsOn": ["typecheck", "lint", "format:check"],
       "outputs": []
     },
     "test": {
-      "dependsOn": [
-        "^build"
+      "dependsOn": ["^build"],
+      "env": [
+        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "ATLAS_AUTH_JWT_AUDIENCES",
+        "ATLAS_AUTH_MEMBERSHIP_URL",
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_PUBLIC_URL",
+        "DATABASE_URL",
+        "ENVIRONMENT",
+        "LOG_LEVEL"
       ],
       "outputs": []
     },
     "test:unit:access": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -166,9 +171,7 @@
       "outputs": []
     },
     "test:unit:business": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -193,9 +196,7 @@
       "outputs": []
     },
     "test:unit:catalog": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -225,9 +226,7 @@
       "outputs": []
     },
     "test:unit:platform": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -258,9 +257,7 @@
       "outputs": []
     },
     "test:unit:workspace": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -289,9 +286,7 @@
       "outputs": []
     },
     "test:unit:system": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "inputs": [
         "package.json",
         "tsconfig.json",
@@ -330,29 +325,19 @@
       "outputs": []
     },
     "test:coverage": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "coverage/**"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
     },
     "test:unit": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test:integration": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test:e2e": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -360,16 +345,11 @@
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
         "ATLAS_E2E_MAILBOX_URL"
       ],
-      "outputs": [
-        "playwright-report/**",
-        "test-results/**"
-      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     },
     "test:e2e:headed": {
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -377,17 +357,11 @@
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE",
         "ATLAS_E2E_MAILBOX_URL"
       ],
-      "outputs": [
-        "playwright-report/**",
-        "test-results/**"
-      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     },
     "test:acceptance": {
-      "dependsOn": [
-        "^build",
-        "e2e:cleanup"
-      ],
+      "dependsOn": ["^build", "e2e:cleanup"],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -398,17 +372,11 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": [
-        "playwright-report/**",
-        "test-results/**"
-      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     },
     "test:acceptance:browser": {
-      "dependsOn": [
-        "^build",
-        "e2e:cleanup"
-      ],
+      "dependsOn": ["^build", "e2e:cleanup"],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -417,17 +385,11 @@
         "ATLAS_E2E_WORKERS",
         "ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE"
       ],
-      "outputs": [
-        "playwright-report/**",
-        "test-results/**"
-      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     },
     "test:acceptance:stripe": {
-      "dependsOn": [
-        "^build",
-        "e2e:cleanup"
-      ],
+      "dependsOn": ["^build", "e2e:cleanup"],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -438,17 +400,11 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": [
-        "playwright-report/**",
-        "test-results/**"
-      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     },
     "test:acceptance:headed": {
-      "dependsOn": [
-        "^build",
-        "e2e:cleanup"
-      ],
+      "dependsOn": ["^build", "e2e:cleanup"],
       "env": [
         "ATLAS_E2E_API_URL",
         "ATLAS_E2E_APP_URL",
@@ -459,10 +415,7 @@
         "STRIPE_API_KEY",
         "STRIPE_ATLAS_CATALOG"
       ],
-      "outputs": [
-        "playwright-report/**",
-        "test-results/**"
-      ],
+      "outputs": ["playwright-report/**", "test-results/**"],
       "cache": false
     }
   }

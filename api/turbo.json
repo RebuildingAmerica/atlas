@@ -1,12 +1,38 @@
 {
   "extends": ["//"],
   "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "env": [
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_PUBLIC_URL",
+        "DATABASE_BACKEND",
+        "DATABASE_URL"
+      ]
+    },
+    "setup": {
+      "cache": false,
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["setup"],
+      "inputs": ["$TURBO_DEFAULT$", "pyproject.toml", "uv.lock"],
+      "outputs": []
+    },
+    "lint": {
+      "dependsOn": ["setup"],
+      "inputs": ["$TURBO_DEFAULT$", "pyproject.toml", "uv.lock"],
+      "outputs": []
+    },
     "test": {
       "dependsOn": [
+        "setup",
         "@rebuildingamerica/atlas-discovery-engine#test",
         "@rebuildingamerica/atlas-shared#test"
       ],
       "env": ["ATLAS_TEST_POSTGRES_URL"],
+      "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/libs/discovery-engine/**",
@@ -22,6 +48,8 @@
         "!.venv/**",
         "!htmlcov/**",
         "!node_modules/**",
+        "!.turbo/**",
+        "!atlas.db",
         "!openapi/**",
         "!$TURBO_ROOT$/libs/**/*.pyc",
         "!$TURBO_ROOT$/libs/**/__pycache__/**",
@@ -33,7 +61,9 @@
         "!$TURBO_ROOT$/libs/**/.ruff_cache/**",
         "!$TURBO_ROOT$/libs/**/.venv/**",
         "!$TURBO_ROOT$/libs/**/htmlcov/**",
-        "!$TURBO_ROOT$/libs/**/node_modules/**"
+        "!$TURBO_ROOT$/libs/**/node_modules/**",
+        "!$TURBO_ROOT$/libs/**/.turbo/**",
+        "!$TURBO_ROOT$/libs/**/atlas.db"
       ]
     }
   }
