@@ -14,9 +14,6 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": [
-        "@rebuildingamerica/atlas-api-client#api-client"
-      ],
       "outputs": []
     }
   }

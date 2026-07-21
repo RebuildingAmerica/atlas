@@ -160,8 +160,7 @@
     },
     "test": {
       "dependsOn": [
-        "@rebuildingamerica/atlas-api-client#api-client",
-        "@rebuildingamerica/entity-widgets#build"
+        "@rebuildingamerica/atlas-api-client#api-client"
       ],
       "env": [
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -177,9 +176,6 @@
       "outputs": []
     },
     "test:coverage": {
-      "dependsOn": [
-        "@rebuildingamerica/entity-widgets#build"
-      ],
       "outputs": [
         "coverage/**"
       ]
