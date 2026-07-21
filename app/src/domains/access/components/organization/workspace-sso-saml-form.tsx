@@ -1,4 +1,4 @@
-import type { AtlasWorkspaceSSOSetupValues } from "../../organization-sso-defaults";
+import type { AtlasWorkspaceSSOSetupValues } from "@rebuildingamerica/atlas-access/workspace/organization-sso-defaults";
 import {
   classifyPemCertificate,
   extractIssuerOrigin,

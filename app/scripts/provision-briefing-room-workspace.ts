@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import type { AtlasProduct } from "../src/domains/access/capabilities";
+import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import {
   BRIEFING_ROOM_FIRST_SAVED_VIEWS,
   provisionCustomerWorkspace,

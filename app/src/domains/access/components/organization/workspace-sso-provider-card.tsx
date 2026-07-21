@@ -1,5 +1,5 @@
 import { CheckCircle2, Clock } from "lucide-react";
-import type { AtlasWorkspaceSSOProvider } from "../../organization-sso";
+import type { AtlasWorkspaceSSOProvider } from "@rebuildingamerica/atlas-access/workspace/organization-sso";
 import { formatCertificateExpiry } from "@rebuildingamerica/atlas-access/cert-expiry-helpers";
 import {
   DNS_PROVIDER_GUIDES,

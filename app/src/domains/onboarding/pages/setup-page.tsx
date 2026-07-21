@@ -23,7 +23,6 @@ import {
   onboardingWorkspaceSlug,
   type PurchaseOnboardingIntent,
   type SetupInterval,
-  type SetupProduct,
 } from "@rebuildingamerica/atlas-access/onboarding/setup-state";
 
 export const setupSearchSchema = z.object({
