@@ -75,12 +75,6 @@ delete baseWebServerEnv.FORCE_COLOR;
 // only needs to listen on localhost. Avoiding the portless DNS shim keeps local
 // acceptance startup deterministic.
 const mailServerCommand = "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci";
-// Runs `command` under a watchdog that kills the whole process group the
-// moment Playwright itself is gone, instead of leaving an orphaned server
-// running indefinitely. See scripts/e2e/run-until-orphaned.mjs.
-function runUntilOrphaned(command: string): string {
-  return `node app/scripts/e2e/run-until-orphaned.mjs -- ${command}`;
-}
 const operatorAllowedEmails = "person@atlas.test";
 const commonAuthEnv = {
   ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
@@ -115,7 +109,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: runUntilOrphaned(mailServerCommand),
+      command: mailServerCommand,
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
@@ -127,7 +121,7 @@ export default defineConfig({
       url: new URL("/health", `${mailboxUrl}/`).toString(),
     },
     {
-      command: runUntilOrphaned("pnpm exec turbo run //#e2e:api --output-logs=full"),
+      command: "pnpm exec turbo run //#e2e:api --output-logs=full",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
@@ -157,9 +151,7 @@ export default defineConfig({
       url: absoluteUrl(apiUrl, "/health"),
     },
     {
-      command: runUntilOrphaned(
-        "pnpm exec turbo run @rebuildingamerica/atlas-app#start:e2e --output-logs=full",
-      ),
+      command: "pnpm exec turbo run @rebuildingamerica/atlas-app#start:e2e --output-logs=full",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
