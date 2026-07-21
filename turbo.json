@@ -23,7 +23,10 @@
         "ATLAS_DOCS_URL",
         "ATLAS_EMAIL_PROVIDER",
         "ATLAS_AUTH_BASE_PATH",
-        "ATLAS_SERVER_API_PROXY_TARGET"
+        "ATLAS_SERVER_API_PROXY_TARGET",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+        "ATLAS_AUTH_MEMBERSHIP_URL"
       ]
     },
     "//#contract:test": {
