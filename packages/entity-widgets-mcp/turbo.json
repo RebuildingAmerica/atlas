@@ -9,15 +9,24 @@
       ]
     },
     "typecheck": {
+      "dependsOn": [
+        "@rebuildingamerica/entity-widgets#build"
+      ],
       "outputs": []
     },
     "lint": {
       "outputs": []
     },
     "test": {
+      "dependsOn": [
+        "@rebuildingamerica/entity-widgets#build"
+      ],
       "outputs": []
     },
     "test:coverage": {
+      "dependsOn": [
+        "@rebuildingamerica/entity-widgets#build"
+      ],
       "outputs": [
         "coverage/**"
       ]

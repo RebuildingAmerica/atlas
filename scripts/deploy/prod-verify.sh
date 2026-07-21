@@ -7,10 +7,10 @@ cd "$ROOT_DIR"
 
 pnpm exec turbo run \
   test \
-  contract:test \
-  compose:validate \
-  pds:test \
-  secrets:scan \
+  '//#contract:test' \
+  '//#compose:validate' \
+  '//#pds:test' \
+  '//#secrets:scan' \
   openapi:lint \
   typecheck \
   lint \

@@ -132,7 +132,8 @@
     },
     "typecheck": {
       "dependsOn": [
-        "@rebuildingamerica/atlas-api-client#api-client"
+        "@rebuildingamerica/atlas-api-client#api-client",
+        "@rebuildingamerica/entity-widgets#build"
       ],
       "env": [
         "ATLAS_DEPLOY_MODE"
@@ -155,7 +156,8 @@
     },
     "test": {
       "dependsOn": [
-        "@rebuildingamerica/atlas-api-client#api-client"
+        "@rebuildingamerica/atlas-api-client#api-client",
+        "@rebuildingamerica/entity-widgets#build"
       ],
       "env": [
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -171,6 +173,9 @@
       "outputs": []
     },
     "test:coverage": {
+      "dependsOn": [
+        "@rebuildingamerica/entity-widgets#build"
+      ],
       "outputs": [
         "coverage/**"
       ]
