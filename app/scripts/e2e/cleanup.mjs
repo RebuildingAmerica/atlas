@@ -21,7 +21,11 @@ async function runCommand(command, args) {
     child.on("error", reject);
     child.on("close", (code) => {
       if (code !== 0 && code !== 1) {
-        reject(new Error(`${command} ${args.join(" ")} exited with code ${code ?? "unknown"}.`));
+        reject(
+          new Error(
+            `${command} ${args.join(" ")} exited with code ${code ?? "unknown"}.`,
+          ),
+        );
         return;
       }
 
