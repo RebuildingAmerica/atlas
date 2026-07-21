@@ -15,6 +15,9 @@
       "outputs": []
     },
     "lint": {
+      "dependsOn": [
+        "@rebuildingamerica/entity-widgets#build"
+      ],
       "outputs": []
     },
     "test": {
