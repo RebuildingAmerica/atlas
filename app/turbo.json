@@ -141,6 +141,10 @@
       "outputs": []
     },
     "lint": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-api-client#api-client",
+        "@rebuildingamerica/entity-widgets#build"
+      ],
       "outputs": []
     },
     "format:check": {

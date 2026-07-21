@@ -5,12 +5,18 @@
       "outputs": ["dist/**"]
     },
     "typecheck": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-api-client#api-client"
+      ],
       "outputs": []
     },
     "lint": {
       "outputs": []
     },
     "test": {
+      "dependsOn": [
+        "@rebuildingamerica/atlas-api-client#api-client"
+      ],
       "outputs": []
     }
   }
