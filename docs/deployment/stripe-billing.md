@@ -119,18 +119,16 @@ The script reads `ATLAS_PUBLIC_URL` from `.env`, defaults to
 Staging uses Stripe test-mode objects and Vercel Preview environment variables:
 
 ```bash
-pnpm bootstrap --target staging
-```
-
-The command writes `.env.staging`, creates or verifies the Stripe test-mode
-catalog, creates or verifies the staging webhook endpoint, and syncs the three
-runtime Stripe keys into the linked Vercel Preview environment.
-
-For targeted staging reruns:
-
-```bash
 pnpm setup:staging
 ```
+
+(`pnpm bootstrap --target staging` is the same command under a different alias.)
+It writes `.env.staging`, creates or verifies the Stripe test-mode catalog,
+creates or verifies the staging webhook endpoint, and syncs the three runtime
+Stripe keys into the linked Vercel Preview environment. It does not touch
+Infrastructure, Database, MCP Registry, or Deploy — those phases have no staging
+equivalent, so a staging-targeted bootstrap run always skips them rather than
+acting on the shared production GCP project or database.
 
 ## Production
 
