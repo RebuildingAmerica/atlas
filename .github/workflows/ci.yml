@@ -228,6 +228,11 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-toolchain
+      - name: Verify Stripe credentials and catalog before spending CI time
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
+        run: pnpm run stripe:verify:ci
       - name: Install Stripe CLI
         run: |
           curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | sudo gpg --dearmor -o /usr/share/keyrings/stripe.gpg

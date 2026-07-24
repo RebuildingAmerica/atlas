@@ -59,6 +59,7 @@
     "stripe:verify:local": "tsx scripts/bootstrap/products/atlas/verify.ts --target local",
     "stripe:verify:staging": "tsx scripts/bootstrap/products/atlas/verify.ts --target staging",
     "stripe:verify:prod": "tsx scripts/bootstrap/products/atlas/verify.ts --target prod --live",
+    "stripe:verify:ci": "tsx scripts/ci/verify-stripe-runtime-catalog.ts",
     "stripe:listen": "tsx scripts/bootstrap/products/atlas/listen.ts",
     "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor"
   },

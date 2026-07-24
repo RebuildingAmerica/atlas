@@ -561,7 +561,7 @@ function sameStringSet(
   );
 }
 
-async function fetchStripeCatalogSnapshot(
+export async function fetchStripeCatalogSnapshot(
   stripe: Stripe,
   env: Map<string, string>,
   expectedWebhookUrl?: string,
