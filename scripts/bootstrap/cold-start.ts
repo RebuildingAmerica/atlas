@@ -348,11 +348,16 @@ async function main(): Promise<void> {
     log.step("Phase 3: Environment Configuration");
     log.info(describePhase("Environment Configuration"));
     attemptedPhases.add("env");
+    const hostedTarget = args.localOnly
+      ? null
+      : args.stripeTarget === "staging"
+        ? "staging"
+        : "prod";
     const result = await runEnvPhase(
       projectRoot,
       args.doctorMode,
       state,
-      !args.localOnly,
+      hostedTarget,
       args.assumeYes,
     );
     markPhase(

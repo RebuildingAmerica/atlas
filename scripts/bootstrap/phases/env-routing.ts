@@ -4,6 +4,19 @@ import { promptOrExit } from "../lib/ui.js";
 import { isPlaceholder } from "../lib/secret.js";
 import type { VercelEnvironment, VercelVar } from "../lib/vercel.js";
 
+/**
+ * Staging and prod bootstrap runs must only ever touch their own Vercel
+ * environment. There is no "both" — a staging-targeted run has no business
+ * writing to Production, and vice versa.
+ */
+export type HostedDeployTarget = "staging" | "prod";
+
+export function vercelEnvironmentsForTarget(
+  target: HostedDeployTarget,
+): VercelEnvironment[] {
+  return target === "prod" ? ["production", "development"] : ["preview"];
+}
+
 export const DEFAULT_PRODUCTION_APP_ORIGIN = "https://atlas.rebuildingus.org";
 export const DEFAULT_PRODUCTION_API_ORIGIN =
   "https://atlas-api.rebuildingus.org";
@@ -234,11 +247,11 @@ interface VercelEnvFileSpec {
 }
 
 export function buildVercelEnvVars(
+  target: HostedDeployTarget,
   productionEnv: Map<string, string>,
   stagingEnv: Map<string, string> = productionEnv,
 ): VercelVar[] {
-  const production: VercelEnvironment[] = ["production"];
-  const preview: VercelEnvironment[] = ["preview"];
+  const allowedEnvironments = new Set(vercelEnvironmentsForTarget(target));
 
   const vars: VercelVar[] = [];
   const add = (
@@ -246,7 +259,10 @@ export function buildVercelEnvVars(
     value: string | undefined,
     environments: VercelEnvironment[],
   ): void => {
-    if (value) vars.push({ key, value, environments });
+    const scoped = environments.filter((env) => allowedEnvironments.has(env));
+    if (value && scoped.length > 0) {
+      vars.push({ key, value, environments: scoped });
+    }
   };
 
   for (const spec of getVercelStaticEnvSpecs(productionEnv)) {
@@ -254,12 +270,15 @@ export function buildVercelEnvVars(
   }
 
   for (const spec of VERCEL_HOSTED_ENV_FILE_SPECS) {
-    add(
-      spec.key,
-      readEnvValue(productionEnv, spec.key, spec.fallback),
-      production,
-    );
-    add(spec.key, readEnvValue(stagingEnv, spec.key, spec.fallback), preview);
+    if (target === "prod") {
+      add(spec.key, readEnvValue(productionEnv, spec.key, spec.fallback), [
+        "production",
+      ]);
+    } else {
+      add(spec.key, readEnvValue(stagingEnv, spec.key, spec.fallback), [
+        "preview",
+      ]);
+    }
   }
 
   return vars;

@@ -11,6 +11,7 @@ import { getVercelScope, detectAndLink, syncEnvVars } from "../lib/vercel.js";
 import {
   buildVercelEnvVars,
   ensureProductionRoutingConfig,
+  type HostedDeployTarget,
 } from "./env-routing.js";
 
 const AUTO_GENERATED_SECRETS = new Set([
@@ -200,7 +201,7 @@ export async function runEnvPhase(
   projectRoot: string,
   doctorMode: boolean,
   state: ReadinessState,
-  configureHostedDeployment: boolean,
+  hostedTarget: HostedDeployTarget | null,
   assumeYes: boolean,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
@@ -302,8 +303,11 @@ export async function runEnvPhase(
     }
   }
 
-  if (configureHostedDeployment) {
-    await ensureProductionRoutingConfig(prodEnvPath, followUpItems);
+  if (hostedTarget) {
+    await ensureProductionRoutingConfig(
+      hostedTarget === "prod" ? prodEnvPath : stagingEnvPath,
+      followUpItems,
+    );
   }
 
   // Step 5: Write updates
@@ -334,10 +338,7 @@ export async function runEnvPhase(
   }
 
   // Step 6: Sync to Vercel if deploy-vercel capability is ready
-  if (
-    configureHostedDeployment &&
-    state.capabilities["deploy-vercel"]?.status === "ready"
-  ) {
+  if (hostedTarget && state.capabilities["deploy-vercel"]?.status === "ready") {
     const appDir = path.join(projectRoot, "app");
     await detectAndLink(appDir, { assumeYes });
 
@@ -345,10 +346,13 @@ export async function runEnvPhase(
     if (scope) {
       const productionEnv = getMergedEnv(rootEnvPath, prodEnvPath);
       const stagingEnv = getMergedEnv(rootEnvPath, stagingEnvPath);
-      const varsToSync = buildVercelEnvVars(productionEnv, stagingEnv);
+      const varsToSync = buildVercelEnvVars(
+        hostedTarget,
+        productionEnv,
+        stagingEnv,
+      );
       const synced = await syncEnvVars(varsToSync, scope, {
         cwd: appDir,
-        targetLabel: "production, preview, development",
       });
       if (!synced) {
         followUpItems.push(

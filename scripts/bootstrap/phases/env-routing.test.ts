@@ -45,8 +45,9 @@ void describe("hosted routing prompts", () => {
     assert.match(message, /ATLAS_DOCS_URL/);
   });
 
-  void it("syncs operator access separately to production and preview apps", () => {
+  void it("only builds production vars for a prod-targeted sync, never preview", () => {
     const vars = buildVercelEnvVars(
+      "prod",
       new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "prod-operator@example.org"]]),
       new Map([
         ["ATLAS_OPERATOR_ALLOWED_EMAILS", "staging-operator@example.org"],
@@ -54,33 +55,45 @@ void describe("hosted routing prompts", () => {
     );
 
     assert.deepEqual(
-      vars.find(
-        (item) =>
-          item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS" &&
-          item.environments.includes("production"),
-      ),
+      vars.find((item) => item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS"),
       {
         key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
         value: "prod-operator@example.org",
         environments: ["production"],
       },
     );
+    assert.equal(
+      vars.some((item) => item.environments.includes("preview")),
+      false,
+    );
+  });
+
+  void it("only builds preview vars for a staging-targeted sync, never production", () => {
+    const vars = buildVercelEnvVars(
+      "staging",
+      new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "prod-operator@example.org"]]),
+      new Map([
+        ["ATLAS_OPERATOR_ALLOWED_EMAILS", "staging-operator@example.org"],
+      ]),
+    );
+
     assert.deepEqual(
-      vars.find(
-        (item) =>
-          item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS" &&
-          item.environments.includes("preview"),
-      ),
+      vars.find((item) => item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS"),
       {
         key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
         value: "staging-operator@example.org",
         environments: ["preview"],
       },
     );
+    assert.equal(
+      vars.some((item) => item.environments.includes("production")),
+      false,
+    );
   });
 
-  void it("syncs staging routing values to Vercel Preview", () => {
+  void it("syncs staging routing values to Vercel Preview only", () => {
     const vars = buildVercelEnvVars(
+      "staging",
       new Map([
         ["DATABASE_BACKEND", "postgres"],
         ["DATABASE_URL", "postgresql://prod.example.org/atlas"],
@@ -107,10 +120,13 @@ void describe("hosted routing prompts", () => {
       ]),
     );
 
+    assert.equal(
+      vars.some((item) => item.environments.includes("production")),
+      false,
+    );
     assert.deepEqual(
       vars
-        .filter((item) => item.environments.includes("preview"))
-        .map((item) => [item.key, item.value])
+        .map((item): [string, string] => [item.key, item.value])
         .filter(([key]) =>
           [
             "ATLAS_DEPLOY_MODE",
