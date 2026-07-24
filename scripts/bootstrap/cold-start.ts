@@ -39,6 +39,7 @@ import {
   confirmResumeSkip,
   describePhase,
   formatFollowUpNote,
+  hasSharedInfraPhases,
   parseArgs,
   printSummary,
   recomputeCommandReadiness,
@@ -381,10 +382,21 @@ async function main(): Promise<void> {
   }
 
   if (!args.localOnly) {
+    const targetHasSharedInfraPhases = hasSharedInfraPhases(args.stripeTarget);
+    if (!targetHasSharedInfraPhases) {
+      log.warn(
+        "Skipping Cloud Infrastructure, Database, MCP Registry, and Deploy: " +
+          "staging has no separate GCP project or database from production. " +
+          "Run `pnpm bootstrap --infra` (or the other standalone phase flags) " +
+          "explicitly if you intend to change the shared production resources.",
+      );
+    }
+
     // Phase 4: Infrastructure
     if (
-      !shouldSkipPhase("infra", state, args.resume) ||
-      !(await confirmResumeSkip("Infrastructure"))
+      targetHasSharedInfraPhases &&
+      (!shouldSkipPhase("infra", state, args.resume) ||
+        !(await confirmResumeSkip("Infrastructure")))
     ) {
       log.step("Phase 4: Cloud Infrastructure");
       log.info(describePhase("Cloud Infrastructure"));
@@ -402,8 +414,9 @@ async function main(): Promise<void> {
 
     // Phase 5: Database
     if (
-      !shouldSkipPhase("database", state, args.resume) ||
-      !(await confirmResumeSkip("Database"))
+      targetHasSharedInfraPhases &&
+      (!shouldSkipPhase("database", state, args.resume) ||
+        !(await confirmResumeSkip("Database")))
     ) {
       log.step("Phase 5: Database");
       log.info(describePhase("Database"));
@@ -441,8 +454,9 @@ async function main(): Promise<void> {
 
     // Phase 7: MCP Registry publisher (opt-in inside the phase)
     if (
-      !shouldSkipPhase("mcp-registry", state, args.resume) ||
-      !(await confirmResumeSkip("MCP Registry"))
+      targetHasSharedInfraPhases &&
+      (!shouldSkipPhase("mcp-registry", state, args.resume) ||
+        !(await confirmResumeSkip("MCP Registry")))
     ) {
       log.step("Phase 7: MCP Registry Publisher");
       log.info(describePhase("MCP Registry Publisher"));
@@ -459,8 +473,9 @@ async function main(): Promise<void> {
 
     // Phase 8: Deploy
     if (
-      !shouldSkipPhase("deploy", state, args.resume) ||
-      !(await confirmResumeSkip("Deploy"))
+      targetHasSharedInfraPhases &&
+      (!shouldSkipPhase("deploy", state, args.resume) ||
+        !(await confirmResumeSkip("Deploy")))
     ) {
       log.step("Phase 8: Initial Deployment");
       log.info(describePhase("Initial Deployment"));
@@ -514,7 +529,11 @@ async function main(): Promise<void> {
       log.step("Phase 10: API Canonical Domain");
       log.info(describePhase("API Canonical Domain"));
       attemptedPhases.add("api-domain");
-      const result = await runApiDomainPhase(projectRoot, args.doctorMode);
+      const result = await runApiDomainPhase(
+        projectRoot,
+        args.doctorMode,
+        args.apiDomainTarget,
+      );
       markPhase(
         state,
         "api-domain",

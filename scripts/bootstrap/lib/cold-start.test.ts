@@ -6,6 +6,7 @@ import {
   bootstrapOutroMessage,
   describePhase,
   formatFollowUpNote,
+  hasSharedInfraPhases,
   parseArgs,
   phaseEntriesForSummary,
   recomputeCommandReadiness,
@@ -97,6 +98,12 @@ void describe("Atlas bootstrap argument parsing", () => {
     assert.equal(shouldStopAfterAuthFailure(false, false), true);
     assert.equal(shouldStopAfterAuthFailure(false, true), false);
     assert.equal(shouldStopAfterAuthFailure(true, false), false);
+  });
+
+  void it("only runs the shared GCP infra, database, and deploy phases for local and prod targets", () => {
+    assert.equal(hasSharedInfraPhases("prod"), true);
+    assert.equal(hasSharedInfraPhases("local"), true);
+    assert.equal(hasSharedInfraPhases("staging"), false);
   });
 
   void it("describes what a phase is about before it runs", () => {

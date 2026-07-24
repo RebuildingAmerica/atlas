@@ -82,6 +82,19 @@ export function shouldStopAfterAuthFailure(
   return !doctorMode && !authSuccess;
 }
 
+/**
+ * Infrastructure, Database, MCP Registry, and Deploy have no staging
+ * equivalent: there is one shared GCP project and one production database,
+ * and those phases touch them unconditionally regardless of --target.
+ * Staging invocations must skip them entirely rather than silently applying
+ * schema migrations and infra/deploy changes to production.
+ */
+export function hasSharedInfraPhases(
+  stripeTarget: StripeBootstrapTarget,
+): boolean {
+  return stripeTarget !== "staging";
+}
+
 export function shouldBlockCurrentRunDependentPhase(options: {
   attempted: boolean;
   status: PhaseState["status"] | undefined;
