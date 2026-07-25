@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import {
   atlasApiServiceName,
   buildAtlasApiImageSpec,
+  buildCloudBuildDockerConfig,
   classifyDockerPreflight,
   formatDockerBuildFallbackPrompt,
   formatDockerDaemonRecovery,
@@ -92,6 +96,7 @@ void describe("deploy resilience", () => {
     assert.match(cloudBuildConfig, /"gcr.io\/cloud-builders\/docker"/);
     assert.match(cloudBuildConfig, /"api\/Dockerfile"/);
     assert.match(cloudBuildConfig, /"images": \[/);
+    assert.match(cloudBuildConfig, /"DOCKER_BUILDKIT=1"/);
 
     const cloudBuildCommand = formatCloudBuildSubmitCommand(
       repoRoot,
@@ -100,6 +105,28 @@ void describe("deploy resilience", () => {
     assert.match(cloudBuildCommand, /gcloud builds submit/);
     assert.match(cloudBuildCommand, /--config="\/tmp\/cloudbuild\.json"/);
     assert.match(cloudBuildCommand, /"\/repo\/atlas"/);
+  });
+
+  void it("enables BuildKit on Cloud Build so Dockerfile cache mounts work", () => {
+    const repoRoot = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../../..",
+    );
+    const apiDockerfile = readFileSync(
+      path.join(repoRoot, "api", "Dockerfile"),
+      "utf8",
+    );
+    // Guards the pairing: the moment a Dockerfile needs BuildKit, the Cloud
+    // Build fallback has to ask for it or the remote build fails outright.
+    assert.match(apiDockerfile, /RUN --mount=type=cache/);
+
+    const config = buildCloudBuildDockerConfig(
+      "api/Dockerfile",
+      "us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images/atlas-api:initial",
+    );
+
+    assert.deepEqual(config.steps[0]?.env, ["DOCKER_BUILDKIT=1"]);
+    assert.equal(config.steps[0]?.name, "gcr.io/cloud-builders/docker");
   });
 
   void it("keeps the atlas-api Dockerfile path separate from the image tag", () => {

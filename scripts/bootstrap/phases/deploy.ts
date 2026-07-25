@@ -104,6 +104,17 @@ export interface AtlasApiImageSpec extends DockerBuildPlan {
   imageTag: string;
 }
 
+export interface CloudBuildDockerStep {
+  name: string;
+  env: string[];
+  args: string[];
+}
+
+export interface CloudBuildDockerConfig {
+  steps: CloudBuildDockerStep[];
+  images: string[];
+}
+
 export async function runDeployPhase(
   projectRoot: string,
   state: ReadinessState,
@@ -573,29 +584,43 @@ export function formatCloudBuildSubmitCommand(
   return `gcloud builds submit "${contextDir}" --config="${configPath}" --quiet`;
 }
 
+export function buildCloudBuildDockerConfig(
+  dockerfilePath: string,
+  imageTag: string,
+): CloudBuildDockerConfig {
+  return {
+    steps: [
+      {
+        name: "gcr.io/cloud-builders/docker",
+        // The Atlas Dockerfiles use `RUN --mount=type=cache` so dependency
+        // downloads survive between builds. The Cloud Build docker builder
+        // defaults to the legacy engine, which rejects `--mount` outright, so
+        // BuildKit has to be requested explicitly here. Locally this is
+        // implicit -- Docker Desktop enables BuildKit by default -- which is
+        // why only the Cloud Build fallback ever hit it.
+        env: ["DOCKER_BUILDKIT=1"],
+        args: [
+          "build",
+          "--platform",
+          CLOUD_RUN_IMAGE_PLATFORM,
+          "--file",
+          dockerfilePath,
+          "-t",
+          imageTag,
+          ".",
+        ],
+      },
+    ],
+    images: [imageTag],
+  };
+}
+
 export function formatCloudBuildDockerConfig(
   dockerfilePath: string,
   imageTag: string,
 ): string {
   return JSON.stringify(
-    {
-      steps: [
-        {
-          name: "gcr.io/cloud-builders/docker",
-          args: [
-            "build",
-            "--platform",
-            CLOUD_RUN_IMAGE_PLATFORM,
-            "--file",
-            dockerfilePath,
-            "-t",
-            imageTag,
-            ".",
-          ],
-        },
-      ],
-      images: [imageTag],
-    },
+    buildCloudBuildDockerConfig(dockerfilePath, imageTag),
     null,
     2,
   );
