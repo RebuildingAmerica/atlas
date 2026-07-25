@@ -4,6 +4,9 @@
   ],
   "tasks": {
     "build": {
+      "dependsOn": [
+        "@rebuildingamerica/entity-widgets#build"
+      ],
       "outputs": [
         "dist/**"
       ]

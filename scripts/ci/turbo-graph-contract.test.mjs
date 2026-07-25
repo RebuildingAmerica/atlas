@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 
 function dryRun(task) {
@@ -77,4 +78,46 @@ test("API checks share one environment preparation task", () => {
   assert.deepEqual(apiTypecheck.dependencies, [
     "@rebuildingamerica/atlas-api#setup",
   ]);
+});
+
+test("packages that publish built output are built before their consumers", () => {
+  // A workspace package whose exports resolve into dist/ cannot be bundled
+  // from source, so every consumer's build has to wait for it. Without that
+  // edge the consumer only builds because a stale dist/ happens to be on
+  // disk -- which is true locally and false in Docker and on CI.
+  const graph = dryRun("build");
+  const manifests = new Map(
+    graph.tasks
+      .filter((task) => task.directory !== "")
+      .map((task) => [
+        task.package,
+        JSON.parse(
+          readFileSync(path.join(task.directory, "package.json"), "utf8"),
+        ),
+      ]),
+  );
+
+  const publishesBuiltOutput = (name) => {
+    const manifest = manifests.get(name);
+    if (!manifest) return false;
+    return JSON.stringify(manifest.exports ?? {}).includes("/dist/");
+  };
+
+  const missing = [];
+  for (const task of graph.tasks) {
+    const manifest = manifests.get(task.package);
+    if (!manifest) continue;
+    const dependencies = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+    };
+    for (const [dependency, range] of Object.entries(dependencies)) {
+      if (!range.startsWith("workspace:")) continue;
+      if (!publishesBuiltOutput(dependency)) continue;
+      if (task.dependencies.includes(`${dependency}#build`)) continue;
+      missing.push(`${task.taskId} must depend on ${dependency}#build`);
+    }
+  }
+
+  assert.deepEqual(missing, []);
 });
