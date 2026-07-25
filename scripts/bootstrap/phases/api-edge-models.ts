@@ -89,3 +89,21 @@ export interface HealthProbe {
   viaCloudflare: boolean;
   output: string;
 }
+
+export interface CloudRunDomainMappingCondition {
+  type?: string;
+  status?: string;
+  message?: string;
+  reason?: string;
+}
+
+export interface DomainMappingPayload {
+  readable: boolean;
+  ready: CloudRunDomainMappingCondition | null;
+}
+
+export interface DomainMappingReadiness {
+  queried: boolean;
+  ready: boolean;
+  detail: string;
+}

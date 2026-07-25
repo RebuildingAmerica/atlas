@@ -86,8 +86,14 @@ export async function runApiEdgePhase(
 
   const preflight = preflightCanonicalDomain(config);
   if (!preflight.healthy) {
-    log.error(`https://${config.domain}/health is not healthy yet.`);
-    logSubline(pc.dim(preflight.output || "no response"));
+    log.error(
+      `https://${config.domain}/health is not healthy yet (${
+        preflight.statusCode === null
+          ? "no HTTP response"
+          : `HTTP ${preflight.statusCode}`
+      }).`,
+    );
+    logSubline(pc.dim(preflight.output));
     followUpItems.push(
       `Run \`pnpm bootstrap --api-domain${
         config.target === "staging" ? " --target staging" : ""

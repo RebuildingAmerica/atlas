@@ -1,11 +1,15 @@
 import { spinner } from "@clack/prompts";
 import pc from "picocolors";
-import { commandOutput, runCommand } from "../lib/shell.js";
+import { commandOutput, runCommand, type CommandResult } from "../lib/shell.js";
 import { logSubline } from "../lib/ui.js";
 import { findCnameRecord } from "../lib/cloudflare.js";
 import type { PhaseResult } from "../state.js";
-import type { ApiEdgeConfig } from "./api-edge-models.js";
-import type { HealthProbe } from "./api-edge-models.js";
+import type {
+  ApiEdgeConfig,
+  DomainMappingPayload,
+  DomainMappingReadiness,
+  HealthProbe,
+} from "./api-edge-models.js";
 import {
   EDGE_RATE_LIMIT_RULE_DESCRIPTIONS,
   EDGE_TRANSFORM_RULE_DESCRIPTIONS,
@@ -15,19 +19,171 @@ import {
   getTransformRuleset,
 } from "./api-edge-cloudflare.js";
 
+/**
+ * Confirm the canonical API domain is serving before edge proxying is enabled.
+ *
+ * A 200 over https://<domain>/health is the authoritative signal: it can only
+ * happen once the Cloud Run domain mapping and its certificate are live, and
+ * the CNAME this phase manages points at Cloud Run. The domain mapping is
+ * queried only to explain a failing probe, never to veto a passing one -- an
+ * unreadable mapping used to block edge setup on a demonstrably healthy API.
+ *
+ * Parameters
+ * ----------
+ * config
+ *     Resolved edge configuration for the target environment.
+ *
+ * Returns
+ * -------
+ * HealthProbe
+ *     The HTTPS probe, with domain mapping detail appended when it failed.
+ */
 export function preflightCanonicalDomain(config: ApiEdgeConfig): HealthProbe {
-  const record = runCommand(
-    `gcloud beta run domain-mappings describe --domain="${config.domain}" --region="${config.region}" --project="${config.project}" --format="value(status.conditions[0].status)" 2>/dev/null`,
+  const probe = runHealthProbe(config.domain);
+  if (probe.healthy) {
+    return probe;
+  }
+
+  const mapping = describeDomainMappingReadiness(config);
+  return {
+    ...probe,
+    output: [probe.output, mapping.detail].join("\n\n"),
+  };
+}
+
+/**
+ * Read the Ready condition of the Cloud Run domain mapping for the API domain.
+ *
+ * Parameters
+ * ----------
+ * config
+ *     Resolved edge configuration for the target environment.
+ *
+ * Returns
+ * -------
+ * DomainMappingReadiness
+ *     Whether gcloud answered, whether the mapping is Ready, and why not.
+ */
+export function describeDomainMappingReadiness(
+  config: ApiEdgeConfig,
+): DomainMappingReadiness {
+  return parseDomainMappingReadiness(
+    runCommand(
+      `gcloud beta run domain-mappings describe --domain="${config.domain}" --region="${config.region}" --project="${config.project}" --format=json`,
+    ),
   );
-  if (!record.ok || record.stdout.trim() !== "True") {
+}
+
+/**
+ * Turn a `gcloud run domain-mappings describe` result into readiness detail.
+ *
+ * stderr is deliberately preserved rather than discarded: a stale gcloud login
+ * and a genuinely unready mapping are different problems, and collapsing both
+ * into an empty string leaves the operator with nothing to act on.
+ *
+ * Parameters
+ * ----------
+ * result
+ *     Captured result of the describe command.
+ *
+ * Returns
+ * -------
+ * DomainMappingReadiness
+ *     Parsed readiness, or the reason the lookup could not answer.
+ */
+export function parseDomainMappingReadiness(
+  result: CommandResult,
+): DomainMappingReadiness {
+  if (!result.ok) {
     return {
-      healthy: false,
-      output: commandOutput(record),
-      statusCode: null,
-      viaCloudflare: false,
+      queried: false,
+      ready: false,
+      detail: `Cloud Run domain mapping lookup failed:\n${commandOutput(result)}`,
     };
   }
-  return runHealthProbe(config.domain);
+
+  const payload = parseDomainMappingPayload(result.stdout);
+  if (!payload.readable) {
+    return {
+      queried: false,
+      ready: false,
+      detail: `Cloud Run domain mapping lookup returned unreadable output:\n${commandOutput(result)}`,
+    };
+  }
+
+  const ready = payload.ready;
+  if (!ready) {
+    return {
+      queried: true,
+      ready: false,
+      detail:
+        "Cloud Run domain mapping exists but has not reported a Ready condition yet.",
+    };
+  }
+  if (ready.status === "True") {
+    return {
+      queried: true,
+      ready: true,
+      detail:
+        "Cloud Run domain mapping is Ready, so the failure is downstream of DNS and certificates.",
+    };
+  }
+
+  const cause = [ready.reason, ready.message]
+    .filter((part): part is string => typeof part === "string" && part !== "")
+    .join(": ");
+  return {
+    queried: true,
+    ready: false,
+    detail: `Cloud Run domain mapping is not Ready (status ${ready.status ?? "unset"})${
+      cause ? `: ${cause}` : ""
+    }`,
+  };
+}
+
+function parseDomainMappingPayload(stdout: string): DomainMappingPayload {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    return { readable: false, ready: null };
+  }
+  if (!isRecord(parsed)) {
+    return { readable: false, ready: null };
+  }
+
+  const status = parsed.status;
+  if (!isRecord(status)) {
+    return { readable: true, ready: null };
+  }
+  const conditions = status.conditions;
+  if (!Array.isArray(conditions)) {
+    return { readable: true, ready: null };
+  }
+
+  const ready = conditions
+    .filter(isRecord)
+    .find((condition) => condition.type === "Ready");
+  if (!ready) {
+    return { readable: true, ready: null };
+  }
+  return {
+    readable: true,
+    ready: {
+      type: readString(ready.type),
+      status: readString(ready.status),
+      message: readString(ready.message),
+      reason: readString(ready.reason),
+    },
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
 }
 
 export async function waitForCloudflareHealth(
