@@ -99,11 +99,10 @@ compose_up() {
 run_backup() {
   local destination
   destination="$(backup_destination)"
-  local workdir
   workdir="$(mktemp -d)"
   local archive="$workdir/pds-data.tar.gz"
   local checksum="$archive.sha256"
-  local should_restart=0
+  should_restart=0
   trap 'rm -rf "$workdir"; if [ "$should_restart" -eq 1 ]; then compose_up; fi' EXIT
 
   compose_down
@@ -122,11 +121,10 @@ run_restore() {
     exit 1
   fi
 
-  local workdir
   workdir="$(mktemp -d)"
   local archive="$workdir/pds-data.tar.gz"
   local replaced_directory="$DATA_DIRECTORY/.restore-replaced-$(date -u '+%Y%m%dT%H%M%SZ')"
-  local should_restart=0
+  should_restart=0
   trap 'rm -rf "$workdir"; if [ "$should_restart" -eq 1 ]; then compose_up; fi' EXIT
 
   copy_from_uri "$BACKUP_URI" "$archive"
