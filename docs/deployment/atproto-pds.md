@@ -7,47 +7,42 @@ of the Vercel app or Cloud Run API. It owns AT Protocol repositories, DIDs,
 sessions, and blobs. Atlas receives only the verified DID, handle, and public
 PDS URL; it never persists a PDS password or session token.
 
-## Cost: staging does not need its own instance
+## Cost: staging keeps its own instance, right-sized
 
-A Compute Engine VM can't scale to zero, so every environment running one is
-continuous cost regardless of traffic. `ATLAS_ATPROTO_PDS_E2E_HARNESS` defaults
-to on (`app/src/domains/access/server/atproto-pds.ts`), which makes managed
-identity provisioning return a synthetic `did:web:` identity with no network
-call to a PDS at all — this is why staging's acceptance and hosted smoke suites
-already pass without one. A dedicated staging PDS VM only earns its cost if
-something specifically needs to exercise the real integration, and even then a
-low-frequency manual or scheduled check against production's instance (with a
-disposable test account) covers that without a second always-on host.
+Staging genuinely needs a live PDS, not just the harness. `hosted-identity`
+(`.github/workflows/deploy-staging.yml`) deploys a real PDS and makes a real,
+unharnessed HTTP call through the invite broker to create a managed account —
+that's the one thing this repo has that actually proves managed account creation
+will work in production before a release ships, and no amount of
+`ATLAS_ATPROTO_PDS_E2E_HARNESS` coverage substitutes for it.
+`ATLAS_ATPROTO_PDS_E2E_HARNESS` (`app/src/domains/access/server/atproto-pds.ts`)
+does cover ordinary identity/session provisioning with a synthetic `did:web:`
+identity and no network call, which is why staging's regular acceptance and
+hosted smoke suites don't need a live PDS — but `hosted-identity` is a
+deliberate exception, gated by CI's file-change classification so it only runs
+when PDS/auth-relevant code actually changes. Low or zero traffic on staging's
+PDS in any given week is expected, not evidence it's unused — `hosted-identity`
+running rarely is the design working as intended.
 
 Confirmed in `rap-atlas-prod` (`gcloud compute instances list`): both
-`atlas-pds` (`us-east1-b`) and `atlas-pds-staging` (`us-central1-a`) are running
-as `e2-small`, each with a 20GB boot disk plus a 30GB `pd-balanced` data disk.
-`e2-small` is not Always Free tier eligible — only `e2-micro` is — so this is
-two continuously-billed, above-free-tier instances for a service that needs at
-most one. A week of staging's Docker Compose logs
-(`docker compose logs --since 168h`) contained zero non-health-check lines,
-confirming it is not receiving real traffic and is safe to decommission:
+`atlas-pds` (`us-east1-b`) and `atlas-pds-staging` (`us-central1-a`) run as
+`e2-small` (2 vCPU, 2GB RAM), each with a 20GB boot disk plus a 30GB
+`pd-balanced` data disk. `e2-small` is not Always Free tier eligible — only
+`e2-micro` is. Production was downsized to `e2-micro` in `us-east1` (already
+Always Free tier eligible) on 2026-07-25: stop,
+`set-machine-type --machine-type=e2-micro`, start. Verified healthy afterward —
+both `node scripts/deploy/pds-release.mjs health` and `... invite-broker-route`
+passed, and `docker stats` showed ~598MiB/955MiB used with the full PDS +
+Caddy + invite-broker stack running, comfortable headroom for the current
+zero-real-user load. This was a real, brief PDS-only outage while the instance
+was stopped (not the app or API), and reused the VM's existing reserved static
+IP so DNS needed no changes.
 
-1. Back up first if there's any reason to keep the data:
-   `services/atproto-pds/vm-backup.sh backup` against `atlas-pds-staging`.
-2. Delete the instance and both its disks:
-   `gcloud compute instances delete atlas-pds-staging --zone=us-central1-a --project=rap-atlas-prod`
-   (add `--keep-disks=none` to also delete `atlas-pds-staging` and
-   `atlas-pds-staging-data`, or delete them separately with
-   `gcloud compute disks delete` if the instance delete leaves them behind).
-3. Remove the `deploy-pds` staging path from
-   `.github/workflows/deploy-staging.yml` so it can't get silently recreated.
-4. Downsize production's `atlas-pds` from `e2-small` to `e2-micro` in `us-east1`
-   (already an Always Free tier eligible region) to bring PDS compute cost to
-   effectively $0, leaving only the ~50GB `pd-balanced` disk cost:
-   `gcloud compute instances stop atlas-pds --zone=us-east1-b --project=rap-atlas-prod`,
-   then
-   `gcloud compute instances set-machine-type atlas-pds --zone=us-east1-b --project=rap-atlas-prod --machine-type=e2-micro`,
-   then
-   `gcloud compute instances start atlas-pds --zone=us-east1-b --project=rap-atlas-prod`.
-   This is a short, real outage for the PDS (not the app or API) while it's
-   stopped — do it in a low-traffic window and confirm `GET /xrpc/_health` on
-   `atlas-pds.rebuildingus.org` recovers after start.
+Staging is still `e2-small` — its own `e2-micro` resize hasn't been tested yet.
+Because staging isn't user-facing, it's the safe place to test that resize first
+(revert to `e2-small` immediately if it doesn't hold up) before ever considering
+it for production again. That test just hasn't happened yet; don't assume
+`e2-micro` is validated for staging until it has.
 
 ## Required hosted topology
 

@@ -16,14 +16,14 @@ project's. `pnpm bootstrap --infra --target staging` (folded into
 `pnpm setup:staging`) provisions the GCP side; the Database phase of the same
 run provisions the Neon side.
 
-Staging's PDS is a deliberate exception, and does not need a dedicated instance
-the way production does. `ATLAS_ATPROTO_PDS_E2E_HARNESS` defaults to on, so the
+Staging keeps its own PDS VM (`atlas-pds-staging`, `e2-small`). Ordinary staging
+testing doesn't need it — `ATLAS_ATPROTO_PDS_E2E_HARNESS` defaults to on, so the
 managed-identity code path never makes a network call to a real PDS during
-normal staging testing — a second always-on Compute Engine instance is real
-recurring cost for coverage the harness already provides for free. Staging's PDS
-VM (`atlas-pds-staging`, `e2-small`) is confirmed to be receiving zero real
-traffic and should be decommissioned; see the step-by-step teardown in
-[Atlas-managed ATProto PDS](./atproto-pds.md#cost-staging-does-not-need-its-own-instance).
+normal acceptance and hosted smoke runs — but `hosted-identity` does,
+deliberately, to prove managed account creation actually works before production
+depends on it. See
+[Atlas-managed ATProto PDS](./atproto-pds.md#cost-staging-keeps-its-own-instance-right-sized)
+for why that matters and the current cost/sizing state of both PDS VMs.
 
 The staging API deploy is a GitHub Actions workflow:
 
