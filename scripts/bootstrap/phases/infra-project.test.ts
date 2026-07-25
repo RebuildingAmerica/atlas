@@ -9,15 +9,24 @@ import {
 
 void describe("GCP infrastructure prompt guidance", () => {
   void it("explains how to choose the GCP project", () => {
-    const message = formatGcpProjectChoicePromptMessage();
+    const message = formatGcpProjectChoicePromptMessage("production");
 
-    assert.match(message, /Cloud Run, Artifact Registry, Scheduler/);
+    assert.match(message, /Cloud Run,/);
+    assert.match(message, /Artifact Registry, Scheduler/);
     assert.match(message, /Choose the active project/);
     assert.match(message, /Bootstrap will set gcloud/);
   });
 
+  void it("labels the project choice prompt with the requested target", () => {
+    const prodMessage = formatGcpProjectChoicePromptMessage("production");
+    const stagingMessage = formatGcpProjectChoicePromptMessage("staging");
+
+    assert.match(prodMessage, /configures production/);
+    assert.match(stagingMessage, /configures staging/);
+  });
+
   void it("explains how to enter an existing GCP project ID", () => {
-    const message = formatGcpProjectIdPromptMessage(false);
+    const message = formatGcpProjectIdPromptMessage(false, "production");
 
     assert.match(message, /cloud-resource-manager/);
     assert.match(message, /Project ID column/);
@@ -25,11 +34,18 @@ void describe("GCP infrastructure prompt guidance", () => {
   });
 
   void it("explains how bootstrap uses a new GCP project ID", () => {
-    const message = formatGcpProjectIdPromptMessage(true);
+    const message = formatGcpProjectIdPromptMessage(true, "production");
 
     assert.match(message, /globally unique/);
-    assert.match(message, /Do not use a personal or throwaway project/);
+    assert.match(message, /Do not reuse the staging project ID/);
     assert.match(message, /create it with gcloud/);
+  });
+
+  void it("warns against reusing the prod project ID when creating staging", () => {
+    const message = formatGcpProjectIdPromptMessage(true, "staging");
+
+    assert.match(message, /atlas-staging/);
+    assert.match(message, /Do not reuse the production project ID/);
   });
 
   void it("explains the hosted region prompt", () => {

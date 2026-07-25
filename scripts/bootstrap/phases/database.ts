@@ -13,54 +13,69 @@ import pc from "picocolors";
 import type { PhaseResult } from "../state.js";
 import { runCommand, commandOutput } from "../lib/shell.js";
 import { parseEnvFile, mergeEnvFile } from "../lib/env-file.js";
+import {
+  hostedEnvFilePath,
+  type HostedDeployTarget,
+} from "../lib/hosted-target.js";
 import { promptOrExit, promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 import { getVercelScope, syncEnvVars, type VercelVar } from "../lib/vercel.js";
+import { vercelEnvironmentsForTarget } from "./env-routing.js";
 
 const SCHEMA_PARTS_RELATIVE_PATH = "api/atlas/models/schema_parts";
 
-export function formatDatabaseSourcePromptMessage(): string {
+export function formatDatabaseSourcePromptMessage(
+  target: HostedDeployTarget,
+): string {
   return [
     "Database setup",
     "",
-    "Atlas production needs PostgreSQL. Choose how bootstrap should get DATABASE_URL.",
+    `Atlas ${target} needs its own PostgreSQL database, separate from the other environment's. Choose how bootstrap should get DATABASE_URL.`,
     "1. Use neonctl if you want bootstrap to create the Neon project for you.",
     "2. Choose manual if the database already exists or another teammate created it.",
     "3. Bootstrap validates the connection and runs the schema migration after this step.",
   ].join("\n");
 }
 
-export function formatExistingDatabasePromptMessage(): string {
+export function formatExistingDatabasePromptMessage(
+  target: HostedDeployTarget,
+): string {
   return [
     "Existing DATABASE_URL found",
     "",
-    "Bootstrap found a PostgreSQL connection string in the existing env files.",
-    "1. Keep it if this is the Atlas production database.",
-    "2. Replace it if it points to a personal, staging, or obsolete database.",
+    `Bootstrap found a PostgreSQL connection string already in .env.${target === "production" ? "production" : "staging"}.`,
+    `1. Keep it if this is the Atlas ${target} database.`,
+    `2. Replace it if it actually points to the ${target === "production" ? "staging" : "production"} database or something else entirely — each environment needs its own.`,
     "3. Bootstrap validates whichever connection you choose before migrating.",
   ].join("\n");
 }
 
-export function formatNeonConnectionStringPromptMessage(): string {
+export function formatNeonConnectionStringPromptMessage(
+  target: HostedDeployTarget,
+): string {
   return [
     "Neon PostgreSQL connection string",
     "",
-    "Create or open the production database in Neon:",
+    `Create or open the ${target} database in Neon:`,
     "1. Open https://console.neon.tech.",
-    "2. Create or choose the Atlas project database.",
+    `2. Create or choose the Atlas ${target} project database — not the other environment's.`,
     "3. Copy the pooled PostgreSQL connection string from the dashboard.",
     "4. Make sure it starts with postgresql:// or postgres:// and includes sslmode=require.",
     "",
-    "Paste the full connection string here. Bootstrap writes it to local env files and Vercel when linked.",
+    `Paste the full connection string here. Bootstrap writes it to .env.${target === "production" ? "production" : "staging"} and Vercel when linked.`,
   ].join("\n");
 }
 
-export function formatNeonProjectNamePromptMessage(): string {
+export function formatNeonProjectNamePromptMessage(
+  target: HostedDeployTarget,
+): string {
+  const example = target === "production" ? "atlas" : "atlas-staging";
   return [
     "Neon project name",
     "",
-    "Name the Neon project bootstrap should create for Atlas.",
-    "Use `atlas` unless this is a separate staging or scratch environment.",
+    `Name the Neon project bootstrap should create for Atlas ${target}.`,
+    `Use \`${example}\` unless you have another naming convention in place.`,
+    `Do not reuse the ${target === "production" ? "staging" : "production"} project — each environment needs its own database.`,
     "Bootstrap will ask neonctl to create the project and then read its connection string.",
   ].join("\n");
 }
@@ -69,26 +84,26 @@ export async function runDatabasePhase(
   projectRoot: string,
   state: ReadinessState,
   doctorMode: boolean,
+  target: HostedDeployTarget,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
 
   // ── Check for existing DATABASE_URL ───────────────────────────────────────
-  const prodEnvPath = path.join(projectRoot, ".env.production");
-  const rootEnvPath = path.join(projectRoot, ".env");
-  const apiEnvPath = path.join(projectRoot, "api", ".env");
+  // Only this target's own hosted env file — never fall back to the root
+  // .env or api/.env. Those are local-dev files; treating them as a source
+  // of truth for a hosted database would let one environment's value leak
+  // into the other's.
+  const hostedEnvPath = hostedEnvFilePath(projectRoot, target);
 
-  let databaseUrl =
-    readDatabaseUrl(prodEnvPath) ||
-    readDatabaseUrl(rootEnvPath) ||
-    readDatabaseUrl(apiEnvPath);
+  let databaseUrl = readDatabaseUrl(hostedEnvPath);
 
-  // Ignore SQLite URLs — they're local dev defaults, not production config
+  // Ignore SQLite URLs — they're local dev defaults, not hosted config
   if (databaseUrl?.startsWith("sqlite:")) {
     databaseUrl = undefined;
   }
 
   if (databaseUrl) {
-    log.success("DATABASE_URL already configured");
+    log.success(`DATABASE_URL already configured for ${target}`);
     logSubline(pc.dim(redactConnectionString(databaseUrl)));
 
     if (doctorMode) {
@@ -102,7 +117,7 @@ export async function runDatabasePhase(
 
     const action = (await promptOrExit(
       select({
-        message: formatExistingDatabasePromptMessage(),
+        message: formatExistingDatabasePromptMessage(target),
         options: [
           { value: "keep", label: "Keep existing connection" },
           { value: "replace", label: "Enter a new connection string" },
@@ -129,7 +144,7 @@ export async function runDatabasePhase(
   if (hasNeonctl && !doctorMode) {
     const source = (await promptOrExit(
       select({
-        message: formatDatabaseSourcePromptMessage(),
+        message: formatDatabaseSourcePromptMessage(target),
         options: [
           { value: "neonctl", label: "Create a new Neon project with neonctl" },
           { value: "manual", label: "Enter a connection string manually" },
@@ -138,20 +153,22 @@ export async function runDatabasePhase(
     )) as string;
 
     if (source === "neonctl") {
-      databaseUrl = await createNeonProject(followUpItems);
+      databaseUrl = await createNeonProject(target, followUpItems);
     }
   }
 
   if (!databaseUrl) {
     if (doctorMode) {
-      log.warn("DATABASE_URL is not configured");
-      followUpItems.push("Set DATABASE_URL in .env or .env.production");
+      log.warn(`DATABASE_URL is not configured for ${target}`);
+      followUpItems.push(
+        `Set DATABASE_URL in .env.${target === "production" ? "production" : "staging"}`,
+      );
       return { success: false, followUpItems };
     }
 
     databaseUrl = (await promptOrExit(
       text({
-        message: formatNeonConnectionStringPromptMessage(),
+        message: formatNeonConnectionStringPromptMessage(target),
         placeholder:
           "postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/atlas?sslmode=require",
         validate(value) {
@@ -183,7 +200,7 @@ export async function runDatabasePhase(
 
   // ── Write to env files ────────────────────────────────────────────────────
   if (!doctorMode && databaseUrl) {
-    writeToEnvFiles(projectRoot, databaseUrl);
+    writeToEnvFiles(hostedEnvPath, databaseUrl);
 
     // Sync DATABASE_URL to Vercel if deploy-vercel capability is ready
     if (state.capabilities["deploy-vercel"]?.status === "ready") {
@@ -194,7 +211,7 @@ export async function runDatabasePhase(
           {
             key: "DATABASE_URL",
             value: databaseUrl,
-            environments: ["production"],
+            environments: vercelEnvironmentsForTarget(target),
           },
         ];
         const synced = await syncEnvVars(vars, scope, { cwd: appDir });
@@ -217,12 +234,13 @@ export async function runDatabasePhase(
 // ── Neon Project Creation ─────────────────────────────────────────────────────
 
 async function createNeonProject(
+  target: HostedDeployTarget,
   followUpItems: string[],
 ): Promise<string | undefined> {
   const projectName = (await promptOrExit(
     text({
-      message: formatNeonProjectNamePromptMessage(),
-      initialValue: "atlas",
+      message: formatNeonProjectNamePromptMessage(target),
+      initialValue: target === "production" ? "atlas" : "atlas-staging",
     }),
   )) as string;
 
@@ -383,20 +401,12 @@ async function validateAndMigrate(
 
 // ── Write Env Files ─────────────────────────────────────────────────────────
 
-function writeToEnvFiles(projectRoot: string, databaseUrl: string): void {
-  const updates = new Map([["DATABASE_URL", databaseUrl]]);
-
-  const envTargets = [".env", ".env.production", "api/.env"];
-
-  for (const target of envTargets) {
-    const targetPath = path.join(projectRoot, target);
-    if (existsSync(targetPath)) {
-      mergeEnvFile(targetPath, updates);
-      logSubline(`Updated ${target}`);
-    }
-  }
-
-  log.success("DATABASE_URL written to env files");
+function writeToEnvFiles(hostedEnvPath: string, databaseUrl: string): void {
+  // Only the target's own hosted env file. Writing a hosted database URL
+  // into the root .env or api/.env would let another phase's fallback
+  // chain pick it up regardless of which target is actually running.
+  mergeEnvFile(hostedEnvPath, new Map([["DATABASE_URL", databaseUrl]]));
+  log.success(`DATABASE_URL written to ${path.basename(hostedEnvPath)}`);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

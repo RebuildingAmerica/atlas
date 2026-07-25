@@ -305,7 +305,7 @@ export async function runEnvPhase(
 
   if (hostedTarget) {
     await ensureProductionRoutingConfig(
-      hostedTarget === "prod" ? prodEnvPath : stagingEnvPath,
+      hostedTarget === "production" ? prodEnvPath : stagingEnvPath,
       followUpItems,
     );
   }

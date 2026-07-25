@@ -34,15 +34,23 @@ and push. The preflight:
 
 Artifact Registry cleanup policies are infrastructure setup, not deploy work.
 `pnpm bootstrap` creates the repository and applies the cleanup policy
-automatically. If a provider permission issue interrupts bootstrap, rerun the
-cloud infrastructure phase with `pnpm bootstrap --infra` after authenticating a
-GCP operator account that can update Artifact Registry repositories.
+automatically, once per GCP project. If a provider permission issue interrupts
+bootstrap, rerun the cloud infrastructure phase — `pnpm bootstrap --infra` for
+production, `pnpm bootstrap --infra --target staging` for staging's separate
+project — after authenticating a GCP operator account that can update Artifact
+Registry repositories.
 
 The fallback command is:
 
 ```bash
+# Production
 GCP_REGION=us-central1 \
 IMAGE_REGISTRY=us-central1-docker.pkg.dev/rap-atlas-prod/atlas-images \
+node scripts/deploy/cloud-cost-preflight.mjs apply-cleanup-policy
+
+# Staging (separate GCP project — substitute the actual staging project ID)
+GCP_REGION=us-central1 \
+IMAGE_REGISTRY=us-central1-docker.pkg.dev/rap-atlas-staging/atlas-images \
 node scripts/deploy/cloud-cost-preflight.mjs apply-cleanup-policy
 ```
 

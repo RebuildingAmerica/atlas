@@ -4,10 +4,15 @@ import path from "node:path";
 
 import { runCommand } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
+import {
+  hostedEnvFilePath,
+  type HostedDeployTarget,
+} from "../lib/hosted-target.js";
 import { promptConfirm } from "../lib/ui.js";
 
 export async function setGithubSecrets(
   githubRepo: string,
+  target: HostedDeployTarget,
   projectId: string,
   region: string,
   saEmail: string,
@@ -22,13 +27,16 @@ export async function setGithubSecrets(
     return;
   }
 
+  const environmentName = target;
+
   const shouldSet =
     assumeYes ||
     (await promptConfirm(
       [
-        `Set GitHub secrets for ${githubRepo}?`,
+        `Set GitHub Environment secrets for ${githubRepo} (${environmentName})?`,
         "",
-        "Bootstrap will write deploy and app runtime values from local env files into GitHub Actions secrets.",
+        "Bootstrap will write deploy and app runtime values from local env files into the",
+        `GitHub "${environmentName}" Environment's secrets, scoped to that environment only.`,
         "Choose Yes only if this repository is the Atlas deployment repository.",
         "Choose No to skip CI/CD secret sync for now.",
       ].join("\n"),
@@ -37,17 +45,19 @@ export async function setGithubSecrets(
 
   if (!shouldSet) {
     log.warn("Skipped GitHub secrets. Set them manually before deploying.");
-    followUpItems.push("Set GitHub repository secrets for CI/CD");
+    followUpItems.push(
+      `Set GitHub "${environmentName}" Environment secrets for CI/CD`,
+    );
     return;
   }
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const projectRoot = path.resolve(__dirname, "../../..");
-  const prodEnv = parseEnvFile(path.join(projectRoot, ".env.production"));
+  const hostedEnv = parseEnvFile(hostedEnvFilePath(projectRoot, target));
   const rootEnv = parseEnvFile(path.join(projectRoot, ".env"));
 
   function envVal(key: string): string | undefined {
-    const v = prodEnv.get(key) ?? rootEnv.get(key);
+    const v = hostedEnv.get(key) ?? rootEnv.get(key);
     return v && v.length > 0 ? v : undefined;
   }
 
@@ -79,26 +89,28 @@ export async function setGithubSecrets(
   }
 
   const s = spinner();
-  s.start("Setting GitHub repository secrets...");
+  s.start(`Setting GitHub "${environmentName}" Environment secrets...`);
 
   let failedSecrets = 0;
 
   for (const [key, value] of secrets) {
     const result = runCommand(
-      `gh secret set "${key}" --body "${value}" --repo "${githubRepo}"`,
+      `gh secret set "${key}" --body "${value}" --repo "${githubRepo}" --env "${environmentName}"`,
     );
     if (!result.ok) {
       failedSecrets++;
-      followUpItems.push(`Set GitHub secret: ${key}`);
+      followUpItems.push(`Set GitHub secret: ${key} (${environmentName})`);
     }
   }
 
   if (failedSecrets > 0) {
     s.stop(
-      `Set ${secrets.size - failedSecrets}/${secrets.size} GitHub secrets`,
+      `Set ${secrets.size - failedSecrets}/${secrets.size} GitHub "${environmentName}" secrets`,
     );
     log.warn(`${failedSecrets} secret(s) failed to set`);
   } else {
-    s.stop(`GitHub secrets configured (${secrets.size} total)`);
+    s.stop(
+      `GitHub "${environmentName}" Environment secrets configured (${secrets.size} total)`,
+    );
   }
 }

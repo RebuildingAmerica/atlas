@@ -12,12 +12,20 @@ import {
   type CommandResult,
 } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
+import {
+  hostedEnvFilePath,
+  type HostedDeployTarget,
+} from "../lib/hosted-target.js";
 import { isPlaceholder } from "../lib/secret.js";
 import { promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 
 const REPO_NAME = "atlas-images";
 const CLOUD_RUN_IMAGE_PLATFORM = "linux/amd64";
+
+export function atlasApiServiceName(target: HostedDeployTarget): string {
+  return target === "production" ? "atlas-api" : "atlas-api-staging";
+}
 
 type BuildMode = "local-docker" | "cloud-build";
 
@@ -87,11 +95,12 @@ export interface AtlasApiImageSpecOptions {
   projectRoot: string;
   imageBase: string;
   imageTag: string;
+  serviceName: string;
   dockerfileContent?: string;
 }
 
 export interface AtlasApiImageSpec extends DockerBuildPlan {
-  serviceName: "atlas-api";
+  serviceName: string;
   imageTag: string;
 }
 
@@ -99,8 +108,10 @@ export async function runDeployPhase(
   projectRoot: string,
   state: ReadinessState,
   doctorMode: boolean,
+  target: HostedDeployTarget,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
+  const serviceName = atlasApiServiceName(target);
 
   if (doctorMode) {
     log.info("Deploy phase skipped in doctor mode");
@@ -109,7 +120,7 @@ export async function runDeployPhase(
 
   const shouldDeploy = await promptConfirm(
     [
-      "Deploy atlas-api to Cloud Run now?",
+      `Deploy ${serviceName} to Cloud Run now (${target})?`,
       "",
       "Bootstrap will build the API image, push it to Artifact Registry, and deploy the Cloud Run service.",
       "The web app is not deployed here; atlas-web ships through Vercel on push to main.",
@@ -136,14 +147,14 @@ export async function runDeployPhase(
   }
 
   // ── Read infra values ─────────────────────────────────────────────────────
-  const config = readDeployConfig(projectRoot);
+  const config = readDeployConfig(projectRoot, target);
 
   if (!config) {
     log.error(
-      "Missing required configuration. Run the infra and database phases first.",
+      `Missing required configuration for ${target}. Run the infra and database phases first.`,
     );
     followUpItems.push(
-      "Complete infrastructure and database setup before deploying",
+      `Complete infrastructure and database setup for ${target} before deploying`,
     );
     return { success: false, status: "blocked", followUpItems };
   }
@@ -172,6 +183,7 @@ export async function runDeployPhase(
     projectRoot,
     imageBase: config.imageBase,
     imageTag: formatBootstrapImageTag(config.imageBase),
+    serviceName,
   });
   const apiBuilt = await buildAndPushImage(
     apiImageSpec.serviceName,
@@ -192,7 +204,7 @@ export async function runDeployPhase(
   // service via ATLAS_SERVER_API_PROXY_TARGET; the canonical domain mapping
   // (atlas-api.<domain>) is configured separately by the api-domain phase.
   const apiUrl = deployService(
-    "atlas-api",
+    serviceName,
     apiImageSpec.imageTag,
     config,
     {
@@ -209,7 +221,7 @@ export async function runDeployPhase(
 
   // ── Summary ───────────────────────────────────────────────────────────────
   log.success("Cloud Run deployment complete");
-  logSubline(`atlas-api: ${pc.cyan(apiUrl)}`);
+  logSubline(`${serviceName}: ${pc.cyan(apiUrl)}`);
   logSubline(
     pc.dim(
       "atlas-web is auto-deployed by Vercel on push to main; no Cloud Run web service.",
@@ -316,7 +328,7 @@ export function buildAtlasApiImageSpec(
   });
 
   return {
-    serviceName: "atlas-api",
+    serviceName: options.serviceName,
     contextDir: buildPlan.contextDir,
     dockerfilePath: buildPlan.dockerfilePath,
     cloudBuildDockerfilePath: buildPlan.cloudBuildDockerfilePath,
@@ -801,14 +813,17 @@ export function buildAtlasApiCloudRunEnvVars(
 
 // ── Config Reader ─────────────────────────────────────────────────────────────
 
-function readDeployConfig(projectRoot: string): DeployConfig | undefined {
+function readDeployConfig(
+  projectRoot: string,
+  target: HostedDeployTarget,
+): DeployConfig | undefined {
   // Try to read values from env files and state
   const rootEnv = readEnvMap(path.join(projectRoot, ".env"));
-  const prodEnv = readEnvMap(path.join(projectRoot, ".env.production"));
+  const hostedEnv = readEnvMap(hostedEnvFilePath(projectRoot, target));
   const apiEnv = readEnvMap(path.join(projectRoot, "api", ".env"));
 
   function resolve(key: string): string {
-    for (const env of [prodEnv, rootEnv, apiEnv]) {
+    for (const env of [hostedEnv, rootEnv, apiEnv]) {
       const value = env.get(key)?.trim();
       if (value && !isPlaceholder(value)) {
         return value;
@@ -825,7 +840,12 @@ function readDeployConfig(projectRoot: string): DeployConfig | undefined {
   const authInternalSecret = resolve("ATLAS_AUTH_INTERNAL_SECRET");
   const edgeOriginSecret = resolve("ATLAS_EDGE_ORIGIN_SECRET");
   const publicUrl =
-    resolve("ATLAS_PUBLIC_URL") || "https://atlas.rebuildingus.org";
+    resolve("ATLAS_PUBLIC_URL") ||
+    (target === "production" ? "https://atlas.rebuildingus.org" : "");
+  if (!publicUrl) {
+    log.error(`ATLAS_PUBLIC_URL not found in env files for ${target}.`);
+    return undefined;
+  }
   const authApiKeyIntrospectionUrl = resolveHostedUrl(
     resolve("ATLAS_AUTH_API_KEY_INTROSPECTION_URL"),
     new URL("/api/auth/internal/api-key", publicUrl).toString(),

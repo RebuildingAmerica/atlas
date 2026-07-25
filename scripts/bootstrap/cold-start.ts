@@ -8,7 +8,7 @@
  * | --------------------------------------------------------- | ------------ |
  * | `pnpm setup`                                              | Full guided repo setup, including production readiness. |
  * | `pnpm setup:local`                                        | Local dev setup, including local Stripe test-mode sync. |
- * | `pnpm setup:staging`                                      | Staging setup, including Stripe test-mode sync and Vercel Preview env sync. |
+ * | `pnpm setup:staging`                                      | Staging setup: its own GCP project, Cloud Run service, Stripe test-mode sync, and Vercel Preview env sync. |
  * | `pnpm setup:prod`                                         | Production setup, including Stripe live-mode sync and Vercel Production env sync. |
  * | `pnpm doctor`                                             | Checks readiness without changing local or hosted state. |
  * | `pnpm bootstrap`                                          | Full guided repo setup, including production readiness. |
@@ -20,7 +20,8 @@
  * | `pnpm bootstrap --product atlas --target staging --yes`   | Applies hosted staging env sync without prompting. |
  * | `pnpm bootstrap --product atlas --target prod --live`     | Runs production Stripe live sync. |
  * | `pnpm bootstrap --mcp-registry`                           | Runs MCP Registry publisher setup only. |
- * | `pnpm bootstrap --infra`                                  | Runs cloud infrastructure setup only. |
+ * | `pnpm bootstrap --infra`                                  | Runs production cloud infrastructure setup only. |
+ * | `pnpm bootstrap --infra --target staging`                 | Runs staging cloud infrastructure setup only. |
  * | `pnpm bootstrap --ci-cache`                               | Wires Vercel Remote Cache into Actions. |
  * | `pnpm bootstrap --api-domain`                             | Ensures atlas-api Cloud Run and Cloudflare CNAME. |
  * | `pnpm bootstrap --api-domain --target staging`            | Ensures the staging atlas-api Cloud Run and Cloudflare CNAME. |
@@ -46,9 +47,16 @@ import {
   shouldBlockCurrentRunDependentPhase,
   shouldStopAfterAuthFailure,
   shouldSkipPhase,
+  shouldSkipTargetPhase,
 } from "./lib/cold-start.js";
 import { runCommand } from "./lib/shell.js";
-import { loadReadiness, markPhase, saveReadiness } from "./state.js";
+import {
+  getTargetPhase,
+  loadReadiness,
+  markPhase,
+  markTargetPhase,
+  saveReadiness,
+} from "./state.js";
 import type { PhaseId, PhaseResult, PhaseState } from "./state.js";
 import { runInstallPhase } from "./phases/install.js";
 import { runAuthPhase } from "./phases/auth.js";
@@ -62,6 +70,7 @@ import { runCiCachePhase } from "./phases/ci-cache.js";
 import { runApiDomainPhase } from "./phases/api-domain.js";
 import { runApiEdgePhase } from "./phases/api-edge.js";
 import { renderSetupGuide } from "./config/setup-manifest.js";
+import type { HostedDeployTarget } from "./lib/hosted-target.js";
 
 type BootstrapPhaseStatus = Exclude<PhaseState["status"], "skipped">;
 
@@ -119,16 +128,26 @@ async function main(): Promise<void> {
 
   // Infrastructure-only mode
   if (args.infraOnly) {
-    log.info("Running cloud infrastructure setup only.");
+    const infraTarget =
+      args.stripeTarget === "staging" ? "staging" : "production";
+    log.info(
+      `Running cloud infrastructure setup only (target=${infraTarget}).`,
+    );
     log.info(describePhase("Cloud Infrastructure"));
     attemptedPhases.add("infra");
     const result = await runInfraPhase(
       projectRoot,
       state,
       args.doctorMode,
+      infraTarget,
       args.assumeYes,
     );
-    markPhase(state, "infra", resultPhaseStatus(result, args.doctorMode));
+    markTargetPhase(
+      state,
+      "infra",
+      infraTarget,
+      resultPhaseStatus(result, args.doctorMode),
+    );
     saveReadiness(projectRoot, state);
     if (result.followUpItems.length > 0) {
       note(formatFollowUpNote(result.followUpItems), "Follow-up");
@@ -189,6 +208,8 @@ async function main(): Promise<void> {
 
   // API domain-only mode
   if (args.apiDomainOnly) {
+    const apiDomainHostedTarget: HostedDeployTarget =
+      args.apiDomainTarget === "prod" ? "production" : "staging";
     log.info(
       `Running atlas-api domain mapping only (target=${args.apiDomainTarget}).`,
     );
@@ -199,9 +220,10 @@ async function main(): Promise<void> {
       args.doctorMode,
       args.apiDomainTarget,
     );
-    markPhase(
+    markTargetPhase(
       state,
       "api-domain",
+      apiDomainHostedTarget,
       result.status ?? (result.success ? "complete" : "partial"),
     );
     saveReadiness(projectRoot, state);
@@ -218,6 +240,8 @@ async function main(): Promise<void> {
 
   // API edge-only mode
   if (args.apiEdgeOnly) {
+    const apiEdgeHostedTarget: HostedDeployTarget =
+      args.apiDomainTarget === "prod" ? "production" : "staging";
     log.info(
       `Running atlas-api edge protection only (target=${args.apiDomainTarget}).`,
     );
@@ -229,9 +253,10 @@ async function main(): Promise<void> {
       args.apiDomainTarget,
       args.assumeYes,
     );
-    markPhase(
+    markTargetPhase(
       state,
       "api-edge",
+      apiEdgeHostedTarget,
       result.status ?? (result.success ? "complete" : "partial"),
     );
     saveReadiness(projectRoot, state);
@@ -352,7 +377,7 @@ async function main(): Promise<void> {
       ? null
       : args.stripeTarget === "staging"
         ? "staging"
-        : "prod";
+        : "production";
     const result = await runEnvPhase(
       projectRoot,
       args.doctorMode,
@@ -387,51 +412,69 @@ async function main(): Promise<void> {
   }
 
   if (!args.localOnly) {
-    const targetHasSharedInfraPhases = hasSharedInfraPhases(args.stripeTarget);
-    if (!targetHasSharedInfraPhases) {
+    // Infra, Database, and Deploy have real per-target readiness: staging
+    // and production each get their own GCP project, Neon database, and
+    // Cloud Run service (see infra.ts / infra-project.ts / database.ts /
+    // deploy.ts). MCP Registry and CI Cache have no staging equivalent by
+    // nature — publishing to a public MCP registry and wiring Vercel
+    // Remote Cache into CI are prod-only/repo-wide concerns.
+    const hostedTarget: HostedDeployTarget =
+      args.stripeTarget === "staging" ? "staging" : "production";
+    const sharedInfraOnlyPhasesRun = hasSharedInfraPhases(args.stripeTarget);
+    if (!sharedInfraOnlyPhasesRun) {
       log.warn(
-        "Skipping Cloud Infrastructure, Database, MCP Registry, and Deploy: " +
-          "staging has no separate GCP project or database from production. " +
-          "Run `pnpm bootstrap --infra` (or the other standalone phase flags) " +
-          "explicitly if you intend to change the shared production resources.",
+        "Skipping MCP Registry: it has no staging equivalent — publishing " +
+          "to a public MCP registry is a production-only concern. Run " +
+          "`pnpm bootstrap --mcp-registry` explicitly if you intend to " +
+          "change the shared production listing.",
       );
     }
 
     // Phase 4: Infrastructure
     if (
-      targetHasSharedInfraPhases &&
-      (!shouldSkipPhase("infra", state, args.resume) ||
-        !(await confirmResumeSkip("Infrastructure")))
+      !shouldSkipTargetPhase("infra", hostedTarget, state, args.resume) ||
+      !(await confirmResumeSkip(`Infrastructure (${hostedTarget})`))
     ) {
-      log.step("Phase 4: Cloud Infrastructure");
+      log.step(`Phase 4: Cloud Infrastructure (${hostedTarget})`);
       log.info(describePhase("Cloud Infrastructure"));
       attemptedPhases.add("infra");
       const result = await runInfraPhase(
         projectRoot,
         state,
         args.doctorMode,
+        hostedTarget,
         args.assumeYes,
       );
-      markPhase(state, "infra", resultPhaseStatus(result, args.doctorMode));
+      markTargetPhase(
+        state,
+        "infra",
+        hostedTarget,
+        resultPhaseStatus(result, args.doctorMode),
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
 
     // Phase 5: Database
     if (
-      targetHasSharedInfraPhases &&
-      (!shouldSkipPhase("database", state, args.resume) ||
-        !(await confirmResumeSkip("Database")))
+      !shouldSkipTargetPhase("database", hostedTarget, state, args.resume) ||
+      !(await confirmResumeSkip(`Database (${hostedTarget})`))
     ) {
-      log.step("Phase 5: Database");
+      log.step(`Phase 5: Database (${hostedTarget})`);
       log.info(describePhase("Database"));
       attemptedPhases.add("database");
       const result = await runDatabasePhase(
         projectRoot,
         state,
         args.doctorMode,
+        hostedTarget,
       );
-      markPhase(state, "database", resultPhaseStatus(result, args.doctorMode));
+      markTargetPhase(
+        state,
+        "database",
+        hostedTarget,
+        resultPhaseStatus(result, args.doctorMode),
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -459,7 +502,7 @@ async function main(): Promise<void> {
 
     // Phase 7: MCP Registry publisher (opt-in inside the phase)
     if (
-      targetHasSharedInfraPhases &&
+      sharedInfraOnlyPhasesRun &&
       (!shouldSkipPhase("mcp-registry", state, args.resume) ||
         !(await confirmResumeSkip("MCP Registry")))
     ) {
@@ -478,15 +521,24 @@ async function main(): Promise<void> {
 
     // Phase 8: Deploy
     if (
-      targetHasSharedInfraPhases &&
-      (!shouldSkipPhase("deploy", state, args.resume) ||
-        !(await confirmResumeSkip("Deploy")))
+      !shouldSkipTargetPhase("deploy", hostedTarget, state, args.resume) ||
+      !(await confirmResumeSkip(`Deploy (${hostedTarget})`))
     ) {
-      log.step("Phase 8: Initial Deployment");
+      log.step(`Phase 8: Initial Deployment (${hostedTarget})`);
       log.info(describePhase("Initial Deployment"));
       attemptedPhases.add("deploy");
-      const result = await runDeployPhase(projectRoot, state, args.doctorMode);
-      markPhase(state, "deploy", resultPhaseStatus(result, args.doctorMode));
+      const result = await runDeployPhase(
+        projectRoot,
+        state,
+        args.doctorMode,
+        hostedTarget,
+      );
+      markTargetPhase(
+        state,
+        "deploy",
+        hostedTarget,
+        resultPhaseStatus(result, args.doctorMode),
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(...result.followUpItems);
     }
@@ -513,22 +565,28 @@ async function main(): Promise<void> {
     if (
       shouldBlockCurrentRunDependentPhase({
         attempted: attemptedPhases.has("deploy"),
-        status: state.phases.deploy?.status,
+        status: getTargetPhase(state, "deploy", hostedTarget)?.status,
       }) &&
-      state.phases["api-domain"]?.status !== "complete"
+      getTargetPhase(state, "api-domain", hostedTarget)?.status !== "complete"
     ) {
       log.step("Phase 10: API Canonical Domain");
       log.error(
         "API domain setup is blocked because atlas-api did not deploy successfully in this run.",
       );
       attemptedPhases.add("api-domain");
-      markPhase(state, "api-domain", "blocked", "Deploy atlas-api first");
+      markTargetPhase(
+        state,
+        "api-domain",
+        hostedTarget,
+        "blocked",
+        "Deploy atlas-api first",
+      );
       saveReadiness(projectRoot, state);
       allFollowUp.push(
         "Finish atlas-api deploy, then re-run `pnpm bootstrap --api-domain --resume`.",
       );
     } else if (
-      !shouldSkipPhase("api-domain", state, args.resume) ||
+      !shouldSkipTargetPhase("api-domain", hostedTarget, state, args.resume) ||
       !(await confirmResumeSkip("API Domain"))
     ) {
       log.step("Phase 10: API Canonical Domain");
@@ -539,9 +597,10 @@ async function main(): Promise<void> {
         args.doctorMode,
         args.apiDomainTarget,
       );
-      markPhase(
+      markTargetPhase(
         state,
         "api-domain",
+        hostedTarget,
         result.status ?? (result.success ? "complete" : "partial"),
       );
       saveReadiness(projectRoot, state);
@@ -552,18 +611,19 @@ async function main(): Promise<void> {
     if (
       shouldBlockCurrentRunDependentPhase({
         attempted: attemptedPhases.has("api-domain"),
-        status: state.phases["api-domain"]?.status,
+        status: getTargetPhase(state, "api-domain", hostedTarget)?.status,
       }) &&
-      state.phases["api-edge"]?.status !== "complete"
+      getTargetPhase(state, "api-edge", hostedTarget)?.status !== "complete"
     ) {
       log.step("Phase 11: API Edge Protection");
       log.error(
         "API edge protection is blocked because the canonical API domain is not ready yet.",
       );
       attemptedPhases.add("api-edge");
-      markPhase(
+      markTargetPhase(
         state,
         "api-edge",
+        hostedTarget,
         "blocked",
         "API domain must be healthy first",
       );
@@ -572,7 +632,7 @@ async function main(): Promise<void> {
         "Finish the API domain setup before enabling Cloudflare edge protection.",
       );
     } else if (
-      !shouldSkipPhase("api-edge", state, args.resume) ||
+      !shouldSkipTargetPhase("api-edge", hostedTarget, state, args.resume) ||
       !(await confirmResumeSkip("API Edge"))
     ) {
       log.step("Phase 11: API Edge Protection");
@@ -584,9 +644,10 @@ async function main(): Promise<void> {
         args.apiDomainTarget,
         args.assumeYes,
       );
-      markPhase(
+      markTargetPhase(
         state,
         "api-edge",
+        hostedTarget,
         result.status ?? (result.success ? "complete" : "partial"),
       );
       saveReadiness(projectRoot, state);

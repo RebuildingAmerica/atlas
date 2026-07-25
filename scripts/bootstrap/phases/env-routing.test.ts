@@ -45,9 +45,9 @@ void describe("hosted routing prompts", () => {
     assert.match(message, /ATLAS_DOCS_URL/);
   });
 
-  void it("only builds production vars for a prod-targeted sync, never preview", () => {
+  void it("only builds production vars for a production-targeted sync, never preview", () => {
     const vars = buildVercelEnvVars(
-      "prod",
+      "production",
       new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "prod-operator@example.org"]]),
       new Map([
         ["ATLAS_OPERATOR_ALLOWED_EMAILS", "staging-operator@example.org"],

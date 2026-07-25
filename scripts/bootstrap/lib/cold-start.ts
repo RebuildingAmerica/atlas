@@ -3,8 +3,15 @@ import pc from "picocolors";
 import { COMMAND_CAPABILITY_MAP } from "../config/prerequisites.js";
 import type { StripeBootstrapTarget } from "../products/atlas/env.js";
 import type { ApiDomainTarget } from "../phases/api-domain.js";
+import type { HostedDeployTarget } from "./hosted-target.js";
 import { promptConfirm } from "./ui.js";
-import type { PhaseId, PhaseState, ReadinessState } from "../state.js";
+import {
+  getTargetPhase,
+  type PhaseId,
+  type PhaseState,
+  type ReadinessState,
+  type TargetPhaseId,
+} from "../state.js";
 
 export interface CliArgs {
   localOnly: boolean;
@@ -73,6 +80,16 @@ export function shouldSkipPhase(
 ): boolean {
   if (!resume) return false;
   return state.phases[phaseId]?.status === "complete";
+}
+
+export function shouldSkipTargetPhase(
+  phaseId: TargetPhaseId,
+  target: HostedDeployTarget,
+  state: ReadinessState,
+  resume: boolean,
+): boolean {
+  if (!resume) return false;
+  return getTargetPhase(state, phaseId, target)?.status === "complete";
 }
 
 export function shouldStopAfterAuthFailure(

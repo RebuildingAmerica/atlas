@@ -10,6 +10,20 @@ use [Stripe Billing Setup](./stripe-billing.md).
 
 ## What staging owns
 
+Staging has its own GCP project, Artifact Registry repo, service account,
+Workload Identity Federation provider, and Neon database — never the production
+project's. `pnpm bootstrap --infra --target staging` (folded into
+`pnpm setup:staging`) provisions the GCP side; the Database phase of the same
+run provisions the Neon side.
+
+Staging's PDS is a deliberate exception, and does not need a dedicated instance
+the way production does. `ATLAS_ATPROTO_PDS_E2E_HARNESS` defaults to on, so the
+managed-identity code path never makes a network call to a real PDS during
+normal staging testing — a second always-on Compute Engine instance is real
+recurring cost for coverage the harness already provides for free. If staging's
+PDS VM is still deployed, confirm it's genuinely receiving no traffic (see
+[Atlas-managed ATProto PDS](./atproto-pds.md)) before decommissioning it.
+
 The staging API deploy is a GitHub Actions workflow:
 
 - workflow: `.github/workflows/deploy-staging.yml`
@@ -34,7 +48,9 @@ controlled.
 ## Required staging secrets
 
 Use the same secret names as production, but store staging values in the
-`staging` GitHub Environment:
+`staging` GitHub Environment. `pnpm bootstrap --infra --target staging` writes
+the GCP-related ones for you, scoped to that Environment specifically rather
+than as repo-level fallbacks:
 
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`
 - `GCP_SERVICE_ACCOUNT`

@@ -1,8 +1,11 @@
-import path from "node:path";
 import { log, select, spinner, text } from "@clack/prompts";
 import pc from "picocolors";
 import { parseEnvFile } from "../lib/env-file.js";
 import { commandOutput, runCommand } from "../lib/shell.js";
+import {
+  hostedEnvFilePath,
+  type HostedDeployTarget,
+} from "../lib/hosted-target.js";
 import { logSubline, promptConfirm, promptOrExit } from "../lib/ui.js";
 
 export interface ProjectInfo {
@@ -15,13 +18,17 @@ export interface ProjectChoice {
   projectId?: string;
 }
 
-export function formatGcpProjectChoicePromptMessage(): string {
+export function formatGcpProjectChoicePromptMessage(
+  target: HostedDeployTarget,
+): string {
+  const label = target === "production" ? "production" : "staging";
   return [
     "GCP project",
     "",
-    "Atlas uses one Google Cloud project for Cloud Run, Artifact Registry, Scheduler, and deploy identities.",
-    "1. Choose the active project if it is the production Atlas project.",
-    "2. Choose an existing project if another project already owns production infra.",
+    `Atlas uses a separate Google Cloud project per environment for Cloud Run,`,
+    `Artifact Registry, Scheduler, and deploy identities. This run configures ${label}.`,
+    `1. Choose the active project if it is already the ${label} Atlas project.`,
+    `2. Choose an existing project if another project already owns ${label} infra.`,
     "3. Choose manual if the project is not listed.",
     "4. Choose new only if bootstrap should create the project.",
     "",
@@ -29,15 +36,21 @@ export function formatGcpProjectChoicePromptMessage(): string {
   ].join("\n");
 }
 
-export function formatGcpProjectIdPromptMessage(creatingNew: boolean): string {
+export function formatGcpProjectIdPromptMessage(
+  creatingNew: boolean,
+  target: HostedDeployTarget,
+): string {
+  const label = target === "production" ? "production" : "staging";
+  const example =
+    target === "production" ? "rap-atlas-prod" : "rap-atlas-staging";
   if (creatingNew) {
     return [
       "New GCP project ID",
       "",
-      "Choose the globally unique Google Cloud project ID bootstrap should create.",
+      `Choose the globally unique Google Cloud project ID bootstrap should create for ${label}.`,
       "1. Use lowercase letters, numbers, and hyphens.",
-      "2. Keep it recognizable, for example atlas-prod or atlas-production.",
-      "3. Do not use a personal or throwaway project for production.",
+      `2. Keep it recognizable, for example ${example}.`,
+      `3. Do not reuse the ${target === "production" ? "staging" : "production"} project ID here — each environment needs its own.`,
       "",
       "Paste the project ID here. Bootstrap will create it with gcloud.",
     ].join("\n");
@@ -46,7 +59,7 @@ export function formatGcpProjectIdPromptMessage(creatingNew: boolean): string {
   return [
     "Existing GCP project ID",
     "",
-    "Enter the Google Cloud project ID that already owns Atlas infrastructure.",
+    `Enter the Google Cloud project ID that already owns ${label} Atlas infrastructure.`,
     "1. Open https://console.cloud.google.com/cloud-resource-manager if you need to confirm it.",
     "2. Copy the Project ID column, not the display name.",
     "3. Make sure your active gcloud account has access to deploy into it.",
@@ -65,14 +78,17 @@ export function formatGcpRegionPromptMessage(): string {
   ].join("\n");
 }
 
-export function readPersistedInfraConfig(projectRoot: string): {
+export function readPersistedInfraConfig(
+  projectRoot: string,
+  target: HostedDeployTarget,
+): {
   projectId?: string;
   region?: string;
 } {
-  const prodEnv = parseEnvFile(path.join(projectRoot, ".env.production"));
+  const hostedEnv = parseEnvFile(hostedEnvFilePath(projectRoot, target));
 
-  const projectId = prodEnv.get("GCP_PROJECT_ID")?.trim();
-  const region = prodEnv.get("GCP_REGION")?.trim();
+  const projectId = hostedEnv.get("GCP_PROJECT_ID")?.trim();
+  const region = hostedEnv.get("GCP_REGION")?.trim();
 
   return {
     projectId: projectId || undefined,
@@ -83,13 +99,16 @@ export function readPersistedInfraConfig(projectRoot: string): {
 export async function setupProject(
   doctorMode: boolean,
   followUpItems: string[],
+  target: HostedDeployTarget,
   persistedProjectId?: string,
   assumeYes = false,
+  otherTargetProjectId?: string,
 ): Promise<ProjectInfo> {
   if (persistedProjectId) {
     const persistedProject = await reusePersistedProject(
       doctorMode,
       followUpItems,
+      target,
       persistedProjectId,
       assumeYes,
     );
@@ -110,9 +129,15 @@ export async function setupProject(
   if (doctorMode) {
     const projectId = activeProjectId;
     if (!projectId) {
-      log.warn("GCP project is not configured");
+      log.warn(`GCP ${target} project is not configured`);
+      const envFileName =
+        target === "production" ? ".env.production" : ".env.staging";
+      const setupCommand =
+        target === "production"
+          ? "pnpm setup:prod"
+          : "pnpm bootstrap --infra --target staging";
       followUpItems.push(
-        "Set GCP_PROJECT_ID in .env.production or select one during `pnpm setup:prod`",
+        `Set GCP_PROJECT_ID in ${envFileName} or select one during \`${setupCommand}\``,
       );
       return { projectId: "", projectNumber: "" };
     }
@@ -131,8 +156,13 @@ export async function setupProject(
 
   const projectChoice = (await promptOrExit(
     select({
-      message: formatGcpProjectChoicePromptMessage(),
-      options: buildProjectOptions(activeProjectId, projects),
+      message: formatGcpProjectChoicePromptMessage(target),
+      options: buildProjectOptions(
+        activeProjectId,
+        projects,
+        target,
+        otherTargetProjectId,
+      ),
     }),
   )) as ProjectChoice;
 
@@ -142,8 +172,9 @@ export async function setupProject(
       ? projectChoice.projectId
       : ((await promptOrExit(
           text({
-            message: formatGcpProjectIdPromptMessage(creatingNew),
-            placeholder: "atlas-prod",
+            message: formatGcpProjectIdPromptMessage(creatingNew, target),
+            placeholder:
+              target === "production" ? "rap-atlas-prod" : "rap-atlas-staging",
           }),
         )) as string);
 
@@ -248,6 +279,7 @@ export async function setupProject(
 async function reusePersistedProject(
   doctorMode: boolean,
   followUpItems: string[],
+  target: HostedDeployTarget,
   projectId: string,
   assumeYes: boolean,
 ): Promise<ProjectInfo | undefined> {
@@ -262,7 +294,7 @@ async function reusePersistedProject(
   if (!doctorMode && !assumeYes) {
     const action = (await promptOrExit(
       select({
-        message: formatGcpProjectChoicePromptMessage(),
+        message: formatGcpProjectChoicePromptMessage(target),
         options: [
           { value: "keep", label: `Keep ${projectId}` },
           { value: "change", label: "Choose a different project" },
@@ -407,15 +439,26 @@ function listAccessibleProjects(): string[] {
 function buildProjectOptions(
   activeProjectId: string | undefined,
   projects: string[],
+  target: HostedDeployTarget,
+  otherTargetProjectId: string | undefined,
 ): { value: ProjectChoice; label: string; hint?: string }[] {
   const options: { value: ProjectChoice; label: string; hint?: string }[] = [];
   const seen = new Set<string>();
 
   if (activeProjectId) {
+    const otherLabel = target === "production" ? "staging" : "production";
+    const isOtherTargetProject =
+      otherTargetProjectId !== undefined &&
+      activeProjectId === otherTargetProjectId;
+
     options.push({
       value: { mode: "existing", projectId: activeProjectId },
-      label: `Use active gcloud project (${activeProjectId})`,
-      hint: "Recommended when this is the project you already deploy into.",
+      label: isOtherTargetProject
+        ? `Use active gcloud project (${activeProjectId}) — WARNING: this is the ${otherLabel} project`
+        : `Use active gcloud project (${activeProjectId})`,
+      hint: isOtherTargetProject
+        ? `This is the ${otherLabel} project's GCP_PROJECT_ID. Selecting it would put ${target} infrastructure inside ${otherLabel}.`
+        : "Recommended when this is the project you already deploy into.",
     });
     seen.add(activeProjectId);
   }

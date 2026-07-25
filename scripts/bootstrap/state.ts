@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { CapabilityId, CommandGroup } from "./config/prerequisites.js";
+import type { HostedDeployTarget } from "./lib/hosted-target.js";
 
 export type CapabilityStatus = "ready" | "failed" | "deferred" | "skipped";
 
@@ -40,6 +41,23 @@ export interface PhaseResult {
   status?: PhaseState["status"];
 }
 
+/**
+ * Phases whose readiness genuinely differs by target: staging and
+ * production each have their own GCP project, Cloud Run service, and
+ * database, so "ready" means something different per environment. Tracked
+ * separately from `phases` so running bootstrap for one target can never
+ * mark the other's readiness.
+ */
+export type TargetPhaseId =
+  "infra" | "database" | "deploy" | "api-domain" | "api-edge";
+
+export function targetPhaseKey(
+  phaseId: TargetPhaseId,
+  target: HostedDeployTarget,
+): string {
+  return `${phaseId}:${target}`;
+}
+
 const STATE_VERSION = 1;
 
 export interface ReadinessState {
@@ -48,6 +66,7 @@ export interface ReadinessState {
   capabilities: Partial<Record<CapabilityId, CapabilityState>>;
   commandReadiness: Record<CommandGroup, "ready" | "blocked">;
   phases: Partial<Record<PhaseId, PhaseState>>;
+  targetPhases?: Partial<Record<string, PhaseState>>;
 }
 
 function stateFilePath(projectRoot: string): string {
@@ -92,6 +111,33 @@ export function markPhase(
   };
 }
 
+export function markTargetPhase(
+  state: ReadinessState,
+  phaseId: TargetPhaseId,
+  target: HostedDeployTarget,
+  status: PhaseState["status"],
+  details?: string,
+): void {
+  const phaseState: PhaseState = {
+    status,
+    completedAt: new Date().toISOString(),
+    details,
+  };
+  state.targetPhases ??= {};
+  state.targetPhases[targetPhaseKey(phaseId, target)] = phaseState;
+  // Mirrored into the flat map so command readiness and the run summary,
+  // which are per-run rather than per-target, still reflect this phase.
+  state.phases[phaseId] = phaseState;
+}
+
+export function getTargetPhase(
+  state: ReadinessState,
+  phaseId: TargetPhaseId,
+  target: HostedDeployTarget,
+): PhaseState | undefined {
+  return state.targetPhases?.[targetPhaseKey(phaseId, target)];
+}
+
 export function markCapability(
   state: ReadinessState,
   id: CapabilityId,
@@ -122,5 +168,6 @@ function createEmptyState(): ReadinessState {
       product: "blocked",
     },
     phases: {},
+    targetPhases: {},
   };
 }

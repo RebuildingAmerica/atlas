@@ -7,6 +7,24 @@ of the Vercel app or Cloud Run API. It owns AT Protocol repositories, DIDs,
 sessions, and blobs. Atlas receives only the verified DID, handle, and public
 PDS URL; it never persists a PDS password or session token.
 
+## Cost: staging does not need its own instance
+
+A Compute Engine VM can't scale to zero, so every environment running one is
+continuous cost regardless of traffic. `ATLAS_ATPROTO_PDS_E2E_HARNESS` defaults
+to on (`app/src/domains/access/server/atproto-pds.ts`), which makes managed
+identity provisioning return a synthetic `did:web:` identity with no network
+call to a PDS at all — this is why staging's acceptance and hosted smoke suites
+already pass without one. A dedicated staging PDS VM only earns its cost if
+something specifically needs to exercise the real integration, and even then a
+low-frequency manual or scheduled check against production's instance (with a
+disposable test account) covers that without a second always-on host.
+
+If `atlas-pds-staging.rebuildingus.org` is still deployed, confirm it's
+genuinely receiving no traffic before decommissioning the instance and its disk
+(`services/atproto-pds/vm-backup.sh` first if there's any reason to keep the
+data), and remove the `deploy-pds` staging path from
+`.github/workflows/deploy-staging.yml` so it can't get silently recreated.
+
 ## Required hosted topology
 
 The upstream PDS persists its supported state under `PDS_DATA_DIRECTORY` and

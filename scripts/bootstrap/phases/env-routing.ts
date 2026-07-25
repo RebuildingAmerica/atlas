@@ -2,19 +2,15 @@ import { text } from "@clack/prompts";
 import { mergeEnvFile, parseEnvFile } from "../lib/env-file.js";
 import { promptOrExit } from "../lib/ui.js";
 import { isPlaceholder } from "../lib/secret.js";
+import type { HostedDeployTarget } from "../lib/hosted-target.js";
 import type { VercelEnvironment, VercelVar } from "../lib/vercel.js";
 
-/**
- * Staging and prod bootstrap runs must only ever touch their own Vercel
- * environment. There is no "both" — a staging-targeted run has no business
- * writing to Production, and vice versa.
- */
-export type HostedDeployTarget = "staging" | "prod";
+export type { HostedDeployTarget } from "../lib/hosted-target.js";
 
 export function vercelEnvironmentsForTarget(
   target: HostedDeployTarget,
 ): VercelEnvironment[] {
-  return target === "prod" ? ["production", "development"] : ["preview"];
+  return target === "production" ? ["production"] : ["preview"];
 }
 
 export const DEFAULT_PRODUCTION_APP_ORIGIN = "https://atlas.rebuildingus.org";
@@ -270,7 +266,7 @@ export function buildVercelEnvVars(
   }
 
   for (const spec of VERCEL_HOSTED_ENV_FILE_SPECS) {
-    if (target === "prod") {
+    if (target === "production") {
       add(spec.key, readEnvValue(productionEnv, spec.key, spec.fallback), [
         "production",
       ]);
@@ -296,15 +292,19 @@ function readEnvValue(
 function getVercelStaticEnvSpecs(
   productionEnv: Map<string, string>,
 ): VercelStaticEnvSpec[] {
-  const all: VercelEnvironment[] = ["production", "preview", "development"];
+  // Only production and preview: each hosted target only ever touches its
+  // own Vercel environment (see vercelEnvironmentsForTarget). Development
+  // is Vercel's local-dev environment and isn't managed by either hosted
+  // sync — nothing here should silently leak into it.
+  const hosted: VercelEnvironment[] = ["production", "preview"];
   return [
-    { key: "NITRO_PRESET", value: "vercel", environments: all },
+    { key: "NITRO_PRESET", value: "vercel", environments: hosted },
     {
       key: "ATLAS_AUTH_BASE_PATH",
       value:
         readEnvValue(productionEnv, "ATLAS_AUTH_BASE_PATH", "/api/auth") ??
         "/api/auth",
-      environments: all,
+      environments: hosted,
     },
     {
       key: "ATLAS_DEPLOY_MODE",
@@ -312,11 +312,6 @@ function getVercelStaticEnvSpecs(
       environments: ["production"],
     },
     { key: "ATLAS_DEPLOY_MODE", value: "staging", environments: ["preview"] },
-    {
-      key: "ATLAS_DEPLOY_MODE",
-      value: "local",
-      environments: ["development"],
-    },
   ];
 }
 

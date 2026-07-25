@@ -1,6 +1,9 @@
-import path from "node:path";
 import { log } from "@clack/prompts";
 import { mergeEnvFile } from "../lib/env-file.js";
+import {
+  hostedEnvFilePath,
+  type HostedDeployTarget,
+} from "../lib/hosted-target.js";
 import { runCommand } from "../lib/shell.js";
 import { type PhaseResult, type ReadinessState } from "../state.js";
 
@@ -31,10 +34,17 @@ export async function runInfraPhase(
   projectRoot: string,
   state: ReadinessState,
   doctorMode: boolean,
+  target: HostedDeployTarget,
   assumeYes = false,
 ): Promise<InfraResult> {
   const followUpItems: string[] = [];
-  const persistedConfig = readPersistedInfraConfig(projectRoot);
+  const persistedConfig = readPersistedInfraConfig(projectRoot, target);
+  const otherTarget: HostedDeployTarget =
+    target === "production" ? "staging" : "production";
+  const otherTargetProjectId = readPersistedInfraConfig(
+    projectRoot,
+    otherTarget,
+  ).projectId;
 
   const gcloudAuth = runCommand(
     "gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null | head -1 | grep -q .",
@@ -78,8 +88,10 @@ export async function runInfraPhase(
   const { projectId, projectNumber } = await setupProject(
     doctorMode,
     followUpItems,
+    target,
     persistedConfig.projectId,
     assumeYes,
+    otherTargetProjectId,
   );
   if (!projectId) {
     return emptyResult(followUpItems, false);
@@ -109,6 +121,7 @@ export async function runInfraPhase(
 
   await setGithubSecrets(
     githubRepo,
+    target,
     projectId,
     region,
     saEmail,
@@ -125,8 +138,9 @@ export async function runInfraPhase(
       ["GCP_SERVICE_ACCOUNT", saEmail],
       ["GCP_WORKLOAD_IDENTITY_PROVIDER", wifProvider],
     ]);
-    mergeEnvFile(path.join(projectRoot, ".env.production"), infraVars);
-    log.success("Infrastructure values written to .env.production");
+    const envFilePath = hostedEnvFilePath(projectRoot, target);
+    mergeEnvFile(envFilePath, infraVars);
+    log.success(`Infrastructure values written to ${envFilePath}`);
   }
 
   const allSucceeded = followUpItems.length === 0;

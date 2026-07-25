@@ -125,10 +125,11 @@ pnpm setup:staging
 (`pnpm bootstrap --target staging` is the same command under a different alias.)
 It writes `.env.staging`, creates or verifies the Stripe test-mode catalog,
 creates or verifies the staging webhook endpoint, and syncs the three runtime
-Stripe keys into the linked Vercel Preview environment. It does not touch
-Infrastructure, Database, MCP Registry, or Deploy — those phases have no staging
-equivalent, so a staging-targeted bootstrap run always skips them rather than
-acting on the shared production GCP project or database.
+Stripe keys into the linked Vercel Preview environment. It also runs
+Infrastructure, Database, and Deploy against staging's own GCP project and Neon
+database — see [Staging Deployment](./staging.md). MCP Registry is the one phase
+that stays production-only: publishing to a public MCP registry has no staging
+equivalent, so a staging-targeted run always skips it.
 
 ## Production
 

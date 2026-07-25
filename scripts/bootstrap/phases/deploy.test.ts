@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  atlasApiServiceName,
   buildAtlasApiImageSpec,
   classifyDockerPreflight,
   formatDockerBuildFallbackPrompt,
@@ -21,6 +22,11 @@ import {
 } from "./deploy.js";
 
 void describe("deploy resilience", () => {
+  void it("deploys a distinct Cloud Run service name per target", () => {
+    assert.equal(atlasApiServiceName("production"), "atlas-api");
+    assert.equal(atlasApiServiceName("staging"), "atlas-api-staging");
+  });
+
   void it("classifies a stopped Docker daemon as a blocked deploy preflight", () => {
     const preflight = classifyDockerPreflight({
       ok: false,
@@ -106,6 +112,7 @@ void describe("deploy resilience", () => {
       projectRoot: "/repo/atlas",
       imageBase,
       imageTag,
+      serviceName: "atlas-api",
       dockerfileContent: [
         "COPY libs/shared libs/shared",
         "COPY libs/discovery-engine libs/discovery-engine",
