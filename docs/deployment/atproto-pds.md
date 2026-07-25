@@ -19,11 +19,35 @@ something specifically needs to exercise the real integration, and even then a
 low-frequency manual or scheduled check against production's instance (with a
 disposable test account) covers that without a second always-on host.
 
-If `atlas-pds-staging.rebuildingus.org` is still deployed, confirm it's
-genuinely receiving no traffic before decommissioning the instance and its disk
-(`services/atproto-pds/vm-backup.sh` first if there's any reason to keep the
-data), and remove the `deploy-pds` staging path from
-`.github/workflows/deploy-staging.yml` so it can't get silently recreated.
+Confirmed in `rap-atlas-prod` (`gcloud compute instances list`): both
+`atlas-pds` (`us-east1-b`) and `atlas-pds-staging` (`us-central1-a`) are running
+as `e2-small`, each with a 20GB boot disk plus a 30GB `pd-balanced` data disk.
+`e2-small` is not Always Free tier eligible — only `e2-micro` is — so this is
+two continuously-billed, above-free-tier instances for a service that needs at
+most one. A week of staging's Docker Compose logs
+(`docker compose logs --since 168h`) contained zero non-health-check lines,
+confirming it is not receiving real traffic and is safe to decommission:
+
+1. Back up first if there's any reason to keep the data:
+   `services/atproto-pds/vm-backup.sh backup` against `atlas-pds-staging`.
+2. Delete the instance and both its disks:
+   `gcloud compute instances delete atlas-pds-staging --zone=us-central1-a --project=rap-atlas-prod`
+   (add `--keep-disks=none` to also delete `atlas-pds-staging` and
+   `atlas-pds-staging-data`, or delete them separately with
+   `gcloud compute disks delete` if the instance delete leaves them behind).
+3. Remove the `deploy-pds` staging path from
+   `.github/workflows/deploy-staging.yml` so it can't get silently recreated.
+4. Downsize production's `atlas-pds` from `e2-small` to `e2-micro` in `us-east1`
+   (already an Always Free tier eligible region) to bring PDS compute cost to
+   effectively $0, leaving only the ~50GB `pd-balanced` disk cost:
+   `gcloud compute instances stop atlas-pds --zone=us-east1-b --project=rap-atlas-prod`,
+   then
+   `gcloud compute instances set-machine-type atlas-pds --zone=us-east1-b --project=rap-atlas-prod --machine-type=e2-micro`,
+   then
+   `gcloud compute instances start atlas-pds --zone=us-east1-b --project=rap-atlas-prod`.
+   This is a short, real outage for the PDS (not the app or API) while it's
+   stopped — do it in a low-traffic window and confirm `GET /xrpc/_health` on
+   `atlas-pds.rebuildingus.org` recovers after start.
 
 ## Required hosted topology
 

@@ -20,9 +20,10 @@ Staging's PDS is a deliberate exception, and does not need a dedicated instance
 the way production does. `ATLAS_ATPROTO_PDS_E2E_HARNESS` defaults to on, so the
 managed-identity code path never makes a network call to a real PDS during
 normal staging testing — a second always-on Compute Engine instance is real
-recurring cost for coverage the harness already provides for free. If staging's
-PDS VM is still deployed, confirm it's genuinely receiving no traffic (see
-[Atlas-managed ATProto PDS](./atproto-pds.md)) before decommissioning it.
+recurring cost for coverage the harness already provides for free. Staging's PDS
+VM (`atlas-pds-staging`, `e2-small`) is confirmed to be receiving zero real
+traffic and should be decommissioned; see the step-by-step teardown in
+[Atlas-managed ATProto PDS](./atproto-pds.md#cost-staging-does-not-need-its-own-instance).
 
 The staging API deploy is a GitHub Actions workflow:
 
