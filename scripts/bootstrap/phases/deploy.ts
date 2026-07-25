@@ -746,9 +746,11 @@ function deployService(
         `--ingress=${options.ingress} ` +
         `--allow-unauthenticated ` +
         `--min-instances=0 ` +
-        `--max-instances=2 ` +
-        `--memory=512Mi ` +
+        `--max-instances=4 ` +
+        `--memory=768Mi ` +
         `--cpu=1 ` +
+        `--concurrency=1 ` +
+        `--timeout=900 ` +
         `--port=${options.port} ` +
         `--env-vars-file="${envFilePath}" ` +
         `--quiet`,
