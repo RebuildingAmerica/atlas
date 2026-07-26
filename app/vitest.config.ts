@@ -35,6 +35,12 @@ export default defineConfig({
         url: "http://localhost",
       },
     },
+    // Dates render in the reader's own zone once the browser hydrates, so a
+    // suite that inherited the developer's clock would assert different text on
+    // a laptop in Dallas than on a CI runner already in UTC.
+    env: {
+      TZ: "UTC",
+    },
     setupFiles: ["tests/setup.ts"],
     // The pre-push gate runs every workspace's suite concurrently via Turbo;
     // under that CPU contention the heaviest auth-flow tests drift just past

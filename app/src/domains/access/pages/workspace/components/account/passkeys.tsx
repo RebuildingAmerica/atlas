@@ -1,4 +1,5 @@
 import { Check, KeyRound, Pencil, Trash2, X } from "lucide-react";
+import { NUMERIC_DATE, useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { AccountRow, AccountSurface } from "./rows";
@@ -42,6 +43,7 @@ export function AccountPasskeys({
   onStartRename,
   onSubmitRename,
 }: AccountPasskeysProps) {
+  const formatDateTime = useDateTimeFormatter();
   const passkeyCount = passkeys?.length;
 
   return (
@@ -100,7 +102,7 @@ export function AccountPasskeys({
               {pk.deviceType === "platform" ? "Device passkey" : "Hardware key"}
               {pk.backedUp ? " · synced" : ""}
               {" · "}
-              {new Date(pk.createdAt).toLocaleDateString()}
+              {formatDateTime(pk.createdAt, NUMERIC_DATE)}
             </p>
           </div>
           {editingPasskeyId !== pk.id ? (

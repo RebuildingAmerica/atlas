@@ -6,6 +6,11 @@
  * null when no quote-bearing source is available so the panel doesn't appear
  * for thin profiles.
  */
+import {
+  MONTH_YEAR,
+  formatDateTimeOrInput,
+  formatStableDateTime,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Source } from "@rebuildingamerica/atlas-api-client";
 
 interface SignatureQuoteProps {
@@ -16,18 +21,16 @@ function findQuoteSource(sources: Source[]): Source | null {
   return sources.find((source) => source.extraction_context?.trim()) ?? null;
 }
 
-function formatQuoteDate(iso: string | undefined): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
-}
-
 export function SignatureQuote({ sources }: SignatureQuoteProps) {
   const source = findQuoteSource(sources);
   if (!source) return null;
 
-  const dateLabel = formatQuoteDate(source.published_date ?? source.ingested_at);
+  // `published_date` is a calendar day, so the credit line stays pinned to UTC
+  // rather than sliding a source into the previous month for western readers.
+  const quotedAt = source.published_date ?? source.ingested_at;
+  const dateLabel = quotedAt
+    ? formatDateTimeOrInput(formatStableDateTime, quotedAt, MONTH_YEAR)
+    : null;
   const sourceIndex = sources.indexOf(source) + 1;
 
   return (

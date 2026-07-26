@@ -1,4 +1,8 @@
 import { MonitorUp, Trash2 } from "lucide-react";
+import {
+  MEDIUM_DATE_TIME,
+  useDateTimeFormatter,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { AccountRow, AccountSection, AccountSubsection, AccountSurface } from "./rows";
 
@@ -47,13 +51,6 @@ interface AccountScoutDevicesProps {
   onRevoke: (id: string) => void;
 }
 
-function formatLastSeen(value: string): string {
-  return new Date(value).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
 function targetLabel(target: AccountScoutDeviceRecord["defaultUploadTarget"]): string {
   return target === "workspace" ? "Workspace uploads" : "Public uploads";
 }
@@ -64,6 +61,7 @@ export function AccountScoutDevices({
   isRevokePending,
   onRevoke,
 }: AccountScoutDevicesProps) {
+  const formatDateTime = useDateTimeFormatter();
   const deviceCount = devices?.length;
 
   return (
@@ -80,7 +78,7 @@ export function AccountScoutDevices({
             <div className="space-y-1">
               <p className="type-title-small text-ink-strong truncate">{device.workerName}</p>
               <p className="type-body-small text-ink-soft">
-                Last seen {formatLastSeen(device.lastSeenAt)}
+                Last seen {formatDateTime(device.lastSeenAt, MEDIUM_DATE_TIME)}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

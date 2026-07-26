@@ -1,4 +1,9 @@
 import { AtSign } from "lucide-react";
+import {
+  MONTH_YEAR,
+  formatDateTimeOrNull,
+  useDateTimeFormatter,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface LinkedAtprotoAccountProps {
@@ -6,6 +11,7 @@ interface LinkedAtprotoAccountProps {
 }
 
 export function LinkedAtprotoAccount({ entry }: LinkedAtprotoAccountProps) {
+  const formatDateTime = useDateTimeFormatter();
   const handle = entry.claim.linked_atproto_handle;
   if (entry.claim.linked_atproto_status === "needs_attention") {
     return (
@@ -18,7 +24,11 @@ export function LinkedAtprotoAccount({ entry }: LinkedAtprotoAccountProps) {
   if (!handle) {
     return null;
   }
-  const verifiedAt = formatVerifiedAt(entry.claim.linked_atproto_verified_at);
+  const verifiedAt = formatDateTimeOrNull(
+    formatDateTime,
+    entry.claim.linked_atproto_verified_at,
+    MONTH_YEAR,
+  );
 
   return (
     <span className="inline-flex flex-col gap-0.5">
@@ -34,15 +44,4 @@ export function LinkedAtprotoAccount({ entry }: LinkedAtprotoAccountProps) {
       ) : null}
     </span>
   );
-}
-
-function formatVerifiedAt(value: string | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
 }

@@ -4,12 +4,17 @@ import { useWorkspaceWatchDigest } from "@/domains/workspace/hooks/use-workspace
 import type { WorkspaceWatchDigestItem } from "@/domains/workspace/server/watch-digest";
 import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { MEDIUM_DATE, useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 
 export const Route = createFileRoute("/_workspace/feed")({
   component: FeedRoute,
 });
 
 const DIGEST_LIMIT = 50;
+
+interface DigestItemRowProps {
+  item: WorkspaceWatchDigestItem;
+}
 
 function eventTypeLabel(item: WorkspaceWatchDigestItem): string {
   if (item.event_type === "new_source") {
@@ -27,7 +32,8 @@ function eventTypeLabel(item: WorkspaceWatchDigestItem): string {
   return "Profile update";
 }
 
-function DigestItemRow({ item }: { item: WorkspaceWatchDigestItem }) {
+function DigestItemRow({ item }: DigestItemRowProps) {
+  const format = useDateTimeFormatter();
   const sourceTitle = item.source?.title ?? item.source?.url ?? null;
 
   return (
@@ -38,11 +44,7 @@ function DigestItemRow({ item }: { item: WorkspaceWatchDigestItem }) {
           <h2 className="type-title-medium text-ink-strong">{item.title}</h2>
         </div>
         <time className="type-label-small text-ink-muted" dateTime={item.created_at}>
-          {new Date(item.created_at).toLocaleDateString(undefined, {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })}
+          {format(item.created_at, MEDIUM_DATE)}
         </time>
       </div>
 

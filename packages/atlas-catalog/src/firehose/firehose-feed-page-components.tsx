@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { useMemo, type CSSProperties } from "react";
+import { useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type {
   FirehoseDensity,
   FirehoseFeedItem,
@@ -176,6 +177,7 @@ function FirehoseBucketDivider({ bucket }: FirehoseBucketDividerProps) {
 }
 
 function FirehoseSignalRow({ density, signal }: FirehoseSignalRowProps) {
+  const formatDateTime = useDateTimeFormatter();
   const labels = useMemo(
     () => [
       ...signal.places.map((place) => place.label),
@@ -209,7 +211,7 @@ function FirehoseSignalRow({ density, signal }: FirehoseSignalRowProps) {
             className="type-title-small text-ink-strong block tabular-nums"
             dateTime={signal.detected_at}
           >
-            {formatTimestamp(signal.detected_at)}
+            {formatTimestamp(formatDateTime, signal.detected_at)}
           </time>
           <p className="type-label-small text-accent">{signalTypeLabel(signal.signal_type)}</p>
         </div>

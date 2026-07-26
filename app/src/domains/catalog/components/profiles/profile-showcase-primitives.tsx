@@ -1,3 +1,8 @@
+import {
+  formatDateTimeOrInput,
+  formatStableDateTime,
+  MEDIUM_DATE,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
@@ -37,15 +42,9 @@ export function formatFreshness(date?: string): string | null {
   if (!date) {
     return null;
   }
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) {
-    return date;
-  }
-  return parsed.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  // `latest_source_date` is a calendar day with no clock, so it stays pinned
+  // rather than shifting into the reader's zone.
+  return formatDateTimeOrInput(formatStableDateTime, date, MEDIUM_DATE);
 }
 
 export function getInitials(name: string): string {

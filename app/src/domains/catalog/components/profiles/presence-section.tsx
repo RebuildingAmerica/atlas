@@ -1,6 +1,11 @@
 import { ArrowRight, Calendar, Globe, Mail, Phone } from "lucide-react";
 import type { ReactNode } from "react";
 import { ContactValue, UngroundedNote } from "@/domains/catalog/components/profiles/contact-value";
+import {
+  MEDIUM_DATE,
+  formatDateTimeOrInput,
+  formatStableDateTime,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 
 interface PresenceSectionProps {
   website?: string;
@@ -15,19 +20,6 @@ interface ContactCellProps {
   icon: ReactNode;
   label: string;
   value: ReactNode;
-}
-
-function formatPresenceDate(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function extractDomain(url: string): string {
@@ -129,7 +121,7 @@ export function PresenceSection({
             <ContactCell
               icon={<Calendar className="text-ink-muted h-4 w-4" />}
               label="First seen"
-              value={formatPresenceDate(firstSeen)}
+              value={formatDateTimeOrInput(formatStableDateTime, firstSeen, MEDIUM_DATE)}
             />
           ) : null}
         </div>

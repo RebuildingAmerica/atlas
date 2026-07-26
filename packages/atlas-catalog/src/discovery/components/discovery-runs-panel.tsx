@@ -1,5 +1,9 @@
 import { Clipboard } from "lucide-react";
 import {
+  useDateTimeFormatter,
+  NUMERIC_DATE_TIME,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
+import {
   RESEARCH_GOAL_LABELS,
   type DiscoveryRunRecord,
 } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
@@ -41,6 +45,8 @@ export function DiscoveryRunsPanel({
   watchLeadErrors = {},
   watchingLeadsRunId = null,
 }: DiscoveryRunsPanelProps) {
+  const formatDateTime = useDateTimeFormatter();
+
   return (
     <section className="border-border-strong bg-surface space-y-5 rounded-[1rem] border p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -74,7 +80,7 @@ export function DiscoveryRunsPanel({
                   <div>
                     <h2 className="type-title-small text-ink-strong">{run.location_query}</h2>
                     <p className="type-body-small text-ink-muted mt-1">
-                      {new Date(run.started_at).toLocaleString()} · {run.state}
+                      {formatDateTime(run.started_at, NUMERIC_DATE_TIME)} · {run.state}
                     </p>
                     <p className="type-label-medium text-ink-soft mt-2">
                       {RESEARCH_GOAL_LABELS[run.research_goal ?? "landscape_scan"]}

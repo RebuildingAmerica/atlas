@@ -43,6 +43,7 @@ describe("TeamInvitationsSection", () => {
     render(<TeamInvitationsSection {...defaultProps} />);
     expect(screen.getByText("pending@atlas.test")).toBeInTheDocument();
     expect(screen.getByText(/admin · pending/i)).toBeInTheDocument();
+    expect(screen.getByText("Expires 5/1/2026, 12:00:00 AM")).toBeInTheDocument();
   });
 
   it("renders a call to action when no invitations exist", () => {

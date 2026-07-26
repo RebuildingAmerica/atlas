@@ -3,6 +3,7 @@ import { GitBranch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { loadPublicDirectory } from "@/domains/catalog/server/public-directory";
 import { buildPageHead } from "@/platform/seo";
+import { formatStableDateTime, MEDIUM_DATE } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 export const Route = createFileRoute("/_public/directories/$orgId")({
@@ -337,12 +338,10 @@ function formatDirectoryDate(value: string): string {
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
     return value;
   }
-  const date = new Date(year, month - 1, day);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
+  // A directory date is a calendar fact with no clock attached, so anchor it at
+  // UTC midnight and format it there. Shifting it into the reader's zone would
+  // render the day before for everyone behind UTC.
+  return formatStableDateTime(new Date(Date.UTC(year, month - 1, day)), MEDIUM_DATE);
 }
 
 function directoryEntryMatchesSearch(entry: Entry, query: string): boolean {

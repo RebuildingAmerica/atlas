@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { MEDIUM_DATE, useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 
 /**
  * The data a single following-feed row renders: the actor that was mentioned
@@ -40,16 +41,13 @@ interface FeedItemRowProps {
  * home activity band stay visually identical.
  */
 export function FeedItemRow({ item }: FeedItemRowProps) {
+  const formatDateTime = useDateTimeFormatter();
   const segment = item.entry_type === "organization" ? "organizations" : "people";
 
   return (
     <li className="border-outline-variant bg-surface-container-lowest rounded-[1rem] border p-4">
       <p className="type-label-small text-ink-muted">
-        {new Date(item.ingested_at).toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })}
+        {formatDateTime(item.ingested_at, MEDIUM_DATE)}
       </p>
       {item.entry_slug ? (
         <Link

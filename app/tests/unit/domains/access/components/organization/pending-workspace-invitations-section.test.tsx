@@ -32,6 +32,7 @@ describe("PendingWorkspaceInvitationsSection", () => {
     render(<PendingWorkspaceInvitationsSection {...defaultProps} />);
     expect(screen.getByText("Atlas Team")).toBeInTheDocument();
     expect(screen.getByText(/Invited as admin/i)).toBeInTheDocument();
+    expect(screen.getByText("Expires 5/1/2026, 12:00:00 AM")).toBeInTheDocument();
   });
 
   it("triggers onDecision with 'accept' when clicking Accept", () => {
@@ -52,11 +53,22 @@ describe("PendingWorkspaceInvitationsSection", () => {
     expect(screen.getByText("Decline")).toBeDisabled();
   });
 
-  it("renders gracefully when an invitation does not carry an expiresAt timestamp", () => {
+  it("omits the expiry line when an invitation does not carry an expiresAt timestamp", () => {
     const noExpiry = [{ ...invitations[0], expiresAt: null }];
     render(
       <PendingWorkspaceInvitationsSection {...defaultProps} invitations={noExpiry as never} />,
     );
     expect(screen.getByText(/Atlas Team/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Expires/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Invalid Date/i)).not.toBeInTheDocument();
+  });
+
+  it("omits the expiry line when the stored timestamp cannot be parsed", () => {
+    const badExpiry = [{ ...invitations[0], expiresAt: "not-a-date" }];
+    render(
+      <PendingWorkspaceInvitationsSection {...defaultProps} invitations={badExpiry as never} />,
+    );
+    expect(screen.getByText(/Atlas Team/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Expires/i)).not.toBeInTheDocument();
   });
 });

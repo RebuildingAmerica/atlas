@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { MapPin, ShieldCheck } from "lucide-react";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type {
   CoverageTarget,
   CoverageTargetStatus,
@@ -61,6 +62,7 @@ function SummaryMetric({ label, value, detail }: SummaryMetricProps) {
 }
 
 function CoverageTargetItem({ target }: CoverageTargetItemProps) {
+  const format = useDateTimeFormatter();
   const display = STATUS_DISPLAY[target.status];
 
   return (
@@ -74,7 +76,7 @@ function CoverageTargetItem({ target }: CoverageTargetItemProps) {
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={target.status} />
               <ReviewStateBadge reviewState={target.review_state} />
-              <Badge>{formatDate(target.last_reviewed_at)}</Badge>
+              <Badge>{formatDate(format, target.last_reviewed_at)}</Badge>
             </div>
             <div className="space-y-2">
               <h2 className="type-title-large text-ink-strong">

@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import type { DateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
+import {
+  MEDIUM_DATE_TIME,
+  useDateTimeFormatter,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type {
   CoverageTargetDetail,
   CoverageTargetStatus,
@@ -104,25 +109,19 @@ export function joined(values: string[]): string {
   return values.map(humanize).join(", ");
 }
 
-export function formatDate(value: string | null): string {
-  if (!value) {
-    return "Not reviewed";
-  }
+// The detail page renders review dates exactly as the coverage list does, so
+// both surfaces read from one implementation.
+export { formatDate } from "./coverage-page-utils";
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Unknown";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-    year: "numeric",
-  });
-}
-
-export function formatDateTime(value: string | null): string {
+/**
+ * Renders the moment a source target was last polled.
+ *
+ * @param format - Formatter from `useDateTimeFormatter`, so the string the
+ *   server renders survives hydration.
+ * @param value - ISO timestamp, or `null` when the target has never been polled.
+ * @returns The formatted instant, or the reason there is no instant to show.
+ */
+export function formatDateTime(format: DateTimeFormatter, value: string | null): string {
   if (!value) {
     return "Not checked";
   }
@@ -132,14 +131,7 @@ export function formatDateTime(value: string | null): string {
     return "Unknown";
   }
 
-  return parsed.toLocaleString(undefined, {
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    month: "short",
-    timeZone: "UTC",
-    year: "numeric",
-  });
+  return format(parsed, MEDIUM_DATE_TIME);
 }
 
 export function formatCadence(seconds: number): string {
@@ -204,6 +196,8 @@ interface SourceTargetRowProps {
 }
 
 export function SourceTargetRow({ target }: SourceTargetRowProps) {
+  const format = useDateTimeFormatter();
+
   return (
     <li className="border-outline-variant rounded-lg border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -228,7 +222,7 @@ export function SourceTargetRow({ target }: SourceTargetRowProps) {
         </div>
       </div>
       <div className="type-body-small text-ink-soft mt-3 flex flex-wrap gap-x-4 gap-y-1">
-        <span>{formatDateTime(target.last_checked_at)}</span>
+        <span>{formatDateTime(format, target.last_checked_at)}</span>
         {target.last_http_status ? <span>HTTP {target.last_http_status}</span> : null}
         {target.last_error ? <span>{target.last_error}</span> : null}
       </div>

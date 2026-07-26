@@ -1,3 +1,8 @@
+import {
+  formatDateTimeOrInput,
+  formatStableDateTime,
+  MEDIUM_DATE,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import { useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { BrowseSearchHeader } from "@/domains/catalog/components/browse/browse-search-header";
@@ -95,16 +100,9 @@ function dateLabel(value: string | undefined): string | undefined {
   if (!value) {
     return undefined;
   }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Intl.DateTimeFormat("en", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-    year: "numeric",
-  }).format(date);
+  // A source date is a calendar day, so it stays pinned rather than shifting
+  // into the reader's zone.
+  return formatDateTimeOrInput(formatStableDateTime, value, MEDIUM_DATE);
 }
 
 function entryLocation(entry: Entry): string {

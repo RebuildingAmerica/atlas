@@ -14,6 +14,7 @@ import {
   getExportSavedListUrl,
 } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import {
   buildCrmHandoffPacket,
   buildEvidencePack,
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_workspace/lists/$id")({
 
 function ListDetailRoute() {
   const { id } = Route.useParams();
+  const format = useDateTimeFormatter();
   const session = useAtlasSession();
   const list = useSavedList(id, true);
   const removeItem = useRemoveSavedListItem();
@@ -113,7 +115,7 @@ function ListDetailRoute() {
   const workspaceName = isTeamWorkspace ? activeOrganization.name : "You";
   const workspaceBadge = isTeamWorkspace ? "Team research workspace" : "Research thread";
   const researchThread = buildResearchThreadSummary(items);
-  const projectMetadata = buildProjectMetadata(items, data.updated_at, workspaceName);
+  const projectMetadata = buildProjectMetadata(format, items, data.updated_at, workspaceName);
   const evidencePack = buildEvidencePack(data.name, data.description ?? null, items);
   const spreadsheetExport = buildSpreadsheetExport(items);
   const institutionalExport = buildInstitutionalExport(

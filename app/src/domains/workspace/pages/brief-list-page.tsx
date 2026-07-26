@@ -3,9 +3,15 @@ import { ArrowLeft, FileText, Plus, ShieldCheck } from "lucide-react";
 import { useWorkspaceBriefCollection } from "@/domains/workspace/hooks/use-briefs";
 import type { AtlasBrief } from "@/domains/workspace/server/briefs";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
+import { formatDate } from "./coverage-page-utils";
 
 interface CountLabelOptions {
   plural?: string;
+}
+
+interface BriefListItemProps {
+  brief: AtlasBrief;
 }
 
 interface BriefCollectionStats {
@@ -25,20 +31,6 @@ function humanize(value: string): string {
 
 function joined(values: string[]): string {
   return values.map(humanize).join(", ");
-}
-
-function formatDate(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return "Unknown";
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-    year: "numeric",
-  });
 }
 
 function confidenceVariant(state: AtlasBrief["confidence_summary"]["state"]) {
@@ -69,7 +61,9 @@ function collectionStats(briefs: AtlasBrief[]): BriefCollectionStats {
   };
 }
 
-function BriefListItem({ brief }: { brief: AtlasBrief }) {
+function BriefListItem({ brief }: BriefListItemProps) {
+  const format = useDateTimeFormatter();
+
   return (
     <li className="border-outline-variant bg-surface-container-lowest rounded-lg border p-5">
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -93,7 +87,7 @@ function BriefListItem({ brief }: { brief: AtlasBrief }) {
           <div className="type-body-small text-ink-soft flex flex-wrap gap-x-4 gap-y-1">
             <span>{brief.scope.geography}</span>
             <span>{joined(brief.scope.issue_areas)}</span>
-            <span>Updated {formatDate(brief.updated_at)}</span>
+            <span>Updated {formatDate(format, brief.updated_at)}</span>
           </div>
         </div>
 

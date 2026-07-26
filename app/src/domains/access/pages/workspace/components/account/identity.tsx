@@ -5,6 +5,11 @@ import {
   useProvisionManagedAtprotoIdentity,
   useRefreshAtprotoIdentity,
 } from "@/domains/access/atproto-identities";
+import {
+  formatDateTimeOrNull,
+  useDateTimeFormatter,
+  MEDIUM_DATE,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
@@ -23,12 +28,10 @@ function startConnection(handle: string): void {
   window.location.assign(connectUrl(handle));
 }
 
-function displayDate(value: string | null | undefined): string {
-  if (!value) return "Not available";
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value));
-}
-
 export function AccountIdentitySection() {
+  const formatDate = useDateTimeFormatter();
+  const displayDate = (value: string | null | undefined): string =>
+    formatDateTimeOrNull(formatDate, value, MEDIUM_DATE) ?? "Not available";
   const [existingHandle, setExistingHandle] = useState("");
   const [managedHandle, setManagedHandle] = useState("");
   const identities = useAtprotoIdentities();

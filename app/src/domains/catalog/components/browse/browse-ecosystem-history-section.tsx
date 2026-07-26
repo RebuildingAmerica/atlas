@@ -1,3 +1,4 @@
+import { formatStableDateTime, MONTH_YEAR } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface BrowseEcosystemHistorySectionProps {
@@ -6,12 +7,6 @@ interface BrowseEcosystemHistorySectionProps {
   placeLabel: string | undefined;
   total: number;
 }
-
-const MONTH_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  timeZone: "UTC",
-  year: "numeric",
-});
 
 const TYPE_LABELS: Record<Entry["type"], string> = {
   campaign: "Campaigns",
@@ -41,7 +36,7 @@ function parseDate(value: string | undefined): Date | undefined {
 }
 
 function formatMonth(value: Date): string {
-  return MONTH_FORMATTER.format(value);
+  return formatStableDateTime(value, MONTH_YEAR);
 }
 
 function compareDates(left: Date, right: Date): number {

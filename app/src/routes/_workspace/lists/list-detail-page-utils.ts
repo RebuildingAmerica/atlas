@@ -1,3 +1,6 @@
+import type { DateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
+import { MEDIUM_DATE } from "@rebuildingamerica/atlas-ui/format/date-time";
+
 export interface ResearchThreadSummary {
   actorCount: number;
   noteCount: number;
@@ -74,17 +77,20 @@ export function projectStatusForThread(summary: ResearchThreadSummary): string {
   return "Ready for outreach";
 }
 
-export function formatProjectDate(iso: string): string {
+/**
+ * Renders the date a research thread last moved.
+ *
+ * @param format - Formatter from `useDateTimeFormatter`, so the string the
+ *   server renders survives hydration.
+ * @param iso - ISO timestamp as it arrived from the saved list.
+ * @returns The formatted date, or `"Unknown"` when the timestamp is unusable.
+ */
+export function formatProjectDate(format: DateTimeFormatter, iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return "Unknown";
   }
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return format(date, MEDIUM_DATE);
 }
 
 export function savedListJsonFilename(listName: string, listId: string): string {
@@ -132,7 +138,18 @@ export function downloadCsvFile(filename: string, content: string) {
   downloadTextFile(filename, content, "text/csv;charset=utf-8");
 }
 
+/**
+ * Summarises a saved list as the project header the reader sees.
+ *
+ * @param format - Formatter from `useDateTimeFormatter`, so the string the
+ *   server renders survives hydration.
+ * @param items - Saved actors in the list.
+ * @param updatedAt - ISO timestamp of the list's last change.
+ * @param owner - Display name of whoever the thread belongs to.
+ * @returns Status, owner, and last-updated copy for the project header.
+ */
 export function buildProjectMetadata(
+  format: DateTimeFormatter,
   items: SavedListThreadItem[],
   updatedAt: string,
   owner: string,
@@ -141,7 +158,7 @@ export function buildProjectMetadata(
   return {
     status: projectStatusForThread(summary),
     owner,
-    lastUpdated: formatProjectDate(updatedAt),
+    lastUpdated: formatProjectDate(format, updatedAt),
   };
 }
 

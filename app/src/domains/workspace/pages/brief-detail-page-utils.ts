@@ -1,3 +1,8 @@
+import {
+  formatDateTimeOrInput,
+  MEDIUM_DATE,
+  type DateTimeFormatter,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type {
   AtlasBrief,
   AtlasBriefExport,
@@ -77,21 +82,23 @@ export function sourceLabel(source: AtlasBriefExportSource): string {
   return source.title?.trim() || source.url;
 }
 
-export function formatDate(value: string | null | undefined): string | null {
+/**
+ * Renders a source date for the evidence pack.
+ *
+ * @param format - Formatter from `useDateTimeFormatter`.
+ * @param value - Timestamp from the brief export, if the source carries one.
+ * @returns The formatted date, the raw value when it will not parse, or `null`
+ *   when the source has no date at all.
+ */
+export function formatDate(
+  format: DateTimeFormatter,
+  value: string | null | undefined,
+): string | null {
   if (!value) {
     return null;
   }
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(parsed);
+  return formatDateTimeOrInput(format, value, MEDIUM_DATE);
 }
 
 export function confidenceVariant(state: AtlasBriefExport["provenance"]["confidence_state"]) {

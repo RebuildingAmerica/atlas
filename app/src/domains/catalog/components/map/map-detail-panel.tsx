@@ -6,6 +6,7 @@ import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { issueColor } from "@rebuildingamerica/atlas-catalog/map/issue-colors";
 import { profileRouteFor } from "@rebuildingamerica/atlas-catalog/map/profile-route";
+import { MEDIUM_DATE, formatStableDateTime } from "@rebuildingamerica/atlas-ui/format/date-time";
 import { MapTrustLine } from "./map-trust-line";
 import {
   type ActorSelection,
@@ -53,22 +54,26 @@ function locationPrecisionLabel(point: MapPoint): string {
   return "Mapped location";
 }
 
+/**
+ * Renders a map point's newest-source date.
+ *
+ * `latest_source_date` is a calendar day with no clock attached, so it is built
+ * at UTC midnight and formatted with the permanently pinned formatter. Shifting
+ * it into the reader's zone would move the fact itself -- a source published on
+ * the 1st would read as the previous month west of UTC.
+ */
 function formatMapDate(value: string | null): string | null {
   if (!value) {
     return null;
   }
   const dateOnly = DATE_ONLY_PATTERN.exec(value);
   const parsed = dateOnly
-    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
     : new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return formatStableDateTime(parsed, MEDIUM_DATE);
 }
 
 function mapFacts(point: MapPoint): MapFact[] {

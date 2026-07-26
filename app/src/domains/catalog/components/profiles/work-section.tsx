@@ -8,6 +8,7 @@
  */
 import { Link } from "@tanstack/react-router";
 import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
+import { MONTH_YEAR, formatStableDateTime } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 interface WorkSectionProps {
@@ -35,11 +36,10 @@ function formatMostRecentSource(sources: Source[]): string | null {
   if (!latest) {
     return null;
   }
+  // `published_date` is a calendar day, so the strip stays pinned to UTC rather
+  // than sliding a source into the previous month for western readers.
   const date = latest.published_date ?? latest.ingested_at;
-  const dateLabel = new Date(date).toLocaleDateString(undefined, {
-    month: "short",
-    year: "numeric",
-  });
+  const dateLabel = formatStableDateTime(date, MONTH_YEAR);
   if (latest.publication) {
     return `${latest.publication}, ${dateLabel}`;
   }

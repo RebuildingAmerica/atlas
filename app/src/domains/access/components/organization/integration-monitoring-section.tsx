@@ -1,9 +1,11 @@
-import type { WorkspaceIntegrationMonitoring } from "@/domains/workspace/server/usage-summary";
 import {
-  formatUsageAuditTimestamp,
-  formatUsageCount,
-  formatUsageDate,
-} from "./workspace-usage-formatters";
+  formatDateTimeOrNull,
+  useDateTimeFormatter,
+  MEDIUM_DATE,
+  MEDIUM_DATE_TIME,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
+import type { WorkspaceIntegrationMonitoring } from "@/domains/workspace/server/usage-summary";
+import { formatUsageCount } from "./workspace-usage-formatters";
 
 type IntegrationResourceItem = WorkspaceIntegrationMonitoring["top_resources"][number];
 type IntegrationDataBoundary = WorkspaceIntegrationMonitoring["data_boundary"];
@@ -97,7 +99,9 @@ function IntegrationMetricsGrid({ metrics }: IntegrationMetricsGridProps) {
 }
 
 function IntegrationResourceRow({ resource }: IntegrationResourceRowProps) {
-  const lastSeenAt = formatUsageAuditTimestamp(resource.last_seen_at) ?? "Unknown time";
+  const formatDateTime = useDateTimeFormatter();
+  const lastSeenAt =
+    formatDateTimeOrNull(formatDateTime, resource.last_seen_at, MEDIUM_DATE_TIME) ?? "Unknown time";
 
   return (
     <li className="grid gap-2 py-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -143,9 +147,12 @@ function IntegrationResourceList({ resources }: IntegrationResourceListProps) {
 export function IntegrationMonitoringSection({
   integrationMonitoring,
 }: IntegrationMonitoringSectionProps) {
-  const lastSeen = integrationMonitoring.last_seen_at
-    ? formatUsageDate(integrationMonitoring.last_seen_at)
-    : null;
+  const formatDate = useDateTimeFormatter();
+  const lastSeen = formatDateTimeOrNull(
+    formatDate,
+    integrationMonitoring.last_seen_at,
+    MEDIUM_DATE,
+  );
   const boundaryLabel = formatIntegrationDataBoundary(integrationMonitoring.data_boundary);
   const metrics = buildIntegrationMetrics(integrationMonitoring);
 

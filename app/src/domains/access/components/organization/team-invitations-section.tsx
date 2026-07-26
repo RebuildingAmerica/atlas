@@ -3,6 +3,7 @@ import { Shield, UserPlus } from "lucide-react";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
+import { InvitationExpiry } from "./invitation-expiry";
 import { invitationRoleOptions } from "./organization-page-helpers";
 
 /**
@@ -103,9 +104,7 @@ export function TeamInvitationsSection({
                 <p className="type-body-medium text-ink-soft">
                   {invitation.role} · {invitation.status}
                 </p>
-                <p className="type-body-small text-ink-muted">
-                  Expires {new Date(invitation.expiresAt).toLocaleString()}
-                </p>
+                <InvitationExpiry expiresAt={invitation.expiresAt} />
               </div>
               {canManageOrganization ? (
                 <div className="flex items-center gap-2">

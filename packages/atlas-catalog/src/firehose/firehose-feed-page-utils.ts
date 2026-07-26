@@ -4,6 +4,7 @@ import type {
   FirehoseFeedModel,
   FirehoseJumpTarget,
 } from "./feed-model";
+import type { DateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { PublicFirehoseLiveState } from "./public-feed";
 
 export interface FirehoseDensityOption {
@@ -27,13 +28,23 @@ export const LIVE_SOCKET_PROTOCOL = "atlas.firehose.public.v1";
 export const READING_LATEST_SCROLL_THRESHOLD = 72;
 export const VIRTUALIZED_ITEM_THRESHOLD = 40;
 
-export function formatTimestamp(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    month: "short",
-  }).format(new Date(value));
+/** `Jul 26, 2:30 PM` -- the firehose is a live feed, so the year is noise. */
+const SIGNAL_DETECTED_AT: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  month: "short",
+};
+
+/**
+ * Renders when a signal was detected, in the reader's own clock once hydrated.
+ *
+ * @param format - Formatter from `useDateTimeFormatter`.
+ * @param value - ISO timestamp carried on the signal.
+ * @returns The detection time, ready to drop into a `<time>` element.
+ */
+export function formatTimestamp(format: DateTimeFormatter, value: string): string {
+  return format(value, SIGNAL_DETECTED_AT);
 }
 
 export function eventCountLabel(count: number): string {

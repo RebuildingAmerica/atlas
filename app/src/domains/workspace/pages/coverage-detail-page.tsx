@@ -14,6 +14,7 @@ import {
   useWorkspaceWatchStatus,
 } from "@/domains/workspace/hooks/use-workspace-watches";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { CoverageTargetDetail } from "@/domains/workspace/server/coverage-targets";
 import type { WorkspaceFirehoseSourceTargetCollection } from "@/domains/workspace/server/firehose";
 import {
@@ -37,6 +38,7 @@ interface CoverageDetailPageProps {
 }
 
 export function CoverageDetailPage({ detail, sourceTargets }: CoverageDetailPageProps) {
+  const format = useDateTimeFormatter();
   const target = detail.target;
   const display = STATUS_DISPLAY[target.status];
   const researchState = detail.discovery_runs.at(0)?.state ?? stateFromGeography(target.geography);
@@ -73,7 +75,7 @@ export function CoverageDetailPage({ detail, sourceTargets }: CoverageDetailPage
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={target.status} />
               <ReviewStateBadge reviewState={target.review_state} />
-              <Badge>{formatDate(target.last_reviewed_at)}</Badge>
+              <Badge>{formatDate(format, target.last_reviewed_at)}</Badge>
             </div>
             <div className="space-y-2">
               <h1 className="type-display-small text-ink-strong">{target.name}</h1>
@@ -199,7 +201,7 @@ export function CoverageDetailPage({ detail, sourceTargets }: CoverageDetailPage
                     <span>{joined(run.issue_areas)}</span>
                     <span>{countLabel(run.entries_confirmed, "record")}</span>
                     <span>{countLabel(run.sources_processed, "source")}</span>
-                    <span>{formatDate(run.completed_at ?? run.started_at)}</span>
+                    <span>{formatDate(format, run.completed_at ?? run.started_at)}</span>
                   </div>
                 </li>
               ))}

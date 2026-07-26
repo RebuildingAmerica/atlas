@@ -1,5 +1,9 @@
 import { AlertTriangle, CheckCircle2, CircleHelp } from "lucide-react";
 import {
+  useDateTimeFormatter,
+  MEDIUM_DATE_TIME,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
+import {
   AdminIndicatorCard,
   AdminIndicatorPlaceholderCard,
   AdminInlineStatus,
@@ -22,6 +26,7 @@ interface CloudCostsViewProps {
 }
 
 export function CloudCostsView({ errorMessage, isLoading = false, posture }: CloudCostsViewProps) {
+  const formatDateTime = useDateTimeFormatter();
   const monthlyProjection = posture ? posture.discovery_spend.estimated_daily_usd * 30 : 0;
   return (
     <AdminPageShell>
@@ -34,7 +39,7 @@ export function CloudCostsView({ errorMessage, isLoading = false, posture }: Clo
           <div className="border-border bg-surface-container-lowest rounded-lg border px-4 py-3">
             <p className="type-label-small text-ink-muted">Updated</p>
             <p className="type-body-small text-ink-strong">
-              {formatDateTime(posture.generated_at)}
+              {formatDateTime(posture.generated_at, MEDIUM_DATE_TIME)}
             </p>
           </div>
         ) : null}
@@ -190,13 +195,6 @@ function formatUsd(value: number) {
     minimumFractionDigits: 2,
     style: "currency",
   }).format(value);
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function formatConnectionStatus(status: string) {

@@ -10,6 +10,7 @@ import {
   type AdminIndicatorTone,
 } from "@/domains/admin/admin-portal";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { useDateTimeFormatter, MEDIUM_DATE } from "@rebuildingamerica/atlas-ui/format/date-time";
 import { DISCOUNT_SEGMENT_LABELS } from "../../discount-segments";
 
 export type VerificationReviewStatus = VerificationUpdateRequest["status"];
@@ -118,6 +119,8 @@ function VerificationRecordCard({
   record: VerificationRecordResponse;
   reviewPending: boolean;
 }) {
+  const formatDate = useDateTimeFormatter();
+
   return (
     <article className="border-border bg-surface-container-lowest rounded-lg border p-4 sm:p-5">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -132,7 +135,7 @@ function VerificationRecordCard({
             </AdminStatusBadge>
           </div>
           <p className="type-body-small text-ink-soft">
-            Submitted: {formatSubmittedDate(record.submitted_at)}
+            Submitted: {formatDate(record.submitted_at, MEDIUM_DATE)}
           </p>
           {record.notes ? (
             <p className="type-body-small text-ink-strong italic">"{record.notes}"</p>
@@ -180,12 +183,4 @@ function statusTone(status: VerificationRecordResponse["status"]): AdminIndicato
     return "block";
   }
   return "warn";
-}
-
-function formatSubmittedDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
 }

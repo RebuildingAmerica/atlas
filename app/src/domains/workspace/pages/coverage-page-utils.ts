@@ -1,10 +1,12 @@
 import type { LucideIcon } from "lucide-react";
+import type { DateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type {
   CoverageTarget,
   CoverageTargetCollection,
   CoverageTargetStatus,
 } from "@/domains/workspace/server/coverage-targets";
 import { Ban, CheckCircle2, CircleDashed, Clock3, AlertTriangle } from "lucide-react";
+import { MEDIUM_DATE } from "@rebuildingamerica/atlas-ui/format/date-time";
 
 export interface CoveragePageProps {
   initialCoverageTargets: CoverageTargetCollection;
@@ -115,7 +117,18 @@ export function joined(values: string[]): string {
   return values.map(humanize).join(", ");
 }
 
-export function formatDate(value: string | null): string {
+/**
+ * Renders a review date for coverage and brief surfaces.
+ *
+ * The two absent-value strings differ on purpose: a target that has never been
+ * reviewed is a fact worth stating, while a timestamp we cannot parse is not.
+ *
+ * @param format - Formatter from `useDateTimeFormatter`, so the string the
+ *   server renders survives hydration.
+ * @param value - ISO timestamp, or `null` when nothing has been recorded.
+ * @returns The formatted date, or the reason there is no date to show.
+ */
+export function formatDate(format: DateTimeFormatter, value: string | null): string {
   if (!value) {
     return "Not reviewed";
   }
@@ -125,12 +138,7 @@ export function formatDate(value: string | null): string {
     return "Unknown";
   }
 
-  return parsed.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-    year: "numeric",
-  });
+  return format(parsed, MEDIUM_DATE);
 }
 
 export function summarizeCoverage(targets: CoverageTarget[]): CoverageSummary {

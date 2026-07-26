@@ -1,3 +1,5 @@
+import type { DateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
+import { MEDIUM_DATE, useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { ResearchTrend } from "../server/research-summary";
 
 interface ResearchTrendsSectionProps {
@@ -9,16 +11,13 @@ function trendKindLabel(kind: ResearchTrend["kind"]): string {
   return kind === "place" ? "Place" : "Issue";
 }
 
-function formatLatestRun(value: string): string {
-  return `Latest request ${new Date(value).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-    year: "numeric",
-  })}`;
+function formatLatestRun(format: DateTimeFormatter, value: string): string {
+  return `Latest request ${format(value, MEDIUM_DATE)}`;
 }
 
 export function ResearchTrendsSection({ trends }: ResearchTrendsSectionProps) {
+  const format = useDateTimeFormatter();
+
   if (trends.length === 0) {
     return null;
   }
@@ -41,7 +40,7 @@ export function ResearchTrendsSection({ trends }: ResearchTrendsSectionProps) {
             <h3 className="type-title-medium text-ink-strong mt-1">{trend.label}</h3>
             <p className="type-body-medium text-ink-soft mt-2">{trend.signal}</p>
             <p className="type-label-small text-ink-muted mt-3">
-              {formatLatestRun(trend.latestRunAt)}
+              {formatLatestRun(format, trend.latestRunAt)}
             </p>
           </article>
         ))}

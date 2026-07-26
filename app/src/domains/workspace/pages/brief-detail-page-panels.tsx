@@ -1,3 +1,4 @@
+import { useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import { Link } from "@tanstack/react-router";
 import { Check, ExternalLink, ListPlus, MapPinned, ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -262,14 +263,16 @@ export function SaveActorsPanel({ briefTitle, entries }: SaveActorsPanelProps) {
 }
 
 export function SourcesPanel({ onEvidenceOpen, sources }: SourcesPanelProps) {
+  const formatDateTime = useDateTimeFormatter();
+
   return (
     <section className="border-outline-variant bg-surface-container-lowest space-y-4 rounded-lg border p-5">
       <h2 className="type-title-large text-ink-strong">Evidence Pack</h2>
       {sources.length > 0 ? (
         <ul className="divide-border divide-y">
           {sources.map((source) => {
-            const published = formatDate(source.published_date);
-            const ingested = formatDate(source.ingested_at);
+            const published = formatDate(formatDateTime, source.published_date);
+            const ingested = formatDate(formatDateTime, source.ingested_at);
             return (
               <li key={source.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
                 <a

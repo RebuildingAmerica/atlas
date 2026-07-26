@@ -1,20 +1,9 @@
-import { useSyncExternalStore } from "react";
-
 /**
- * Subscribe to nothing -- the store never changes. This is a no-op used only
- * to distinguish server-side rendering from the hydrated browser render.
+ * App-facing seam for the shared hydration signal.
+ *
+ * The implementation lives in `atlas-ui` so code outside `app/` -- the shared
+ * date-time formatter, for one -- can read the same signal. Keeping this module
+ * as the app's import path lets app tests stub hydration without reaching into
+ * the shared package.
  */
-function subscribeNoop() {
-  return () => undefined;
-}
-
-/**
- * Returns `true` after browser hydration and `false` during SSR.
- */
-export function useHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribeNoop,
-    () => true,
-    () => false,
-  );
-}
+export { useHydrated } from "@rebuildingamerica/atlas-ui/hooks/use-hydrated";

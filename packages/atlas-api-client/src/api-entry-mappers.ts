@@ -14,9 +14,16 @@ import type {
   MapPoint as MapPointResponse,
 } from "./generated/atlas";
 
+/**
+ * Pinned to UTC and a fixed locale so a mapped entry reads the same on the
+ * server as it does in the browser. This package has no React dependency and
+ * runs before render, so it cannot use the hydration-aware formatter in
+ * `atlas-ui/format/date-time` -- it applies the same policy by hand.
+ */
 const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
+  timeZone: "UTC",
 });
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -43,8 +50,11 @@ export function formatShortDate(value: string | null | undefined): string | unde
     return undefined;
   }
   const dateOnly = DATE_ONLY_PATTERN.exec(value);
+  // A bare `YYYY-MM-DD` carries no zone, so anchor it at UTC midnight to match
+  // the formatter. Building it at *local* midnight would render a different day
+  // on a machine behind UTC than on one ahead of it.
   const parsed = dateOnly
-    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    ? new Date(Date.UTC(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])))
     : new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return undefined;

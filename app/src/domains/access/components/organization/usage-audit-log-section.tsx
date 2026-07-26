@@ -2,7 +2,12 @@ import type {
   WorkspaceUsageAuditLog,
   WorkspaceUsageEvent,
 } from "@/domains/workspace/server/usage-summary";
-import { formatUsageAuditTimestamp, formatUsageEventType } from "./workspace-usage-formatters";
+import {
+  formatDateTimeOrNull,
+  useDateTimeFormatter,
+  MEDIUM_DATE_TIME,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
+import { formatUsageEventType } from "./workspace-usage-formatters";
 
 /**
  * Props for the workspace usage audit log section.
@@ -32,6 +37,7 @@ function formatAuditResource(event: WorkspaceUsageEvent): string {
  * Customer-safe access log for workspace usage events.
  */
 export function UsageAuditLogSection({ auditLog }: UsageAuditLogSectionProps) {
+  const formatDateTime = useDateTimeFormatter();
   return (
     <section className="border-border space-y-3 border-t pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -44,7 +50,9 @@ export function UsageAuditLogSection({ auditLog }: UsageAuditLogSectionProps) {
       ) : (
         <ol className="divide-border divide-y">
           {auditLog.items.map((event) => {
-            const timestamp = formatUsageAuditTimestamp(event.created_at) ?? "Unknown time";
+            const timestamp =
+              formatDateTimeOrNull(formatDateTime, event.created_at, MEDIUM_DATE_TIME) ??
+              "Unknown time";
             return (
               <li className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto]" key={event.id}>
                 <div className="min-w-0">

@@ -12,6 +12,11 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
+import {
+  MONTH_YEAR,
+  formatDateTimeOrInput,
+  formatStableDateTime,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfileResearchContextProps {
@@ -34,14 +39,6 @@ interface ResearchRecordItem {
 interface PivotLink {
   label: string;
   search: Record<string, string>;
-}
-
-function formatMonthYear(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return iso;
-  }
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
 }
 
 function issueFocus(entry: Entry, labels: Record<string, string>): string | null {
@@ -103,7 +100,11 @@ function contextItems(entry: Entry, labels: Record<string, string>): ContextItem
 
   items.push({
     label: "Last seen",
-    value: formatMonthYear(entry.latest_source_date ?? entry.last_seen),
+    value: formatDateTimeOrInput(
+      formatStableDateTime,
+      entry.latest_source_date ?? entry.last_seen,
+      MONTH_YEAR,
+    ),
     Icon: CalendarClock,
   });
 

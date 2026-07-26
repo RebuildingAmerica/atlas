@@ -10,7 +10,9 @@
     "./layout/auth-flow-frame": "./src/layout/auth-flow-frame.tsx",
     "./layout/workspace-frame": "./src/layout/workspace-frame.tsx",
     "./hooks/use-dirty-form-guard": "./src/hooks/use-dirty-form-guard.ts",
-    "./styles/typography": "./src/styles/typography.ts"
+    "./styles/typography": "./src/styles/typography.ts",
+    "./hooks/use-hydrated": "./src/hooks/use-hydrated.ts",
+    "./format/date-time": "./src/format/date-time.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

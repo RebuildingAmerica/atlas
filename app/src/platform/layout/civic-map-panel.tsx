@@ -264,7 +264,11 @@ function StatItem({ value, label }: StatItemProps) {
         className="text-surface text-[26px] leading-none font-extrabold"
         style={{ letterSpacing: "0" }}
       >
-        {value !== undefined ? value.toLocaleString() : "—"}
+        {/* Grouping separators differ by locale, so an unpinned call renders one
+            string on the server and another in the browser. These are bare
+            counts on an en-US surface -- pin them rather than reach for the
+            hydration-aware date machinery. */}
+        {value !== undefined ? value.toLocaleString("en-US") : "—"}
       </div>
       <div
         className="mt-[3px] text-[10px] uppercase"

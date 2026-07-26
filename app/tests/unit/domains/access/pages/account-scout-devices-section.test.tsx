@@ -73,6 +73,7 @@ describe("AccountScoutDevices", () => {
     );
 
     expect(screen.getByText("Willie's MacBook Pro")).not.toBeNull();
+    expect(screen.getByText("Last seen Jul 4, 2026, 5:15 PM")).not.toBeNull();
     expect(screen.getByText("Studio desktop")).not.toBeNull();
     expect(screen.getByText("Workspace uploads")).not.toBeNull();
     expect(screen.getByText("Public uploads")).not.toBeNull();
@@ -112,5 +113,19 @@ describe("AccountScoutDevices", () => {
     );
 
     expect(screen.getByText("No Scout devices.")).not.toBeNull();
+  });
+
+  it("counts zero devices while the enrollment list is still loading", () => {
+    render(
+      <AccountScoutDevices
+        devices={undefined}
+        isError={false}
+        isRevokePending={false}
+        onRevoke={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("0")).not.toBeNull();
+    expect(screen.queryByText("No Scout devices.")).toBeNull();
   });
 });

@@ -13,6 +13,12 @@ import {
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
 import { LinkedAtprotoAccount } from "@/domains/catalog/components/profiles/linked-atproto-account";
+import {
+  MONTH_YEAR,
+  formatDateTimeOrNull,
+  formatStableDateTime,
+  useDateTimeFormatter,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { ClaimEvidenceInfo, Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface DataQualityBlockProps {
@@ -38,17 +44,16 @@ const ACTOR_QUALITY_LEVEL_LABELS: Record<string, string> = {
   thin_record: "Thin record",
 };
 
-function formatAbsoluteDate(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "short" });
-}
-
 function VerificationLine({ entry }: { entry: Entry }) {
+  const formatDateTime = useDateTimeFormatter();
   const status = entry.claim.status;
 
   if (status === "verified") {
-    const verifiedAt = entry.claim.claim_verified_at;
-    const dateLabel = verifiedAt ? formatAbsoluteDate(verifiedAt) : null;
+    const dateLabel = formatDateTimeOrNull(
+      formatDateTime,
+      entry.claim.claim_verified_at,
+      MONTH_YEAR,
+    );
     const label = entry.type === "organization" ? "Verified representative" : "Verified person";
     return (
       <span className="inline-flex flex-col gap-1">
@@ -103,15 +108,9 @@ function VerificationLine({ entry }: { entry: Entry }) {
   );
 }
 
-function formatEvidenceDate(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
-}
-
 function formatClaimEvidence(evidence: ClaimEvidenceInfo): string {
   const sourceLabel = `${evidence.source_count} ${evidence.source_count === 1 ? "source" : "sources"}`;
-  const dateLabel = formatEvidenceDate(evidence.as_of);
+  const dateLabel = formatDateTimeOrNull(formatStableDateTime, evidence.as_of, MONTH_YEAR);
   return [sourceLabel, evidence.confidence, dateLabel].filter(Boolean).join(" · ");
 }
 
@@ -313,7 +312,7 @@ export function DataQualityBlock({ entry }: DataQualityBlockProps) {
           label="First surfaced"
           value={
             <span className="type-body-medium text-ink-strong">
-              {formatAbsoluteDate(entry.first_seen)}
+              {formatDateTimeOrNull(formatStableDateTime, entry.first_seen, MONTH_YEAR)}
             </span>
           }
         />

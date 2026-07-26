@@ -1,5 +1,6 @@
 import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { Shield, Trash2, Users } from "lucide-react";
+import { NUMERIC_DATE, useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import { memberRoleOptions } from "./organization-page-helpers";
@@ -27,6 +28,8 @@ export function TeamMembersSection({
   onRemove,
   onRoleChange,
 }: TeamMembersSectionProps) {
+  const formatDateTime = useDateTimeFormatter();
+
   return (
     <section className="border-border-strong bg-surface space-y-4 rounded-[1rem] border p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -92,7 +95,7 @@ export function TeamMembersSection({
                     )}
                   </td>
                   <td className="type-body-small text-ink-soft px-4 py-3">
-                    {new Date(member.createdAt).toLocaleDateString()}
+                    {formatDateTime(member.createdAt, NUMERIC_DATE)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {canEditMember ? (

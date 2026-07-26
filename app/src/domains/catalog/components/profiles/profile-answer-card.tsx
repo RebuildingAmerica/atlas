@@ -1,5 +1,10 @@
 import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
+import {
+  MONTH_YEAR,
+  formatDateTimeOrNull,
+  formatStableDateTime,
+} from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { ClaimEvidenceInfo, Entry, Source } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfileAnswerCardProps {
@@ -26,20 +31,12 @@ function sourceLabel(count: number): string {
   return `${count} ${count === 1 ? "source" : "sources"}`;
 }
 
-function formatEvidenceDate(iso: string | null | undefined): string | null {
-  if (!iso) {
-    return null;
-  }
-  const date = new Date(iso);
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
-}
-
 function formatClaimEvidence(evidence: ClaimEvidenceInfo | undefined, entry: Entry): string {
   if (!evidence) {
     return sourceLabel(entry.source_count);
   }
 
-  const dateLabel = formatEvidenceDate(evidence.as_of);
+  const dateLabel = formatDateTimeOrNull(formatStableDateTime, evidence.as_of, MONTH_YEAR);
   return [sourceLabel(evidence.source_count), evidence.confidence, dateLabel]
     .filter(Boolean)
     .join(" · ");

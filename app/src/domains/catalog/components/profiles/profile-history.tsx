@@ -1,3 +1,4 @@
+import { formatStableDateTime, MONTH_YEAR } from "@rebuildingamerica/atlas-ui/format/date-time";
 import { Link } from "@tanstack/react-router";
 import {
   CalendarClock,
@@ -32,12 +33,6 @@ interface AuditItem {
   description: string;
 }
 
-const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 const TONE_CLASS: Record<HistoryEvent["tone"], string> = {
   neutral: "border-border-taupe bg-surface-container-lowest text-ink-soft",
   source: "border-civic/40 bg-surface-container-low text-ink-strong",
@@ -50,7 +45,7 @@ function formatHistoryDate(iso: string): string {
   if (Number.isNaN(date.getTime())) {
     return "Undated";
   }
-  return DATE_FORMATTER.format(date);
+  return formatStableDateTime(date, MONTH_YEAR);
 }
 
 function sourceDate(source: Source): string | null {

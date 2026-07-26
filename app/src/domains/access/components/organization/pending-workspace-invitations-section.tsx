@@ -1,5 +1,6 @@
 import type { AtlasWorkspaceInvitation } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { InvitationExpiry } from "./invitation-expiry";
 
 /**
  * Props for the pending-invitations section.
@@ -37,9 +38,7 @@ export function PendingWorkspaceInvitationsSection({
             <div className="space-y-1">
               <p className="type-title-small text-ink-strong">{invitation.organizationName}</p>
               <p className="type-body-medium text-ink-soft">Invited as {invitation.role}</p>
-              <p className="type-body-small text-ink-muted">
-                Expires {new Date(invitation.expiresAt ?? "").toLocaleString()}
-              </p>
+              <InvitationExpiry expiresAt={invitation.expiresAt} />
             </div>
 
             <div className="flex flex-wrap gap-2">
