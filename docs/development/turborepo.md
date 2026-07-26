@@ -28,15 +28,15 @@ workspace that exposes a runnable task owns that task's configuration:
 | `turbo.json`                                           | Root-only `//#` operations, strict mode, and global dependencies |
 | `api/turbo.json`, `app/turbo.json`, `scout/turbo.json` | Service task inputs, outputs, and runtime environment            |
 | `libs/*/turbo.json`                                    | Python library test boundaries                                   |
-| `packages/atlas-api-client/turbo.json`                 | Generated API client and its checks                               |
-| `packages/atlas-ui/turbo.json`                         | Shared presentation behavior and checks                           |
-| `packages/atlas-catalog/turbo.json`                    | Catalog, discovery, and firehose behavior and checks              |
-| `packages/atlas-access/turbo.json`                     | Access, identity, and workspace policy checks                     |
-| `packages/entity-widgets/turbo.json`                   | Consumer widget checks                                            |
-| `packages/entity-widgets-mcp/turbo.json`               | MCP widget adapter checks                                         |
-| `packages/eslint-config/turbo.json`                    | Config package (no runnable tasks)                                |
-| `packages/vitest-config/turbo.json`                    | Shared Vitest-config typecheck and lint                           |
-| `packages/tsconfig/turbo.json`                         | Config package (no runnable tasks)                                |
+| `packages/atlas-api-client/turbo.json`                 | Generated API client and its checks                              |
+| `packages/atlas-ui/turbo.json`                         | Shared presentation behavior and checks                          |
+| `packages/atlas-catalog/turbo.json`                    | Catalog, discovery, and firehose behavior and checks             |
+| `packages/atlas-access/turbo.json`                     | Access, identity, and workspace policy checks                    |
+| `packages/entity-widgets/turbo.json`                   | Consumer widget checks                                           |
+| `packages/entity-widgets-mcp/turbo.json`               | MCP widget adapter checks                                        |
+| `packages/eslint-config/turbo.json`                    | Config package (no runnable tasks)                               |
+| `packages/vitest-config/turbo.json`                    | Shared Vitest-config typecheck and lint                          |
+| `packages/tsconfig/turbo.json`                         | Config package (no runnable tasks)                               |
 
 Turbo tasks are declared only by packages that have the matching package script.
 This keeps `turbo run test` free of placeholder tasks and lets the graph cache
@@ -64,11 +64,11 @@ These files invalidate the cache for every task when changed:
 The root `package.json` is intentionally small. Use it for common repo-wide
 workflows only:
 
-| Command                  | Purpose                                |
-| ------------------------ | -------------------------------------- |
-| `pnpm run quality`       | Repo quality graph                     |
-| `pnpm run test:coverage` | Python package tests plus app coverage |
-| `pnpm run verify`        | Full production verification workflow  |
+| Command                  | Purpose                                     |
+| ------------------------ | ------------------------------------------- |
+| `pnpm run quality`       | Repo quality graph, coverage gates included |
+| `pnpm run test:coverage` | Python package tests plus the app suite     |
+| `pnpm run verify`        | Full production verification workflow       |
 
 Narrow root-level Turbo tasks (prefixed with `//#`) are reserved for operations
 that read repo-level files outside a single workspace package.
@@ -85,18 +85,17 @@ that read repo-level files outside a single workspace package.
 
 These run within workspace packages:
 
-| Task            | Purpose                                      | Key Detail                                           |
-| --------------- | -------------------------------------------- | ---------------------------------------------------- |
-| `build`         | Production build                             | Declared by packages that produce artifacts          |
-| `api-client`    | Generate TypeScript client from OpenAPI spec | Output: `packages/atlas-api-client/src/generated/**` |
-| `openapi:lint`  | Lint the OpenAPI spec                        | Uses `.spectral.yaml`                                |
-| `typecheck`     | TypeScript type checking                     | Depends on `api-client`                              |
-| `lint`          | ESLint                                       | Depends on `api-client`                              |
-| `test`          | Vitest unit tests                            | Depends on `api-client`                              |
-| `test:coverage` | Tests with coverage report                   | Output: `coverage/**`                                |
-| `test:e2e`      | Playwright E2E tests                         | Not cached                                           |
-| `quality`       | All quality checks                           | Depends on `typecheck`, `lint`, `format:check`       |
-| `dev`           | Dev server                                   | Persistent, not cached                               |
+| Task           | Purpose                                      | Key Detail                                           |
+| -------------- | -------------------------------------------- | ---------------------------------------------------- |
+| `build`        | Production build                             | Declared by packages that produce artifacts          |
+| `api-client`   | Generate TypeScript client from OpenAPI spec | Output: `packages/atlas-api-client/src/generated/**` |
+| `openapi:lint` | Lint the OpenAPI spec                        | Uses `.spectral.yaml`                                |
+| `typecheck`    | TypeScript type checking                     | Depends on `api-client`                              |
+| `lint`         | ESLint                                       | Depends on `api-client`                              |
+| `test`         | Vitest unit tests, coverage gate enforced    | Depends on `api-client`; output: `coverage/**`       |
+| `test:e2e`     | Playwright E2E tests                         | Not cached                                           |
+| `quality`      | All quality checks                           | Depends on `typecheck`, `lint`, `format:check`       |
+| `dev`          | Dev server                                   | Persistent, not cached                               |
 
 ### Dependency Chain
 

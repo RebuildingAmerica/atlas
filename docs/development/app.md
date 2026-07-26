@@ -2,7 +2,8 @@
 
 [Docs](../README.md) > [Development](./README.md) > App Development
 
-How to build features on the React/TanStack Start app. Adding routes, components, and hooks.
+How to build features on the React/TanStack Start app. Adding routes,
+components, and hooks.
 
 ## Prerequisites
 
@@ -78,11 +79,11 @@ Use Tailwind utility classes:
 export default function MyPage() {
   return (
     <div className="min-h-screen bg-white">
-      <header className="bg-blue-600 text-white py-4">
-        <h1 className="text-3xl font-bold px-4">My Page</h1>
+      <header className="bg-blue-600 py-4 text-white">
+        <h1 className="px-4 text-3xl font-bold">My Page</h1>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <p className="text-gray-700">Content here</p>
       </main>
     </div>
@@ -143,7 +144,7 @@ export function Badge({ label, color = "gray" }: BadgeProps) {
 
   return (
     <span
-      className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}
+      className={`inline-block rounded-full px-3 py-1 text-sm font-medium ${colorClass}`}
     >
       {label}
     </span>
@@ -166,14 +167,14 @@ interface EntryCardProps {
 export function EntryCard({ entry, onClick }: EntryCardProps) {
   return (
     <div
-      className="border border-gray-200 rounded-lg p-6 hover:shadow-lg cursor-pointer transition-shadow"
+      className="cursor-pointer rounded-lg border border-gray-200 p-6 transition-shadow hover:shadow-lg"
       onClick={() => onClick?.(entry)}
     >
-      <h3 className="text-lg font-bold mb-2">{entry.name}</h3>
+      <h3 className="mb-2 text-lg font-bold">{entry.name}</h3>
 
-      <p className="text-gray-600 text-sm mb-4">{entry.description}</p>
+      <p className="mb-4 text-sm text-gray-600">{entry.description}</p>
 
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="mb-3 flex flex-wrap gap-2">
         {entry.issue_areas.map((area) => (
           <Badge key={area} label={area} color="blue" />
         ))}
@@ -472,7 +473,8 @@ export function SignupForm() {
 
 ## Client vs. Server Components
 
-TanStack Start supports selective SSR. By default, routes are SPAs (rendered in browser).
+TanStack Start supports selective SSR. By default, routes are SPAs (rendered in
+browser).
 
 ### Mark a Route as SSR
 
@@ -546,7 +548,7 @@ pnpm run test
 pnpm run test:watch
 
 # Coverage
-pnpm run test:coverage
+pnpm run test
 ```
 
 ---

@@ -15,18 +15,39 @@ export default defineConfig({
   },
   test: {
     coverage: {
+      // Without this, vitest reports only files a test happens to import, so a
+      // source file nobody tests is absent from the denominator entirely and
+      // deleting its last test *raises* coverage. Name the product surface
+      // explicitly and let the thresholds mean what they say.
+      include: ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
       exclude: [
         "coverage/**",
         "dist/**",
         "src/lib/generated/**",
         "src/routeTree.gen.ts",
+        "src/vite-env.d.ts",
         "tests/**",
+        // Exercised outside vitest. Each of these has a real gate, just not this
+        // one -- excluding them keeps the number about product code.
+        //
+        // hosted-e2e + its route: Playwright, playwright.hosted-identity.config.ts
+        "src/domains/access/server/hosted-e2e.ts",
+        "src/routes/api/e2e/**",
+        // scripts/e2e: the `test:acceptance`, `e2e:mail` and `e2e:cleanup` scripts
+        "scripts/e2e/**",
+        // screenshots + route-tree generation: `screenshots` and `predev`/`prebuild`
+        "scripts/screenshots.mjs",
+        "scripts/generate-route-tree.mjs",
       ],
       thresholds: {
-        branches: 100,
-        functions: 100,
-        lines: 100,
-        statements: 100,
+        // A ratchet, not a target: these sit just under the measured floor and
+        // only ever move up, so partial progress is protected instead of
+        // aspirational. Raise them whenever a change earns it; never lower them
+        // to accommodate one. Destination is 100 across the board.
+        branches: 77.6,
+        functions: 83.9,
+        lines: 84.1,
+        statements: 83.7,
       },
     },
     environment: "node",

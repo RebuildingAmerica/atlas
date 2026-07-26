@@ -58,7 +58,7 @@ typecheck: ## Type-check everything (mypy + tsc)
 
 test: ## Run all tests with coverage
 	cd api && uv run pytest
-	cd app && pnpm run test:coverage
+	cd app && pnpm run test
 
 quality: ## Run ALL quality checks (lint + format + typecheck + test)
 	@echo "Running full quality suite..."

@@ -174,9 +174,6 @@
         "ENVIRONMENT",
         "LOG_LEVEL"
       ],
-      "outputs": []
-    },
-    "test:coverage": {
       "outputs": [
         "coverage/**"
       ]

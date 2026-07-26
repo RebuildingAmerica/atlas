@@ -33,7 +33,7 @@ explicit separate check:
 
 ```bash
 cd scout
-pnpm run test:coverage
+pnpm run test
 ```
 
 ## Environment Readiness
