@@ -1,6 +1,7 @@
 """Shared test fixtures."""
 
 import tempfile
+from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
 
 import httpx
@@ -17,6 +18,7 @@ from atlas.models import (
     get_db_connection,
     init_db,
 )
+from atlas.platform import config as platform_config
 from atlas.platform.mcp import data as data_module
 from atlas.platform.mcp.data import AtlasDataService
 
@@ -27,6 +29,29 @@ pytest_plugins = [
     "tests.domains.discovery.org_coverage_targets_support",
     "tests.domains.discovery.api_org_support",
 ]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def hermetic_settings() -> Iterator[None]:
+    """Run the suite against declared defaults instead of a developer's ``.env``.
+
+    ``get_settings`` layers ``api/.env`` over the process environment so a local
+    API server picks up developer overrides. That file is gitignored, so it
+    exists on laptops and never in CI, and letting it reach the suite makes
+    tests pass or fail depending on whose machine they run on. It sets
+    ``ATLAS_AUTH_MEMBERSHIP_URL``, for one, which flips organization membership
+    verification from "skipped because unconfigured" to a live HTTPS call
+    against a development certificate. Pinning the env file off keeps every run
+    hermetic and matches what CI sees.
+
+    Yields
+    ------
+    None
+        For the duration of the test session.
+    """
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(platform_config, "API_ENV_FILE", None)
+        yield
 
 
 @pytest.fixture
