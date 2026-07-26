@@ -4,11 +4,10 @@ import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { OrganizationEmptyState } from "@/domains/access/components/organization/organization-empty-state";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("OrganizationEmptyState", () => {
   it("renders the empty state message", () => {

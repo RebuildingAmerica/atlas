@@ -6,9 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SignUpFormPanel } from "@/domains/access/pages/auth/components/sign-up-form-panel";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   Button: ({

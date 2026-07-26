@@ -22,11 +22,10 @@ vi.mock("@/platform/runtime/use-hydrated", () => ({
   useHydrated: claimReviewHooks.useHydrated,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 export function getClaimReviewHooks() {
   return claimReviewHooks;

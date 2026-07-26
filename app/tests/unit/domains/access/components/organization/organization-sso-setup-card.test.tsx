@@ -7,12 +7,10 @@ import { OrganizationSSOSetupCard } from "@/domains/access/components/organizati
 // eslint-disable-next-line atlas-tests/no-test-file-locals
 type SSOOrganization = Parameters<typeof OrganizationSSOSetupCard>[0]["organization"];
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-  useRouter: () => ({}),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("OrganizationSSOSetupCard", () => {
   afterEach(() => {

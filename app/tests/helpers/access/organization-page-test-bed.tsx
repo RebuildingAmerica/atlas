@@ -106,20 +106,6 @@ function TestTextarea({ label, onChange, value }: TestTextareaProps) {
   );
 }
 
-interface TestLinkProps {
-  children: ReactNode;
-  className?: string;
-  to: string;
-}
-
-function TestLink({ children, className, to }: TestLinkProps) {
-  return (
-    <a className={className} href={to}>
-      {children}
-    </a>
-  );
-}
-
 const samlAllowedIssuersFixture = {
   issuerOrigins: ["https://accounts.google.com"],
 };
@@ -194,7 +180,6 @@ export {
   createAtlasWorkspace,
   TestButton,
   TestInput,
-  TestLink,
   TestSelect,
   TestTextarea,
   samlAllowedIssuersFixture,

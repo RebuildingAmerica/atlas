@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -17,9 +16,10 @@ import {
   createSourceFixture as buildSource,
 } from "../../../../fixtures/catalog/entries";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/catalog/components/profiles/private-notes-panel", () => ({
   PrivateNotesPanel: ({ targetLabel }: { targetLabel: string }) => (

@@ -67,7 +67,7 @@ describe("routes/_workspace actions", () => {
     });
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Sign out/ }));
@@ -103,7 +103,7 @@ describe("routes/_workspace actions", () => {
     });
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Sign out/ }));
@@ -134,7 +134,7 @@ describe("routes/_workspace actions", () => {
     } as unknown as ReturnType<typeof useAtlasSession>);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText("workspace-select"), {
@@ -167,7 +167,7 @@ describe("routes/_workspace actions", () => {
     } as unknown as ReturnType<typeof useAtlasSession>);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText("workspace-select"), {

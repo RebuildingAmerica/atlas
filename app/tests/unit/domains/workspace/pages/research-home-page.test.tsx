@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResearchHomePage } from "@/domains/workspace/pages/research-home-page";
@@ -29,13 +28,10 @@ vi.mock("@/domains/access", () => ({
   useAtlasSession: mocks.useAtlasSession,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to?: string }) => (
-    <a href={to} data-link-to={to}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/workspace/hooks/use-briefs", () => ({
   useWorkspaceBriefs: mocks.useWorkspaceBriefs,

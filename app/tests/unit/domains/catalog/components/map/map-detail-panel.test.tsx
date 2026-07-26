@@ -11,8 +11,8 @@ import {
 } from "../../../../../helpers/catalog/map-detail-panel-harness";
 
 vi.mock("@tanstack/react-router", async () => {
-  const { MockLink } = await import("../../../../../helpers/catalog/map-detail-panel-harness");
-  return { Link: MockLink };
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
 });
 
 afterEach(cleanup);

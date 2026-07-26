@@ -12,11 +12,10 @@ const actionClusterCaptures = vi.hoisted(() => ({
   shareUrls: [] as string[],
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access", () => ({
   useAtlasSession: () => ({ data: null }),

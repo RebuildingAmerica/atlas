@@ -35,7 +35,7 @@ afterEach(() => {
 describe("routes/_workspace layout", () => {
   it("returns the core workbench rail items when the session is local", async () => {
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
     const layout = screen.getByTestId("workspace-layout");
     const railItems = JSON.parse(layout.dataset.railItems ?? "[]") as { label: string }[];
     expect(railItems.map((t) => t.label)).toEqual([
@@ -68,7 +68,7 @@ describe("routes/_workspace layout", () => {
     } as unknown as ReturnType<typeof useAtlasSession>);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
     const railItems = JSON.parse(
       screen.getByTestId("workspace-layout").dataset.railItems ?? "[]",
     ) as { label: string }[];
@@ -92,7 +92,7 @@ describe("routes/_workspace layout", () => {
     } as unknown as ReturnType<typeof useAtlasSession>);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
     const railItems = JSON.parse(
       screen.getByTestId("workspace-layout").dataset.railItems ?? "[]",
     ) as { label: string }[];
@@ -138,7 +138,7 @@ describe("routes/_workspace layout", () => {
     vi.mocked(setActiveWorkspace).mockResolvedValue(undefined as never);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
 
     expect(captured).toBeDefined();
     if (!captured) throw new Error("Expected captured mutation options");
@@ -177,7 +177,7 @@ describe("routes/_workspace layout", () => {
     vi.mocked(setActiveWorkspace).mockResolvedValue(undefined as never);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
 
     const railItems = JSON.parse(
       screen.getByTestId("workspace-layout").dataset.railItems ?? "[]",
@@ -222,7 +222,7 @@ describe("routes/_workspace layout", () => {
     } as unknown as ReturnType<typeof useAtlasSession>);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
     expect(screen.getByLabelText("workspace-select")).toBeInTheDocument();
   });
 
@@ -242,7 +242,7 @@ describe("routes/_workspace layout", () => {
     } as unknown as ReturnType<typeof useAtlasSession>);
 
     const Component = await loadWorkspaceRouteComponent();
-    renderWorkspaceRoute(Component);
+    await renderWorkspaceRoute(Component);
     expect(screen.getAllByText("ops@acme.test").length).toBeGreaterThan(0);
     expect(screen.getByText("Acme")).toBeInTheDocument();
     expect(screen.queryByLabelText("workspace-select")).toBeNull();

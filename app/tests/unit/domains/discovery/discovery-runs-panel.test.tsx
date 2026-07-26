@@ -5,26 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { DiscoveryRunsPanel } from "@rebuildingamerica/atlas-catalog/discovery/components";
 import type { DiscoveryRunRecord } from "@rebuildingamerica/atlas-catalog/discovery/discovery-run-summary";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    params,
-    to,
-  }: {
-    children: React.ReactNode;
-    params?: { briefId?: string; targetId?: string };
-    to: string;
-  }) => {
-    let href = to;
-    if (params?.briefId) {
-      href = href.replace("$briefId", params.briefId);
-    }
-    if (params?.targetId) {
-      href = href.replace("$targetId", params.targetId);
-    }
-    return <a href={href}>{children}</a>;
-  },
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("DiscoveryRunsPanel", () => {
   const discoveryRun = (overrides: Partial<DiscoveryRunRecord> = {}): DiscoveryRunRecord => ({
@@ -106,9 +90,11 @@ describe("DiscoveryRunsPanel", () => {
 
     expect(onCreateCoverageTarget).toHaveBeenCalledWith(expect.objectContaining({ id: "run_123" }));
     expect(onWatchTopLeads).toHaveBeenCalledWith(expect.objectContaining({ id: "run_123" }));
-    expect(screen.getByRole("link", { name: "Open coverage" })).toHaveAttribute(
-      "href",
-      "/coverage/coverage_123",
+    const coverageLink = screen.getByRole("link", { name: "Open coverage" });
+    expect(coverageLink).toHaveAttribute("data-link-to", "/coverage/$targetId");
+    expect(coverageLink).toHaveAttribute(
+      "data-link-params",
+      JSON.stringify({ targetId: "coverage_123" }),
     );
     expect(screen.getByText("Watching 1 lead.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open watching" })).toHaveAttribute(

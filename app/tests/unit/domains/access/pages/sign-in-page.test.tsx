@@ -52,20 +52,10 @@ vi.mock("@/domains/access/client/sso-diagnostics-log", () => ({
   recordSsoDiagnostics: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    to?: string;
-    className?: string;
-  }) => (
-    <a href={props.to} className={props.className}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("SignInPage", () => {
   const authClient = {

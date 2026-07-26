@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceOperatingPictureSection } from "@/domains/workspace/components/workspace-operating-picture-section";
@@ -13,13 +12,10 @@ import type {
 import type { WorkspaceUsageSummary } from "@/domains/workspace/server/usage-summary";
 import type { WorkspaceWatchCollection } from "@/domains/workspace/server/watches";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, hash, to }: { children: ReactNode; hash?: string; to?: string }) => (
-    <a href={`${to ?? ""}${hash ? `#${hash}` : ""}`} data-link-hash={hash} data-link-to={to}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("WorkspaceOperatingPictureSection", () => {
   afterEach(() => {

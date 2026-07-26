@@ -4,17 +4,17 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
-  navigate: vi.fn(),
   useAtlasSession: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
-  useNavigate: () => mocks.navigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
@@ -33,9 +33,8 @@ import { PricingPage } from "@/domains/billing/pages/public/pricing-page";
 describe("PricingPage start handoff", () => {
   beforeEach(() => {
     mocks.confirm.mockReset();
-    mocks.navigate.mockReset();
     mocks.useAtlasSession.mockReset();
-    mocks.navigate.mockResolvedValue(undefined);
+    resetRouterMocks();
     mocks.useAtlasSession.mockReturnValue({ data: null });
   });
 
@@ -49,7 +48,7 @@ describe("PricingPage start handoff", () => {
 
     await user.click(screen.getByRole("button", { name: "Get Atlas Team" }));
 
-    expect(mocks.navigate).toHaveBeenCalledWith({
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
       search: { interval: "monthly", product: "atlas_team" },
     });
@@ -69,7 +68,7 @@ describe("PricingPage start handoff", () => {
 
     await user.click(screen.getByRole("button", { name: "Get Atlas Pro" }));
 
-    expect(mocks.navigate).toHaveBeenCalledWith({
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
       search: { interval: "monthly", product: "atlas_pro" },
     });

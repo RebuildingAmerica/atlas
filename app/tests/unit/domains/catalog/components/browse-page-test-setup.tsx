@@ -4,12 +4,23 @@ import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { createEntryFixture } from "@/../tests/fixtures/catalog/entries";
+import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 
-const mocks = vi.hoisted(() => ({
-  navigate: vi.fn(),
+const hookMocks = vi.hoisted(() => ({
   useEntries: vi.fn(),
   useTaxonomy: vi.fn(),
 }));
+
+/**
+ * The mock surface browse-page suites drive. `navigate` is the same `vi.fn()`
+ * the shared router harness hands `useNavigate()`, so assertions on it observe
+ * exactly what the page asked the router to do.
+ */
+const mocks = {
+  navigate: readRouterMocks().navigate,
+  useEntries: hookMocks.useEntries,
+  useTaxonomy: hookMocks.useTaxonomy,
+};
 
 export { mocks };
 
@@ -29,17 +40,10 @@ export function getNavigateCalls(): NavigateOptions[] {
   return mocks.navigate.mock.calls.map(([options]) => options as NavigateOptions);
 }
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    to,
-  }: {
-    children: ReactNode;
-    search?: Record<string, unknown>;
-    to: string;
-  }) => <a href={to}>{children}</a>,
-  useNavigate: () => mocks.navigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@headlessui/react", () => ({
   Popover: ({ children, className }: { children: ReactNode; className?: string }) => (
@@ -98,15 +102,15 @@ vi.mock("@/domains/catalog/components/entries/entry-list", () => ({
 }));
 
 vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
-  useEntries: mocks.useEntries,
+  useEntries: hookMocks.useEntries,
 }));
 
 vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
-  useTaxonomy: mocks.useTaxonomy,
+  useTaxonomy: hookMocks.useTaxonomy,
 }));
 
 beforeEach(() => {
-  mocks.navigate.mockReset();
+  resetRouterMocks();
   mocks.useEntries.mockReset();
   mocks.useTaxonomy.mockReset();
   mocks.useTaxonomy.mockReturnValue({

@@ -6,7 +6,6 @@ import type { QueryKey } from "@tanstack/react-query";
 import {
   TestButton,
   TestInput,
-  TestLink,
   TestSelect,
   TestTextarea,
   samlAllowedIssuersFixture,
@@ -43,10 +42,10 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: organizationPageDependencyMocks.useQueryClient,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: TestLink,
-  useNavigate: () => () => undefined,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
   useConfirmDialog: () => ({

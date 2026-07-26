@@ -9,13 +9,10 @@ const mocks = vi.hoisted(() => ({
   useWorkspaceWatches: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, hash, to }: { children: React.ReactNode; hash?: string; to: string }) => (
-    <a href={to} data-link-hash={hash} data-link-to={to}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => ({
   useWorkspaceWatches: mocks.useWorkspaceWatches,

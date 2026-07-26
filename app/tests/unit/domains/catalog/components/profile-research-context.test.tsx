@@ -2,14 +2,14 @@
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
 import { createEntryFixture as buildEntry } from "../../../../fixtures/catalog/entries";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: ReactNode }) => <a href="#">{children}</a>,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 afterEach(() => {
   cleanup();

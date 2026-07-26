@@ -1,21 +1,20 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 
 const mocks = vi.hoisted(() => ({
   checkAccountExists: vi.fn(),
   invalidateQueries: vi.fn(),
-  navigate: vi.fn(),
   requestMagicLink: vi.fn(),
   useAtlasSession: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
-  useNavigate: () => mocks.navigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
@@ -37,7 +36,7 @@ describe("SignUpPage", () => {
   beforeEach(() => {
     mocks.checkAccountExists.mockReset();
     mocks.invalidateQueries.mockReset();
-    mocks.navigate.mockReset();
+    resetRouterMocks();
     mocks.requestMagicLink.mockReset();
     mocks.useAtlasSession.mockReturnValue({ data: null });
   });
@@ -74,7 +73,7 @@ describe("SignUpPage", () => {
       await Promise.resolve();
     });
 
-    const navArgs = mocks.navigate.mock.calls[0]?.[0] as
+    const navArgs = readRouterMocks().navigate.mock.calls[0]?.[0] as
       { to: string; search: { email: string } } | undefined;
     expect(navArgs?.to).toBe("/sign-in");
     expect(navArgs?.search.email).toBe("operator@atlas.test");
@@ -417,7 +416,7 @@ describe("SignUpPage", () => {
       await Promise.resolve();
     });
 
-    const navArgs = mocks.navigate.mock.calls[0]?.[0] as
+    const navArgs = readRouterMocks().navigate.mock.calls[0]?.[0] as
       { to: string; search: { email: string; redirect?: string } } | undefined;
     expect(navArgs?.search.redirect).toBe("/workspace/billing");
     expect(navArgs?.search).not.toHaveProperty("existing");

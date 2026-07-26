@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
-import { render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
+import { createAtlasSessionFixture } from "@/../tests/fixtures/access/sessions";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -109,6 +110,75 @@ export async function loadWorkspaceRouteComponent(): Promise<ComponentType> {
   return Component;
 }
 
-export function renderWorkspaceRoute(Component: ComponentType): void {
-  render(<Component />);
+/**
+ * Renders the workspace layout route.
+ *
+ * @param Component - An already-loaded route component; omit to load it here.
+ */
+export async function renderWorkspaceRoute(Component?: ComponentType): Promise<void> {
+  const Subject = Component ?? (await loadWorkspaceRouteComponent());
+  render(<Subject />);
+}
+
+export async function setupWorkspaceRouteTest(): Promise<void> {
+  await import("@/routes/_workspace");
+  const { readRouterMocks, resetRouterMocks } = await import("@/../tests/helpers/router-harness");
+  resetRouterMocks();
+  readRouterMocks().useRouteContext.mockReturnValue({
+    session: createAtlasSessionFixture({ isLocal: true }),
+  });
+  const { useMutation, useQueryClient } = await import("@tanstack/react-query");
+  vi.mocked(useMutation).mockReturnValue({
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
+    isPending: false,
+  } as unknown as ReturnType<typeof useMutation>);
+  vi.mocked(useQueryClient).mockReturnValue({
+    invalidateQueries: vi.fn().mockResolvedValue(undefined),
+  } as unknown as ReturnType<typeof useQueryClient>);
+}
+
+export function workspaceRailLabels(): string[] {
+  const railItems = JSON.parse(
+    screen.getByTestId("workspace-layout").dataset.railItems ?? "[]",
+  ) as { label: string }[];
+  return railItems.map((item) => item.label);
+}
+
+export async function changeWorkspace(): Promise<void> {
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText("workspace-select"), {
+      target: { value: "org_1" },
+    });
+    await Promise.resolve();
+  });
+}
+
+export function workspaceSession(
+  options: {
+    activeOrganization?: { id: string; name: string; workspaceType: "individual" | "team" } | null;
+    canSwitchOrganizations?: boolean;
+    hasPendingInvitations?: boolean;
+    memberships?: { id: string; name: string }[];
+    name?: string;
+    needsWorkspace?: boolean;
+    workspaceType?: "individual" | "team";
+  } = {},
+) {
+  const workspaceType = options.workspaceType ?? "individual";
+  return {
+    isLocal: false,
+    user: { id: "u1", name: options.name ?? "Op", email: "ops@acme.test" },
+    workspace: {
+      activeOrganization:
+        options.activeOrganization === undefined
+          ? { id: "org_1", name: "Acme", workspaceType }
+          : options.activeOrganization,
+      memberships: options.memberships ?? [{ id: "org_1", name: "Acme" }],
+      onboarding: {
+        needsWorkspace: options.needsWorkspace ?? false,
+        hasPendingInvitations: options.hasPendingInvitations ?? false,
+      },
+      capabilities: { canSwitchOrganizations: options.canSwitchOrganizations ?? false },
+    },
+  };
 }

@@ -1,12 +1,10 @@
 import { vi } from "vitest";
 import type { OrganizationPageController } from "@/domains/access/components/organization/organization-page-controller";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-  useRouter: () => ({}),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@rebuildingamerica/atlas-ui/ui/toast", () => ({
   useToast: () => ({

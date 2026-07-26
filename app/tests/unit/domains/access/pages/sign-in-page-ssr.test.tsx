@@ -41,11 +41,10 @@ vi.mock("@/domains/access/client/sso-diagnostics-log", () => ({
   recordSsoDiagnostics: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to?: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("SignInPage SSR", () => {
   it("does not render browser-only remembered sign-in state into server markup", () => {

@@ -2,7 +2,6 @@
 
 import { afterEach, beforeEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
-import type { ReactNode } from "react";
 
 const mocks = vi.hoisted(() => ({
   useAtlasSession: vi.fn(),
@@ -71,28 +70,10 @@ vi.mock("@/domains/workspace/hooks/use-workspace-quality-summary", () => ({
   useWorkspaceQualitySummary: mocks.useWorkspaceQualitySummary,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    params,
-    to,
-    search,
-  }: {
-    children: ReactNode;
-    params?: { briefId?: string; targetId?: string };
-    to: string;
-    search?: { intent?: string };
-  }) => {
-    let href = to;
-    if (params?.briefId) {
-      href = href.replace("$briefId", params.briefId);
-    }
-    if (params?.targetId) {
-      href = href.replace("$targetId", params.targetId);
-    }
-    return <a href={search?.intent ? `${href}?intent=${search.intent}` : href}>{children}</a>;
-  },
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 beforeEach(() => {
   mocks.useAtlasSession.mockReturnValue({ data: null });

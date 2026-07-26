@@ -1,26 +1,4 @@
-import type { ReactNode } from "react";
 import { makePoint } from "./map-clustering-harness";
-
-/** The router `<Link>` props the detail panel hands a mocked router. */
-export interface MockLinkProps {
-  children: ReactNode;
-  to: string;
-  params?: { slug: string };
-  hash?: string;
-}
-
-/**
- * A `<Link>` stand-in that resolves `to`, `params`, and `hash` into a real href.
- *
- * The panel test asserts the deep-link destinations (profile page, and the
- * `#connections` jump), so the mock must reproduce the same href the router
- * would build rather than merely echo `to`.
- */
-export function MockLink({ children, to, params, hash }: MockLinkProps) {
-  const slug = params?.slug ?? "";
-  const href = `${to.replace("$slug", slug)}${hash ? `#${hash}` : ""}`;
-  return <a href={href}>{children}</a>;
-}
 
 /** A fully-fledged, verified organization actor for the panel's actor view. */
 export const PANEL_ORG_ACTOR = makePoint({

@@ -329,16 +329,16 @@ describe("DataQualityBlock", () => {
     expect(screen.queryByText("Improve this record")).not.toBeInTheDocument();
 
     const claim = screen.getByRole("link", { name: "Verify or correct representation" });
-    expect(claim).toHaveAttribute("href", "/claim/$slug");
+    expect(claim).toHaveAttribute("href", "/claim/jane-doe-a3f2");
     expect(claim).toHaveAttribute("data-link-params", JSON.stringify({ slug: "jane-doe-a3f2" }));
 
     const report = screen.getByRole("link", { name: "Report stale or incorrect information" });
-    expect(report).toHaveAttribute("href", "/feedback/$slug");
+    expect(report).toHaveAttribute("href", "/feedback/jane-doe-a3f2?kind=incorrect");
     expect(report).toHaveAttribute("data-link-params", JSON.stringify({ slug: "jane-doe-a3f2" }));
     expect(report).toHaveAttribute("data-link-search", JSON.stringify({ kind: "incorrect" }));
 
     const missing = screen.getByRole("link", { name: "Suggest missing context" });
-    expect(missing).toHaveAttribute("href", "/feedback/$slug");
+    expect(missing).toHaveAttribute("href", "/feedback/jane-doe-a3f2?kind=missing_context");
     expect(missing).toHaveAttribute(
       "data-link-search",
       JSON.stringify({ kind: "missing_context" }),

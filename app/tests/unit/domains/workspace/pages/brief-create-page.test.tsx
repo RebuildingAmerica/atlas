@@ -1,25 +1,20 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 import type { useCreateWorkspaceBrief } from "@/domains/workspace/hooks/use-briefs";
 import { BriefCreatePage } from "@/domains/workspace/pages/brief-create-page";
 import type { AtlasBrief } from "@/domains/workspace/server/briefs";
 
 const mocks = vi.hoisted(() => ({
   createBrief: vi.fn(),
-  navigate: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to, className }: { children: ReactNode; className?: string; to?: string }) => (
-    <a href={to} className={className} data-link-to={to}>
-      {children}
-    </a>
-  ),
-  useNavigate: () => mocks.navigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/workspace/hooks/use-briefs", () => ({
   useCreateWorkspaceBrief: vi.fn(),
@@ -37,7 +32,7 @@ describe("BriefCreatePage", () => {
   beforeEach(async () => {
     const briefs = await import("@/domains/workspace/hooks/use-briefs");
     mocks.createBrief.mockReset();
-    mocks.navigate.mockReset();
+    resetRouterMocks();
     vi.mocked(briefs.useCreateWorkspaceBrief).mockReturnValue(
       createBriefMutation({
         mutateAsync: mocks.createBrief,
@@ -155,7 +150,7 @@ describe("BriefCreatePage", () => {
         ],
       });
     });
-    expect(mocks.navigate).toHaveBeenCalledWith({
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       params: { briefId: "brief_new" },
       to: "/briefs/$briefId",
     });

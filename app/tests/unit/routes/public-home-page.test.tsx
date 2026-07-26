@@ -3,30 +3,18 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEntryFixture } from "@/../tests/fixtures/catalog/entries";
+import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 import { HomePage } from "@/platform/pages/home-page";
 
 const mocks = vi.hoisted(() => ({
-  navigate: vi.fn(),
   useAtlasSession: vi.fn(),
   useEntries: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    to?: string;
-    className?: string;
-  }) => (
-    <a href={props.to} className={props.className}>
-      {children}
-    </a>
-  ),
-  createFileRoute: () => (_options: unknown) => _options,
-  useNavigate: () => mocks.navigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   atlasSessionQueryKey: ["auth", "session"],
@@ -40,7 +28,7 @@ vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
 describe("HomePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.navigate.mockResolvedValue(undefined);
+    resetRouterMocks();
     mocks.useAtlasSession.mockReturnValue({ data: null, isLoading: false });
     mocks.useEntries.mockReturnValue({
       data: {
@@ -253,7 +241,7 @@ describe("HomePage", () => {
   });
 
   it("submits browse searches with a normal GET form", async () => {
-    mocks.navigate.mockRejectedValue(new Error("Router blew up"));
+    readRouterMocks().navigate.mockRejectedValue(new Error("Router blew up"));
 
     render(<HomePage />);
 
@@ -275,6 +263,6 @@ describe("HomePage", () => {
     expect(form).toHaveAttribute("method", "get");
     expect(screen.getByDisplayValue("housing")).toHaveAttribute("name", "query");
     expect(screen.getByDisplayValue("0")).toHaveAttribute("name", "offset");
-    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
   });
 });

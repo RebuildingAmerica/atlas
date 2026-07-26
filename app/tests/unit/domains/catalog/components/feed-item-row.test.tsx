@@ -1,31 +1,12 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    to,
-    params,
-    className,
-  }: {
-    children: ReactNode;
-    to?: string;
-    params?: Record<string, string>;
-    className?: string;
-  }) => (
-    <a
-      href={to}
-      className={className}
-      data-link-to={to}
-      data-link-params={params ? JSON.stringify(params) : undefined}
-    >
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("FeedItemRow", () => {
   afterEach(() => {

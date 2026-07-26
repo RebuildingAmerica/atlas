@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 
@@ -18,9 +17,10 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: mocks.useQueryClient,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to?: string }) => <a href={to}>{children}</a>,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   atlasSessionQueryKey: ["auth", "session"],

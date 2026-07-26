@@ -1,17 +1,13 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { AccountProfileSection } from "@/domains/access/pages/workspace/components/account/profile";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => (
-    <a href={to} className={className}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 afterEach(() => {
   cleanup();

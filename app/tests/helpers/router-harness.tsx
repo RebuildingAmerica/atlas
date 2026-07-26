@@ -80,6 +80,10 @@ export function routerPathnameState(pathname: string) {
  */
 export interface RouterMockApi extends RouterMockHooks {
   redirect: ReturnType<typeof vi.fn>;
+  /** Backs `useNavigate()`; assert on it to check where a component sent the visitor. */
+  navigate: ReturnType<typeof vi.fn>;
+  /** Backs `useRouter().invalidate()`. */
+  invalidate: ReturnType<typeof vi.fn>;
 }
 
 /**
@@ -99,6 +103,7 @@ export interface MockLinkProps {
   to?: string;
   params?: Record<string, string>;
   search?: Record<string, unknown>;
+  hash?: string;
   className?: string;
 }
 
@@ -111,6 +116,45 @@ export interface MockLinkProps {
  *
  * @param api - The router-mock API created via `vi.hoisted(() => ({ ... }))`.
  */
+/**
+ * Resolves a `<Link>`'s target the way the real router does, so a test can
+ * assert on the href a visitor would actually follow.
+ *
+ * @param to - The route pattern, with `$param` placeholders.
+ * @param params - Values for those placeholders.
+ * @param search - Query parameters.
+ * @param hash - Fragment.
+ * @returns The resolved href, or undefined when there is no target.
+ */
+function resolveMockHref(
+  to?: string,
+  params?: Record<string, string>,
+  search?: Record<string, unknown>,
+  hash?: string,
+): string | undefined {
+  if (to === undefined) {
+    return undefined;
+  }
+
+  let href = to;
+  for (const [key, value] of Object.entries(params ?? {})) {
+    href = href.replace(`$${key}`, value);
+  }
+
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(search ?? {})) {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      query.set(key, String(value));
+    }
+  }
+  const queryText = query.toString();
+  if (queryText) {
+    href = `${href}?${queryText}`;
+  }
+
+  return hash ? `${href}#${hash}` : href;
+}
+
 export function buildRouterMockModule(api: RouterMockApi): Record<string, unknown> {
   function attachHooks<TOptions>(options: TOptions) {
     return Object.assign(
@@ -130,17 +174,20 @@ export function buildRouterMockModule(api: RouterMockApi): Record<string, unknow
     createRootRoute: (options: unknown) => attachHooks(options),
     createRootRouteWithContext: () => (options: unknown) => attachHooks(options),
     useRouterState: api.useRouterState,
+    useNavigate: () => api.navigate,
+    useRouter: () => ({ invalidate: api.invalidate, navigate: api.navigate }),
     redirect: api.redirect,
     Outlet: () => <div data-testid="router-outlet" />,
     HeadContent: () => null,
     Scripts: () => null,
-    Link: ({ children, to, params, search, className }: MockLinkProps) => (
+    Link: ({ children, to, params, search, hash, className }: MockLinkProps) => (
       <a
-        href={to}
+        href={resolveMockHref(to, params, search, hash)}
         className={className}
         data-link-to={to}
         data-link-params={params ? JSON.stringify(params) : undefined}
         data-link-search={search ? JSON.stringify(search) : undefined}
+        data-link-hash={hash}
       >
         {children}
       </a>
@@ -168,6 +215,8 @@ export function throwRouterRedirect(options: Record<string, unknown>): never {
  */
 export function createRouterMocks(): RouterMockApi {
   return {
+    invalidate: vi.fn(() => Promise.resolve(undefined)),
+    navigate: vi.fn(() => Promise.resolve(undefined)),
     redirect: vi.fn((options: Record<string, unknown>) => {
       throwRouterRedirect(options);
     }),
@@ -232,4 +281,8 @@ export function resetRouterMocks(): void {
   routerMocks.redirect.mockImplementation((options: Record<string, unknown>) => {
     throwRouterRedirect(options);
   });
+  // Clear rather than reset: these two must keep resolving, and a reset would
+  // strip the implementation and hand callers `undefined` to await.
+  routerMocks.navigate.mockClear();
+  routerMocks.invalidate.mockClear();
 }

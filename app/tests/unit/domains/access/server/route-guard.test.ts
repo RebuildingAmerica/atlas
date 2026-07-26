@@ -5,22 +5,19 @@ import {
   requireIncompleteAtlasSession,
   requireReadyAtlasSession,
 } from "@/domains/access/server/route-guard";
+import { readRouterMocks } from "@/../tests/helpers/router-harness";
 
 const mocks = vi.hoisted(() => ({
   getAtlasDeployMode: vi.fn(),
   getAtlasSession: Object.assign(vi.fn(), { __executeServer: vi.fn() }),
   getAuthRuntimeConfig: vi.fn(() => ({ localMode: true })),
   getBrowserSessionHeaders: vi.fn(() => new Headers()),
-  redirect: vi.fn((options: Record<string, unknown>) => {
-    const err = new Error("Redirect") as Error & { options: Record<string, unknown> };
-    err.options = options;
-    throw err;
-  }),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  redirect: mocks.redirect,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access/server/request-headers", () => ({
   getBrowserSessionHeaders: mocks.getBrowserSessionHeaders,
@@ -40,14 +37,14 @@ describe("route-guard", () => {
     vi.resetModules();
     mocks.getAtlasDeployMode.mockReset();
     mocks.getAtlasSession.mockReset();
-    mocks.redirect.mockClear();
+    readRouterMocks().redirect.mockClear();
   });
 
   it("redirects to sign-in when no session is present", async () => {
     mocks.getAtlasSession.mockResolvedValue(null);
 
     await expect(requireAtlasSession("/dashboard")).rejects.toThrow("Redirect");
-    expect(mocks.redirect).toHaveBeenCalledWith(
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/sign-in",
         search: { redirect: "/dashboard" },
@@ -68,7 +65,7 @@ describe("route-guard", () => {
     mocks.getAtlasSession.mockResolvedValue(session);
 
     await expect(requireReadyAtlasSession("/dashboard")).rejects.toThrow("Redirect");
-    expect(mocks.redirect).toHaveBeenCalledWith(
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/setup",
       }),
@@ -80,7 +77,7 @@ describe("route-guard", () => {
     mocks.getAtlasSession.mockResolvedValue(session);
 
     await expect(requireReadyAtlasSession("/dashboard")).rejects.toThrow("Redirect");
-    expect(mocks.redirect).toHaveBeenCalledWith(
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith(
       expect.objectContaining({
         search: { redirect: "/dashboard" },
         to: "/setup",
@@ -97,7 +94,7 @@ describe("route-guard", () => {
     mocks.getAtlasSession.mockResolvedValue(session);
 
     await expect(requireIncompleteAtlasSession("/setup")).rejects.toThrow("Redirect");
-    expect(mocks.redirect).toHaveBeenCalledWith(
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/account",
       }),
@@ -113,7 +110,7 @@ describe("route-guard", () => {
     mocks.getAtlasSession.mockResolvedValue(session);
 
     await expect(requireIncompleteAtlasSession("/setup")).rejects.toThrow("Redirect");
-    expect(mocks.redirect).toHaveBeenCalledWith(
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "/organization",
       }),
@@ -129,7 +126,7 @@ describe("route-guard", () => {
     mocks.getAtlasSession.mockResolvedValue(session);
 
     await expect(requireIncompleteAtlasSession("/setup")).resolves.toEqual(session);
-    expect(mocks.redirect).not.toHaveBeenCalled();
+    expect(readRouterMocks().redirect).not.toHaveBeenCalled();
   });
 
   it("returns the session when ready and accountReady is true", async () => {
@@ -138,7 +135,7 @@ describe("route-guard", () => {
 
     const result = await requireReadyAtlasSession("/dashboard");
     expect(result).toBe(session);
-    expect(mocks.redirect).not.toHaveBeenCalled();
+    expect(readRouterMocks().redirect).not.toHaveBeenCalled();
   });
 
   it("preserves an already-app-local redirect target as-is", async () => {
@@ -152,7 +149,9 @@ describe("route-guard", () => {
     await expect(requireIncompleteAtlasSession("/setup", "/saved/path")).rejects.toThrow(
       "Redirect",
     );
-    expect(mocks.redirect).toHaveBeenCalledWith(expect.objectContaining({ to: "/saved/path" }));
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/saved/path" }),
+    );
   });
 
   it("falls back when the setup redirect target is protocol-relative", async () => {
@@ -166,7 +165,9 @@ describe("route-guard", () => {
     await expect(requireIncompleteAtlasSession("/setup", "//evil.example")).rejects.toThrow(
       "Redirect",
     );
-    expect(mocks.redirect).toHaveBeenCalledWith(expect.objectContaining({ to: "/account" }));
+    expect(readRouterMocks().redirect).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/account" }),
+    );
   });
 
   describe("redirectIfLocalSession", () => {
@@ -174,14 +175,14 @@ describe("route-guard", () => {
       mocks.getAtlasDeployMode.mockResolvedValue({ localMode: true });
 
       await expect(redirectIfLocalSession("/discovery")).rejects.toThrow("Redirect");
-      expect(mocks.redirect).toHaveBeenCalledWith({ to: "/discovery" });
+      expect(readRouterMocks().redirect).toHaveBeenCalledWith({ to: "/discovery" });
     });
 
     it("resolves without redirecting when not in local mode", async () => {
       mocks.getAtlasDeployMode.mockResolvedValue({ localMode: false });
 
       await expect(redirectIfLocalSession("/discovery")).resolves.toBeUndefined();
-      expect(mocks.redirect).not.toHaveBeenCalled();
+      expect(readRouterMocks().redirect).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RecentSearchesSection } from "@/domains/workspace/components/recent-searches-section";
@@ -8,13 +7,10 @@ import type { RecentRunSummary } from "@/domains/workspace/server/research-summa
 import type { ResearchValueGate } from "@/domains/workspace/components/research-value-nudge";
 import type { SerializedResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to?: string }) => (
-    <a href={to} data-link-to={to}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/workspace/components/research-value-nudge", () => ({
   ResearchValueNudge: ({ gate }: { gate: ResearchValueGate }) => (

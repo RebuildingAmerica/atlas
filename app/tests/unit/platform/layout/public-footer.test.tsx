@@ -4,26 +4,10 @@ import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    to?: string;
-    className?: string;
-    "aria-label"?: string;
-  }) => (
-    <a
-      href={props.to}
-      className={props.className}
-      data-router-link=""
-      aria-label={props["aria-label"]}
-    >
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 async function renderPublicFooter(props: { localMode: boolean; status?: unknown }) {
   const { PublicFooter } = await import("@/platform/layout/public-footer");
@@ -55,7 +39,7 @@ describe("PublicFooter", () => {
     expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("href", "/map");
     expect(screen.getByRole("link", { name: "Firehose" })).toHaveAttribute("href", "/firehose");
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
-    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("data-router-link");
+    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("data-link-to");
     expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute(
       "href",
       "/docs/how-it-works",

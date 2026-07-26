@@ -33,4 +33,17 @@ describe("useDeviceColorScheme", () => {
     unmount();
     expect(control.listenerCount()).toBe(0);
   });
+
+  it("falls back to light on a browser without matchMedia", () => {
+    const original = window.matchMedia;
+    Reflect.deleteProperty(window, "matchMedia");
+
+    try {
+      const { unmount } = render(<SchemeReader />);
+      expect(screen.getByLabelText("Device color scheme")).toHaveTextContent("light");
+      unmount();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });

@@ -65,13 +65,10 @@ vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
   ),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, className, to }: { children: ReactNode; className?: string; to: string }) => (
-    <a className={className} href={to}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@rebuildingamerica/atlas-ui/ui/input", () => ({
   Input: ({

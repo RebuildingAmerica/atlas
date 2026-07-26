@@ -4,20 +4,10 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthFlowLayout } from "@/platform/layout/auth-layout";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    to?: string;
-    className?: string;
-  }) => (
-    <a href={props.to} className={props.className}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/platform/layout/civic-map-panel", () => ({
   CivicMapPanel: () => <div data-testid="civic-map-panel" />,

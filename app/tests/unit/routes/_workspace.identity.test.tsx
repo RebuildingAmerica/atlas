@@ -8,7 +8,7 @@ import {
   setupWorkspaceRouteTest,
   workspaceRailLabels,
   workspaceSession,
-} from "./_workspace-test-support";
+} from "@/../tests/helpers/workspace-route-test-bed";
 
 describe("routes/_workspace identity controls", () => {
   beforeEach(async () => {

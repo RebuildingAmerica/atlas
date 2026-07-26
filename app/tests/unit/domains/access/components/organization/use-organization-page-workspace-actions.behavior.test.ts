@@ -3,11 +3,10 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useOrganizationPageWorkspaceActions } from "@/domains/access/components/organization/use-organization-page-workspace-actions";
 import type { OrganizationPageForms } from "@/domains/access/components/organization/use-organization-page-forms";
+import { readRouterMocks } from "@/../tests/helpers/router-harness";
 
 const mocks = vi.hoisted(() => ({
   useMutation: vi.fn(),
-  useNavigate: vi.fn(),
-  navigate: vi.fn(),
   createWorkspace: vi.fn(),
   convertWorkspaceToTeam: vi.fn(),
   setActiveWorkspace: vi.fn(),
@@ -27,9 +26,10 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: mocks.useMutation,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: mocks.useNavigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access/organizations.functions", () => ({
   createWorkspace: mocks.createWorkspace,
@@ -120,8 +120,6 @@ describe("useOrganizationPageWorkspaceActions behavior", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.navigate.mockResolvedValue(undefined);
-    mocks.useNavigate.mockReturnValue(mocks.navigate);
     mocks.useMutation.mockImplementation(
       ({ mutationFn }: { mutationFn: (args: unknown) => unknown }) => ({
         mutateAsync: vi.fn().mockImplementation((args: unknown) => mutationFn(args)),
@@ -333,7 +331,7 @@ describe("useOrganizationPageWorkspaceActions behavior", () => {
     expect(feedback.setFlashMessage).toHaveBeenCalledWith(
       "Workspace upgraded to a team. Subscribe to Atlas Team to invite members.",
     );
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/pricing" });
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({ to: "/pricing" });
   });
 
   it("does not route to pricing when the upgrade fails", async () => {
@@ -353,6 +351,6 @@ describe("useOrganizationPageWorkspaceActions behavior", () => {
     });
 
     expect(feedback.setErrorMessage).toHaveBeenCalledWith("nope");
-    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
   });
 });

@@ -4,17 +4,17 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { createEntryFixture } from "@/../tests/fixtures/catalog/entries";
+import { resetRouterMocks } from "@/../tests/helpers/router-harness";
 
 const mocks = vi.hoisted(() => ({
-  navigate: vi.fn(),
   useEntries: vi.fn(),
   useTaxonomy: vi.fn(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
-  useNavigate: () => mocks.navigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@headlessui/react", () => ({
   Popover: ({ children, className }: { children: ReactNode; className?: string }) => (
@@ -46,7 +46,7 @@ vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
 
 describe("BrowsePage route splitting", () => {
   beforeEach(() => {
-    mocks.navigate.mockReset();
+    resetRouterMocks();
     mocks.useTaxonomy.mockReturnValue({ data: {} });
     mocks.useEntries.mockReturnValue({
       data: {

@@ -68,7 +68,7 @@ describe("ProfileHistory", () => {
     expect(screen.getByText("Audit trail")).toBeInTheDocument();
     expect(screen.getByText("Correction review")).toBeInTheDocument();
     const correctionLink = screen.getByRole("link", { name: "Send a correction" });
-    expect(correctionLink).toHaveAttribute("href", "/feedback/$slug");
+    expect(correctionLink).toHaveAttribute("href", "/feedback/jane-doe-a3f2");
     expect(correctionLink).toHaveAttribute(
       "data-link-params",
       JSON.stringify({ slug: "jane-doe-a3f2" }),

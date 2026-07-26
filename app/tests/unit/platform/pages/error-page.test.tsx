@@ -5,11 +5,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErrorPage } from "@/platform/pages/error-page";
 import { ATLAS_STATUS_PAGE_URL } from "@/platform/status/status-config";
-import type { ReactNode } from "react";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: () => ({ data: { isLocal: false } }),

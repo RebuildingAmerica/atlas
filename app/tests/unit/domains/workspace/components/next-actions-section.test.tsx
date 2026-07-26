@@ -1,19 +1,15 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import type { ReactNode } from "react";
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextActionsSection } from "@/domains/workspace/components/next-actions-section";
 import type { NextActionsWorkspaceState } from "@/domains/workspace/components/next-actions-section";
 import type { ResearchSummary } from "@/domains/workspace/server/research-summary";
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, hash, to }: { children: ReactNode; hash?: string; to?: string }) => (
-    <a href={to} data-link-hash={hash} data-link-to={to}>
-      {children}
-    </a>
-  ),
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 describe("NextActionsSection", () => {
   afterEach(() => {

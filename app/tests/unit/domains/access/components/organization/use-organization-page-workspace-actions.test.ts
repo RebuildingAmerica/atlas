@@ -6,8 +6,6 @@ import type { OrganizationPageForms } from "@/domains/access/components/organiza
 
 const mocks = vi.hoisted(() => ({
   useMutation: vi.fn(),
-  useNavigate: vi.fn(),
-  navigate: vi.fn(),
   createWorkspace: vi.fn(),
   convertWorkspaceToTeam: vi.fn(),
   setActiveWorkspace: vi.fn(),
@@ -27,9 +25,10 @@ vi.mock("@tanstack/react-query", () => ({
   useMutation: mocks.useMutation,
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: mocks.useNavigate,
-}));
+vi.mock("@tanstack/react-router", async () => {
+  const harness = await import("@/../tests/helpers/router-harness");
+  return harness.installRouterMocks();
+});
 
 vi.mock("@/domains/access/organizations.functions", () => ({
   createWorkspace: mocks.createWorkspace,
@@ -120,8 +119,6 @@ describe("useOrganizationPageWorkspaceActions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.navigate.mockResolvedValue(undefined);
-    mocks.useNavigate.mockReturnValue(mocks.navigate);
     mocks.useMutation.mockImplementation(
       ({ mutationFn }: { mutationFn: (args: unknown) => unknown }) => ({
         mutateAsync: vi.fn().mockImplementation((args: unknown) => mutationFn(args)),

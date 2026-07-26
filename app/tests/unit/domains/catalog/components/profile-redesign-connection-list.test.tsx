@@ -143,11 +143,11 @@ describe("ConnectionList", () => {
     );
     expect(screen.getByRole("link", { name: /Person A/ })).toHaveAttribute(
       "href",
-      "/profiles/people/$slug",
+      "/profiles/people/person-a",
     );
     expect(screen.getByRole("link", { name: /Acme Org/ })).toHaveAttribute(
       "href",
-      "/profiles/organizations/$slug",
+      "/profiles/organizations/acme-org",
     );
   });
 
