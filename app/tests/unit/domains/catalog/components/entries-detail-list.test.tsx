@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { EntryDetail } from "@/domains/catalog/components/entries/entry-detail";
-import { EntryFilters } from "@/domains/catalog/components/entries/entry-filters";
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
 import type { Entry } from "@rebuildingamerica/atlas-api-client/entry";
 import type { Source } from "@rebuildingamerica/atlas-api-client/source";
@@ -227,93 +226,6 @@ describe("catalog entry detail, filters, and list", () => {
     expect(
       screen.getByText("Most recent source record date is more than a year old."),
     ).not.toBeNull();
-  });
-
-  it("renders entry filters and propagates user input", () => {
-    const onQueryChange = vi.fn();
-    const onSearchSubmit = vi.fn();
-    const onClear = vi.fn();
-    const onToggleFilter = vi.fn();
-
-    render(
-      <EntryFilters
-        query="housing"
-        onQueryChange={onQueryChange}
-        onSearchSubmit={onSearchSubmit}
-        onClear={onClear}
-        onToggleFilter={onToggleFilter}
-        selectedFilters={{
-          cities: [],
-          entry_types: [],
-          issue_areas: [],
-          regions: [],
-          source_patterns: [],
-          source_types: [],
-          states: [],
-        }}
-        facets={{
-          cities: [],
-          entity_types: [{ count: 2, value: "organization" }],
-          issue_areas: [{ count: 3, value: "housing_affordability" }],
-          regions: [],
-          source_patterns: [],
-          source_types: [],
-          states: [{ count: 4, value: "MO" }],
-        }}
-        issueAreaLabels={{ housing_affordability: "Housing" }}
-      />,
-    );
-
-    fireEvent.change(screen.getByPlaceholderText(/Search people/i), {
-      target: { value: "labor" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Apply search" }));
-    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
-    fireEvent.click(screen.getByRole("button", { name: /Housing 3/i }));
-
-    expect(onQueryChange).toHaveBeenCalledWith("labor");
-    expect(onSearchSubmit).toHaveBeenCalledTimes(1);
-    expect(onClear).toHaveBeenCalledTimes(1);
-    expect(onToggleFilter).toHaveBeenCalledWith("issue_areas", "housing_affordability");
-  });
-
-  it("renders selected facet styles and humanized fallback labels", () => {
-    const onToggleFilter = vi.fn();
-
-    render(
-      <EntryFilters
-        query=""
-        onQueryChange={vi.fn()}
-        onSearchSubmit={vi.fn()}
-        onClear={vi.fn()}
-        onToggleFilter={onToggleFilter}
-        selectedFilters={{
-          cities: [],
-          entry_types: ["organization"],
-          issue_areas: [],
-          regions: [],
-          source_patterns: [],
-          source_types: ["news_article"],
-          states: [],
-        }}
-        facets={{
-          cities: [],
-          entity_types: [{ count: 2, value: "organization" }],
-          issue_areas: [],
-          regions: [],
-          source_patterns: [],
-          source_types: [{ count: 1, value: "news_article" }],
-          states: [],
-        }}
-        issueAreaLabels={{}}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /Organization 2/i }));
-    fireEvent.click(screen.getByRole("button", { name: /News Article 1/i }));
-
-    expect(onToggleFilter).toHaveBeenCalledWith("entry_types", "organization");
-    expect(onToggleFilter).toHaveBeenCalledWith("source_types", "news_article");
   });
 
   it("renders entry list loading, error, empty, and populated states", () => {

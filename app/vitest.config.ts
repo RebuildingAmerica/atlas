@@ -44,10 +44,10 @@ export default defineConfig({
         // only ever move up, so partial progress is protected instead of
         // aspirational. Raise them whenever a change earns it; never lower them
         // to accommodate one. Destination is 100 across the board.
-        branches: 77.6,
-        functions: 83.9,
-        lines: 84.1,
-        statements: 83.7,
+        branches: 80.0,
+        functions: 87.0,
+        lines: 86.0,
+        statements: 85.6,
       },
     },
     environment: "node",
@@ -71,8 +71,6 @@ export default defineConfig({
     include: [
       "tests/unit/**/*.test.ts",
       "tests/unit/**/*.test.tsx",
-      "tests/integration/**/*.test.ts",
-      "tests/integration/**/*.test.tsx",
       "tests/e2e/**/*.test.ts",
       "tests/e2e/**/*.test.tsx",
     ],

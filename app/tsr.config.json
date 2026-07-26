@@ -1,5 +1,5 @@
 {
-  "routeFileIgnorePattern": "^(claim-page(-rail|-panels|-utils)?|list-detail-page-(panels|utils|workflow))\\.(ts|tsx)$",
+  "routeFileIgnorePattern": "^list-detail-page-(panels|utils|workflow)\\.(ts|tsx)$",
   "routeTreeFileFooter": [
     "import type { getRouter } from \"./router.tsx\";",
     "import type { createStart } from \"@tanstack/react-start\";",

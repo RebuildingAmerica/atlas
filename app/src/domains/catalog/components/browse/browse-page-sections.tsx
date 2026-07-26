@@ -1,5 +1,3 @@
-export type { BrowseCollectionFunnel, BrowseIssueStarter } from "./browse-exploration-guides";
-export { BrowseExplorationGuides } from "./browse-exploration-guides";
 export type { BrowseIntentChip } from "./browse-intent-chips";
 export { BrowseIntentChips } from "./browse-intent-chips";
 export { BrowseSearchBox } from "./browse-search-box";

@@ -26,7 +26,6 @@
     "e2e:mail": "portless mail.atlas --force node scripts/e2e/mail-capture.mjs",
     "e2e:mail:ci": "node scripts/e2e/mail-capture.mjs",
     "test": "vitest run --coverage",
-    "test:integration": "vitest run tests/integration",
     "test:e2e": "pnpm run test:acceptance",
     "test:e2e:headed": "pnpm run test:acceptance:headed",
     "test:acceptance": "tsx scripts/e2e/stripe-playwright.ts",

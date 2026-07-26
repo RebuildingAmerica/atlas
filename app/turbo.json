@@ -178,9 +178,6 @@
         "coverage/**"
       ]
     },
-    "test:integration": {
-      "outputs": []
-    },
     "test:e2e": {
       "env": [
         "ATLAS_E2E_API_URL",
