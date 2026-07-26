@@ -178,6 +178,10 @@ export async function runProvisioningScript(args: string[]): Promise<void> {
   );
 }
 
+/* v8 ignore start -- entry-point guard: false whenever the module is imported,
+   which is the only way a test can reach it. `runProvisioningScript` itself is
+   covered directly. */
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await runProvisioningScript(process.argv.slice(2));
 }
+/* v8 ignore stop */
