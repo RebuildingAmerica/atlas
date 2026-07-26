@@ -107,7 +107,7 @@ cd app && pnpm tsc --noEmit       # Type check TypeScript
 cd api && uv run pytest                    # All API tests (100% coverage required)
 cd api && uv run pytest tests/path.py -v   # Single test file
 cd api && uv run pytest tests/path.py::TestClass::test_name -v  # Single test
-cd app && pnpm vitest run                  # All frontend tests (100% coverage required)
+cd app && pnpm test                        # All frontend tests, coverage gate enforced
 cd app && pnpm vitest run tests/unit/path  # Single test file
 cd app && pnpm run test:e2e               # Playwright E2E
 
@@ -168,11 +168,15 @@ agent or preserve user work.
 - **No CSS `transform: scale()`.** Resize actual dimensions. No overlapping
   surfaces during transitions.
 - **Python:** Line length 100. Async everywhere for I/O. Docstrings with
-  Parameters/Returns (NumPy style). Test coverage gate is 100% (statements +
-  branches) for `api/`, `scout/`, `libs/discovery-engine/`, and `libs/shared/`.
+  Parameters/Returns (NumPy style). A 100% coverage gate (statements + branches)
+  is enforced by the default `pytest` command for `api/` and
+  `libs/discovery-engine/`, which carry it in `addopts`. `scout/` and
+  `libs/shared/` declare a target but have no command that evaluates it.
 - **TypeScript:** No `any` or `as any`. ESLint enforces this. Extract types
-  rather than inline them. Test coverage gate is 100% (statements + branches +
-  functions + lines) for `app/`.
+  rather than inline them. `app/`'s `test` script runs with `--coverage` and
+  fails below the thresholds in `app/vitest.config.ts`. Those thresholds are a
+  ratchet climbing toward 100 across statements, branches, functions and lines —
+  raise them when a change earns it, never lower them to land one.
 - **API responses** use Pydantic models validated through `_entity_record()` in
   `platform/mcp/data.py`. New fields must be added to both the Pydantic schema
   (`schemas/public.py`) and the record builder.

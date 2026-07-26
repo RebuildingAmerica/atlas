@@ -2,7 +2,8 @@
 
 [Docs](../README.md) > [Development](./README.md) > Code Quality
 
-Quality gates and enforcement. How the hooks work, what they check, and how to fix common issues.
+Quality gates and enforcement. How the hooks work, what they check, and how to
+fix common issues.
 
 ## Overview
 
@@ -14,7 +15,8 @@ Code quality is enforced by git hooks at three stages:
 | After commit  | commit-msg | Commit message format                 |
 | Before push   | pre-push   | Full types, full tests, build         |
 
-All checks must pass before code can be committed or pushed. This prevents broken code from reaching main.
+All checks must pass before code can be committed or pushed. This prevents
+broken code from reaching main.
 
 ## Pre-Commit Hook
 
@@ -190,7 +192,8 @@ cd api && pytest -v
 git push origin branch-name
 ```
 
-**Note:** If the hook fails, your commit is already saved locally. You just can't push yet. Fix the issues, commit again, and push.
+**Note:** If the hook fails, your commit is already saved locally. You just
+can't push yet. Fix the issues, commit again, and push.
 
 ---
 
@@ -358,6 +361,9 @@ pnpm run lint:fix
 
 **Minimum: 100%** on all changed code.
 
+Both languages put the gate in the default test command, so the ordinary
+`pytest` / `pnpm test` run enforces it and CI inherits it for free.
+
 ```bash
 cd api
 
@@ -376,7 +382,7 @@ uv run pytest
 
 ```
 TOTAL                    450   50    88%
-❌ Coverage must be at least 90.0%
+❌ Coverage must be at least 100.0%
 ```
 
 **To fix:**
@@ -392,6 +398,16 @@ pytest --cov=atlas --cov-report=term-missing
 
 2. Write tests for those lines
 3. Re-run coverage
+
+For the app, the same loop runs through vitest:
+
+```bash
+cd app
+pnpm test        # runs with --coverage and fails below the threshold
+```
+
+`app/vitest.config.ts` holds thresholds that ratchet toward 100. Raise them when
+a change earns it; never lower one to land a change.
 
 **Good coverage = tests that describe behavior:**
 
@@ -477,7 +493,8 @@ All checks also run in CI (GitHub Actions) when you push:
   run: make build
 ```
 
-**If your PR shows a red X:** Check the CI logs to see which check failed. Fix locally and push again.
+**If your PR shows a red X:** Check the CI logs to see which check failed. Fix
+locally and push again.
 
 ---
 
