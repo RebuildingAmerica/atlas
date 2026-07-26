@@ -180,6 +180,8 @@ agent or preserve user work.
 - **API responses** use Pydantic models validated through `_entity_record()` in
   `platform/mcp/data.py`. New fields must be added to both the Pydantic schema
   (`schemas/public.py`) and the record builder.
-- **Frontend API mapping** lives in `app/src/lib/api.ts`. The `mapEntity()`
-  function converts generated OpenAPI types to the internal `Entry` type. New
-  API fields must be mapped here.
+- **Frontend API mapping** lives in
+  `packages/atlas-api-client/src/api-entry-mappers.ts`. `mapEntity()` converts
+  generated OpenAPI types to the internal `Entry` type from
+  `packages/atlas-api-client/src/contracts/entry.ts`. New API fields must be
+  mapped here.
