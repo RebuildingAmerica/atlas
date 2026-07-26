@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
+import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 import type { ReactNode } from "react";
 import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { ToastProvider } from "@rebuildingamerica/atlas-ui/ui/toast";
@@ -51,6 +52,28 @@ export function getRouter() {
     routeTree,
     scrollRestoration: true,
     Wrap,
+  });
+
+  /**
+   * Ships the server's React Query cache to the browser.
+   *
+   * Route loaders warm `context.queryClient` before the server render, so the
+   * SSR HTML paints from real data. Without this bridge the browser boots a
+   * brand-new, empty QueryClient: every loader-seeded `useQuery` reads
+   * `undefined` on its first client render, React reports a hydration mismatch,
+   * and the visitor watches populated content blank out and refetch. The
+   * integration dehydrates the cache into the SSR stream and hydrates it into
+   * this same client before the first render, so what the server painted is
+   * what the browser keeps.
+   *
+   * `wrapQueryClient: false` because {@link Wrap} already mounts the
+   * QueryClientProvider — letting the integration add its own would nest a
+   * second, redundant provider around the tree.
+   */
+  setupRouterSsrQueryIntegration({
+    queryClient,
+    router,
+    wrapQueryClient: false,
   });
 
   return router;

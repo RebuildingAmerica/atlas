@@ -55,7 +55,7 @@ describe("routes/_workspace/home", () => {
 
     expect(mocks.researchSummaryQueryOptions).toHaveBeenCalledWith();
     expect(ensureQueryData).toHaveBeenCalledWith(queryOptions);
-    expect(data).toEqual({ totals: { listCount: 3 } });
+    expect(data).toBeUndefined();
   });
 
   it("renders the research home page", async () => {

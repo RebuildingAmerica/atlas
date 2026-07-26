@@ -44,7 +44,7 @@ describe("routes/_workspace/watching", () => {
     if (!Route.options.loader) throw new Error("Expected loader");
     const result = await Route.options.loader({ context: { queryClient: { ensureQueryData } } });
 
-    expect(result).toBe(data);
+    expect(result).toBeUndefined();
     expect(mocks.workspaceWatchesQueryOptions).toHaveBeenCalledWith();
     expect(ensureQueryData).toHaveBeenCalledWith(queryOptions);
   });

@@ -1,3 +1,4 @@
+import type { DehydratedState } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { vi } from "vitest";
 
@@ -24,16 +25,28 @@ export const ROUTER_SENTINEL = { __atlasRouter: true } as const;
 export const START_HANDLER_SENTINEL = { __atlasHandler: true } as const;
 
 /**
+ * Router-level dehydrated payload the React Query SSR integration installs a
+ * `hydrate` handler for: the server's cache snapshot plus the stream carrying
+ * queries that only settled after the shell was flushed.
+ */
+export interface DehydratedRouterPayload {
+  dehydratedQueryClient?: DehydratedState;
+  queryStream: ReadableStream<DehydratedState>;
+}
+
+/**
  * Captured options forwarded to the mocked `createTanStackRouter` call.
  *
  * Tests use this shape to assert the router options that `getRouter`
  * supplies (route tree, scroll restoration flag, and the `Wrap` provider
- * component) without instantiating the real router.
+ * component) without instantiating the real router. `hydrate` is absent until
+ * the SSR query integration installs it.
  */
 export interface CapturedRouterOptions {
   context?: {
     queryClient?: unknown;
   };
+  hydrate?: (dehydrated: DehydratedRouterPayload) => Promise<void>;
   routeTree: unknown;
   scrollRestoration: boolean;
   Wrap: (props: { children: ReactNode }) => ReactNode;

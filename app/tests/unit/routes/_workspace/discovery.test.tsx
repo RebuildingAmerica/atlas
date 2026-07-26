@@ -88,14 +88,7 @@ describe("routes/_workspace/discovery", () => {
     if (!Route.options.loader) throw new Error("Expected loader");
     await expect(
       Route.options.loader({ context: { queryClient: { ensureQueryData } } }),
-    ).resolves.toEqual([
-      { items: [], total: 0 },
-      {
-        Housing: [
-          { name: "Housing affordability", slug: "housing_affordability", description: "" },
-        ],
-      },
-    ]);
+    ).resolves.toBeUndefined();
     expect(discoveryHooks.discoveryRunsQueryOptions).toHaveBeenCalledWith();
     expect(taxonomyHooks.taxonomyQueryOptions).toHaveBeenCalledWith();
     expect(ensureQueryData).toHaveBeenCalledWith({ queryKey: ["discovery", "runs"] });

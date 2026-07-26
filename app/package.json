@@ -65,6 +65,7 @@
     "@rebuildingamerica/entity-widgets": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "@tanstack/react-router-ssr-query": "catalog:",
     "@tanstack/react-start": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "@vercel/analytics": "catalog:",

@@ -80,6 +80,39 @@ describe("router", () => {
     expect(screen.getByTestId("same-query-client")).toHaveTextContent("true");
   });
 
+  it("hydrates the server's query cache so loader-seeded SSR content survives", async () => {
+    const { getRouter } = await import("@/router");
+    const { QueryClient, dehydrate } = await import("@tanstack/react-query");
+
+    getRouter();
+    const options = routerState.lastOptions;
+    if (options === null) {
+      throw new Error("createRouter was not invoked");
+    }
+    if (!options.hydrate) {
+      throw new Error("the SSR query integration did not install a hydrate handler");
+    }
+
+    const serverQueryClient = new QueryClient();
+    const runs = { items: [{ id: "run_1" }, { id: "run_2" }], total: 2 };
+    serverQueryClient.setQueryData(["discovery", "runs"], runs);
+
+    await options.hydrate({
+      dehydratedQueryClient: dehydrate(serverQueryClient),
+      queryStream: new ReadableStream({
+        start(controller) {
+          controller.close();
+        },
+      }),
+    });
+
+    const clientQueryClient = options.context?.queryClient;
+    if (!(clientQueryClient instanceof QueryClient)) {
+      throw new Error("router context is missing its QueryClient");
+    }
+    expect(clientQueryClient.getQueryData(["discovery", "runs"])).toEqual(runs);
+  });
+
   it("createRouter delegates to getRouter so SSR and client share configuration", async () => {
     const routerModule = await import("@/router");
 

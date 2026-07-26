@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { warmRouteQueries } from "@/platform/runtime/route-queries";
 import { taxonomyQueryOptions } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import { DiscoveryPage } from "@/domains/discovery";
 import { discoveryRunsQueryOptions } from "@/domains/discovery/hooks/use-discovery";
@@ -46,12 +47,11 @@ export const discoverySearchSchema = z
 
 export const Route = createFileRoute("/_workspace/discovery")({
   validateSearch: discoverySearchSchema,
-  loader: ({ context }) => {
-    return Promise.all([
+  loader: ({ context }) =>
+    warmRouteQueries(
       context.queryClient.ensureQueryData(discoveryRunsQueryOptions()),
       context.queryClient.ensureQueryData(taxonomyQueryOptions()),
-    ]);
-  },
+    ),
   head: () => ({
     meta: [
       { title: "Research | Atlas" },
