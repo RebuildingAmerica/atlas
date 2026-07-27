@@ -16,6 +16,7 @@ from tests.domains.catalog.org_resources_support import (
     STATUS_NOT_FOUND,
     STATUS_OK,
 )
+from tests.support.schema_introspection import table_columns
 
 
 class TestOrgEntriesAccess:
@@ -40,8 +41,7 @@ class TestOrgEntriesCRUD:
     @pytest.mark.asyncio
     async def test_init_db_creates_directory_config_table(self, test_db: object) -> None:
         """Fresh databases should include editable public directory config."""
-        cursor = await test_db.execute("PRAGMA table_info(org_directory_configs)")
-        columns = {row[1] for row in await cursor.fetchall()}
+        columns = await table_columns(test_db, "org_directory_configs")
 
         assert {
             "org_id",

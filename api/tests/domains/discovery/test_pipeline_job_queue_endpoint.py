@@ -47,8 +47,8 @@ class TestPipelineJobQueueEndpoint:
             (
                 '{"step":"fetching_sources","sources":12}',
                 "worker-a",
-                "2026-07-03T12:15:00.000Z",
-                "2026-07-03T12:00:00.000Z",
+                "2026-07-03T12:15:00+00:00",
+                "2026-07-03T12:00:00+00:00",
                 running_job_id,
             ),
         )
@@ -79,7 +79,7 @@ class TestPipelineJobQueueEndpoint:
         assert running_item.status == "running"
         assert running_item.progress == {"step": "fetching_sources", "sources": 12}
         assert running_item.claimed_by == "worker-a"
-        assert running_item.claimed_until == "2026-07-03T12:15:00.000Z"
+        assert running_item.claimed_until == "2026-07-03T12:15:00+00:00"
 
     @pytest.mark.asyncio
     async def test_job_queue_respects_limit(self, test_db: object, actor) -> None:

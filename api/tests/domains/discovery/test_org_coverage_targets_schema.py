@@ -1,7 +1,10 @@
 """Schema coverage for coverage targets."""
+
 # ruff: noqa
 
 from __future__ import annotations
+
+from tests.support.schema_introspection import table_columns
 
 import pytest
 
@@ -9,8 +12,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_init_db_creates_coverage_target_tables(test_db: object) -> None:
     """Fresh databases should include coverage target and linkage tables."""
-    target_cursor = await test_db.execute("PRAGMA table_info(org_coverage_targets)")
-    target_columns = {row[1] for row in await target_cursor.fetchall()}
+    target_columns = await table_columns(test_db, "org_coverage_targets")
 
     assert {
         "id",
@@ -32,10 +34,8 @@ async def test_init_db_creates_coverage_target_tables(test_db: object) -> None:
         "updated_at",
     }.issubset(target_columns)
 
-    run_cursor = await test_db.execute("PRAGMA table_info(org_coverage_target_runs)")
-    run_columns = {row[1] for row in await run_cursor.fetchall()}
+    run_columns = await table_columns(test_db, "org_coverage_target_runs")
     assert {"target_id", "run_id", "created_at"}.issubset(run_columns)
 
-    entry_cursor = await test_db.execute("PRAGMA table_info(org_coverage_target_entries)")
-    entry_columns = {row[1] for row in await entry_cursor.fetchall()}
+    entry_columns = await table_columns(test_db, "org_coverage_target_entries")
     assert {"target_id", "entry_id", "created_at"}.issubset(entry_columns)

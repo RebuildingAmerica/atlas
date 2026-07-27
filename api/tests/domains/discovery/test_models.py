@@ -1,7 +1,10 @@
 """Tests for discovery model helpers and CRUD edge cases."""
+
 # ruff: noqa
 
 from __future__ import annotations
+
+from tests.support.schema_introspection import table_columns
 
 import pytest
 
@@ -26,12 +29,11 @@ class TestDiscoveryJobsSchema:
         """init_db must add idempotency_key and next_attempt_at to discovery_jobs."""
         conn = await get_db_connection(db_url)
         try:
-            cursor = await conn.execute("PRAGMA table_info(discovery_jobs)")
-            rows = await cursor.fetchall()
+            rows = await table_columns(conn, "discovery_jobs")
         finally:
             await conn.close()
 
-        columns = {row[1] for row in rows}
+        columns = rows
         assert columns >= {"idempotency_key", "next_attempt_at"}
 
 

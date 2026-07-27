@@ -15,6 +15,7 @@ from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.main import create_app
 from atlas.models import EntryCRUD, SourceCRUD
+from tests.support.schema_introspection import table_columns
 
 if TYPE_CHECKING:
     from atlas.config import Settings
@@ -87,8 +88,7 @@ class TestOrgWatchDigestSchema:
     @pytest.mark.asyncio
     async def test_init_db_creates_org_change_events_table(self, test_db: object) -> None:
         """Fresh databases should include workspace change events."""
-        cursor = await test_db.execute("PRAGMA table_info(org_change_events)")
-        columns = {row[1] for row in await cursor.fetchall()}
+        columns = await table_columns(test_db, "org_change_events")
 
         assert {
             "id",

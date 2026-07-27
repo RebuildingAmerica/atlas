@@ -14,6 +14,7 @@ from atlas.domains.discovery.cost import (
 from atlas.domains.discovery.models import DiscoveryRunCRUD
 from atlas.models.database import get_db_connection
 from atlas.platform.config import Settings
+from tests.support.schema_introspection import table_columns
 
 
 async def _make_run(conn: object) -> str:
@@ -27,12 +28,11 @@ async def test_cost_ledger_table_exists(db_url: str) -> None:
     """init_db must create the cost_ledger table with the expected columns."""
     conn = await get_db_connection(db_url)
     try:
-        cursor = await conn.execute("PRAGMA table_info(cost_ledger)")
-        rows = await cursor.fetchall()
+        rows = await table_columns(conn, "cost_ledger")
     finally:
         await conn.close()
 
-    columns = {row[1] for row in rows}
+    columns = rows
     assert columns >= {
         "id",
         "run_id",

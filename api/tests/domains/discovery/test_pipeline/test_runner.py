@@ -180,7 +180,7 @@ class TestDiscoveryRunner:
                 search_api_key="test-search-key",
                 anthropic_api_key="test-anthropic-key",
             ),
-            settings=Settings(database_url="sqlite:///tmp/test.db"),
+            settings=Settings(database_url="sqlite:///tmp/test.db", database_backend="sqlite"),
         )
 
         run = await DiscoveryRunCRUD.get_by_id(test_db, run_id)
@@ -246,6 +246,7 @@ class TestDiscoveryRunner:
             credentials=DiscoveryPipelineCredentials(search_api_key="test-search-key"),
             settings=Settings(
                 database_url="sqlite:///tmp/test.db",
+                database_backend="sqlite",
                 discovery_max_run_cost=0.001,
             ),
         )
@@ -294,6 +295,7 @@ class TestDiscoveryRunner:
             credentials=DiscoveryPipelineCredentials(search_api_key="test-search-key"),
             settings=Settings(
                 database_url="sqlite:///tmp/test.db",
+                database_backend="sqlite",
                 discovery_cost_kill_switch=True,
             ),
         )

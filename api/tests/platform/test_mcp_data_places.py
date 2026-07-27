@@ -119,7 +119,7 @@ async def test_get_place_page_context_returns_database_backed_context(
     )
     await conn.execute(
         "INSERT INTO place_scope_links (place_key, label, href, active, sort_order) VALUES (?, ?, ?, ?, ?)",
-        (place_key, "Gary", "/places/cities/gary-in", 1, 10),
+        (place_key, "Gary", "/places/cities/gary-in", True, 10),
     )
     await conn.execute(
         "INSERT INTO place_summary_facts (place_key, label, value, attribution, sort_order) VALUES (?, ?, ?, ?, ?)",

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from atlas.domains.catalog.models.entry import EntryCRUD
+from tests.support.schema_introspection import with_foreign_keys_disabled
 
 _MAX_REVIEWABLE_ENTRY_MODULE_LINES = 1000
 
@@ -32,15 +33,12 @@ async def test_resolve_slug_alias_pointing_at_missing_entry_returns_none(
     them on delete.
     """
     conn = test_db
-    await conn.execute("PRAGMA foreign_keys = OFF")
-    try:
+    async with with_foreign_keys_disabled(conn, "slug_aliases"):
         await conn.execute(
             "INSERT INTO slug_aliases (old_slug, entry_id) VALUES (?, ?)",
             ("orphan-alias", "nonexistent-entry-id"),
         )
         await conn.commit()
-    finally:
-        await conn.execute("PRAGMA foreign_keys = ON")
 
     result = await EntryCRUD.resolve_slug(conn, "orphan-alias")
     assert result is None

@@ -60,9 +60,9 @@ async def _stored_signal(test_db: object) -> str:
             publisher="Example Civic News",
             source_kind="rss",
             source_class="local_news",
-            published_at="2026-07-07T15:00:00Z",
-            detected_at="2026-07-07T15:01:00Z",
-            fetched_at="2026-07-07T15:01:03Z",
+            published_at="2026-07-07T15:00:00+00:00",
+            detected_at="2026-07-07T15:01:00+00:00",
+            fetched_at="2026-07-07T15:01:03+00:00",
             content_hash="sha256:housing-forum",
             fingerprint="housing-forum",
             relevant_text="A tenant coalition announced a public forum on rental assistance.",
@@ -80,8 +80,8 @@ async def _stored_signal(test_db: object) -> str:
             signal_type="coalition_activity",
             title="Tenant coalition announces public forum",
             summary="A tenant coalition announced a public forum on rental assistance.",
-            occurred_at="2026-07-09T01:00:00Z",
-            detected_at="2026-07-07T15:01:00Z",
+            occurred_at="2026-07-09T01:00:00+00:00",
+            detected_at="2026-07-07T15:01:00+00:00",
             public_realm_basis="Published public civic source",
             places=["las-vegas-nv"],
             issues=["housing"],
@@ -129,7 +129,7 @@ async def test_firehose_snapshot_returns_stored_workspace_signals(
     body = response.json()
     assert body["summary"]["total_signals"] == 1
     assert body["summary"]["visible_signals"] == 1
-    assert body["summary"]["latest_cursor"] == "2026-07-07T15:01:00Z"
+    assert body["summary"]["latest_cursor"] == "2026-07-07T15:01:00+00:00"
     assert body["signals"][0]["id"] == signal_id
     assert body["signals"][0]["evidence"][0]["source_url"] == "https://news.example/housing-forum"
     assert body["signals"][0]["destinations"][0]["type"] == "workspace"

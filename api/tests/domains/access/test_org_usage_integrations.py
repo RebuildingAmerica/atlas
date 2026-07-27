@@ -71,15 +71,15 @@ class TestOrgUsageIntegrations:
         )
         await test_db.execute(
             "UPDATE org_usage_events SET created_at = ? WHERE id = ?",
-            ("2026-07-03T09:00:00.000Z", api_event.id),
+            ("2026-07-03T09:00:00+00:00", api_event.id),
         )
         await test_db.execute(
             "UPDATE org_usage_events SET created_at = ? WHERE id = ?",
-            ("2026-07-03T10:00:00.000Z", second_api_event.id),
+            ("2026-07-03T10:00:00+00:00", second_api_event.id),
         )
         await test_db.execute(
             "UPDATE org_usage_events SET created_at = ? WHERE id = ?",
-            ("2026-07-03T11:00:00.000Z", mcp_event.id),
+            ("2026-07-03T11:00:00+00:00", mcp_event.id),
         )
         await test_db.commit()
 
@@ -91,19 +91,19 @@ class TestOrgUsageIntegrations:
         assert body["total_calls"] == EXPECTED_INTEGRATION_EVENTS
         assert body["api_calls"] == EXPECTED_API_INTEGRATION_EVENTS
         assert body["mcp_calls"] == EXPECTED_MCP_INTEGRATION_EVENTS
-        assert body["last_seen_at"] == "2026-07-03T11:00:00.000Z"
+        assert body["last_seen_at"] == "2026-07-03T11:00:00+00:00"
         assert body["top_resources"] == [
             {
                 "resource_id": "/api/public-directories",
                 "surface": "api",
                 "total_calls": EXPECTED_API_INTEGRATION_EVENTS,
-                "last_seen_at": "2026-07-03T10:00:00.000Z",
+                "last_seen_at": "2026-07-03T10:00:00+00:00",
             },
             {
                 "resource_id": "/mcp",
                 "surface": "mcp",
                 "total_calls": EXPECTED_MCP_INTEGRATION_EVENTS,
-                "last_seen_at": "2026-07-03T11:00:00.000Z",
+                "last_seen_at": "2026-07-03T11:00:00+00:00",
             },
         ]
         assert body["data_boundary"] == {

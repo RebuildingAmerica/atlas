@@ -28,6 +28,10 @@ class TestProductionConfig:
         env_file = tmp_path / ".env"
         env_file.write_text("DATABASE_URL=sqlite:///tmp/from-api-env.db\n")
         monkeypatch.setattr("atlas.platform.config.API_ENV_FILE", env_file)
+        # This asserts the env *file* is read, so the process environment must
+        # not answer first. The suite announces DATABASE_URL alongside the
+        # backend it created, which would otherwise win.
+        monkeypatch.delenv("DATABASE_URL", raising=False)
 
         settings = get_settings()
 

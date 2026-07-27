@@ -10,6 +10,7 @@ from atlas.models import (
     init_db,
 )
 from atlas.models.database import _ensure_entry_columns
+from tests.support.schema_introspection import table_columns
 
 # Test data constants
 QUERIES_GENERATED = 100
@@ -290,13 +291,20 @@ class TestEnsureEntryColumns:
     """Tests for the additive entries-table migration helper."""
 
     @pytest.mark.asyncio
-    async def test_no_op_on_fresh_database_with_all_columns_present(self, db_url: str) -> None:
-        """A fully-initialised entries table should require no ALTER TABLE work."""
+    async def test_no_op_on_fresh_database_with_all_columns_present(self, tmp_db_path: str) -> None:
+        """A fully-initialised entries table should require no ALTER TABLE work.
+
+        ``_ensure_entry_columns`` is a SQLite-only migration helper: PostgreSQL
+        gets its columns from the declarative schema file and never calls it
+        (see ``_init_postgres``), so this always runs against SQLite rather
+        than following ``ATLAS_TEST_BACKEND``.
+        """
+        db_url = f"sqlite:///{tmp_db_path}"
+        await init_db(db_url)
         conn = await get_db_connection(db_url)
         try:
-            # init_db was already called in the db_url fixture; running the
-            # migration helper again should be a no-op since every column
-            # already exists.
+            # init_db was already called above; running the migration helper
+            # again should be a no-op since every column already exists.
             await _ensure_entry_columns(conn)
             await conn.commit()
         finally:
@@ -338,9 +346,8 @@ class TestEnsureEntryColumns:
         # Re-open and verify all the additive columns are now present.
         conn = await get_db_connection(db_url)
         try:
-            cursor = await conn.execute("PRAGMA table_info(entries)")
-            rows = await cursor.fetchall()
-            columns = {row[1] for row in rows}
+            rows = await table_columns(conn, "entries")
+            columns = rows
         finally:
             await conn.close()
 

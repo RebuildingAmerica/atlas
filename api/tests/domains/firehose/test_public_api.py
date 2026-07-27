@@ -93,9 +93,9 @@ async def _stored_public_signal(test_db: object) -> str:
             publisher="Toledo Civic Agenda",
             source_kind="rss",
             source_class="government_agenda",
-            published_at="2026-07-07T16:20:00Z",
-            detected_at="2026-07-07T16:21:00Z",
-            fetched_at="2026-07-07T16:21:04Z",
+            published_at="2026-07-07T16:20:00+00:00",
+            detected_at="2026-07-07T16:21:00+00:00",
+            fetched_at="2026-07-07T16:21:04+00:00",
             content_hash="sha256:toledo-bus-hearing",
             fingerprint="toledo-bus-hearing",
             relevant_text="The board posted a public hearing agenda for bus frequency changes.",
@@ -113,8 +113,8 @@ async def _stored_public_signal(test_db: object) -> str:
             signal_type="public_meeting",
             title="Transit board posts bus hearing agenda",
             summary="Toledo transit officials posted a public hearing agenda for bus changes.",
-            occurred_at="2026-07-09T00:30:00Z",
-            detected_at="2026-07-07T16:21:00Z",
+            occurred_at="2026-07-09T00:30:00+00:00",
+            detected_at="2026-07-07T16:21:00+00:00",
             public_realm_basis="Published public meeting agenda",
             places=["toledo-oh"],
             issues=["transit"],
@@ -168,7 +168,7 @@ async def test_public_firehose_snapshot_reads_stored_public_signals(
         "https://toledo.example/agendas/bus-hearing"
     )
     assert body["signals"][0]["evidence"]["source_class"] == "government_agenda"
-    assert body["summary"]["latest_detected_at"] == "2026-07-07T16:21:00Z"
+    assert body["summary"]["latest_detected_at"] == "2026-07-07T16:21:00+00:00"
 
 
 async def test_public_firehose_snapshot_filters_public_safe_signals(

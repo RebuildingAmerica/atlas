@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiosqlite
@@ -120,6 +121,29 @@ class TestPostgresCursor:
         result = await wrapper.fetchone()
         assert result is None
 
+    @pytest.mark.asyncio
+    async def test_fetchall_normalizes_datetime_and_date_values(self) -> None:
+        """psycopg hydrates timestamps and dates as objects; readers expect ISO strings."""
+        mock_cursor = AsyncMock()
+        mock_cursor.fetchall.return_value = [
+            (1, datetime(2026, 7, 27, 12, 0, 0, tzinfo=UTC), date(2026, 7, 27)),
+        ]
+        wrapper = PostgresCursor(mock_cursor)
+        result = await wrapper.fetchall()
+        assert result == [(1, "2026-07-27T12:00:00+00:00", "2026-07-27")]
+
+    @pytest.mark.asyncio
+    async def test_fetchone_normalizes_datetime_and_date_values(self) -> None:
+        mock_cursor = AsyncMock()
+        mock_cursor.fetchone.return_value = (
+            1,
+            datetime(2026, 7, 27, 12, 0, 0, tzinfo=UTC),
+            date(2026, 7, 27),
+        )
+        wrapper = PostgresCursor(mock_cursor)
+        result = await wrapper.fetchone()
+        assert result == (1, "2026-07-27T12:00:00+00:00", "2026-07-27")
+
 
 class TestPostgresConnection:
     """Tests for the PostgresConnection adapter."""
@@ -149,9 +173,10 @@ class TestPostgresConnection:
 
     @pytest.mark.asyncio
     async def test_executemany(self) -> None:
-        mock_conn = AsyncMock()
+        """executemany runs on a cursor: psycopg's connection has no such method."""
         mock_inner_cursor = AsyncMock()
-        mock_conn.executemany.return_value = mock_inner_cursor
+        mock_conn = MagicMock()
+        mock_conn.cursor.return_value = mock_inner_cursor
         wrapper = PostgresConnection(mock_conn)
 
         cursor = await wrapper.executemany(
@@ -159,7 +184,7 @@ class TestPostgresConnection:
             [(1,), (2,)],
         )
 
-        mock_conn.executemany.assert_called_once_with(
+        mock_inner_cursor.executemany.assert_called_once_with(
             "INSERT INTO t (a) VALUES (%s)",
             [(1,), (2,)],
         )
@@ -209,7 +234,7 @@ class TestGetDbConnection:
             conn = await get_db_connection("postgresql://localhost/atlas")
             assert isinstance(conn, PostgresConnection)
             mock_psycopg.AsyncConnection.connect.assert_called_once_with(
-                "postgresql://localhost/atlas", autocommit=False
+                "postgresql://localhost/atlas", autocommit=False, options="-c TimeZone=UTC"
             )
 
 

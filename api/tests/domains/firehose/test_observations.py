@@ -19,6 +19,7 @@ from atlas.domains.firehose.models import (
     FirehoseSignalQuery,
 )
 from atlas.domains.firehose.signal_materializer import create_signals_for_observation
+from tests.support.schema_introspection import table_exists
 
 
 async def _coverage_target(test_db: object, org_id: str = "org_firehose") -> str:
@@ -48,9 +49,7 @@ async def test_firehose_init_db_creates_observation_tables(test_db: object) -> N
     }
 
     for table_name in expected_tables:
-        cursor = await test_db.execute(f"PRAGMA table_info({table_name})")
-        columns = [str(row[1]) for row in await cursor.fetchall()]
-        assert columns, f"expected {table_name} to exist"
+        assert await table_exists(test_db, table_name), f"expected {table_name} to exist"
 
 
 @pytest.mark.asyncio

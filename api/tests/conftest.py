@@ -87,7 +87,7 @@ def tmp_db_path() -> str:
 
 
 @pytest_asyncio.fixture
-async def db_url(tmp_db_path: str) -> AsyncIterator[str]:
+async def db_url(tmp_db_path: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[str]:
     """Create and initialize a test database.
 
     Runs against PostgreSQL whenever ``ATLAS_TEST_POSTGRES_URL`` names a server,
@@ -97,7 +97,11 @@ async def db_url(tmp_db_path: str) -> AsyncIterator[str]:
     strings, ``INSERT OR`` forms, integer booleans — reached readers before
     anyone saw them.
 
-    Each run gets its own database so tests stay isolated.
+    Each run gets its own database so tests stay isolated. The backend
+    announcement below goes through ``monkeypatch`` rather than ``os.environ``
+    directly: pytest-xdist workers run many tests in one process, and a bare
+    assignment here would still say ``postgres`` on every later test in that
+    worker, including ones that never asked for this fixture.
     """
     # Opt-in until the suite is green on PostgreSQL. CI already sets
     # ATLAS_TEST_POSTGRES_URL for the targeted Postgres lane, so keying the
@@ -106,6 +110,11 @@ async def db_url(tmp_db_path: str) -> AsyncIterator[str]:
     base_url = os.getenv("ATLAS_TEST_POSTGRES_URL") if _postgres_requested() else None
     if not base_url:
         sqlite_url = f"sqlite:///{tmp_db_path}"
+        # Announce both halves of the pair. Settings cross-validates them, so
+        # naming the backend without the URL leaves any bare Settings() holding
+        # a backend that contradicts its own default URL.
+        monkeypatch.setenv("DATABASE_BACKEND", "sqlite")
+        monkeypatch.setenv("DATABASE_URL", sqlite_url)
         await init_db(sqlite_url, backend="sqlite")
         yield sqlite_url
         return
@@ -119,6 +128,8 @@ async def db_url(tmp_db_path: str) -> AsyncIterator[str]:
     admin = await psycopg.AsyncConnection.connect(base_url, autocommit=True)
     try:
         await admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
+        monkeypatch.setenv("DATABASE_BACKEND", "postgres")
+        monkeypatch.setenv("DATABASE_URL", postgres_url)
         await init_db(postgres_url, backend="postgres")
         yield postgres_url
     finally:
@@ -157,6 +168,24 @@ def _backend_for(database_url: str) -> str:
         ``postgres`` or ``sqlite``.
     """
     return "postgres" if database_url.startswith(("postgres://", "postgresql://")) else "sqlite"
+
+
+@pytest.fixture
+def sqlite_only(db_url: str) -> None:
+    """Skip a test that exercises SQLite-specific storage mechanics.
+
+    SQLite migrates by rebuilding tables, which needs ``PRAGMA foreign_keys``
+    handling and a ``foreign_key_check`` afterwards. PostgreSQL alters tables in
+    place and has no analogue, so those tests describe SQLite's mechanics rather
+    than Atlas behavior and have nothing to assert on the other backend.
+
+    Parameters
+    ----------
+    db_url
+        The test database URL.
+    """
+    if _backend_for(db_url) != "sqlite":
+        pytest.skip("exercises SQLite-specific migration mechanics")
 
 
 @pytest_asyncio.fixture

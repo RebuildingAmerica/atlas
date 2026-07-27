@@ -311,6 +311,55 @@ class TestSavedListEntitlements:
         assert excinfo.value.detail["limit"] == "max_shortlist_entries"
 
     @pytest.mark.asyncio
+    async def test_free_actor_can_re_save_an_entry_already_at_the_limit(
+        self, test_db: object, claimable_org: str
+    ) -> None:
+        """Re-adding an entry already in the list is not a new item, so it can't overflow."""
+        from atlas.domains.access.api.lists import add_item, create_list
+
+        actor = _actor()
+        created = await create_list(
+            SavedListCreateRequest(name="Free list", description=None),
+            Response(),
+            actor=actor,
+            db=test_db,
+        )
+        await add_item(
+            created.id,
+            SavedListItemRequest(entry_id=claimable_org, note=None),
+            Response(),
+            actor=actor,
+            db=test_db,
+        )
+        for index in range(24):
+            entry_id = await EntryCRUD.create(
+                test_db,
+                entry_type="organization",
+                name=f"Resave Limit Test Org {index}",
+                description="Limit test organization.",
+                city="Kansas City",
+                state="MO",
+                geo_specificity="local",
+            )
+            await add_item(
+                created.id,
+                SavedListItemRequest(entry_id=entry_id, note=None),
+                Response(),
+                actor=actor,
+                db=test_db,
+            )
+
+        item = await add_item(
+            created.id,
+            SavedListItemRequest(entry_id=claimable_org, note=None),
+            Response(),
+            actor=actor,
+            db=test_db,
+        )
+
+        assert item.entry_id == claimable_org
+
+    @pytest.mark.asyncio
     async def test_research_pass_gets_team_level_list_access(
         self, test_db: object, claimable_org: str
     ) -> None:

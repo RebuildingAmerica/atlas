@@ -75,8 +75,18 @@ class TestDiscoveryJobCRUDClaimNext:
         assert claimed.id == job_id
 
     @pytest.mark.asyncio
-    async def test_claim_next_guarded_update_loses_race(self, db_url: str) -> None:
-        """If the candidate is claimed between SELECT and the guarded UPDATE, return None."""
+    async def test_claim_next_guarded_update_loses_race(
+        self,
+        db_url: str,
+        sqlite_only: None,  # noqa: ARG002
+    ) -> None:
+        """If the candidate is claimed between SELECT and the guarded UPDATE, return None.
+
+        Exercises SQLite's select-then-guarded-UPDATE claim path specifically:
+        Postgres claims in one atomic ``UPDATE ... FOR UPDATE SKIP LOCKED``
+        statement with no separate SELECT to interleave a racer against (see
+        ``claim_next``'s docstring), so this scenario has no Postgres analogue.
+        """
         conn = await get_db_connection(db_url)
         racer = await get_db_connection(db_url)
         try:

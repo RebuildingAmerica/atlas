@@ -14,7 +14,11 @@ from atlas.domains.discovery.api_org import (
     _current_budget_month,
     start_org_discovery_run,
 )
-from atlas.domains.discovery.budget import OrgDiscoveryBudgetCRUD
+from atlas.domains.discovery.budget import (
+    DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT,
+    OrgDiscoveryBudgetCRUD,
+    _resolve_dependency_limit,
+)
 from tests.domains.discovery.api_org_support import ORG_ID, _make_actor
 
 
@@ -117,6 +121,13 @@ class TestStartOrgDiscoveryRun:
             month=_current_budget_month(),
         )
         assert budget is None
+
+    def test_resolve_dependency_limit_falls_back_for_unresolved_dependency(self) -> None:
+        """A ``run_limit`` that isn't a resolved int or None should not be trusted as unlimited."""
+        assert _resolve_dependency_limit(object()) == DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT
+
+    def test_resolve_dependency_limit_passes_through_a_resolved_int(self) -> None:
+        assert _resolve_dependency_limit(5) == 5
 
     @pytest.mark.asyncio
     async def test_invalid_issue_area_raises_400(self, db: object) -> None:

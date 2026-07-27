@@ -145,6 +145,22 @@ async def test_discount_review_dependency_allows_local_actor() -> None:
 
 
 @pytest.mark.asyncio
+async def test_discount_review_dependency_rejects_when_not_managed() -> None:
+    """A self-hosted instance has no Atlas discounts to review, so the surface is absent."""
+    actor = AuthenticatedActor(
+        user_id="local-operator",
+        email="operator@atlas.test",
+        auth_type="local",
+        is_local=True,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await require_discount_review_actor(actor=actor, settings=Settings(managed=False))
+
+    assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.asyncio
 async def test_discount_review_dependency_rejects_non_internal_actor() -> None:
     actor = AuthenticatedActor(
         user_id="member",

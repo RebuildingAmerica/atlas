@@ -1,7 +1,10 @@
 """Schema coverage for private workspace brief artifacts."""
+
 # ruff: noqa
 
 from __future__ import annotations
+
+from tests.support.schema_introspection import table_columns
 
 import pytest
 
@@ -19,8 +22,7 @@ from tests.domains.discovery.org_briefs_support import ORG_ID
 @pytest.mark.asyncio
 async def test_init_db_creates_org_briefs_table(test_db: object) -> None:
     """Fresh databases should include durable workspace brief artifact columns."""
-    cursor = await test_db.execute("PRAGMA table_info(org_briefs)")
-    columns = {row[1] for row in await cursor.fetchall()}
+    columns = await table_columns(test_db, "org_briefs")
 
     assert {
         "id",

@@ -85,11 +85,11 @@ class TestUsageEvents:
         )
         await test_db.execute(
             "UPDATE org_usage_events SET created_at = ? WHERE id = ?",
-            ("2026-07-05T11:00:00Z", api_event.id),
+            ("2026-07-05T11:00:00+00:00", api_event.id),
         )
         await test_db.execute(
             "UPDATE org_usage_events SET created_at = ? WHERE id = ?",
-            ("2026-07-05T11:00:00Z", mcp_event.id),
+            ("2026-07-05T11:00:00+00:00", mcp_event.id),
         )
         await test_db.commit()
 
@@ -98,7 +98,7 @@ class TestUsageEvents:
         assert counts.total_calls == 2
         assert counts.api_calls == 1
         assert counts.mcp_calls == 1
-        assert counts.last_seen_at == "2026-07-05T11:00:00Z"
+        assert counts.last_seen_at == "2026-07-05T11:00:00+00:00"
 
     @pytest.mark.asyncio
     async def test_count_integration_calls_by_surface_parameterizes_json_pattern(self) -> None:

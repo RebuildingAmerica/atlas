@@ -1,4 +1,6 @@
 """Tests for the pre-publication review queue table and CRUD."""
+
+from tests.support.schema_introspection import table_columns
 # ruff: noqa
 
 from datetime import UTC, date, datetime
@@ -31,12 +33,11 @@ async def test_review_queue_table_exists(db_url: str) -> None:
     """init_db must create the review_queue table with the expected columns."""
     conn = await get_db_connection(db_url)
     try:
-        cursor = await conn.execute("PRAGMA table_info(review_queue)")
-        rows = await cursor.fetchall()
+        rows = await table_columns(conn, "review_queue")
     finally:
         await conn.close()
 
-    columns = {row[1] for row in rows}
+    columns = rows
     assert columns >= {
         "id",
         "org_id",

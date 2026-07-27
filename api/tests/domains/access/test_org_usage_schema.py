@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from tests.support.schema_introspection import table_columns
+
 STATUS_OK = 200
 
 
@@ -13,8 +15,7 @@ class TestOrgUsageSchema:
     @pytest.mark.asyncio
     async def test_init_db_creates_org_usage_events_table(self, test_db: object) -> None:
         """Fresh databases should include workspace usage events."""
-        cursor = await test_db.execute("PRAGMA table_info(org_usage_events)")
-        columns = {row[1] for row in await cursor.fetchall()}
+        columns = await table_columns(test_db, "org_usage_events")
 
         assert {
             "id",

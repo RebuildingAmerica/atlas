@@ -22,6 +22,7 @@ from atlas.models.database_migrations import (
     _migration_id,
     migrate_atproto_identity_graph,
 )
+from tests.support.schema_introspection import table_columns
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -278,9 +279,8 @@ class TestEnsureEntryColumns:
 
             await _ensure_entry_columns(conn)
 
-            cursor = await conn.execute("PRAGMA table_info(entries)")
-            rows = await cursor.fetchall()
-            columns = {row[1] for row in rows}
+            rows = await table_columns(conn, "entries")
+            columns = rows
             assert "full_address" in columns
         finally:
             await conn.close()
@@ -301,9 +301,8 @@ class TestEnsureEntryColumns:
 
             await _ensure_entry_columns(conn)
 
-            cursor = await conn.execute("PRAGMA table_info(entries)")
-            rows = await cursor.fetchall()
-            columns = {row[1] for row in rows}
+            rows = await table_columns(conn, "entries")
+            columns = rows
             assert "full_address" in columns
         finally:
             await conn.close()
@@ -323,9 +322,8 @@ class TestEnsureEntryColumns:
 
             await _ensure_entry_columns(conn)
 
-            cursor = await conn.execute("PRAGMA table_info(entries)")
-            rows = await cursor.fetchall()
-            columns = {row[1] for row in rows}
+            rows = await table_columns(conn, "entries")
+            columns = rows
             assert {
                 "latitude",
                 "longitude",
@@ -360,9 +358,8 @@ class TestEnsureEntryColumns:
 
             await _ensure_entry_columns(conn)
 
-            cursor = await conn.execute("PRAGMA table_info(entries)")
-            rows = await cursor.fetchall()
-            columns = {row[1] for row in rows}
+            rows = await table_columns(conn, "entries")
+            columns = rows
             assert "geocode_source" in columns
         finally:
             await conn.close()
@@ -478,8 +475,7 @@ class TestEnsureOrgAnnotationColumns:
 
             await _ensure_org_annotation_columns(conn)
 
-            cursor = await conn.execute("PRAGMA table_info(org_annotations)")
-            columns = {row[1] for row in await cursor.fetchall()}
+            columns = await table_columns(conn, "org_annotations")
             assert {"source_id", "target_type", "target_id"} <= columns
 
             note_cursor = await conn.execute(
@@ -532,8 +528,7 @@ class TestEnsureDiscoveryRunColumns:
 
             await _ensure_discovery_run_columns(conn)
 
-            cursor = await conn.execute("PRAGMA table_info(discovery_runs)")
-            columns = {row[1] for row in await cursor.fetchall()}
+            columns = await table_columns(conn, "discovery_runs")
             assert {"research_goal", "research_summary"} <= columns
 
             row_cursor = await conn.execute(
@@ -597,8 +592,7 @@ class TestEnsureDiscoveryJobColumns:
 
             await _ensure_discovery_job_columns(conn)
 
-            cursor = await conn.execute("PRAGMA table_info(discovery_jobs)")
-            columns = {row[1] for row in await cursor.fetchall()}
+            columns = await table_columns(conn, "discovery_jobs")
             assert {
                 "idempotency_key",
                 "input_payload",

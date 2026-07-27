@@ -200,8 +200,37 @@ async def test_api_key_quota_allows_explicit_unlimited_limit(test_db: object) ->
         ),
     )
 
+    # This Settings instance only carries the ``managed`` flag into the quota
+    # check; its database fields are never touched. Naming both halves of the
+    # pair keeps construction valid regardless of which backend test_db (and
+    # therefore the ambient DATABASE_BACKEND) is running against.
     await _enforce_external_api_call_quota(
-        test_db, actor, Settings(database_url="sqlite:///tmp/test.db", managed=True)
+        test_db,
+        actor,
+        Settings(database_url="sqlite:///tmp/test.db", database_backend="sqlite", managed=True),
+    )
+
+
+@pytest.mark.asyncio
+async def test_api_key_quota_allows_requests_under_the_daily_limit(test_db: object) -> None:
+    """A key with room left under its daily plan quota should proceed without raising."""
+    actor = AuthenticatedActor(
+        user_id="user_123",
+        email="operator@example.com",
+        auth_type="api_key",
+        api_key_id="key_123",
+        org_id="org_123",
+        active_products=["atlas_team"],
+        resolved_capabilities=ResolvedCapabilities(
+            capabilities=frozenset({"api.keys"}),
+            limits={"api_requests_per_day": 10000},
+        ),
+    )
+
+    await _enforce_external_api_call_quota(
+        test_db,
+        actor,
+        Settings(database_url="sqlite:///tmp/test.db", database_backend="sqlite", managed=True),
     )
 
 
