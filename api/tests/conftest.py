@@ -12,6 +12,12 @@ import os
 # suite out over the network to verify memberships, which is the failure
 # 74306533 fixed when it came from a developer's env file.
 os.environ.setdefault("ATLAS_MULTI_USER", "false")
+# Paired with the line above: a single-operator instance is one nobody sells
+# access to, so it has no catalog and no tiers. That is a real product shape;
+# managed-and-single-user is not. Tests exercising Atlas's own commercial
+# surfaces — paid plans, their quotas, staff review — say managed=True
+# themselves.
+os.environ.setdefault("ATLAS_MANAGED", "false")
 
 import tempfile  # noqa: E402
 from collections.abc import Iterator  # noqa: E402

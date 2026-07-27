@@ -188,7 +188,7 @@ describe("organizations.functions team management", () => {
     expect(call?.body.email).toBe("teammate@atlas.test");
   });
 
-  it("rejects resending an invitation without an active Atlas Team subscription", async () => {
+  it("rejects resending an invitation without the shared-workspace capability", async () => {
     mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture());
 
     const { resendWorkspaceInvitation } = await import("@/domains/access/organizations.functions");
@@ -198,7 +198,7 @@ describe("organizations.functions team management", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeInstanceOf(Error);
-    expect((response.error as Error).message).toContain("Subscribe to Atlas Team");
+    expect((response.error as Error).message).toContain("cannot invite members");
     expect(authApi.createInvitation).not.toHaveBeenCalled();
   });
 });

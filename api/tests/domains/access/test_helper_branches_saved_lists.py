@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+
+from atlas.platform.config import Settings
 from fastapi import HTTPException, Response
 
 from atlas.domains.access.api import lists as lists_api
@@ -56,6 +58,7 @@ class TestSavedLists:
                 export_format="json",
                 actor=actor,
                 db=AsyncMock(),
+                settings=Settings(database_url="sqlite:///tmp/test.db"),
             )
 
     @pytest.mark.asyncio
@@ -102,6 +105,7 @@ class TestSavedLists:
             response=Response(),
             actor=actor,
             db=AsyncMock(),
+            settings=Settings(database_url="sqlite:///tmp/test.db"),
         )
 
         assert response.entry is None
@@ -150,6 +154,7 @@ class TestSavedLists:
             response=Response(),
             actor=actor,
             db=AsyncMock(),
+            settings=Settings(database_url="sqlite:///tmp/test.db"),
         )
 
         assert response.entry is None

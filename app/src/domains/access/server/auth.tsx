@@ -17,6 +17,10 @@ import {
   scopesToPermissions,
 } from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { SUPPORTED_OAUTH_SCOPES } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
+import {
+  hasCapability,
+  resolveCapabilities,
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { buildAtlasAccessTokenClaims } from "./oauth-claims";
 import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
 import { queryActiveProducts } from "./workspace-products";
@@ -60,7 +64,7 @@ export async function canGenerateScimTokenForWorkspace(
   }
 
   const activeProducts = await queryActiveProducts(organizationId);
-  return activeProducts.includes("atlas_team");
+  return hasCapability(resolveCapabilities(activeProducts), "auth.scim");
 }
 
 function atprotoSignInSession() {

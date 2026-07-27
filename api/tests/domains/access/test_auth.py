@@ -148,6 +148,8 @@ async def test_api_key_requests_stop_when_daily_plan_quota_is_exhausted(
     test_db: object,
 ) -> None:
     """API keys from workspaces without an active API quota should be rejected."""
+    # Daily plan quotas exist only where there is a plan to be on.
+    test_settings.managed = True
     test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
@@ -198,7 +200,9 @@ async def test_api_key_quota_allows_explicit_unlimited_limit(test_db: object) ->
         ),
     )
 
-    await _enforce_external_api_call_quota(test_db, actor)
+    await _enforce_external_api_call_quota(
+        test_db, actor, Settings(database_url="sqlite:///tmp/test.db", managed=True)
+    )
 
 
 @pytest.mark.asyncio

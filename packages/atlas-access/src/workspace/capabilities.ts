@@ -211,6 +211,28 @@ export function resolveCapabilities(activeProducts: AtlasProduct[]): ResolvedCap
 }
 
 /**
+ * Resolves capabilities for an instance with no product catalog.
+ *
+ * Mirrors `UNMANAGED_CAPABILITIES` in the API. An instance the Rebuilding
+ * America Project does not run has nothing to sell and no tier to be on, so
+ * there is no capability to withhold and no limit to enforce. Feature code
+ * asks for capabilities and never learns whether a catalog exists.
+ */
+export function resolveUnmanagedCapabilities(): ResolvedCapabilities {
+  const capabilities = new Set<AtlasCapability>(DEFAULT_CAPABILITIES);
+  for (const productCapabilities of Object.values(PRODUCT_CAPABILITIES)) {
+    for (const cap of productCapabilities) {
+      capabilities.add(cap);
+    }
+  }
+  const limits = {} as Record<AtlasLimit, number | null>;
+  for (const key of Object.keys(DEFAULT_LIMITS) as AtlasLimit[]) {
+    limits[key] = null;
+  }
+  return { capabilities, limits };
+}
+
+/**
  * Returns whether the resolved capability set includes the given capability.
  */
 export function hasCapability(resolved: ResolvedCapabilities, cap: AtlasCapability): boolean {

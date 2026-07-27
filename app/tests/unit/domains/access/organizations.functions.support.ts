@@ -1,4 +1,8 @@
 import {
+  resolveCapabilities,
+  serializeResolvedCapabilities,
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import {
   createAtlasResolvedCapabilities,
   createAtlasSessionFixture,
   createAtlasWorkspace,
@@ -7,10 +11,16 @@ import {
 export const browserSessionHeaders = new Headers({ cookie: "test" });
 
 export function subscribedTeamSession(maxMembers: number | null) {
+  // Capabilities are derived from the products rather than listed by hand, so
+  // the fixture cannot claim a subscription whose capabilities it lacks. That
+  // inconsistency was invisible while the gate checked product identifiers.
   return createAtlasSessionFixture({
     workspace: createAtlasWorkspace({
       activeProducts: ["atlas_team"],
-      resolvedCapabilities: createAtlasResolvedCapabilities({ max_members: maxMembers }),
+      resolvedCapabilities: createAtlasResolvedCapabilities(
+        { max_members: maxMembers },
+        serializeResolvedCapabilities(resolveCapabilities(["atlas_team"])).capabilities,
+      ),
     }),
   });
 }

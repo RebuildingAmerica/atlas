@@ -80,7 +80,8 @@ describe("session-state loading", () => {
           slug: "local",
           workspaceType: "individual",
         },
-        activeProducts: ["atlas_team"],
+        // No catalog on a single-operator instance, so no products held.
+        activeProducts: [],
         capabilities: {
           canInviteMembers: false,
           canManageOrganization: false,
@@ -105,9 +106,9 @@ describe("session-state loading", () => {
             max_shortlists: null,
             max_shortlist_entries: null,
             max_api_keys: null,
-            api_requests_per_day: 10000,
+            api_requests_per_day: null,
             public_api_requests_per_hour: null,
-            max_members: 50,
+            max_members: null,
           },
         },
         memberships: [

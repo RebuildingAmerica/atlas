@@ -2,7 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { atlasSessionSchema } from "./session-schema";
 import {
-  resolveCapabilities,
+  resolveUnmanagedCapabilities,
   serializeResolvedCapabilities,
   type AtlasProduct,
 } from "@rebuildingamerica/atlas-access/workspace/capabilities";
@@ -19,15 +19,17 @@ import { AtlasAuthError, AUTH_ERROR_CODE } from "@rebuildingamerica/atlas-access
 import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 const LOCAL_WORKSPACE_ID = "local";
-const LOCAL_ACTIVE_PRODUCTS: AtlasProduct[] = ["atlas_team"];
+// A single-operator instance has no catalog to buy from, so it holds no
+// products. Capabilities come from the deployment having no tiers at all —
+// naming a paid tier here was standing in for a concept the code lacked, and it
+// made a self-hosted operator look like a paying Team customer.
+const LOCAL_ACTIVE_PRODUCTS: AtlasProduct[] = [];
 
 /**
  * Local-mode single-operator session used when auth is disabled entirely.
  */
 function getLocalSession(): AtlasSessionPayload {
-  const resolvedCapabilities = serializeResolvedCapabilities(
-    resolveCapabilities(LOCAL_ACTIVE_PRODUCTS),
-  );
+  const resolvedCapabilities = serializeResolvedCapabilities(resolveUnmanagedCapabilities());
 
   return {
     isLocal: true,

@@ -17,10 +17,13 @@ from atlas.platform.config import Settings
 def _make_settings(
     membership_url: str = "http://localhost:3000",
     secret: str = "test-secret",
+    *,
+    managed: bool = True,
 ) -> MagicMock:
     settings = MagicMock(spec=Settings)
     settings.auth_membership_verification_url = membership_url
     settings.auth_internal_secret = secret
+    settings.managed = managed
     return settings
 
 
@@ -160,7 +163,12 @@ async def test_require_org_actor_treats_unset_membership_url_as_dev_mode() -> No
 
 
 async def test_require_org_actor_grants_local_operator_workspace_export() -> None:
-    """Local mode should let the demo operator use paid workspace demo surfaces."""
+    """A single-user operator gets the capability without holding a paid tier.
+
+    It used to be handed ``["atlas_team"]`` — a tier it was never on and could
+    not buy. Capabilities now come from whether the instance has a catalog at
+    all, so the grant no longer borrows a product name to express itself.
+    """
     actor = AuthenticatedActor(
         user_id="local-operator",
         email="local@atlas.rebuildingus.org",
@@ -168,11 +176,11 @@ async def test_require_org_actor_grants_local_operator_workspace_export() -> Non
         is_local=True,
         org_id="local",
     )
-    settings = _make_settings(membership_url="")
+    settings = _make_settings(membership_url="", managed=False)
 
     result = await require_org_actor(actor=actor, settings=settings)
 
-    assert result.active_products == ["atlas_team"]
+    assert result.active_products == []
     assert result.org_role == "owner"
     assert result.resolved_capabilities is not None
     assert "workspace.export" in result.resolved_capabilities.capabilities

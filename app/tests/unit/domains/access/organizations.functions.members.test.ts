@@ -32,7 +32,7 @@ describe("organizations.functions members", () => {
     expect(response.result).toEqual({ id: "inv_123", status: "pending" });
   });
 
-  it("rejects inviting without an active Atlas Team subscription", async () => {
+  it("rejects inviting without the shared-workspace capability", async () => {
     mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture());
 
     const { inviteWorkspaceMember } = await import("@/domains/access/organizations.functions");
@@ -42,7 +42,7 @@ describe("organizations.functions members", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeInstanceOf(Error);
-    expect((response.error as Error).message).toContain("Subscribe to Atlas Team");
+    expect((response.error as Error).message).toContain("cannot invite members");
     expect(authApi.getFullOrganization).not.toHaveBeenCalled();
     expect(authApi.createInvitation).not.toHaveBeenCalled();
   });

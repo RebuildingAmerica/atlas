@@ -18,6 +18,7 @@ from atlas.domains.catalog.schemas.public import (
     SavedListResponse,
 )
 from atlas.models import EntryCRUD
+from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
 from .lists_support import (
@@ -42,12 +43,30 @@ router = APIRouter()
 __all__ = ["router"]
 
 
-def _actor_capabilities(actor: AuthenticatedActor) -> ResolvedCapabilities:
-    """Return the actor's resolved capabilities for saved-list gates."""
+def _actor_capabilities(
+    actor: AuthenticatedActor,
+    settings: Settings,
+) -> ResolvedCapabilities:
+    """Return the actor's resolved capabilities for saved-list gates.
+
+    Parameters
+    ----------
+    actor
+        The authenticated actor.
+    settings
+        Loaded application settings, for whether this instance has a catalog.
+
+    Returns
+    -------
+    ResolvedCapabilities
+        The actor's capabilities.
+    """
     if actor.resolved_capabilities is not None:
         return actor.resolved_capabilities
-    active_products = ["atlas_team"] if actor.is_local else (actor.active_products or [])
-    actor.resolved_capabilities = resolve_capabilities(active_products)
+    actor.resolved_capabilities = resolve_capabilities(
+        actor.active_products or [],
+        managed=settings.managed,
+    )
     return actor.resolved_capabilities
 
 
@@ -89,11 +108,12 @@ async def create_list(
     response: Response,
     actor: AuthenticatedActor = Depends(require_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> SavedListResponse:
     """Create a saved list owned by the current user."""
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="List name is required.")
-    capabilities = _actor_capabilities(actor)
+    capabilities = _actor_capabilities(actor, settings)
     max_shortlists = get_limit(capabilities, "max_shortlists")
     if max_shortlists is not None:
         list_count = await SavedListCRUD.count_for_user(db, actor.user_id)
@@ -157,15 +177,16 @@ async def get_list(
     operation_id="exportSavedList",
     tags=["lists"],
 )
-async def export_list(
+async def export_list(  # noqa: PLR0913
     list_id: str,
     response: Response,
     export_format: Literal["json", "csv"] = Query("json", alias="format"),
     actor: AuthenticatedActor = Depends(require_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> SavedListExportResponse | Response:
     """Export one saved list with notes and compact source-count provenance."""
-    capabilities = _actor_capabilities(actor)
+    capabilities = _actor_capabilities(actor, settings)
     if "workspace.export" not in capabilities.capabilities:
         _raise_capability_required("workspace.export")
     record = await SavedListCRUD.get_by_id(db, list_id)
@@ -219,18 +240,19 @@ async def delete_list(
     status_code=status.HTTP_201_CREATED,
     tags=["lists"],
 )
-async def add_item(
+async def add_item(  # noqa: PLR0913
     list_id: str,
     payload: SavedListItemRequest,
     response: Response,
     actor: AuthenticatedActor = Depends(require_actor),
     db: aiosqlite.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> SavedListItemResponse:
     """Add an entry to a saved list."""
     record = await SavedListCRUD.get_by_id(db, list_id)
     if record is None or record.user_id != actor.user_id:
         raise HTTPException(status_code=404, detail="List not found.")
-    capabilities = _actor_capabilities(actor)
+    capabilities = _actor_capabilities(actor, settings)
     if payload.note is not None and "workspace.notes" not in capabilities.capabilities:
         _raise_capability_required("workspace.notes")
     entry = await EntryCRUD.get_by_id(db, payload.entry_id)

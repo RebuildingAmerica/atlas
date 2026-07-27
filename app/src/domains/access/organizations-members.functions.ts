@@ -1,3 +1,4 @@
+import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
@@ -66,8 +67,8 @@ export const inviteWorkspaceMember = createServerFn({ method: "POST" })
     const { auth, headers, session } = await loadOrganizationRequestContext();
     const activeWorkspace = requireManagedTeamWorkspace(session);
 
-    if (!session.workspace.activeProducts.includes("atlas_team")) {
-      throw new Error("Subscribe to Atlas Team to invite members to this workspace.");
+    if (!hasSerializedCapability(session.workspace.resolvedCapabilities, "workspace.shared")) {
+      throw new Error("This workspace cannot invite members.");
     }
 
     const maxMembers = session.workspace.resolvedCapabilities.limits.max_members;
@@ -117,8 +118,8 @@ export const resendWorkspaceInvitation = createServerFn({ method: "POST" })
     const { auth, headers, session } = await loadOrganizationRequestContext();
     const activeWorkspace = requireManagedTeamWorkspace(session);
 
-    if (!session.workspace.activeProducts.includes("atlas_team")) {
-      throw new Error("Subscribe to Atlas Team to invite members to this workspace.");
+    if (!hasSerializedCapability(session.workspace.resolvedCapabilities, "workspace.shared")) {
+      throw new Error("This workspace cannot invite members.");
     }
 
     await auth.api.createInvitation({

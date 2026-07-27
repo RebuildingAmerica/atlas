@@ -57,6 +57,14 @@ PRODUCT_CAPABILITIES: dict[str, frozenset[str]] = {
     "atlas_team": _TEAM_CAPABILITIES,
 }
 
+UNMANAGED_CAPABILITIES: frozenset[str] = frozenset().union(*PRODUCT_CAPABILITIES.values())
+"""Every capability, granted where no Atlas product catalog exists.
+
+An instance the Rebuilding America Project does not run has nothing to sell and
+no tier to be on, so there is no capability to withhold. This is what naming a
+paid tier was standing in for.
+"""
+
 DEFAULT_CAPABILITIES: frozenset[str] = frozenset({"research.run"})
 
 # ---------------------------------------------------------------------------
@@ -150,12 +158,35 @@ def _merge_limits(
 # ---------------------------------------------------------------------------
 
 
-def resolve_capabilities(active_products: list[str]) -> ResolvedCapabilities:
-    """Resolve the union of capabilities and most-permissive limits for a set
-    of active product subscriptions.
+def resolve_capabilities(
+    active_products: list[str],
+    *,
+    managed: bool = True,
+) -> ResolvedCapabilities:
+    """Resolve capabilities and limits for a set of active product subscriptions.
 
-    If *active_products* is empty the default (free-tier) values are returned.
+    Parameters
+    ----------
+    active_products
+        Products the actor holds. Empty means free tier.
+    managed
+        Whether the Rebuilding America Project runs this instance. When false
+        there is no product catalog, so every capability applies and no limit
+        does. Previously these instances were handed ``["atlas_team"]`` — a
+        paid tier they were never on and could not buy — because there was no
+        way to say "this deployment has no tiers."
+
+    Returns
+    -------
+    ResolvedCapabilities
+        The resolved capability set and limits.
     """
+    if not managed:
+        return ResolvedCapabilities(
+            capabilities=UNMANAGED_CAPABILITIES,
+            limits=dict.fromkeys(DEFAULT_LIMITS),
+        )
+
     if not active_products:
         return ResolvedCapabilities(
             capabilities=DEFAULT_CAPABILITIES,

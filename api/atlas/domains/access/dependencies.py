@@ -71,12 +71,16 @@ def _api_quota_exceeded_detail(limit: int) -> dict[str, int | str]:
 async def _enforce_external_api_call_quota(
     conn: aiosqlite.Connection,
     actor: AuthenticatedActor,
+    settings: Settings,
 ) -> None:
     """Block external API-key requests that have exhausted plan daily quota."""
     if actor.auth_type != "api_key" or actor.org_id is None or actor.api_key_id is None:
         return
 
-    resolved = actor.resolved_capabilities or resolve_capabilities(actor.active_products or [])
+    resolved = actor.resolved_capabilities or resolve_capabilities(
+        actor.active_products or [],
+        managed=settings.managed,
+    )
     actor.resolved_capabilities = resolved
     daily_limit = get_limit(resolved, "api_requests_per_day")
     if daily_limit is None:
@@ -129,7 +133,10 @@ async def _record_external_api_call_usage(
     )
 
 
-def _authenticated_actor_from_api_key_principal(principal: ApiKeyPrincipal) -> AuthenticatedActor:
+def _authenticated_actor_from_api_key_principal(
+    principal: ApiKeyPrincipal,
+    settings: Settings,
+) -> AuthenticatedActor:
     """Build the request actor represented by a verified API key."""
     logger.debug(
         "Accepted API key principal for protected request",
@@ -147,7 +154,10 @@ def _authenticated_actor_from_api_key_principal(principal: ApiKeyPrincipal) -> A
         permissions=principal.permissions,
         org_id=principal.org_id,
         active_products=principal.active_products or [],
-        resolved_capabilities=resolve_capabilities(principal.active_products or []),
+        resolved_capabilities=resolve_capabilities(
+            principal.active_products or [],
+            managed=settings.managed,
+        ),
     )
 
 
@@ -176,12 +186,12 @@ async def require_actor(  # noqa: PLR0913
 
     cached_api_key_principal = api_key_principal_from_state(request)
     if cached_api_key_principal is not None:
-        return _authenticated_actor_from_api_key_principal(cached_api_key_principal)
+        return _authenticated_actor_from_api_key_principal(cached_api_key_principal, settings)
 
     if x_api_key:
         principal = await verify_api_key(x_api_key, settings)
         if principal is not None:
-            return _authenticated_actor_from_api_key_principal(principal)
+            return _authenticated_actor_from_api_key_principal(principal, settings)
 
     jwt_payload = verify_bearer_jwt(
         request.headers.get("authorization"),
@@ -224,7 +234,7 @@ def require_actor_permission(
         usage_db: aiosqlite.Connection = Depends(get_usage_db),
     ) -> AsyncGenerator[AuthenticatedActor, None]:
         permitted_actor = require_permission(actor, resource, action, settings=settings)
-        await _enforce_external_api_call_quota(usage_db, permitted_actor)
+        await _enforce_external_api_call_quota(usage_db, permitted_actor, settings)
         yield permitted_actor
         await _record_external_api_call_usage(
             usage_db,
@@ -248,7 +258,7 @@ def require_org_actor_permission(
         usage_db: aiosqlite.Connection = Depends(get_usage_db),
     ) -> AsyncGenerator[AuthenticatedActor, None]:
         permitted_actor = require_permission(actor, resource, action, settings=settings)
-        await _enforce_external_api_call_quota(usage_db, permitted_actor)
+        await _enforce_external_api_call_quota(usage_db, permitted_actor, settings)
         yield permitted_actor
         await _record_external_api_call_usage(
             usage_db,
@@ -278,15 +288,16 @@ async def require_org_actor(
         )
 
     if not settings.auth_membership_verification_url:
-        # Dev/local mode: trust the org_id from the token as-is.
+        # No remote membership service: trust the org_id from the token as-is.
         if actor.is_local:
             actor.org_role = "owner"
             actor.org_slug = actor.org_id
             actor.workspace_type = "individual"
-            actor.active_products = ["atlas_team"]
-        else:
-            actor.active_products = actor.active_products or []
-        actor.resolved_capabilities = resolve_capabilities(actor.active_products)
+        actor.active_products = actor.active_products or []
+        actor.resolved_capabilities = resolve_capabilities(
+            actor.active_products,
+            managed=settings.managed,
+        )
         return actor
 
     result = await verify_org_membership(actor.user_id, actor.org_id, settings)
@@ -300,7 +311,10 @@ async def require_org_actor(
     actor.org_slug = result.slug
     actor.workspace_type = result.workspace_type
     actor.active_products = result.active_products
-    actor.resolved_capabilities = resolve_capabilities(result.active_products)
+    actor.resolved_capabilities = resolve_capabilities(
+        result.active_products,
+        managed=settings.managed,
+    )
     return actor
 
 
