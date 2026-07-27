@@ -211,4 +211,33 @@ describe("session.functions", () => {
     });
     expect(mocks.checkEmailAccountExists).toHaveBeenCalledWith("operator@atlas.test");
   });
+  it("refuses to read the deploy mode outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { getAtlasDeployMode } = await import("@/domains/access/session.functions");
+
+    await expect(getAtlasDeployMode()).rejects.toThrow(
+      "Auth runtime is only available on the server.",
+    );
+  });
+
+  it("refuses to read the session outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { getAtlasSession } = await import("@/domains/access/session.functions");
+
+    await expect(getAtlasSession()).rejects.toThrow(
+      "Session state is only available on the server.",
+    );
+  });
+
+  it("refuses to resolve the RP logout redirect outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
+
+    await expect(getRpLogoutRedirect()).rejects.toThrow(
+      "RP logout is only available on the server.",
+    );
+  });
 });

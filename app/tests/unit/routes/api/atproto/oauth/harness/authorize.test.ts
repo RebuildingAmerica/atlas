@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { callRouteGet } from "@/../tests/helpers/routes-server-handler";
 
 const mocks = vi.hoisted(() => ({
   createAtprotoHarnessProviderCallbackUrl: vi.fn(),
@@ -44,5 +45,53 @@ describe("routes/api/atproto/oauth/harness/authorize", () => {
     expect(response.headers.get("location")).toBe(
       "https://atlas.test/api/atproto/oauth/callback?code=atlas-e2e-harness&state=state_1&handle=org.example",
     );
+  });
+
+  it("reports why the harness provider could not authorize", async () => {
+    mocks.createAtprotoHarnessProviderCallbackUrl.mockImplementation(() => {
+      throw new Error("Harness state is unknown.");
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/harness/authorize");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/harness/authorize?state=state_1"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Harness state is unknown." });
+  });
+
+  it("falls back to a plain failure message when the cause is not an error", async () => {
+    mocks.createAtprotoHarnessProviderCallbackUrl.mockImplementation(() => {
+      // A rejected value that is not an Error is exactly what this covers.
+      const failure: unknown = "dropped";
+      throw failure;
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/harness/authorize");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/harness/authorize?state=state_1"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "ATProto provider failed." });
+  });
+
+  it("refuses to run outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/api/atproto/oauth/harness/authorize");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/harness/authorize?state=state_1"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "ATProto OAuth is only available on the server.",
+    });
+    expect(mocks.createAtprotoHarnessProviderCallbackUrl).not.toHaveBeenCalled();
   });
 });

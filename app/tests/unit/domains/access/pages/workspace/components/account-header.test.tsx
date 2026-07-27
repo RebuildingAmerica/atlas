@@ -45,6 +45,33 @@ describe("AccountLayout", () => {
     expect(screen.getByText("person@atlas.test")).not.toBeNull();
   });
 
+  it("renders the name alone when no email is stored", () => {
+    render(
+      <AccountLayout
+        email={undefined}
+        errorMessage={null}
+        flashMessage={null}
+        name="Willie"
+        tabs={[]}
+      >
+        <div />
+      </AccountLayout>,
+    );
+
+    expect(screen.getByText("Willie")).not.toBeNull();
+    expect(screen.queryByText(/@/)).toBeNull();
+  });
+
+  it("still shows a readable avatar initial when the stored identity is blank", () => {
+    render(
+      <AccountLayout email="   " errorMessage={null} flashMessage={null} name="   " tabs={[]}>
+        <div />
+      </AccountLayout>,
+    );
+
+    expect(screen.getByText("A")).not.toBeNull();
+  });
+
   it("renders only the heading when identity data is unavailable", () => {
     render(
       <AccountLayout

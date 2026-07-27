@@ -115,9 +115,6 @@ export const startCheckout = createServerFn({ method: "POST" })
     const { requireAtlasSessionState } = sessionState;
     const products = getAtlasBillingProducts();
     const priceId = resolvePriceId(products, data.product, data.interval);
-    if (!priceId) {
-      throw new Error("Stripe price not configured for this product. Check environment variables.");
-    }
 
     const session = await requireAtlasSessionState();
     const activeWorkspace = session.workspace.activeOrganization;
@@ -175,11 +172,6 @@ export const startCheckout = createServerFn({ method: "POST" })
       seatQuantity = Array.isArray(members) ? Math.max(0, members.length - 1) : 0;
       if (seatQuantity >= 1) {
         seatPriceId = resolveSeatPriceId(products, data.interval);
-        if (!seatPriceId) {
-          throw new Error(
-            "Stripe seat price not configured for Atlas Team. Check environment variables.",
-          );
-        }
       }
     }
 

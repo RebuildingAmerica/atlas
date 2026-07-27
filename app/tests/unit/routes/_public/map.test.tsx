@@ -161,6 +161,18 @@ describe("routes/_public/map", () => {
     expect(result).toEqual({ initialPointsLoadFailed: true });
   });
 
+  it("surfaces a coding error from the map loader instead of hiding it", async () => {
+    const routeModule = await import("@/routes/_public/map");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    mocks.loadMapPoints.mockRejectedValue(new TypeError("deps.search.z is not a number"));
+
+    const loader = Route.options.loader;
+    if (!loader) throw new Error("Expected Route.options.loader");
+
+    await expect(loader({ deps: { search: {} } })).rejects.toThrow("deps.search.z is not a number");
+  });
+
   it("renders MapPage with the search params and the seeded points", async () => {
     const routeModule = await import("@/routes/_public/map");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");

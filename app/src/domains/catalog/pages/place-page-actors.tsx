@@ -35,7 +35,8 @@ interface ActorListProps {
 interface ActorLoadParams {
   cursor?: string;
   nextQuery?: string;
-  nextSort?: PlaceActorSort;
+  /** Every control that triggers a load knows the sort in force, so it is never absent. */
+  nextSort: PlaceActorSort;
   nextType?: EntryType | null;
 }
 
@@ -148,9 +149,7 @@ export function ActorDirectory({ initialActors, placeKind, placeSlug }: ActorDir
       if (nextQuery) {
         loadParams.query = nextQuery;
       }
-      if (params.nextSort) {
-        loadParams.sort = params.nextSort;
-      }
+      loadParams.sort = params.nextSort;
       if (params.nextType) {
         loadParams.type = params.nextType;
       }

@@ -19,6 +19,10 @@ interface DiscountVerificationSectionProps {
   organizationId: string | null;
 }
 
+interface WorkspaceDiscountVerificationProps {
+  organizationId: string;
+}
+
 interface DiscountStepperStep {
   id: string;
   label: string;
@@ -109,14 +113,28 @@ function toSubmissionRecord(data: DiscountVerificationSubmission["data"]): Recor
 }
 
 export function DiscountVerificationSection({ organizationId }: DiscountVerificationSectionProps) {
+  if (!organizationId) {
+    return (
+      <div className="space-y-3">
+        <p className="type-label-medium text-ink-muted">Discount access</p>
+        <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
+          <p className="type-title-small text-ink-strong">Create a workspace first</p>
+          <p className="type-body-medium text-ink-soft mt-2">
+            Discount access is applied to a workspace before checkout.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <WorkspaceDiscountVerification organizationId={organizationId} />;
+}
+
+function WorkspaceDiscountVerification({ organizationId }: WorkspaceDiscountVerificationProps) {
   const [selectedSegment, setSelectedSegment] = useState<DiscountSegment | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const statusQuery = useQuery({
-    enabled: Boolean(organizationId),
     queryFn: async () => {
-      if (!organizationId) {
-        return { record: null } satisfies CurrentDiscountVerificationStatus;
-      }
       return await getCurrentDiscountVerificationStatus({ data: { organizationId } });
     },
     queryKey: ["discount-verification-status", organizationId],
@@ -124,9 +142,6 @@ export function DiscountVerificationSection({ organizationId }: DiscountVerifica
 
   const submitVerificationMutation = useMutation({
     mutationFn: async (submission: DiscountVerificationSubmission) => {
-      if (!organizationId) {
-        throw new Error("Create a workspace before requesting discount access.");
-      }
       return await submitDiscountVerification({
         data: {
           organizationId,
@@ -163,20 +178,6 @@ export function DiscountVerificationSection({ organizationId }: DiscountVerifica
       <div className="space-y-3">
         <p className="type-label-medium text-ink-muted">Discount access</p>
         <DiscountStatusCard record={currentRecord} />
-      </div>
-    );
-  }
-
-  if (!organizationId) {
-    return (
-      <div className="space-y-3">
-        <p className="type-label-medium text-ink-muted">Discount access</p>
-        <div className="border-border bg-surface-container-lowest rounded-[1.4rem] border p-5">
-          <p className="type-title-small text-ink-strong">Create a workspace first</p>
-          <p className="type-body-medium text-ink-soft mt-2">
-            Discount access is applied to a workspace before checkout.
-          </p>
-        </div>
       </div>
     );
   }

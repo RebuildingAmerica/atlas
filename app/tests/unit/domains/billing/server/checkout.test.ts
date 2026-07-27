@@ -138,4 +138,21 @@ describe("createCheckoutSession", () => {
 
     expect(sessionParams().line_items).toEqual([{ price: "price_team_base", quantity: 1 }]);
   });
+  it("refuses a Research Pass checkout with no interval, which the webhook could not expire", async () => {
+    await expect(
+      createCheckoutSession({
+        workspaceId: "org_research",
+        product: "atlas_research_pass",
+        priceId: "price_pass_weekly",
+        seatPriceId: null,
+        seatQuantity: 0,
+        successUrl: "https://atlas.test/checkout-complete?product=atlas_research_pass",
+        cancelUrl: "https://atlas.test/pricing",
+        customerEmail: "reader@atlas.test",
+        stripeCustomerId: null,
+      }),
+    ).rejects.toThrow("Research Pass checkout requires an interval.");
+
+    expect(create).not.toHaveBeenCalled();
+  });
 });

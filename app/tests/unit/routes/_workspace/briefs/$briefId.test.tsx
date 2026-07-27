@@ -93,6 +93,16 @@ describe("routes/_workspace/briefs/$briefId", () => {
     });
   });
 
+  it("titles the tab so a saved brief is recognisable in browser history", async () => {
+    const routeModule = await import("@/routes/_workspace/briefs/$briefId");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const head = asRouteStub(routeModule.Route).options.head?.({}) as {
+      meta: { title?: string }[];
+    };
+
+    expect(head.meta).toEqual([{ title: "Atlas Brief | Atlas" }]);
+  });
+
   it("renders the brief detail page with loader data", async () => {
     const routeModule = await import("@/routes/_workspace/briefs/$briefId");
     const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");

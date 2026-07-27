@@ -41,6 +41,30 @@ describe("handleDeviceAuthAlias", () => {
     expect(await response.text()).toBe("handled:/api/auth/device/token:POST");
   });
 
+  it("forwards a token request that declares no content type untouched", async () => {
+    const { handleDeviceAuthAlias } = await import("@/domains/access/server/device-auth-alias");
+    await handleDeviceAuthAlias(new Request("https://atlas.test/device/token"), "token");
+
+    const forwardedRequest = mocks.authHandler.mock.calls.at(0)?.[0];
+    if (!forwardedRequest) throw new Error("Expected a forwarded auth request.");
+    expect(new URL(forwardedRequest.url).pathname).toBe("/api/auth/device/token");
+    expect(forwardedRequest.headers.get("Content-Type")).toBeNull();
+  });
+
+  it("polls device status against Better Auth's base device route", async () => {
+    const { handleDeviceAuthAlias } = await import("@/domains/access/server/device-auth-alias");
+    const response = await handleDeviceAuthAlias(
+      new Request("https://atlas.test/device?user_code=ABCD-EFGH"),
+      "status",
+    );
+
+    const forwardedRequest = mocks.authHandler.mock.calls.at(0)?.[0];
+    if (!forwardedRequest) throw new Error("Expected a forwarded auth request.");
+    expect(new URL(forwardedRequest.url).pathname).toBe("/api/auth/device");
+    expect(new URL(forwardedRequest.url).search).toBe("?user_code=ABCD-EFGH");
+    expect(await response.text()).toBe("handled:/api/auth/device:GET");
+  });
+
   it("accepts OAuth form-encoded device code requests at the public route", async () => {
     const { handleDeviceAuthAlias } = await import("@/domains/access/server/device-auth-alias");
     await handleDeviceAuthAlias(

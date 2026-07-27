@@ -120,6 +120,11 @@ describe("routes/_workspace/lists/$id export cases", () => {
     expect(followUpTask).not.toBeChecked();
     fireEvent.click(followUpTask);
     expect(followUpTask).toBeChecked();
+    fireEvent.click(followUpTask);
+    expect(followUpTask).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Add notes for unsorted leads" }),
+    ).not.toBeChecked();
   }, 60_000);
 
   it("renders a shareable evidence pack for a research thread", async () => {
@@ -174,6 +179,56 @@ describe("routes/_workspace/lists/$id export cases", () => {
     expect(clipboardWriteText).toHaveBeenCalledWith(
       expect.stringContaining("KC Tenants — Kansas City, MO — 2 sources"),
     );
+  });
+
+  it("does not hand the researcher a file when the CSV export request fails", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const createObjectUrl = vi.fn().mockReturnValue("blob:atlas-list-export");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 503, text: () => "" });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectUrl,
+    });
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        name: "Tenant power map",
+        description: null,
+        item_count: 1,
+        items: [
+          {
+            entry_id: "e1",
+            entry: {
+              name: "KC Tenants",
+              type: "organization",
+              slug: "kc-tenants",
+              photo_url: null,
+              address: { city: "Kansas City", state: "MO" },
+              source_count: 2,
+            },
+            note: "Ask about eviction court organizing.",
+          },
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/lists/list-1/export?format=csv", {
+        headers: { Accept: "text/csv" },
+      });
+    });
+    expect(createObjectUrl).not.toHaveBeenCalled();
   });
 
   it("copies a spreadsheet-friendly export for a research thread", async () => {

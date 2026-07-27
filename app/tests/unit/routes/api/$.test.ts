@@ -32,4 +32,14 @@ describe("routes/api/$ catch-all proxy", () => {
     }
     expect(proxyAtlasApiRequest).toHaveBeenCalledTimes(methods.length);
   });
+
+  it("refuses to proxy outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/api/$");
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    await expect(
+      callRouteGet(routeModule.Route, new Request("https://atlas.test/api/foo")),
+    ).rejects.toThrow("Atlas API proxying is only available on the server.");
+  });
 });

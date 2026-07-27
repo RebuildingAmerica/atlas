@@ -40,15 +40,23 @@ export function BriefCreatePage() {
     event.preventDefault();
     setError("");
 
+    // Only the form validator's own message is safe to show: it names the
+    // field the author still has to fill in.
+    const draft = buildBriefCreateInput(formState);
+    if (draft.input === null) {
+      setError(draft.problem);
+      return;
+    }
+
     try {
-      const input = buildBriefCreateInput(formState);
-      const brief = await createBrief.mutateAsync(input);
+      const brief = await createBrief.mutateAsync(draft.input);
       void navigate({
         params: { briefId: brief.id },
         to: "/briefs/$briefId",
       });
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not create brief.");
+    } catch {
+      // The rejection carries an internal Atlas API code, never reader copy.
+      setError("Could not create brief. Try again in a moment.");
     }
   }
 

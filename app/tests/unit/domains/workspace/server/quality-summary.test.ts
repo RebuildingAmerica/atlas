@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
 }));
+
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
 
 vi.mock("@/domains/access/server/session-state", () => ({
   requireReadyAtlasSessionState: mocks.requireReadyAtlasSessionState,
@@ -51,6 +57,32 @@ describe("workspace quality summary server loader", () => {
     const result = await loadWorkspaceQualitySummaryData();
 
     expect(result).toBe(summary);
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/quality-summary");
+  });
+});
+
+describe("workspace quality summary server function", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.requestAtlasApi.mockReset();
+    mocks.requireReadyAtlasSessionState.mockReset();
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: { activeOrganization: { id: "org_123" } },
+    });
+  });
+
+  it("returns the workspace quality summary through the GET server function", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ org_id: "org_123" });
+
+    const { loadWorkspaceQualitySummary } =
+      await import("@/domains/workspace/server/quality-summary");
+    const response = (await loadWorkspaceQualitySummary.__executeServer({
+      data: undefined,
+      method: "GET",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ org_id: "org_123" });
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/quality-summary");
   });
 });

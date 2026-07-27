@@ -40,16 +40,21 @@ export default defineConfig({
         "scripts/generate-route-tree.mjs",
       ],
       thresholds: {
-        // A ratchet, not a target: these sit just under the measured floor and
-        // only ever move up, so partial progress is protected instead of
-        // aspirational. Raise them whenever a change earns it; never lower them
-        // to accommodate one. Destination is 100 across the board.
-        branches: 80.0,
-        functions: 87.0,
-        lines: 86.0,
-        statements: 85.6,
+        // Never lower these to land a change. `coverage.include` above names the
+        // whole product surface, so an untested file counts against this number
+        // rather than dropping out of the report.
+        branches: 100,
+        functions: 100,
+        lines: 100,
+        statements: 100,
       },
     },
+    // Call history is reset between tests centrally rather than by a per-file
+    // `clearAllMocks`; implementations survive, so describe-level setup still
+    // holds. Env and global stubs unwind the same way.
+    clearMocks: true,
+    unstubEnvs: true,
+    unstubGlobals: true,
     environment: "node",
     environmentOptions: {
       jsdom: {

@@ -243,4 +243,268 @@ describe("SetupPage", () => {
     });
     expect(mocks.createWorkspace).not.toHaveBeenCalled();
   });
+
+  it("sends a signed-out visitor to sign up while keeping their plan", () => {
+    mocks.useAtlasSession.mockReturnValue({ data: null });
+
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
+
+    expect(screen.getByRole("heading", { name: "Start with your account" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Create account" })).toHaveAttribute(
+      "href",
+      "/sign-up?redirect=%2Fonboarding%3Fproduct%3Datlas_pro%26interval%3Dmonthly",
+    );
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/sign-in?redirect=%2Fonboarding%3Fproduct%3Datlas_pro%26interval%3Dmonthly",
+    );
+    expect(mocks.ensurePurchaseOnboarding).not.toHaveBeenCalled();
+  });
+
+  it("says the purchase link is unavailable when the lookup fails", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    mocks.loadPurchaseOnboarding.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    render(<SetupPage purchase="pi_broken" />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Purchase unavailable" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View pricing" })).toHaveAttribute("href", "/pricing");
+  });
+
+  it("drops a purchase lookup that lands after the visitor leaves", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    let resolveLookup: (value: unknown) => void = () => undefined;
+    mocks.loadPurchaseOnboarding.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLookup = resolve;
+      }),
+    );
+
+    const view = render(<SetupPage purchase="pi_slow" />);
+    await waitFor(() => {
+      expect(mocks.loadPurchaseOnboarding).toHaveBeenCalled();
+    });
+    view.unmount();
+    resolveLookup(null);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: "Purchase unavailable" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("drops a failed purchase lookup that lands after the visitor leaves", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    let rejectLookup: (reason: Error) => void = () => undefined;
+    mocks.loadPurchaseOnboarding.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectLookup = reject;
+      }),
+    );
+
+    const view = render(<SetupPage purchase="pi_slow" />);
+    await waitFor(() => {
+      expect(mocks.loadPurchaseOnboarding).toHaveBeenCalled();
+    });
+    view.unmount();
+    rejectLookup(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("heading", { name: "Purchase unavailable" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("drops a started purchase intent that lands after the visitor leaves", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    let resolveStart: (value: unknown) => void = () => undefined;
+    mocks.ensurePurchaseOnboarding.mockReturnValue(
+      new Promise((resolve) => {
+        resolveStart = resolve;
+      }),
+    );
+
+    const view = render(<SetupPage product="atlas_pro" interval="monthly" />);
+    await waitFor(() => {
+      expect(mocks.ensurePurchaseOnboarding).toHaveBeenCalled();
+    });
+    view.unmount();
+    resolveStart({ id: "pi_pro", workspaceId: "org_1" });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Stripe will handle/)).not.toBeInTheDocument();
+    });
+  });
+
+  it("waits for the purchase intent before attaching or creating a workspace", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: {
+          activeOrganization: { id: "org_personal", name: "My Workspace", workspaceType: "team" },
+        },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockReturnValue(new Promise(() => undefined));
+
+    render(<SetupPage product="atlas_team" interval="monthly" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use My Workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+
+    expect(mocks.attachPurchaseWorkspace).not.toHaveBeenCalled();
+    expect(mocks.createWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("keeps the visitor on the workspace step when attaching fails", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: {
+          activeOrganization: {
+            id: "org_personal",
+            name: "My Workspace",
+            workspaceType: "individual",
+          },
+        },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: null });
+    mocks.attachPurchaseWorkspace.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use My Workspace" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Atlas could not attach that workspace. Try again.",
+    );
+    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Workspace name/)).toBeInTheDocument();
+  });
+
+  it("asks for another workspace name when creation fails", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: null });
+    mocks.createWorkspace.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to payment" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Atlas could not create that workspace. Try another name.",
+    );
+    expect(mocks.createWorkspace).toHaveBeenCalledWith({
+      data: {
+        name: "Team Workspace",
+        slug: "team-workspace",
+        workspaceType: "individual",
+      },
+    });
+    expect(mocks.attachPurchaseWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("hands a workspace-ready purchase to Stripe checkout", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: "org_1" });
+    mocks.startPurchaseCheckout.mockReturnValue(new Promise(() => undefined));
+
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+
+    expect(await screen.findByRole("button", { name: "Opening Stripe..." })).toBeDisabled();
+    expect(mocks.startPurchaseCheckout).toHaveBeenCalledWith({ data: { purchaseId: "pi_pro" } });
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("sends the visitor to the Stripe session it was given", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: "org_1" });
+    mocks.startPurchaseCheckout.mockResolvedValue({ url: "https://checkout.stripe.test/cs_123" });
+
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+
+    await waitFor(() => {
+      expect(assign).toHaveBeenCalledWith("https://checkout.stripe.test/cs_123");
+    });
+  });
+
+  it("lets the visitor retry when Stripe checkout cannot be opened", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: "org_1" });
+    mocks.startPurchaseCheckout.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Atlas could not open Stripe checkout. Try again.",
+    );
+    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue to Stripe" })).toBeEnabled();
+  });
 });

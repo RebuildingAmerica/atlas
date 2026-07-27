@@ -85,10 +85,11 @@ export function OrganizationSSOSetupCard({ organization }: OrganizationSSOSetupC
       badgeLabel: "SSO active",
       cta: "Manage enterprise SSO",
       icon: <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-emerald-700" />,
+      /* v8 ignore start -- state is "primary-set" only when primaryProvider is defined, so this fallback is unreachable */
       primaryProviderSummary: primaryProvider
         ? `Primary provider: ${primaryProvider.providerId}.`
-        : /* v8 ignore next -- the "primary-set" branch only fires when primaryProvider is defined, so this fallback is unreachable */
-          "No primary provider selected yet.",
+        : "No primary provider selected yet.",
+      /* v8 ignore stop */
       providerSummary: `${configuredProviderCount} provider${configuredProviderCount === 1 ? "" : "s"} configured, ${verifiedProviderCount} verified.`,
     };
   })();

@@ -34,6 +34,12 @@ describe("useDeviceColorScheme", () => {
     expect(control.listenerCount()).toBe(0);
   });
 
+  it("renders light on the server, where no device preference is knowable", async () => {
+    const { renderToString } = await import("react-dom/server");
+
+    expect(renderToString(<SchemeReader />)).toContain(">light<");
+  });
+
   it("falls back to light on a browser without matchMedia", () => {
     const original = window.matchMedia;
     Reflect.deleteProperty(window, "matchMedia");

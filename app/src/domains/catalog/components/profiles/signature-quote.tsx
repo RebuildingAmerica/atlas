@@ -27,10 +27,10 @@ export function SignatureQuote({ sources }: SignatureQuoteProps) {
 
   // `published_date` is a calendar day, so the credit line stays pinned to UTC
   // rather than sliding a source into the previous month for western readers.
+  // Every packet carries an ingestion time, so the credit line always has a
+  // date to stand on even when the publisher gave none.
   const quotedAt = source.published_date ?? source.ingested_at;
-  const dateLabel = quotedAt
-    ? formatDateTimeOrInput(formatStableDateTime, quotedAt, MONTH_YEAR)
-    : null;
+  const dateLabel = formatDateTimeOrInput(formatStableDateTime, quotedAt, MONTH_YEAR);
   const sourceIndex = sources.indexOf(source) + 1;
 
   return (
@@ -52,7 +52,7 @@ export function SignatureQuote({ sources }: SignatureQuoteProps) {
         ) : (
           <span className="text-ink-strong italic">Atlas coverage</span>
         )}
-        {dateLabel ? <span> &middot; {dateLabel}</span> : null}
+        <span> &middot; {dateLabel}</span>
         <span>
           {" "}
           &middot; Source {String(sourceIndex).padStart(2, "0")} of {sources.length}

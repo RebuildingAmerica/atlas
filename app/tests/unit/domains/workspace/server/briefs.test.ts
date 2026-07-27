@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   AtlasBrief,
+  AtlasBriefCollection,
   AtlasBriefCreateInput,
+  AtlasBriefExport,
   AtlasBriefUpdateInput,
 } from "@/domains/workspace/server/briefs";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
 }));
+
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
 
 vi.mock("@/domains/access/server/session-state", () => ({
   requireReadyAtlasSessionState: mocks.requireReadyAtlasSessionState,
@@ -222,6 +230,162 @@ describe("workspace brief server loader", () => {
 
     await expect(loadWorkspaceBriefExportData("brief_123")).rejects.toThrow(
       "Open a workspace before loading Atlas Briefs.",
+    );
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
+  });
+});
+
+describe("workspace brief server functions", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.requestAtlasApi.mockReset();
+    mocks.requireReadyAtlasSessionState.mockReset();
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: { activeOrganization: { id: "org_123" } },
+    });
+  });
+
+  function briefFields() {
+    return {
+      confidence_summary: {
+        review_status: "Reviewed by desk",
+        source_count: 3,
+        state: "corroborated",
+      },
+      gaps: [{ detail: "No county filings yet.", label: "Filings" }],
+      linked_discovery_run_ids: ["run_1"],
+      linked_entry_ids: ["entry_1"],
+      linked_source_ids: ["src_1"],
+      scope: {
+        actor_types: ["organization"],
+        geography: "Tulsa, OK",
+        issue_areas: ["housing_affordability"],
+        source_types: ["news"],
+      },
+      summary: "Who is organizing Tulsa tenants.",
+      title: "Tulsa tenant power",
+    };
+  }
+
+  it("returns a brief export through the GET server function", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ brief: { id: "brief 1" }, format: "json" });
+
+    const { loadWorkspaceBriefExport } = await import("@/domains/workspace/server/briefs");
+    const response = (await loadWorkspaceBriefExport.__executeServer({
+      data: { briefId: "brief 1" },
+      method: "GET",
+    })) as ServerFnExecutionResponse<AtlasBriefExport>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result?.brief.id).toBe("brief 1");
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/briefs/brief%201/export");
+  });
+
+  it("rejects a brief export request with a blank brief id", async () => {
+    const { loadWorkspaceBriefExport } = await import("@/domains/workspace/server/briefs");
+    const response = (await loadWorkspaceBriefExport.__executeServer({
+      data: { briefId: "" },
+      method: "GET",
+    })) as ServerFnExecutionResponse<AtlasBriefExport>;
+
+    expect(response.result).toBeUndefined();
+    expect(response.error).toBeInstanceOf(Error);
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
+  });
+
+  it("returns the brief collection through the GET server function", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ items: [{ id: "brief_1" }], total: 1 });
+
+    const { loadWorkspaceBriefs } = await import("@/domains/workspace/server/briefs");
+    const response = (await loadWorkspaceBriefs.__executeServer({
+      data: undefined,
+      method: "GET",
+    })) as ServerFnExecutionResponse<AtlasBriefCollection>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ items: [{ id: "brief_1" }], total: 1 });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/briefs");
+  });
+
+  it("creates a brief through the POST server function", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ id: "brief_1", title: "Tulsa tenant power" });
+
+    const { createWorkspaceBrief } = await import("@/domains/workspace/server/briefs");
+    const response = (await createWorkspaceBrief.__executeServer({
+      data: briefFields(),
+      method: "POST",
+    })) as ServerFnExecutionResponse<AtlasBrief>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ id: "brief_1", title: "Tulsa tenant power" });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/briefs", {
+      body: JSON.stringify(briefFields()),
+      method: "POST",
+    });
+  });
+
+  it("rejects a brief created without a title", async () => {
+    const { createWorkspaceBrief } = await import("@/domains/workspace/server/briefs");
+    const response = (await createWorkspaceBrief.__executeServer({
+      data: { ...briefFields(), title: "" },
+      method: "POST",
+    })) as ServerFnExecutionResponse<AtlasBrief>;
+
+    expect(response.result).toBeUndefined();
+    expect(response.error).toBeInstanceOf(Error);
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
+  });
+
+  it("updates only the reviewed fields a brief editor changed", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ id: "brief_1", title: "Revised title" });
+
+    const { updateWorkspaceBrief } = await import("@/domains/workspace/server/briefs");
+    const response = (await updateWorkspaceBrief.__executeServer({
+      data: { briefId: "brief_1", title: "Revised title" },
+      method: "POST",
+    })) as ServerFnExecutionResponse<AtlasBrief>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ id: "brief_1", title: "Revised title" });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/briefs/brief_1", {
+      body: JSON.stringify({ title: "Revised title" }),
+      method: "PATCH",
+    });
+  });
+
+  it("rejects a brief update that changes nothing", async () => {
+    const { updateWorkspaceBrief } = await import("@/domains/workspace/server/briefs");
+    const response = (await updateWorkspaceBrief.__executeServer({
+      data: { briefId: "brief_1" },
+      method: "POST",
+    })) as ServerFnExecutionResponse<AtlasBrief>;
+
+    expect(response.result).toBeUndefined();
+    expect(response.error).toBeInstanceOf(Error);
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
+  });
+});
+
+describe("workspace brief id handling", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.requestAtlasApi.mockReset();
+    mocks.requireReadyAtlasSessionState.mockReset();
+  });
+
+  it("refuses a brief export request whose id is only whitespace", async () => {
+    const { loadWorkspaceBriefExportData } = await import("@/domains/workspace/server/briefs");
+
+    await expect(loadWorkspaceBriefExportData("   ")).rejects.toThrow("Brief id is required.");
+    expect(mocks.requireReadyAtlasSessionState).not.toHaveBeenCalled();
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
+  });
+
+  it("refuses a brief update whose id is only whitespace", async () => {
+    const { updateWorkspaceBriefData } = await import("@/domains/workspace/server/briefs");
+
+    await expect(updateWorkspaceBriefData("   ", { title: "New title" })).rejects.toThrow(
+      "Brief id is required.",
     );
     expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
   });

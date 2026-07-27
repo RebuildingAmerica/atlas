@@ -147,17 +147,10 @@ export function DiscoveryPage({ initialRequest, selectedRunId }: DiscoveryPagePr
     );
   };
 
+  // The runs panel only offers these actions for a run that can produce them,
+  // so the page builds the request from the run without re-checking.
   const handleCreateBrief = (run: DiscoveryRunRecord) => {
-    let input: AtlasBriefCreateInput;
-    try {
-      input = buildBriefCreateInputFromRun(run);
-    } catch {
-      setCreateBriefErrors((current) => ({
-        ...current,
-        [run.id]: "Could not save Atlas Brief.",
-      }));
-      return;
-    }
+    const input: AtlasBriefCreateInput = buildBriefCreateInputFromRun(run);
 
     setCreatingBriefRunId(run.id);
     setCreateBriefErrors((current) => ({
@@ -188,16 +181,7 @@ export function DiscoveryPage({ initialRequest, selectedRunId }: DiscoveryPagePr
   };
 
   const handleCreateCoverageTarget = (run: DiscoveryRunRecord) => {
-    let input: CoverageTargetCreateInput;
-    try {
-      input = buildCoverageTargetCreateInputFromRun(run);
-    } catch {
-      setCreateCoverageTargetErrors((current) => ({
-        ...current,
-        [run.id]: "Could not create coverage target.",
-      }));
-      return;
-    }
+    const input: CoverageTargetCreateInput = buildCoverageTargetCreateInputFromRun(run);
 
     setCreatingCoverageTargetRunId(run.id);
     setCreateCoverageTargetErrors((current) => ({
@@ -229,13 +213,6 @@ export function DiscoveryPage({ initialRequest, selectedRunId }: DiscoveryPagePr
 
   const handleWatchTopLeads = (run: DiscoveryRunRecord) => {
     const leadIds = topLeadEntryIdsFromRun(run);
-    if (leadIds.length === 0) {
-      setWatchLeadErrors((current) => ({
-        ...current,
-        [run.id]: "Could not watch top leads.",
-      }));
-      return;
-    }
 
     setWatchingLeadsRunId(run.id);
     setWatchLeadErrors((current) => ({

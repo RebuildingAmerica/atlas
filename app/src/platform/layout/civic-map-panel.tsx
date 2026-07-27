@@ -67,7 +67,15 @@ interface TooltipState {
   top: number;
 }
 
+/**
+ * Whether the panel is still waiting on the directory, showing it, or could not
+ * reach it. An empty map means something very different in each case, so the
+ * three are never collapsed into one.
+ */
+type MapDataStatus = "loading" | "ready" | "failed";
+
 export function CivicMapPanel() {
+  const [status, setStatus] = useState<MapDataStatus>("loading");
   const [dots, setDots] = useState<DotActor[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
@@ -96,13 +104,16 @@ export function CivicMapPanel() {
           cities: res.facets.cities.length,
           issueAreas: res.facets.issue_areas.length,
         });
+        setStatus("ready");
       })
       .catch(() => {
         if (!active) {
           return;
         }
-        setDots([]);
-        setStats(null);
+        // Blanking the dots and stats here would draw an empty country and
+        // three em-dashes, which reads as "Atlas found nobody". Say the
+        // request failed instead.
+        setStatus("failed");
       });
 
     return () => {
@@ -112,6 +123,7 @@ export function CivicMapPanel() {
 
   function handleEnter(event: MouseEvent<SVGGElement>, idx: number, dot: DotActor) {
     setActiveIdx(idx);
+    /* v8 ignore next -- the hovered marker is a child of this wrapper, so the ref is always attached by the time a pointer can reach it */
     if (!wrapRef.current) return;
     const wrapRect = wrapRef.current.getBoundingClientRect();
     const markerRect = event.currentTarget.getBoundingClientRect();
@@ -242,12 +254,22 @@ export function CivicMapPanel() {
       {/* Divider */}
       <div className="h-px flex-shrink-0" style={{ background: "rgba(250,246,238,0.07)" }} />
 
-      {/* Stats */}
-      <div className="flex flex-shrink-0 gap-6 pb-1">
-        <StatItem value={stats?.actors} label="people and groups" />
-        <StatItem value={stats?.cities} label="cities" />
-        <StatItem value={stats?.issueAreas} label="issue areas" />
-      </div>
+      {/* Stats, or an honest account of why there are none */}
+      {status === "failed" ? (
+        <p
+          role="status"
+          className="type-body-small flex-shrink-0 pb-1"
+          style={{ color: "rgba(250,246,238,0.55)" }}
+        >
+          Live counts and locations could not be loaded. The map is incomplete, not empty.
+        </p>
+      ) : (
+        <div className="flex flex-shrink-0 gap-6 pb-1">
+          <StatItem value={stats?.actors} label="people and groups" />
+          <StatItem value={stats?.cities} label="cities" />
+          <StatItem value={stats?.issueAreas} label="issue areas" />
+        </div>
+      )}
     </div>
   );
 }

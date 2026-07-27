@@ -283,11 +283,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     }
   };
 
-  const handleCreateWorkspace = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!purchaseId) {
-      return;
-    }
+  const createWorkspaceForPurchase = async (id: string) => {
     setErrorMessage(null);
     setIsPending(true);
     try {
@@ -299,7 +295,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         },
       });
       await attachPurchaseWorkspace({
-        data: { purchaseId, workspaceId: created.id },
+        data: { purchaseId: id, workspaceId: created.id },
       }).then(setPurchaseIntent);
     } catch {
       setErrorMessage("Atlas could not create that workspace. Try another name.");
@@ -308,20 +304,34 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     }
   };
 
-  const handleCheckout = async () => {
-    if (!purchaseId) {
-      return;
-    }
+  const openStripeCheckout = async (id: string) => {
     setErrorMessage(null);
     setIsPending(true);
     try {
-      const result = await startPurchaseCheckout({ data: { purchaseId } });
+      const result = await startPurchaseCheckout({ data: { purchaseId: id } });
       window.location.assign(result.url);
     } catch {
       setErrorMessage("Atlas could not open Stripe checkout. Try again.");
       setIsPending(false);
     }
   };
+
+  // Both actions need a purchase to act on, so without one there is no
+  // handler at all rather than a handler that silently declines.
+  const handleCreateWorkspace =
+    purchaseId === null
+      ? undefined
+      : (event: FormEvent<HTMLFormElement>) => {
+          event.preventDefault();
+          void createWorkspaceForPurchase(purchaseId);
+        };
+
+  const handleCheckout =
+    purchaseId === null
+      ? undefined
+      : () => {
+          void openStripeCheckout(purchaseId);
+        };
 
   const activeStep: PurchaseStepId =
     sessionData === null || sessionData === undefined || purchaseLookupPending
@@ -411,7 +421,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         title="Continue to payment"
       >
         {alert}
-        <Button onClick={() => void handleCheckout()} disabled={isPending || !purchaseId} size="lg">
+        <Button onClick={handleCheckout} disabled={isPending || !purchaseId} size="lg">
           {isPending ? "Opening Stripe..." : "Continue to Stripe"}
         </Button>
       </PurchaseStepPanel>
@@ -436,7 +446,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
             </Button>
           ) : null}
 
-          <form className="space-y-4" onSubmit={(event) => void handleCreateWorkspace(event)}>
+          <form className="space-y-4" onSubmit={handleCreateWorkspace}>
             <Input
               label="Workspace name"
               value={workspaceName}

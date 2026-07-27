@@ -162,6 +162,66 @@ describe("AccountPage", () => {
     expect(screen.queryByText(/You can return to your assistant/)).toBeNull();
   });
 
+  it("ignores an MCP completion body that is not an object", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(null),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.replaceState(null, "", "/account?mcpElicitationId=eli_null");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/mcp/elicitations/eli_null/complete", {
+        method: "POST",
+      });
+    });
+    expect(screen.queryByText(/You can return to your assistant/)).toBeNull();
+  });
+
+  it("ignores an MCP completion body whose fields have the wrong shape", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          elicitation_id: "eli_pending",
+          status: "pending",
+          target_flow: "billing_settings",
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.replaceState(null, "", "/account?mcpElicitationId=eli_pending");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/mcp/elicitations/eli_pending/complete", {
+        method: "POST",
+      });
+    });
+    expect(screen.queryByText(/You can return to your assistant/)).toBeNull();
+  });
+
+  it("stays quiet when the MCP completion request never reaches Atlas", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("network unavailable"));
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.replaceState(null, "", "/account?mcpElicitationId=eli_offline");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/mcp/elicitations/eli_offline/complete", {
+        method: "POST",
+      });
+    });
+    expect(screen.queryByText(/You can return to your assistant/)).toBeNull();
+    expect(screen.queryByText(/network unavailable/)).toBeNull();
+  });
+
   it("handles passkey and API-key creation responses that omit generated data", async () => {
     mocks.addPasskey.mockResolvedValue({});
     mocks.createApiKey.mockResolvedValue({});

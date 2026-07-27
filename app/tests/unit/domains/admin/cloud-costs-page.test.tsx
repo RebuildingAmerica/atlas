@@ -116,4 +116,20 @@ describe("CloudCostsAdminPage", () => {
     ).toBeInTheDocument();
     expect(mocks.loadCloudCostPosture).toHaveBeenCalledWith();
   });
+
+  it("shows safe copy when the request rejects with something other than an error", async () => {
+    mocks.loadCloudCostPosture.mockRejectedValue("boom");
+
+    renderCloudCostsAdminPage();
+
+    expect(await screen.findByText("Cloud costs could not load.")).toBeInTheDocument();
+  });
+
+  it("shows safe copy when the request settles with nothing", async () => {
+    mocks.loadCloudCostPosture.mockResolvedValue(null);
+
+    renderCloudCostsAdminPage();
+
+    expect(await screen.findByText("Cloud costs could not load.")).toBeInTheDocument();
+  });
 });

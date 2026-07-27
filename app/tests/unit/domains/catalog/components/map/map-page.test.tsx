@@ -248,4 +248,21 @@ describe("MapPage", () => {
     navigate({ to: ".", search: { z: 9 } });
     expect(routerNavigateSpy).toHaveBeenCalledWith({ to: ".", search: { z: 9 } });
   });
+  it("moves focus into the results list when the skip link is followed", () => {
+    requireMapPageHarness().setState({ points: [makePoint({ id: "1", lat: 1, lng: 2 })] });
+    render(<MapPage search={{}} />);
+
+    fireEvent.click(screen.getByRole("link", { name: /Skip to results list/i }));
+    expect(document.activeElement).toBe(document.querySelector("#map-results-list"));
+  });
+
+  it("holds cluster placeholders over the map until the first points arrive", () => {
+    requireMapPageHarness().setState({
+      points: [],
+      pointsQuery: { data: undefined, isError: false },
+    });
+    const { container } = render(<MapPage search={{}} />);
+
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+  });
 });

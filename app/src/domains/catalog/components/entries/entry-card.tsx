@@ -76,7 +76,7 @@ function trustLabel(entry: Entry): string {
 }
 
 function sourceSummary(entry: Entry): string {
-  const sourceCount = entry.source_count ?? 0;
+  const sourceCount = entry.source_count;
   const parts = [`${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`];
 
   if (entry.latest_source_date) {
@@ -112,7 +112,7 @@ function matchingIssueLabel(
   context: EntryDiscoveryContext | undefined,
   issueAreaLabels: Record<string, string>,
 ): string | null {
-  const issueArea = context?.issueAreas?.find((value) => (entry.issue_areas ?? []).includes(value));
+  const issueArea = context?.issueAreas?.find((value) => entry.issue_areas.includes(value));
   if (!issueArea) {
     return null;
   }
@@ -139,7 +139,7 @@ function buildMatchReason(
 
   if (
     context?.sourceTypes?.some((sourceType) =>
-      (entry.source_types ?? []).some((entrySourceType) => entrySourceType === sourceType),
+      entry.source_types.some((entrySourceType) => entrySourceType === sourceType),
     )
   ) {
     return "has sources in the selected source type";

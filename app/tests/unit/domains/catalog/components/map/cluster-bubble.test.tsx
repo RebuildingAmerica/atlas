@@ -50,4 +50,8 @@ describe("ClusterBubble", () => {
     expect(parseFloat(button.style.width)).toBeGreaterThan(0);
     expect(button.style.transform).toBe("");
   });
+  it("counts a lone point in the singular", () => {
+    render(<ClusterBubble pointCount={1} onOpen={vi.fn()} reducedMotion />);
+    expect(screen.getByRole("button", { name: "1 person or group here" })).toBeTruthy();
+  });
 });

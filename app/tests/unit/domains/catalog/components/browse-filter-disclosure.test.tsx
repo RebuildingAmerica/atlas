@@ -124,4 +124,20 @@ describe("FilterDisclosure", () => {
       "true",
     );
   });
+  it("renders a plain disclosure when neither the category nor its options carry icons", () => {
+    render(
+      <FilterDisclosure
+        label="Issues"
+        count={0}
+        items={[{ active: false, key: "housing", label: "Housing", onClick: vi.fn() }]}
+      />,
+    );
+
+    const issuesButton = screen.getByRole("button", { name: /Issues/ });
+    expect(issuesButton).toHaveTextContent("All");
+    expect(issuesButton.querySelector("svg.lucide-tags")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Housing" }).querySelector("svg.lucide-users"),
+    ).not.toBeInTheDocument();
+  });
 });

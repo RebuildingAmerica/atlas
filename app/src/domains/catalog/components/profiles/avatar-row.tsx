@@ -18,7 +18,7 @@ function humanize(slug: string): string {
 }
 
 function firstName(fullName: string): string {
-  return fullName.split(/\s+/)[0] ?? fullName;
+  return fullName.replace(/\s[\s\S]*$/, "");
 }
 
 function firstSentence(text: string): string {

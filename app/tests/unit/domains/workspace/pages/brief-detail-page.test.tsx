@@ -394,4 +394,104 @@ describe("BriefDetailPage", () => {
     expect(screen.getByText("KC Tenants")).toBeInTheDocument();
     expect(screen.getByText("Tenant organizers expand court watch")).toBeInTheDocument();
   });
+
+  it("keeps a reviewer's edits on screen when the save is rejected", async () => {
+    const briefs = await import("@/domains/workspace/hooks/use-briefs");
+    vi.mocked(briefs.useUpdateWorkspaceBrief).mockReturnValue(
+      updateBriefMutation({
+        mutateAsync: vi.fn().mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED")),
+        isPending: false,
+      }),
+    );
+
+    render(<BriefDetailPage briefExport={briefExport()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit brief" }));
+    fireEvent.change(screen.getByLabelText("Review status"), {
+      target: { value: "second pass pending" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save brief" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not update brief. Try again in a moment.",
+    );
+    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Review status")).toHaveValue("second pass pending");
+  });
+
+  it("restores the saved brief when a reviewer cancels an edit", () => {
+    render(<BriefDetailPage briefExport={briefExport()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit brief" }));
+    fireEvent.change(screen.getByLabelText("Brief title"), {
+      target: { value: "Abandoned rewrite" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Tenant Power in Kansas City" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit brief" }));
+    expect(screen.getByLabelText("Brief title")).toHaveValue("Tenant Power in Kansas City");
+  });
+
+  it("copies the export JSON to the clipboard", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { readText: () => Promise.resolve(""), writeText },
+    });
+
+    render(<BriefDetailPage briefExport={briefExport()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy JSON" }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledOnce();
+    });
+    expect(String(writeText.mock.calls[0]?.[0])).toContain("Tenant Power in Kansas City");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("points the reader at the download when the clipboard refuses the copy", async () => {
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        readText: () => Promise.resolve(""),
+        writeText: vi.fn().mockRejectedValue(new Error("NotAllowedError")),
+      },
+    });
+
+    render(<BriefDetailPage briefExport={briefExport()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy JSON" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not copy the export. Download the JSON instead.",
+    );
+    expect(screen.queryByText(/NotAllowedError/)).not.toBeInTheDocument();
+  });
+
+  it("marks a partly corroborated brief as partial rather than confirmed", () => {
+    const partialExport = briefExport();
+    partialExport.brief.confidence_summary.state = "partial";
+    partialExport.provenance.confidence_state = "partial";
+
+    render(<BriefDetailPage briefExport={partialExport} />);
+
+    expect(screen.getAllByText("partial").length).toBeGreaterThan(0);
+    expect(screen.queryByText("corroborated")).not.toBeInTheDocument();
+  });
+
+  it("marks an unverified brief as unverified rather than confirmed", () => {
+    const unverifiedExport = briefExport();
+    unverifiedExport.brief.confidence_summary.state = "unverified";
+    unverifiedExport.provenance.confidence_state = "unverified";
+
+    render(<BriefDetailPage briefExport={unverifiedExport} />);
+
+    expect(screen.getAllByText("unverified").length).toBeGreaterThan(0);
+    expect(screen.queryByText("corroborated")).not.toBeInTheDocument();
+  });
 });

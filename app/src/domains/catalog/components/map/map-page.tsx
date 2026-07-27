@@ -36,10 +36,6 @@ function useResolvedBasemapBackground(deviceColorScheme: string): string | null 
   const [backgroundColor, setBackgroundColor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
     const value = window
       .getComputedStyle(document.documentElement)
       .getPropertyValue(ATLAS_BASEMAP_BACKGROUND_TOKEN)

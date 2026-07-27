@@ -46,14 +46,13 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
   const taxonomyQuery = useTaxonomy();
   const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
   const sessionQuery = useAtlasSession();
-  const isSignedIn = Boolean(sessionQuery.data);
-  const activeWorkspaceId = sessionQuery.data?.workspace.activeOrganization?.id ?? null;
+  const session = sessionQuery.data ?? null;
+  const isSignedIn = session !== null;
+  const activeWorkspaceId = session?.workspace.activeOrganization?.id ?? null;
   const workspaceWatchingEnabled =
+    session !== null &&
     activeWorkspaceId !== null &&
-    (sessionQuery.data?.workspace.resolvedCapabilities.capabilities.includes(
-      "monitoring.watchlists",
-    ) ??
-      false);
+    session.workspace.resolvedCapabilities.capabilities.includes("monitoring.watchlists");
   const affiliatedPeopleQuery = useEntries({
     affiliated_org_id: entry.id,
     entry_types: ["person"],

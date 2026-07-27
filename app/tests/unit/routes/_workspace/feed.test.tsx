@@ -77,6 +77,21 @@ describe("routes/_workspace/feed", () => {
     expect(screen.getByText("No watch updates.")).toBeInTheDocument();
   });
 
+  it("shows the empty state rather than a broken summary when the digest never arrives", async () => {
+    const digest = await import("@/domains/workspace/hooks/use-workspace-watch-digest");
+    vi.mocked(digest.useWorkspaceWatchDigest).mockReturnValue(
+      watchDigestQuery({
+        data: undefined,
+        isLoading: false,
+      }),
+    );
+
+    await renderRoute();
+
+    expect(screen.getByText("No watch updates.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Monitoring summary")).toBeNull();
+  });
+
   it("renders workspace digest summary and source-backed watch events", async () => {
     const digest = await import("@/domains/workspace/hooks/use-workspace-watch-digest");
     vi.mocked(digest.useWorkspaceWatchDigest).mockReturnValue(

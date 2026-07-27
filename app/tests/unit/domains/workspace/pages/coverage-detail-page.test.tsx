@@ -248,4 +248,56 @@ describe("CoverageDetailPage", () => {
     expect(screen.getByText("No gaps listed.")).toBeInTheDocument();
     expect(screen.getByText("No next actions listed.")).toBeInTheDocument();
   });
+
+  it("keeps an unlinkable actor and an unfinished run readable", () => {
+    const partialDetail = detail();
+    const [partialRun] = partialDetail.discovery_runs;
+    const [partialEntry] = partialDetail.entries;
+    if (!partialRun || !partialEntry) {
+      throw new Error("Expected the fixture to carry one run and one entry.");
+    }
+    partialRun.completed_at = null;
+    partialEntry.slug = null;
+    partialEntry.city = null;
+    partialEntry.state = null;
+    partialEntry.sources = [];
+    mocks.useWorkspaceWatchStatus.mockReturnValue({ data: undefined, isLoading: false });
+
+    render(<CoverageDetailPage detail={partialDetail} sourceTargets={sourceTargets()} />);
+
+    expect(screen.getByRole("button", { name: "Watch target" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "KC Tenants" })).not.toBeInTheDocument();
+    expect(screen.getByText("KC Tenants")).toBeInTheDocument();
+    expect(screen.getByText("Location not listed")).toBeInTheDocument();
+  });
+
+  it("falls back to a source's publication, then its address, for a receipt with no headline", () => {
+    const untitledDetail = detail();
+    const [untitledEntry] = untitledDetail.entries;
+    if (!untitledEntry) throw new Error("Expected the fixture to carry one entry.");
+    untitledEntry.sources = [
+      {
+        id: "source_pub",
+        publication: "Community Archive",
+        title: null,
+        type: "community_archive",
+        url: "https://example.test/pub",
+      },
+      {
+        id: "source_url",
+        publication: null,
+        title: null,
+        type: "community_archive",
+        url: "https://example.test/bare",
+      },
+    ];
+
+    render(<CoverageDetailPage detail={untitledDetail} sourceTargets={sourceTargets()} />);
+
+    expect(screen.getByRole("link", { name: /Community Archive/ })).toHaveAttribute(
+      "href",
+      "https://example.test/pub",
+    );
+    expect(screen.getByRole("link", { name: /https:\/\/example.test\/bare/ })).toBeInTheDocument();
+  });
 });

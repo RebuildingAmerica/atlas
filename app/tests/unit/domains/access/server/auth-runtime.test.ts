@@ -6,12 +6,15 @@ import type { PasskeyOptions as PasskeyPluginOptions } from "@better-auth/passke
 import type { SCIMOptions } from "@better-auth/scim";
 import type { MagicLinkOptions as MagicLinkPluginOptions } from "better-auth/plugins/magic-link";
 import { buildScimTokenAuthorizationPayload } from "../../../../fixtures/access/scim-token-authorization";
+import { buildAtprotoSignInContext, findAtprotoSignInHandler } from "./auth-runtime-test-support";
 
 const mocks = vi.hoisted(() => ({
+  resolvePrimaryWorkspaceId: vi.fn(),
+  setSessionCookie: vi.fn(),
   admin: vi.fn(() => ({ kind: "admin" })),
   apiKey: vi.fn((options: ApiKeyPluginOptions) => ({ kind: "api-key", options })),
   bearer: vi.fn(() => ({ kind: "bearer" })),
-  betterAuth: vi.fn(),
+  betterAuth: vi.fn<(options: BetterAuthOptions) => unknown>(),
   createEmailService: vi.fn(),
   emailSend: vi.fn(),
   databaseInstances: [] as {
@@ -69,6 +72,20 @@ vi.mock("better-auth", () => ({
   betterAuth: mocks.betterAuth,
 }));
 
+// Unwrap Better Auth's endpoint wrapper so the Atlas handler can be driven
+// directly with a request context.
+vi.mock("better-auth/api", () => ({
+  createAuthEndpoint: (
+    path: string,
+    options: unknown,
+    handler: (ctx: unknown) => Promise<unknown>,
+  ) => Object.assign(handler, { options, path }),
+}));
+
+vi.mock("better-auth/cookies", () => ({
+  setSessionCookie: mocks.setSessionCookie,
+}));
+
 vi.mock("better-auth/plugins/magic-link", () => ({
   magicLink: mocks.magicLink,
 }));
@@ -116,6 +133,10 @@ vi.mock("@/domains/access/server/workspace-products", () => ({
   queryActiveProducts: mocks.queryActiveProducts,
 }));
 
+vi.mock("@/domains/access/server/workspace-lookup", () => ({
+  resolvePrimaryWorkspaceId: mocks.resolvePrimaryWorkspaceId,
+}));
+
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
   isOperatorAllowedEmail: mocks.isOperatorAllowedEmail,
@@ -143,6 +164,8 @@ describe("auth runtime wiring", () => {
     mocks.oauthProvider.mockClear();
     mocks.passkey.mockClear();
     mocks.queryActiveProducts.mockReset();
+    mocks.resolvePrimaryWorkspaceId.mockReset();
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue(null);
     mocks.runMigrations.mockReset();
     mocks.scim.mockClear();
     mocks.sso.mockClear();
@@ -192,7 +215,7 @@ describe("auth runtime wiring", () => {
 
     expect(databaseHandle.pragma).toHaveBeenCalledWith("journal_mode = WAL");
 
-    const betterAuthCall = mocks.betterAuth.mock.calls.at(0) as [BetterAuthOptions] | undefined;
+    const betterAuthCall = mocks.betterAuth.mock.calls.at(0);
     const typedOptions = betterAuthCall?.[0];
     expect(typedOptions).toBeDefined();
     if (!typedOptions) {
@@ -419,5 +442,113 @@ describe("auth runtime wiring", () => {
     });
 
     expect(claims.aud).toBe("https://atlas.test/mcp");
+  });
+
+  describe("ATProto sign-in endpoint", () => {
+    beforeEach(async () => {
+      const mod = await import("@/domains/access/server/auth");
+      await mod.getAuth();
+    });
+
+    it("issues a browser session for a verified account that holds a passkey", async () => {
+      const handler = findAtprotoSignInHandler(mocks.betterAuth.mock.calls.at(0)?.[0]?.plugins);
+      const ctx = buildAtprotoSignInContext("user_1");
+
+      await expect(handler(ctx)).resolves.toEqual({ data: null, init: { status: 204 } });
+      expect(mocks.setSessionCookie).toHaveBeenCalledWith(ctx, {
+        session: { id: "session_1" },
+        user: { emailVerified: true, id: "user_1" },
+      });
+    });
+
+    it("refuses a call that arrived over HTTP instead of the server-side callback", async () => {
+      const handler = findAtprotoSignInHandler(mocks.betterAuth.mock.calls.at(0)?.[0]?.plugins);
+      const ctx = buildAtprotoSignInContext("user_1", {
+        request: new Request("https://atlas.test/api/auth/internal/atproto-sign-in"),
+      });
+
+      await expect(handler(ctx)).rejects.toThrow("FORBIDDEN: ATProto sign-in is unavailable.");
+      expect(ctx.context.internalAdapter.findUserById).not.toHaveBeenCalled();
+      expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+    });
+
+    it("refuses to sign in an unknown, unverified, or passkey-less account", async () => {
+      const handler = findAtprotoSignInHandler(mocks.betterAuth.mock.calls.at(0)?.[0]?.plugins);
+
+      for (const options of [
+        { user: null },
+        { user: { emailVerified: false, id: "user_1" } },
+        { passkeys: [] },
+      ]) {
+        await expect(handler(buildAtprotoSignInContext("user_1", options))).rejects.toThrow(
+          "UNAUTHORIZED: ATProto sign-in is unavailable.",
+        );
+      }
+      expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+    });
+
+    it("refuses to report success when the session could not be created", async () => {
+      const handler = findAtprotoSignInHandler(mocks.betterAuth.mock.calls.at(0)?.[0]?.plugins);
+
+      await expect(handler(buildAtprotoSignInContext("user_1", { session: null }))).rejects.toThrow(
+        "UNAUTHORIZED: ATProto sign-in is unavailable.",
+      );
+      expect(mocks.setSessionCookie).not.toHaveBeenCalled();
+    });
+  });
+
+  it("omits the workspace and audience claims when neither applies", async () => {
+    const mod = await import("@/domains/access/server/auth");
+    await mod.getAuth();
+
+    const jwtOptions = mocks.jwt.mock.calls.at(0)?.[0] as
+      | { jwt: { definePayload: (input: { user: { email: string; id: string } }) => unknown } }
+      | undefined;
+    if (!jwtOptions) {
+      throw new TypeError("Expected the JWT plugin to be configured.");
+    }
+
+    await expect(
+      jwtOptions.jwt.definePayload({ user: { email: "operator@atlas.test", id: "user_1" } }),
+    ).resolves.toEqual({
+      email: "operator@atlas.test",
+      permissions: expect.any(Object) as object,
+    });
+    expect(mocks.resolvePrimaryWorkspaceId).toHaveBeenCalledWith("user_1");
+  });
+
+  it("stamps the signed-in workspace and API audience into the JWT", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      operatorAllowedEmails: new Set(["operator@atlas.test"]),
+      authJwtAudience: "https://atlas.test/mcp",
+      apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
+      localMode: false,
+      captureUrl: "http://127.0.0.1:8025/messages",
+      dbPath: "/tmp/atlas/auth/atlas-auth.sqlite",
+      emailFrom: "Atlas <auth@atlas.test>",
+      emailProvider: "capture",
+      internalSecret: "internal-test-secret",
+      publicBaseUrl: "https://atlas.test",
+      publicDomain: "atlas.test",
+      resendApiKey: null,
+    });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org_primary");
+
+    const mod = await import("@/domains/access/server/auth");
+    await mod.getAuth();
+
+    const jwtOptions = mocks.jwt.mock.calls.at(0)?.[0] as
+      | { jwt: { definePayload: (input: { user: { email: string; id: string } }) => unknown } }
+      | undefined;
+    if (!jwtOptions) {
+      throw new TypeError("Expected the JWT plugin to be configured.");
+    }
+
+    await expect(
+      jwtOptions.jwt.definePayload({ user: { email: "operator@atlas.test", id: "user_1" } }),
+    ).resolves.toMatchObject({
+      aud: "https://atlas.test/mcp",
+      org_id: "org_primary",
+    });
   });
 });

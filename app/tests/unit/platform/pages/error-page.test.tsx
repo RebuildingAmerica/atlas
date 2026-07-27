@@ -11,8 +11,12 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
+const mocks = vi.hoisted(() => ({
+  useAtlasSession: vi.fn(),
+}));
+
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
-  useAtlasSession: () => ({ data: { isLocal: false } }),
+  useAtlasSession: mocks.useAtlasSession,
 }));
 
 vi.mock("@/platform/layout/public-nav", () => ({
@@ -20,7 +24,9 @@ vi.mock("@/platform/layout/public-nav", () => ({
 }));
 
 vi.mock("@/platform/layout/public-footer", () => ({
-  PublicFooter: ({ status }: { status: string }) => <footer data-status={status} />,
+  PublicFooter: ({ localMode, status }: { localMode: boolean; status: string }) => (
+    <footer data-local-mode={String(localMode)} data-status={status} />
+  ),
 }));
 
 afterEach(cleanup);
@@ -28,6 +34,7 @@ afterEach(cleanup);
 describe("ErrorPage", () => {
   it("renders a balanced recovery screen with retry, status, and home actions", () => {
     const reset = vi.fn();
+    mocks.useAtlasSession.mockReturnValue({ data: { isLocal: false } });
 
     render(<ErrorPage error={new Error("boom")} info={{ componentStack: "" }} reset={reset} />);
 
@@ -40,5 +47,16 @@ describe("ErrorPage", () => {
       ATLAS_STATUS_PAGE_URL,
     );
     expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/");
+  });
+
+  it("treats an unresolved session as hosted rather than guessing local mode", () => {
+    mocks.useAtlasSession.mockReturnValue({ data: undefined });
+
+    const { container } = render(
+      <ErrorPage error={new Error("boom")} info={{ componentStack: "" }} reset={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Something went wrong." })).toBeVisible();
+    expect(container.querySelector("footer")).toHaveAttribute("data-local-mode", "false");
   });
 });

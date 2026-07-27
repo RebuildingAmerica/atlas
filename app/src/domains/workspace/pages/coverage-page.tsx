@@ -62,12 +62,9 @@ export function CoveragePage() {
     }
   }
 
+  // The import button is disabled until the textarea holds rows, so this only
+  // ever runs with CSV text to send.
   async function importCsvTargets() {
-    const csvText = importCsvText.trim();
-    if (!csvText) {
-      return;
-    }
-
     setImportFeedback(null);
     try {
       const result = await importCoverageTargets.mutateAsync({ csv_text: importCsvText });

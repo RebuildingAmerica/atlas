@@ -121,4 +121,31 @@ describe("CivicDotMarker", () => {
     const liftedRadius = Number(container.querySelector("circle")?.getAttribute("r"));
     expect(liftedRadius).toBeGreaterThan(restingRadius);
   });
+  it("names a point with no place without an empty comma in the middle", () => {
+    render(
+      <CivicDotMarker
+        point={makePoint({ id: "p", name: "River Keepers", place_label: null, type: "person" })}
+        selected={false}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "River Keepers, person, city-level location, corroborated",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("draws no approximate-location halo around a rooftop-precise point", () => {
+    const { container } = render(
+      <CivicDotMarker
+        point={makePoint({ id: "p", geocode_precision: "rooftop", type: "person" })}
+        selected={false}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('[data-location-halo="approximate"]')).toBeNull();
+  });
 });

@@ -16,6 +16,35 @@ export function tokenRequest(body: URLSearchParams): Request {
   });
 }
 
+/**
+ * Builds a token request whose body is JSON rather than form-encoded, which is
+ * what some MCP clients send.
+ *
+ * @param body - The raw request body, already serialized.
+ */
+export function jsonTokenRequest(body: string): Request {
+  return new Request("https://atlas.test/api/auth/oauth2/token", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body,
+  });
+}
+
+/**
+ * Builds an auth stand-in whose verification store holds exactly the value
+ * given, so tests can exercise codes stored in unexpected shapes.
+ *
+ * @param value - The stored verification value, or null when no code matches.
+ */
+export function authWithStoredValue(value: string | null): GuardFixture {
+  const findVerificationValue = vi.fn().mockResolvedValue(value === null ? null : { value });
+
+  return {
+    auth: { $context: Promise.resolve({ internalAdapter: { findVerificationValue } }) },
+    findVerificationValue,
+  };
+}
+
 export function authWithVerification(resource: string | undefined): GuardFixture {
   const findVerificationValue = vi.fn().mockResolvedValue({
     value: JSON.stringify({

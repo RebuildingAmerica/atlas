@@ -71,6 +71,38 @@ describe("route-guard additional branches", () => {
     }
   });
 
+  it("falls back when an absolute target resolves to a protocol-relative path", async () => {
+    mocks.getAtlasSession.mockResolvedValue({
+      accountReady: true,
+      hasPasskey: true,
+      passkeyCount: 1,
+      session: { id: "session_123" },
+      user: {
+        email: "operator@atlas.test",
+        emailVerified: true,
+        id: "user_123",
+        name: "Operator",
+      },
+      workspace: {
+        onboarding: {
+          hasPendingInvitations: false,
+          needsWorkspace: false,
+        },
+      },
+    });
+
+    const { requireIncompleteAtlasSession } = await import("@/domains/access/server/route-guard");
+
+    try {
+      await requireIncompleteAtlasSession("/setup", "https://atlas.test//evil.test/steal");
+      throw new Error("Expected requireIncompleteAtlasSession to redirect ready operators.");
+    } catch (error) {
+      const response = error as Response & { options?: { to?: string } };
+      expect(response.status).toBe(307);
+      expect(response.options?.to).toBe("/account");
+    }
+  });
+
   it("falls back to the account page for malformed redirect targets", async () => {
     mocks.getAtlasSession.mockResolvedValue({
       accountReady: true,

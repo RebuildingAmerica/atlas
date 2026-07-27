@@ -139,4 +139,19 @@ describe("billing.functions", () => {
     expect(response.error).toBeInstanceOf(Error);
     expect((response.error as Error).message).toContain("No billing account");
   });
+  it("refuses to load the Stripe modules if it is ever bundled into the browser", async () => {
+    // import.meta.env.SSR is false in a client bundle; the guard exists so a
+    // bad import graph fails loudly instead of shipping Stripe keys to a page.
+    vi.stubEnv("SSR", "" as never);
+
+    const { createPortalSession } = await import("@/domains/billing/billing.functions");
+    const response = (await createPortalSession.__executeServer({
+      data: undefined,
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect((response.error as Error).message).toBe(
+      "Billing server modules are only available on the server.",
+    );
+  });
 });

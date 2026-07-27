@@ -25,4 +25,18 @@ describe("trackDiscoveryEvent", () => {
 
     window.removeEventListener("atlas:discovery", listener);
   });
+
+  it("stays silent during server rendering, where there is nothing listening", () => {
+    const listener = vi.fn();
+    window.addEventListener("atlas:discovery", listener);
+    vi.stubGlobal("window", undefined);
+
+    expect(() => {
+      trackDiscoveryEvent("catalog_zero_results");
+    }).not.toThrow();
+
+    vi.unstubAllGlobals();
+    expect(listener).not.toHaveBeenCalled();
+    window.removeEventListener("atlas:discovery", listener);
+  });
 });

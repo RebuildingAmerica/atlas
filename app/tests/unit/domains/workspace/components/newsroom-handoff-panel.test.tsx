@@ -37,4 +37,21 @@ describe("NewsroomHandoffPanel", () => {
 
     expect(onCopy).toHaveBeenCalledWith("Tenant desk packet");
   });
+
+  it("reads a single lead, source, and note in the singular", () => {
+    render(
+      <NewsroomHandoffPanel
+        actorCount={1}
+        sourceCount={1}
+        noteCount={1}
+        nextAction="Review latest source trail"
+        packetText="Tenant desk packet"
+        onCopyPacket={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("1 lead")).toBeInTheDocument();
+    expect(screen.getByText("1 source")).toBeInTheDocument();
+    expect(screen.getByText("1 note")).toBeInTheDocument();
+  });
 });

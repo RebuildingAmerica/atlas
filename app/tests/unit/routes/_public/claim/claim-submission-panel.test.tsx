@@ -53,6 +53,20 @@ describe("ClaimSubmissionPanel", () => {
     expect(screen.getByRole("button", { name: "Submit verification" })).toBeDisabled();
   });
 
+  it("says the identity list is unavailable instead of offering an empty picker", () => {
+    render(
+      <ClaimSubmissionPanel
+        {...createClaimSubmissionPanelProps({
+          atprotoIdentitiesError: true,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Could not load ATProto identities.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("ATProto identity")).toBeNull();
+    expect(screen.getByRole("button", { name: "Connect another account" })).toBeInTheDocument();
+  });
+
   it("does not show the backup hint for a domain-based ATProto handle", () => {
     render(
       <ClaimSubmissionPanel

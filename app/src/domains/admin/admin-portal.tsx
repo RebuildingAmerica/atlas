@@ -8,7 +8,7 @@ interface AdminPageShellProps {
 }
 
 interface AdminPageHeaderProps {
-  badge?: string;
+  badge: string;
   children?: ReactNode;
   description: string;
   title: string;
@@ -34,7 +34,7 @@ export function AdminPageHeader({ badge, children, description, title }: AdminPa
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="space-y-2">
-        {badge ? <AdminStatusBadge tone="neutral">{badge}</AdminStatusBadge> : null}
+        <AdminStatusBadge tone="neutral">{badge}</AdminStatusBadge>
         <h1 className="type-display-small text-ink-strong">{title}</h1>
         <p className="type-body-medium text-ink-soft max-w-2xl">{description}</p>
       </div>

@@ -47,6 +47,18 @@ describe("routes/_onboarding/onboarding/complete", () => {
     expect(access.redirectIfLocalSession).toHaveBeenCalledWith("/discovery");
   });
 
+  it("keys the loader on the purchase id so a new return link refetches", async () => {
+    const routeModule = await import("@/routes/_onboarding/onboarding/complete");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const loaderDeps = Route.options.loaderDeps;
+    if (!loaderDeps) throw new Error("Expected loaderDeps");
+
+    expect(loaderDeps({ search: { purchase: "pi_123" } })).toEqual({ purchase: "pi_123" });
+    expect(loaderDeps({ search: {} })).toEqual({ purchase: undefined });
+  });
+
   it("preloads purchase completion details when the return link carries a purchase", async () => {
     const routeModule = await import("@/routes/_onboarding/onboarding/complete");
     const setupPage = await import("@/domains/onboarding/pages/setup-complete-page");

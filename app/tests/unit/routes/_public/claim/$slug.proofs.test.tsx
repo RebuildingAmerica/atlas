@@ -296,6 +296,59 @@ describe("routes/_public/claim/$slug organization proofs", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
+  it("sends a signed-out visitor back to the plain claim page after sign-in", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: null,
+    } as unknown as ReturnType<typeof useAtlasSession>);
+
+    await renderOrganizationClaim();
+
+    expect(screen.getByRole("link", { name: "Sign in to continue" })).toHaveAttribute(
+      "href",
+      "/sign-in?redirect=%2Fclaim%2Facme",
+    );
+  });
+
+  it("uses the generic DNS-failure copy when the rejection is not an Error", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    vi.mocked(claims.useVerifyClaimDomain).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue("plain"),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useVerifyClaimDomain>);
+    vi.mocked(claims.useMyClaims).mockReturnValue({
+      data: [
+        {
+          id: "claim_1",
+          entry_id: "e1",
+          status: "pending",
+          tier: 2,
+          proofs: [
+            {
+              id: "proof_1",
+              proof_type: "domain_dns",
+              proof_status: "pending",
+              proof_summary: "Waiting for DNS record.",
+              metadata: {
+                challenge_host: "_atlas-claim.acme.org",
+                challenge_value: "atlas-profile-claim=token",
+              },
+              created_at: "2026-07-07T12:00:00Z",
+            },
+          ],
+        },
+      ],
+    } as unknown as ReturnType<typeof claims.useMyClaims>);
+
+    await renderOrganizationClaim();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Check DNS" }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not verify DNS record.");
+  });
+
   it("shows pending organization proof details in plain language", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(claims.useMyClaims).mockReturnValue({

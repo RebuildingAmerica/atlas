@@ -100,6 +100,21 @@ describe("OrganizationWorkspacePageView", () => {
     expect(screen.getByDisplayValue("Detroit tenant power directory")).toBeInTheDocument();
   });
 
+  it("saves public directory settings when the operator submits the form", () => {
+    const onDirectoryConfigSave = vi.fn();
+    const controller = buildController({
+      canUsePublicDirectories: true,
+      directoryTitle: "Detroit tenant power directory",
+      onDirectoryConfigSave,
+    });
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save directory settings" }));
+
+    expect(onDirectoryConfigSave).toHaveBeenCalledTimes(1);
+  });
+
   it("forwards inline handlers (workspace switching, profile save, leaving the workspace, member removal, role change)", async () => {
     const onSelectWorkspace = vi.fn();
     const onProfileSave = vi.fn();

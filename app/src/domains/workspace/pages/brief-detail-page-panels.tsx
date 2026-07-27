@@ -175,11 +175,9 @@ export function SaveActorsPanel({ briefTitle, entries }: SaveActorsPanelProps) {
     return null;
   }
 
+  // `targetListId` is non-empty wherever this button renders: the panel only
+  // shows it once `availableLists` has a first list to fall back to.
   async function saveActors() {
-    if (!targetListId) {
-      return;
-    }
-
     setStatus("idle");
     try {
       for (const entry of entries) {

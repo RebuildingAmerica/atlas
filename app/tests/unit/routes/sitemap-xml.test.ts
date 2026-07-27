@@ -72,6 +72,30 @@ describe("routes/sitemap.xml", () => {
     expect(body).not.toContain("/profiles/people/null");
   });
 
+  it("lists a never-published directory without inventing a last-modified date", async () => {
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({
+      directories: [
+        {
+          org_id: "prairie-network",
+          record_count: 0,
+          last_published_at: null,
+        },
+      ],
+    });
+    vi.mocked(api.entries.list).mockResolvedValue(buildSitemapEntryListResponse([]));
+
+    const body = await readSitemapXml();
+    const directoryBlock = body
+      .split("<url>")
+      .find((block) => block.includes("/directories/prairie-network"));
+
+    expect(directoryBlock).toContain(
+      "<loc>https://atlas.rebuildingamerica.com/directories/prairie-network</loc>",
+    );
+    expect(directoryBlock).not.toContain("<lastmod>");
+  });
+
   it("paginates entry lists inside the public API limit", async () => {
     const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });

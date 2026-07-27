@@ -19,7 +19,11 @@ import {
   formatStableDateTime,
   useDateTimeFormatter,
 } from "@rebuildingamerica/atlas-ui/format/date-time";
-import type { ClaimEvidenceInfo, Entry } from "@rebuildingamerica/atlas-api-client";
+import type {
+  ActorQualityLevel,
+  ClaimEvidenceInfo,
+  Entry,
+} from "@rebuildingamerica/atlas-api-client";
 
 interface DataQualityBlockProps {
   entry: Entry;
@@ -38,7 +42,7 @@ const ACTOR_QUALITY_LABELS: Record<string, string> = {
   sources: "Sources",
 };
 
-const ACTOR_QUALITY_LEVEL_LABELS: Record<string, string> = {
+const ACTOR_QUALITY_LEVEL_LABELS: Record<ActorQualityLevel, string> = {
   specific_actor: "Specific actor",
   partial_actor: "Partial actor",
   thin_record: "Thin record",
@@ -212,7 +216,7 @@ function ActorSpecificityBlock({ entry }: { entry: Entry }) {
   if (!quality) return null;
   const missing = quality.missing.map(formatActorQualitySlot);
   const present = quality.present.map(formatActorQualitySlot);
-  const levelLabel = ACTOR_QUALITY_LEVEL_LABELS[quality.level] ?? "Thin record";
+  const levelLabel = ACTOR_QUALITY_LEVEL_LABELS[quality.level];
 
   return (
     <div className="space-y-2">

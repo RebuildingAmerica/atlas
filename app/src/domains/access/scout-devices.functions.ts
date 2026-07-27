@@ -19,11 +19,13 @@ async function loadSessionStateModule() {
 }
 
 async function loadScoutDevicesModule() {
+  /* v8 ignore start -- No test can reach this: listScoutDevices awaits loadRuntimeModule() and revokeScoutDevice awaits loadSessionStateModule() first, and all three guards read the same import.meta.env.SSR, so stubbing SSR false always throws one of those messages before this line. The guard stays because TypeScript needs the throw to narrow away the undefined return. */
   if (import.meta.env.SSR) {
     return await import("./server/scout-devices");
   }
 
   throw new Error("Scout devices are only available on the server.");
+  /* v8 ignore stop */
 }
 
 interface ScoutLeaseReleaseSession {

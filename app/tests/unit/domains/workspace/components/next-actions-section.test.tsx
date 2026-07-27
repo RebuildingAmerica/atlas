@@ -188,4 +188,22 @@ describe("NextActionsSection", () => {
 
     expect(screen.queryByRole("link", { name: "Open proof" })).not.toBeInTheDocument();
   });
+
+  it("suggests nothing from a workspace signal that has not loaded", () => {
+    render(
+      <NextActionsSection
+        summary={fullSummary()}
+        workspace={workspaceState({
+          briefs: { data: null, status: "loading" },
+          coverageTargets: { data: null, status: "unavailable" },
+          usageSummary: { data: null, status: "loading" },
+          watches: { data: null, status: "unavailable" },
+        })}
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: "New brief" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open coverage" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Choose monitoring" })).not.toBeInTheDocument();
+  });
 });

@@ -402,7 +402,8 @@ function ManageProfileRoute() {
 
 interface FormSectionProps {
   title: string;
-  description?: string;
+  /** Every section on this page explains itself, so this is not optional. */
+  description: string;
   children: React.ReactNode;
 }
 
@@ -410,7 +411,7 @@ function FormSection({ title, description, children }: FormSectionProps) {
   return (
     <section className="bg-surface-container space-y-3 rounded-[1rem] p-5">
       <h2 className="type-title-medium text-ink-strong">{title}</h2>
-      {description ? <p className="type-body-medium text-ink-soft">{description}</p> : null}
+      <p className="type-body-medium text-ink-soft">{description}</p>
       {children}
     </section>
   );

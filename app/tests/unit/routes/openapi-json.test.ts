@@ -94,4 +94,14 @@ describe("routes/openapi.json", () => {
     expect(response.headers.get("access-control-allow-origin")).toBe("*");
     expect(await response.text()).toContain("OpenAPI document is unavailable");
   });
+
+  it("refuses to serve the document outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/openapi[.]json");
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    await expect(callRouteGet(routeModule.Route)).rejects.toThrow(
+      "Auth runtime is only available on the server.",
+    );
+  });
 });

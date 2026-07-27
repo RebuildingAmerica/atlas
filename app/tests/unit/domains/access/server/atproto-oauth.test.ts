@@ -605,4 +605,466 @@ describe("atproto-oauth", () => {
     expect(run).toHaveBeenCalledWith("state_1");
     expect(run).toHaveBeenCalledWith("did:plc:other");
   });
+
+  it("sends the shared provider callback to sign-in when that is the pending flow", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        flow: "sign-in",
+        requestedHandle: "person.example",
+        returnTo: "/account",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:person", handle: "person.example" },
+    });
+    mocks().resolveIdentity.mockResolvedValue({
+      data: { did: "did:plc:person", didDoc: { id: "did:plc:person" }, handle: "person.example" },
+    });
+    mocks().fetch.mockResolvedValue(new Response(JSON.stringify({ user_id: "user_1" })));
+    atprotoSignInMocks.createAtprotoSessionForUser.mockResolvedValue(
+      new Response(null, { headers: { "set-cookie": "session=opaque; HttpOnly" }, status: 204 }),
+    );
+    const { completeAtprotoOAuthCallback } = await import("@/domains/access/server/atproto-oauth");
+
+    const response = await completeAtprotoOAuthCallback(
+      new URLSearchParams("code=abc&state=state_1"),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://atlas.test/account");
+    expect(response.headers.get("set-cookie")).toContain("session=opaque");
+  });
+
+  it("sends the shared provider callback to identity linking for every other flow", async () => {
+    configureHarnessCallback("/claim/org");
+    const { completeAtprotoOAuthCallback } = await import("@/domains/access/server/atproto-oauth");
+
+    const response = await completeAtprotoOAuthCallback(
+      new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toContain("/claim/org");
+    expect(response.headers.get("location")).toContain("atprotoStatus=connected");
+  });
+
+  it("refuses a callback that carries no state at all", async () => {
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get: vi.fn(), run: vi.fn() }),
+    });
+    mocks().callback.mockResolvedValue({
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    const { completeAtprotoOAuthCallback } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(completeAtprotoOAuthCallback(new URLSearchParams("code=abc"))).rejects.toThrow(
+      "ATProto verification state could not be matched to this session.",
+    );
+  });
+
+  it("refuses a sign-in callback whose stored state belongs to a linking flow", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({ requestedHandle: "person.example", returnTo: "/account" }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(new URLSearchParams("code=abc&state=state_1")),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    expect(mocks().getProfile).not.toHaveBeenCalled();
+  });
+
+  it("refuses a sign-in whose profile does not match the DID that authorized", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        flow: "sign-in",
+        requestedHandle: "person.example",
+        returnTo: "/account",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:impostor", handle: "person.example" },
+    });
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(new URLSearchParams("code=abc&state=state_1")),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    expect(atprotoSignInMocks.createAtprotoSessionForUser).not.toHaveBeenCalled();
+  });
+
+  it("refuses a sign-in whose DID document does not resolve back to the same DID", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        flow: "sign-in",
+        requestedHandle: "person.example",
+        returnTo: "/account",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:person", handle: "person.example" },
+    });
+    mocks().resolveIdentity.mockResolvedValue({
+      data: { did: "did:plc:person", didDoc: null, handle: "person.example" },
+    });
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(new URLSearchParams("code=abc&state=state_1")),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    expect(mocks().fetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a sign-in when Atlas has no passkey-ready controller for the DID", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        flow: "sign-in",
+        requestedHandle: "person.example",
+        returnTo: "/account",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().getAuthRuntimeConfig.mockReturnValue({
+      apiBaseUrl: null,
+      internalSecret: "secret",
+      publicBaseUrl: "https://atlas.test",
+    });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:person", handle: "person.example" },
+    });
+    mocks().resolveIdentity.mockResolvedValue({
+      data: { did: "did:plc:person", didDoc: { id: "did:plc:person" }, handle: "person.example" },
+    });
+    mocks().fetch.mockResolvedValue(new Response(null, { status: 404 }));
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(new URLSearchParams("code=abc&state=state_1")),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    expect(String(mocks().fetch.mock.calls[0]?.[0])).toBe(
+      "https://atlas.test/api/atproto/identities/sign-in/resolve",
+    );
+    expect(atprotoSignInMocks.createAtprotoSessionForUser).not.toHaveBeenCalled();
+  });
+
+  it("refuses a sign-in when the controller lookup returns no user id", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        flow: "sign-in",
+        requestedHandle: "person.example",
+        returnTo: "/account",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:person", handle: "person.example" },
+    });
+    mocks().resolveIdentity.mockResolvedValue({
+      data: { did: "did:plc:person", didDoc: { id: "did:plc:person" }, handle: "person.example" },
+    });
+    mocks().fetch.mockResolvedValue(new Response(JSON.stringify({ user_id: "" })));
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(new URLSearchParams("code=abc&state=state_1")),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    expect(atprotoSignInMocks.createAtprotoSessionForUser).not.toHaveBeenCalled();
+  });
+
+  it("starts a harness sign-in authorization without contacting the real provider", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    mocks().loadAtlasSession.mockResolvedValue(null);
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ run: vi.fn() }),
+    });
+    const { createAtprotoSignInAuthorizationUrl } =
+      await import("@/domains/access/server/atproto-oauth");
+
+    const authorizationUrl = await createAtprotoSignInAuthorizationUrl({
+      handle: "person.example",
+      returnTo: "/account",
+    });
+
+    expect(mocks().authorize).not.toHaveBeenCalled();
+    expect(authorizationUrl.pathname).toBe("/api/atproto/oauth/harness/authorize");
+    expect(authorizationUrl.searchParams.get("handle")).toBe("person.example");
+  });
+
+  it("refuses to build a harness callback URL without both state and handle", async () => {
+    const { createAtprotoHarnessProviderCallbackUrl } =
+      await import("@/domains/access/server/atproto-oauth");
+
+    for (const query of ["state=state_1", "handle=org.example", ""]) {
+      expect(() => createAtprotoHarnessProviderCallbackUrl(new URLSearchParams(query))).toThrow(
+        "ATProto provider harness needs state and handle.",
+      );
+    }
+  });
+
+  it("refuses a harness sign-in whose state or handle does not line up", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        flow: "sign-in",
+        requestedHandle: "person.example",
+        returnTo: "/account",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(new URLSearchParams("code=atlas-e2e-harness&state=state_1")),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    await expect(
+      completeAtprotoSignIn(
+        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=impostor.example"),
+      ),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    expect(atprotoSignInMocks.createAtprotoSessionForUser).not.toHaveBeenCalled();
+  });
+
+  it("refuses a harness callback that arrives without any state", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get: vi.fn(), run: vi.fn() }),
+    });
+    const { completeAtprotoAuthorization, completeAtprotoSignIn } =
+      await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(new URLSearchParams("code=atlas-e2e-harness&handle=person.example")),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    await expect(
+      completeAtprotoAuthorization(
+        new URLSearchParams("code=atlas-e2e-harness&handle=org.example"),
+      ),
+    ).rejects.toThrow("ATProto verification state could not be matched to this session.");
+  });
+
+  it("falls back to the public origin when no separate API base URL is configured", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    mocks().getAuthRuntimeConfig.mockReturnValue({
+      apiBaseUrl: null,
+      internalSecret: "secret",
+      publicBaseUrl: "https://atlas.test",
+    });
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        requestedHandle: "org.example",
+        returnTo: "/claim/org",
+        userId: "user_1",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          current_handle: "org.example",
+          did: "did:web:org.example",
+          id: "identity_harness",
+          pds_url: "https://pds.atlas-e2e.test",
+        }),
+        { status: 201 },
+      ),
+    );
+    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
+
+    await completeAtprotoAuthorization(
+      new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
+    );
+
+    expect(String(mocks().fetch.mock.calls[0]?.[0])).toBe(
+      "https://atlas.test/api/atproto/identities",
+    );
+  });
+
+  it("refuses a harness sign-in whose stored state is for a linking flow", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({ requestedHandle: "person.example", returnTo: "/account" }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(
+        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=person.example"),
+      ),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+  });
+
+  it("refuses a harness link callback that belongs to another Atlas session", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        requestedHandle: "org.example",
+        returnTo: "/claim/org",
+        userId: "someone-else",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoAuthorization(
+        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
+      ),
+    ).rejects.toThrow("ATProto verification state could not be matched to this session.");
+    await expect(
+      completeAtprotoAuthorization(new URLSearchParams("code=atlas-e2e-harness&state=state_1")),
+    ).rejects.toThrow("ATProto verification state could not be matched to this session.");
+  });
+
+  it("refuses a harness link callback whose handle differs from the request", async () => {
+    configureHarnessCallback("/claim/org");
+    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoAuthorization(
+        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=impostor.example"),
+      ),
+    ).rejects.toMatchObject({
+      attemptedHandle: "org.example",
+      message: "ATProto identity could not be verified.",
+    });
+  });
+
+  it("refuses a link callback whose profile does not match the DID that authorized", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        requestedHandle: "org.example",
+        returnTo: "/claim/org",
+        userId: "user_1",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().getTokenInfo.mockResolvedValue({ aud: "https://pds.example" });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:org", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:impostor", handle: "org.example" },
+    });
+    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoAuthorization(new URLSearchParams("code=abc&state=state_1")),
+    ).rejects.toMatchObject({
+      attemptedHandle: "org.example",
+      message: "ATProto identity could not be verified.",
+    });
+    expect(mocks().fetch).not.toHaveBeenCalled();
+  });
+
+  it("reports a link that Atlas could not record, without losing the return destination", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        requestedHandle: "org.example",
+        returnTo: "/claim/org",
+        userId: "user_1",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().getTokenInfo.mockResolvedValue({ aud: "https://pds.example" });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:org", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:org", handle: "org.example" },
+    });
+    mocks().resolveIdentity.mockResolvedValue({
+      data: { did: "did:plc:org", didDoc: { id: "did:plc:org" }, handle: "org.example" },
+    });
+    mocks().fetch.mockResolvedValue(new Response(null, { status: 500 }));
+    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoAuthorization(new URLSearchParams("code=abc&state=state_1")),
+    ).rejects.toMatchObject({
+      attemptedHandle: "org.example",
+      message: "ATProto identity could not be linked.",
+      returnTo: "/claim/org",
+    });
+  });
+
+  it("reuses one OAuth client across callbacks and allows a non-local http deployment", async () => {
+    mocks().getAuthRuntimeConfig.mockReturnValue({
+      apiBaseUrl: "https://api.atlas.test",
+      internalSecret: "secret",
+      publicBaseUrl: "http://atlas.internal",
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get: vi.fn(), run: vi.fn() }),
+    });
+    mocks().callback.mockResolvedValue({
+      session: { did: "did:plc:person", getTokenInfo: mocks().getTokenInfo },
+    });
+    const { NodeOAuthClient } = await import("@atproto/oauth-client-node");
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(completeAtprotoSignIn(new URLSearchParams("code=abc"))).rejects.toThrow(
+      "ATProto sign-in is unavailable.",
+    );
+    await expect(completeAtprotoSignIn(new URLSearchParams("code=abc"))).rejects.toThrow(
+      "ATProto sign-in is unavailable.",
+    );
+
+    expect(vi.mocked(NodeOAuthClient)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(NodeOAuthClient).mock.calls[0]?.[0]?.allowHttp).toBe(false);
+  });
 });

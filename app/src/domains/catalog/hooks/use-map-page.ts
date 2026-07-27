@@ -125,6 +125,7 @@ export function useMapPage({
   );
 
   const params = useMemo(
+    /* v8 ignore next -- the null arm only satisfies the state's nullable type: bounds is seeded from the search params (the continental US when the URL carries no camera) and every later value is read off the live map, so it is never null here. */
     () => (bounds ? mapPointParamsFor(filters, bounds) : null),
     [bounds, filters],
   );

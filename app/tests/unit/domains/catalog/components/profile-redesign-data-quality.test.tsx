@@ -411,4 +411,37 @@ describe("DataQualityBlock", () => {
     );
     expect(screen.getAllByText(/today|d ago/).length).toBeGreaterThan(0);
   });
+  it("counts a social handle as a way to reach the subject", () => {
+    render(
+      <DataQualityBlock entry={buildEntry({ social_media: { bluesky: "@jane.bsky.social" } })} />,
+    );
+
+    const fields = within(screen.getByLabelText("Canonical profile fields"));
+    expect(fields.getByText("Contact")).toBeInTheDocument();
+    expect(screen.queryByText(/^Missing .*Contact/)).not.toBeInTheDocument();
+  });
+
+  it("does not count an empty social handle as a way to reach the subject", () => {
+    render(<DataQualityBlock entry={buildEntry({ social_media: { bluesky: "" } })} />);
+    expect(screen.getByText("Missing Contact")).toBeInTheDocument();
+  });
+
+  it("titles an actor-quality slot the label table does not name", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          actor_quality: {
+            level: "partial_actor",
+            missing: ["funding"],
+            present: ["actor", "work"],
+            score: 2,
+            total: 3,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Partial actor")).toBeInTheDocument();
+    expect(screen.getByText(/Funding/)).toBeInTheDocument();
+  });
 });

@@ -215,14 +215,6 @@ function PublicSessionChip({ item, thumbnailUrl }: PublicSessionChipProps) {
   const className =
     "type-label-large border-border bg-surface-container-lowest text-ink-strong hover:bg-surface-container focus-visible:ring-civic inline-flex h-10 items-center gap-2 rounded-full border py-1 pr-3 pl-1.5 no-underline outline-none focus-visible:ring-2";
 
-  if (item.native) {
-    return (
-      <a href={item.to} className={className}>
-        {content}
-      </a>
-    );
-  }
-
   return (
     <Link to={item.to} className={className}>
       {content}

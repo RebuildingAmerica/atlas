@@ -50,10 +50,9 @@ function sourceDiversitySignal(entry: Entry): LeadSignal {
   if (typeCount >= 2 || independentCount >= 2) {
     return { key: "source-diversity", label: "Diverse sources" };
   }
-  if (entry.source_count <= 1 || typeCount <= 1) {
-    return { key: "source-diversity", label: "Limited source mix" };
-  }
-  return { key: "source-diversity", label: "Source mix unknown" };
+  // Getting here means fewer than two source types and fewer than two
+  // independent sources, which is the definition of a thin mix.
+  return { key: "source-diversity", label: "Limited source mix" };
 }
 
 function hasReachableContact(entry: Entry): boolean {
@@ -81,10 +80,9 @@ function partnerQualificationSignal(entry: Entry): LeadSignal {
   if (entry.trust.level === "corroborated" && reachable) {
     return { key: "partner-qualification", label: "Strong partner lead" };
   }
-  if (entry.trust.level === "unverified" || entry.source_count <= 1 || !reachable) {
-    return { key: "partner-qualification", label: "Qualify before outreach" };
-  }
-  return { key: "partner-qualification", label: "Confirm partner fit" };
+  // Everything left is unverified, thinly sourced, or unreachable: the two
+  // returns above already claim every record that clears the outreach bar.
+  return { key: "partner-qualification", label: "Qualify before outreach" };
 }
 
 export function buildLeadQualitySignals(entry: Entry): LeadSignal[] {

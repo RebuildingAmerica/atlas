@@ -333,6 +333,32 @@ describe("ResearchHomePage", () => {
     expect(screen.queryByText("Loading")).not.toBeInTheDocument();
   });
 
+  it("says the operating picture is still loading rather than reporting zero", () => {
+    mocks.useAtlasSession.mockReturnValue({ data: sessionWith({ activeWorkspace: true }) });
+    mocks.useWorkspaceBriefs.mockReturnValue({ data: undefined, isError: false });
+    mocks.useWorkspaceCoverageTargets.mockReturnValue({ data: undefined, isError: false });
+    mocks.useWorkspaceUsageSummary.mockReturnValue({ data: undefined, isError: false });
+    mocks.useWorkspaceWatchesSnapshot.mockReturnValue({ data: undefined, isError: false });
+
+    render(<ResearchHomePage />);
+
+    expect(screen.getByTestId("next")).toHaveAttribute("data-brief-status", "loading");
+    expect(screen.getByTestId("next")).toHaveAttribute("data-brief-total", "none");
+    expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
+    expect(screen.queryByText("2 briefs")).not.toBeInTheDocument();
+  });
+
+  it("keeps the trends strip empty when the summary carries no trends", () => {
+    mocks.useAtlasSession.mockReturnValue({ data: sessionWith({}) });
+    mocks.useResearchSummary.mockReturnValue({
+      data: { ...summary(), researchTrends: undefined },
+    });
+
+    render(<ResearchHomePage />);
+
+    expect(screen.getByTestId("research-trends")).toHaveAttribute("data-trend-count", "0");
+  });
+
   it("labels individual active workspaces as personal workspaces", () => {
     mocks.useAtlasSession.mockReturnValue({
       data: sessionWith({ activeWorkspace: true, workspaceType: "individual" }),

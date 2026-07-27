@@ -840,4 +840,33 @@ describe("routes/_workspace/manage/$slug", () => {
     expect(screen.queryByRole("option", { name: "disconnected.example" })).toBeNull();
     expect(screen.queryByRole("option", { name: "stale.example" })).toBeNull();
   });
+
+  it("renders on the server, where there is no browser URL to preselect an identity from", async () => {
+    const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
+      data: {
+        id: "e1",
+        slug: "acme",
+        type: "organization",
+        name: "Acme",
+        sources: [],
+        claim: { status: "verified" },
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof entriesHooks.useEntryBySlug>);
+    const routeModule = await import("@/routes/_workspace/manage/$slug");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ slug: "acme" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+
+    vi.stubGlobal("window", undefined);
+    const html = renderToStaticMarkup(<Component />);
+    vi.unstubAllGlobals();
+
+    expect(html).toContain("Manage Acme");
+    expect(html).toContain("Public identity");
+    expect(html).not.toContain("atprotoIdentityId");
+  });
 });

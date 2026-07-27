@@ -283,6 +283,16 @@ describe("routes/_public/directories/$orgId", () => {
               },
             },
           },
+          {
+            id: "entry-3",
+            name: "Westport Renters Circle",
+            type: "organization",
+            description: "Neighborhood renters meetup.",
+            slug: "westport-renters-circle",
+            city: "Kansas City",
+            state: "MO",
+            source_count: 1,
+          },
         ],
         trust_footer: {
           label: "Powered by Atlas",
@@ -300,6 +310,7 @@ describe("routes/_public/directories/$orgId", () => {
 
     expect(screen.getByText("KC Tenants")).toBeInTheDocument();
     expect(screen.getByText("Heartland Legal Aid")).toBeInTheDocument();
+    expect(screen.getByText("Westport Renters Circle")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Search directory"), {
       target: { value: "legal" },
@@ -308,5 +319,172 @@ describe("routes/_public/directories/$orgId", () => {
     expect(screen.queryByText("KC Tenants")).not.toBeInTheDocument();
     expect(screen.getByText("Heartland Legal Aid")).toBeInTheDocument();
     expect(screen.getByText("1 matching profile")).toBeInTheDocument();
+
+    // A published record can arrive without issue tags or source types; the
+    // reader should still be able to find it by name instead of hitting a crash.
+    fireEvent.change(screen.getByLabelText("Search directory"), {
+      target: { value: "westport" },
+    });
+
+    expect(screen.getByText("Westport Renters Circle")).toBeInTheDocument();
+    expect(screen.queryByText("Heartland Legal Aid")).not.toBeInTheDocument();
+  });
+
+  it("publishes no metadata when the directory could not be loaded", async () => {
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.head) throw new Error("Expected head");
+    expect(Route.options.head({ loaderData: undefined, params: { orgId: "tenant-kc" } })).toEqual(
+      {},
+    );
+  });
+
+  it("says a directory with no listings is empty rather than showing nothing", async () => {
+    const support =
+      await import("@/../tests/unit/routes/_public/directories/public-directory-test-support");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useLoaderData.mockReturnValue({
+      directory: support.publicDirectoryFixture({
+        lastReviewedAt: null,
+        privateNotesExposed: true,
+      }),
+    });
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    render(<Component />);
+
+    expect(screen.getByText("No public profiles listed yet.")).toBeInTheDocument();
+    expect(screen.getByText("No review date")).toBeInTheDocument();
+    expect(screen.getByText("0 public profiles")).toBeInTheDocument();
+    expect(screen.queryByText("Private workspace notes are not public.")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Search directory")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Commons exchange" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Verified domain/)).not.toBeInTheDocument();
+  });
+
+  it("says so when a search matches none of the listed profiles", async () => {
+    const support =
+      await import("@/../tests/unit/routes/_public/directories/public-directory-test-support");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useLoaderData.mockReturnValue({
+      directory: support.publicDirectoryFixture({
+        entries: [
+          support.directoryEntryFixture({
+            id: "entry-1",
+            name: "KC Tenants",
+            slug: "kc-tenants",
+            type: "organization",
+          }),
+        ],
+      }),
+    });
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    render(<Component />);
+
+    fireEvent.change(screen.getByLabelText("Search directory"), {
+      target: { value: "hospitals" },
+    });
+
+    expect(screen.getByText("No matching public profiles.")).toBeInTheDocument();
+    expect(screen.getByText("0 matching profiles")).toBeInTheDocument();
+  });
+
+  it("links each listed type to its own profile section and admits unverified claims", async () => {
+    const support =
+      await import("@/../tests/unit/routes/_public/directories/public-directory-test-support");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useLoaderData.mockReturnValue({
+      directory: support.publicDirectoryFixture({
+        entries: [
+          support.directoryEntryFixture({
+            id: "entry-1",
+            name: "Ada Reyes",
+            slug: "ada-reyes",
+            sourceCount: 1,
+            type: "person",
+          }),
+          support.directoryEntryFixture({
+            id: "entry-2",
+            name: "Rent Cap Now",
+            slug: "rent-cap-now",
+            type: "initiative",
+          }),
+        ],
+      }),
+    });
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    render(<Component />);
+
+    const profileLinks = screen.getAllByRole("link", { name: "Open profile" });
+    expect(profileLinks[0]).toHaveAttribute("href", "/profiles/people/ada-reyes");
+    expect(profileLinks[1]).toHaveAttribute("href", "/profiles/initiatives/rent-cap-now");
+    expect(screen.getByText("1 source")).toBeInTheDocument();
+    // No claim evidence was recorded, so the badge must not imply any.
+    expect(screen.getAllByText("unverified")).toHaveLength(2);
+  });
+
+  it("states an open federation policy in the reader's words", async () => {
+    const support =
+      await import("@/../tests/unit/routes/_public/directories/public-directory-test-support");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useLoaderData.mockReturnValue({
+      directory: support.publicDirectoryFixture({
+        federation: {
+          label: "Shared with the Atlas commons",
+          shared_record_count: 1,
+          source_backed_record_count: 4,
+          review_required: false,
+          status: "open",
+          minimum_confidence: "",
+          provenance_stamped_ingestion: false,
+          body: "Public records from this directory can be reused by other Atlas directories.",
+        },
+      }),
+    });
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    render(<Component />);
+
+    expect(screen.getByText("Open reuse")).toBeInTheDocument();
+    expect(screen.getByText("Open")).toBeInTheDocument();
+    expect(screen.getByText("Unstamped ingestion")).toBeInTheDocument();
+    expect(screen.getByText("1 shared record")).toBeInTheDocument();
+    expect(screen.getByText("4 source-backed records")).toBeInTheDocument();
+  });
+
+  it("shows a review date it cannot parse exactly as the workspace recorded it", async () => {
+    const support =
+      await import("@/../tests/unit/routes/_public/directories/public-directory-test-support");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useLoaderData.mockReturnValue({
+      directory: support.publicDirectoryFixture({ lastReviewedAt: "last spring" }),
+    });
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    const view = render(<Component />);
+
+    expect(screen.getByText("Last reviewed last spring")).toBeInTheDocument();
+
+    view.unmount();
+    readRouterMocks().useLoaderData.mockReturnValue({
+      directory: support.publicDirectoryFixture({ lastReviewedAt: "20xx-ab-cd" }),
+    });
+    render(<Component />);
+
+    expect(screen.getByText("Last reviewed 20xx-ab-cd")).toBeInTheDocument();
   });
 });

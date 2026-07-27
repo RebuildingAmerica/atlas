@@ -107,4 +107,86 @@ describe("DiscountAdminPage", () => {
       });
     });
   });
+  it("rejects pending verification records by verification id", async () => {
+    mocks.listDiscountVerifications.mockResolvedValue(verificationListResponse);
+    mocks.reviewDiscountVerification.mockResolvedValue({
+      message: "Verification review updated.",
+      record: { ...verificationListResponse.records[0], status: "rejected" },
+      status: "rejected",
+    });
+
+    renderDiscountAdminPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
+
+    await waitFor(() => {
+      expect(mocks.reviewDiscountVerification).toHaveBeenCalledWith({
+        data: {
+          notes: "Rejected from admin review.",
+          status: "rejected",
+          verificationId: "verif_123",
+        },
+      });
+    });
+  });
+
+  it("says so when there are no verification requests to review", async () => {
+    mocks.listDiscountVerifications.mockResolvedValue({ records: [], total: 0 });
+
+    renderDiscountAdminPage();
+
+    expect(await screen.findByText("No verification requests yet.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+  });
+
+  it("surfaces the reason the verification list could not load", async () => {
+    mocks.listDiscountVerifications.mockRejectedValue(
+      new Error("Atlas could not reach the review API."),
+    );
+
+    renderDiscountAdminPage();
+
+    expect(await screen.findByText("Atlas could not reach the review API.")).toBeInTheDocument();
+    expect(screen.queryByText("No verification requests yet.")).not.toBeInTheDocument();
+  });
+
+  it("falls back to a readable message when the list failure is not an Error", async () => {
+    mocks.listDiscountVerifications.mockRejectedValue("network down");
+
+    renderDiscountAdminPage();
+
+    expect(await screen.findByText("Discount verifications could not load.")).toBeInTheDocument();
+  });
+
+  it("shows reviewers the notes and outcome on an already-decided request", async () => {
+    mocks.listDiscountVerifications.mockResolvedValue({
+      records: [
+        {
+          ...verificationListResponse.records[0],
+          notes: "Byline confirmed.",
+          status: "verified",
+          verified_at: "2026-07-02T12:00:00.000Z",
+        },
+      ],
+      total: 1,
+    });
+
+    renderDiscountAdminPage();
+
+    expect(await screen.findByText('"Byline confirmed."')).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+  });
+
+  it("shows a rejected request without review buttons", async () => {
+    mocks.listDiscountVerifications.mockResolvedValue({
+      records: [{ ...verificationListResponse.records[0], notes: null, status: "rejected" }],
+      total: 1,
+    });
+
+    renderDiscountAdminPage();
+
+    await screen.findByRole("link", { name: "View details" });
+    expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+  });
 });

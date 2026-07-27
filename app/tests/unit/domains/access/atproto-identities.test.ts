@@ -117,4 +117,21 @@ describe("ATProto identity hooks", () => {
       queryKey: ["auth", "atproto-identities"],
     });
   });
+
+  it("refuses to provision a managed identity outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { provisionManagedAtprotoIdentityForCurrentUser } =
+      await import("@/domains/access/atproto-identities");
+
+    const response = (await provisionManagedAtprotoIdentityForCurrentUser.__executeServer({
+      method: "POST",
+      data: { handle: "civic.atlas.test" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toEqual(
+      new Error("Managed ATProto identity provisioning is only available on the server."),
+    );
+    expect(mocks.provisionManaged).not.toHaveBeenCalled();
+  });
 });

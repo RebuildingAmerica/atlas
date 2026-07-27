@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, MouseEvent, ReactNode } from "react";
 
 /**
  * Generic shape of the route-options bag that route files pass to
@@ -105,6 +105,8 @@ export interface MockLinkProps {
   search?: Record<string, unknown>;
   hash?: string;
   className?: string;
+  /** Forwarded so components that track a click on a Link stay testable. */
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 }
 
 /**
@@ -180,10 +182,11 @@ export function buildRouterMockModule(api: RouterMockApi): Record<string, unknow
     Outlet: () => <div data-testid="router-outlet" />,
     HeadContent: () => null,
     Scripts: () => null,
-    Link: ({ children, to, params, search, hash, className }: MockLinkProps) => (
+    Link: ({ children, to, params, search, hash, className, onClick }: MockLinkProps) => (
       <a
         href={resolveMockHref(to, params, search, hash)}
         className={className}
+        onClick={onClick}
         data-link-to={to}
         data-link-params={params ? JSON.stringify(params) : undefined}
         data-link-search={search ? JSON.stringify(search) : undefined}

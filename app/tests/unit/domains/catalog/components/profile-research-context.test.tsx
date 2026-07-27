@@ -108,4 +108,92 @@ describe("ProfileResearchContext", () => {
     expect(screen.getByRole("group", { name: "Corrections" })).toBeInTheDocument();
     expect(screen.getAllByTestId("research-context-icon").length).toBeGreaterThanOrEqual(4);
   });
+
+  it("pivots a reader to the city and the issue the record sits in", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({ city: "Jackson", issue_areas: ["housing_affordability"], state: "MS" })}
+        issueAreaLabels={{ housing_affordability: "Housing affordability" }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "People and groups in Jackson" })).toHaveAttribute(
+      "href",
+      "/browse?cities=Jackson&states=MS",
+    );
+    expect(screen.getByRole("link", { name: "Housing affordability actors" })).toHaveAttribute(
+      "href",
+      "/browse?issue_areas=housing_affordability",
+    );
+  });
+
+  it("pivots on the state alone when the record names no city", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({ city: undefined, issue_areas: [], state: "MS" })}
+        issueAreaLabels={{}}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "People and groups in MS" })).toHaveAttribute(
+      "href",
+      "/browse?states=MS",
+    );
+    const facts = within(screen.getByRole("group", { name: "Quick facts" }));
+    expect(facts.queryByText("Issues")).not.toBeInTheDocument();
+  });
+
+  it("pivots on the region when neither city nor state is known", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({ city: undefined, region: "Gulf Coast", state: undefined })}
+        issueAreaLabels={{}}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "People and groups in Gulf Coast" })).toHaveAttribute(
+      "href",
+      "/browse?regions=Gulf+Coast",
+    );
+  });
+
+  it("offers no place pivot for a record with no location at all", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({
+          city: undefined,
+          issue_areas: [],
+          region: undefined,
+          state: undefined,
+        })}
+        issueAreaLabels={{}}
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: /People and groups in/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Location not specified")).toBeInTheDocument();
+  });
+
+  it("counts a single source packet in the singular", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({ source_count: 1 })}
+        issueAreaLabels={{ housing_affordability: "Housing affordability" }}
+      />,
+    );
+
+    expect(screen.getByText("1 source")).toBeInTheDocument();
+  });
+
+  it("humanizes an issue slug the taxonomy does not label", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({ issue_areas: ["food_security"] })}
+        issueAreaLabels={{}}
+      />,
+    );
+
+    expect(screen.getByText("Food Security")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Food Security actors" })).toBeInTheDocument();
+  });
 });

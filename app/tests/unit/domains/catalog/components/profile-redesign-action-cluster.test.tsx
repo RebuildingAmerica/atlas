@@ -380,4 +380,21 @@ describe("ActionCluster", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: /save to list/i })).not.toBeInTheDocument();
   });
+  it("offers no contact link when the profile lists no email", () => {
+    render(<ActionCluster {...baseProps} isSignedIn={false} />);
+    expect(screen.queryByRole("link", { name: /^contact$/i })).not.toBeInTheDocument();
+  });
+
+  it("offers a mailto link when the profile lists an email", () => {
+    render(<ActionCluster {...baseProps} email="hello@example.org" isSignedIn={false} />);
+    expect(screen.getByRole("link", { name: /^contact$/i })).toHaveAttribute(
+      "href",
+      "mailto:hello@example.org",
+    );
+  });
+  it("drops the source-inspection link when the profile has no reporting trail", () => {
+    render(<ActionCluster {...baseProps} sourcesHref={undefined} isSignedIn={false} />);
+    expect(screen.queryByRole("link", { name: /inspect sources/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /share/i })).toBeInTheDocument();
+  });
 });

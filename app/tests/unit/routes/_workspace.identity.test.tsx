@@ -180,6 +180,40 @@ describe("routes/_workspace identity controls", () => {
     expect(screen.getByText(/Atlas could not sign you out right now/)).toBeInTheDocument();
   });
 
+  it("keeps the sign-out failure message safe when the RP logout lookup itself fails", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
+
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: workspaceSession({ activeOrganization: null, memberships: [] }),
+    } as unknown as ReturnType<typeof useAtlasSession>);
+    vi.mocked(getRpLogoutRedirect).mockRejectedValue(new Error("upstream identity provider 503"));
+
+    await renderWorkspaceRoute();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Sign out/ }));
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Atlas could not sign you out right now.")).toBeInTheDocument();
+    expect(screen.queryByText(/503/)).toBeNull();
+  });
+
+  it("still draws an avatar when the account has neither a name nor an email", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: {
+        ...workspaceSession({ activeOrganization: null, memberships: [] }),
+        user: { id: "u1", name: "   ", email: "" },
+      },
+    } as unknown as ReturnType<typeof useAtlasSession>);
+
+    await renderWorkspaceRoute();
+
+    expect(screen.getByText("A")).toBeInTheDocument();
+  });
+
   it("surfaces workspace-switch errors", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     const { useMutation } = await import("@tanstack/react-query");

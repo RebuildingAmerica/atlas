@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useOrganizationPageForms } from "@/domains/access/components/organization/use-organization-page-forms";
 import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import type { WorkspaceDirectoryConfig } from "@/domains/workspace/server/directory-config";
 
 describe("useOrganizationPageForms", () => {
   const organization = {
@@ -148,6 +149,67 @@ describe("useOrganizationPageForms", () => {
 
     rerender({ needsWorkspace: true });
     expect(result.current.workspaceType).toBe("team");
+  });
+
+  it("loads the saved public directory settings into their editors", () => {
+    const { result } = renderHook(() =>
+      useOrganizationPageForms({
+        activeOrganizationId: "org_1",
+        directoryConfig: {
+          methodology: {
+            correction_policy: "Email corrections@atlas.test.",
+            review_policy: "Two reviewers per entry.",
+            source_policy: "Public filings only.",
+            summary: "How this directory is built.",
+          },
+          scope: {
+            entry_types: ["person", "organization"],
+            geography_labels: ["Dallas, TX", "Austin, TX"],
+            issue_area_ids: ["housing", "transit"],
+          },
+          sponsor_label: "Rebuilding America",
+          title: "Texas civic directory",
+        } as unknown as WorkspaceDirectoryConfig,
+        needsWorkspace: false,
+        organization: null,
+      }),
+    );
+
+    expect(result.current.directoryTitle).toBe("Texas civic directory");
+    expect(result.current.directorySponsorLabel).toBe("Rebuilding America");
+    expect(result.current.directoryIssueAreaIds).toBe("housing, transit");
+    expect(result.current.directoryGeographyLabels).toBe("Dallas, TX; Austin, TX");
+    expect(result.current.directoryEntryTypes).toBe("person, organization");
+    expect(result.current.directoryMethodologySummary).toBe("How this directory is built.");
+    expect(result.current.directorySourcePolicy).toBe("Public filings only.");
+    expect(result.current.directoryReviewPolicy).toBe("Two reviewers per entry.");
+    expect(result.current.directoryCorrectionPolicy).toBe("Email corrections@atlas.test.");
+  });
+
+  it("leaves the directory editors empty when nothing has been configured", () => {
+    const { result } = renderHook(() =>
+      useOrganizationPageForms({
+        activeOrganizationId: "org_1",
+        directoryConfig: {
+          methodology: null,
+          scope: null,
+          sponsor_label: null,
+          title: null,
+        } as unknown as WorkspaceDirectoryConfig,
+        needsWorkspace: false,
+        organization: null,
+      }),
+    );
+
+    expect(result.current.directoryTitle).toBe("");
+    expect(result.current.directorySponsorLabel).toBe("");
+    expect(result.current.directoryIssueAreaIds).toBe("");
+    expect(result.current.directoryGeographyLabels).toBe("");
+    expect(result.current.directoryEntryTypes).toBe("");
+    expect(result.current.directoryMethodologySummary).toBe("");
+    expect(result.current.directorySourcePolicy).toBe("");
+    expect(result.current.directoryReviewPolicy).toBe("");
+    expect(result.current.directoryCorrectionPolicy).toBe("");
   });
 
   it("preserves operator-edited form values when organization details refresh", () => {

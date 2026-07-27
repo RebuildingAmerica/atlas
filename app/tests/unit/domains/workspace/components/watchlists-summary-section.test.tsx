@@ -57,4 +57,28 @@ describe("WatchlistsSummarySection", () => {
 
     expect(screen.getByText("No watchlists yet.")).toBeInTheDocument();
   });
+
+  it("counts several watchlists of one kind in the plural", () => {
+    const watchlists: WatchlistSummary[] = [
+      {
+        id: "place:kansas city, mo:mo",
+        kind: "place",
+        label: "Kansas City, MO",
+        detail: "2 recent requests",
+        changedSinceLastTime: "2 new research requests",
+      },
+      {
+        id: "place:tulsa, ok:ok",
+        kind: "place",
+        label: "Tulsa, OK",
+        detail: "3 recent requests",
+        changedSinceLastTime: "3 new research requests",
+      },
+    ];
+
+    render(<WatchlistsSummarySection watchlists={watchlists} />);
+
+    expect(screen.getByText("2 places")).toBeInTheDocument();
+    expect(screen.getByText("0 issues")).toBeInTheDocument();
+  });
 });

@@ -170,7 +170,7 @@ function readSection(
 }
 
 function readRequiredString(value: Record<string, unknown>, path: string): string {
-  const item = value[path.split(".").at(-1) ?? ""];
+  const item = value[path.slice(path.lastIndexOf(".") + 1)];
   if (typeof item !== "string" || !item.trim()) {
     throw new Error(`${STRIPE_ATLAS_CATALOG_ENV_KEY}.${path} is required for billing operations.`);
   }

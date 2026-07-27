@@ -170,4 +170,92 @@ describe("issueScoutTokenRequest", () => {
     expect(response.status).toBe(403);
     expect(mocks.getToken).not.toHaveBeenCalled();
   });
+
+  it("explains that Scout device metadata is required when the body is unusable", async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: "user-123", email: "user@example.org" } });
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    const response = await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token", {
+        body: "{not json",
+        headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Scout device metadata is required.",
+    });
+    expect(mocks.registerOrTouchScoutDevice).not.toHaveBeenCalled();
+  });
+
+  it("does not disguise an unexpected enrollment failure as a revocation", async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: "user-123", email: "user@example.org" } });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
+    mocks.registerOrTouchScoutDevice.mockRejectedValue(new Error("database is offline"));
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    await expect(
+      issueScoutTokenRequest(
+        new Request("https://atlas.test/api/auth/scout/token", {
+          body: JSON.stringify({
+            default_upload_target: "workspace",
+            worker_name: "Willie's MacBook Pro",
+          }),
+          headers: { Authorization: "Bearer device-session-token" },
+          method: "POST",
+        }),
+      ),
+    ).rejects.toThrow("database is offline");
+  });
+
+  it("reports a failure rather than an empty token when Better Auth mints none", async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: "user-123", email: "user@example.org" } });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
+    mocks.getToken.mockResolvedValue(null);
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    const response = await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token", {
+        body: JSON.stringify({
+          default_upload_target: "workspace",
+          worker_name: "Willie's MacBook Pro",
+        }),
+        headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Scout token could not be issued",
+    });
+  });
+
+  it("returns an empty email when the account has none on file", async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: "user-123" } });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue(null);
+    mocks.getToken.mockResolvedValue({ token: "api-jwt" });
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    const response = await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token", {
+        body: JSON.stringify({
+          default_upload_target: "public",
+          worker_name: "Willie's MacBook Pro",
+        }),
+        headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      token: "api-jwt",
+      user: { email: "", id: "user-123" },
+      worker_id: "worker-123",
+      workspace_id: null,
+    });
+  });
 });

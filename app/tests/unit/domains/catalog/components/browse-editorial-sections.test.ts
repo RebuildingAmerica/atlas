@@ -127,4 +127,129 @@ describe("buildBrowseEditorialSections", () => {
     });
     expect("sourceTypes" in sections).toBe(false);
   });
+  it("breaks ties between equally common issues and equally sourced entries by name", () => {
+    const sections = buildBrowseEditorialSections({
+      issueAreaLabels: { housing_affordability: "Housing Affordability" },
+      response: responseFixture({
+        data: [
+          createEntryFixture({
+            city: "Jackson",
+            id: "b",
+            issue_areas: ["housing_affordability"],
+            name: "Beta Coalition",
+            source_count: 4,
+            state: "MS",
+            type: "organization",
+          }),
+          createEntryFixture({
+            city: "Jackson",
+            id: "a",
+            issue_areas: ["housing_affordability"],
+            name: "Alpha Coalition",
+            source_count: 4,
+            state: "MS",
+            type: "organization",
+          }),
+        ],
+        facets: {
+          cities: [],
+          entity_types: [],
+          issue_areas: [
+            { count: 4, value: "worker_power" },
+            { count: 4, value: "housing_affordability" },
+          ],
+          regions: [],
+          source_patterns: [],
+          source_types: [],
+          states: [],
+        },
+      }),
+    });
+
+    expect(sections.activeIssues.map((issue) => issue.value)).toEqual([
+      "housing_affordability",
+      "worker_power",
+    ]);
+    expect(sections.entriesByType.organization.map((entry) => entry.name)).toEqual([
+      "Alpha Coalition",
+      "Beta Coalition",
+    ]);
+    expect(sections.activeIssues[0]?.featuredActor).toBe("Alpha Coalition");
+  });
+
+  it("titles an unlabelled issue slug in sentence case, keeping small words lowercase", () => {
+    const sections = buildBrowseEditorialSections({
+      issueAreaLabels: {},
+      response: responseFixture({
+        facets: {
+          cities: [],
+          entity_types: [],
+          issue_areas: [{ count: 2, value: "housing_and_the_courts" }],
+          regions: [],
+          source_patterns: [],
+          source_types: [],
+          states: [],
+        },
+      }),
+    });
+
+    expect(sections.activeIssues[0]?.label).toBe("Housing and the Courts");
+  });
+
+  it("places a featured actor by city, state, or region — whichever the record has", () => {
+    const place = (overrides: Partial<Parameters<typeof createEntryFixture>[0]>) =>
+      buildBrowseEditorialSections({
+        issueAreaLabels: {},
+        response: responseFixture({
+          data: [createEntryFixture({ issue_areas: ["housing"], ...overrides })],
+          facets: {
+            cities: [],
+            entity_types: [],
+            issue_areas: [{ count: 1, value: "housing" }],
+            regions: [],
+            source_patterns: [],
+            source_types: [],
+            states: [],
+          },
+        }),
+      }).activeIssues[0];
+
+    expect(place({ city: "Jackson", state: "MS" })?.detail).toBe("Jackson, Mississippi");
+    // An unrecognised code stands in for itself rather than disappearing.
+    expect(place({ city: "Jackson", state: "ZZ" })?.detail).toBe("Jackson, ZZ");
+    expect(place({ city: "Jackson", state: undefined })?.detail).toBe("Jackson");
+    expect(place({ city: undefined, state: "MS" })?.detail).toBe("Mississippi");
+    expect(place({ city: undefined, region: "Gulf Coast", state: undefined })?.detail).toBe(
+      "Gulf Coast",
+    );
+  });
+
+  it("summarizes a lone placeless actor without claiming a location", () => {
+    const sections = buildBrowseEditorialSections({
+      issueAreaLabels: {},
+      response: responseFixture({
+        data: [
+          createEntryFixture({
+            city: undefined,
+            issue_areas: ["housing"],
+            name: "Prairie Coop",
+            region: undefined,
+            state: undefined,
+          }),
+        ],
+        facets: {
+          cities: [],
+          entity_types: [],
+          issue_areas: [{ count: 1, value: "housing" }],
+          regions: [],
+          source_patterns: [],
+          source_types: [],
+          states: [],
+        },
+      }),
+    });
+
+    expect(sections.activeIssues[0]?.summary).toBe("Prairie Coop is active.");
+    expect(sections.activeIssues[0]?.detail).toBeUndefined();
+  });
 });

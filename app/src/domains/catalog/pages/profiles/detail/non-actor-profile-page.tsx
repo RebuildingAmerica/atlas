@@ -44,7 +44,7 @@ export function buildNonActorProfileHead(config: NonActorRouteConfig) {
     return buildPageHead({
       title: `${entry.name} — ${config.singularLabel} | Atlas`,
       socialTitle: entry.name,
-      description: entry.description?.slice(0, 160) ?? "",
+      description: entry.description.slice(0, 160),
       path: `${config.canonicalPath}/${entry.slug}`,
       type: "article",
     });

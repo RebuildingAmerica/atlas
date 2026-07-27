@@ -92,6 +92,46 @@ describe("AccountSetupPage", () => {
     expect(assignMock).toHaveBeenCalledWith("/account");
   });
 
+  it("skips solo-workspace creation for an operator who already has a workspace", async () => {
+    accountSetupPageMocks.mutateStates.push({}, {}, {});
+    accountSetupPageMocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: false,
+        hasPasskey: false,
+        passkeyCount: 0,
+        user: {
+          email: "operator@atlas.test",
+          emailVerified: false,
+        },
+        workspace: defaultWorkspace,
+      },
+      isPending: false,
+      isRefetching: false,
+      refetch: accountSetupPageMocks.refetch.mockResolvedValue({
+        data: {
+          accountReady: true,
+          hasPasskey: true,
+          passkeyCount: 1,
+          user: { name: "Test Operator", email: "operator@atlas.test", emailVerified: true },
+          workspace: {
+            onboarding: {
+              hasPendingInvitations: false,
+              needsWorkspace: false,
+            },
+          },
+        },
+      }),
+    });
+    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
+
+    render(<AccountSetupPage redirectTo="/account" />);
+
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalledWith("/account");
+    });
+    expect(accountSetupPageMocks.createWorkspace).not.toHaveBeenCalled();
+  });
+
   it("signs operators out from the setup flow", async () => {
     accountSetupPageMocks.mutateStates.push({}, {}, {});
     accountSetupPageMocks.useAtlasSession.mockReturnValue({

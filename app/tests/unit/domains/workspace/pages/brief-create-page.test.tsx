@@ -117,7 +117,7 @@ describe("BriefCreatePage", () => {
       target: { value: "partial" },
     });
     fireEvent.change(screen.getByLabelText("Review status"), {
-      target: { value: "needs review" },
+      target: { value: "reviewed" },
     });
     fireEvent.change(screen.getByLabelText("Known gaps"), {
       target: { value: "Rural coverage: Confirm non-metro groups." },
@@ -140,7 +140,7 @@ describe("BriefCreatePage", () => {
         confidence_summary: {
           source_count: 2,
           state: "partial",
-          review_status: "needs review",
+          review_status: "reviewed",
         },
         gaps: [
           {
@@ -191,5 +191,22 @@ describe("BriefCreatePage", () => {
 
     expect(screen.getByText("Gap format")).toBeInTheDocument();
     expect(screen.getByText("Label: detail")).toBeInTheDocument();
+  });
+
+  it("says the brief could not be saved without echoing the API failure", async () => {
+    mocks.createBrief.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    render(<BriefCreatePage />);
+
+    fillRequiredFields();
+    fireEvent.change(screen.getByLabelText("Source receipt IDs"), {
+      target: { value: "source_1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create brief" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not create brief. Try again in a moment.",
+    );
+    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
   });
 });

@@ -105,4 +105,33 @@ describe("research-summary watchlists", () => {
       },
     ]);
   });
+
+  it("reads a one-actor research set in the singular and keeps an unlabelled issue as-is", async () => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
+      if (path === "/lists") {
+        return Promise.resolve([makeList({ id: "list_solo", name: "Solo", item_count: 1 })]);
+      }
+      if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
+      return Promise.resolve({
+        items: [
+          makeRun({ id: "run_1", issue_areas: ["__"] }),
+          makeRun({ id: "run_2", issue_areas: ["__"] }),
+        ],
+        total: 2,
+      });
+    });
+
+    const summary = expectSummary(await executeLoader());
+
+    expect(summary.watchlists).toContainEqual(
+      expect.objectContaining({
+        detail: "1 saved actor",
+        id: "research_set:list_solo",
+        kind: "research_set",
+      }),
+    );
+    expect(summary.watchlists).toContainEqual(
+      expect.objectContaining({ id: "issue:__", kind: "issue", label: "__" }),
+    );
+  });
 });

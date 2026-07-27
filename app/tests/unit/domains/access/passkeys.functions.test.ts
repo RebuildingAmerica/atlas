@@ -189,4 +189,31 @@ describe("passkeys.functions", () => {
       headers: browserSessionHeaders,
     });
   });
+  it("refuses to reach Better Auth from the browser bundle", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { listPasskeys } = await import("@/domains/access/passkeys.functions");
+
+    await expect(listPasskeys()).rejects.toThrow("Auth is only available on the server.");
+  });
+
+  it("refuses to delete a passkey from the browser bundle", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { deletePasskey } = await import("@/domains/access/passkeys.functions");
+
+    await expect(deletePasskey({ data: { id: "passkey_1" } })).rejects.toThrow(
+      "Auth is only available on the server.",
+    );
+  });
+
+  it("refuses to rename a passkey from the browser bundle", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { updatePasskey } = await import("@/domains/access/passkeys.functions");
+
+    await expect(updatePasskey({ data: { id: "passkey_1", name: "Laptop" } })).rejects.toThrow(
+      "Auth is only available on the server.",
+    );
+  });
 });

@@ -36,6 +36,7 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
   const queryClient = useQueryClient();
   const session = useAtlasSession();
   const [phase, setPhase] = useState<Phase>("waiting");
+  const [pollCount, setPollCount] = useState(0);
   const startedAtRef = useRef(Date.now());
   const intentQuery = useQuery({
     ...purchaseOnboardingIntentQueryOptions(purchase ?? ""),
@@ -67,14 +68,18 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
       setPhase("timeout");
       return;
     }
+    // `pollCount` is what keeps the wait alive: while Stripe has confirmed
+    // nothing, the refetch returns the same intent, so no other dependency
+    // changes and the buyer would sit on "Finishing setup" forever.
     const handle = window.setTimeout(() => {
       void refetchIntent();
       void queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
+      setPollCount((count) => count + 1);
     }, POLL_INTERVAL_MS);
     return () => {
       window.clearTimeout(handle);
     };
-  }, [purchase, purchaseIsComplete, queryClient, refetchIntent, session.data]);
+  }, [pollCount, purchase, purchaseIsComplete, queryClient, refetchIntent, session.data]);
 
   if (!purchase) {
     return (
@@ -140,11 +145,9 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
           >
             Refresh
           </Button>
-          {purchase ? (
-            <Link to="/onboarding" search={{ purchase, step: "payment" }} className="no-underline">
-              <Button variant="secondary">Return to payment</Button>
-            </Link>
-          ) : null}
+          <Link to="/onboarding" search={{ purchase, step: "payment" }} className="no-underline">
+            <Button variant="secondary">Return to payment</Button>
+          </Link>
         </div>
       ) : null}
     </div>

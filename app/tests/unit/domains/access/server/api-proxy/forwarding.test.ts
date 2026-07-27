@@ -194,4 +194,27 @@ describe("proxyAtlasApiRequest forwarding", () => {
     expect(response.headers.get("content-encoding")).toBeNull();
     expect(response.headers.get("content-type")).toBe("application/json");
   });
+
+  it("answers a HEAD request with the upstream headers and no body", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        headers: { "content-type": "application/json", etag: '"abc"' },
+        status: 200,
+      }),
+    );
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    const response = await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/entities", { method: "HEAD" }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("etag")).toBe('"abc"');
+    expect(await response.text()).toBe("");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.atlas.test/api/entities",
+      expect.objectContaining({ body: undefined, method: "HEAD" }),
+    );
+  });
 });

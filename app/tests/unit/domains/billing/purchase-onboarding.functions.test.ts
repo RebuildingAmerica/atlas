@@ -450,4 +450,513 @@ describe("purchase onboarding functions", () => {
       "https://atlas.test/onboarding?purchase=pi_pro&product=atlas_pro&interval=yearly&step=payment",
     );
   });
+  describe("ensurePurchaseOnboarding", () => {
+    it("creates a purchase intent for the signed-in operator", async () => {
+      mocks.ensurePurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_new",
+        interval: "yearly",
+        product: "atlas_pro",
+        status: "started",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: null,
+      });
+
+      const { ensurePurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await ensurePurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { product: "atlas_pro", interval: "yearly" },
+      })) as ServerFnExecutionResponse<{ id: string; status: string }>;
+
+      expect(response.error).toBeUndefined();
+      expect(response.result).toMatchObject({ id: "pi_new", status: "started" });
+      expect(mocks.ensurePurchaseIntent).toHaveBeenCalledWith({
+        interval: "yearly",
+        product: "atlas_pro",
+        userId: "user_123",
+      });
+    });
+
+    it.each([
+      ["atlas_pro", "monthly"],
+      ["atlas_pro", "yearly"],
+      ["atlas_pro", "four_month"],
+      ["atlas_team", "monthly"],
+      ["atlas_team", "yearly"],
+      ["atlas_research_pass", "once"],
+      ["atlas_research_pass", "weekly"],
+    ])("accepts the %s plan on its %s interval", async (product, interval) => {
+      mocks.ensurePurchaseIntent.mockResolvedValue({ id: "pi_ok", status: "started" });
+
+      const { ensurePurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await ensurePurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { product, interval },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeUndefined();
+    });
+
+    it.each([
+      ["atlas_pro", "once"],
+      ["atlas_pro", "weekly"],
+      ["atlas_team", "four_month"],
+      ["atlas_research_pass", "monthly"],
+      ["atlas_research_pass", "yearly"],
+    ])("refuses the %s plan on its unavailable %s interval", async (product, interval) => {
+      const { ensurePurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await ensurePurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { product, interval },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeInstanceOf(Error);
+      expect(mocks.ensurePurchaseIntent).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("loadPurchaseOnboarding", () => {
+    it("returns a purchase that has not reached checkout without calling Stripe", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_early",
+        interval: "monthly",
+        product: "atlas_pro",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+
+      const { loadPurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await loadPurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_early" },
+      })) as ServerFnExecutionResponse<{ status: string }>;
+
+      expect(response.result?.status).toBe("workspace_ready");
+      expect(mocks.reconcilePaidCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it("returns the unchanged purchase when Stripe reports it is still unpaid", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_pending",
+        interval: "monthly",
+        product: "atlas_pro",
+        status: "checkout_created",
+        stripeCheckoutSessionId: "cs_pending",
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      mocks.reconcilePaidCheckoutSession.mockResolvedValue(false);
+
+      const { loadPurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await loadPurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_pending" },
+      })) as ServerFnExecutionResponse<{ status: string }>;
+
+      expect(mocks.reconcilePaidCheckoutSession).toHaveBeenCalledWith("cs_pending");
+      expect(response.result?.status).toBe("checkout_created");
+      expect(mocks.loadPurchaseIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns null for a purchase id that does not belong to the operator", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue(null);
+
+      const { loadPurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await loadPurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_absent" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeUndefined();
+      expect(response.result).toBeNull();
+    });
+  });
+
+  describe("attachPurchaseWorkspace", () => {
+    it("attaches a workspace the operator owns to a fresh purchase", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "started",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: null,
+      });
+      mocks.attachWorkspaceToPurchaseIntent.mockResolvedValue({
+        id: "pi_123",
+        status: "workspace_ready",
+        workspaceId: "org_team",
+      });
+
+      const { attachPurchaseWorkspace } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await attachPurchaseWorkspace.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123", workspaceId: "org_team" },
+      })) as ServerFnExecutionResponse<{ status: string; workspaceId: string }>;
+
+      expect(response.error).toBeUndefined();
+      expect(response.result).toMatchObject({ status: "workspace_ready", workspaceId: "org_team" });
+    });
+
+    it("refuses to attach a workspace to a purchase that no longer exists", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue(null);
+
+      const { attachPurchaseWorkspace } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await attachPurchaseWorkspace.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_gone", workspaceId: "org_team" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeInstanceOf(Error);
+      expect(mocks.attachWorkspaceToPurchaseIntent).not.toHaveBeenCalled();
+    });
+
+    it("refuses to attach a workspace to an already-paid purchase", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_paid",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "paid",
+        stripeCheckoutSessionId: "cs_paid",
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+
+      const { attachPurchaseWorkspace } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await attachPurchaseWorkspace.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_paid", workspaceId: "org_team" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeInstanceOf(Error);
+      expect(mocks.attachWorkspaceToPurchaseIntent).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("startPurchaseCheckout", () => {
+    it("refuses to start checkout for a purchase that does not exist", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue(null);
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_gone" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeInstanceOf(Error);
+      expect((response.error as Error).message).toBe("Atlas could not find that purchase.");
+      expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it("asks for a workspace before taking payment", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_no_workspace",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: null,
+      });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_no_workspace" },
+      })) as ServerFnExecutionResponse;
+
+      expect((response.error as Error).message).toBe(
+        "Create a workspace before continuing to payment.",
+      );
+      expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it("refuses to start checkout when the workspace has since been deleted", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      authApi.getFullOrganization.mockResolvedValue(null);
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      })) as ServerFnExecutionResponse;
+
+      expect((response.error as Error).message).toBe("Atlas could not find that workspace.");
+      expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it("reports a failure when Stripe returns a session with no URL to send the buyer to", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      mocks.ensureStripeCustomerForWorkspace.mockResolvedValue("cus_123");
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: null });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      })) as ServerFnExecutionResponse;
+
+      expect((response.error as Error).message).toBe("Stripe did not return a checkout URL.");
+      expect(mocks.markPurchaseCheckoutCreated).not.toHaveBeenCalled();
+    });
+
+    it("reuses the Stripe customer already stored on the workspace", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_pro",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      authApi.getFullOrganization.mockResolvedValue({
+        members: [{ id: "member_owner" }],
+        metadata: { stripeCustomerId: "cus_existing", workspaceType: "team" },
+      });
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.stripeCustomerId).toBe("cus_existing");
+      expect(mocks.ensureStripeCustomerForWorkspace).not.toHaveBeenCalled();
+    });
+
+    it("still lets the buyer pay when the Stripe customer could not be created", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_pro",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      mocks.ensureStripeCustomerForWorkspace.mockRejectedValue(new Error("Stripe was down."));
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      })) as ServerFnExecutionResponse<{ url: string }>;
+
+      // Stripe creates a guest customer from customerEmail, and the
+      // checkout.session.completed webhook links it back to the workspace.
+      expect(response.result?.url).toBe("https://pay.test/c");
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.stripeCustomerId).toBeNull();
+      expect(options.customerEmail).toBe("operator@atlas.test");
+    });
+
+    it("bills a seat for every member beyond the owner on a monthly team plan", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      authApi.getFullOrganization.mockResolvedValue({
+        members: [{ id: "m1" }, { id: "m2" }, { id: "m3" }],
+        metadata: { stripeCustomerId: "cus_existing", workspaceType: "team" },
+      });
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.seatQuantity).toBe(2);
+      expect(options.seatPriceId).toBe("price_team_seat_monthly");
+      expect(options.priceId).toBe("price_team_monthly");
+    });
+
+    it("bills yearly seats on a yearly team plan", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "yearly",
+        product: "atlas_team",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      authApi.getFullOrganization.mockResolvedValue({
+        members: [{ id: "m1" }, { id: "m2" }],
+        metadata: { stripeCustomerId: "cus_existing", workspaceType: "team" },
+      });
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.seatPriceId).toBe("price_team_seat_yearly");
+      expect(options.priceId).toBe("price_team_yearly");
+    });
+
+    it("bills no seats for a solo team workspace", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      mocks.ensureStripeCustomerForWorkspace.mockResolvedValue("cus_123");
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.seatQuantity).toBe(0);
+      expect(options.seatPriceId).toBeNull();
+    });
+
+    it("bills no seats when the workspace reports no member list", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval: "monthly",
+        product: "atlas_team",
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      authApi.getFullOrganization.mockResolvedValue({
+        metadata: { stripeCustomerId: "cus_existing", workspaceType: "team" },
+      });
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.seatQuantity).toBe(0);
+      expect(options.seatPriceId).toBeNull();
+    });
+
+    it.each([
+      ["atlas_pro", "monthly", "price_pro_monthly"],
+      ["atlas_pro", "yearly", "price_pro_yearly"],
+      ["atlas_pro", "four_month", "price_pro_student_four_month"],
+      ["atlas_research_pass", "weekly", "price_pass_weekly"],
+      ["atlas_research_pass", "once", "price_pass_once"],
+    ])("charges the %s %s plan against %s", async (product, interval, priceId) => {
+      mocks.loadPurchaseIntent.mockResolvedValue({
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        id: "pi_123",
+        interval,
+        product,
+        status: "workspace_ready",
+        stripeCheckoutSessionId: null,
+        userId: "user_123",
+        workspaceId: "org_team",
+      });
+      mocks.ensureStripeCustomerForWorkspace.mockResolvedValue("cus_123");
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.priceId).toBe(priceId);
+      expect(options.seatPriceId).toBeNull();
+    });
+  });
+  it("refuses to load the purchase modules if it is ever bundled into the browser", async () => {
+    // import.meta.env.SSR is false in a client bundle; the guard exists so a
+    // bad import graph fails loudly instead of shipping Stripe keys to a page.
+    vi.stubEnv("SSR", "" as never);
+
+    const { ensurePurchaseOnboarding } =
+      await import("@/domains/billing/purchase-onboarding.functions");
+    const response = (await ensurePurchaseOnboarding.__executeServer({
+      method: "POST",
+      data: { product: "atlas_pro", interval: "monthly" },
+    })) as ServerFnExecutionResponse;
+
+    expect((response.error as Error).message).toBe(
+      "Purchase onboarding is only available on the server.",
+    );
+  });
 });

@@ -314,6 +314,7 @@ export function AccountPage() {
       ) : null}
 
       {showBillingSection ? (
+        /* v8 ignore next -- Unreachable: showBillingSection requires a loaded session, so activeProducts is always present. */
         <AccountBillingSection activeProducts={atlasSession.data?.workspace.activeProducts ?? []} />
       ) : null}
     </AccountLayout>

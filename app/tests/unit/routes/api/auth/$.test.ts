@@ -21,6 +21,10 @@ vi.mock("@/domains/access/server/runtime", () => ({
   getCimdResolverOptions: vi.fn(() => ({ allowedOrigins: ["https://atlas.test"] })),
 }));
 
+vi.mock("@/domains/access/server/scout-token", () => ({
+  issueScoutTokenRequest: vi.fn(),
+}));
+
 describe("routes/api/auth/$ Better Auth dispatcher", () => {
   it("returns the CIMD error response without invoking Better Auth", async () => {
     const { handleCimdRequest } = await import("@/domains/access/server/cimd-handler");
@@ -107,5 +111,34 @@ describe("routes/api/auth/$ Better Auth dispatcher", () => {
 
     expect(response).toBe(guardResponse);
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("issues a Scout token without running the Better Auth handler", async () => {
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+    vi.mocked(issueScoutTokenRequest).mockResolvedValue(
+      Response.json({ token: "scout_1" }, { status: 201 }),
+    );
+    const { ensureAuthReady } = await import("@/domains/access/server/auth");
+    const routeModule = await import("@/routes/api/auth/$");
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/auth/scout/token", { method: "GET" }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ token: "scout_1" });
+    expect(ensureAuthReady).not.toHaveBeenCalled();
+  });
+
+  it("refuses to handle auth routes outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/api/auth/$");
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    await expect(
+      callRouteGet(routeModule.Route, new Request("https://atlas.test/api/auth/session")),
+    ).rejects.toThrow("Auth route handling is only available on the server.");
   });
 });

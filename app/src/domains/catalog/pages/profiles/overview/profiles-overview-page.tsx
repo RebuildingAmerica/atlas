@@ -44,12 +44,11 @@ function buildIssueAreaLabels(
 
 function sortByFreshness(entries: Entry[]): Entry[] {
   return [...entries].sort((left, right) => {
-    const leftValue = new Date(
-      left.latest_source_date ?? left.updated_at ?? left.created_at,
-    ).getTime();
-    const rightValue = new Date(
-      right.latest_source_date ?? right.updated_at ?? right.created_at,
-    ).getTime();
+    // `updated_at` is required on every Entry, so there is nothing further to
+    // fall back to: an entry with no source date is ordered by its own last
+    // edit rather than silently pretending to be as old as its creation.
+    const leftValue = new Date(left.latest_source_date ?? left.updated_at).getTime();
+    const rightValue = new Date(right.latest_source_date ?? right.updated_at).getTime();
 
     return rightValue - leftValue;
   });

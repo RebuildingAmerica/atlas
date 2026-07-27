@@ -40,11 +40,17 @@ interface ScoutTokenResponseBody {
 
 type ScoutTokenRequestBody = z.infer<typeof scoutTokenRequestSchema>;
 
-async function readScoutTokenRequestBody(request: Request): Promise<ScoutTokenRequestBody> {
+/**
+ * Reads the Scout device metadata from the request body.
+ *
+ * @param request - The `/api/auth/scout/token` request.
+ * @returns The parsed metadata, or null when the body is missing or malformed.
+ */
+async function readScoutTokenRequestBody(request: Request): Promise<ScoutTokenRequestBody | null> {
   try {
     return scoutTokenRequestSchema.parse(await request.json());
   } catch {
-    throw new Error("Scout device metadata is required.");
+    return null;
   }
 }
 
@@ -70,14 +76,9 @@ export async function issueScoutTokenRequest(request: Request): Promise<Response
     return Response.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  let body: ScoutTokenRequestBody;
-  try {
-    body = await readScoutTokenRequestBody(request);
-  } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Invalid Scout device metadata." },
-      { status: 400 },
-    );
+  const body = await readScoutTokenRequestBody(request);
+  if (!body) {
+    return Response.json({ error: "Scout device metadata is required." }, { status: 400 });
   }
 
   const workspaceId = body.workspace_id ?? (await resolvePrimaryWorkspaceId(user.id));

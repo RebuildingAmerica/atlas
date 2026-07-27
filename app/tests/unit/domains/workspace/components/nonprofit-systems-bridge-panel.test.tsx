@@ -33,4 +33,21 @@ describe("NonprofitSystemsBridgePanel", () => {
 
     expect(copyPacket).toHaveBeenCalledWith("Housing Justice Coalition systems bridge");
   });
+
+  it("reads a single actor, source, and note in the singular", () => {
+    render(
+      <NonprofitSystemsBridgePanel
+        actorCount={1}
+        sourceCount={1}
+        noteCount={1}
+        workspaceName="Housing Justice Coalition"
+        packetText="Housing Justice Coalition systems bridge"
+        onCopyPacket={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("1 actor")).toBeInTheDocument();
+    expect(screen.getByText("1 source")).toBeInTheDocument();
+    expect(screen.getByText("1 note")).toBeInTheDocument();
+  });
 });

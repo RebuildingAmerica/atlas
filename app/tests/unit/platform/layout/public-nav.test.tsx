@@ -201,4 +201,32 @@ describe("PublicTopNav", () => {
     );
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   });
+
+  it("falls back to the person glyph when a signed-in visitor has no avatar", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: {
+        isLocal: false,
+        user: {
+          email: "operator@example.com",
+          emailVerified: true,
+          id: "user_2",
+          image: null,
+          name: "Operator",
+        },
+        workspace: {
+          activeOrganization: { id: "org_1", name: "Acme", workspaceType: "individual" },
+          memberships: [{ id: "org_1", name: "Acme" }],
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+          capabilities: { canSwitchOrganizations: false },
+        },
+      },
+    } as unknown as ReturnType<typeof useAtlasSession>);
+
+    render(<PublicTopNav localMode={false} />);
+
+    const workbenchChip = screen.getByRole("link", { name: "Workbench" });
+    expect(workbenchChip).toHaveAttribute("data-link-to", "/home");
+    expect(workbenchChip.querySelector("img")).toBeNull();
+  });
 });

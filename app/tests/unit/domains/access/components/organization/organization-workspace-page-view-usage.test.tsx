@@ -146,6 +146,33 @@ describe("OrganizationWorkspacePageView", () => {
     );
   });
 
+  it("holds back the access log and integration activity until they finish loading", () => {
+    const controller = buildController({
+      usageSummary: {
+        event_counts: { brief_opened: 2 },
+        org_id: "org_1",
+        renewal_signals: {
+          briefs_used: 2,
+          coverage_gaps_closed: 1,
+          integrations_used: 0,
+          public_records_improved: 3,
+          team_workflow_actions: 4,
+        },
+        total_events: 10,
+      },
+      usageAuditLogLoading: true,
+      integrationMonitoringLoading: true,
+    });
+
+    render(<OrganizationWorkspacePageView controller={controller} />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Renewal proof" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: "Access log" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { level: 3, name: "Workspace integration activity" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("hides renewal proof from workspaces the operator cannot manage", () => {
     const controller = buildController({
       canManageOrganization: false,

@@ -127,4 +127,20 @@ describe("AdminDashboardPage", () => {
     );
     expect(mocks.loadAdminDashboardSummary).toHaveBeenCalledWith();
   });
+
+  it("shows safe copy when the request rejects with something other than an error", async () => {
+    mocks.loadAdminDashboardSummary.mockRejectedValue("boom");
+
+    renderAdminDashboardPage();
+
+    expect(await screen.findByText("Admin status could not load.")).toBeInTheDocument();
+  });
+
+  it("shows safe copy when the request settles with nothing", async () => {
+    mocks.loadAdminDashboardSummary.mockResolvedValue(null);
+
+    renderAdminDashboardPage();
+
+    expect(await screen.findByText("Admin status could not load.")).toBeInTheDocument();
+  });
 });

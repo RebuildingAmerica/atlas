@@ -48,6 +48,14 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
   const queryClient = useQueryClient();
   const session = useAtlasSession();
   const [phase, setPhase] = useState<Phase>("waiting");
+  // Counts elapsed poll ticks. Without it the polling effect re-runs only when
+  // the session payload changes identity, and React Query's structural sharing
+  // keeps the previous reference whenever the refetched payload is deeply
+  // equal -- which is exactly the "webhook has not landed yet" case this poll
+  // exists to wait out. Polling would stop dead after one tick, leaving a
+  // paying operator on "Finishing up" forever and making the timeout branch
+  // below unreachable.
+  const [pollTick, setPollTick] = useState(0);
   const startedAtRef = useRef<number>(Date.now());
 
   const productLabel = product ? PRODUCT_LABELS[product] : "your purchase";
@@ -80,13 +88,14 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
     }
 
     const handle = window.setTimeout(() => {
+      setPollTick((tick) => tick + 1);
       void queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
     }, POLL_INTERVAL_MS);
 
     return () => {
       window.clearTimeout(handle);
     };
-  }, [product, queryClient, sessionData]);
+  }, [pollTick, product, queryClient, sessionData]);
 
   if (phase === "timeout") {
     return (

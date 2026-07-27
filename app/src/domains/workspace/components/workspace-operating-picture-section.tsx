@@ -49,16 +49,10 @@ function countLabel(count: number, singular: string, plural = `${singular}s`): s
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-function pendingValue<TData>(resource: OperatingPictureResource<TData>): string | null {
-  if (resource.status === "loading") {
-    return "Loading";
-  }
-
-  if (resource.status === "unavailable") {
-    return "Unavailable";
-  }
-
-  return null;
+function pendingValue<TData>(
+  resource: Exclude<OperatingPictureResource<TData>, { status: "ready" }>,
+): string {
+  return resource.status === "loading" ? "Loading" : "Unavailable";
 }
 
 function readyCountValue<TData>(
@@ -68,7 +62,7 @@ function readyCountValue<TData>(
   plural?: string,
 ): string {
   if (resource.status !== "ready") {
-    return pendingValue(resource) ?? "Unavailable";
+    return pendingValue(resource);
   }
 
   return countLabel(count(resource.data), singular, plural);

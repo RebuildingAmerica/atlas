@@ -81,4 +81,65 @@ describe("WorkspaceDirectoryConfigSection", () => {
       screen.queryByRole("button", { name: "Save directory settings" }),
     ).not.toBeInTheDocument();
   });
+  it("tells a read-only operator when nothing has been published yet", () => {
+    render(
+      <WorkspaceDirectoryConfigSection
+        canManageOrganization={false}
+        directoryConfigPending={false}
+        directoryTitle=""
+        directorySponsorLabel=""
+        directoryIssueAreaIds=""
+        directoryGeographyLabels=""
+        directoryEntryTypes=""
+        directoryMethodologySummary=""
+        directorySourcePolicy=""
+        directoryReviewPolicy=""
+        directoryCorrectionPolicy=""
+        onDirectoryCorrectionPolicyChange={vi.fn()}
+        onDirectoryEntryTypesChange={vi.fn()}
+        onDirectoryGeographyLabelsChange={vi.fn()}
+        onDirectoryIssueAreaIdsChange={vi.fn()}
+        onDirectoryMethodologySummaryChange={vi.fn()}
+        onDirectoryReviewPolicyChange={vi.fn()}
+        onDirectorySourcePolicyChange={vi.fn()}
+        onDirectorySponsorLabelChange={vi.fn()}
+        onDirectoryTitleChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("No directory title set.")).toBeInTheDocument();
+    expect(screen.getByText("No issue scope set.")).toBeInTheDocument();
+    expect(screen.getByText("No place scope set.")).toBeInTheDocument();
+  });
+
+  it("says it is saving while the directory settings are in flight", () => {
+    render(
+      <WorkspaceDirectoryConfigSection
+        canManageOrganization
+        directoryConfigPending
+        directoryTitle="Detroit tenant power directory"
+        directorySponsorLabel=""
+        directoryIssueAreaIds=""
+        directoryGeographyLabels=""
+        directoryEntryTypes=""
+        directoryMethodologySummary=""
+        directorySourcePolicy=""
+        directoryReviewPolicy=""
+        directoryCorrectionPolicy=""
+        onDirectoryCorrectionPolicyChange={vi.fn()}
+        onDirectoryEntryTypesChange={vi.fn()}
+        onDirectoryGeographyLabelsChange={vi.fn()}
+        onDirectoryIssueAreaIdsChange={vi.fn()}
+        onDirectoryMethodologySummaryChange={vi.fn()}
+        onDirectoryReviewPolicyChange={vi.fn()}
+        onDirectorySourcePolicyChange={vi.fn()}
+        onDirectorySponsorLabelChange={vi.fn()}
+        onDirectoryTitleChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+  });
 });

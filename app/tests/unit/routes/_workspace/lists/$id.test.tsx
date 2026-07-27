@@ -169,6 +169,43 @@ describe("routes/_workspace/lists/$id", () => {
     expect(removeMock).toHaveBeenCalledWith({ listId: "list-1", entryId: "e1" });
   });
 
+  it("names an actor whose record lost its name so the row is still readable", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        name: "Outreach",
+        description: null,
+        item_count: 1,
+        items: [
+          {
+            entry_id: "e1",
+            entry: {
+              name: null,
+              type: "organization",
+              slug: "",
+              photo_url: null,
+              address: { city: null, state: null },
+              source_count: 1,
+            },
+            note: null,
+          },
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByTestId("actor-avatar")).toHaveTextContent("Profile unavailable");
+    expect(screen.getAllByText("Profile unavailable").length).toBeGreaterThan(0);
+  });
+
   it("saves an inline note for a saved actor", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const saveNoteMock = vi.fn().mockResolvedValue(undefined);
@@ -221,5 +258,103 @@ describe("routes/_workspace/lists/$id", () => {
         body: { entry_id: "e1", note: "Call before Friday." },
       });
     });
+  });
+
+  it("clears a note when the researcher empties the draft", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const saveNoteMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(claims.useAddSavedListItem).mockReturnValue({
+      mutateAsync: saveNoteMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAddSavedListItem>);
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        name: "Outreach",
+        description: null,
+        item_count: 1,
+        items: [
+          {
+            entry_id: "e1",
+            entry: {
+              name: "Acme",
+              type: "organization",
+              slug: "acme",
+              photo_url: null,
+              address: { city: "Detroit", state: "MI" },
+              source_count: 1,
+            },
+            note: "Call before Friday.",
+          },
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit note for Acme" }));
+    fireEvent.change(screen.getByLabelText("Note for Acme"), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save note for Acme" }));
+
+    await waitFor(() => {
+      expect(saveNoteMock).toHaveBeenCalledWith({
+        listId: "list-1",
+        body: { entry_id: "e1", note: null },
+      });
+    });
+  });
+
+  it("keeps the note editor open and says so when the save fails", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    vi.mocked(claims.useAddSavedListItem).mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new Error("network down")),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useAddSavedListItem>);
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        name: "Outreach",
+        description: null,
+        item_count: 1,
+        items: [
+          {
+            entry_id: "e1",
+            entry: {
+              name: "Acme",
+              type: "organization",
+              slug: "acme",
+              photo_url: null,
+              address: { city: "Detroit", state: "MI" },
+              source_count: 1,
+            },
+            note: null,
+          },
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add note for Acme" }));
+    fireEvent.change(screen.getByLabelText("Note for Acme"), {
+      target: { value: "Call before Friday." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save note for Acme" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not save note.");
+    expect(screen.getByLabelText("Note for Acme")).toHaveValue("Call before Friday.");
+    expect(screen.queryByText("network down")).toBeNull();
   });
 });

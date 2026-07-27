@@ -378,4 +378,39 @@ describe("AccountPage", () => {
       ).not.toBeNull();
     });
   });
+
+  it("confirms a revoked Scout device so the operator knows the host is cut off", async () => {
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    const revokeDevice = screen.getAllByRole("button", { name: /Revoke device/i }).at(0);
+    if (!revokeDevice) throw new Error("Expected an enrolled Scout device to revoke.");
+    fireEvent.click(revokeDevice);
+
+    await waitFor(() => {
+      expect(screen.getByText("Scout device revoked.")).not.toBeNull();
+    });
+    expect(mocks.revokeScoutDevice).toHaveBeenCalledWith({ data: { deviceId: "worker-123" } });
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["auth", "scout-devices"],
+    });
+  });
+
+  it("says so when a Scout device could not be revoked", async () => {
+    mocks.revokeScoutDevice.mockRejectedValue(new Error("worker is busy"));
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
+
+    render(<AccountPage />);
+
+    const revokeDevice = screen.getAllByRole("button", { name: /Revoke device/i }).at(0);
+    if (!revokeDevice) throw new Error("Expected an enrolled Scout device to revoke.");
+    fireEvent.click(revokeDevice);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Atlas could not revoke that Scout device. Please try again."),
+      ).not.toBeNull();
+    });
+  });
 });

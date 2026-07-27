@@ -76,7 +76,6 @@ function DigestItemRow({ item }: DigestItemRowProps) {
 function FeedRoute() {
   const digestQuery = useWorkspaceWatchDigest(DIGEST_LIMIT);
   const digest = digestQuery.data;
-  const items = digest?.items ?? [];
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 py-12">
@@ -90,7 +89,7 @@ function FeedRoute() {
 
       {digestQuery.isLoading ? (
         <p className="type-body-medium text-ink-soft">Loading</p>
-      ) : items.length === 0 ? (
+      ) : !digest || digest.items.length === 0 ? (
         <div className="bg-surface-container space-y-2 rounded-lg p-5">
           <p className="type-body-medium text-ink-strong">No watch updates.</p>
         </div>
@@ -103,25 +102,25 @@ function FeedRoute() {
             <div>
               <p className="type-label-small text-ink-muted">Updates</p>
               <p className="type-title-medium text-ink-strong">
-                {pluralize(digest?.total ?? items.length, "watch update")}
+                {pluralize(digest.total, "watch update")}
               </p>
             </div>
             <div>
               <p className="type-label-small text-ink-muted">Sources</p>
               <p className="type-title-medium text-ink-strong">
-                {pluralize(digest?.source_signal_count ?? 0, "source signal")}
+                {pluralize(digest.source_signal_count, "source signal")}
               </p>
             </div>
             <div>
               <p className="type-label-small text-ink-muted">Coverage</p>
               <p className="type-title-medium text-ink-strong">
-                {pluralize(digest?.coverage_signal_count ?? 0, "coverage change")}
+                {pluralize(digest.coverage_signal_count, "coverage change")}
               </p>
             </div>
           </section>
 
           <ul className="space-y-3">
-            {items.map((item) => (
+            {digest.items.map((item) => (
               <DigestItemRow key={item.id} item={item} />
             ))}
           </ul>

@@ -275,6 +275,75 @@ describe("CoveragePage", () => {
     expect(await screen.findByText("2 targets imported.")).toBeInTheDocument();
   });
 
+  it("says the export failed rather than downloading an error page", async () => {
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: collection(), orgId: "org_123" },
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: () => Promise.resolve("Service Unavailable"),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CoveragePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+
+    expect(await screen.findByText("Coverage export failed.")).toBeInTheDocument();
+    expect(screen.queryByText("503")).not.toBeInTheDocument();
+  });
+
+  it("says the JSON export failed when the report cannot be built", async () => {
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: collection(), orgId: "org_123" },
+    });
+    mocks.exportOrgCoverageTargets.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    render(<CoveragePage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Download JSON" }));
+
+    expect(await screen.findByText("Coverage export failed.")).toBeInTheDocument();
+    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
+  });
+
+  it("says the import failed and keeps the rows the operator pasted", async () => {
+    const csvText = "name,geography,issue_areas,actor_types,source_types\n";
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: collection(), orgId: "org_123" },
+    });
+    mocks.useImportCoverageTargets.mockReturnValue({
+      isPending: false,
+      mutateAsync: vi.fn().mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED")),
+    });
+
+    render(<CoveragePage />);
+
+    fireEvent.change(screen.getByLabelText("Coverage target CSV"), {
+      target: { value: csvText },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import CSV" }));
+
+    expect(await screen.findByText("Coverage import failed.")).toBeInTheDocument();
+    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Coverage target CSV")).toHaveValue(csvText);
+  });
+
+  it("shows the import in progress while the upload is running", () => {
+    mocks.useWorkspaceCoverage.mockReturnValue({
+      data: { coverageTargets: collection(), orgId: "org_123" },
+    });
+    mocks.useImportCoverageTargets.mockReturnValue({
+      isPending: true,
+      mutateAsync: vi.fn(),
+    });
+
+    render(<CoveragePage />);
+
+    expect(screen.getByRole("button", { name: "Importing" })).toBeDisabled();
+  });
+
   it("shows the coverage import CSV contract before import", () => {
     const initialCoverageTargets = collection();
     mocks.useWorkspaceCoverage.mockReturnValue({

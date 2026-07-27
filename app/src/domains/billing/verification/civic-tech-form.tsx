@@ -9,9 +9,8 @@ interface CivicTechFormProps {
   isLoading?: boolean;
 }
 
-function describedBy(...ids: (string | undefined)[]): string | undefined {
-  const description = ids.filter((id) => Boolean(id)).join(" ");
-  return description || undefined;
+function describedBy(hintId: string, errorId: string | undefined): string {
+  return errorId ? `${hintId} ${errorId}` : hintId;
 }
 
 export function CivicTechForm({ onSubmit, isLoading = false }: CivicTechFormProps) {

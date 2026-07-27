@@ -19,6 +19,20 @@ export interface BriefCreateStateFields {
   title: string;
 }
 
+/** A brief the author can submit. */
+export interface BriefCreateDraftReady {
+  input: AtlasBriefCreateInput;
+  problem: null;
+}
+
+/** A brief the author still has to fix, with the field-level reason. */
+export interface BriefCreateDraftProblem {
+  input: null;
+  problem: string;
+}
+
+export type BriefCreateDraft = BriefCreateDraftReady | BriefCreateDraftProblem;
+
 export interface EvidenceCounts {
   actorCount: number;
   runCount: number;
@@ -57,23 +71,26 @@ export function splitList(value: string): string[] {
   return Array.from(new Set(items));
 }
 
-export function parseGapsText(value: string): AtlasBriefGap[] {
+export function parseGapsText(value: string): AtlasBriefGap[] | null {
   const lines = value
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
-  return lines.map((line) => {
+  const gaps: AtlasBriefGap[] = [];
+  for (const line of lines) {
     const separatorIndex = line.indexOf(":");
     if (separatorIndex <= 0 || separatorIndex === line.length - 1) {
-      throw new Error("Each gap needs a label and detail.");
+      return null;
     }
 
-    return {
+    gaps.push({
       detail: line.slice(separatorIndex + 1).trim(),
       label: line.slice(0, separatorIndex).trim(),
-    };
-  });
+    });
+  }
+
+  return gaps;
 }
 
 export function evidenceCounts(state: BriefCreateStateFields): EvidenceCounts {
@@ -84,22 +101,27 @@ export function evidenceCounts(state: BriefCreateStateFields): EvidenceCounts {
   };
 }
 
-export function buildBriefCreateInput(state: BriefCreateStateFields): AtlasBriefCreateInput {
+export function buildBriefCreateInput(state: BriefCreateStateFields): BriefCreateDraft {
   const linkedEntryIds = splitList(state.linkedEntryIds);
   const linkedSourceIds = splitList(state.linkedSourceIds);
   const linkedDiscoveryRunIds = splitList(state.linkedDiscoveryRunIds);
 
   if (linkedEntryIds.length + linkedSourceIds.length + linkedDiscoveryRunIds.length === 0) {
-    throw new Error("Add at least one actor, source, or research run.");
+    return { input: null, problem: "Add at least one actor, source, or research run." };
   }
 
-  return {
+  const gaps = parseGapsText(state.gapsText);
+  if (gaps === null) {
+    return { input: null, problem: "Each gap needs a label and detail." };
+  }
+
+  const input: AtlasBriefCreateInput = {
     confidence_summary: {
       review_status: state.reviewStatus.trim(),
       source_count: linkedSourceIds.length,
       state: state.confidenceState,
     },
-    gaps: parseGapsText(state.gapsText),
+    gaps,
     linked_discovery_run_ids: linkedDiscoveryRunIds,
     linked_entry_ids: linkedEntryIds,
     linked_source_ids: linkedSourceIds,
@@ -112,6 +134,8 @@ export function buildBriefCreateInput(state: BriefCreateStateFields): AtlasBrief
     summary: state.summary.trim(),
     title: state.title.trim(),
   };
+
+  return { input, problem: null };
 }
 
 export function countLabel(count: number, singular: string): string {

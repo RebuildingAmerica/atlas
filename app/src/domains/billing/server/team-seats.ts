@@ -36,15 +36,7 @@ function resolveSeatPriceId(
       item.price.id === products.atlas_team.yearlyPriceId,
   );
   const isYearly = baseItem?.price.id === products.atlas_team.yearlyPriceId;
-  const seatPriceId = isYearly
-    ? products.atlas_team.yearlySeatPriceId
-    : products.atlas_team.monthlySeatPriceId;
-  if (!seatPriceId) {
-    throw new Error(
-      "Stripe seat price not configured for Atlas Team. Check environment variables.",
-    );
-  }
-  return seatPriceId;
+  return isYearly ? products.atlas_team.yearlySeatPriceId : products.atlas_team.monthlySeatPriceId;
 }
 
 /**

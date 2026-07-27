@@ -41,17 +41,19 @@ export function PrivateNotesPanel({ targetId, targetLabel, type }: PrivateNotesP
     return null;
   }
 
+  // Held as its own const so the save handler closes over a definite workspace
+  // id rather than re-checking one the early return already ruled out.
+  const orgId = activeOrgId;
   const trimmed = content.trim();
   const notes = annotations.data ?? [];
 
+  // Only reachable from the Save button, which stays disabled until there is
+  // note text to send.
   async function handleSave() {
-    if (!activeOrgId || !trimmed) {
-      return;
-    }
     setErrorMessage(null);
     try {
       await createAnnotation.mutateAsync({
-        orgId: activeOrgId,
+        orgId,
         body: privateNoteBody(type, targetId, trimmed),
       });
       setContent("");

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -12,6 +12,10 @@ vi.mock("@/domains/access/server/internal-membership", () => ({
 }));
 
 describe("routes/api/auth/internal/memberships/$organizationId/members/$userId", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("delegates GET to verifyMembershipRequest with the URL params", async () => {
     const { verifyMembershipRequest } = await import("@/domains/access/server/internal-membership");
     const routeModule =
@@ -30,5 +34,21 @@ describe("routes/api/auth/internal/memberships/$organizationId/members/$userId",
     })) as Response;
     expect(verifyMembershipRequest).toHaveBeenCalledWith(request, "org_1", "u1");
     expect(await response.text()).toBe("verified:org_1:u1");
+  });
+
+  it("refuses to verify a membership outside the server bundle", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule =
+      await import("@/routes/api/auth/internal/memberships/$organizationId/members/$userId");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const handlers = asRouteStub(routeModule.Route).options.server?.handlers;
+    if (!handlers?.GET) throw new Error("Expected GET handler");
+
+    await expect(
+      handlers.GET({
+        request: new Request("https://atlas.test/api/auth/internal/memberships/org_1/members/u1"),
+        params: { organizationId: "org_1", userId: "u1" },
+      }),
+    ).rejects.toThrow("Internal membership verification is only available on the server.");
   });
 });

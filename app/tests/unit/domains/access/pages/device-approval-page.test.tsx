@@ -142,6 +142,89 @@ describe("DeviceApprovalPage", () => {
     );
   });
 
+  it("sends the browser onward itself when the page is mounted without a redirect", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse({ status: "approved", user_code: "ABCD-EFGH" }),
+    );
+
+    render(<DeviceApprovalPage userCode="ABCDEFGH" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve device" }));
+
+    await waitFor(() => {
+      expect(assign).toHaveBeenCalledWith(deviceAuthPath("approved"));
+    });
+  });
+
+  it("stops a device that was already denied instead of approving it", async () => {
+    const redirect = vi.fn();
+    vi.mocked(global.fetch).mockResolvedValueOnce(
+      jsonResponse({ status: "denied", user_code: "ABCD-EFGH" }),
+    );
+
+    render(<DeviceApprovalPage redirect={redirect} userCode="ABCDEFGH" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve device" }));
+
+    await waitFor(() => {
+      expect(redirect).toHaveBeenCalledWith(deviceResultPath("denied"));
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("redirects to the failure state when the approval itself is rejected", async () => {
+    const redirect = vi.fn();
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(jsonResponse({ status: "pending", user_code: "ABCD-EFGH" }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }));
+
+    render(<DeviceApprovalPage redirect={redirect} userCode="ABCDEFGH" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve device" }));
+
+    await waitFor(() => {
+      expect(redirect).toHaveBeenCalledWith(deviceResultPath("failed"));
+    });
+  });
+
+  it("redirects to the failure state when the network drops mid-approval", async () => {
+    const redirect = vi.fn();
+    vi.mocked(global.fetch).mockRejectedValueOnce(new Error("offline"));
+
+    render(<DeviceApprovalPage redirect={redirect} userCode="ABCDEFGH" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve device" }));
+
+    await waitFor(() => {
+      expect(redirect).toHaveBeenCalledWith(deviceResultPath("failed"));
+    });
+  });
+
+  it("asks for the code instead of submitting an empty one", async () => {
+    const redirect = vi.fn();
+
+    render(<DeviceApprovalPage redirect={redirect} />);
+
+    const form = screen.getByRole("button", { name: "Approve device" }).closest("form");
+    if (!form) throw new Error("Expected the device-approval form to render");
+    fireEvent.submit(form);
+
+    expect(await screen.findByText("Enter the device code.")).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("renders the redirected denial state", () => {
+    render(<DeviceApprovalPage status="denied" />);
+
+    expect(screen.getByRole("heading", { name: "Device approval denied" })).toBeInTheDocument();
+    expect(
+      screen.getByText("That device was not connected to your Atlas account."),
+    ).toBeInTheDocument();
+  });
+
   it("renders the redirected failure state", () => {
     render(<DeviceApprovalPage status="failed" />);
 

@@ -152,4 +152,35 @@ describe("WorkspaceWatchesPage", () => {
     expect(screen.getByRole("link", { name: "Open coverage" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open proof" })).not.toBeInTheDocument();
   });
+
+  it("labels an immediate watch and keeps an unlinkable row readable", async () => {
+    const watches = collection();
+    watches.items = [
+      {
+        href: null,
+        label: "Unpublished Actor",
+        resourceLabel: "Person",
+        watch: {
+          created_at: "2026-06-25T00:00:00Z",
+          created_by: "user_1",
+          id: "watch_unlinked",
+          notification_preference: "immediate",
+          org_id: "org_123",
+          resource_id: "entry_999",
+          resource_type: "entry",
+          updated_at: "2026-06-26T00:00:00Z",
+        },
+      },
+    ];
+    watches.total = 1;
+    mocks.useWorkspaceWatches.mockReturnValue({ data: watches });
+
+    const { WorkspaceWatchesPage } = await import("@/domains/workspace/pages/watches-page");
+    render(<WorkspaceWatchesPage />);
+
+    expect(screen.getByText("Immediate")).toBeInTheDocument();
+    expect(screen.getByText("Unpublished Actor")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Unpublished Actor" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Kansas City, MO")).not.toBeInTheDocument();
+  });
 });

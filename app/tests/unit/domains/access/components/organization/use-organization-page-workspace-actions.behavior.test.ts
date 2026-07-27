@@ -200,6 +200,42 @@ describe("useOrganizationPageWorkspaceActions behavior", () => {
     expect(feedback.setFlashMessage).toHaveBeenCalledWith("Directory settings updated.");
   });
 
+  it("omits blank methodology text instead of saving empty policies", async () => {
+    mocks.updateWorkspaceDirectoryConfig.mockResolvedValue({ org_id: "org_1" });
+    const directoryForms: OrganizationPageForms = {
+      ...forms,
+      directoryCorrectionPolicy: "   ",
+      directoryEntryTypes: "organization",
+      directoryMethodologySummary: "   ",
+      directoryReviewPolicy: "   ",
+      directorySourcePolicy: "   ",
+      directoryTitle: "Detroit tenant power directory",
+    };
+
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: "org_1",
+        feedback,
+        forms: directoryForms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onDirectoryConfigSave({ preventDefault: vi.fn() });
+    });
+
+    const savedConfig = mocks.updateWorkspaceDirectoryConfig.mock.calls[0]?.[0] as {
+      data: { methodology: Record<string, unknown> };
+    };
+    expect(savedConfig.data.methodology).toMatchObject({
+      correction_policy: undefined,
+      review_policy: undefined,
+      source_policy: undefined,
+      summary: undefined,
+    });
+  });
+
   it("invites a workspace member and clears the form afterwards", async () => {
     mocks.inviteWorkspaceMember.mockResolvedValue({ ok: true });
 

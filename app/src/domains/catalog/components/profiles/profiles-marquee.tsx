@@ -53,11 +53,11 @@ export function ProfilesMarquee({
     );
   }
 
-  if (entries.length === 0) {
+  const primary = entries[0];
+  if (!primary) {
     return null;
   }
 
-  const primary = entries[0];
   const companions = entries.slice(1, 3);
 
   return (
@@ -69,7 +69,7 @@ export function ProfilesMarquee({
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)]">
-        {primary ? <SpotlightCard entry={primary} issueAreaLabels={issueAreaLabels} /> : null}
+        <SpotlightCard entry={primary} issueAreaLabels={issueAreaLabels} />
 
         <div className="grid gap-4">
           {companions.map((entry) => (

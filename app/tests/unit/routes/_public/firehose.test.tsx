@@ -61,6 +61,18 @@ describe("routes/_public/firehose", () => {
     expect(result).toEqual({ initialSnapshot: snapshot });
   });
 
+  it("keys the loader on the search so a filter change refetches the snapshot", async () => {
+    const routeModule = await import("@/routes/_public/firehose");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const loaderDeps = Route.options.loaderDeps;
+    if (!loaderDeps) throw new Error("Expected Route.options.loaderDeps");
+    expect(loaderDeps({ search: { issue: "transit", limit: 25 } })).toEqual({
+      search: { issue: "transit", limit: 25 },
+    });
+  });
+
   it("declares canonical and RSS feed links while fixtures are noindexed", async () => {
     const routeModule = await import("@/routes/_public/firehose");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");

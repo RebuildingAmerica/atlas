@@ -93,4 +93,27 @@ describe("BriefListPage", () => {
       "/discovery",
     );
   });
+
+  it("grades a corroborated brief apart from an unverified one", () => {
+    const collection = briefCollection();
+    const [partial] = collection.items;
+    if (!partial) throw new Error("Expected the fixture to carry one brief.");
+    collection.items = [
+      { ...partial, confidence_summary: { ...partial.confidence_summary, state: "corroborated" } },
+      {
+        ...partial,
+        id: "brief_456",
+        title: "Unverified leads",
+        confidence_summary: { ...partial.confidence_summary, state: "unverified" },
+      },
+    ];
+    collection.total = 2;
+    mocks.useWorkspaceBriefCollection.mockReturnValue({ data: collection });
+
+    render(<BriefListPage />);
+
+    expect(screen.getByText("corroborated")).toBeInTheDocument();
+    expect(screen.getByText("unverified")).toBeInTheDocument();
+    expect(screen.queryByText("partial")).not.toBeInTheDocument();
+  });
 });

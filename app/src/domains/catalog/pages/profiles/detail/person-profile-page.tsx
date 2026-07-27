@@ -66,14 +66,13 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
   const taxonomyQuery = useTaxonomy();
   const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
   const sessionQuery = useAtlasSession();
-  const isSignedIn = Boolean(sessionQuery.data);
-  const activeWorkspaceId = sessionQuery.data?.workspace.activeOrganization?.id ?? null;
+  const session = sessionQuery.data ?? null;
+  const isSignedIn = session !== null;
+  const activeWorkspaceId = session?.workspace.activeOrganization?.id ?? null;
   const workspaceWatchingEnabled =
+    session !== null &&
     activeWorkspaceId !== null &&
-    (sessionQuery.data?.workspace.resolvedCapabilities.capabilities.includes(
-      "monitoring.watchlists",
-    ) ??
-      false);
+    session.workspace.resolvedCapabilities.capabilities.includes("monitoring.watchlists");
   const affiliatedOrgQuery = useEntry(entry.affiliated_org_id ?? "", {
     enabled: Boolean(entry.affiliated_org_id),
   });

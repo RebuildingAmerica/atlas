@@ -91,6 +91,18 @@ describe("routes/_public/browse", () => {
     });
   });
 
+  it("keys the loader on the search so a filter change refetches the list", async () => {
+    const routeModule = await import("@/routes/_public/browse");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    const loaderDeps = Route.options.loaderDeps;
+    if (!loaderDeps) throw new Error("Expected Route.options.loaderDeps");
+    expect(loaderDeps({ search: { query: "tenant union", offset: 20 } })).toEqual({
+      search: { query: "tenant union", offset: 20 },
+    });
+  });
+
   it("loads initial browse entries on the server from normalized search params", async () => {
     const routeModule = await import("@/routes/_public/browse");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
@@ -206,6 +218,29 @@ describe("routes/_public/browse", () => {
     });
 
     expect(loaderResult).toEqual({ initialEntriesLoadFailed: true });
+  });
+
+  it("surfaces a coding error from the browse loader instead of hiding it", async () => {
+    const routeModule = await import("@/routes/_public/browse");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    mocks.buildBrowseSearch.mockReturnValue({
+      cities: [],
+      entry_types: [],
+      issue_areas: [],
+      offset: 0,
+      query: undefined,
+      regions: [],
+      source_patterns: [],
+      source_types: [],
+      states: [],
+      view: "list",
+    });
+    mocks.api.entries.list.mockRejectedValue(new TypeError("filters.cities is not iterable"));
+
+    await expect(Route.options.loader?.({ deps: { search: {} } })).rejects.toThrow(
+      "filters.cities is not iterable",
+    );
   });
 
   it("renders BrowsePage with the search params from useSearch", async () => {

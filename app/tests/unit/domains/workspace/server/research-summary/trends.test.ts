@@ -89,4 +89,28 @@ describe("research-summary trends", () => {
       },
     ]);
   });
+
+  it("ranks equally repeated places by their most recent request", async () => {
+    mocks.requestWorkspaceApi.mockImplementation((path: string) => {
+      if (path === "/lists") return Promise.resolve([]);
+      if (path === "/feed/following?limit=50") return Promise.resolve({ items: [] });
+      return Promise.resolve({
+        items: [
+          makeRun({ id: "detroit-old", location_query: "Detroit, MI", started_at: isoDaysAgo(20) }),
+          makeRun({ id: "detroit-new", location_query: "Detroit, MI", started_at: isoDaysAgo(9) }),
+          makeRun({ id: "kc-old", started_at: isoDaysAgo(15) }),
+          makeRun({ id: "kc-new", started_at: isoDaysAgo(2) }),
+        ],
+        total: 4,
+      });
+    });
+
+    const summary = expectSummary(await executeLoader());
+
+    expect(summary.researchTrends?.map((trend) => trend.label)).toEqual([
+      "Kansas City, MO",
+      "Detroit, MI",
+      "Housing affordability",
+    ]);
+  });
 });

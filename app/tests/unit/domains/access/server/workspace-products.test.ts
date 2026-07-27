@@ -238,4 +238,13 @@ describe("queryActiveTeamSubscriptionId", () => {
 
     expect(await queryActiveTeamSubscriptionId("org_1")).toBeNull();
   });
+
+  it("refuses to report a grant it could not store", async () => {
+    authMocks.getAuthPgPool.mockReturnValue(null);
+    authMocks.getAuthDatabase.mockReturnValue(null);
+
+    await expect(
+      grantWorkspaceProduct({ product: "atlas_team", workspaceId: "org_1" }),
+    ).rejects.toThrow("Auth database unavailable in current mode");
+  });
 });

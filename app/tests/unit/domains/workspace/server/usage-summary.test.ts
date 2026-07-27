@@ -1,9 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  WorkspaceIntegrationMonitoring,
+  WorkspaceUsageAuditLog,
+  WorkspaceUsageEvent,
+  WorkspaceUsageSummary,
+} from "@/domains/workspace/server/usage-summary";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
 }));
+
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
 
 vi.mock("@/domains/access/server/session-state", () => ({
   requireReadyAtlasSessionState: mocks.requireReadyAtlasSessionState,
@@ -180,5 +192,125 @@ describe("workspace usage summary server helper", () => {
 
     expect(result).toBe(integrationMonitoring);
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/usage-summary/integrations");
+  });
+
+  it("falls back to the first page of the audit log when no bounds are given", async () => {
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: { activeOrganization: { id: "org_123" } },
+    });
+    mocks.requestAtlasApi.mockResolvedValue({ items: [], limit: 10, offset: 0, total: 0 });
+
+    const { loadWorkspaceUsageAuditLogData } =
+      await import("@/domains/workspace/server/usage-summary");
+    await loadWorkspaceUsageAuditLogData();
+
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      "/orgs/org_123/usage-summary/audit-log?limit=10&offset=0",
+    );
+  });
+});
+
+describe("workspace usage summary server functions", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.requestAtlasApi.mockReset();
+    mocks.requireReadyAtlasSessionState.mockReset();
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: { activeOrganization: { id: "org_123" } },
+    });
+  });
+
+  it("returns the renewal usage summary through the GET server function", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ org_id: "org_123", total_events: 5 });
+
+    const { loadWorkspaceUsageSummary } = await import("@/domains/workspace/server/usage-summary");
+    const response = (await loadWorkspaceUsageSummary.__executeServer({
+      data: undefined,
+      method: "GET",
+    })) as ServerFnExecutionResponse<WorkspaceUsageSummary>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ org_id: "org_123", total_events: 5 });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/usage-summary");
+  });
+
+  it("returns the audit log page the caller asked for", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ items: [], limit: 25, offset: 50, total: 90 });
+
+    const { loadWorkspaceUsageAuditLog } = await import("@/domains/workspace/server/usage-summary");
+    const response = (await loadWorkspaceUsageAuditLog.__executeServer({
+      data: { limit: 25, offset: 50 },
+      method: "GET",
+    })) as ServerFnExecutionResponse<WorkspaceUsageAuditLog>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result?.offset).toBe(50);
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      "/orgs/org_123/usage-summary/audit-log?limit=25&offset=50",
+    );
+  });
+
+  it("defaults the audit log to the first page when the route passes no bounds", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ items: [], limit: 10, offset: 0, total: 0 });
+
+    const { loadWorkspaceUsageAuditLog } = await import("@/domains/workspace/server/usage-summary");
+    const response = (await loadWorkspaceUsageAuditLog.__executeServer({
+      data: undefined,
+      method: "GET",
+    })) as ServerFnExecutionResponse<WorkspaceUsageAuditLog>;
+
+    expect(response.error).toBeUndefined();
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      "/orgs/org_123/usage-summary/audit-log?limit=10&offset=0",
+    );
+  });
+
+  it("returns integration activity through the GET server function", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ org_id: "org_123", total_calls: 3 });
+
+    const { loadWorkspaceIntegrationMonitoring } =
+      await import("@/domains/workspace/server/usage-summary");
+    const response = (await loadWorkspaceIntegrationMonitoring.__executeServer({
+      data: undefined,
+      method: "GET",
+    })) as ServerFnExecutionResponse<WorkspaceIntegrationMonitoring>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ org_id: "org_123", total_calls: 3 });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/usage-summary/integrations");
+  });
+
+  it("records an evidence open for the surface the reader was on", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ event_type: "evidence_opened", id: "event_1" });
+
+    const { recordWorkspaceEvidenceOpen } =
+      await import("@/domains/workspace/server/usage-summary");
+    const response = (await recordWorkspaceEvidenceOpen.__executeServer({
+      data: { sourceId: "src_1", surface: "brief" },
+      method: "POST",
+    })) as ServerFnExecutionResponse<WorkspaceUsageEvent>;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ event_type: "evidence_opened", id: "event_1" });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      "/orgs/org_123/usage-summary/evidence-opens",
+      {
+        body: JSON.stringify({ source_id: "src_1", surface: "brief" }),
+        method: "POST",
+      },
+    );
+  });
+
+  it("rejects an evidence open recorded against an unknown surface", async () => {
+    const { recordWorkspaceEvidenceOpen } =
+      await import("@/domains/workspace/server/usage-summary");
+    const response = (await recordWorkspaceEvidenceOpen.__executeServer({
+      data: { sourceId: "src_1", surface: "billboard" },
+      method: "POST",
+    })) as ServerFnExecutionResponse<WorkspaceUsageEvent>;
+
+    expect(response.result).toBeUndefined();
+    expect(response.error).toBeInstanceOf(Error);
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
   });
 });

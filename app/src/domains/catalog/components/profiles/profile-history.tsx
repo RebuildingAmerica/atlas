@@ -48,17 +48,19 @@ function formatHistoryDate(iso: string): string {
   return formatStableDateTime(date, MONTH_YEAR);
 }
 
-function sourceDate(source: Source): string | null {
-  return source.published_date ?? source.ingested_at ?? source.created_at ?? null;
+/**
+ * Date a source packet is filed under.
+ *
+ * A packet always carries `ingested_at`, so there is no such thing as an
+ * undated source here — the calendar day it was published wins when the
+ * publisher gave one.
+ */
+function sourceDate(source: Source): string {
+  return source.published_date ?? source.ingested_at;
 }
 
 function mostRecentSource(sources: Source[]): DatedSource | null {
-  const dated = sources
-    .map((source) => {
-      const date = sourceDate(source);
-      return date ? { source, date } : null;
-    })
-    .filter((item): item is DatedSource => Boolean(item));
+  const dated = sources.map((source) => ({ source, date: sourceDate(source) }));
 
   dated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   return dated[0] ?? null;

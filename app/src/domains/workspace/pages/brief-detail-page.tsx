@@ -44,6 +44,7 @@ interface BriefDetailPageProps {
 }
 
 type BriefEditStatus = "idle" | "saved" | "error";
+type BriefCopyStatus = "idle" | "copied" | "error";
 
 function DownloadButton({
   children,
@@ -67,11 +68,10 @@ function DownloadButton({
 }
 
 export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<BriefCopyStatus>("idle");
   const [brief, setBrief] = useState(briefExport.brief);
   const [isEditing, setIsEditing] = useState(false);
   const [editStatus, setEditStatus] = useState<BriefEditStatus>("idle");
-  const [editError, setEditError] = useState("");
   const [editorState, setEditorState] = useState(() => editorStateFromBrief(briefExport.brief));
   const updateBrief = useUpdateWorkspaceBrief();
   const recordEvidenceOpen = useRecordWorkspaceEvidenceOpen();
@@ -86,12 +86,15 @@ export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
     setEditorState(editorStateFromBrief(briefExport.brief));
   }, [briefExport.brief]);
 
+  // Only claim the export reached the clipboard once the write resolved --
+  // a reader who trusts a false "copied" pastes nothing into their memo.
   async function copyExportJson() {
-    if (typeof navigator === "undefined") {
-      return;
+    try {
+      await navigator.clipboard.writeText(exportJson);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
     }
-    await navigator.clipboard?.writeText(exportJson);
-    setCopied(true);
   }
 
   function downloadExportJson() {
@@ -103,22 +106,17 @@ export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
   }
 
   function printBrief() {
-    if (typeof window === "undefined" || typeof window.print !== "function") {
-      return;
-    }
     window.print();
   }
 
   function beginEditing() {
     setEditorState(editorStateFromBrief(brief));
-    setEditError("");
     setEditStatus("idle");
     setIsEditing(true);
   }
 
   async function saveBrief(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setEditError("");
     setEditStatus("idle");
 
     try {
@@ -137,8 +135,9 @@ export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
       setEditorState(editorStateFromBrief(updated));
       setEditStatus("saved");
       setIsEditing(false);
-    } catch (error) {
-      setEditError(error instanceof Error ? error.message : "Could not update brief.");
+    } catch {
+      // The rejection carries an internal Atlas API code, never copy a reader
+      // should see, so the editor states the outcome in its own words.
       setEditStatus("error");
     }
   }
@@ -250,7 +249,6 @@ export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
                   onClick={() => {
                     setIsEditing(false);
                     setEditorState(editorStateFromBrief(brief));
-                    setEditError("");
                   }}
                   className="type-label-large border-outline-variant text-ink-strong hover:bg-surface-container inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-4 transition-colors"
                 >
@@ -260,7 +258,7 @@ export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
               </div>
               {editStatus === "error" ? (
                 <p className="type-body-small text-rose-700" role="alert">
-                  {editError || "Could not update brief."}
+                  Could not update brief. Try again in a moment.
                 </p>
               ) : null}
             </form>
@@ -307,13 +305,18 @@ export function BriefDetailPage({ briefExport }: BriefDetailPageProps) {
               }}
               className="type-label-large border-outline-variant text-ink-strong hover:bg-surface-container inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-4 transition-colors"
             >
-              {copied ? (
+              {copyStatus === "copied" ? (
                 <Clipboard className="h-4 w-4" aria-hidden="true" />
               ) : (
                 <FileJson className="h-4 w-4" aria-hidden="true" />
               )}
               Copy JSON
             </button>
+            {copyStatus === "error" ? (
+              <p className="type-body-small text-rose-700" role="alert">
+                Could not copy the export. Download the JSON instead.
+              </p>
+            ) : null}
           </div>
         </div>
       </header>

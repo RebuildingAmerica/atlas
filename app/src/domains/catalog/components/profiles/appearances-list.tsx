@@ -192,7 +192,12 @@ function CoverageBar({ sources }: CoverageBarProps) {
   );
 }
 
-function pickLeadSource(sources: Source[]): { lead: Source; rest: Source[] } | null {
+interface LeadSourceSplit {
+  lead: Source;
+  rest: Source[];
+}
+
+function pickLeadSource(sources: Source[]): LeadSourceSplit | null {
   const [lead, ...rest] = [...sources].sort((a, b) => {
     const aDate = a.published_date ?? a.ingested_at;
     const bDate = b.published_date ?? b.ingested_at;
@@ -206,8 +211,9 @@ function pickLeadSource(sources: Source[]): { lead: Source; rest: Source[] } | n
 
 export function AppearancesList({ sources, mode }: AppearancesListProps) {
   const sectionTitle = mode === "person" ? "Appearances & mentions" : "Appearances & coverage";
+  const picked = pickLeadSource(sources);
 
-  if (sources.length === 0) {
+  if (!picked) {
     return (
       <div className="space-y-3">
         <h2 className="type-label-small text-ink-muted tracking-widest uppercase">
@@ -218,7 +224,6 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
     );
   }
 
-  const picked = pickLeadSource(sources);
   const sourceTypeCount = new Set(sources.map((source) => source.type)).size;
 
   return (
@@ -239,18 +244,16 @@ export function AppearancesList({ sources, mode }: AppearancesListProps) {
 
       <CoverageBar sources={sources} />
 
-      {picked ? (
-        <div className="space-y-3 pt-1">
-          <ExpandedSource source={picked.lead} />
-          {picked.rest.length > 0 ? (
-            <div className="border-outline-variant divide-outline-variant divide-y border-t pt-2">
-              {picked.rest.map((source) => (
-                <CompactSourceRow key={source.id} source={source} />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="space-y-3 pt-1">
+        <ExpandedSource source={picked.lead} />
+        {picked.rest.length > 0 ? (
+          <div className="border-outline-variant divide-outline-variant divide-y border-t pt-2">
+            {picked.rest.map((source) => (
+              <CompactSourceRow key={source.id} source={source} />
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

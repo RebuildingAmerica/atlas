@@ -129,4 +129,51 @@ describe("ProfileAnswerCard", () => {
     expect(screen.getByText("5 sources · corroborated · Apr 2026")).toBeInTheDocument();
     expect(screen.queryByText("Local description")).not.toBeInTheDocument();
   });
+  it("names an organization as an organization and a campaign by its type", () => {
+    const org = render(
+      <ProfileAnswerCard entry={buildEntry({ type: "organization" })} issueAreaLabels={{}} />,
+    );
+    expect(screen.getByText("Organization")).toBeInTheDocument();
+    org.unmount();
+
+    render(<ProfileAnswerCard entry={buildEntry({ type: "campaign" })} issueAreaLabels={{}} />);
+    expect(screen.getByText("Campaign")).toBeInTheDocument();
+  });
+
+  it("counts a single source packet in the singular", () => {
+    render(
+      <ProfileAnswerCard
+        entry={buildEntry({ issue_areas: [], source_count: 1 })}
+        issueAreaLabels={{}}
+      />,
+    );
+    // Once as the "why they matter" line, once as the evidence line.
+    expect(screen.getAllByText("1 source")).toHaveLength(2);
+  });
+
+  it("falls back to the issue areas when neither description nor quote exists", () => {
+    render(
+      <ProfileAnswerCard
+        entry={buildEntry({
+          description: undefined,
+          issue_areas: ["transit", "housing_affordability"],
+          sources: [buildSource({ extraction_context: undefined })],
+        })}
+        issueAreaLabels={{ transit: "Transit" }}
+      />,
+    );
+
+    expect(screen.getByText("Transit, Housing Affordability")).toBeInTheDocument();
+  });
+
+  it("says plainly that it is civic work when the record carries nothing else", () => {
+    render(
+      <ProfileAnswerCard
+        entry={buildEntry({ description: undefined, issue_areas: [], sources: undefined })}
+        issueAreaLabels={{}}
+      />,
+    );
+
+    expect(screen.getByText("Civic work")).toBeInTheDocument();
+  });
 });

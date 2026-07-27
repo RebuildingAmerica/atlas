@@ -147,11 +147,12 @@ export async function completeAtprotoAuthorization(params: URLSearchParams): Pro
   const client = await getAtprotoOAuthClient();
   const result = await client.callback(params);
   try {
-    const state = result.state ? await appStateStore.get(result.state) : undefined;
-    if (state?.userId !== session.user.id) {
+    const stateKey = result.state;
+    const state = stateKey ? await appStateStore.get(stateKey) : undefined;
+    if (!stateKey || state?.userId !== session.user.id) {
       throw new Error("ATProto verification state could not be matched to this session.");
     }
-    await appStateStore.del(result.state ?? "");
+    await appStateStore.del(stateKey);
 
     const agent = new Agent(result.session);
     const [profile, tokenInfo] = await Promise.all([
@@ -229,11 +230,12 @@ export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Re
   const client = await getAtprotoOAuthClient();
   const result = await client.callback(params);
   try {
-    const state = result.state ? await appStateStore.get(result.state) : undefined;
-    if (state?.flow !== "sign-in") {
+    const stateKey = result.state;
+    const state = stateKey ? await appStateStore.get(stateKey) : undefined;
+    if (!stateKey || state?.flow !== "sign-in") {
       throw new Error("ATProto sign-in is unavailable.");
     }
-    await appStateStore.del(result.state ?? "");
+    await appStateStore.del(stateKey);
 
     const agent = new Agent(result.session);
     const profile = await agent.getProfile({ actor: result.session.did });

@@ -14,6 +14,10 @@ export interface IssueLandscapeGroup {
   title: string;
 }
 
+/**
+ * One issue column. Only ever mounted for a group that has entries or an
+ * error to report, so it has no empty state of its own.
+ */
 function IssueClusterColumn({
   entries,
   error,
@@ -30,10 +34,6 @@ function IssueClusterColumn({
         <p className="type-body-medium text-on-error-container">{error.message}</p>
       </div>
     );
-  }
-
-  if (entries.length === 0) {
-    return null;
   }
 
   return (

@@ -1,9 +1,15 @@
 /**
+ * The client id the CIMD tests resolve: the URL the metadata document below is
+ * served from, and the identifier clients register under.
+ */
+export const VALID_CLIENT_ID_METADATA_CLIENT_ID = "https://app.example.com/oauth/client.json";
+
+/**
  * A well-formed client_id_metadata_document fixture used as the baseline for
  * the validation and resolution tests.
  */
 export const VALID_CLIENT_ID_METADATA_DOCUMENT = {
-  client_id: "https://app.example.com/oauth/client.json",
+  client_id: VALID_CLIENT_ID_METADATA_CLIENT_ID,
   client_name: "Example MCP Client",
   redirect_uris: ["https://app.example.com/callback", "http://localhost:3000/callback"],
 };

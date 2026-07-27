@@ -89,10 +89,7 @@ function resolveSeatPriceId(products: AtlasBillingProducts, interval: PricingChe
     : products.atlas_team.monthlySeatPriceId;
 }
 
-function canStartCheckout(intent: PurchaseIntentRecord | null): boolean {
-  if (!intent) {
-    return false;
-  }
+function canStartCheckout(intent: PurchaseIntentRecord): boolean {
   if (intent.status !== "workspace_ready") return false;
   return Date.parse(intent.expiresAt) > Date.now();
 }
@@ -241,9 +238,6 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
     const metadata = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
     const products = getAtlasBillingProducts();
     const priceId = resolvePriceId(products, intent.product, intent.interval);
-    if (!priceId) {
-      throw new Error("Stripe price not configured for this product.");
-    }
 
     let stripeCustomerId = metadata.stripeCustomerId;
     if (!stripeCustomerId) {

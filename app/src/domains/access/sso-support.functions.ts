@@ -208,9 +208,11 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
   .validator(publicSSOResolutionSchema)
   .handler(async ({ data }) => {
     const rawDomain = data.email.split("@")[1];
+    /* v8 ignore start -- Unreachable: the validator already enforces z.string().email(), so a domain part always exists. */
     if (!rawDomain) {
       throw new Error("Atlas SSO email invariant: validated email always contains a domain part.");
     }
+    /* v8 ignore stop */
     const emailDomain = rawDomain.trim().toLowerCase();
     const {
       auth: authModule,
@@ -264,9 +266,11 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
 
     const groupedWorkspaces = [...providersByWorkspace.entries()];
     const firstWorkspace = groupedWorkspaces[0];
+    /* v8 ignore start -- Unreachable: the size !== 1 guard above already returned, so entry zero always exists. */
     if (!firstWorkspace) {
       throw new Error("Atlas SSO grouping invariant: size === 1 implies a first workspace.");
     }
+    /* v8 ignore stop */
     const [organizationId, workspaceProviders] = firstWorkspace;
 
     const workspaceIdentity = await loadStoredWorkspaceIdentity(organizationId);

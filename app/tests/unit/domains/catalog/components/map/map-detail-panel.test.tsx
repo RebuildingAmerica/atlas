@@ -211,3 +211,76 @@ describe("MapDetailPanel — motion", () => {
     expect(dialog.style.transform).toBe("");
   });
 });
+describe("MapDetailPanel — map facts", () => {
+  it("counts a single source link in the singular and dates the newest one", () => {
+    render(
+      <MapDetailPanel
+        selection={selectActor(
+          makePoint({ id: "1", latest_source_date: "2026-05-04", source_count: 1 }),
+          { lng: -96.8, lat: 32.78 },
+        )}
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+
+    const facts = within(screen.getByLabelText("Map facts"));
+    expect(facts.getByText("1 link")).toBeTruthy();
+    expect(facts.getByText("Newest May 4, 2026")).toBeTruthy();
+    expect(facts.getByText("Kansas City, MO")).toBeTruthy();
+  });
+
+  it("says only that a point is mapped when nothing records how precisely", () => {
+    render(
+      <MapDetailPanel
+        selection={selectActor(
+          makePoint({
+            id: "1",
+            geocode_precision: undefined,
+            latest_source_date: null,
+            place_label: null,
+          }),
+          { lng: -96.8, lat: 32.78 },
+        )}
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+
+    const facts = within(screen.getByLabelText("Map facts"));
+    expect(facts.getByText("Mapped location")).toBeTruthy();
+    expect(facts.queryByText("Place")).toBeNull();
+    expect(facts.queryByText(/^Newest /)).toBeNull();
+  });
+
+  it("echoes an unparseable source date rather than dropping the fact", () => {
+    render(
+      <MapDetailPanel
+        selection={selectActor(makePoint({ id: "1", latest_source_date: "unknown" }), {
+          lng: -96.8,
+          lat: 32.78,
+        })}
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+
+    expect(within(screen.getByLabelText("Map facts")).getByText("Newest unknown")).toBeTruthy();
+  });
+
+  it("counts a one-member cluster in the singular", () => {
+    render(
+      <MapDetailPanel
+        selection={selectCluster(
+          [makePoint({ id: "1", name: "Dallas Tenants United" })],
+          { lng: -96.8, lat: 32.78 },
+          42,
+        )}
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "1 person or group here" })).toBeTruthy();
+  });
+});

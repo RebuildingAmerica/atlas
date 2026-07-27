@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DirectoryConfigRequest } from "@rebuildingamerica/atlas-api-client/generated/atlas";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
 }));
+
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
 
 vi.mock("@/domains/access/server/session-state", () => ({
   requireReadyAtlasSessionState: mocks.requireReadyAtlasSessionState,
@@ -105,6 +111,62 @@ describe("workspace directory config server helpers", () => {
     await expect(loadWorkspaceDirectoryConfigData()).rejects.toThrow(
       "Open a workspace before editing public directory settings.",
     );
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
+  });
+});
+
+describe("workspace directory config server functions", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.requestAtlasApi.mockReset();
+    mocks.requireReadyAtlasSessionState.mockReset();
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: { activeOrganization: { id: "org_123" } },
+    });
+  });
+
+  it("returns the public directory configuration through the GET server function", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ org_id: "org_123", title: "Detroit tenant power" });
+
+    const { loadWorkspaceDirectoryConfig } =
+      await import("@/domains/workspace/server/directory-config");
+    const response = (await loadWorkspaceDirectoryConfig.__executeServer({
+      data: undefined,
+      method: "GET",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ org_id: "org_123", title: "Detroit tenant power" });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/entries/directory-config");
+  });
+
+  it("saves the directory title an operator typed", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ org_id: "org_123", title: "Detroit tenant power" });
+
+    const { updateWorkspaceDirectoryConfig } =
+      await import("@/domains/workspace/server/directory-config");
+    const response = (await updateWorkspaceDirectoryConfig.__executeServer({
+      data: { title: "  Detroit tenant power  " },
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/orgs/org_123/entries/directory-config", {
+      body: JSON.stringify({ title: "Detroit tenant power" }),
+      method: "PUT",
+    });
+  });
+
+  it("rejects a directory title that is only whitespace", async () => {
+    const { updateWorkspaceDirectoryConfig } =
+      await import("@/domains/workspace/server/directory-config");
+    const response = (await updateWorkspaceDirectoryConfig.__executeServer({
+      data: { title: "   " },
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toBeUndefined();
+    expect(response.error).toBeInstanceOf(Error);
     expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ManagedPdsCreateAccount } from "./atproto-pds-test-support";
 
 const pdsMocks = vi.hoisted(() => ({
-  createAccount: vi.fn(),
+  createAccount: vi.fn<ManagedPdsCreateAccount>(),
   fetch: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
 }));
@@ -242,6 +243,92 @@ describe("provisionManagedAtprotoIdentity", () => {
         userId: "user_1",
       }),
     ).rejects.toThrow("Atlas PDS invite creation failed with HTTP 401.");
+    expect(pdsMocks.createAccount).not.toHaveBeenCalled();
+  });
+
+  it("refuses a PDS URL that is not HTTPS", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({ atprotoPdsUrl: "http://pds.atlas.test" });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await expect(
+      provisionManagedAtprotoIdentity({
+        email: "operator@atlas.test",
+        handle: "civic.atlas.test",
+        userId: "user_1",
+      }),
+    ).rejects.toThrow("ATLAS_PDS_PUBLIC_URL must use https.");
+  });
+
+  it("refuses to provision without a usable Atlas account email", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({
+      atprotoPdsAdminPassword: null,
+      atprotoPdsUrl: "https://pds.atlas.test",
+    });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    for (const email of ["operator", "@atlas.test", "operator@"]) {
+      await expect(
+        provisionManagedAtprotoIdentity({ email, handle: "civic.atlas.test", userId: "user_1" }),
+      ).rejects.toThrow("Atlas account email is required to provision an Atlas identity.");
+    }
+    expect(pdsMocks.createAccount).not.toHaveBeenCalled();
+  });
+
+  it("substitutes a safe local part when the account email has none to reuse", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({
+      atprotoPdsAdminPassword: null,
+      atprotoPdsUrl: "https://pds.atlas.test",
+    });
+    pdsMocks.createAccount.mockResolvedValue({
+      data: { did: "did:plc:managed", handle: "civic.atlas.test" },
+    });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await provisionManagedAtprotoIdentity({
+      email: "操作者@atlas.test",
+      handle: "civic.atlas.test",
+      userId: "user_1",
+    });
+
+    expect(pdsMocks.createAccount.mock.calls[0]?.[0]?.email).toMatch(
+      /^atlas\+atlas-[a-f0-9]{16}@atlas\.test$/,
+    );
+  });
+
+  it("fails explicitly when the Atlas PDS returns no invite code", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({
+      atprotoPdsAdminPassword: "admin-password", // pragma: allowlist secret
+      atprotoPdsUrl: "https://pds.atlas.test",
+    });
+    pdsMocks.fetch.mockResolvedValue({ json: () => Promise.resolve({ code: "  " }), ok: true });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await expect(
+      provisionManagedAtprotoIdentity({
+        email: "operator@atlas.test",
+        handle: "civic.atlas.test",
+        userId: "user_1",
+      }),
+    ).rejects.toThrow("Atlas PDS invite creation did not return a code.");
+    expect(pdsMocks.createAccount).not.toHaveBeenCalled();
+  });
+
+  it("fails explicitly when the invite broker returns no code", async () => {
+    pdsMocks.getAuthRuntimeConfig.mockReturnValue({
+      atprotoPdsInviteBrokerSecret: "broker-secret", // pragma: allowlist secret
+      atprotoPdsInviteBrokerUrl: "https://broker.atlas.test/invite",
+      atprotoPdsUrl: "https://pds.atlas.test",
+    });
+    pdsMocks.fetch.mockResolvedValue({ json: () => Promise.resolve({}), ok: true });
+    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
+
+    await expect(
+      provisionManagedAtprotoIdentity({
+        email: "operator@atlas.test",
+        handle: "civic.atlas.test",
+        userId: "user_1",
+      }),
+    ).rejects.toThrow("Atlas PDS invite broker did not return a code.");
     expect(pdsMocks.createAccount).not.toHaveBeenCalled();
   });
 

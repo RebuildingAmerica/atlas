@@ -304,4 +304,69 @@ describe("PlacePage", () => {
       "Showing 1 person or organization",
     );
   });
+
+  it("says each section is empty rather than leaving the reader staring at blank panels", () => {
+    render(
+      <PlacePage
+        data={{
+          ...placePageFixture,
+          actors: { items: [] },
+          facts: [],
+          governments: [],
+          identity: { ...placePageFixture.identity, scopes: [] },
+          issues: [],
+          latest: { items: [] },
+          places: [],
+          summaryFacts: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("No recent activity listed.")).toBeInTheDocument();
+    expect(screen.getByText("No people or organizations listed.")).toBeInTheDocument();
+    expect(screen.getByText("No issues listed.")).toBeInTheDocument();
+    expect(screen.getByText("No facts listed.")).toBeInTheDocument();
+    expect(screen.getByText("No government entries listed.")).toBeInTheDocument();
+    expect(screen.getAllByText("No related places listed.")).toHaveLength(2);
+    expect(screen.queryByRole("navigation", { name: "Las Vegas places" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Las Vegas" })).toBeInTheDocument();
+  });
+
+  it("omits the issue lines and fact attribution a record does not carry", () => {
+    render(
+      <PlacePage
+        data={{
+          ...placePageFixture,
+          facts: [{ label: "Rent-burdened households", value: "31%" }],
+          issues: [
+            {
+              actors: [],
+              domain: "transportation",
+              id: "transit",
+              name: "Transit and mobility",
+              places: [],
+              records: [],
+            },
+          ],
+        }}
+      />,
+    );
+
+    const issuesSection = screen.getByRole("heading", { name: "Issues" }).closest("section");
+    if (issuesSection === null) {
+      throw new Error("Issues section was not rendered.");
+    }
+    expect(
+      within(issuesSection).getByRole("heading", { name: "Transit and mobility" }),
+    ).toBeInTheDocument();
+    expect(within(issuesSection).queryByText("People")).toBeNull();
+    expect(within(issuesSection).queryByText("Records")).toBeNull();
+
+    const factsSection = screen.getByRole("heading", { name: "Facts" }).closest("section");
+    if (factsSection === null) {
+      throw new Error("Facts section was not rendered.");
+    }
+    expect(within(factsSection).getByText("31%")).toBeInTheDocument();
+    expect(within(factsSection).queryByText("HUD CHAS, 2023")).toBeNull();
+  });
 });

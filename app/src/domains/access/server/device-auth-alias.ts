@@ -55,16 +55,16 @@ function shouldAdaptOAuthFormRequest(request: Request, endpoint: DeviceAuthAlias
 
 function isFormUrlEncodedRequest(request: Request): boolean {
   const contentType = request.headers.get("content-type") ?? "";
-  return contentType.toLowerCase().split(";")[0]?.trim() === FORM_URLENCODED_CONTENT_TYPE;
+  return contentType.toLowerCase().replace(/;.*$/, "").trim() === FORM_URLENCODED_CONTENT_TYPE;
 }
 
 async function readOAuthFormBody(request: Request): Promise<OAuthFormRequestBody> {
-  const formData = await request.formData();
+  // The caller has already established the body is form-urlencoded, so every
+  // parameter is a string; parsing it as such avoids inventing a File case.
+  const parameters = new URLSearchParams(await request.text());
   const body: OAuthFormRequestBody = {};
-  for (const [parameter, value] of formData.entries()) {
-    if (typeof value === "string") {
-      body[parameter] = value;
-    }
+  for (const [parameter, value] of parameters) {
+    body[parameter] = value;
   }
   return body;
 }

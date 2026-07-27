@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildHostedRewriteDestination,
   buildMcpResourceUrl,
+  isHostedAtlasEnv,
   normalizeApiProxyOrigin,
   normalizeDocsOrigin,
   validateHostedAtlasEnv,
@@ -113,5 +114,45 @@ describe("hosted Atlas URL helpers", () => {
     expect(
       buildHostedRewriteDestination("https://atlas-docs.example.com/docs", "/docs/:match*"),
     ).toBe("https://atlas-docs.example.com/docs/:match*");
+  });
+});
+
+describe("hosted Atlas environment detection", () => {
+  it("treats production and staging deploys, and Vercel production, as hosted", () => {
+    expect(isHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "production" })).toBe(true);
+    expect(isHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "staging" })).toBe(true);
+    expect(isHostedAtlasEnv({ VERCEL_ENV: "production" })).toBe(true);
+  });
+
+  it("treats a local or preview environment as not hosted", () => {
+    expect(isHostedAtlasEnv({})).toBe(false);
+    expect(isHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "development", VERCEL_ENV: "preview" })).toBe(
+      false,
+    );
+  });
+
+  it("skips validation entirely outside hosted deployments", () => {
+    expect(() => {
+      validateHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "development" });
+    }).not.toThrow();
+  });
+});
+
+describe("hosted Atlas API proxy origin", () => {
+  it("leaves the API proxy unset for local development", () => {
+    expect(normalizeApiProxyOrigin({})).toBeUndefined();
+    expect(normalizeApiProxyOrigin({ ATLAS_SERVER_API_PROXY_TARGET: "   " })).toBeUndefined();
+  });
+
+  it("insists a hosted deployment names its API proxy", () => {
+    expect(() => {
+      normalizeApiProxyOrigin({ ATLAS_DEPLOY_MODE: "staging" });
+    }).toThrow("ATLAS_SERVER_API_PROXY_TARGET is required for hosted Atlas deployments.");
+  });
+
+  it("rejects a value that cannot be read as a URL", () => {
+    expect(() => {
+      normalizeApiProxyOrigin({ ATLAS_SERVER_API_PROXY_TARGET: "https://" });
+    }).toThrow("ATLAS_SERVER_API_PROXY_TARGET must be an absolute URL.");
   });
 });

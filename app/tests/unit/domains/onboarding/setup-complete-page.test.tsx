@@ -1,24 +1,18 @@
 // @vitest-environment jsdom
-import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import type { QueryClient } from "@tanstack/react-query";
 import {
+  purchaseOnboardingIntentQueryKey,
   purchaseOnboardingIntentQueryOptions,
   SetupCompletePage,
 } from "@/domains/onboarding/pages/setup-complete-page";
+import type { PurchaseIntentRecord } from "@/domains/billing/server/purchase-intents";
+import { renderWithProviders } from "../../../helpers/render-with-providers";
 
 const mocks = vi.hoisted(() => ({
-  invalidateQueries: vi.fn(),
   loadPurchaseOnboarding: vi.fn(),
-  queryOptions: vi.fn((options: unknown) => options),
   useAtlasSession: vi.fn(),
-  useQuery: vi.fn(),
-}));
-
-vi.mock("@tanstack/react-query", () => ({
-  queryOptions: mocks.queryOptions,
-  useQuery: mocks.useQuery,
-  useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -36,150 +30,176 @@ vi.mock("@/domains/billing/purchase-onboarding.functions", () => ({
 }));
 
 describe("SetupCompletePage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.queryOptions.mockClear();
-    mocks.useQuery.mockReturnValue({ data: null, refetch: vi.fn() });
-  });
-
-  afterEach(() => {
-    cleanup();
-    vi.useRealTimers();
-  });
-
-  it("builds reusable query options for purchase completion", async () => {
-    const intent = {
+  function intent(overrides: Partial<PurchaseIntentRecord> = {}): PurchaseIntentRecord {
+    return {
       id: "pi_team",
       interval: "monthly",
       product: "atlas_team",
-      status: "paid",
+      status: "checkout_created",
       stripeCheckoutSessionId: "cs_123",
       userId: "user_123",
       workspaceId: "org_team",
+      ...overrides,
+    } as PurchaseIntentRecord;
+  }
+
+  function seedIntent(record: PurchaseIntentRecord | null) {
+    return (queryClient: QueryClient) => {
+      queryClient.setQueryData([...purchaseOnboardingIntentQueryKey, "pi_team"], record);
     };
-    mocks.loadPurchaseOnboarding.mockResolvedValue(intent);
+  }
+
+  function signedInWorkspace(activeProducts: string[], activeOrganizationId: string | null) {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        workspace: {
+          activeOrganization: activeOrganizationId ? { id: activeOrganizationId } : null,
+          activeProducts,
+        },
+      },
+    });
+  }
+
+  beforeEach(() => {
+    mocks.loadPurchaseOnboarding.mockResolvedValue(intent());
+    signedInWorkspace([], "org_other");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("loads the purchase intent the completion link names", async () => {
+    const record = intent({ status: "paid" });
+    mocks.loadPurchaseOnboarding.mockResolvedValue(record);
 
     const options = purchaseOnboardingIntentQueryOptions("pi_team");
 
-    expect(mocks.queryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryKey: ["onboarding", "purchase-intent", "pi_team"],
-      }),
-    );
+    expect(options.queryKey).toEqual(["onboarding", "purchase-intent", "pi_team"]);
     const queryFn = options.queryFn as () => Promise<unknown>;
-    await expect(queryFn()).resolves.toBe(intent);
-    expect(mocks.loadPurchaseOnboarding).toHaveBeenCalledWith({
-      data: { purchaseId: "pi_team" },
-    });
+    await expect(queryFn()).resolves.toBe(record);
+    expect(mocks.loadPurchaseOnboarding).toHaveBeenCalledWith({ data: { purchaseId: "pi_team" } });
   });
 
-  it("does not mark the purchase complete just because another product is active", () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        workspace: {
-          activeOrganization: { id: "org_team" },
-          activeProducts: ["atlas_pro"],
-        },
-      },
-    });
-    mocks.useQuery.mockReturnValue({
-      data: {
-        id: "pi_team",
-        product: "atlas_team",
-        status: "checkout_created",
-        workspaceId: "org_team",
-      },
-      refetch: vi.fn(),
-    });
+  it("keeps waiting when a different product is the one already active", () => {
+    signedInWorkspace(["atlas_pro"], "org_team");
 
-    render(<SetupCompletePage purchase="pi_team" />);
+    renderWithProviders(<SetupCompletePage purchase="pi_team" />, { seed: seedIntent(intent()) });
 
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: true,
-        queryKey: ["onboarding", "purchase-intent", "pi_team"],
-      }),
-    );
     expect(screen.getByText("Finishing setup")).toBeInTheDocument();
+    expect(screen.getByText("Stripe has not confirmed this payment yet.")).toBeInTheDocument();
     expect(screen.queryByText("Your team workspace is ready.")).not.toBeInTheDocument();
   });
 
-  it("refreshes the purchase intent while waiting for Stripe completion", async () => {
-    vi.useFakeTimers();
-    const refetch = vi.fn().mockResolvedValue({});
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        workspace: {
-          activeOrganization: { id: "org_other" },
-          activeProducts: [],
-        },
-      },
-    });
-    mocks.useQuery.mockReturnValue({
-      data: {
-        id: "pi_team",
-        product: "atlas_team",
-        status: "checkout_created",
-        workspaceId: "org_team",
-      },
-      refetch,
-    });
+  it("keeps waiting while the session itself is still loading", () => {
+    mocks.useAtlasSession.mockReturnValue({ data: undefined });
 
-    render(<SetupCompletePage purchase="pi_team" />);
+    renderWithProviders(<SetupCompletePage purchase="pi_team" />, { seed: seedIntent(intent()) });
 
-    await act(async () => {
-      vi.advanceTimersByTime(1500);
-      await Promise.resolve();
-    });
-
-    expect(refetch).toHaveBeenCalledTimes(1);
-    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["atlas-session"] });
+    expect(screen.getByText("Finishing setup")).toBeInTheDocument();
   });
 
-  it("shows the ready state when the purchase query is paid", () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        workspace: {
-          activeOrganization: { id: "org_other" },
-          activeProducts: [],
-        },
-      },
+  it("offers SSO setup once a paid team workspace is ready", () => {
+    renderWithProviders(<SetupCompletePage purchase="pi_team" />, {
+      seed: seedIntent(intent({ status: "paid" })),
     });
-    mocks.useQuery.mockReturnValue({
-      data: {
-        id: "pi_team",
-        product: "atlas_team",
-        status: "paid",
-        workspaceId: "org_team",
-      },
-      refetch: vi.fn(),
-    });
-
-    render(<SetupCompletePage purchase="pi_team" />);
 
     expect(screen.getByText("Your team workspace is ready.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Invite teammates or connect SSO when you are ready."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Set up SSO" })).toHaveAttribute(
+      "href",
+      "/organization/sso",
+    );
+    expect(screen.getByRole("link", { name: "Open workspace" })).toHaveAttribute(
+      "href",
+      "/discovery",
+    );
   });
 
-  it("does not claim payment succeeded when the completion link has no purchase", () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        workspace: {
-          activeOrganization: null,
-          activeProducts: [],
-        },
-      },
+  it("thanks an individual backer without offering team-only setup", () => {
+    signedInWorkspace(["atlas_pro"], "org_team");
+
+    renderWithProviders(<SetupCompletePage purchase="pi_team" />, {
+      seed: seedIntent(intent({ product: "atlas_pro", status: "checkout_created" })),
     });
 
-    render(<SetupCompletePage />);
+    expect(screen.getByText("Thanks for backing Atlas.")).toBeInTheDocument();
+    expect(screen.getByText("Your workspace is ready.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Set up SSO" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open workspace" })).toBeInTheDocument();
+  });
+
+  it("keeps re-checking Stripe and offers a way out once the wait runs long", async () => {
+    vi.useFakeTimers();
+
+    const { queryClient } = renderWithProviders(<SetupCompletePage purchase="pi_team" />, {
+      seed: seedIntent(intent()),
+    });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(mocks.loadPurchaseOnboarding).toHaveBeenCalledWith({ data: { purchaseId: "pi_team" } });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["atlas-session"] });
+    expect(screen.getByText("Finishing setup")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+
+    expect(screen.getByText("Almost there")).toBeInTheDocument();
+    expect(
+      screen.getByText("Payment succeeded, but access has not appeared yet. Refresh in a moment."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to payment" })).toHaveAttribute(
+      "href",
+      "/onboarding?purchase=pi_team&step=payment",
+    );
+    expect(mocks.loadPurchaseOnboarding.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("reloads the page when the buyer asks to refresh", async () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+
+    renderWithProviders(<SetupCompletePage purchase="pi_team" />, { seed: seedIntent(intent()) });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(32_000);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("stops polling the moment the workspace has the product", async () => {
+    vi.useFakeTimers();
+    signedInWorkspace(["atlas_team"], "org_team");
+
+    renderWithProviders(<SetupCompletePage purchase="pi_team" />, { seed: seedIntent(intent()) });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(32_000);
+    });
+
+    expect(screen.getByText("Your team workspace is ready.")).toBeInTheDocument();
+    // Only the mount load -- nothing rescheduled a poll behind the ready state.
+    expect(mocks.loadPurchaseOnboarding).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not claim payment succeeded when the completion link has no purchase", async () => {
+    renderWithProviders(<SetupCompletePage />);
 
     expect(screen.getByText("Payment link unavailable")).toBeInTheDocument();
     expect(screen.queryByText(/Payment succeeded/)).not.toBeInTheDocument();
-    expect(mocks.loadPurchaseOnboarding).not.toHaveBeenCalled();
-    expect(mocks.useQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-        queryKey: ["onboarding", "purchase-intent", ""],
-      }),
-    );
+    expect(screen.getByRole("link", { name: "View pricing" })).toHaveAttribute("href", "/pricing");
+    await waitFor(() => {
+      expect(mocks.loadPurchaseOnboarding).not.toHaveBeenCalled();
+    });
   });
 });

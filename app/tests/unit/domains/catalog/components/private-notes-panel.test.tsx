@@ -122,4 +122,29 @@ describe("PrivateNotesPanel", () => {
 
     expect(container).toBeEmptyDOMElement();
   });
+  it("says plainly that a workspace has no notes on this record yet", () => {
+    annotationMocks.useOrgAnnotations.mockReturnValue({ data: [], isLoading: false });
+
+    render(<PrivateNotesPanel targetId="entry-1" targetLabel="Housing Justice KC" type="entry" />);
+
+    expect(screen.getByText("No private notes yet.")).toBeInTheDocument();
+  });
+
+  it("tells the writer their note did not save, without leaking the failure", async () => {
+    annotationMocks.useCreateOrgAnnotation.mockReturnValue({
+      mutateAsync: vi.fn().mockRejectedValue(new Error("500 from /annotations")),
+      isPending: false,
+    });
+
+    render(<PrivateNotesPanel targetId="entry-1" targetLabel="Housing Justice KC" type="entry" />);
+
+    fireEvent.change(screen.getByLabelText("New note for Housing Justice KC"), {
+      target: { value: "Confirm Tuesday availability." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save note for Housing Justice KC" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not save note.");
+    expect(alert).not.toHaveTextContent("500");
+  });
 });

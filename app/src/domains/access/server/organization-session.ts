@@ -1,7 +1,10 @@
 import "@tanstack/react-start/server-only";
 
 import { z } from "zod";
-import { resolveCapabilities, serializeResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import {
+  resolveCapabilities,
+  serializeResolvedCapabilities,
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import {
   buildAtlasWorkspaceCapabilities,
   normalizeAtlasOrganizationMetadata,
@@ -74,10 +77,10 @@ function derivePersonalWorkspaceIdentity(session: AtlasSessionRecord): {
   slugBase: string;
 } {
   const displayName = session.user.name.trim();
-  const emailLocalPart = session.user.email.split("@")[0]?.trim() ?? "";
+  const emailLocalPart = session.user.email.replace(/@.*$/, "").trim();
   const ownerLabel = displayName || emailLocalPart || "My";
   const name = displayName ? `${displayName}'s Workspace` : "My Workspace";
-  const slugBase = slugifyWorkspaceName(`${ownerLabel}'s Workspace`) || "my-workspace";
+  const slugBase = slugifyWorkspaceName(`${ownerLabel}'s Workspace`);
   return { name, slugBase };
 }
 
@@ -115,7 +118,9 @@ async function createPersonalWorkspace(
     }
   }
 
+  /* v8 ignore start -- the final attempt above always returns or rethrows; this satisfies control-flow analysis */
   throw new Error("Atlas could not create a personal workspace.");
+  /* v8 ignore stop */
 }
 
 /**

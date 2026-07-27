@@ -76,8 +76,9 @@ function actorCountLabel(count: number): string {
   return count === 1 ? "1 person or group" : `${count} people and groups`;
 }
 
+/** Only ever shown for an issue spread across more than one place. */
 function placeCountLabel(count: number): string {
-  return count === 1 ? "1 place" : `${count} places`;
+  return `${count} places`;
 }
 
 function facetAriaLabel(item: BrowseEditorialFacet, variant: "issue" | "standard"): string {
@@ -96,10 +97,7 @@ function facetAriaLabel(item: BrowseEditorialFacet, variant: "issue" | "standard
     .join(" ");
 }
 
-function dateLabel(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
-  }
+function dateLabel(value: string): string {
   // A source date is a calendar day, so it stays pinned rather than shifting
   // into the reader's zone.
   return formatDateTimeOrInput(formatStableDateTime, value, MEDIUM_DATE);
@@ -284,8 +282,8 @@ export function BrowsePage({
     [selectedFilters, updateSearch],
   );
 
-  const runSearch = (value?: string) => {
-    const intent = resolveBrowseSearchIntent(value ?? "", {
+  const runSearch = (value: string) => {
+    const intent = resolveBrowseSearchIntent(value, {
       cityNames,
       entryTypeLabels: ENTITY_TYPE_LABELS,
       issueAreaLabels,
@@ -309,7 +307,7 @@ export function BrowsePage({
       city_count: intent.cities.length,
       entry_type_count: intent.entry_types.length,
       issue_count: intent.issue_areas.length,
-      query: intent.query ?? value ?? "",
+      query: intent.query ?? value,
       region_count: intent.regions.length,
       source_type_count: intent.source_types.length,
       state_count: intent.states.length,
@@ -463,7 +461,6 @@ export function BrowsePage({
         ) : (
           <BrowseEditorialMode
             sections={editorialSections}
-            indexContextLabel={indexContextLabel}
             searchTools={browseTools}
             onSelectFacet={handleToggleFilter}
           />
@@ -540,11 +537,13 @@ function BrowseResultsMode({
             <button
               type="button"
               disabled={previousOffset === null}
-              onClick={() => {
-                if (previousOffset !== null) {
-                  onPageChange(previousOffset);
-                }
-              }}
+              onClick={
+                previousOffset === null
+                  ? undefined
+                  : () => {
+                      onPageChange(previousOffset);
+                    }
+              }
               className="type-label-large border-border text-ink-soft disabled:text-ink-muted rounded-full border px-4 py-2 disabled:opacity-50"
             >
               Previous
@@ -552,11 +551,13 @@ function BrowseResultsMode({
             <button
               type="button"
               disabled={nextOffset === null}
-              onClick={() => {
-                if (nextOffset !== null) {
-                  onPageChange(nextOffset);
-                }
-              }}
+              onClick={
+                nextOffset === null
+                  ? undefined
+                  : () => {
+                      onPageChange(nextOffset);
+                    }
+              }
               className="type-label-large border-border text-ink-soft disabled:text-ink-muted rounded-full border px-4 py-2 disabled:opacity-50"
             >
               Next
@@ -581,18 +582,17 @@ function BrowseResultsMode({
 }
 
 interface BrowseEditorialModeProps {
-  indexContextLabel: string | undefined;
   searchTools: ReactNode;
   sections: ReturnType<typeof buildBrowseEditorialSections>;
   onSelectFacet: (key: BrowseFilterKey, value: string) => void;
 }
 
-function BrowseEditorialMode({
-  indexContextLabel,
-  searchTools,
-  sections,
-  onSelectFacet,
-}: BrowseEditorialModeProps) {
+/**
+ * The unfiltered browse surface. Editorial mode only shows while no place or
+ * issue is selected, so its shelves are never scoped to one — the scoped
+ * headings live in the results mode below.
+ */
+function BrowseEditorialMode({ searchTools, sections, onSelectFacet }: BrowseEditorialModeProps) {
   const hasAnySection =
     sections.activeIssues.length > 0 ||
     sections.activePlaces.length > 0 ||
@@ -609,7 +609,7 @@ function BrowseEditorialMode({
   return (
     <>
       <PrimitiveFacetSection
-        title={indexContextLabel ? `Issues in ${indexContextLabel}` : "Issues"}
+        title="Issues"
         items={sections.activeIssues}
         variant="issue"
         onSelectFacet={onSelectFacet}
@@ -623,7 +623,7 @@ function BrowseEditorialMode({
         />
       ))}
       <PrimitiveFacetSection
-        title={indexContextLabel ? `Places in ${indexContextLabel}` : "Places"}
+        title="Places"
         items={sections.activePlaces}
         onSelectFacet={onSelectFacet}
       />
@@ -762,7 +762,7 @@ function EntryBriefCard({ entry }: { entry: Entry }) {
         </span>
       </div>
       <p className="type-body-medium text-ink-soft mt-3 line-clamp-2">{entry.description}</p>
-      {latest ? <p className="type-body-small text-ink-muted mt-3">Updated {latest}</p> : null}
+      <p className="type-body-small text-ink-muted mt-3">Updated {latest}</p>
     </article>
   );
 }

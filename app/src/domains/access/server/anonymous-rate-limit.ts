@@ -92,6 +92,15 @@ export function resolveAnonymousRateLimitConfig(env: NodeJS.ProcessEnv): Anonymo
 export class SlidingWindowRateLimiter {
   private readonly events = new Map<string, number[]>();
   private readonly bucketWindowMs = new Map<string, number>();
+  private readonly maxTrackedBuckets: number;
+
+  /**
+   * @param maxTrackedBuckets - Ceiling on simultaneously tracked buckets before
+   *   the least recently started buckets are evicted.
+   */
+  constructor(maxTrackedBuckets: number = MAX_TRACKED_RATE_LIMIT_BUCKETS) {
+    this.maxTrackedBuckets = maxTrackedBuckets;
+  }
 
   reserve(clientKey: string, bucketSpecs: readonly BucketSpec[]): RateLimitReservation {
     const now = Date.now();
@@ -145,8 +154,10 @@ export class SlidingWindowRateLimiter {
   }
 
   private pruneStaleBuckets(now: number): void {
-    for (const key of [...this.events.keys()]) {
-      const windowMs = this.bucketWindowMs.get(key) ?? 3_600_000;
+    // Iterating the window index rather than the event map keeps buckets that
+    // were registered by a denied reservation (which never records an event)
+    // from lingering for the lifetime of the process.
+    for (const [key, windowMs] of [...this.bucketWindowMs]) {
       const pruned = this.prunedTimestamps(key, now, windowMs);
       if (pruned.length === 0) {
         this.events.delete(key);
@@ -156,18 +167,18 @@ export class SlidingWindowRateLimiter {
       }
     }
 
-    const overflowCount = this.events.size - MAX_TRACKED_RATE_LIMIT_BUCKETS;
+    const overflowCount = this.events.size - this.maxTrackedBuckets;
     if (overflowCount <= 0) {
       return;
     }
 
-    const oldestKeys = [...this.events.keys()].sort((left, right) => {
-      const [leftOldest = now] = this.events.get(left) ?? [];
-      const [rightOldest = now] = this.events.get(right) ?? [];
-      return leftOldest - rightOldest;
-    });
+    const bucketsByAge = [...this.events].map(([key, timestamps]) => ({
+      key,
+      startedAt: Math.min(...timestamps),
+    }));
+    bucketsByAge.sort((left, right) => left.startedAt - right.startedAt);
 
-    for (const key of oldestKeys.slice(0, overflowCount)) {
+    for (const { key } of bucketsByAge.slice(0, overflowCount)) {
       this.events.delete(key);
       this.bucketWindowMs.delete(key);
     }
@@ -248,13 +259,13 @@ function forwardedForClientIp(headerValue: string | null, trustedProxyHops: numb
     .split(",")
     .map((part) => normalizedIp(part))
     .filter((address): address is string => address !== null);
-  if (addresses.length === 0) {
-    return null;
-  }
-  if (trustedProxyHops <= 0) {
-    return addresses.at(-1) ?? null;
-  }
-  const index = Math.max(0, addresses.length - trustedProxyHops - 1);
+  // With no trusted proxies in front of us, only the hop that appended the
+  // rightmost entry is verifiable; everything to its left is caller-supplied
+  // and therefore spoofable.
+  const index =
+    trustedProxyHops <= 0
+      ? addresses.length - 1
+      : Math.max(0, addresses.length - trustedProxyHops - 1);
   return addresses[index] ?? null;
 }
 
@@ -272,9 +283,12 @@ function forwardedHeaderClientIp(headerValue: string | null): string | null {
   if (!headerValue) {
     return null;
   }
-  const firstForwardedEntry = headerValue.split(",")[0];
-  const forPair = firstForwardedEntry
-    ?.split(";")
+  // RFC 7239 §4: only the first list element is the original client; the rest
+  // were appended by intermediaries closer to us.
+  const forPair = headerValue
+    .split(",")
+    .slice(0, 1)
+    .flatMap((entry) => entry.split(";"))
     .map((part) => part.trim())
     .find((part) => part.toLowerCase().startsWith("for="));
   return normalizedIp(forPair?.slice(4));

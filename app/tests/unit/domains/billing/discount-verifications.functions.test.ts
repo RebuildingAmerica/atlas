@@ -99,6 +99,37 @@ describe("discount verification server functions", () => {
     });
   });
 
+  it("records an unexplained approval as having no reviewer notes", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({
+      message: "Verification review updated.",
+      record: {
+        id: "verif_789",
+        segment: "student",
+        status: "verified",
+        user_id: "user_789",
+      },
+      status: "verified",
+    });
+
+    const { reviewDiscountVerification } =
+      await import("@/domains/billing/discount-verifications.functions");
+
+    await reviewDiscountVerification({
+      data: {
+        status: "verified",
+        verificationId: "verif_789",
+      },
+    });
+
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/admin/verifications/verif_789", {
+      body: JSON.stringify({
+        notes: null,
+        status: "verified",
+      }),
+      method: "PATCH",
+    });
+  });
+
   it("notifies operator review recipients when a new request is submitted", async () => {
     mocks.requestAtlasApi.mockResolvedValue({
       id: "verif_456",
@@ -160,5 +191,50 @@ describe("discount verification server functions", () => {
     ).rejects.toThrow("Atlas API request failed (403)");
 
     expect(mocks.sendDiscountReviewResultEmail).not.toHaveBeenCalled();
+  });
+  it("filters the verification list by segment", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ records: [], total: 0 });
+
+    const { listDiscountVerifications } =
+      await import("@/domains/billing/discount-verifications.functions");
+
+    await listDiscountVerifications({ data: { segment: "student" } });
+
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/admin/verifications?segment=student");
+  });
+
+  it("asks for every verification when no filter is applied", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ records: [], total: 0 });
+
+    const { listDiscountVerifications } =
+      await import("@/domains/billing/discount-verifications.functions");
+
+    await listDiscountVerifications({ data: {} });
+
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/admin/verifications");
+  });
+
+  it("reads the current workspace's verification status", async () => {
+    const status = {
+      record: {
+        id: "verif_123",
+        organization_id: "org_123",
+        segment: "student",
+        status: "verified",
+        submitted_at: "2026-07-01T00:00:00.000Z",
+        verified_at: "2026-07-02T00:00:00.000Z",
+      },
+    };
+    mocks.requestAtlasApi.mockResolvedValue(status);
+
+    const { getCurrentDiscountVerificationStatus } =
+      await import("@/domains/billing/discount-verifications.functions");
+
+    const result = await getCurrentDiscountVerificationStatus({
+      data: { organizationId: "org_123" },
+    });
+
+    expect(result).toBe(status);
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/access/discount-verification/current");
   });
 });

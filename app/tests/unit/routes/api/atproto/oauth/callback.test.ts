@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { callRouteGet } from "@/../tests/helpers/routes-server-handler";
 
 const mocks = vi.hoisted(() => ({
   completeAtprotoAuthorization: vi.fn(),
@@ -91,5 +92,104 @@ describe("routes/api/atproto/oauth/callback", () => {
     expect(response.headers.get("location")).toBe(
       "https://atlas.test/claim/org?atprotoError=ATProto+identity+could+not+be+verified.&atprotoHandle=org.example",
     );
+  });
+
+  it("keeps the visitor's return path when the failure named no handle", async () => {
+    mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
+      throw Object.assign(new Error("State expired."), { returnTo: "/claim/org" });
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/callback");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(
+      "https://atlas.test/claim/org?atprotoError=State+expired.",
+    );
+  });
+
+  it("names the failure generically when the error carried no message", async () => {
+    mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
+      throw Object.assign(new Error(""), { returnTo: "/claim/org" });
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/callback");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
+    );
+
+    expect(response.headers.get("location")).toBe(
+      "https://atlas.test/claim/org?atprotoError=ATProto+callback+failed.",
+    );
+  });
+
+  it("refuses to follow a return path the identity service will not vouch for", async () => {
+    mocks.parseAtprotoReturnTo.mockImplementation(() => {
+      throw new Error("Return path is not an Atlas page.");
+    });
+    mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
+      throw Object.assign(new Error("Handle mismatch."), { returnTo: "https://evil.test/steal" });
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/callback");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Handle mismatch." });
+  });
+
+  it("answers with the failure reason when there is nowhere to send the visitor", async () => {
+    mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
+      throw new Error("Authorization code was already used.");
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/callback");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Authorization code was already used." });
+  });
+
+  it("answers generically when the failure was not an error at all", async () => {
+    mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
+      // A rejected value that is not an Error is exactly what this covers.
+      const failure: unknown = "dropped";
+      throw failure;
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/callback");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "ATProto callback failed." });
+  });
+
+  it("refuses to run outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/api/atproto/oauth/callback");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "ATProto OAuth is only available on the server.",
+    });
+    expect(mocks.completeAtprotoOAuthCallback).not.toHaveBeenCalled();
   });
 });

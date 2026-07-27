@@ -178,6 +178,30 @@ describe("runtime additional branches", () => {
     });
   });
 
+  describe("resolveAtprotoPdsUrl", () => {
+    it("refuses a PDS origin that identities could not safely be hosted on", () => {
+      expect(() =>
+        resolveAuthRuntimeConfig(
+          { ATLAS_PDS_PUBLIC_URL: "http://pds.atlas.test", ATLAS_PUBLIC_URL: "https://atlas.test" },
+          "/workspace/atlas/app",
+        ),
+      ).toThrow("ATLAS_PDS_PUBLIC_URL must use https.");
+
+      for (const configured of [
+        "https://admin:secret@pds.atlas.test",
+        "https://pds.atlas.test/?tenant=1",
+        "https://pds.atlas.test/#fragment",
+      ]) {
+        expect(() =>
+          resolveAuthRuntimeConfig(
+            { ATLAS_PDS_PUBLIC_URL: configured, ATLAS_PUBLIC_URL: "https://atlas.test" },
+            "/workspace/atlas/app",
+          ),
+        ).toThrow("ATLAS_PDS_PUBLIC_URL must be a public origin without credentials or fragments.");
+      }
+    });
+  });
+
   describe("getCimdResolverOptions", () => {
     afterEach(() => {
       vi.unstubAllEnvs();

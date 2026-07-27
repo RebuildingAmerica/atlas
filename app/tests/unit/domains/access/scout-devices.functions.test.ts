@@ -104,6 +104,111 @@ describe("scout-devices.functions", () => {
     expect(mocks.listScoutDevicesForUser).toHaveBeenCalledWith("user-123");
   });
 
+  it("revokes the enrollment without calling the API while auth is disabled", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: true });
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const { revokeScoutDevice: revokeScoutDeviceFn } =
+      await import("@/domains/access/scout-devices.functions");
+
+    const response = (await revokeScoutDeviceFn.__executeServer({
+      data: { deviceId: "worker-123" },
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(mocks.revokeScoutDevice).toHaveBeenCalledWith({
+      deviceId: "worker-123",
+      userId: "user-123",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("revokes the enrollment without calling an API that is not configured", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      apiBaseUrl: null,
+      internalSecret: "internal-secret",
+      localMode: false,
+    });
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const { revokeScoutDevice: revokeScoutDeviceFn } =
+      await import("@/domains/access/scout-devices.functions");
+
+    const response = (await revokeScoutDeviceFn.__executeServer({
+      data: { deviceId: "worker-123" },
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to leave Scout jobs running when the internal secret is missing", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      apiBaseUrl: "http://atlas-api.test",
+      internalSecret: null,
+      localMode: false,
+    });
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const { revokeScoutDevice: revokeScoutDeviceFn } =
+      await import("@/domains/access/scout-devices.functions");
+
+    const response = (await revokeScoutDeviceFn.__executeServer({
+      data: { deviceId: "worker-123" },
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toEqual(
+      new Error("ATLAS_AUTH_INTERNAL_SECRET is required to revoke Scout worker leases."),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reports a Scout worker whose active jobs could not be released", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { revokeScoutDevice: revokeScoutDeviceFn } =
+      await import("@/domains/access/scout-devices.functions");
+
+    const response = (await revokeScoutDeviceFn.__executeServer({
+      data: { deviceId: "worker-123" },
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toEqual(
+      new Error("Atlas could not release that Scout worker's active jobs."),
+    );
+  });
+
+  it("refuses to list Scout devices outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { listScoutDevices } = await import("@/domains/access/scout-devices.functions");
+
+    const response = (await listScoutDevices.__executeServer({
+      method: "GET",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toEqual(new Error("Auth runtime is only available on the server."));
+  });
+
+  it("refuses to revoke a Scout device outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { revokeScoutDevice: revokeScoutDeviceFn } =
+      await import("@/domains/access/scout-devices.functions");
+
+    const response = (await revokeScoutDeviceFn.__executeServer({
+      data: { deviceId: "worker-123" },
+      method: "POST",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toEqual(new Error("Session state is only available on the server."));
+  });
+
   it("revokes a Scout device owned by the signed-in user", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

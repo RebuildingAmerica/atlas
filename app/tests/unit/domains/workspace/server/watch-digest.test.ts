@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
 
 const mocks = vi.hoisted(() => ({
   requestAtlasApi: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
 }));
+
+vi.mock("@tanstack/react-start", async () => {
+  const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
+  return { createServerFn: createServerFnStub() };
+});
 
 vi.mock("@/domains/access/server/session-state", () => ({
   requireReadyAtlasSessionState: mocks.requireReadyAtlasSessionState,
@@ -57,6 +63,43 @@ describe("workspace watch digest server loader", () => {
     await expect(loadWorkspaceWatchDigestData()).rejects.toThrow(
       "Open a workspace before loading watch digest.",
     );
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
+  });
+});
+
+describe("workspace watch digest server function", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.requestAtlasApi.mockReset();
+    mocks.requireReadyAtlasSessionState.mockReset();
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      workspace: { activeOrganization: { id: "org_123" } },
+    });
+  });
+
+  it("asks for fifty digest events when the route names no limit", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ items: [], total: 0 });
+
+    const { loadWorkspaceWatchDigest } = await import("@/domains/workspace/server/watch-digest");
+    const response = (await loadWorkspaceWatchDigest.__executeServer({
+      data: {},
+      method: "GET",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ items: [], total: 0 });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(expect.stringContaining("limit=50"));
+  });
+
+  it("rejects a digest limit beyond the supported page size", async () => {
+    const { loadWorkspaceWatchDigest } = await import("@/domains/workspace/server/watch-digest");
+    const response = (await loadWorkspaceWatchDigest.__executeServer({
+      data: { limit: 5000 },
+      method: "GET",
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toBeUndefined();
+    expect(response.error).toBeInstanceOf(Error);
     expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
   });
 });

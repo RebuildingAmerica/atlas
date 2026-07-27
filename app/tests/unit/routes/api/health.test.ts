@@ -95,4 +95,14 @@ describe("routes/api/health", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ status: "degraded" });
   });
+
+  it("refuses to serve the document outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/api/health");
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    await expect(callRouteGet(routeModule.Route)).rejects.toThrow(
+      "Auth runtime is only available on the server.",
+    );
+  });
 });

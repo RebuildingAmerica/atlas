@@ -180,7 +180,7 @@ function toRecentRunSummary(run: DiscoveryRunListResponse["items"][number]): Rec
 }
 
 function trendSignal(count: number): string {
-  return `${count} ${count === 1 ? "request" : "requests"} over time`;
+  return `${count} requests over time`;
 }
 
 function buildResearchTrends(runs: DiscoveryRunListResponse["items"]): ResearchTrend[] {
@@ -222,19 +222,24 @@ function buildResearchTrends(runs: DiscoveryRunListResponse["items"]): ResearchT
     });
   });
 
-  return [...placeTrends.values(), ...issueTrends.values()]
+  return [...rankTrends(placeTrends.values()), ...rankTrends(issueTrends.values())].slice(0, 6);
+}
+
+/**
+ * Ranks one kind of trend, strongest first.
+ *
+ * @param trends - Place trends or issue trends, never both.
+ * @returns Repeated trends only, ordered by request count then recency.
+ */
+function rankTrends(trends: Iterable<Omit<ResearchTrend, "signal">>): ResearchTrend[] {
+  return [...trends]
     .filter((trend) => trend.runCount > 1)
     .map((trend) => ({ ...trend, signal: trendSignal(trend.runCount) }))
-    .sort((left, right) => {
-      if (left.kind !== right.kind) {
-        return left.kind === "place" ? -1 : 1;
-      }
-      return (
+    .sort(
+      (left, right) =>
         right.runCount - left.runCount ||
-        Date.parse(right.latestRunAt) - Date.parse(left.latestRunAt)
-      );
-    })
-    .slice(0, 6);
+        Date.parse(right.latestRunAt) - Date.parse(left.latestRunAt),
+    );
 }
 
 /**

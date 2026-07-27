@@ -356,4 +356,69 @@ describe("demo workspace provisioning", () => {
     ).rejects.toThrow("Demo email already belongs to another Atlas user.");
     expect(mocks.createUser).not.toHaveBeenCalled();
   });
+
+  it("re-verifies an operator who already owns that email instead of creating a duplicate", async () => {
+    mocks.findUserById.mockResolvedValue(null);
+    mocks.findUserByEmail.mockResolvedValue({
+      accounts: [],
+      user: { id: "briefing-room-operator" },
+    });
+
+    const { provisionBriefingRoomDemoWorkspace } =
+      await import("@/domains/access/server/demo-workspace-provisioning");
+
+    await provisionBriefingRoomDemoWorkspace({
+      organizationId: "briefing-room-demo",
+      organizationName: "Atlas Briefing Room Demo",
+      organizationSlug: "briefing-room-demo",
+      userEmail: "Demo@Atlas.test",
+      userId: "briefing-room-operator",
+      userName: "Briefing Room Operator",
+    });
+
+    expect(mocks.createUser).not.toHaveBeenCalled();
+    expect(mocks.updateUser).toHaveBeenCalledWith("briefing-room-operator", {
+      email: "demo@atlas.test",
+      emailVerified: true,
+      name: "Briefing Room Operator",
+    });
+  });
+
+  it("refuses to guess a member id when the adapter returns an unexpected shape", async () => {
+    mocks.adapterFindOne.mockResolvedValue({ role: "member" });
+
+    const { provisionBriefingRoomDemoWorkspace } =
+      await import("@/domains/access/server/demo-workspace-provisioning");
+
+    await expect(
+      provisionBriefingRoomDemoWorkspace({
+        organizationId: "briefing-room-demo",
+        organizationName: "Atlas Briefing Room Demo",
+        organizationSlug: "briefing-room-demo",
+        userEmail: "demo@atlas.test",
+        userId: "briefing-room-operator",
+        userName: "Briefing Room Operator",
+      }),
+    ).rejects.toThrow("Demo member lookup did not return a member id.");
+  });
+
+  it("omits the seed command for a workspace provisioned without demo data", async () => {
+    const { provisionCustomerWorkspace } =
+      await import("@/domains/access/server/demo-workspace-provisioning");
+
+    const result = await provisionCustomerWorkspace({
+      demoDataSeed: "none",
+      firstSavedViews: ["Housing"],
+      organizationId: "customer-org",
+      organizationName: "Customer",
+      organizationSlug: "customer",
+      product: "atlas_team",
+      userEmail: "operator@customer.test",
+      userId: "customer-operator",
+      userName: "Customer Operator",
+    });
+
+    expect(result.seedCommand).toBeNull();
+    expect(result.firstSavedViews).toEqual(["Housing"]);
+  });
 });

@@ -27,4 +27,14 @@ describe("routes/.well-known/oauth-authorization-server (root)", () => {
     expect(response.headers.get("cache-control")).toContain("max-age=300");
     expect(await response.json()).toEqual({ issuer: "https://atlas.test/api/auth" });
   });
+
+  it("refuses to serve the document outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/[.]well-known/oauth-authorization-server/index");
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    await expect(callRouteGet(routeModule.Route)).rejects.toThrow(
+      "Auth runtime is only available on the server.",
+    );
+  });
 });

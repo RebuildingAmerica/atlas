@@ -16,6 +16,16 @@ import {
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 
+/**
+ * The identity a delegation acts on, alongside the member it concerns. Passing
+ * the identity id through the mutation keeps every delegation call anchored to
+ * the identity the operator was actually looking at.
+ */
+interface OrganizationIdentityDelegationVariables {
+  identityId: string;
+  userId: string;
+}
+
 interface OrganizationAtprotoIdentitySectionProps {
   canManageOrganization: boolean;
   currentUserId: string | undefined;
@@ -26,7 +36,7 @@ interface OrganizationAtprotoIdentitySectionProps {
 const organizationIdentityQueryKey = (organizationId: string) =>
   ["organization-atproto-identity", organizationId, "identity"] as const;
 
-const organizationDelegationsQueryKey = (organizationId: string, identityId: string) =>
+const organizationDelegationsQueryKey = (organizationId: string, identityId: string | undefined) =>
   ["organization-atproto-identity", organizationId, identityId, "delegations"] as const;
 
 /**
@@ -52,8 +62,7 @@ export function OrganizationAtprotoIdentitySection({
   });
   const activeIdentityId = organizationIdentity.data?.identity_id;
   const delegations = useQuery({
-    enabled: Boolean(activeIdentityId),
-    queryKey: organizationDelegationsQueryKey(organizationId, activeIdentityId ?? ""),
+    queryKey: organizationDelegationsQueryKey(organizationId, activeIdentityId),
     queryFn: () =>
       activeIdentityId
         ? listOrganizationAtprotoIdentityDelegations(organizationId, activeIdentityId)
@@ -73,67 +82,55 @@ export function OrganizationAtprotoIdentitySection({
     },
   });
   const grant = useMutation({
-    mutationFn: async (userId: string) => {
-      if (!activeIdentityId) throw new Error("Organization identity is unavailable.");
-      return await grantOrganizationAtprotoIdentityDelegation(organizationId, activeIdentityId, {
-        delegate_user_id: userId,
-      });
-    },
+    mutationFn: async (variables: OrganizationIdentityDelegationVariables) =>
+      await grantOrganizationAtprotoIdentityDelegation(organizationId, variables.identityId, {
+        delegate_user_id: variables.userId,
+      }),
     onError: () => {
       setFeedback("Atlas could not grant delegated administration.");
     },
-    onSuccess: async () => {
+    onSuccess: async (_result, variables) => {
       setDelegateUserId("");
       setFeedback("Delegated administration granted.");
-      if (activeIdentityId) {
-        await queryClient.invalidateQueries({
-          queryKey: organizationDelegationsQueryKey(organizationId, activeIdentityId),
-        });
-      }
+      await queryClient.invalidateQueries({
+        queryKey: organizationDelegationsQueryKey(organizationId, variables.identityId),
+      });
     },
   });
   const revoke = useMutation({
-    mutationFn: async (userId: string) => {
-      if (!activeIdentityId) throw new Error("Organization identity is unavailable.");
-      return await revokeOrganizationAtprotoIdentityDelegation(
+    mutationFn: async (variables: OrganizationIdentityDelegationVariables) =>
+      await revokeOrganizationAtprotoIdentityDelegation(
         organizationId,
-        activeIdentityId,
-        userId,
-      );
-    },
+        variables.identityId,
+        variables.userId,
+      ),
     onError: () => {
       setFeedback("Atlas could not revoke delegated administration.");
     },
-    onSuccess: async (_result, userId) => {
-      const member = members.find((candidate) => candidate.userId === userId);
+    onSuccess: async (_result, variables) => {
+      const member = members.find((candidate) => candidate.userId === variables.userId);
       setFeedback(`Delegated administration revoked for ${member?.name ?? "that member"}.`);
-      if (activeIdentityId) {
-        await queryClient.invalidateQueries({
-          queryKey: organizationDelegationsQueryKey(organizationId, activeIdentityId),
-        });
-      }
+      await queryClient.invalidateQueries({
+        queryKey: organizationDelegationsQueryKey(organizationId, variables.identityId),
+      });
     },
   });
   const detach = useMutation({
-    mutationFn: async () => {
-      if (!activeIdentityId) throw new Error("Organization identity is unavailable.");
-      return await detachOrganizationAtprotoIdentity(organizationId, activeIdentityId);
-    },
+    mutationFn: async (identityId: string) =>
+      await detachOrganizationAtprotoIdentity(organizationId, identityId),
     onError: () => {
       setFeedback(
         "Atlas could not remove this identity. Your delegated access may have been revoked.",
       );
     },
-    onSuccess: async () => {
+    onSuccess: async (_result, identityId) => {
       setFeedback("Organization identity removed.");
       await queryClient.invalidateQueries({
         queryKey: organizationIdentityQueryKey(organizationId),
       });
-      if (activeIdentityId) {
-        await queryClient.invalidateQueries({
-          queryKey: organizationDelegationsQueryKey(organizationId, activeIdentityId),
-        });
-      }
+      await queryClient.invalidateQueries({
+        queryKey: organizationDelegationsQueryKey(organizationId, identityId),
+      });
     },
   });
   const selectedIdentity = selectedIdentityId || accountIdentities.data?.[0]?.id || "";
@@ -146,7 +143,6 @@ export function OrganizationAtprotoIdentitySection({
   );
 
   async function createAndAttachManagedIdentity() {
-    if (!managedHandle.trim()) return;
     try {
       const identity = await provisionManaged.mutateAsync(managedHandle.trim());
       attach.mutate(identity.id);
@@ -298,7 +294,7 @@ export function OrganizationAtprotoIdentitySection({
                   disabled={!delegateUserId || grant.isPending}
                   variant="secondary"
                   onClick={() => {
-                    grant.mutate(delegateUserId);
+                    grant.mutate({ identityId: activeIdentityId, userId: delegateUserId });
                   }}
                 >
                   Grant administration
@@ -321,7 +317,10 @@ export function OrganizationAtprotoIdentitySection({
                           disabled={revoke.isPending}
                           variant="ghost"
                           onClick={() => {
-                            revoke.mutate(delegation.delegate_user_id);
+                            revoke.mutate({
+                              identityId: activeIdentityId,
+                              userId: delegation.delegate_user_id,
+                            });
                           }}
                         >
                           Revoke {memberName}
@@ -347,7 +346,7 @@ export function OrganizationAtprotoIdentitySection({
                 disabled={detach.isPending}
                 variant="secondary"
                 onClick={() => {
-                  detach.mutate();
+                  detach.mutate(activeIdentityId);
                 }}
               >
                 Remove organization identity

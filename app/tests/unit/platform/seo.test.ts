@@ -84,4 +84,38 @@ describe("SEO helpers", () => {
       ]),
     );
   });
+
+  it("resolves a non-web image URL against the canonical origin", () => {
+    const head = buildPageHead(
+      {
+        title: "Jane Doe | Atlas",
+        description: "Community organizer.",
+        path: "/profiles/people/jane",
+        imagePath: "ftp://images.example/jane.jpg",
+      },
+      { ATLAS_PUBLIC_URL: "https://preview.atlas.example" },
+    );
+
+    expect(head.meta).toContainEqual({
+      property: "og:image",
+      content: "https://preview.atlas.example/ftp://images.example/jane.jpg",
+    });
+  });
+
+  it("falls back to the Atlas card when the image path is blank", () => {
+    const head = buildPageHead(
+      {
+        title: "Jane Doe | Atlas",
+        description: "Community organizer.",
+        path: "/profiles/people/jane",
+        imagePath: "   ",
+      },
+      { ATLAS_PUBLIC_URL: "https://preview.atlas.example" },
+    );
+
+    expect(head.meta).toContainEqual({
+      property: "og:image",
+      content: "https://preview.atlas.example/social/atlas-card.png",
+    });
+  });
 });

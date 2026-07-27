@@ -97,16 +97,16 @@ export function ClaimDnsRecordPanel({ dnsRecord, isChecking, onCheck }: ClaimDns
           label="Host"
           value={dnsRecord.challenge_host}
           copied={copiedField === "Host"}
-          onCopy={() => {
-            void copyDnsValue("Host", dnsRecord.challenge_host ?? "");
+          onCopy={(value) => {
+            void copyDnsValue("Host", value);
           }}
         />
         <DnsRecordValue
           label="TXT value"
           value={dnsRecord.challenge_value}
           copied={copiedField === "TXT value"}
-          onCopy={() => {
-            void copyDnsValue("TXT value", dnsRecord.challenge_value ?? "");
+          onCopy={(value) => {
+            void copyDnsValue("TXT value", value);
           }}
         />
       </dl>
@@ -124,7 +124,8 @@ function dnsCheckButtonLabel(isChecking: boolean, isCoolingDown: boolean): strin
 interface DnsRecordValueProps {
   copied: boolean;
   label: string;
-  onCopy: () => void;
+  /** Receives the rendered value, so the caller never has to re-resolve it. */
+  onCopy: (value: string) => void;
   value?: string;
 }
 
@@ -141,7 +142,9 @@ function DnsRecordValue({ copied, label, onCopy, value }: DnsRecordValueProps) {
         </code>
         <button
           type="button"
-          onClick={onCopy}
+          onClick={() => {
+            onCopy(value);
+          }}
           className="border-outline-variant text-ink-soft hover:text-ink-strong inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
           aria-label={copied ? `${label} copied` : `Copy ${label}`}
         >

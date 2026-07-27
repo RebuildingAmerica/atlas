@@ -28,4 +28,17 @@ describe("routes/.well-known/oauth-protected-resource", () => {
       resource_documentation: "https://atlas.test/docs/mcp",
     });
   });
+
+  it.each([
+    ["compatibility root", () => import("@/routes/[.]well-known/oauth-protected-resource/index")],
+    ["MCP resource path", () => import("@/routes/[.]well-known/oauth-protected-resource/mcp")],
+  ])("refuses to serve %s outside the server", async (_label, loadRoute) => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await loadRoute();
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    await expect(callRouteGet(routeModule.Route)).rejects.toThrow(
+      "Auth runtime is only available on the server.",
+    );
+  });
 });

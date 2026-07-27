@@ -58,6 +58,17 @@ describe("routes/_onboarding/onboarding", () => {
     expect(access.redirectIfLocalSession).toHaveBeenCalledWith("/discovery");
   });
 
+  it("hands the onboarding shell over to its child step", async () => {
+    const routeModule = await import("@/routes/_onboarding/onboarding");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected route component");
+
+    const view = render(<Component />);
+
+    expect(view.getByTestId("router-outlet")).toBeInTheDocument();
+  });
+
   it("passes product, interval, and purchase search params into the page", async () => {
     const routeModule = await import("@/routes/_onboarding/onboarding/index");
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");

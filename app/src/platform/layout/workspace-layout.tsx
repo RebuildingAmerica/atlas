@@ -59,14 +59,12 @@ function withWorkspaceShell<Props extends { children: ReactNode }>(
   };
 }
 
-const WorkspaceFrame = withWorkspaceShell<WorkspaceFrameInput>(
-  ({ identitySlot, railItems }) => ({
-    topNavigation: (
-      <WorkspaceNav identitySlot={identitySlot} menuSlot={<WorkbenchMenu items={railItems} />} />
-    ),
-    rail: <WorkbenchRail items={railItems} />,
-  }),
-);
+const WorkspaceFrame = withWorkspaceShell<WorkspaceFrameInput>(({ identitySlot, railItems }) => ({
+  topNavigation: (
+    <WorkspaceNav identitySlot={identitySlot} menuSlot={<WorkbenchMenu items={railItems} />} />
+  ),
+  rail: <WorkbenchRail items={railItems} />,
+}));
 
 function WorkbenchMenu({ items }: WorkbenchMenuProps) {
   const [open, setOpen] = useState(false);
@@ -118,17 +116,6 @@ function WorkbenchRail({ items }: { items: AppNavItem[] }) {
 }
 
 function WorkbenchRailLink({ item }: { item: AppNavItem }) {
-  if (item.native) {
-    return (
-      <a
-        href={item.to}
-        className="type-label-large text-ink-soft hover:bg-surface-container-high hover:text-ink-strong rounded-lg px-3 py-2 no-underline"
-      >
-        {item.label}
-      </a>
-    );
-  }
-
   return (
     <Link
       to={item.to}

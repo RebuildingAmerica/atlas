@@ -17,7 +17,7 @@ vi.mock("@/domains/billing/discount-verifications.functions", () => ({
   submitDiscountVerification: mocks.submitDiscountVerification,
 }));
 
-function renderDiscountVerificationSection() {
+function renderDiscountVerificationSection(organizationId: string | null = "org_123") {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
@@ -30,7 +30,7 @@ function renderDiscountVerificationSection() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <DiscountVerificationSection organizationId="org_123" />
+      <DiscountVerificationSection organizationId={organizationId} />
     </QueryClientProvider>,
   );
 }
@@ -145,5 +145,65 @@ describe("DiscountVerificationSection", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Verification failed");
     });
+  });
+  it("lets the applicant go back and pick a different segment", async () => {
+    renderDiscountVerificationSection();
+
+    fireEvent.click(screen.getByRole("button", { name: /Student/i }));
+    expect(screen.getByLabelText("School email")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change" }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("School email")).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /Student/i })).toBeInTheDocument();
+  });
+
+  it("asks an operator with no workspace to create one before requesting a discount", async () => {
+    renderDiscountVerificationSection(null);
+
+    expect(await screen.findByText("Create a workspace first")).toBeInTheDocument();
+    expect(
+      screen.getByText("Discount access is applied to a workspace before checkout."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Student/i })).not.toBeInTheDocument();
+    expect(mocks.getCurrentDiscountVerificationStatus).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a readable message when the failure is not an Error", async () => {
+    mocks.submitDiscountVerification.mockRejectedValue("network down");
+    renderDiscountVerificationSection();
+
+    fireEvent.click(screen.getByRole("button", { name: /Independent Creator or Journalist/i }));
+    fireEvent.change(screen.getByLabelText("Portfolio or Byline URL"), {
+      target: { value: "https://example.org/byline" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Request Verification" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Verification submission failed")).toBeInTheDocument();
+    });
+  });
+  it("shows a rejected applicant their outcome and still lets them reapply", async () => {
+    mocks.getCurrentDiscountVerificationStatus.mockResolvedValue({
+      record: {
+        id: "verif_123",
+        organization_id: "org_123",
+        segment: "student",
+        status: "rejected",
+        submitted_at: "2026-07-11T12:00:00.000Z",
+      },
+    });
+
+    renderDiscountVerificationSection();
+
+    expect(await screen.findByText("Discount request not approved")).toBeInTheDocument();
+    expect(
+      screen.getByText("You can submit a new request if your eligibility has changed."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Request type: Student")).toBeInTheDocument();
+    expect(screen.getByText("Request discount access")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Student/i })).toBeInTheDocument();
   });
 });

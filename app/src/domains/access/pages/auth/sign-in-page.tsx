@@ -261,7 +261,6 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
   };
 
   const startUsernameSignIn = (handle: string) => {
-    if (!handle) return;
     const params = new URLSearchParams({ handle, returnTo: redirectTo ?? "/account" });
     window.location.assign(`/api/atproto/sign-in/start?${params.toString()}`);
   };

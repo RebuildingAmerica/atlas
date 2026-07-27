@@ -183,4 +183,19 @@ describe("checkout.functions guards", () => {
     expect(response.error).toBeInstanceOf(Error);
     expect((response.error as Error).message).toContain("did not return a checkout URL");
   });
+  it("refuses to load the checkout modules if it is ever bundled into the browser", async () => {
+    // import.meta.env.SSR is false in a client bundle; the guard exists so a
+    // bad import graph fails loudly instead of shipping Stripe keys to a page.
+    vi.stubEnv("SSR", "" as never);
+
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    const response = (await startCheckout.__executeServer({
+      method: "POST",
+      data: { product: "atlas_pro", interval: "yearly" },
+    })) as ServerFnExecutionResponse;
+
+    expect((response.error as Error).message).toBe(
+      "Checkout server modules are only available on the server.",
+    );
+  });
 });

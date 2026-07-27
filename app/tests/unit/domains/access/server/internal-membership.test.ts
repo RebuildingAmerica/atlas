@@ -161,4 +161,75 @@ describe("internal-membership", () => {
       workspaceType: "individual",
     });
   });
+
+  it("answers from PostgreSQL with the member's role and verified SSO domains", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            metadata: JSON.stringify({ workspaceDomain: "atlas.test", workspaceType: "team" }),
+            name: "Atlas",
+            role: "admin",
+            slug: "atlas",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [{ domain: "Atlas.test, partner.example " }] });
+    mocks.getAuthPgPool.mockReturnValue({ query });
+
+    const response = await verifyMembershipRequest(
+      new Request("http://localhost", { headers: { "x-atlas-internal-secret": "test-secret" } }),
+      "org_1",
+      "user_1",
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      name: "Atlas",
+      role: "admin",
+      slug: "atlas",
+      verifiedSsoDomains: ["atlas.test", "partner.example"],
+      workspaceDomain: "atlas.test",
+      workspaceType: "team",
+    });
+    expect(query.mock.calls[0]?.[1]).toEqual(["org_1", "user_1"]);
+    expect(query.mock.calls[1]?.[1]).toEqual(["org_1"]);
+  });
+
+  it("reports a PostgreSQL non-member as not found", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    mocks.getAuthPgPool.mockReturnValue({ query });
+
+    const response = await verifyMembershipRequest(
+      new Request("http://localhost", { headers: { "x-atlas-internal-secret": "test-secret" } }),
+      "org_1",
+      "user_1",
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("ignores workspace metadata that is not valid JSON rather than failing the check", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ metadata: "{not json", name: "Atlas", role: "member", slug: "atlas" }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+    mocks.getAuthPgPool.mockReturnValue({ query });
+
+    const response = await verifyMembershipRequest(
+      new Request("http://localhost", { headers: { "x-atlas-internal-secret": "test-secret" } }),
+      "org_1",
+      "user_1",
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      role: "member",
+      workspaceDomain: null,
+      workspaceType: "individual",
+    });
+  });
 });

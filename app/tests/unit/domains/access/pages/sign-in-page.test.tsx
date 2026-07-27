@@ -3,6 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { SignInPage, signInSearchSchema } from "@/domains/access/pages/auth/sign-in-page";
+import {
+  clearSsoDiagnostics,
+  readSsoDiagnostics,
+} from "@/domains/access/client/sso-diagnostics-log";
+import {
+  stubDeferredPasskeyCredentialApi,
+  stubLegacyPasskeyCredentialApi,
+  stubPasskeyCredentialApi,
+  type PasskeySignInOptions,
+} from "./sign-in-page-test-support";
 
 const mocks = vi.hoisted(() => ({
   requestMagicLink: vi.fn(),
@@ -12,7 +22,6 @@ const mocks = vi.hoisted(() => ({
   getAuthClient: vi.fn(),
   getAuthConfig: vi.fn(),
   readLastUsedAtlasEmail: vi.fn(),
-  signalUnknownPasskey: vi.fn(),
 }));
 
 vi.mock("@/domains/access/client/auth-client", () => ({
@@ -42,14 +51,6 @@ vi.mock("@/domains/access/client/last-login-method", () => ({
 vi.mock("@/domains/access/client/last-used-email", () => ({
   rememberLastUsedAtlasEmail: vi.fn(),
   readLastUsedAtlasEmail: mocks.readLastUsedAtlasEmail,
-}));
-
-vi.mock("@rebuildingamerica/atlas-access/passkey-signal", () => ({
-  signalUnknownPasskey: mocks.signalUnknownPasskey,
-}));
-
-vi.mock("@/domains/access/client/sso-diagnostics-log", () => ({
-  recordSsoDiagnostics: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -227,6 +228,132 @@ describe("SignInPage", () => {
     expect(mockLocationAssign).toHaveBeenCalled();
   });
 
+  it("forgets a passkey the server no longer knows and explains the dead end", async () => {
+    const credentialApi = stubPasskeyCredentialApi(() => Promise.resolve(false));
+    authClient.signIn.passkey.mockResolvedValue({
+      error: { code: "PASSKEY_NOT_FOUND", message: "no credential" },
+      webauthn: { response: { id: "stale-credential" } },
+    });
+
+    render(<SignInPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign in with passkey/i }));
+
+    expect(
+      await screen.findByText(
+        "This passkey is no longer linked to your account. Please sign in another way.",
+      ),
+    ).toBeInTheDocument();
+    expect(credentialApi.signalUnknownCredential).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialId: "stale-credential" }),
+    );
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+  });
+
+  it("completes a conditionally autofilled passkey by landing on the post-sign-in destination", async () => {
+    stubPasskeyCredentialApi(() => Promise.resolve(true));
+    authClient.signIn.passkey.mockImplementation(async (options: PasskeySignInOptions) => {
+      await options.fetchOptions?.onSuccess();
+      return {};
+    });
+
+    render(<SignInPage redirectTo="/workspace/billing" />);
+
+    expect(await screen.findByText("Last used")).toBeInTheDocument();
+    expect(mocks.waitForAtlasAuthenticatedSession).toHaveBeenCalled();
+    expect(mockLocationAssign).toHaveBeenCalledWith("/workspace/billing");
+  });
+
+  it("forgets an autofilled passkey the server rejects without disturbing the page", async () => {
+    const credentialApi = stubPasskeyCredentialApi(() => Promise.resolve(true));
+    authClient.signIn.passkey.mockImplementation((options: PasskeySignInOptions) => {
+      options.fetchOptions?.onError();
+      return Promise.resolve({
+        error: { code: "PASSKEY_NOT_FOUND" },
+        webauthn: { response: { id: "autofilled-credential" } },
+      });
+    });
+
+    render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(credentialApi.signalUnknownCredential).toHaveBeenCalledWith(
+        expect.objectContaining({ credentialId: "autofilled-credential" }),
+      );
+    });
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: /Sign in to Atlas/i })).toBeInTheDocument();
+  });
+
+  it("never starts autofill when the browser cannot mediate credentials", async () => {
+    const credentialApi = stubPasskeyCredentialApi(() => Promise.resolve(false));
+
+    render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(credentialApi.isConditionalMediationAvailable).toHaveBeenCalled();
+    });
+    expect(authClient.signIn.passkey).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Sign in with passkey/i })).toBeInTheDocument();
+  });
+
+  it("never starts autofill on a browser whose WebAuthn API predates conditional mediation", async () => {
+    stubLegacyPasskeyCredentialApi();
+
+    render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(authClient.getLastUsedLoginMethod).toHaveBeenCalled();
+    });
+    expect(authClient.signIn.passkey).not.toHaveBeenCalled();
+  });
+
+  it("abandons autofill when the operator leaves before the browser answers the probe", async () => {
+    const deferred = stubDeferredPasskeyCredentialApi();
+
+    const view = render(<SignInPage />);
+    await vi.waitFor(() => {
+      expect(deferred.api.isConditionalMediationAvailable).toHaveBeenCalled();
+    });
+    view.unmount();
+    deferred.settle(true);
+
+    await vi.waitFor(() => {
+      expect(authClient.signIn.passkey).not.toHaveBeenCalled();
+    });
+  });
+
+  it("does not navigate when an autofilled credential arrives after the page is gone", async () => {
+    stubPasskeyCredentialApi(() => Promise.resolve(true));
+    let confirmSession: (() => Promise<void>) | undefined;
+    authClient.signIn.passkey.mockImplementation((options: PasskeySignInOptions) => {
+      confirmSession = options.fetchOptions?.onSuccess;
+      return Promise.resolve({});
+    });
+
+    const view = render(<SignInPage />);
+    await vi.waitFor(() => {
+      expect(confirmSession).toBeDefined();
+    });
+    view.unmount();
+    await confirmSession?.();
+
+    expect(mocks.waitForAtlasAuthenticatedSession).not.toHaveBeenCalled();
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+  });
+
+  it("stays on the sign-in form when the browser refuses the conditional-mediation probe", async () => {
+    const credentialApi = stubPasskeyCredentialApi(() => Promise.reject(new Error("blocked")));
+
+    render(<SignInPage />);
+
+    await vi.waitFor(() => {
+      expect(credentialApi.isConditionalMediationAvailable).toHaveBeenCalled();
+    });
+    expect(screen.getByRole("heading", { name: /Sign in to Atlas/i })).toBeInTheDocument();
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+  });
+
   it("shows error message on failure", async () => {
     mocks.resolveWorkspaceSSOSignIn.mockRejectedValue(new Error("Network error"));
 
@@ -305,6 +432,130 @@ describe("SignInPage", () => {
     expect(
       screen.getByText("Your sign-in link couldn't be delivered. Please try again."),
     ).toBeInTheDocument();
+  });
+
+  it("accepts a bare ATProto handle typed without the leading at-sign", () => {
+    render(<SignInPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email or username/i), {
+      target: { value: "gwashington.org" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(mockLocationAssign).toHaveBeenCalledWith(
+      "/api/atproto/sign-in/start?handle=gwashington.org&returnTo=%2Faccount",
+    );
+  });
+
+  it("reveals the email fallback the first time an email address is submitted", async () => {
+    render(<SignInPage />);
+
+    fireEvent.change(screen.getByLabelText(/Email or username/i), {
+      target: { value: "user@atlas.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByRole("button", { name: /Continue with email/i })).toBeInTheDocument();
+    expect(mocks.requestMagicLink).not.toHaveBeenCalled();
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+  });
+
+  it("does not attempt a handle sign-in when the field is empty", async () => {
+    render(<SignInPage />);
+
+    const form = screen.getByRole("button", { name: "Continue" }).closest("form");
+    if (!form) throw new Error("Expected form element");
+    fireEvent.submit(form);
+
+    expect(await screen.findByRole("button", { name: /Continue with email/i })).toBeInTheDocument();
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+  });
+
+  it("reports a cancelled passkey prompt without touching the credential store", async () => {
+    const credentialApi = stubPasskeyCredentialApi(() => Promise.resolve(false));
+    authClient.signIn.passkey.mockResolvedValue({
+      error: { message: "NotAllowedError: the operation was cancelled" },
+    });
+
+    render(<SignInPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign in with passkey/i }));
+
+    expect(await screen.findByText("Passkey authentication was cancelled.")).toBeInTheDocument();
+    expect(credentialApi.signalUnknownCredential).not.toHaveBeenCalled();
+  });
+
+  it("reports a device that cannot do passkeys at all", async () => {
+    const credentialApi = stubPasskeyCredentialApi(() => Promise.resolve(false));
+    authClient.signIn.passkey.mockResolvedValue({
+      error: { code: "WEBAUTHN_ERROR", message: "NotSupportedError" },
+    });
+
+    render(<SignInPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign in with passkey/i }));
+
+    expect(
+      await screen.findByText("Passkeys are not supported on this device or browser."),
+    ).toBeInTheDocument();
+    expect(credentialApi.signalUnknownCredential).not.toHaveBeenCalled();
+  });
+
+  it("explains an unknown passkey it cannot identify well enough to forget", async () => {
+    const credentialApi = stubPasskeyCredentialApi(() => Promise.resolve(false));
+    authClient.signIn.passkey.mockResolvedValue({ error: { code: "PASSKEY_NOT_FOUND" } });
+
+    render(<SignInPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign in with passkey/i }));
+
+    expect(
+      await screen.findByText(
+        "This passkey is no longer linked to your account. Please sign in another way.",
+      ),
+    ).toBeInTheDocument();
+    expect(credentialApi.signalUnknownCredential).not.toHaveBeenCalled();
+  });
+
+  it("reports a passkey attempt the browser aborts outright", async () => {
+    authClient.signIn.passkey.mockRejectedValue(new Error("NotAllowedError"));
+
+    render(<SignInPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign in with passkey/i }));
+
+    expect(
+      await screen.findByText("Passkey sign-in failed. Please try again."),
+    ).toBeInTheDocument();
+    expect(mockLocationAssign).not.toHaveBeenCalled();
+  });
+
+  it("explains a failed SSO round trip and keeps a local record for triage", async () => {
+    clearSsoDiagnostics();
+
+    render(<SignInPage errorCode="certificate_invalid" initialEmail="ops@acme.test" />);
+
+    expect(
+      await screen.findByText(/Atlas could not validate the IdP signing certificate/),
+    ).toBeInTheDocument();
+    expect(readSsoDiagnostics()[0]).toMatchObject({
+      code: "certificate_invalid",
+      email: "ops@acme.test",
+    });
+  });
+
+  it("records an unrecognised SSO error code even without an email to attribute it to", async () => {
+    clearSsoDiagnostics();
+
+    render(<SignInPage errorCode="mystery_failure" />);
+
+    await vi.waitFor(() => {
+      expect(readSsoDiagnostics()[0]).toMatchObject({
+        code: "mystery_failure",
+        email: null,
+        message: null,
+      });
+    });
   });
 
   it("forwards the redirect param on the create-account link when present", () => {

@@ -197,6 +197,57 @@ describe("api-keys.functions", () => {
     expect(createApiKeyMock).not.toHaveBeenCalled();
   });
 
+  it("issues a key when the workspace still has room under its key limit", async () => {
+    const createApiKeyMock = vi.fn().mockResolvedValue({
+      key: "atlas_secret_key_1234567890",
+    });
+    const listApiKeysMock = vi.fn().mockResolvedValue({
+      apiKeys: [
+        {
+          createdAt: "2026-04-10T00:00:00.000Z",
+          id: "key_existing",
+          name: "Existing key",
+          permissions: null,
+          prefix: "atlas_1234",
+        },
+      ],
+      total: 1,
+    });
+    fetchMock.mockResolvedValue({ ok: true });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createAtlasSessionFixture({
+        workspace: createAtlasWorkspace({
+          resolvedCapabilities: {
+            capabilities: ["research.run", "api.keys"],
+            limits: {
+              ...apiKeyEnabledCapabilities.limits,
+              max_api_keys: 2,
+            },
+          },
+        }),
+      }),
+    );
+    mocks.ensureAuthReady.mockResolvedValue({
+      api: {
+        createApiKey: createApiKeyMock,
+        listApiKeys: listApiKeysMock,
+      },
+    });
+
+    const { createApiKey } = await import("@/domains/access/api-keys.functions");
+    const response = (await createApiKey.__executeServer({
+      method: "POST",
+      data: {
+        name: "CLI key",
+        scopes: ["discovery:read"],
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({ key: "atlas_secret_key_1234567890" });
+    expect(createApiKeyMock).toHaveBeenCalledTimes(1);
+  });
+
   it("falls back to internal introspection for scope sets without a safe public probe", async () => {
     vi.useFakeTimers();
 
@@ -372,6 +423,64 @@ describe("api-keys.functions", () => {
     expect(response.error).toBeInstanceOf(Error);
     expect((response.error as Error).message).toContain(
       "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required",
+    );
+  });
+  it("probes the public origin when no separate API base URL is configured", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      apiBaseUrl: null,
+      apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
+      internalSecret: "internal-test-secret",
+      localMode: false,
+      publicBaseUrl: "http://atlas.test",
+    });
+    mocks.ensureReadyAtlasSession.mockResolvedValue(
+      createApiKeyEnabledSession({ email: "operator@atlas.test", id: "user_123" }),
+    );
+    mocks.ensureAuthReady.mockResolvedValue({
+      api: {
+        createApiKey: vi.fn().mockResolvedValue({ key: "atlas_secret_key_1234567890" }),
+      },
+    });
+    fetchMock.mockResolvedValue({ ok: true });
+
+    const { createApiKey } = await import("@/domains/access/api-keys.functions");
+    const response = await createApiKey.__executeServer({
+      method: "POST",
+      data: { name: "CLI key", scopes: ["discovery:read"] },
+    });
+
+    expect(response).toMatchObject({ error: undefined });
+    expect(fetchMock).toHaveBeenCalledWith("http://atlas.test/api/discovery-runs", {
+      headers: { "x-api-key": "atlas_secret_key_1234567890" },
+      method: "GET",
+    });
+  });
+
+  it("refuses to list API keys from the browser bundle", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { listApiKeys } = await import("@/domains/access/api-keys.functions");
+
+    await expect(listApiKeys()).rejects.toThrow("Auth is only available on the server.");
+  });
+
+  it("refuses to create an API key from the browser bundle", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { createApiKey } = await import("@/domains/access/api-keys.functions");
+
+    await expect(
+      createApiKey({ data: { name: "CLI key", scopes: ["discovery:read"] } }),
+    ).rejects.toThrow("Auth runtime is only available on the server.");
+  });
+
+  it("refuses to delete an API key from the browser bundle", async () => {
+    vi.stubEnv("SSR", false);
+    vi.resetModules();
+    const { deleteApiKey } = await import("@/domains/access/api-keys.functions");
+
+    await expect(deleteApiKey({ data: { keyId: "key_456" } })).rejects.toThrow(
+      "Auth is only available on the server.",
     );
   });
 });

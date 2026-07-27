@@ -82,11 +82,12 @@ export function PlanCard({
         ? (annualPrice ?? monthlyPrice)
         : monthlyPrice;
 
-  const handleCta = async () => {
-    if (ctaProduct && ctaInterval && onCheckout) {
-      await onCheckout({ product: ctaProduct, interval: ctaInterval });
-    }
-  };
+  const handleCta =
+    ctaProduct && ctaInterval && onCheckout
+      ? () => {
+          void onCheckout({ product: ctaProduct, interval: ctaInterval });
+        }
+      : undefined;
 
   return (
     <div className={`${bgClass} ${borderClass} flex flex-col rounded-[1.125rem] border px-5 py-5`}>
@@ -121,7 +122,7 @@ export function PlanCard({
       ) : isTeam ? (
         <button
           type="button"
-          onClick={() => void handleCta()}
+          onClick={handleCta}
           disabled={isPending}
           className={`${TEAM_CTA_CLASSES} ${isPending ? "cursor-not-allowed opacity-50" : ""}`}
         >
@@ -131,7 +132,7 @@ export function PlanCard({
         <Button
           variant="primary"
           className="w-full justify-center"
-          onClick={() => void handleCta()}
+          onClick={handleCta}
           disabled={isPending}
         >
           {isPending ? "Opening checkout…" : ctaText}

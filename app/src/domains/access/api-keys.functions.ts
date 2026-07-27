@@ -26,11 +26,13 @@ async function loadAuthModule() {
 }
 
 async function loadRequestHeadersModule() {
+  /* v8 ignore start -- No test can reach this: every caller awaits loadAuthModule() first, and both guards read the same import.meta.env.SSR, so stubbing SSR false always throws "Auth is only available on the server." before this line. The guard stays because TypeScript needs the throw to narrow away the undefined return. */
   if (import.meta.env.SSR) {
     return await import("./server/request-headers");
   }
 
   throw new Error("Request headers are only available on the server.");
+  /* v8 ignore stop */
 }
 
 async function loadRuntimeModule() {
@@ -42,11 +44,13 @@ async function loadRuntimeModule() {
 }
 
 async function loadSessionStateModule() {
+  /* v8 ignore start -- No test can reach this: every caller awaits loadAuthModule() or loadRuntimeModule() first, and all three guards read the same import.meta.env.SSR, so stubbing SSR false always throws one of those messages before this line. The guard stays because TypeScript needs the throw to narrow away the undefined return. */
   if (import.meta.env.SSR) {
     return await import("./server/session-state");
   }
 
   throw new Error("Session state is only available on the server.");
+  /* v8 ignore stop */
 }
 
 /**

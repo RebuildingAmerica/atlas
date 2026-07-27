@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { callRouteGet } from "@/../tests/helpers/routes-server-handler";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -35,5 +36,14 @@ describe("routes/api/atproto/oauth/client-metadata.json", () => {
       response_types: ["code"],
       scope: "atproto",
     });
+  });
+
+  it("refuses to read client metadata outside the server", async () => {
+    vi.stubEnv("SSR", false);
+    const routeModule = await import("@/routes/api/atproto/oauth/client-metadata[.]json");
+
+    await expect(callRouteGet(routeModule.Route)).rejects.toThrow(
+      "ATProto client metadata is only available on the server.",
+    );
   });
 });

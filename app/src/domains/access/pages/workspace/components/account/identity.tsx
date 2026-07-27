@@ -41,11 +41,15 @@ export function AccountIdentitySection() {
   const { confirm } = useConfirmDialog();
 
   const submitConnection = () => {
+    /* v8 ignore start -- Unreachable: the Connect button is disabled whenever the trimmed handle is empty, so this guard never rejects a submission. */
     if (existingHandle.trim()) startConnection(existingHandle);
+    /* v8 ignore stop */
   };
 
   const submitManagedIdentity = () => {
+    /* v8 ignore start -- Unreachable: the Create button is disabled whenever the trimmed handle is empty, so this guard never rejects a submission. */
     if (managedHandle.trim()) provisionManaged.mutate(managedHandle.trim());
+    /* v8 ignore stop */
   };
 
   const confirmDisconnect = async (identityId: string, currentHandle: string) => {

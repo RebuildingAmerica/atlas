@@ -29,6 +29,7 @@ export function BrowseSearchBox({
       onSubmit={(event) => {
         event.preventDefault();
         const submittedValue = new FormData(event.currentTarget).get("browse-query");
+        /* v8 ignore next -- the draft arm only satisfies FormData's nullable type: this form always renders the browse-query input, so the field is always present and always text. */
         onSearch(typeof submittedValue === "string" ? submittedValue : queryDraft);
       }}
     >

@@ -140,6 +140,31 @@ describe("sso.functions provider management", () => {
     });
   });
 
+  it("leaves the primary marker alone when the deleted provider was not primary", async () => {
+    getSsoFunctionsMocks().loadStoredWorkspaceIdentity.mockReturnValue(
+      createStoredWorkspaceIdentityFixture({
+        primaryProviderId: "atlas-team-google-workspace-saml",
+      }),
+    );
+
+    const { deleteWorkspaceSSOProvider } = await import("@/domains/access/sso.functions");
+    const response = (await deleteWorkspaceSSOProvider.__executeServer({
+      method: "POST",
+      data: {
+        providerId: "atlas-team-okta-saml",
+      },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(authApi.deleteSSOProvider).toHaveBeenCalledWith({
+      body: {
+        providerId: "atlas-team-okta-saml",
+      },
+      headers: browserSessionHeaders,
+    });
+    expect(authApi.updateOrganization).not.toHaveBeenCalled();
+  });
+
   it("returns the operator-managed SAML issuer allowlist", async () => {
     getSsoFunctionsMocks().getSamlAllowedIssuerOrigins.mockReturnValue([
       "https://accounts.google.com",

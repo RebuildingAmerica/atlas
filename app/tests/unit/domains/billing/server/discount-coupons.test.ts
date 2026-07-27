@@ -4,7 +4,10 @@ import {
   createStripeAtlasCatalogFixture,
 } from "../../../../fixtures/billing/stripe-price-envs";
 
-import { getDiscountCouponIdForCheckout } from "@/domains/billing/server/discount-coupons";
+import {
+  getDiscountCouponId,
+  getDiscountCouponIdForCheckout,
+} from "@/domains/billing/server/discount-coupons";
 
 vi.mock("@tanstack/react-start/server-only", () => ({}));
 
@@ -35,5 +38,19 @@ describe("discount coupons", () => {
     expect(
       getDiscountCouponIdForCheckout("independent_journalist", "atlas_team", "monthly"),
     ).toBeNull();
+  });
+  it.each([
+    ["student", "coupon_student"],
+    ["independent_journalist", "coupon_journalist"],
+    ["grassroots_nonprofit", "coupon_nonprofit"],
+    ["civic_tech_worker", "coupon_civic_tech"],
+  ] as const)("maps the %s segment onto its configured coupon", (segment, couponId) => {
+    vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
+
+    expect(getDiscountCouponId(segment)).toBe(couponId);
+  });
+
+  it("refuses to resolve a coupon when the catalog is not configured", () => {
+    expect(() => getDiscountCouponId("student")).toThrow(/STRIPE_ATLAS_CATALOG/);
   });
 });

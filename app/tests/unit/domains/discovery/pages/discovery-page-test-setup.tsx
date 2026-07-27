@@ -17,6 +17,13 @@ const mocks = vi.hoisted(() => ({
 
 export { mocks };
 
+/** The callbacks a component hands to a React Query mutation's `mutate`. */
+export interface MutationCallbacks {
+  onError?: (error: Error) => void;
+  onSettled?: () => void;
+  onSuccess?: (result: { id: string; name: string; title: string }) => void;
+}
+
 export const FREE_TIER_SESSION = {
   data: {
     workspace: {

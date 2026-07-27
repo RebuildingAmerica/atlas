@@ -52,13 +52,15 @@ export function WorkspaceSSOSamlForm({
       ? `${samlCertificateClassification.reason} Atlas parses the certificate server-side after save and shows the parsed expiry and fingerprint here.`
       : undefined;
   const visibleAllowlist = canManageOrganization ? samlAllowedIssuerOrigins : [];
+  /* v8 ignore start -- samlIssuerAllowed is true only when extractIssuerOrigin returned a non-null origin, so the `?? ""` fallback is unreachable */
+  const samlIssuerAllowedHelperText = `Issuer host (${samlIssuerOrigin ?? ""}) is on the allowlist.`;
+  /* v8 ignore stop */
   const samlIssuerHelperText = samlAllowlistEmpty
     ? "SAML registration is disabled for this deployment. Email hello@rebuildingus.org to add an issuer host to the allowlist before configuring a provider."
     : samlSetupForm.issuer.trim() === ""
       ? `Allowed issuer hosts: ${visibleAllowlist.join(", ")}.`
       : samlIssuerAllowed
-        ? /* v8 ignore next -- samlIssuerAllowed is true only when extractIssuerOrigin returned a non-null origin, so the `?? ""` fallback is unreachable */
-          `Issuer host (${samlIssuerOrigin ?? ""}) is on the allowlist.`
+        ? samlIssuerAllowedHelperText
         : `Issuer host ${samlIssuerOrigin ?? "(unparseable)"} is not on the allowlist. Allowed: ${visibleAllowlist.join(", ")}.`;
   const samlDomainTrimmed = samlSetupForm.domain.trim().toLowerCase();
   const samlDomainIsFreeEmail = isLikelyFreeEmailDomain(samlDomainTrimmed);

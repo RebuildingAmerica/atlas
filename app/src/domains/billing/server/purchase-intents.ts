@@ -141,23 +141,23 @@ export async function ensurePurchaseIntent({
 
   const id = crypto.randomUUID();
   const createdAt = nowIso();
+  const expiresAt = expiresAtIso();
   db.prepare(
     `INSERT INTO purchase_intents
        (id, user_id, product, interval, status, created_at, updated_at, expires_at)
      VALUES (?, ?, ?, ?, 'started', ?, ?, ?)`,
-  ).run(id, userId, product, interval, createdAt, createdAt, expiresAtIso());
+  ).run(id, userId, product, interval, createdAt, createdAt, expiresAt);
 
-  const inserted = db
-    .prepare(
-      `SELECT id, user_id, workspace_id, product, interval, status, stripe_checkout_session_id, expires_at
-       FROM purchase_intents
-       WHERE id = ?`,
-    )
-    .get(id) as PurchaseIntentRow | undefined;
-  if (!inserted) {
-    throw new Error("Atlas could not start purchase onboarding.");
-  }
-  return toRecord(inserted);
+  return {
+    expiresAt,
+    id,
+    interval,
+    product,
+    status: "started",
+    stripeCheckoutSessionId: null,
+    userId,
+    workspaceId: null,
+  };
 }
 
 export async function loadPurchaseIntent({
