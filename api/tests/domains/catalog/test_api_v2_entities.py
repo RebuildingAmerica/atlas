@@ -73,7 +73,7 @@ async def test_get_place_issue_signals_returns_issue_summary(
     await test_db.execute(
         """
         INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
-        VALUES (?, ?, datetime('now'))
+        VALUES (?, ?, CURRENT_TIMESTAMP)
         """,
         (org_id, "water_access_and_infrastructure"),
     )
@@ -163,7 +163,7 @@ async def test_entity_responses_share_canonical_address_contact_and_freshness_sh
     await test_db.execute(
         """
         INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
-        VALUES (?, ?, datetime('now'))
+        VALUES (?, ?, CURRENT_TIMESTAMP)
         """,
         (entity_id, "food_systems_and_agriculture"),
     )

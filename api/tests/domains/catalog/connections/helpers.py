@@ -44,7 +44,7 @@ async def _co_mention(conn: Any, entry_ids: list[str], *, publication: str | Non
     source_id = database.generate_uuid()
     await conn.execute(
         "INSERT INTO sources (id, url, title, publication, type, extraction_method, "
-        "ingested_at, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))",
+        "ingested_at, created_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
         (
             source_id,
             f"https://example.com/{source_id}",
@@ -57,7 +57,7 @@ async def _co_mention(conn: Any, entry_ids: list[str], *, publication: str | Non
     for entry_id in entry_ids:
         await conn.execute(
             "INSERT INTO entry_sources (entry_id, source_id, created_at) "
-            "VALUES (?, ?, datetime('now'))",
+            "VALUES (?, ?, CURRENT_TIMESTAMP)",
             (entry_id, source_id),
         )
     await conn.commit()
@@ -67,7 +67,7 @@ async def _co_mention(conn: Any, entry_ids: list[str], *, publication: str | Non
 async def _tag_issue(conn: Any, entry_id: str, issue: str) -> None:
     await conn.execute(
         "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
-        "VALUES (?, ?, datetime('now'))",
+        "VALUES (?, ?, CURRENT_TIMESTAMP)",
         (entry_id, issue),
     )
     await conn.commit()

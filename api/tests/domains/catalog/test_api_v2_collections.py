@@ -42,7 +42,7 @@ async def test_source_responses_share_canonical_freshness_and_flag_shapes(
     await test_db.execute(
         """
         INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
-        VALUES (?, ?, datetime('now'))
+        VALUES (?, ?, CURRENT_TIMESTAMP)
         """,
         (entity_id, "housing_affordability"),
     )

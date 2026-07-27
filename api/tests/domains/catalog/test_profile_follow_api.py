@@ -55,7 +55,7 @@ class TestFollowAPI:
         )
         await test_db.execute(
             "INSERT INTO entry_sources (entry_id, source_id, created_at) "
-            "VALUES (?, ?, datetime('now'))",
+            "VALUES (?, ?, CURRENT_TIMESTAMP)",
             (claimable_org, source_id),
         )
         await test_db.commit()

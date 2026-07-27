@@ -10,6 +10,7 @@ from __future__ import annotations
 import functools
 import importlib.resources
 import logging
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, Protocol
 
 import aiosqlite
@@ -93,6 +94,55 @@ def _translate_placeholders(sql: str) -> str:
     return "".join(result)
 
 
+def _normalize_value(value: Any) -> Any:
+    """Return a row value in the shape the rest of Atlas reads.
+
+    psycopg hydrates timestamps and dates into ``datetime``/``date`` objects
+    while aiosqlite returns the ISO strings that were stored. Every model,
+    schema, and response builder in Atlas was written against the string shape,
+    so a Postgres row arriving as objects fails validation deep inside a
+    request — which is how row-shape divergences kept reaching production one
+    table at a time.
+
+    Normalizing here rather than at each call site is the same responsibility
+    this adapter already takes for placeholder translation: one row shape,
+    whichever backend produced it.
+
+    Parameters
+    ----------
+    value
+        A single column value from a psycopg row.
+
+    Returns
+    -------
+    Any
+        The value, with dates and timestamps rendered as ISO strings.
+    """
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return value
+
+
+def _normalize_row(row: tuple[Any, ...] | None) -> tuple[Any, ...] | None:
+    """Normalize every column in a psycopg row.
+
+    Parameters
+    ----------
+    row
+        A psycopg row, or None when the cursor is exhausted.
+
+    Returns
+    -------
+    tuple[Any, ...] | None
+        The row with values normalized, or None.
+    """
+    if row is None:
+        return None
+    return tuple(_normalize_value(value) for value in row)
+
+
 class PostgresCursor:
     """Adapter that wraps a psycopg AsyncCursor to match the aiosqlite cursor interface."""
 
@@ -108,10 +158,11 @@ class PostgresCursor:
         return self._cursor.rowcount  # type: ignore[no-any-return]
 
     async def fetchall(self) -> list[tuple[Any, ...]]:
-        return await self._cursor.fetchall()  # type: ignore[no-any-return]
+        rows = await self._cursor.fetchall()
+        return [normalized for row in rows if (normalized := _normalize_row(row)) is not None]
 
     async def fetchone(self) -> tuple[Any, ...] | None:
-        return await self._cursor.fetchone()  # type: ignore[no-any-return]
+        return _normalize_row(await self._cursor.fetchone())
 
 
 class PostgresConnection:

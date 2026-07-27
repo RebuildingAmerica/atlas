@@ -20,12 +20,16 @@ os.environ.setdefault("ATLAS_MULTI_USER", "false")
 os.environ.setdefault("ATLAS_MANAGED", "false")
 
 import tempfile  # noqa: E402
-from collections.abc import Iterator  # noqa: E402
+import uuid  # noqa: E402
+from collections.abc import AsyncIterator, Iterator  # noqa: E402
 from datetime import UTC, date, datetime, timedelta  # noqa: E402
+from urllib.parse import urlsplit, urlunsplit  # noqa: E402
 
 import httpx  # noqa: E402
+import psycopg  # noqa: E402
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
+from psycopg import sql  # noqa: E402
 
 from atlas.config import Settings, get_settings  # noqa: E402
 from atlas.domains.catalog.models.entry import EntryCRUD  # noqa: E402
@@ -83,17 +87,82 @@ def tmp_db_path() -> str:
 
 
 @pytest_asyncio.fixture
-async def db_url(tmp_db_path: str) -> str:
-    """Create and initialize a test database."""
-    db_url = f"sqlite:///{tmp_db_path}"
-    await init_db(db_url)
-    return db_url
+async def db_url(tmp_db_path: str) -> AsyncIterator[str]:
+    """Create and initialize a test database.
+
+    Runs against PostgreSQL whenever ``ATLAS_TEST_POSTGRES_URL`` names a server,
+    which is what CI provides, and SQLite otherwise so a contributor needs no
+    local database. Production runs PostgreSQL, and a suite that only ever ran
+    SQLite is why row-shape divergences — dates arriving as objects rather than
+    strings, ``INSERT OR`` forms, integer booleans — reached readers before
+    anyone saw them.
+
+    Each run gets its own database so tests stay isolated.
+    """
+    # Opt-in until the suite is green on PostgreSQL. CI already sets
+    # ATLAS_TEST_POSTGRES_URL for the targeted Postgres lane, so keying the
+    # whole-suite switch on that variable alone would turn the remaining
+    # SQLite-isms into a red build rather than a migration in progress.
+    base_url = os.getenv("ATLAS_TEST_POSTGRES_URL") if _postgres_requested() else None
+    if not base_url:
+        sqlite_url = f"sqlite:///{tmp_db_path}"
+        await init_db(sqlite_url, backend="sqlite")
+        yield sqlite_url
+        return
+
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        pytest.fail("ATLAS_TEST_POSTGRES_URL must be a PostgreSQL URL")
+
+    database_name = f"atlas_test_{uuid.uuid4().hex}"
+    postgres_url = urlunsplit(parsed._replace(path=f"/{database_name}"))
+    admin = await psycopg.AsyncConnection.connect(base_url, autocommit=True)
+    try:
+        await admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name)))
+        await init_db(postgres_url, backend="postgres")
+        yield postgres_url
+    finally:
+        await admin.execute(
+            sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(database_name))
+        )
+        await admin.close()
+
+
+def _postgres_requested() -> bool:
+    """Return whether the suite should run against PostgreSQL.
+
+    Set ``ATLAS_TEST_BACKEND=postgres`` alongside ``ATLAS_TEST_POSTGRES_URL``.
+    Production runs PostgreSQL, so this is where the suite is headed; it is
+    explicit only while the remaining SQLite-only SQL is migrated.
+
+    Returns
+    -------
+    bool
+        True when PostgreSQL was explicitly requested.
+    """
+    return os.getenv("ATLAS_TEST_BACKEND", "").strip().lower() == "postgres"
+
+
+def _backend_for(database_url: str) -> str:
+    """Return the backend selector matching a database URL.
+
+    Parameters
+    ----------
+    database_url
+        The URL under test.
+
+    Returns
+    -------
+    str
+        ``postgres`` or ``sqlite``.
+    """
+    return "postgres" if database_url.startswith(("postgres://", "postgresql://")) else "sqlite"
 
 
 @pytest_asyncio.fixture
 async def test_db(db_url: str) -> object:
     """Get a test database connection."""
-    conn = await get_db_connection(db_url)
+    conn = await get_db_connection(db_url, backend=_backend_for(db_url))
     try:
         yield conn
     finally:
@@ -105,6 +174,7 @@ def test_settings(db_url: str) -> Settings:
     """Create test settings with temporary database."""
     return Settings(
         database_url=db_url,
+        database_backend=_backend_for(db_url),
         anthropic_api_key="test-key",
         environment="dev",
         cors_origins=["http://localhost:3000"],

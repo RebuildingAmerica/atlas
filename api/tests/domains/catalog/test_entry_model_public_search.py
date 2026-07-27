@@ -39,7 +39,7 @@ async def test_search_public_id_filter_branches_with_full_query_payload(
     )
     await conn.execute(
         "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
-        "VALUES (?, ?, datetime('now'))",
+        "VALUES (?, ?, CURRENT_TIMESTAMP)",
         (entry_id, "housing_affordability"),
     )
     await conn.commit()
@@ -185,7 +185,7 @@ async def test_search_public_prioritizes_actor_leads_before_artifacts(test_db: o
     for entry_id in [person_id, campaign_id]:
         await conn.execute(
             "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
-            "VALUES (?, ?, datetime('now'))",
+            "VALUES (?, ?, CURRENT_TIMESTAMP)",
             (entry_id, "housing_affordability"),
         )
 
@@ -258,7 +258,7 @@ async def test_search_public_prioritizes_specific_actors_over_vague_records(
     )
     await conn.execute(
         "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
-        "VALUES (?, ?, datetime('now'))",
+        "VALUES (?, ?, CURRENT_TIMESTAMP)",
         (specific_id, "housing_affordability"),
     )
     for index, entry_id in enumerate([specific_id, vague_id]):

@@ -175,7 +175,7 @@ async def test_filter_by_issue_area_returns_tagged_entries(test_db: object) -> N
     )
     await conn.execute(
         "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
-        "VALUES (?, ?, datetime('now'))",
+        "VALUES (?, ?, CURRENT_TIMESTAMP)",
         (entry_id, "housing_affordability"),
     )
     await conn.commit()

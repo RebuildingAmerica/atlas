@@ -39,7 +39,7 @@ async def test_get_place_entities_filters_by_issue_and_entity_type(
     await test_db.execute(
         """
         INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
-        VALUES (?, ?, datetime('now'))
+        VALUES (?, ?, CURRENT_TIMESTAMP)
         """,
         (org_id, "environmental_justice_and_pollution"),
     )
@@ -187,14 +187,14 @@ async def test_place_issue_signals_use_database_scope_filters(
     await test_db.execute(
         """
         INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
-        VALUES (?, ?, datetime('now'))
+        VALUES (?, ?, CURRENT_TIMESTAMP)
         """,
         (las_vegas_id, "housing_affordability"),
     )
     await test_db.execute(
         """
         INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
-        VALUES (?, ?, datetime('now'))
+        VALUES (?, ?, CURRENT_TIMESTAMP)
         """,
         (henderson_id, "public_transit"),
     )
