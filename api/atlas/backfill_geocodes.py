@@ -84,7 +84,8 @@ async def backfill_geocodes(database_url: str, *, use_census: bool = False) -> i
     conn = await get_db_connection(database_url)
     placed = 0
     try:
-        await conn.execute("PRAGMA busy_timeout = 30000")
+        if getattr(conn, "backend", "sqlite") != "postgres":  # pragma: no branch
+            await conn.execute("PRAGMA busy_timeout = 30000")
         for candidate in await _unplaced_candidates(conn):
             located = await geocode_entry(
                 candidate.city,

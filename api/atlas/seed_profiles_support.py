@@ -111,7 +111,7 @@ async def _ensure_entry(
             phone = ?,
             social_media = ?,
             affiliated_org_id = ?,
-            active = 1,
+            active = TRUE,
             verified = ?,
             last_verified = ?,
             first_seen = ?,
@@ -132,7 +132,7 @@ async def _ensure_entry(
             seed.phone,
             json.dumps(seed.social_media) if seed.social_media else None,
             affiliated_org_id,
-            1 if seed.verified else 0,
+            seed.verified,
             seed.last_verified.isoformat() if seed.last_verified else None,
             seed.first_seen.isoformat(),
             seed.last_seen.isoformat(),
@@ -197,7 +197,8 @@ async def seed_profiles(database_url: str) -> None:
     await init_db(database_url)
     conn = await get_db_connection(database_url)
     try:
-        await conn.execute("PRAGMA busy_timeout = 30000")
+        if getattr(conn, "backend", "sqlite") != "postgres":  # pragma: no branch
+            await conn.execute("PRAGMA busy_timeout = 30000")
         org_ids_by_slug: dict[str, str] = {}
 
         for seed in SEED_ENTRIES:

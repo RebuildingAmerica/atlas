@@ -296,7 +296,14 @@ class RelationshipCRUD:
             ON CONFLICT(source_entry_id, target_entry_id, relationship_type, source_id)
             DO UPDATE SET
                 evidence_label = excluded.evidence_label,
-                confidence = MAX(entity_relationship_edges.confidence, excluded.confidence),
+                -- SQLite spells two-argument maximum MAX(); PostgreSQL spells it
+                -- GREATEST(). A CASE expression is the same thing in both, so the
+                -- statement needs no dialect awareness.
+                confidence = CASE
+                    WHEN excluded.confidence > entity_relationship_edges.confidence
+                        THEN excluded.confidence
+                    ELSE entity_relationship_edges.confidence
+                END,
                 evidence_count = entity_relationship_edges.evidence_count + 1,
                 last_seen = excluded.last_seen,
                 updated_at = excluded.updated_at

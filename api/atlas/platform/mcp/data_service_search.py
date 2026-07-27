@@ -216,6 +216,13 @@ class AtlasDataServiceSearchMixin:
         where_clause = " AND ".join(clauses)
 
         async with DatabaseSession(self._database_url) as conn:
+            # SQLite spells this aggregate GROUP_CONCAT(); PostgreSQL spells it
+            # STRING_AGG(), which also requires the separator as an argument.
+            concat_entity_ids = (
+                "STRING_AGG(DISTINCT e.id, ',')"
+                if getattr(conn, "backend", "sqlite") == "postgres"
+                else "GROUP_CONCAT(DISTINCT e.id)"
+            )
             cursor_obj = await conn.execute(
                 f"""
                 SELECT
@@ -228,7 +235,7 @@ class AtlasDataServiceSearchMixin:
                     s.ingested_at,
                     s.extraction_method,
                     s.created_at,
-                    GROUP_CONCAT(DISTINCT e.id) AS linked_entity_ids
+                    {concat_entity_ids} AS linked_entity_ids
                 FROM sources s
                 JOIN entry_sources es ON s.id = es.source_id
                 JOIN entries e ON e.id = es.entry_id

@@ -180,7 +180,9 @@ class PostgresConnection:
 
     async def executemany(self, sql: str, parameters: Sequence[Sequence[Any]]) -> PostgresCursor:
         translated = _translate_placeholders(sql)
-        cursor = await self._conn.executemany(translated, parameters)
+        # psycopg exposes executemany() on the cursor, not the connection.
+        cursor = self._conn.cursor()
+        await cursor.executemany(translated, parameters)
         return PostgresCursor(cursor)
 
     async def commit(self) -> None:
@@ -211,7 +213,13 @@ async def get_db_connection(database_url: str, *, backend: str | None = None) ->
     if use_postgres:
         import psycopg
 
-        conn = await psycopg.AsyncConnection.connect(database_url, autocommit=False)
+        # Without this, TIMESTAMPTZ columns come back converted to the
+        # server process's OS timezone rather than UTC, so a value written as
+        # "...Z" would round-trip as a different-looking (though equal)
+        # instant — making API output depend on where Postgres happens to run.
+        conn = await psycopg.AsyncConnection.connect(
+            database_url, autocommit=False, options="-c TimeZone=UTC"
+        )
         return PostgresConnection(conn)
 
     db_path = _get_sqlite_path(database_url)

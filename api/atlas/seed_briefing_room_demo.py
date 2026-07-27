@@ -74,7 +74,8 @@ async def seed_briefing_room_demo(
     await seed_profiles(database_url)
     conn = await get_db_connection(database_url)
     try:
-        await conn.execute("PRAGMA busy_timeout = 30000")
+        if getattr(conn, "backend", "sqlite") != "postgres":
+            await conn.execute("PRAGMA busy_timeout = 30000")
         if reset:
             await _reset_demo_artifacts(conn, org_id=org_id, user_id=user_id)
 
