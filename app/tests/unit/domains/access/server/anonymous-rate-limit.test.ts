@@ -42,13 +42,16 @@ describe("resolveAnonymousRateLimitConfig", () => {
     });
   });
 
-  it("disables the limiter only for an explicit false", () => {
+  it("parses ATLAS_ANON_RATE_LIMIT_ENABLED the same way the API's pydantic settings do", () => {
     expect(
       resolveAnonymousRateLimitConfig({ ATLAS_ANON_RATE_LIMIT_ENABLED: " FALSE " }).enabled,
     ).toBe(false);
     expect(resolveAnonymousRateLimitConfig({ ATLAS_ANON_RATE_LIMIT_ENABLED: "0" }).enabled).toBe(
-      true,
+      false,
     );
+    expect(() =>
+      resolveAnonymousRateLimitConfig({ ATLAS_ANON_RATE_LIMIT_ENABLED: "disabled" }),
+    ).toThrow("ATLAS_ANON_RATE_LIMIT_ENABLED must be a boolean value.");
   });
 
   it("refuses limits that are not non-negative integers", () => {

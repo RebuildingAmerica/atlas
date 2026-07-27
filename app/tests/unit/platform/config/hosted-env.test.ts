@@ -117,23 +117,20 @@ describe("hosted Atlas URL helpers", () => {
 });
 
 describe("hosted Atlas environment detection", () => {
-  it("treats production and staging deploys, and Vercel production, as hosted", () => {
-    expect(isHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "production" })).toBe(true);
-    expect(isHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "staging" })).toBe(true);
+  it("treats a real public origin and Vercel production as hosted", () => {
+    expect(isHostedAtlasEnv({ ATLAS_PUBLIC_URL: "https://atlas.example.com" })).toBe(true);
     expect(isHostedAtlasEnv({ VERCEL_ENV: "production" })).toBe(true);
   });
 
   it("treats a local or preview environment as not hosted", () => {
     expect(isHostedAtlasEnv({})).toBe(false);
-    expect(isHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "development", VERCEL_ENV: "preview" })).toBe(
-      false,
-    );
+    expect(
+      isHostedAtlasEnv({ ATLAS_PUBLIC_URL: "http://localhost:3000", VERCEL_ENV: "preview" }),
+    ).toBe(false);
   });
 
-  it("skips validation entirely outside hosted deployments", () => {
-    expect(() => {
-      validateHostedAtlasEnv({ ATLAS_DEPLOY_MODE: "development" });
-    }).not.toThrow();
+  it("treats an unparseable public URL as not hosted rather than throwing", () => {
+    expect(isHostedAtlasEnv({ ATLAS_PUBLIC_URL: "not a url" })).toBe(false);
   });
 });
 
@@ -145,7 +142,7 @@ describe("hosted Atlas API proxy origin", () => {
 
   it("insists a hosted deployment names its API proxy", () => {
     expect(() => {
-      normalizeApiProxyOrigin({ ATLAS_DEPLOY_MODE: "staging" });
+      normalizeApiProxyOrigin({ ATLAS_PUBLIC_URL: "https://atlas.example.com" });
     }).toThrow("ATLAS_SERVER_API_PROXY_TARGET is required for hosted Atlas deployments.");
   });
 
