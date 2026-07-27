@@ -30,7 +30,7 @@ class _FakeWebSocket:
 
 def test_firehose_session_socket_emits_ready_event(test_settings: Settings) -> None:
     """The WebSocket stub should expose the future bidirectional session surface."""
-    test_settings.deploy_mode = "local"
+    test_settings.multi_user = False
     app = create_app()
     app.dependency_overrides[get_settings] = lambda: test_settings
 
@@ -78,7 +78,7 @@ def test_firehose_session_socket_allows_missing_subprotocol() -> None:
 @pytest.mark.asyncio
 async def test_firehose_session_socket_accepts_internal_actor(test_settings: Settings) -> None:
     """Internal trusted callers should be able to consume workspace Firehose sockets."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     websocket = _FakeWebSocket(
         {
@@ -102,7 +102,7 @@ async def test_firehose_session_socket_rejects_internal_actor_without_org(
     test_settings: Settings,
 ) -> None:
     """Trusted Firehose socket callers must still be scoped to an organization."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     websocket = _FakeWebSocket(
         {
@@ -124,7 +124,7 @@ async def test_firehose_session_socket_accepts_api_key_actor(
     test_settings: Settings,
 ) -> None:
     """API-key callers with Firehose read scope should be able to stream."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
@@ -156,7 +156,7 @@ async def test_firehose_session_socket_rejects_unknown_api_key(
     test_settings: Settings,
 ) -> None:
     """Unknown API keys should not fall through to a workspace stream."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> None:
@@ -178,7 +178,7 @@ async def test_firehose_session_socket_rejects_api_key_without_org(
     test_settings: Settings,
 ) -> None:
     """API-key Firehose streams must be scoped to an organization."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
@@ -208,7 +208,7 @@ async def test_firehose_session_socket_accepts_oauth_jwt_actor(
     test_settings: Settings,
 ) -> None:
     """OAuth JWT callers with Firehose read permission should be able to stream."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]
     test_settings.auth_jwt_issuer = "https://atlas.example/auth"
     test_settings.auth_jwt_jwks_url = "https://atlas.example/auth/jwks"
@@ -248,7 +248,7 @@ async def test_firehose_session_socket_rejects_oauth_jwt_without_org(
     test_settings: Settings,
 ) -> None:
     """OAuth Firehose streams must be scoped to an organization."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]
     test_settings.auth_jwt_issuer = "https://atlas.example/auth"
     test_settings.auth_jwt_jwks_url = "https://atlas.example/auth/jwks"
@@ -287,7 +287,7 @@ async def test_firehose_requires_firehose_read_scope_for_api_keys(
     test_db: object,
 ) -> None:
     """API keys need the Firehose read scope and are counted against their workspace."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
@@ -334,7 +334,7 @@ async def test_firehose_rejects_api_keys_without_firehose_read_scope(
     test_db: object,
 ) -> None:
     """A discovery API key should not read Firehose by accident."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
@@ -367,7 +367,7 @@ async def test_firehose_requires_auth_when_auth_is_enabled(
     test_settings: Settings,
 ) -> None:
     """Firehose is not anonymous when Atlas auth is enabled."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]

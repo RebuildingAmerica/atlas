@@ -24,7 +24,7 @@ class TestLifespan:
         """The lifespan should call init_db on startup."""
         settings = Settings(
             database_url=db_url,
-            deploy_mode="local",
+            multi_user=False,
         )
 
         app = create_app()
@@ -40,7 +40,7 @@ class TestLifespan:
         """A failing database bootstrap should bubble up."""
         settings = Settings(
             database_url="sqlite:///atlas_test.db",
-            deploy_mode="local",
+            multi_user=False,
         )
 
         async def failing_init_db(_url: str, **_kwargs: object) -> None:
@@ -71,7 +71,7 @@ class TestLifespanWorker:
         patch_mcp_session_manager()
         settings = Settings(
             database_url=db_url,
-            deploy_mode="local",
+            multi_user=False,
         )
 
         started: list[dict[str, object]] = []
@@ -103,7 +103,7 @@ class TestLifespanWorker:
         patch_mcp_session_manager()
         settings = Settings(
             database_url=db_url,
-            deploy_mode="local",
+            multi_user=False,
             discovery_job_worker_enabled=False,
         )
 

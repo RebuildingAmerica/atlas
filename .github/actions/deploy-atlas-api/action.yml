@@ -173,7 +173,8 @@ runs:
           --port=8000
           --remove-env-vars=ATLAS_AUTH_ALLOWED_EMAILS
         env_vars: |
-          ATLAS_DEPLOY_MODE=${{ inputs.environment-name }}
+          ATLAS_MANAGED=true
+          ATLAS_MULTI_USER=true
           ENVIRONMENT=${{ inputs.environment-name }}
           LOG_LEVEL=info
           DATABASE_BACKEND=postgres
@@ -232,7 +233,6 @@ runs:
         API_URL: ${{ steps.api-url.outputs.url }}
         API_REVISION: ${{ steps.api-url.outputs.revision }}
         IMAGE: ${{ inputs.image-registry }}/atlas-api:${{ inputs.image-tag }}
-        ATLAS_DEPLOY_MODE: ${{ inputs.environment-name }}
         SERVICE_NAME: ${{ inputs.service-name }}
         IMAGE_TAG: ${{ inputs.image-tag }}
       run: node scripts/deploy/cloud-run-release.mjs summary

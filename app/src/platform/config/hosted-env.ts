@@ -1,7 +1,6 @@
 export interface HostedAtlasEnv {
   ATLAS_AUTH_JWT_AUDIENCES?: string;
   ATLAS_DOCS_URL?: string;
-  ATLAS_DEPLOY_MODE?: string;
   ATLAS_PUBLIC_URL?: string;
   ATLAS_SERVER_API_PROXY_TARGET?: string;
   VERCEL_ENV?: string;
@@ -50,12 +49,31 @@ function audienceValues(env: HostedAtlasEnv, context: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Whether this build targets a real, reachable Atlas rather than a workstation.
+ *
+ * Derived from the public URL rather than from a declared mode. A deployment
+ * serving a public origin needs https URLs and correct audience ordering
+ * whoever operates it, and asking the configuration directly means a
+ * self-hosted or whitelabel deploy gets the same checks the managed one does —
+ * which naming modes never achieved, because only our own deploys knew the
+ * names.
+ *
+ * @param env - Environment to evaluate.
+ */
 export function isHostedAtlasEnv(env: HostedAtlasEnv): boolean {
-  return (
-    env.ATLAS_DEPLOY_MODE === "production" ||
-    env.ATLAS_DEPLOY_MODE === "staging" ||
-    env.VERCEL_ENV === "production"
-  );
+  if (env.VERCEL_ENV === "production") {
+    return true;
+  }
+  const publicUrl = env.ATLAS_PUBLIC_URL?.trim();
+  if (!publicUrl) {
+    return false;
+  }
+  try {
+    return !isLocalHost(new URL(publicUrl).hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function normalizeDocsOrigin(value: string | undefined): string | undefined {

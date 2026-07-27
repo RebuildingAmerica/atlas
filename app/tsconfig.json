@@ -2,7 +2,9 @@
   "extends": "@rebuildingamerica/tsconfig/react.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": [

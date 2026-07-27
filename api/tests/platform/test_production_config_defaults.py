@@ -38,7 +38,7 @@ class TestProductionConfig:
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
-            deploy_mode="local",
+            multi_user=False,
         )
 
         assert settings.enable_openapi_spec is True
@@ -57,7 +57,7 @@ class TestProductionConfig:
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
             environment="production",
-            deploy_mode="local",
+            multi_user=False,
         )
 
         monkeypatch.setattr("atlas.main.get_settings", lambda: settings)
@@ -88,7 +88,7 @@ class TestProductionConfig:
             database_url="sqlite:///tmp/test.db",
             environment="production",
             cors_origins=["https://atlas.test"],
-            deploy_mode="production",
+            multi_user=True,
         )
 
         monkeypatch.setattr("atlas.main.get_settings", lambda: settings)
@@ -99,7 +99,7 @@ class TestProductionConfig:
         self, monkeypatch: MonkeyPatch
     ) -> None:
         """The API should consume the canonical ATLAS_* auth environment variables."""
-        monkeypatch.setenv("ATLAS_DEPLOY_MODE", "")
+        monkeypatch.setenv("ATLAS_MULTI_USER", "true")
         monkeypatch.setenv(
             "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
             "http://atlas-web:3000/api/auth/internal/api-key",
@@ -108,7 +108,7 @@ class TestProductionConfig:
 
         settings = Settings(database_url="sqlite:///tmp/test.db", environment="production")
 
-        assert settings.deploy_mode == ""
+        assert settings.multi_user is True
         assert (
             settings.auth_api_key_introspection_url
             == "http://atlas-web:3000/api/auth/internal/api-key"

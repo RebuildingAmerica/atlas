@@ -10,6 +10,8 @@ import {
   resolveAnonymousRateLimitConfig,
   type AnonymousRateLimitConfig,
 } from "./anonymous-rate-limit";
+import { parseEnvBoolean } from "@/platform/config/env-boolean";
+import { hasAccounts } from "@/platform/config/deployment";
 
 /**
  * Runtime configuration needed to enforce Atlas auth behavior on the app
@@ -231,7 +233,11 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
   const publicBaseUrl = trimTrailingSlash(configuredPublicUrl);
   const publicUrl = parseAbsoluteUrl(publicBaseUrl, "ATLAS_PUBLIC_URL");
   const publicDomain = publicUrl.hostname;
-  const localMode = env.ATLAS_DEPLOY_MODE === "local";
+  // Whether this instance has accounts. The API reads the same variable and
+  // applies the same rule, so the two halves cannot disagree about the same
+  // deployment — which they did on the default dev stack, where the app
+  // demanded hosted-grade config and the API validated nothing at all.
+  const localMode = !hasAccounts(env);
   const emailProvider = resolveEmailProvider(env);
 
   const databaseUrl = env.DATABASE_URL?.trim() || null;
@@ -250,7 +256,11 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     operatorAllowedEmails: normalizeEmailList(env.ATLAS_OPERATOR_ALLOWED_EMAILS),
     databaseUrl,
     localMode,
-    openRegistration: env.ATLAS_AUTH_OPEN_REGISTRATION !== "false",
+    openRegistration: parseEnvBoolean(
+      env.ATLAS_AUTH_OPEN_REGISTRATION,
+      true,
+      "ATLAS_AUTH_OPEN_REGISTRATION",
+    ),
     captureUrl: env.ATLAS_EMAIL_CAPTURE_URL?.trim() || null,
     dbPath: env.ATLAS_AUTH_DB_PATH?.trim() || path.join(cwd, "data", "auth", "atlas-auth.sqlite"),
     emailFrom: env.ATLAS_EMAIL_FROM?.trim() || `Atlas <hello@${publicDomain}>`,
@@ -309,17 +319,17 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
 
   if (!runtime.apiKeyIntrospectionUrl) {
     throw new Error(
-      "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_DEPLOY_MODE is not local.",
+      "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_MULTI_USER is true.",
     );
   }
 
   if (!runtime.authJwtAudience) {
-    throw new Error("ATLAS_AUTH_JWT_AUDIENCES is required when ATLAS_DEPLOY_MODE is not local.");
+    throw new Error("ATLAS_AUTH_JWT_AUDIENCES is required when ATLAS_MULTI_USER is true.");
   }
 
   const publicUrl = parseAbsoluteUrl(runtime.publicBaseUrl, "ATLAS_PUBLIC_URL");
   if (publicUrl.protocol !== "https:" && !isLoopbackHostname(publicUrl.hostname)) {
-    throw new Error("ATLAS_PUBLIC_URL must use https when ATLAS_DEPLOY_MODE is not local.");
+    throw new Error("ATLAS_PUBLIC_URL must use https unless it is a loopback address.");
   }
 
   const expectedMcpAudience = buildMcpResourceUrl(runtime.publicBaseUrl);

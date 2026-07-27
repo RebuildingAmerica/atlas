@@ -36,8 +36,9 @@ async def test_admin_verifications_requires_internal_auth_in_hosted_mode(
 
     def override_get_settings() -> Settings:
         return Settings(
+            managed=True,
             database_url=db_url,
-            deploy_mode="production",
+            multi_user=True,
             auth_internal_secret="internal-test-secret",
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
@@ -64,8 +65,9 @@ async def test_admin_verifications_allows_allowlisted_internal_reviewers(
 
     def override_get_settings() -> Settings:
         return Settings(
+            managed=True,
             database_url=db_url,
-            deploy_mode="production",
+            multi_user=True,
             auth_internal_secret="internal-test-secret",
             operator_allowed_emails=["reviewer@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],
@@ -100,8 +102,9 @@ async def test_admin_verifications_rejects_unlisted_internal_users(
 
     def override_get_settings() -> Settings:
         return Settings(
+            managed=True,
             database_url=db_url,
-            deploy_mode="production",
+            multi_user=True,
             auth_internal_secret="internal-test-secret",
             operator_allowed_emails=["reviewer@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],
@@ -136,7 +139,7 @@ async def test_discount_review_dependency_allows_local_actor() -> None:
         is_local=True,
     )
 
-    allowed = await require_discount_review_actor(actor=actor, settings=Settings())
+    allowed = await require_discount_review_actor(actor=actor, settings=Settings(managed=True))
 
     assert allowed is actor
 
@@ -150,7 +153,7 @@ async def test_discount_review_dependency_rejects_non_internal_actor() -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_discount_review_actor(actor=actor, settings=Settings())
+        await require_discount_review_actor(actor=actor, settings=Settings(managed=True))
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "Discount review access requires Atlas staff."

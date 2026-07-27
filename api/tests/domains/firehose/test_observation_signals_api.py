@@ -126,7 +126,7 @@ def test_internal_firehose_request_rejects_untrusted_production_call() -> None:
     """Production internal signal writes should require trusted caller headers."""
     settings = Settings(
         database_url="sqlite:///tmp/test.db",
-        deploy_mode="production",
+        multi_user=True,
         auth_internal_secret="internal-secret",
     )
 
@@ -147,7 +147,7 @@ def test_internal_firehose_request_accepts_trusted_production_call() -> None:
     """Trusted production callers should be allowed to deliver observation signals."""
     settings = Settings(
         database_url="sqlite:///tmp/test.db",
-        deploy_mode="production",
+        multi_user=True,
         auth_internal_secret="internal-secret",
     )
 

@@ -27,7 +27,7 @@ async def test_generic_atproto_handle_links_when_workspace_domain_verifies(
     claimable_org: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    test_settings.deploy_mode = "hosted"
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "test-secret"
     test_settings.auth_membership_verification_url = "https://app.example"
     monkeypatch.setattr(
@@ -104,7 +104,7 @@ async def test_stale_atproto_handle_does_not_link_when_workspace_domain_verifies
     claimable_org: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    test_settings.deploy_mode = "hosted"
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "test-secret"
     test_settings.auth_membership_verification_url = "https://app.example"
     verification_results = [_valid_atproto_identity, _stale_atproto_identity]

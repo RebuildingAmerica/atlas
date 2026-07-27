@@ -57,9 +57,9 @@ export interface AtlasWorkspaceState {
 /**
  * Normalized operator session payload returned by Atlas server functions.
  *
- * `isLocal` reflects the server-side ATLAS_DEPLOY_MODE === "local" check and
+ * `isLocal` reflects the server-side ATLAS_MULTI_USER check and
  * is the only reliable way for client UI to know it is running in local mode
- * — Vite does not expose `ATLAS_DEPLOY_MODE` to the browser bundle, so any
+ * — Vite does not expose `ATLAS_MULTI_USER` to the browser bundle, so any
  * client-side `getAuthConfig().localMode` read returns false even in local
  * mode. UI gates that need to hide multi-user affordances (sign in, sign
  * out, pricing, account, workspace badge) should read from `isLocal` here.

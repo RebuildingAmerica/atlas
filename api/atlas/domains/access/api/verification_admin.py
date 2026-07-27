@@ -96,6 +96,12 @@ async def require_discount_review_actor(
     settings: Settings = Depends(get_settings),
 ) -> AuthenticatedActor:
     """Require an Atlas operator for discount verification review endpoints."""
+    if not settings.managed:
+        # Discount review is a Rebuilding America commercial function. Someone
+        # self-hosting Atlas has no Atlas discounts to review, so the surface
+        # does not exist for them rather than standing open.
+        raise HTTPException(status_code=404, detail="Not found.")
+
     if actor.is_local:
         return actor
 

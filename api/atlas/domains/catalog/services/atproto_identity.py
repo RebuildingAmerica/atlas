@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
@@ -12,6 +11,7 @@ import httpx
 
 from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
+from atlas.platform.config import get_settings
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -117,8 +117,12 @@ async def verify_linked_atproto_identity(
 
 
 def e2e_harness_identity_matches(handle: str, did: str) -> bool:
-    """Recognize only identities minted by the explicitly enabled E2E harness."""
-    if os.environ.get("ATLAS_ATPROTO_OAUTH_E2E_HARNESS") != "1":
+    """Recognize only identities minted by the explicitly enabled E2E harness.
+
+    Reads the flag through ``Settings`` rather than the process environment so
+    it is validated once at startup and refused outright in production.
+    """
+    if not get_settings().atproto_oauth_e2e_harness:
         return False
     return did == f"did:web:{_normalize_handle(handle)}"
 

@@ -6,6 +6,7 @@ import {
   classifyAtlasApiStatus,
 } from "@rebuildingamerica/atlas-catalog/discovery/api-errors";
 import { requireReadyAtlasSessionState } from "@/domains/access/server/session-state";
+import { hasAccounts } from "@/platform/config/deployment";
 import {
   getServerApiBaseUrl as getConfiguredServerApiBaseUrl,
   getServerServiceBaseUrl as getConfiguredServerServiceBaseUrl,
@@ -30,7 +31,7 @@ function getInternalSecret(): string {
 }
 
 function isLocalMode(): boolean {
-  return process.env.ATLAS_DEPLOY_MODE === "local";
+  return !hasAccounts(process.env);
 }
 
 export async function requestAtlasApi<T>(path: string, init?: RequestInit): Promise<T> {

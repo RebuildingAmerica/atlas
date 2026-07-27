@@ -73,7 +73,8 @@ Set `ATLAS_PUBLIC_URL` to the staging app origin. Set `ATLAS_AUTH_JWT_AUDIENCES`
 to the staging resource URL list the API accepts, with the MCP resource first:
 
 ```env
-ATLAS_DEPLOY_MODE=staging
+ATLAS_MULTI_USER=true
+ATLAS_MANAGED=true
 ATLAS_PUBLIC_URL=https://atlas-staging.rebuildingus.org
 ATLAS_API_URL=https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_JWT_AUDIENCES=https://atlas-staging.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
@@ -104,7 +105,8 @@ Set the Vercel `staging` env vars to the same app/API origins used by the GitHub
 `staging` environment:
 
 ```env
-ATLAS_DEPLOY_MODE=staging
+ATLAS_MULTI_USER=true
+ATLAS_MANAGED=true
 ATLAS_PUBLIC_URL=https://atlas-staging.rebuildingus.org
 ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_JWT_AUDIENCES=https://atlas-staging.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
@@ -176,9 +178,8 @@ the lane can pass:
 - `ATLAS_ATPROTO_OAUTH_E2E_HARNESS=1`
 
 Do not set those variables in production. The helper route also refuses
-`ATLAS_DEPLOY_MODE=production` and `VERCEL_ENV=production`, so production stays
-limited to public, non-mutating smoke proof unless a separate production-safe
-synthetic tenant is designed.
+`VERCEL_ENV=production`, so production stays limited to public, non-mutating
+smoke proof unless a separate production-safe synthetic tenant is designed.
 
 Then, for a manual staging deploy:
 

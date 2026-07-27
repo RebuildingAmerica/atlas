@@ -24,7 +24,7 @@ def _settings(db_url: str, **overrides: object) -> Settings:
     """Build settings with low anonymous limits for focused middleware tests."""
     values: dict[str, object] = {
         "database_url": db_url,
-        "deploy_mode": "local",
+        "multi_user": False,
         "anonymous_rate_limit_reads_per_minute": 2,
         "anonymous_rate_limit_writes_per_minute": 1,
         "anonymous_rate_limit_total_per_hour": 100,

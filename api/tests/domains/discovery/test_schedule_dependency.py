@@ -12,7 +12,7 @@ from atlas.platform.config import Settings
 @pytest.mark.asyncio
 async def test_get_db_dependency_yields_and_closes_connection(tmp_db_path: str) -> None:
     """The get_db FastAPI dependency yields a connection and tears it down on exit."""
-    settings = Settings(database_url=f"sqlite:///{tmp_db_path}", deploy_mode="local")
+    settings = Settings(database_url=f"sqlite:///{tmp_db_path}", multi_user=False)
     await init_db(settings.database_url)
 
     agen = api_schedule.get_db(settings=settings)

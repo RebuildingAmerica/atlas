@@ -63,14 +63,14 @@ describe("resolveAuthRuntimeConfig", () => {
 
     expect(() => {
       validateAuthRuntimeConfig(runtime);
-    }).toThrow("ATLAS_PUBLIC_URL must use https when ATLAS_DEPLOY_MODE is not local.");
+    }).toThrow("ATLAS_PUBLIC_URL must use https unless it is a loopback address.");
   });
 
   it("allows local auth deployments to use an insecure loopback public origin", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
-        ATLAS_DEPLOY_MODE: "local",
+        ATLAS_MULTI_USER: "false",
         ATLAS_PUBLIC_URL: "http://127.0.0.1:3000",
       },
       "/workspace/atlas/app",
@@ -217,9 +217,7 @@ describe("resolveAuthRuntimeConfig", () => {
 
     expect(() => {
       validateAuthRuntimeConfig(runtime);
-    }).toThrow(
-      "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_DEPLOY_MODE is not local.",
-    );
+    }).toThrow("ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_MULTI_USER is true.");
   });
 
   it("rejects auth-enabled deployments without an OAuth audience", () => {
@@ -237,7 +235,7 @@ describe("resolveAuthRuntimeConfig", () => {
 
     expect(() => {
       validateAuthRuntimeConfig(runtime);
-    }).toThrow("ATLAS_AUTH_JWT_AUDIENCES is required when ATLAS_DEPLOY_MODE is not local.");
+    }).toThrow("ATLAS_AUTH_JWT_AUDIENCES is required when ATLAS_MULTI_USER is true.");
   });
 
   it("rejects auth-enabled deployments when the MCP audience is not first", () => {

@@ -98,7 +98,7 @@ async def test_lifespan_starts_and_stops_firehose_delivery_worker(
     _patch_mcp_session_manager(monkeypatch)
     settings = Settings(
         database_url=db_url,
-        deploy_mode="local",
+        multi_user=False,
         discovery_job_worker_enabled=False,
         firehose_delivery_worker_enabled=True,
         firehose_delivery_worker_poll_seconds=0.5,

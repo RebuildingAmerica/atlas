@@ -161,7 +161,7 @@ async def require_actor(  # noqa: PLR0913
     x_api_key: str | None = Header(None),
 ) -> AuthenticatedActor:
     """Require an authenticated actor unless local mode disables auth."""
-    if settings.deploy_mode == "local":
+    if not settings.multi_user:
         return build_local_actor()
 
     trusted_actor = verify_internal_actor(

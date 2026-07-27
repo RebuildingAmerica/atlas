@@ -168,17 +168,32 @@ export function buildHostedE2EPasskeySeed(input: {
  * @param request - Incoming helper request.
  * @param env - Environment to evaluate, injected by tests.
  */
+function isPublicOrigin(value: string | undefined): boolean {
+  const candidate = value?.trim();
+  if (!candidate) {
+    return false;
+  }
+  try {
+    const { hostname } = new URL(candidate);
+    return hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1";
+  } catch {
+    return false;
+  }
+}
+
 export function assertHostedE2EAuthorized(
   request: Request,
   env: NodeJS.ProcessEnv = process.env,
 ): Response | null {
   const enabled = env.ATLAS_HOSTED_E2E_ENABLED === "1";
-  const deployMode = env.ATLAS_DEPLOY_MODE?.trim();
   const vercelEnv = env.VERCEL_ENV?.trim();
   const productionProofEnabled = env.ATLAS_HOSTED_E2E_PRODUCTION_ENABLED === "1";
   const expectedSecret = env.ATLAS_HOSTED_E2E_SECRET?.trim();
   const actualSecret = request.headers.get("x-atlas-hosted-e2e-secret")?.trim();
-  const productionRuntime = deployMode === "production" || vercelEnv === "production";
+  // A deployment serving a public origin needs the second gate, whoever runs
+  // it. Keyed on the URL rather than a declared mode so a self-hosted instance
+  // cannot leave the synthetic-account route open by simply not naming itself.
+  const productionRuntime = vercelEnv === "production" || isPublicOrigin(env.ATLAS_PUBLIC_URL);
 
   if (
     !enabled ||

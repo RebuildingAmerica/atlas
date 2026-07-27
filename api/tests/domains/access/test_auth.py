@@ -18,7 +18,7 @@ async def test_protected_discovery_requires_auth_when_enabled(
     test_settings: Settings,
 ) -> None:
     """Protected endpoints should reject anonymous access when auth is enabled."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]
@@ -52,7 +52,7 @@ async def test_protected_discovery_allows_local_mode_without_auth(
     test_settings: Settings,
 ) -> None:
     """Local mode should bypass auth and behave like a single-user system."""
-    test_settings.deploy_mode = "local"
+    test_settings.multi_user = False
 
     response = await test_client.post(
         "/api/discovery-runs",
@@ -73,7 +73,7 @@ async def test_protected_discovery_accepts_internal_actor_headers(
     test_db: object,
 ) -> None:
     """The app server should be able to call protected API routes with trusted headers."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
 
     response = await test_client.post(
@@ -104,7 +104,7 @@ async def test_protected_discovery_accepts_valid_api_key(
 ) -> None:
     """Direct API clients should be able to use API keys when auth is enabled."""
 
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
@@ -148,7 +148,7 @@ async def test_api_key_requests_stop_when_daily_plan_quota_is_exhausted(
     test_db: object,
 ) -> None:
     """API keys from workspaces without an active API quota should be rejected."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
@@ -209,7 +209,7 @@ async def test_discovery_read_requires_matching_api_key_scope(
     test_db: object,
 ) -> None:
     """Discovery reads should reject API keys that only have write access."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
@@ -246,7 +246,7 @@ async def test_oauth_jwt_insufficient_scope_emits_step_up_challenge(
     test_settings: Settings,
 ) -> None:
     """OAuth tokens missing a required scope must trigger the spec's step-up flow."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]
     test_settings.auth_jwt_issuer = "https://atlas.example/api/auth"
@@ -305,7 +305,7 @@ async def test_entity_mutation_requires_matching_api_key_scope(
     test_settings: Settings,
 ) -> None:
     """Entity mutations should reject API keys without entity write access."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 

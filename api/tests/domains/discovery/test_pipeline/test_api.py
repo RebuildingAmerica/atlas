@@ -62,7 +62,7 @@ class TestDiscoveryApiIntegration:
             anthropic_api_key="test-key",
             search_api_key="test-search",
             discovery_inline=True,
-            deploy_mode="local",
+            multi_user=False,
         )
         app = create_app()
         app.dependency_overrides[get_settings] = lambda: settings

@@ -31,7 +31,7 @@ async def _websocket_actor(websocket: WebSocket, settings: Settings) -> Authenti
     """Authenticate a WebSocket caller for the Firehose session socket."""
     from . import api as firehose_api
 
-    if settings.deploy_mode == "local":
+    if not settings.multi_user:
         return build_local_actor()
 
     trusted_actor = verify_internal_actor(

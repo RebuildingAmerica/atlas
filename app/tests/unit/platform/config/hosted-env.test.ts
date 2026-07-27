@@ -9,16 +9,20 @@ import {
 } from "@/platform/config/hosted-env";
 
 describe("hosted Atlas environment validation", () => {
-  it("requires hosted public and API routing values", () => {
+  it("treats a build with no public origin as not hosted", () => {
+    // Hostedness is derived from the public URL rather than a declared mode, so
+    // a build that names no origin is a workstation build. A real deployment
+    // that omits the URL still fails, at startup, in resolveAuthRuntimeConfig.
     expect(() => {
-      validateHostedAtlasEnv({
-        ATLAS_DEPLOY_MODE: "production",
-      });
-    }).toThrow("ATLAS_PUBLIC_URL is required for hosted Atlas deployments.");
+      validateHostedAtlasEnv({});
+    }).not.toThrow();
+  });
 
+  it("validates any build that serves a real origin, whoever operates it", () => {
+    // The previous mode-based check only fired for deploys that knew to name
+    // themselves, so a self-hosted instance never got these checks at all.
     expect(() => {
       validateHostedAtlasEnv({
-        ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
         ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
       });
@@ -28,7 +32,6 @@ describe("hosted Atlas environment validation", () => {
   it("requires hosted origins to use HTTPS", () => {
     expect(() => {
       validateHostedAtlasEnv({
-        ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: "http://atlas.example.com",
         ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
         ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://atlas.example.com"),
@@ -37,7 +40,6 @@ describe("hosted Atlas environment validation", () => {
 
     expect(() => {
       validateHostedAtlasEnv({
-        ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
         ATLAS_SERVER_API_PROXY_TARGET: "http://api.atlas.example.com",
         ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("https://atlas.example.com"),
@@ -48,7 +50,6 @@ describe("hosted Atlas environment validation", () => {
   it("allows loopback HTTP origins for hosted-shaped end-to-end runs", () => {
     expect(() => {
       validateHostedAtlasEnv({
-        ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: "http://localhost:3100",
         ATLAS_SERVER_API_PROXY_TARGET: "http://127.0.0.1:38000",
         ATLAS_AUTH_JWT_AUDIENCES: buildMcpResourceUrl("http://localhost:3100"),
@@ -59,7 +60,6 @@ describe("hosted Atlas environment validation", () => {
   it("requires the canonical MCP audience first", () => {
     expect(() => {
       validateHostedAtlasEnv({
-        ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
         ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
         ATLAS_AUTH_JWT_AUDIENCES: [
@@ -75,7 +75,6 @@ describe("hosted Atlas environment validation", () => {
   it("accepts a complete production deploy environment", () => {
     expect(() => {
       validateHostedAtlasEnv({
-        ATLAS_DEPLOY_MODE: "production",
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
         ATLAS_SERVER_API_PROXY_TARGET: "https://api.atlas.example.com",
         ATLAS_AUTH_JWT_AUDIENCES: [

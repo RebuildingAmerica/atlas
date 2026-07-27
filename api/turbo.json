@@ -1,11 +1,14 @@
 {
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "dev": {
       "cache": false,
       "persistent": true,
       "env": [
-        "ATLAS_DEPLOY_MODE",
+        "ATLAS_MANAGED",
+        "ATLAS_MULTI_USER",
         "ATLAS_PUBLIC_URL",
         "DATABASE_BACKEND",
         "DATABASE_URL"
@@ -16,13 +19,25 @@
       "outputs": []
     },
     "typecheck": {
-      "dependsOn": ["setup"],
-      "inputs": ["$TURBO_DEFAULT$", "pyproject.toml", "uv.lock"],
+      "dependsOn": [
+        "setup"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "pyproject.toml",
+        "uv.lock"
+      ],
       "outputs": []
     },
     "lint": {
-      "dependsOn": ["setup"],
-      "inputs": ["$TURBO_DEFAULT$", "pyproject.toml", "uv.lock"],
+      "dependsOn": [
+        "setup"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "pyproject.toml",
+        "uv.lock"
+      ],
       "outputs": []
     },
     "test": {
@@ -31,7 +46,11 @@
         "@rebuildingamerica/atlas-discovery-engine#test",
         "@rebuildingamerica/atlas-shared#test"
       ],
-      "env": ["ATLAS_TEST_POSTGRES_URL"],
+      "env": [
+        "ATLAS_MANAGED",
+        "ATLAS_MULTI_USER",
+        "ATLAS_TEST_POSTGRES_URL"
+      ],
       "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",

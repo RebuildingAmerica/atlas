@@ -18,7 +18,7 @@ from tests.support.mcp_server import (
 
 @pytest.mark.asyncio
 async def test_auth_middleware_passes_through_when_audience_unset() -> None:
-    """When auth_jwt_audience is empty (deploy_mode=local), JWT verification is skipped."""
+    """When auth_jwt_audience is empty (ATLAS_MULTI_USER=false), JWT verification is skipped."""
     middleware = McpBearerAuthMiddleware(app=AsyncMock())
     request = MagicMock()
     request.headers = {}

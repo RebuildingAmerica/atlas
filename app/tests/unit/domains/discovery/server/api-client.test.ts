@@ -26,7 +26,7 @@ describe("api-client", () => {
     mocks.getServerServiceBaseUrl.mockReset();
     fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
 
-    vi.stubEnv("ATLAS_DEPLOY_MODE", "");
+    vi.stubEnv("ATLAS_MULTI_USER", "true");
     vi.stubEnv("ATLAS_AUTH_INTERNAL_SECRET", "test-secret");
   });
 
@@ -102,7 +102,7 @@ describe("api-client", () => {
   });
 
   it("sends an unauthenticated request in local mode", async () => {
-    vi.stubEnv("ATLAS_DEPLOY_MODE", "local");
+    vi.stubEnv("ATLAS_MULTI_USER", "false");
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
       user: { email: "local@atlas.local", id: "local-user" },
     });
@@ -126,7 +126,7 @@ describe("api-client", () => {
   });
 
   it("throws a classifiable generic error for an unexpected non-ok status", async () => {
-    vi.stubEnv("ATLAS_DEPLOY_MODE", "local");
+    vi.stubEnv("ATLAS_MULTI_USER", "false");
     mocks.requireReadyAtlasSessionState.mockResolvedValue({});
     mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
     fetchSpy.mockResolvedValue({
@@ -142,7 +142,7 @@ describe("api-client", () => {
   });
 
   it("throws an at-limit error when the API responds 429", async () => {
-    vi.stubEnv("ATLAS_DEPLOY_MODE", "local");
+    vi.stubEnv("ATLAS_MULTI_USER", "false");
     mocks.requireReadyAtlasSessionState.mockResolvedValue({});
     mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
     fetchSpy.mockResolvedValue({
@@ -156,7 +156,7 @@ describe("api-client", () => {
   });
 
   it("throws a temporarily-unavailable error when the API responds 5xx", async () => {
-    vi.stubEnv("ATLAS_DEPLOY_MODE", "local");
+    vi.stubEnv("ATLAS_MULTI_USER", "false");
     mocks.requireReadyAtlasSessionState.mockResolvedValue({});
     mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
     fetchSpy.mockResolvedValue({

@@ -57,7 +57,7 @@ describe("getApiBaseUrl", () => {
 });
 
 describe("getAppConfig", () => {
-  it("defaults to auth enabled when ATLAS_DEPLOY_MODE is not set", () => {
+  it("defaults to auth enabled when ATLAS_MULTI_USER is not set", () => {
     expect(getAppConfig({})).toEqual({
       authBasePath: "/api/auth",
     });

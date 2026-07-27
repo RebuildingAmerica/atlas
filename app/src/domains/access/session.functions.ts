@@ -30,7 +30,7 @@ async function loadRpLogoutModule() {
 /**
  * Returns whether Atlas is running in single-user (local) deployment mode.
  *
- * Vite does not expose ATLAS_DEPLOY_MODE to the browser bundle, so any
+ * Vite does not expose ATLAS_MULTI_USER to the browser bundle, so any
  * client-side env read returns false even when the server is running in
  * local mode. This server function is the only reliable way for client UI
  * to know the deployment mode without a session in scope (route loaders,

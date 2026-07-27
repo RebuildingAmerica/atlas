@@ -1,26 +1,39 @@
 """Shared test fixtures."""
 
-import tempfile
-from collections.abc import Iterator
-from datetime import UTC, date, datetime, timedelta
+import os
 
-import httpx
-import pytest
-import pytest_asyncio
+# ``atlas.main`` builds the app at import time, which validates auth config.
+# That validation has no environment-based exemption any more, so name the one
+# thing it keys on. Every test that exercises request handling supplies its own
+# Settings through the ``get_settings`` dependency override below, so this only
+# governs the import-time construction.
+#
+# Deliberately no auth URLs here: a populated ATLAS_AUTH_MEMBERSHIP_URL sends the
+# suite out over the network to verify memberships, which is the failure
+# 74306533 fixed when it came from a developer's env file.
+os.environ.setdefault("ATLAS_MULTI_USER", "false")
 
-from atlas.config import Settings, get_settings
-from atlas.domains.catalog.models.entry import EntryCRUD
-from atlas.domains.catalog.models.source import SourceCRUD
-from atlas.domains.moderation.models import FlagCRUD
-from atlas.main import create_app
-from atlas.models import (
+import tempfile  # noqa: E402
+from collections.abc import Iterator  # noqa: E402
+from datetime import UTC, date, datetime, timedelta  # noqa: E402
+
+import httpx  # noqa: E402
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+
+from atlas.config import Settings, get_settings  # noqa: E402
+from atlas.domains.catalog.models.entry import EntryCRUD  # noqa: E402
+from atlas.domains.catalog.models.source import SourceCRUD  # noqa: E402
+from atlas.domains.moderation.models import FlagCRUD  # noqa: E402
+from atlas.main import create_app  # noqa: E402
+from atlas.models import (  # noqa: E402
     DiscoveryRunCRUD,
     get_db_connection,
     init_db,
 )
-from atlas.platform import config as platform_config
-from atlas.platform.mcp import data as data_module
-from atlas.platform.mcp.data import AtlasDataService
+from atlas.platform import config as platform_config  # noqa: E402
+from atlas.platform.mcp import data as data_module  # noqa: E402
+from atlas.platform.mcp.data import AtlasDataService  # noqa: E402
 
 pytest_plugins = [
     "tests.domains.catalog.org_resources_support",
@@ -51,6 +64,8 @@ def hermetic_settings() -> Iterator[None]:
     """
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(platform_config, "API_ENV_FILE", None)
+        # The suite exercises a dev-hardening API. Tests that need hosted
+        # strictness name the profile they are testing themselves.
         yield
 
 
@@ -87,7 +102,7 @@ def test_settings(db_url: str) -> Settings:
         anthropic_api_key="test-key",
         environment="dev",
         cors_origins=["http://localhost:3000"],
-        deploy_mode="local",  # Disable auth for testing
+        multi_user=False,  # Disable auth for testing
         discovery_inline=True,  # Run discovery synchronously in tests
     )
 

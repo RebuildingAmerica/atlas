@@ -97,7 +97,6 @@ void describe("hosted routing prompts", () => {
       new Map([
         ["DATABASE_BACKEND", "postgres"],
         ["DATABASE_URL", "postgresql://prod.example.org/atlas"],
-        ["ATLAS_DEPLOY_MODE", "production"],
         ["ATLAS_PUBLIC_URL", "https://atlas.example.org"],
         ["ATLAS_PDS_PUBLIC_URL", "https://atlas-pds.example.org"],
         ["ATLAS_SERVER_API_PROXY_TARGET", "https://api.atlas.example.org"],
@@ -106,7 +105,6 @@ void describe("hosted routing prompts", () => {
       new Map([
         ["DATABASE_BACKEND", "postgres"],
         ["DATABASE_URL", "postgresql://staging.example.org/atlas"],
-        ["ATLAS_DEPLOY_MODE", "staging"],
         ["ATLAS_PUBLIC_URL", "https://atlas-staging.example.org"],
         ["ATLAS_PDS_PUBLIC_URL", "https://atlas-pds-staging.example.org"],
         [
@@ -129,7 +127,6 @@ void describe("hosted routing prompts", () => {
         .map((item): [string, string] => [item.key, item.value])
         .filter(([key]) =>
           [
-            "ATLAS_DEPLOY_MODE",
             "DATABASE_BACKEND",
             "DATABASE_URL",
             "ATLAS_PUBLIC_URL",
@@ -139,7 +136,6 @@ void describe("hosted routing prompts", () => {
           ].includes(key),
         ),
       [
-        ["ATLAS_DEPLOY_MODE", "staging"],
         ["DATABASE_BACKEND", "postgres"],
         ["DATABASE_URL", "postgresql://staging.example.org/atlas"],
         ["ATLAS_PUBLIC_URL", "https://atlas-staging.example.org"],

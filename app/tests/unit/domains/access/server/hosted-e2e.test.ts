@@ -17,7 +17,7 @@ afterEach(() => {
 describe("hosted E2E guard", () => {
   test("returns 404 when hosted E2E is disabled", async () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
-      ATLAS_DEPLOY_MODE: "staging",
+      ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
     });
 
@@ -31,7 +31,7 @@ describe("hosted E2E guard", () => {
 
   test("returns 404 when the shared secret is missing", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
-      ATLAS_DEPLOY_MODE: "staging",
+      ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
       ATLAS_HOSTED_E2E_ENABLED: "1",
     });
 
@@ -40,7 +40,7 @@ describe("hosted E2E guard", () => {
 
   test("returns 404 when the request secret does not match", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("wrong"), {
-      ATLAS_DEPLOY_MODE: "staging",
+      ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
       ATLAS_HOSTED_E2E_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
     });
@@ -50,7 +50,7 @@ describe("hosted E2E guard", () => {
 
   test("returns 404 in production deploy mode without explicit production proof access", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
-      ATLAS_DEPLOY_MODE: "production",
+      ATLAS_PUBLIC_URL: "https://atlas.test",
       ATLAS_HOSTED_E2E_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
     });
@@ -60,7 +60,7 @@ describe("hosted E2E guard", () => {
 
   test("returns 404 in Vercel production without explicit production proof access", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
-      ATLAS_DEPLOY_MODE: "staging",
+      ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
       ATLAS_HOSTED_E2E_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
       VERCEL_ENV: "production",
@@ -71,7 +71,7 @@ describe("hosted E2E guard", () => {
 
   test("allows production proof only when the production gate and shared secret match", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
-      ATLAS_DEPLOY_MODE: "production",
+      ATLAS_PUBLIC_URL: "https://atlas.test",
       ATLAS_HOSTED_E2E_ENABLED: "1",
       ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
@@ -83,7 +83,7 @@ describe("hosted E2E guard", () => {
 
   test("allows staging requests with the matching secret", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
-      ATLAS_DEPLOY_MODE: "staging",
+      ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
       ATLAS_HOSTED_E2E_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
       VERCEL_ENV: "preview",

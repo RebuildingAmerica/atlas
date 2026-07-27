@@ -25,7 +25,7 @@ class TestOAuthProtectedResourceMetadata:
         monkeypatch.setenv("ATLAS_PUBLIC_URL", "https://issuer.test")
         settings = Settings(
             database_url=db_url,
-            deploy_mode="local",
+            multi_user=False,
             auth_jwt_audience=["https://atlas.test/api"],
         )
         with patch("atlas.main.get_settings", return_value=settings):
@@ -49,7 +49,7 @@ class TestOAuthProtectedResourceMetadata:
         """When JWKS is unset, the metadata should omit it."""
         settings = Settings(
             database_url=db_url,
-            deploy_mode="local",
+            multi_user=False,
         )
         settings.auth_jwt_issuer = ""
         settings.auth_jwt_jwks_url = ""

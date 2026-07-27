@@ -307,11 +307,10 @@ function getVercelStaticEnvSpecs(
       environments: hosted,
     },
     {
-      key: "ATLAS_DEPLOY_MODE",
-      value: "production",
+      key: "ATLAS_MANAGED",
+      value: "true",
       environments: ["production"],
     },
-    { key: "ATLAS_DEPLOY_MODE", value: "staging", environments: ["preview"] },
   ];
 }
 

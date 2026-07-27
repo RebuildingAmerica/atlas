@@ -33,7 +33,7 @@ class TestProfileClaimAPI:
     async def test_initiate_claim_tier_one_uses_email_domain_match(
         self, test_client: object, test_db: object, claimable_org: str
     ) -> None:
-        # In local deploy_mode the build_local_actor returns a fixed email; so we
+        # With no accounts the build_local_actor returns a fixed email; so we
         # construct a tier-1 entry whose email domain matches that local actor.
         # The default local actor email is "operator@atlas.test" — adjust the
         # entry to match for this test.
@@ -230,7 +230,7 @@ class TestProfileClaimAPI:
         claimable_org: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        test_settings.deploy_mode = "hosted"
+        test_settings.multi_user = True
         test_settings.auth_internal_secret = "test-secret"
         test_settings.auth_membership_verification_url = "https://app.example"
 
@@ -283,7 +283,7 @@ class TestProfileClaimAPI:
         claimable_org: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        test_settings.deploy_mode = "hosted"
+        test_settings.multi_user = True
         test_settings.auth_internal_secret = "test-secret"
         test_settings.auth_membership_verification_url = "https://app.example"
 

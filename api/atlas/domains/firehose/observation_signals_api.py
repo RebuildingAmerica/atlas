@@ -62,7 +62,7 @@ def require_internal_firehose_request(
     x_atlas_organization_id: str | None = Header(None),
 ) -> None:
     """Allow local mode or trusted internal callers to create observation signals."""
-    if settings.deploy_mode == "local":
+    if not settings.multi_user:
         _ = build_local_actor()
         return
 

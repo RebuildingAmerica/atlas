@@ -20,7 +20,7 @@ async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
     test_settings: Settings,
 ) -> None:
     """Protected dependencies should fall through from API keys to bearer JWTs and 401 otherwise."""
-    test_settings.deploy_mode = ""
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_jwt_issuer = "https://atlas.example"
     test_settings.auth_jwt_audience = ["atlas-api"]

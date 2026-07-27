@@ -59,7 +59,7 @@ async def test_fake_api_key_is_pre_auth_limited_before_repeated_introspection(
     """Forged API keys should not force repeated upstream introspection work."""
     settings = _settings(
         db_url,
-        deploy_mode="production",
+        multi_user=True,
         auth_jwt_issuer="https://atlas.test",
         auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
@@ -109,7 +109,7 @@ async def test_fake_api_key_spends_anonymous_quota_after_failed_verification(
     """Forged API keys should still spend anonymous public quota."""
     settings = _settings(
         db_url,
-        deploy_mode="production",
+        multi_user=True,
         auth_jwt_issuer="https://atlas.test",
         auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
@@ -150,7 +150,7 @@ async def test_fake_bearer_is_pre_auth_limited_before_repeated_jwt_verification(
     """Forged bearer tokens should not force repeated JWT verification work."""
     settings = _settings(
         db_url,
-        deploy_mode="production",
+        multi_user=True,
         auth_jwt_issuer="https://atlas.test",
         auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
@@ -200,7 +200,7 @@ async def test_valid_api_key_bypasses_anonymous_limits(
     """Valid API-key integrations should not be treated as anonymous wrappers."""
     settings = _settings(
         db_url,
-        deploy_mode="production",
+        multi_user=True,
         auth_jwt_issuer="https://atlas.test",
         auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",

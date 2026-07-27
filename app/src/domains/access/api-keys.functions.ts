@@ -96,7 +96,7 @@ function resolveApiKeyProvisioningProbe(
   const introspectionUrl = runtime.apiKeyIntrospectionUrl;
   if (!introspectionUrl) {
     throw new Error(
-      "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_DEPLOY_MODE is not local.",
+      "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_MULTI_USER is true.",
     );
   }
 

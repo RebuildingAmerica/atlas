@@ -22,7 +22,7 @@ class TestMcpMount:
             database_url=db_url,
             auth_jwt_issuer="https://atlas.test",
             auth_jwt_audience=["https://atlas.test/mcp"],
-            deploy_mode="local",
+            multi_user=False,
         )
 
         with (

@@ -20,7 +20,7 @@ class TestProductionCorsGuard:
             database_url="sqlite:///tmp/test.db",
             environment="production",
             cors_origins=["*"],
-            deploy_mode="local",
+            multi_user=False,
         )
 
         with (
@@ -40,7 +40,7 @@ class TestOuterCorsLoopbackScoping:
             database_url="sqlite:///tmp/test.db",
             environment="production",
             cors_origins=["https://atlas.rebuildingus.org"],
-            deploy_mode="local",
+            multi_user=False,
         )
 
         with patch("atlas.main.get_settings", return_value=settings):
@@ -65,7 +65,7 @@ class TestOuterCorsLoopbackScoping:
             database_url="sqlite:///tmp/test.db",
             environment="production",
             cors_origins=["https://atlas.rebuildingus.org"],
-            deploy_mode="local",
+            multi_user=False,
         )
 
         with patch("atlas.main.get_settings", return_value=settings):
@@ -90,7 +90,7 @@ class TestOuterCorsLoopbackScoping:
             database_url="sqlite:///tmp/test.db",
             environment="dev",
             cors_origins=["http://localhost:3000"],
-            deploy_mode="local",
+            multi_user=False,
         )
 
         with patch("atlas.main.get_settings", return_value=settings):

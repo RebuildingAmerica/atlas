@@ -2,6 +2,8 @@ import "@tanstack/react-start/server-only";
 
 import { createHash } from "node:crypto";
 
+import { parseEnvBoolean } from "@/platform/config/env-boolean";
+
 export interface AnonymousRateLimitConfig {
   enabled: boolean;
   readsPerMinute: number;
@@ -41,13 +43,6 @@ export const DEFAULT_ANONYMOUS_RATE_LIMIT: AnonymousRateLimitConfig = {
   writesPerMinute: 10,
 };
 
-function parseBoolean(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined || value.trim() === "") {
-    return fallback;
-  }
-  return value.trim().toLowerCase() !== "false";
-}
-
 function parseNonNegativeInteger(
   value: string | undefined,
   fallback: number,
@@ -65,7 +60,11 @@ function parseNonNegativeInteger(
 
 export function resolveAnonymousRateLimitConfig(env: NodeJS.ProcessEnv): AnonymousRateLimitConfig {
   return {
-    enabled: parseBoolean(env.ATLAS_ANON_RATE_LIMIT_ENABLED, DEFAULT_ANONYMOUS_RATE_LIMIT.enabled),
+    enabled: parseEnvBoolean(
+      env.ATLAS_ANON_RATE_LIMIT_ENABLED,
+      DEFAULT_ANONYMOUS_RATE_LIMIT.enabled,
+      "ATLAS_ANON_RATE_LIMIT_ENABLED",
+    ),
     readsPerMinute: parseNonNegativeInteger(
       env.ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE,
       DEFAULT_ANONYMOUS_RATE_LIMIT.readsPerMinute,

@@ -46,7 +46,7 @@ async def test_missing_active_workspace_does_not_create_profile_claim(
     test_settings: object,
     claimable_org: str,
 ) -> None:
-    test_settings.deploy_mode = "hosted"
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "test-secret"
     test_settings.auth_membership_verification_url = "https://app.example"
     slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
@@ -77,7 +77,7 @@ async def test_unknown_active_workspace_membership_does_not_create_profile_claim
     claimable_org: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    test_settings.deploy_mode = "hosted"
+    test_settings.multi_user = True
     test_settings.auth_internal_secret = "test-secret"
     test_settings.auth_membership_verification_url = "https://app.example"
 

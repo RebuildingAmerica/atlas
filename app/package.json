@@ -15,7 +15,7 @@
     "predev:local": "pnpm run generate:route-tree",
     "predev:e2e": "pnpm run generate:route-tree",
     "dev": "portless atlas --force vite dev",
-    "dev:local": "ATLAS_DEPLOY_MODE=local portless atlas --force vite dev",
+    "dev:local": "ATLAS_MANAGED=false ATLAS_MULTI_USER=false portless atlas --force vite dev",
     "dev:e2e": "vite dev --host 127.0.0.1 --port 3100 --strictPort",
     "api-client": "pnpm --filter @rebuildingamerica/atlas-api-client run api-client",
     "openapi:lint": "spectral lint ../openapi/atlas.openapi.json --ruleset .spectral.yaml",

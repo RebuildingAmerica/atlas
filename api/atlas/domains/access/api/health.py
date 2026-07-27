@@ -26,7 +26,7 @@ async def auth_health(
     """Check the health of external authentication dependencies."""
     checks: dict[str, str] = {}
 
-    if settings.deploy_mode == "local":
+    if not settings.multi_user:
         return {"status": "ok", "mode": "local", "checks": {}}
 
     async with httpx.AsyncClient(timeout=5.0) as client:

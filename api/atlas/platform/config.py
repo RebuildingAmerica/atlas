@@ -53,9 +53,29 @@ class Settings(BaseSettings):
     environment: Literal["dev", "staging", "production"] = "dev"
     """Current environment."""
 
-    # Deploy mode
-    deploy_mode: str = Field(default="", validation_alias="ATLAS_DEPLOY_MODE")
-    """Deploy mode. Set to "local" to disable auth; any other value enables auth."""
+    multi_user: bool = Field(default=True, validation_alias="ATLAS_MULTI_USER")
+    """Whether this instance has accounts.
+
+    False means one operator and no sign-in, organizations, or billing surface.
+    """
+
+    managed: bool = Field(default=False, validation_alias="ATLAS_MANAGED")
+    """Whether the Rebuilding America Project runs this instance.
+
+    True means Atlas's own tooling applies: the Stripe catalog and its paid
+    tiers, Atlas-staff review authority, the Atlas-managed PDS. False means
+    someone else runs it and none of those are theirs to have.
+    """
+
+    atproto_oauth_e2e_harness: bool = Field(
+        default=False,
+        validation_alias="ATLAS_ATPROTO_OAUTH_E2E_HARNESS",
+    )
+    """Accept synthetic ``did:web`` identities minted by the ATProto proof lane.
+
+    Staging-only. Production startup refuses this flag, because it short-circuits
+    real identity verification before it runs.
+    """
 
     auth_internal_secret: str = Field(default="", validation_alias="ATLAS_AUTH_INTERNAL_SECRET")
     """Shared secret for trusted app-to-API requests."""
@@ -321,7 +341,7 @@ class Settings(BaseSettings):
             self.auth_jwt_issuer = f"{base}/api/auth"
             if not self.auth_jwt_jwks_url:
                 self.auth_jwt_jwks_url = f"{base}/api/auth/jwks"
-        if self.deploy_mode != "local":
+        if self.multi_user:
             logger.info(
                 "Resolved auth configuration",
                 extra={

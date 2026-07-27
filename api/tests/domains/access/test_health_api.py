@@ -24,7 +24,7 @@ class TestAuthHealthLocalMode:
         self, test_client: object, test_settings: Settings
     ) -> None:
         """Local mode should short-circuit and return ok without external requests."""
-        test_settings.deploy_mode = "local"
+        test_settings.multi_user = False
         response = await test_client.get("/api/auth/health")
         assert response.status_code == STATUS_OK
         data = response.json()
@@ -121,7 +121,7 @@ class TestAuthHealthRemoteMode:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """All reachable + configured introspection should yield status=ok."""
-        test_settings.deploy_mode = "production"
+        test_settings.multi_user = True
         test_settings.auth_jwt_jwks_url = "https://auth.example.com/jwks"
         test_settings.auth_membership_verification_url = "https://auth.example.com/memberships"
         test_settings.auth_api_key_introspection_url = "https://auth.example.com/introspect"
@@ -147,7 +147,7 @@ class TestAuthHealthRemoteMode:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Missing membership/introspection URLs and an unreachable JWKS yield degraded."""
-        test_settings.deploy_mode = "production"
+        test_settings.multi_user = True
         test_settings.auth_jwt_jwks_url = "https://auth.example.com/jwks"
         test_settings.auth_membership_verification_url = None
         test_settings.auth_api_key_introspection_url = None

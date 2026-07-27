@@ -26,8 +26,9 @@ async def test_cloud_cost_posture_requires_internal_operator(db_url: str) -> Non
 
     def override_get_settings() -> Settings:
         return Settings(
+            managed=True,
             database_url=db_url,
-            deploy_mode="production",
+            multi_user=True,
             auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
@@ -54,8 +55,9 @@ async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> No
 
     def override_get_settings() -> Settings:
         return Settings(
+            managed=True,
             database_url=db_url,
-            deploy_mode="production",
+            multi_user=True,
             auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
             operator_allowed_emails=["ops@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],

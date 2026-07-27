@@ -18,7 +18,7 @@ class TestConditionalRoutes:
         """OpenAPI should be present when enabled."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
-            deploy_mode="local",
+            multi_user=False,
             enable_openapi_spec=True,
         )
 
@@ -32,7 +32,7 @@ class TestConditionalRoutes:
         """OpenAPI should be absent when disabled."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
-            deploy_mode="local",
+            multi_user=False,
             enable_openapi_spec=False,
         )
 
@@ -46,7 +46,7 @@ class TestConditionalRoutes:
         """The API server should not expose human docs routes."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
-            deploy_mode="local",
+            multi_user=False,
         )
 
         with patch("atlas.main.get_settings", return_value=settings):
