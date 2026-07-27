@@ -125,9 +125,32 @@ is how the missing `managed` axis stayed hidden.
 ## Still open
 
 - The API suite can run against PostgreSQL (`ATLAS_TEST_BACKEND=postgres`) but
-  does not yet do so by default. Against a real PostgreSQL the full suite has
-  **258 failures**; the catalog domain alone went 87 → 45 → 10 as the row-shape
-  and `datetime('now')` fixes landed. What remains is SQLite-only SQL —
-  `group_concat`, multi-argument `max()`, `PRAGMA` — mostly in tests and
-  migration helpers. Clearing that tail and flipping the variable in CI is the
-  last step, and it is the one that stops this defect family recurring.
+  does not yet do so by default. The suite is now green against a real
+  PostgreSQL (0 failures, down from 258). Beyond the row-shape and
+  `datetime('now')` fixes already landed, clearing the remaining 24 failures
+  surfaced several more defect families:
+  - A test fixture that announced the active backend through a bare `os.environ`
+    assignment rather than `monkeypatch`, so it leaked into later tests sharing
+    the same pytest-xdist worker.
+  - PostgreSQL sessions defaulting to the server process's OS timezone rather
+    than UTC, so `TIMESTAMPTZ` columns round-tripped through a different (if
+    chronologically equal) offset than what was written — connections now
+    request `TimeZone=UTC` explicitly.
+  - Python `int`/`1`-`0` literals bound to `BOOLEAN` columns, which SQLite
+    accepts silently and PostgreSQL rejects as a type mismatch.
+  - `PRAGMA busy_timeout`, unconditional in three maintenance/seed scripts that
+    only SQLite understands.
+  - `PostgresConnection.executemany` calling a method PostgreSQL's connection
+    object doesn't have — `executemany` lives on the cursor, not the connection,
+    in psycopg. Dead until this suite exercised it.
+  - One test (`claim_next`'s guarded-update race) that described SQLite's
+    select-then-guarded-UPDATE claim path specifically; PostgreSQL claims
+    through one atomic `FOR UPDATE SKIP LOCKED` statement with no equivalent
+    race to simulate, so it now runs SQLite-only via the `sqlite_only` fixture.
+
+  Flipping `ATLAS_TEST_BACKEND=postgres` on by default in CI is the one
+  remaining step, and it is the one that stops this defect family recurring. It
+  is not free: each PostgreSQL-backed test creates and drops its own database,
+  which turned an sqlite-only run of comparable size into roughly a 20-minute
+  suite locally — that tradeoff is a call for whoever owns CI budget, not
+  something to flip silently.
