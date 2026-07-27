@@ -124,10 +124,10 @@ is how the missing `managed` axis stayed hidden.
 
 ## Still open
 
-- Roughly forty UI sites branch on `isLocal` to hide surfaces, and a dozen
-  server functions return `[]` instead of expressing an unavailable capability.
-  Until those read capabilities instead of deployment shape, a single-user
-  instance is still granted `["atlas_team"]` — a paid tier that should not exist
-  for it.
-- The API suite runs SQLite while production runs Postgres, which remains the
-  largest single source of production-only defects.
+- The API suite can run against PostgreSQL (`ATLAS_TEST_BACKEND=postgres`) but
+  does not yet do so by default. Against a real PostgreSQL the full suite has
+  **258 failures**; the catalog domain alone went 87 → 45 → 10 as the row-shape
+  and `datetime('now')` fixes landed. What remains is SQLite-only SQL —
+  `group_concat`, multi-argument `max()`, `PRAGMA` — mostly in tests and
+  migration helpers. Clearing that tail and flipping the variable in CI is the
+  last step, and it is the one that stops this defect family recurring.
