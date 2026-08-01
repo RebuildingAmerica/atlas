@@ -22,9 +22,16 @@ async def test_valid_jwt_bypasses_and_fake_bearer_counts_as_anonymous(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Only verified OAuth JWTs should bypass anonymous buckets."""
-    settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1)
+    settings = _settings(
+        db_url,
+        anonymous_rate_limit_reads_per_minute=1,
+        anonymous_credential_rate_limit_per_minute=1,
+    )
+
+    attempted_authorizations: list[str | None] = []
 
     def fake_verify(authorization: str | None, **_kwargs: object) -> dict[str, object] | None:
+        attempted_authorizations.append(authorization)
         if authorization == "Bearer valid-token":
             return {"sub": "user-123"}
         return None
@@ -37,7 +44,7 @@ async def test_valid_jwt_bypasses_and_fake_bearer_counts_as_anonymous(
     async for client in _client(settings):
         valid_responses = [
             await client.get(READ_PATH, headers={"Authorization": "Bearer valid-token"})
-            for _ in range(2)
+            for _ in range(3)
         ]
         first_fake = await client.get(READ_PATH, headers={"Authorization": "Bearer fake"})
         second_fake = await client.get(READ_PATH, headers={"Authorization": "Bearer fake"})
@@ -45,9 +52,16 @@ async def test_valid_jwt_bypasses_and_fake_bearer_counts_as_anonymous(
     assert [response.status_code for response in valid_responses] == [
         HTTPStatus.OK,
         HTTPStatus.OK,
+        HTTPStatus.OK,
     ]
     assert first_fake.status_code == HTTPStatus.OK
     assert second_fake.status_code == HTTPStatus.TOO_MANY_REQUESTS
+    assert attempted_authorizations == [
+        "Bearer valid-token",
+        "Bearer valid-token",
+        "Bearer valid-token",
+        "Bearer fake",
+    ]
 
 
 @pytest.mark.asyncio
@@ -115,7 +129,7 @@ async def test_fake_api_key_spends_anonymous_quota_after_failed_verification(
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
         auth_membership_verification_url="https://atlas.test",
         anonymous_rate_limit_reads_per_minute=1,
-        anonymous_credential_rate_limit_per_minute=10,
+        anonymous_credential_rate_limit_per_minute=1,
         anonymous_credential_rate_limit_total_per_hour=100,
     )
     attempted_keys: list[str] = []
@@ -205,7 +219,7 @@ async def test_valid_api_key_bypasses_anonymous_limits(
         auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
         auth_membership_verification_url="https://atlas.test",
-        anonymous_credential_rate_limit_per_minute=10,
+        anonymous_credential_rate_limit_per_minute=1,
         anonymous_credential_rate_limit_total_per_hour=100,
         anonymous_rate_limit_writes_per_minute=1,
     )
@@ -254,16 +268,17 @@ async def test_valid_api_key_bypasses_anonymous_limits(
         "issue_areas": ["housing_affordability"],
     }
     async for client in _client(settings):
-        first = await client.post(
-            "/api/discovery-runs",
-            headers={"X-API-Key": "atlas_test_key"},
-            json=payload,
-        )
-        second = await client.post(
-            "/api/discovery-runs",
-            headers={"X-API-Key": "atlas_test_key"},
-            json=payload,
-        )
+        responses = [
+            await client.post(
+                "/api/discovery-runs",
+                headers={"X-API-Key": "atlas_test_key"},
+                json=payload,
+            )
+            for _ in range(3)
+        ]
 
-    assert first.status_code == HTTPStatus.ACCEPTED
-    assert second.status_code == HTTPStatus.ACCEPTED
+    assert [response.status_code for response in responses] == [
+        HTTPStatus.ACCEPTED,
+        HTTPStatus.ACCEPTED,
+        HTTPStatus.ACCEPTED,
+    ]

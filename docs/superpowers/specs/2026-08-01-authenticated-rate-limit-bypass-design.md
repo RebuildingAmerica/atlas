@@ -22,11 +22,12 @@ actor, API key, or bearer token proceeds without reserving credential or
 anonymous buckets. A failed credential remains subject to the credential-attempt
 bucket and then the ordinary anonymous read/write and hourly buckets.
 
-Bearer verification results will be cached briefly by a one-way token
-fingerprint, matching the existing API-key cache behavior. This preserves the
-current protection against repeatedly verifying the same forged bearer token
-without retaining or logging the credential. Cache size and lifetime remain
-bounded by the existing rate-limit cache constants.
+Failed bearer verification results will be cached briefly by a one-way token
+fingerprint. Successful bearer tokens are verified on every request so a cache
+cannot outlive the token's own expiry. This preserves the current protection
+against repeatedly verifying the same forged bearer token without retaining or
+logging the credential. Cache size and lifetime remain bounded by the existing
+rate-limit cache constants.
 
 ## Safety and failure behavior
 

@@ -98,9 +98,15 @@ export async function proxyAtlasApiRequest(request: Request): Promise<Response> 
 
   const upstreamHeaders = copyProxyHeaders(request.headers, REQUEST_HEADERS_TO_DROP);
   const internalHeaders = await buildInternalAuthHeaders(request, runtime);
+  const hasCredentialHeaders =
+    request.headers.has("authorization") || request.headers.has("x-api-key");
   const proxyClientIp = resolveClientIp(request, runtime.anonymousRateLimit.trustedProxyHops);
   const clientKey = proxyClientIp ?? "unknown";
-  if (Object.keys(internalHeaders).length === 0 && runtime.anonymousRateLimit.enabled) {
+  if (
+    Object.keys(internalHeaders).length === 0 &&
+    !hasCredentialHeaders &&
+    runtime.anonymousRateLimit.enabled
+  ) {
     const reservation = anonymousProxyRateLimiter.reserve(
       clientKey,
       bucketSpecsForRequest(request.method, runtime.anonymousRateLimit),

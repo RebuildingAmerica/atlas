@@ -63,6 +63,13 @@ class _ApiKeyCacheEntry:
     expires_at: float
 
 
+@dataclass(frozen=True)
+class _InvalidBearerCacheEntry:
+    """Cached failed bearer-token verification."""
+
+    expires_at: float
+
+
 class _SlidingWindowLimiter:
     """In-memory sliding-window limiter keyed by anonymous client identity."""
 

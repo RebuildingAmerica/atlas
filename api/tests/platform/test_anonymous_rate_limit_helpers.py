@@ -17,6 +17,7 @@ from atlas.platform.http.anonymous_rate_limit import (
     _ApiKeyCacheEntry,
     _BucketSpec,
     _forwarded_client_ip,
+    _InvalidBearerCacheEntry,
     _path_group,
     _SlidingWindowLimiter,
 )
@@ -71,6 +72,26 @@ def test_api_key_cache_prunes_expired_entries_before_bounded_insert(db_url: str)
     assert "expired" not in api_key_cache
     assert "key-0" not in api_key_cache
     assert len(api_key_cache) == EXPECTED_CACHE_ENTRIES_AFTER_PRE_INSERT_PRUNE
+
+
+def test_bearer_cache_prunes_expired_entries_before_bounded_insert(db_url: str) -> None:
+    """Bearer cache cleanup should bound fake credential cardinality."""
+
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=_settings(db_url))
+    middleware._bearer_cache = {  # noqa: SLF001
+        "expired": _InvalidBearerCacheEntry(expires_at=1.0),
+        **{
+            f"key-{index}": _InvalidBearerCacheEntry(expires_at=1000.0 + index)
+            for index in range(10_000)
+        },
+    }
+
+    middleware._prune_bearer_cache(2.0)  # noqa: SLF001
+    bearer_cache = middleware._bearer_cache  # noqa: SLF001
+
+    assert "expired" not in bearer_cache
+    assert "key-0" not in bearer_cache
+    assert len(bearer_cache) == EXPECTED_CACHE_ENTRIES_AFTER_PRE_INSERT_PRUNE
 
 
 @pytest.mark.asyncio
@@ -209,6 +230,34 @@ async def test_has_valid_api_key_removes_expired_cache_entries(
     assert cached.principal is None
     current_time = 2.0
     assert cached.expires_at > current_time
+
+
+def test_has_valid_bearer_removes_expired_cache_entries(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Expired bearer results should be replaced after fresh JWT verification."""
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=_settings(db_url))
+    authorization = "Bearer refreshed"
+    cache_key = hashlib.sha256(authorization.encode()).hexdigest()
+    middleware._bearer_cache = {  # noqa: SLF001
+        cache_key: _InvalidBearerCacheEntry(expires_at=1.0),
+    }
+    request = SimpleNamespace(headers={"authorization": authorization})
+
+    def fake_verify_bearer_jwt(value: str | None, **_kwargs: object) -> dict[str, str] | None:
+        assert value == authorization
+        return {"sub": "user-123"}
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_bearer_jwt",
+        fake_verify_bearer_jwt,
+    )
+
+    with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=2.0):
+        assert middleware._has_valid_bearer(request) is True  # noqa: SLF001
+
+    assert cache_key not in middleware._bearer_cache  # noqa: SLF001
 
 
 @pytest.mark.asyncio

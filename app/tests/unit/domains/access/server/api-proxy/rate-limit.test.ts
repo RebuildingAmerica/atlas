@@ -122,9 +122,11 @@ describe("proxyAtlasApiRequest anonymous rate limiting", () => {
     expect(JSON.stringify(payload)).not.toContain("203.0.113.77");
   });
 
-  it("does not let credential headers bypass anonymous proxy buckets without a session", async () => {
+  it("forwards credential-bearing requests without spending anonymous proxy buckets", async () => {
     const fetchMock = vi.mocked(global.fetch);
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 })),
+    );
     mocks.getAuthRuntimeConfig.mockReturnValue({
       anonymousRateLimit: {
         enabled: true,
@@ -153,8 +155,8 @@ describe("proxyAtlasApiRequest anonymous rate limiting", () => {
     );
 
     expect(first.status).toBe(200);
-    expect(second.status).toBe(429);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(second.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("ignores spoof-prone provider IP headers when deriving proxy buckets", async () => {

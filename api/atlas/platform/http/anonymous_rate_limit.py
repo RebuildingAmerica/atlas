@@ -31,6 +31,7 @@ from atlas.platform.http.anonymous_rate_limit_support import (
     _BucketSpec,
     _client_key_hash,
     _forwarded_client_ip,
+    _InvalidBearerCacheEntry,
     _normalized_ip,
     _path_group,
     _RateLimitResult,
@@ -66,6 +67,7 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         self._settings = settings
         self._limiter = _SlidingWindowLimiter()
         self._api_key_cache: dict[str, _ApiKeyCacheEntry] = {}
+        self._bearer_cache: dict[str, _InvalidBearerCacheEntry] = {}
 
     async def dispatch(self, request: Request, call_next: Dispatch) -> Response:
         """Apply anonymous rate limits or pass the request through."""
@@ -76,15 +78,14 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         client_key = self._client_key(request)
-        if self._has_credential_headers(request):
-            result = await self._limiter.reserve(client_key, self._credential_bucket_specs())
-            if not result.allowed:
-                return self._rate_limited_response(request, client_key, result)
-
         has_credential_headers = self._has_credential_headers(request)
         if await self._is_authenticated_request(request):
             return await call_next(request)
+
         if has_credential_headers:
+            result = await self._limiter.reserve(client_key, self._credential_bucket_specs())
+            if not result.allowed:
+                return self._rate_limited_response(request, client_key, result)
             self._log_invalid_credential_attempt(request, client_key)
 
         buckets = self._bucket_specs(request)
@@ -165,18 +166,38 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
             return True
         if await self._has_valid_api_key(request):
             return True
-        return (
-            verify_bearer_jwt(
-                request.headers.get("authorization"),
-                issuer=self._settings.auth_jwt_issuer,
-                audience=self._settings.auth_jwt_audience,
-                jwks_url=self._settings.auth_jwt_jwks_url,
-            )
-            is not None
-        )
+        return self._has_valid_bearer(request)
 
     def _has_credential_headers(self, request: Request) -> bool:
         return bool(request.headers.get("authorization") or request.headers.get("x-api-key"))
+
+    def _has_valid_bearer(self, request: Request) -> bool:
+        authorization = request.headers.get("authorization")
+        if not authorization:
+            return False
+
+        cache_key = hashlib.sha256(authorization.encode("utf-8")).hexdigest()
+        cached = self._bearer_cache.get(cache_key)
+        now = time.monotonic()
+        if cached is not None and cached.expires_at > now:
+            return False
+        if cached is not None:
+            del self._bearer_cache[cache_key]
+
+        payload = verify_bearer_jwt(
+            authorization,
+            issuer=self._settings.auth_jwt_issuer,
+            audience=self._settings.auth_jwt_audience,
+            jwks_url=self._settings.auth_jwt_jwks_url,
+        )
+        if payload is not None:
+            return True
+
+        self._prune_bearer_cache(now)
+        self._bearer_cache[cache_key] = _InvalidBearerCacheEntry(
+            expires_at=now + _API_KEY_CACHE_TTL_SECONDS,
+        )
+        return False
 
     def _credential_kind(self, request: Request) -> str:
         has_api_key = bool(request.headers.get("x-api-key"))
@@ -242,6 +263,22 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         )
         for cache_key in oldest_keys[:overflow_count]:
             del self._api_key_cache[cache_key]
+
+    def _prune_bearer_cache(self, now: float) -> None:
+        for cache_key, entry in list(self._bearer_cache.items()):
+            if entry.expires_at <= now:
+                del self._bearer_cache[cache_key]
+
+        overflow_count = len(self._bearer_cache) - _MAX_API_KEY_CACHE_ENTRIES + 1
+        if overflow_count <= 0:
+            return
+
+        oldest_keys = sorted(
+            self._bearer_cache,
+            key=lambda cache_key: self._bearer_cache[cache_key].expires_at,
+        )
+        for cache_key in oldest_keys[:overflow_count]:
+            del self._bearer_cache[cache_key]
 
     def _has_trusted_internal_actor(self, request: Request) -> bool:
         configured_secret = self._settings.auth_internal_secret
