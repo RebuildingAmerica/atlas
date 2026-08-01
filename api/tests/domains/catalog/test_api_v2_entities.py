@@ -1,6 +1,6 @@
 """Tests for entity and place read surfaces."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from http import HTTPStatus
 
 import pytest
@@ -137,6 +137,47 @@ async def test_get_entity_and_entity_sources_use_entity_language(
     assert detail_response.json()["id"] == entity_id
     assert sources_response.status_code == STATUS_OK
     assert sources_response.json()["entity_id"] == entity_id
+
+
+@pytest.mark.asyncio
+async def test_get_entity_accepts_postgres_source_timestamps(
+    test_client: object,
+    test_db: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Entity details should render when PostgreSQL returns source timestamps."""
+    entity_id = await EntryCRUD.create(
+        test_db,
+        entry_type="person",
+        name="William McCurdy II",
+        description="A civic actor in Las Vegas.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.com/las-vegas-profile",
+        source_type="org_website",
+        extraction_method="manual",
+        title="Las Vegas profile",
+    )
+    await SourceCRUD.link_to_entry(test_db, entity_id, source_id, "Official profile.")
+    entry, sources = await EntryCRUD.get_with_sources(test_db, entity_id)
+    sources[0]["ingested_at"] = datetime(2026, 8, 1, 18, 30, tzinfo=UTC)
+
+    async def get_with_postgres_timestamp(
+        _connection: object, requested_entity_id: str
+    ) -> tuple[object, list[dict[str, object]]]:
+        assert requested_entity_id == entity_id
+        return entry, sources
+
+    monkeypatch.setattr(EntryCRUD, "get_with_sources", get_with_postgres_timestamp)
+
+    response = await test_client.get(f"/api/entities/{entity_id}")
+
+    assert response.status_code == STATUS_OK
+    assert response.json()["freshness"]["latest_source_date"] == "2026-08-01"
 
 
 @pytest.mark.asyncio

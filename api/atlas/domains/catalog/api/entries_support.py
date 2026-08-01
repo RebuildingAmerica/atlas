@@ -12,6 +12,7 @@ from atlas.domains.catalog.schemas.public import (
 )
 from atlas.models import get_db_connection
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.dates import date_string
 from atlas.platform.mcp.data import (
     EntityRecordContext,
     _entity_record,
@@ -104,7 +105,7 @@ def _entity_to_detail_response(  # noqa: PLR0913
     source_types = sorted({source["type"] for source in sources})
     latest_source_date = next(
         (
-            source["published_date"] or source["ingested_at"][:10]
+            date_string(source.get("published_date") or source.get("ingested_at"))
             for source in sources
             if source.get("published_date") or source.get("ingested_at")
         ),
