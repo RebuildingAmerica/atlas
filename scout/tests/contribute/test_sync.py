@@ -54,6 +54,34 @@ async def test_sync_run_artifacts_posts_bundle_payload() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_sync_run_artifacts_allows_slow_production_receipts() -> None:
+    """Large idempotent sync receipts should have enough time to finish."""
+    route = respx.post("https://atlas.example/api/discovery-runs/syncs").mock(
+        return_value=httpx.Response(
+            201,
+            json={
+                "run_id": "remote_slow",
+                "status": "completed",
+                "sync_status": "already_synced",
+                "entries_persisted": 129,
+                "sources_persisted": 12,
+                "duplicate": True,
+            },
+        )
+    )
+
+    result = await sync_run_artifacts(
+        build_sync_artifacts("local_slow"),
+        atlas_url="https://atlas.example",
+        api_key="key",
+    )
+
+    assert result.duplicate is True
+    assert route.calls[0].request.extensions["timeout"]["read"] == 120.0
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_sync_run_artifacts_omits_api_key_header_when_empty() -> None:
     """sync_run_artifacts omits the X-API-Key header when api_key is empty."""
     route = respx.post("https://atlas.example/api/discovery-runs/syncs").mock(
@@ -115,3 +143,20 @@ async def test_sync_run_artifacts_returns_failure_on_request_error() -> None:
 
     assert result.created == 0
     assert any("dns down" in err for err in result.errors)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_sync_run_artifacts_names_request_errors_without_messages() -> None:
+    """A timeout with an empty message should still identify the failure."""
+    respx.post("https://atlas.example/api/discovery-runs/syncs").mock(
+        side_effect=httpx.ReadTimeout("")
+    )
+
+    result = await sync_run_artifacts(
+        build_sync_artifacts("local_timeout"),
+        atlas_url="https://atlas.example",
+        api_key="key",
+    )
+
+    assert result.errors == ["run sync failed: ReadTimeout"]

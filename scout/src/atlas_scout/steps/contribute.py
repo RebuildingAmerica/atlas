@@ -162,7 +162,7 @@ async def sync_run_artifacts(
     payload = DiscoveryRunSyncRequest(artifacts=artifacts)
     attempted = len(artifacts.ranked_entries)
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 url,
                 json=payload.model_dump(mode="json"),
@@ -175,7 +175,8 @@ async def sync_run_artifacts(
         logger.warning("Run sync failed: %s", reason)
         return ContributionResult(attempted=attempted, created=0, failed=attempted, errors=[reason])
     except httpx.RequestError as exc:
-        reason = f"run sync failed: {exc}"
+        detail = str(exc) or type(exc).__name__
+        reason = f"run sync failed: {detail}"
         logger.warning("Run sync failed: %s", reason)
         return ContributionResult(attempted=attempted, created=0, failed=attempted, errors=[reason])
 
