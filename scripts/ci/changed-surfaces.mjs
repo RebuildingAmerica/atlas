@@ -76,6 +76,10 @@ const API_PATHS = [
 
 const APP_PATHS = [
   /^app\//,
+  /^packages\/atlas-access\//,
+  /^packages\/atlas-api-client\//,
+  /^packages\/atlas-catalog\//,
+  /^packages\/atlas-ui\//,
   /^packages\/entity-widgets\//,
   /^packages\/entity-widgets-mcp\//,
 ];
@@ -170,7 +174,10 @@ function isAllZeroSha(value) {
 function isForcedFullRun(context) {
   if (context.profile === "production") return "production release";
   if (context.eventName === "schedule") return "scheduled CI";
-  if (context.eventName === "workflow_dispatch" && context.profile !== "staging") {
+  if (
+    context.eventName === "workflow_dispatch" &&
+    context.profile !== "staging"
+  ) {
     return "manual workflow run";
   }
   if (context.ref?.startsWith("refs/tags/v")) return "release tag";
@@ -182,7 +189,10 @@ export function classifyChangedFiles(files, context = {}) {
   const normalized = normalizeFiles(files);
   const forcedReason = isForcedFullRun(context);
 
-  if (context.eventName === "workflow_dispatch" && context.profile === "staging") {
+  if (
+    context.eventName === "workflow_dispatch" &&
+    context.profile === "staging"
+  ) {
     return {
       reason: "manual staging deploy",
       files: normalized,

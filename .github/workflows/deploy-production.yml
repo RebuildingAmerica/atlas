@@ -36,7 +36,6 @@ jobs:
     with:
       profile: production
     secrets:
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
       STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
 

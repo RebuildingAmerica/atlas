@@ -39,9 +39,10 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .turbo/cache
-        key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', '**/turbo.json') }}
+        key: turbo-${{ runner.os }}-${{ github.job }}-${{ github.ref_name }}-${{ github.sha }}-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', '**/turbo.json') }}
         restore-keys: |
-          turbo-${{ runner.os }}-${{ github.ref_name }}-
+          turbo-${{ runner.os }}-${{ github.job }}-${{ github.ref_name }}-
+          turbo-${{ runner.os }}-${{ github.job }}-
           turbo-${{ runner.os }}-
 
     - if: inputs.python == 'true'

@@ -152,11 +152,11 @@ pnpm turbo login
 pnpm turbo link
 ```
 
-Once linked, cached results are shared across all team members and CI runs.
-GitHub Actions uses `TURBO_TOKEN` and `TURBO_TEAM` as the primary remote-cache
-connection and restores `.turbo/cache` only as a secondary fallback. Run
-`pnpm bootstrap --ci-cache --doctor` to inspect local authentication without
-creating tokens or changing CI credentials.
+Once linked, cached results are shared across team members. GitHub Actions uses
+its native cache for `.turbo/cache`, isolated by job so parallel checks cannot
+race while saving the same key. CI does not require a Vercel login or remote
+cache credential. Run `pnpm bootstrap --ci-cache --doctor` to inspect local
+authentication without creating tokens or changing CI credentials.
 
 ### GitHub Actions Cost Control
 

@@ -22,7 +22,7 @@
  * | `pnpm bootstrap --mcp-registry`                           | Runs MCP Registry publisher setup only. |
  * | `pnpm bootstrap --infra`                                  | Runs production cloud infrastructure setup only. |
  * | `pnpm bootstrap --infra --target staging`                 | Runs staging cloud infrastructure setup only. |
- * | `pnpm bootstrap --ci-cache`                               | Wires Vercel Remote Cache into Actions. |
+ * | `pnpm bootstrap --ci-cache`                               | Reports the turnkey GitHub Actions cache. |
  * | `pnpm bootstrap --api-domain`                             | Ensures atlas-api Cloud Run and Cloudflare CNAME. |
  * | `pnpm bootstrap --api-domain --target staging`            | Ensures the staging atlas-api Cloud Run and Cloudflare CNAME. |
  * | `pnpm bootstrap --api-edge`                               | Enables Cloudflare proxy and API rate limits. |

@@ -230,7 +230,10 @@ test("hosted ATProto identity administration works without a personal browser se
 
   const signInOrigin = expectedHostedPublicOrigin();
   await authorizeOneHostedAtprotoSignIn(page, signInOrigin);
-  await page.goto(absoluteHostedUrl(signInOrigin, "/sign-in"), { waitUntil: "domcontentloaded" });
+  // The form is server-rendered with an empty controlled value. Wait for React
+  // to attach its change handler before filling it, or the DOM can show the
+  // handle while application state still leaves Continue disabled.
+  await page.goto(absoluteHostedUrl(signInOrigin, "/sign-in"), { waitUntil: "networkidle" });
   const harnessAuthorizeRequest = page.waitForRequest(
     (request) => {
       const url = new URL(request.url());

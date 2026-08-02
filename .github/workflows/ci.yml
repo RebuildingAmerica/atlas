@@ -12,8 +12,6 @@ on:
         type: string
         default: auto
     secrets:
-      TURBO_TOKEN:
-        required: false
       STRIPE_API_KEY:
         required: false
       STRIPE_ATLAS_CATALOG:
@@ -36,8 +34,6 @@ permissions:
   contents: read
 
 env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
   TURBO_TELEMETRY_DISABLED: "1"
 
 concurrency:
@@ -167,8 +163,21 @@ jobs:
             affected_args=("$TURBO_AFFECTED_FLAG")
           fi
 
-          if [ "$RUN_PYTHON_TESTS" = "true" ] || [ "$RUN_APP_TESTS" = "true" ]; then
+          if [ "$RUN_PYTHON_TESTS" = "true" ] && [ "$RUN_APP_TESTS" = "true" ]; then
             pnpm exec turbo run test "${affected_args[@]}"
+          elif [ "$RUN_PYTHON_TESTS" = "true" ]; then
+            python_test_tasks=(
+              '@rebuildingamerica/atlas-shared#test'
+              '@rebuildingamerica/atlas-discovery-engine#test'
+              '@rebuildingamerica/atlas-scout#test'
+              '@rebuildingamerica/atlas-api#test'
+            )
+            pnpm exec turbo run "${python_test_tasks[@]}" "${affected_args[@]}"
+          elif [ "$RUN_APP_TESTS" = "true" ]; then
+            pnpm exec turbo run test \
+              --filter='@rebuildingamerica/atlas-app...' \
+              --filter='@rebuildingamerica/entity-widgets-mcp' \
+              "${affected_args[@]}"
           fi
 
   acceptance:

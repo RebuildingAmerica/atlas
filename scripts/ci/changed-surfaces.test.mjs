@@ -30,6 +30,29 @@ test("ordinary app changes run browser acceptance without Stripe acceptance", ()
   assert.equal(outputs.hosted_identity, false);
 });
 
+test("shared frontend package changes use the app verification surface", () => {
+  for (const file of [
+    "packages/atlas-access/src/index.ts",
+    "packages/atlas-api-client/src/index.ts",
+    "packages/atlas-catalog/src/index.ts",
+    "packages/atlas-ui/src/index.ts",
+  ]) {
+    const outputs = outputsFor([file]);
+
+    assert.equal(outputs.app_tests, true, `${file} must run app tests`);
+    assert.equal(
+      outputs.python_tests,
+      false,
+      `${file} must not run Python tests`,
+    );
+    assert.equal(
+      outputs.browser_acceptance,
+      true,
+      `${file} must run browser acceptance`,
+    );
+  }
+});
+
 test("ATProto account app changes run hosted identity verification", () => {
   const outputs = outputsFor([
     "app/src/domains/access/server/atproto-oauth.ts",
