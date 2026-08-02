@@ -131,7 +131,7 @@ async function openOrganizationIdentityControls(page: Page): Promise<void> {
   await expect(identityHeading).toBeVisible({ timeout: 20_000 });
 }
 
-async function createManagedIdentityFromField(
+async function fillFieldAndClickWhenEnabled(
   page: Page,
   inputName: string,
   buttonName: string,
@@ -143,14 +143,15 @@ async function createManagedIdentityFromField(
   await expect(input).toBeVisible({ timeout: 20_000 });
   await expect(input).toBeEditable({ timeout: 20_000 });
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  const readyDeadline = Date.now() + 5_000;
+  do {
     await input.fill(handle);
     await expect(input).toHaveValue(handle, { timeout: 5_000 });
     if (await button.isEnabled()) {
       break;
     }
-    await page.waitForTimeout(500);
-  }
+    await page.waitForTimeout(250);
+  } while (Date.now() < readyDeadline);
 
   await expect(input).toHaveValue(handle, { timeout: 5_000 });
   await expect(button).toBeEnabled({ timeout: 5_000 });
@@ -168,7 +169,7 @@ test("hosted ATProto identity administration works without a personal browser se
   await visitHostedRoute(page, "/account");
   await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
 
-  await createManagedIdentityFromField(
+  await fillFieldAndClickWhenEnabled(
     page,
     "New Atlas handle",
     "Create Atlas identity",
@@ -178,7 +179,7 @@ test("hosted ATProto identity administration works without a personal browser se
 
   await openOrganizationIdentityControls(page);
 
-  await createManagedIdentityFromField(
+  await fillFieldAndClickWhenEnabled(
     page,
     "New Atlas handle",
     "Create and use Atlas identity",
@@ -212,8 +213,7 @@ test("hosted ATProto identity administration works without a personal browser se
 
   const signInOrigin = expectedHostedPublicOrigin();
   await page.goto(absoluteHostedUrl(signInOrigin, "/sign-in"), { waitUntil: "domcontentloaded" });
-  await page.getByLabel("Email or username").fill(`@${run.owner.handle}`);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await fillFieldAndClickWhenEnabled(page, "Email or username", "Continue", `@${run.owner.handle}`);
   await page.waitForURL((url) => url.origin === signInOrigin && url.pathname === "/account", {
     timeout: 20_000,
   });
