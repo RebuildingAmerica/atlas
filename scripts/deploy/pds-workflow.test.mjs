@@ -47,7 +47,9 @@ test("API deploy summary receives the deployment environment", async () => {
   const action = await workflowSource(
     ".github/actions/deploy-atlas-api/action.yml",
   );
-  const summaryStep = action.slice(action.indexOf("- name: Write deploy summary"));
+  const summaryStep = action.slice(
+    action.indexOf("- name: Write deploy summary"),
+  );
 
   assert.match(
     summaryStep,
@@ -166,6 +168,7 @@ test("production deploy configures the hosted identity helper in Vercel", async 
     source,
     /add_vercel_env ATLAS_HOSTED_E2E_SECRET "\$ATLAS_HOSTED_E2E_SECRET"/,
   );
+  assert.doesNotMatch(source, /ATLAS_ATPROTO_OAUTH_E2E_HARNESS/);
   assert.match(
     source,
     /add_vercel_env ATLAS_PDS_INVITE_BROKER_SECRET "\$ATLAS_PDS_INVITE_BROKER_SECRET"/,

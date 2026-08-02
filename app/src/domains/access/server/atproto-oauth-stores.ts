@@ -4,6 +4,7 @@ import type { NodeSavedSession, NodeSavedState } from "@atproto/oauth-client-nod
 import { getAuthDatabase, getAuthPgPool } from "./auth";
 
 export interface AtprotoOAuthAppState {
+  e2eHarness?: true;
   flow?: "link" | "sign-in";
   requestedHandle: string;
   returnTo: string;

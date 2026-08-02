@@ -207,6 +207,27 @@ export function assertHostedE2EAuthorized(
   return null;
 }
 
+/**
+ * Decides whether one ATProto sign-in start may use the synthetic provider.
+ * Public runtimes must pass the protected hosted-E2E guard even when a global
+ * harness flag was accidentally configured. Local test runtimes keep the
+ * explicit harness flag used by the acceptance suite.
+ *
+ * @param request - Incoming ATProto sign-in start request.
+ * @param env - Environment to evaluate, injected by tests.
+ */
+export function isAtprotoSignInHarnessAuthorized(
+  request: Request,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const publicRuntime =
+    env.VERCEL_ENV?.trim() === "production" || isPublicOrigin(env.ATLAS_PUBLIC_URL);
+  if (!publicRuntime) {
+    return env.ATLAS_ATPROTO_OAUTH_E2E_HARNESS === "1";
+  }
+  return assertHostedE2EAuthorized(request, env) === null;
+}
+
 async function upsertHostedE2EUser(
   internalAdapter: AtlasAuthInternalAdapter,
   seed: HostedE2EAccountSeed,

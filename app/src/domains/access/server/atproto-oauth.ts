@@ -7,6 +7,7 @@ import { createInternalAuthHeaders } from "@/domains/access/config";
 import {
   createAtprotoOAuthStores,
   pruneAtprotoOAuthStores as pruneAtprotoOAuthStoreRows,
+  type AtprotoOAuthAppState,
 } from "./atproto-oauth-stores";
 import { provisionManagedAtprotoIdentity } from "./atproto-pds";
 import { createAtprotoSessionForUser } from "./atproto-sign-in";
@@ -23,6 +24,10 @@ interface LinkedAtprotoIdentity {
 interface AtprotoAuthorizationInput {
   handle: string;
   returnTo: string;
+}
+
+interface AtprotoSignInAuthorizationInput extends AtprotoAuthorizationInput {
+  useE2EHarness: boolean;
 }
 
 interface ResolvedAtprotoIdentityInput {
@@ -97,16 +102,17 @@ export async function createAtprotoAuthorizationUrl(
  * before Better Auth is allowed to create a browser session.
  */
 export async function createAtprotoSignInAuthorizationUrl(
-  input: AtprotoAuthorizationInput,
+  input: AtprotoSignInAuthorizationInput,
 ): Promise<URL> {
   await pruneAtprotoOAuthStores();
   const state = randomUUID();
   await appStateStore.set(state, {
+    ...(input.useE2EHarness ? { e2eHarness: true as const } : {}),
     flow: "sign-in",
     requestedHandle: input.handle.trim(),
     returnTo: sanitizeReturnTo(input.returnTo),
   });
-  if (isE2EHarnessEnabled()) {
+  if (input.useE2EHarness) {
     return e2eHarnessAuthorizeUrl(input.handle.trim(), state);
   }
   const client = await getAtprotoOAuthClient();
@@ -224,8 +230,13 @@ export async function completeAtprotoOAuthCallback(params: URLSearchParams): Pro
  */
 export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Response> {
   await pruneAtprotoOAuthStores();
-  if (isE2EHarnessEnabled() && params.get("code") === e2eHarnessCode) {
-    return await completeE2EHarnessSignIn(params);
+  const stateKey = params.get("state") ?? "";
+  const pendingState = stateKey ? await appStateStore.get(stateKey) : undefined;
+  if (params.get("code") === e2eHarnessCode) {
+    if (pendingState?.flow === "sign-in" && pendingState.e2eHarness === true) {
+      return await completeE2EHarnessSignIn(params, stateKey, pendingState);
+    }
+    throw new Error("ATProto sign-in is unavailable.");
   }
   const client = await getAtprotoOAuthClient();
   const result = await client.callback(params);
@@ -269,11 +280,13 @@ export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Re
   }
 }
 
-async function completeE2EHarnessSignIn(params: URLSearchParams): Promise<Response> {
-  const stateKey = params.get("state") ?? "";
+async function completeE2EHarnessSignIn(
+  params: URLSearchParams,
+  stateKey: string,
+  state: AtprotoOAuthAppState,
+): Promise<Response> {
   const handle = params.get("handle")?.trim() ?? "";
-  const state = stateKey ? await appStateStore.get(stateKey) : undefined;
-  if (state?.flow !== "sign-in" || !handle) {
+  if (!handle) {
     throw new Error("ATProto sign-in is unavailable.");
   }
   if (state.requestedHandle.toLowerCase() !== handle.toLowerCase()) {

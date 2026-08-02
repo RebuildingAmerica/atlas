@@ -110,6 +110,23 @@ async function visitHostedRoute(page: Page, path: string): Promise<void> {
   await page.goto(path, { waitUntil: "domcontentloaded" });
 }
 
+async function authorizeOneHostedAtprotoSignIn(page: Page, origin: string): Promise<void> {
+  await page.route(
+    `${origin}/api/atproto/sign-in/start?*`,
+    async (route) => {
+      const response = await route.fetch({
+        headers: {
+          ...route.request().headers(),
+          "x-atlas-hosted-e2e-secret": requiredEnv("ATLAS_HOSTED_E2E_SECRET"),
+        },
+        maxRedirects: 0,
+      });
+      await route.fulfill({ response });
+    },
+    { times: 1 },
+  );
+}
+
 async function openOrganizationIdentityControls(page: Page): Promise<void> {
   await visitHostedRoute(page, "/organization");
 
@@ -212,8 +229,27 @@ test("hosted ATProto identity administration works without a personal browser se
   await signOut(page);
 
   const signInOrigin = expectedHostedPublicOrigin();
+  await authorizeOneHostedAtprotoSignIn(page, signInOrigin);
   await page.goto(absoluteHostedUrl(signInOrigin, "/sign-in"), { waitUntil: "domcontentloaded" });
+  const harnessAuthorizeRequest = page.waitForRequest(
+    (request) => {
+      const url = new URL(request.url());
+      return url.origin === signInOrigin && url.pathname === "/api/atproto/oauth/harness/authorize";
+    },
+    { timeout: 20_000 },
+  );
+  const harnessCallbackRequest = page.waitForRequest(
+    (request) => {
+      const url = new URL(request.url());
+      return url.origin === signInOrigin && url.pathname === "/api/atproto/oauth/callback";
+    },
+    { timeout: 20_000 },
+  );
   await fillFieldAndClickWhenEnabled(page, "Email or username", "Continue", `@${run.owner.handle}`);
+  const providerRequests = await Promise.all([harnessAuthorizeRequest, harnessCallbackRequest]);
+  for (const request of providerRequests) {
+    expect((await request.allHeaders())["x-atlas-hosted-e2e-secret"]).toBeUndefined();
+  }
   await page.waitForURL((url) => url.origin === signInOrigin && url.pathname === "/account", {
     timeout: 20_000,
   });

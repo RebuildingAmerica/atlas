@@ -11,11 +11,13 @@ async function startAtprotoSignIn(request: Request): Promise<Response> {
   }
   const normalizedHandle = handle.replace(/^@/, "").toLowerCase();
   const returnTo = requestUrl.searchParams.get("returnTo") ?? "/account";
+  const { isAtprotoSignInHarnessAuthorized } = await import("@/domains/access/server/hosted-e2e");
   const { createAtprotoSignInAuthorizationUrl } =
     await import("@/domains/access/server/atproto-oauth");
   const authorizationUrl = await createAtprotoSignInAuthorizationUrl({
     handle: normalizedHandle,
     returnTo,
+    useE2EHarness: isAtprotoSignInHarnessAuthorized(request),
   });
   return Response.redirect(authorizationUrl.toString(), 302);
 }

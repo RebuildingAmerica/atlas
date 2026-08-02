@@ -4,6 +4,7 @@ import {
   buildHostedE2EAccountSeeds,
   buildHostedE2EPasskeySeed,
   hostedE2EPayloadSchema,
+  isAtprotoSignInHarnessAuthorized,
 } from "@/domains/access/server/hosted-e2e";
 import {
   hostedE2ERequestWithSecret,
@@ -90,6 +91,50 @@ describe("hosted E2E guard", () => {
     });
 
     expect(response).toBeNull();
+  });
+});
+
+describe("ATProto sign-in harness guard", () => {
+  test("ignores the local harness flag on a public origin without a protected request", () => {
+    const authorized = isAtprotoSignInHarnessAuthorized(hostedE2ERequestWithSecret(), {
+      ATLAS_ATPROTO_OAUTH_E2E_HARNESS: "1",
+      ATLAS_PUBLIC_URL: "https://atlas.rebuildingus.org",
+    });
+
+    expect(authorized).toBe(false);
+  });
+
+  test("allows the explicit harness flag for a local test runtime", () => {
+    const authorized = isAtprotoSignInHarnessAuthorized(hostedE2ERequestWithSecret(), {
+      ATLAS_ATPROTO_OAUTH_E2E_HARNESS: "1",
+      ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
+    });
+
+    expect(authorized).toBe(true);
+  });
+
+  test("allows a public proof request only through the hosted E2E guard", () => {
+    const authorized = isAtprotoSignInHarnessAuthorized(hostedE2ERequestWithSecret("secret"), {
+      ATLAS_HOSTED_E2E_ENABLED: "1",
+      ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
+      ATLAS_PUBLIC_URL: "https://atlas.rebuildingus.org",
+      VERCEL_ENV: "production",
+    });
+
+    expect(authorized).toBe(true);
+  });
+
+  test("refuses a public proof request whose hosted secret does not match", () => {
+    const authorized = isAtprotoSignInHarnessAuthorized(hostedE2ERequestWithSecret("wrong"), {
+      ATLAS_HOSTED_E2E_ENABLED: "1",
+      ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
+      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
+      ATLAS_PUBLIC_URL: "https://atlas.rebuildingus.org",
+      VERCEL_ENV: "production",
+    });
+
+    expect(authorized).toBe(false);
   });
 });
 

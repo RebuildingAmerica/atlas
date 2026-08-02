@@ -158,7 +158,11 @@ describe("atproto-oauth", () => {
       await import("@/domains/access/server/atproto-oauth");
 
     await expect(
-      createAtprotoSignInAuthorizationUrl({ handle: "person.example", returnTo: "/account" }),
+      createAtprotoSignInAuthorizationUrl({
+        handle: "person.example",
+        returnTo: "/account",
+        useE2EHarness: false,
+      }),
     ).resolves.toEqual(new URL("https://bsky.social/oauth/authorize"));
 
     const insertedPayload = String(run.mock.calls.at(-1)?.[1]);
@@ -215,9 +219,9 @@ describe("atproto-oauth", () => {
   });
 
   it("creates a Better Auth session through the hosted OAuth harness callback", async () => {
-    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
     const get = vi.fn().mockReturnValue({
       value: JSON.stringify({
+        e2eHarness: true,
         flow: "sign-in",
         requestedHandle: "person.example",
         returnTo: "/account",
@@ -812,22 +816,48 @@ describe("atproto-oauth", () => {
   });
 
   it("starts a harness sign-in authorization without contacting the real provider", async () => {
-    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
     mocks().loadAtlasSession.mockResolvedValue(null);
-    mocks().getAuthDatabase.mockReturnValue({
-      prepare: vi.fn().mockReturnValue({ run: vi.fn() }),
-    });
+    const run = vi.fn();
+    mocks().getAuthDatabase.mockReturnValue({ prepare: vi.fn().mockReturnValue({ run }) });
     const { createAtprotoSignInAuthorizationUrl } =
       await import("@/domains/access/server/atproto-oauth");
 
     const authorizationUrl = await createAtprotoSignInAuthorizationUrl({
       handle: "person.example",
       returnTo: "/account",
+      useE2EHarness: true,
     });
 
     expect(mocks().authorize).not.toHaveBeenCalled();
     expect(authorizationUrl.pathname).toBe("/api/atproto/oauth/harness/authorize");
     expect(authorizationUrl.searchParams.get("handle")).toBe("person.example");
+    expect(String(run.mock.calls.at(-1)?.[1])).toContain('"e2eHarness":true');
+  });
+
+  it("refuses a synthetic sign-in callback whose stored state was not harness-authorized", async () => {
+    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        flow: "sign-in",
+        requestedHandle: "person.example",
+        returnTo: "/account",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().fetch.mockResolvedValue(new Response(JSON.stringify({ user_id: "user_1" })));
+    atprotoSignInMocks.createAtprotoSessionForUser.mockResolvedValue(
+      new Response(null, { headers: { "set-cookie": "session=opaque; HttpOnly" }, status: 204 }),
+    );
+    const { completeAtprotoSignIn } = await import("@/domains/access/server/atproto-oauth");
+
+    await expect(
+      completeAtprotoSignIn(
+        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=person.example"),
+      ),
+    ).rejects.toThrow("ATProto sign-in is unavailable.");
+    expect(atprotoSignInMocks.createAtprotoSessionForUser).not.toHaveBeenCalled();
   });
 
   it("refuses to build a harness callback URL without both state and handle", async () => {
@@ -845,6 +875,7 @@ describe("atproto-oauth", () => {
     vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
     const get = vi.fn().mockReturnValue({
       value: JSON.stringify({
+        e2eHarness: true,
         flow: "sign-in",
         requestedHandle: "person.example",
         returnTo: "/account",

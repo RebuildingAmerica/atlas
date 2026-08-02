@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { callRouteGet } from "@/../tests/helpers/routes-server-handler";
 
-const mocks = vi.hoisted(() => ({ createAtprotoSignInAuthorizationUrl: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  createAtprotoSignInAuthorizationUrl: vi.fn(),
+  isAtprotoSignInHarnessAuthorized: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -12,12 +15,18 @@ vi.mock("@/domains/access/server/atproto-oauth", () => ({
   createAtprotoSignInAuthorizationUrl: mocks.createAtprotoSignInAuthorizationUrl,
 }));
 
+vi.mock("@/domains/access/server/hosted-e2e", () => ({
+  isAtprotoSignInHarnessAuthorized: mocks.isAtprotoSignInHarnessAuthorized,
+}));
+
 describe("routes/api/atproto/sign-in/start", () => {
   // Block body on purpose: an expression body returns the mock itself, which
   // Vitest then treats as this hook's teardown callback and calls after every
   // test.
   beforeEach(() => {
     mocks.createAtprotoSignInAuthorizationUrl.mockReset();
+    mocks.isAtprotoSignInHarnessAuthorized.mockReset();
+    mocks.isAtprotoSignInHarnessAuthorized.mockReturnValue(false);
   });
 
   it("starts ATProto sign-in for a submitted handle", async () => {
@@ -37,6 +46,31 @@ describe("routes/api/atproto/sign-in/start", () => {
     expect(mocks.createAtprotoSignInAuthorizationUrl).toHaveBeenCalledWith({
       handle: "person.example",
       returnTo: "/account",
+      useE2EHarness: false,
+    });
+  });
+
+  it("uses the provider harness only for an authorized hosted proof request", async () => {
+    mocks.isAtprotoSignInHarnessAuthorized.mockReturnValue(true);
+    mocks.createAtprotoSignInAuthorizationUrl.mockResolvedValue(
+      new URL("https://atlas.test/api/atproto/oauth/harness/authorize"),
+    );
+    const routeModule = await import("@/routes/api/atproto/sign-in/start");
+    const request = new Request(
+      "https://atlas.test/api/atproto/sign-in/start?handle=person.example",
+      { headers: { "x-atlas-hosted-e2e-secret": "secret" } },
+    );
+
+    const response = await callRouteGet(routeModule.Route, request);
+
+    expect(response.headers.get("location")).toBe(
+      "https://atlas.test/api/atproto/oauth/harness/authorize",
+    );
+    expect(mocks.isAtprotoSignInHarnessAuthorized).toHaveBeenCalledWith(request);
+    expect(mocks.createAtprotoSignInAuthorizationUrl).toHaveBeenCalledWith({
+      handle: "person.example",
+      returnTo: "/account",
+      useE2EHarness: true,
     });
   });
 
@@ -56,6 +90,7 @@ describe("routes/api/atproto/sign-in/start", () => {
     expect(mocks.createAtprotoSignInAuthorizationUrl).toHaveBeenCalledWith({
       handle: "gwashington.org",
       returnTo: "/account",
+      useE2EHarness: false,
     });
   });
 
