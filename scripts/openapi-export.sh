@@ -3,6 +3,9 @@ set -eu
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 
+: "${ATLAS_MULTI_USER:=false}"
+export ATLAS_MULTI_USER
+
 cd "$ROOT_DIR/api"
 UV_LINK_MODE=copy uv run python -m atlas.platform.openapi
 
