@@ -1,7 +1,18 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { envForTask, loadRootTurboConfig, loadTurboConfig } from "../helpers/turbo-config-harness";
 
 describe("turbo config", () => {
+  it("generates the API client before a clean app build", () => {
+    const packageJson = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+    ) as { scripts: Record<string, string> };
+
+    expect(packageJson.scripts.prebuild).toBe(
+      "pnpm run api-client && pnpm run generate:route-tree",
+    );
+  });
+
   it("does not model the public map style as deployment environment", () => {
     const config = loadTurboConfig();
 

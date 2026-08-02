@@ -10,7 +10,7 @@
   "main": "index.js",
   "scripts": {
     "generate:route-tree": "node scripts/generate-route-tree.mjs",
-    "prebuild": "pnpm run generate:route-tree",
+    "prebuild": "pnpm run api-client && pnpm run generate:route-tree",
     "predev": "pnpm run generate:route-tree",
     "predev:local": "pnpm run generate:route-tree",
     "predev:e2e": "pnpm run generate:route-tree",
