@@ -58,7 +58,7 @@ describe("routes/api/atproto/sign-in/start", () => {
     const routeModule = await import("@/routes/api/atproto/sign-in/start");
     const request = new Request(
       "https://atlas.test/api/atproto/sign-in/start?handle=person.example",
-      { headers: { "x-atlas-hosted-e2e-secret": "secret" } },
+      { headers: { "x-atlas-hosted-e2e-secret": "secret" } }, // pragma: allowlist secret
     );
 
     const response = await callRouteGet(routeModule.Route, request);
