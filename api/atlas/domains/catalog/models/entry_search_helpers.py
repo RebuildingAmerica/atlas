@@ -138,7 +138,7 @@ def _latest_source_date(sources: Sequence[dict[str, Any]]) -> str | None:
         for source in sources
         if (
             candidate := (
-                source.get("published_date")
+                _date_prefix(source.get("published_date"))
                 or _date_prefix(source.get("ingested_at"))
                 or _date_prefix(source.get("created_at"))
             )

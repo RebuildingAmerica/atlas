@@ -22,7 +22,9 @@ valid OAuth JWTs do not spend anonymous buckets after they are verified.
 Requests that include `Authorization` or `X-API-Key` first spend the
 credential-present pre-auth buckets so forged credentials cannot force repeated
 API key introspection or JWT verification. Invalid or missing credentials are
-then treated as anonymous traffic.
+then treated as anonymous traffic. External requests must use exactly one of
+`Authorization` or `X-API-Key`; requests that supply both are invalid and cannot
+use one credential to subsidize verification of the other.
 
 ## Enforcement Layers
 

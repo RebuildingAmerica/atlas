@@ -27,7 +27,7 @@ from .membership import verify_org_membership
 from .models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
 from .permissions import require_permission
 from .principals import ApiKeyPrincipal, AuthenticatedActor
-from .request_state import api_key_principal_from_state
+from .request_state import api_key_verification_from_state
 
 logger = logging.getLogger(__name__)
 
@@ -184,17 +184,27 @@ async def require_actor(  # noqa: PLR0913
     if trusted_actor is not None:
         return trusted_actor
 
-    cached_api_key_principal = api_key_principal_from_state(request)
+    authorization = request.headers.get("authorization")
+    if x_api_key and authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Use exactly one authentication method",
+            headers={"WWW-Authenticate": build_bearer_challenge(settings)},
+        )
+
+    api_key_verification_attempted, cached_api_key_principal = api_key_verification_from_state(
+        request
+    )
     if cached_api_key_principal is not None:
         return _authenticated_actor_from_api_key_principal(cached_api_key_principal, settings)
 
-    if x_api_key:
+    if x_api_key and not api_key_verification_attempted:
         principal = await verify_api_key(x_api_key, settings)
         if principal is not None:
             return _authenticated_actor_from_api_key_principal(principal, settings)
 
     jwt_payload = verify_bearer_jwt(
-        request.headers.get("authorization"),
+        authorization,
         issuer=settings.auth_jwt_issuer,
         audience=settings.auth_jwt_audience,
         jwks_url=settings.auth_jwt_jwks_url,

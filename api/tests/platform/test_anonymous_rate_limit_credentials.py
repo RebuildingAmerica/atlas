@@ -124,7 +124,7 @@ async def test_rotating_fake_api_keys_are_blocked_before_additional_introspectio
     """Distinct forged keys should not bypass the per-client verification budget."""
     settings = _settings(
         db_url,
-        deploy_mode="production",
+        multi_user=True,
         auth_jwt_issuer="https://atlas.test",
         auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
@@ -155,6 +155,57 @@ async def test_rotating_fake_api_keys_are_blocked_before_additional_introspectio
 
 
 @pytest.mark.asyncio
+async def test_mixed_credentials_are_rejected_without_verification(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ambiguous auth schemes should not amplify either credential verifier."""
+    settings = _settings(
+        db_url,
+        multi_user=True,
+        auth_jwt_issuer="https://atlas.test",
+        auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
+        auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+        auth_membership_verification_url="https://atlas.test",
+        anonymous_rate_limit_reads_per_minute=100,
+        anonymous_credential_rate_limit_per_minute=1,
+        anonymous_credential_rate_limit_total_per_hour=100,
+    )
+    attempted_keys: list[str] = []
+    attempted_authorizations: list[str | None] = []
+
+    async def fake_verify_api_key(api_key: str, _settings: Settings) -> ApiKeyPrincipal | None:
+        attempted_keys.append(api_key)
+        return None
+
+    def fake_verify_bearer_jwt(
+        authorization: str | None,
+        **_kwargs: object,
+    ) -> dict[str, object] | None:
+        attempted_authorizations.append(authorization)
+        return {"sub": "user-123"}
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
+        fake_verify_api_key,
+    )
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_bearer_jwt",
+        fake_verify_bearer_jwt,
+    )
+
+    headers = {"X-API-Key": "fake-key", "Authorization": "Bearer valid-token"}
+    async for client in _client(settings):
+        first = await client.get(READ_PATH, headers=headers)
+        blocked = await client.get(READ_PATH, headers=headers)
+
+    assert first.status_code == HTTPStatus.OK
+    assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
+    assert attempted_keys == []
+    assert attempted_authorizations == []
+
+
+@pytest.mark.asyncio
 async def test_concurrent_valid_api_key_requests_share_one_introspection(
     db_url: str,
     monkeypatch: pytest.MonkeyPatch,
@@ -162,7 +213,7 @@ async def test_concurrent_valid_api_key_requests_share_one_introspection(
     """Concurrent requests for one valid key should share its first verification."""
     settings = _settings(
         db_url,
-        deploy_mode="production",
+        multi_user=True,
         auth_jwt_issuer="https://atlas.test",
         auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
         auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
@@ -209,6 +260,109 @@ async def test_concurrent_valid_api_key_requests_share_one_introspection(
 
     assert [response.status_code for response in responses] == [HTTPStatus.OK, HTTPStatus.OK]
     assert attempted_keys == ["atlas_test_key"]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_valid_api_key_across_clients_shares_one_introspection(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One API key should share first verification across client identities."""
+    settings = _settings(
+        db_url,
+        multi_user=True,
+        auth_jwt_issuer="https://atlas.test",
+        auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
+        auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+        auth_membership_verification_url="https://atlas.test",
+        anonymous_rate_limit_reads_per_minute=1,
+        anonymous_credential_rate_limit_per_minute=1,
+        anonymous_credential_rate_limit_total_per_hour=100,
+        trust_unsigned_forward_headers=True,
+        trusted_proxy_hops=0,
+    )
+    verification_started = asyncio.Event()
+    release_verification = asyncio.Event()
+    attempted_keys: list[str] = []
+
+    async def fake_verify_api_key(api_key: str, _settings: Settings) -> ApiKeyPrincipal | None:
+        attempted_keys.append(api_key)
+        verification_started.set()
+        await release_verification.wait()
+        return ApiKeyPrincipal(
+            key_id="key_123",
+            name="Test Key",
+            permissions=None,
+            user_id="user_123",
+            user_email="operator@example.com",
+            org_id=None,
+            active_products=[],
+        )
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
+        fake_verify_api_key,
+    )
+
+    async for client in _client(settings):
+        first_request = asyncio.create_task(
+            client.get(
+                READ_PATH,
+                headers={"X-API-Key": "atlas_test_key", "X-Forwarded-For": "198.51.100.10"},
+            )
+        )
+        await verification_started.wait()
+        second_request = asyncio.create_task(
+            client.get(
+                READ_PATH,
+                headers={"X-API-Key": "atlas_test_key", "X-Forwarded-For": "203.0.113.10"},
+            )
+        )
+        await asyncio.sleep(0)
+        release_verification.set()
+        responses = await asyncio.gather(first_request, second_request)
+
+    assert [response.status_code for response in responses] == [HTTPStatus.OK, HTTPStatus.OK]
+    assert attempted_keys == ["atlas_test_key"]
+
+
+@pytest.mark.asyncio
+async def test_invalid_api_key_on_protected_route_is_introspected_once(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed pre-auth check should be reused by the protected-route dependency."""
+    settings = _settings(
+        db_url,
+        multi_user=True,
+        auth_jwt_issuer="https://atlas.test",
+        auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
+        auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+        auth_membership_verification_url="https://atlas.test",
+        anonymous_rate_limit_reads_per_minute=100,
+        anonymous_credential_rate_limit_per_minute=10,
+        anonymous_credential_rate_limit_total_per_hour=100,
+    )
+    attempted_keys: list[str] = []
+
+    async def fake_verify_api_key(api_key: str, _settings: Settings) -> ApiKeyPrincipal | None:
+        attempted_keys.append(api_key)
+        return None
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
+        fake_verify_api_key,
+    )
+    monkeypatch.setattr(
+        "atlas.domains.access.dependencies.verify_api_key",
+        fake_verify_api_key,
+    )
+
+    async for client in _client(settings):
+        response = await client.get("/api/lists", headers={"X-API-Key": "invalid-key"})
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert attempted_keys == ["invalid-key"]
 
 
 @pytest.mark.asyncio

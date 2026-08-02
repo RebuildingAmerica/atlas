@@ -17,23 +17,26 @@ credential trust boundary. Browser sessions already receive trusted internal
 actor headers and continue to bypass anonymous limits.
 
 The API middleware will admit trusted internal actors immediately. Other
-credential-bearing requests enter a fixed-size, per-client verification gate
-before unknown credentials can trigger JWT/JWKS work or remote API-key
-introspection. The gate temporarily reserves credential-attempt capacity,
-serializes verification for each client, and refunds the reservation as soon as
-the credential succeeds. Valid accounts therefore accumulate neither credential
-nor anonymous quota, while invalid credentials retain the reservation and then
-enter the ordinary anonymous read/write and hourly buckets. Fixed lock striping
-bounds gate memory without retaining client addresses.
+credential-bearing requests enter fixed-size client and credential verification
+gates before unknown credentials can trigger JWT/JWKS work or remote API-key
+introspection. The client gate reserves credential-attempt capacity before work;
+the credential gate makes concurrent API-key cache misses across clients share
+the first completed introspection. Successful verification refunds the client
+reservation. Valid accounts therefore accumulate neither credential nor
+anonymous quota, while invalid credentials retain the reservation and then enter
+the ordinary anonymous read/write and hourly buckets. Fixed lock striping bounds
+gate memory without retaining client addresses or credentials.
 
 Failed bearer verification results will be cached briefly by a one-way token
 fingerprint. Successful bearer tokens are verified on every request so a cache
 cannot outlive the token's own expiry. API-key verification keeps using its
-bounded principal cache, and the per-client gate makes concurrent cache misses
+bounded principal cache, and the credential gate makes concurrent cache misses
 share the first completed introspection before the next request checks that
-cache. Rotating invalid values cannot reach verification after their client's
-credential-attempt capacity is exhausted. Cache size and lifetime remain bounded
-by the existing rate-limit cache constants.
+cache. A completed negative API-key result is carried into the protected-route
+dependency so the same request cannot introspect twice. Rotating invalid values
+cannot reach verification after their client's credential-attempt capacity is
+exhausted. Cache size and lifetime remain bounded by the existing rate-limit
+cache constants.
 
 ## Safety and failure behavior
 
@@ -43,6 +46,10 @@ admission control. Invalid credentials are bounded before expensive verification
 even when an attacker rotates values, continue to produce privacy-safe logs
 without raw tokens, and receive standard `429` responses when their credential
 or anonymous buckets are exhausted.
+
+Each external request must use exactly one authentication method. Supplying both
+`Authorization` and `X-API-Key` is treated as an invalid credential attempt and
+cannot use one valid credential to refund work caused by another invalid one.
 
 No endpoint-specific exception or production-only limit increase is introduced.
 The invariant applies consistently to every currently limited API surface,

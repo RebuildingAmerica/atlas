@@ -68,9 +68,12 @@ def test_latest_source_date_prefers_public_visible_dates() -> None:
 
 def test_latest_source_date_accepts_postgres_source_timestamps() -> None:
     """Public map freshness should retain PostgreSQL-native source timestamps."""
-    sources = [{"ingested_at": datetime(2026, 8, 1, 18, 30, tzinfo=UTC)}]
+    sources = [
+        {"published_date": datetime(2026, 8, 2, 9, 15, tzinfo=UTC)},
+        {"ingested_at": datetime(2026, 8, 1, 18, 30, tzinfo=UTC)},
+    ]
 
-    assert entry_search._latest_source_date(sources) == "2026-08-01"
+    assert entry_search._latest_source_date(sources) == "2026-08-02"
 
 
 @pytest.mark.parametrize("value", [None, "", 123])

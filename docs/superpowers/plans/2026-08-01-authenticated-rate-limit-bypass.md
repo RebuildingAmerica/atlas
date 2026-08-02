@@ -11,10 +11,12 @@ throttled.
 
 **Architecture:** The app proxy forwards credential-bearing traffic to the API
 because only the API can validate Atlas credentials. The API admits trusted
-internal actors immediately, then uses bounded per-client verification admission
-for other credentials. Credential capacity is reserved before unknown
-verification work and refunded on success; failed credentials retain that
-capacity and continue into anonymous admission control.
+internal actors immediately, then uses bounded client and credential
+verification admission for other credentials. Credential capacity is reserved
+before unknown verification work and refunded on success; failed credentials
+retain that capacity and continue into anonymous admission control. Requests
+must choose one external authentication scheme, and completed API-key
+verification is reused by the protected route.
 
 **Tech Stack:** TypeScript, TanStack Start server proxy, Python 3.12,
 FastAPI/Starlette middleware, Vitest, pytest.
@@ -28,8 +30,8 @@ FastAPI/Starlette middleware, Vitest, pytest.
 - Keep the API as the authoritative credential trust boundary.
 - Bound rotating invalid credentials before JWT/JWKS work or remote
   introspection.
-- Serialize concurrent verification per client without retaining raw client
-  addresses.
+- Serialize concurrent admission per client and concurrent cache misses per
+  credential without retaining raw client addresses or credentials.
 - Use behavioral tests, pnpm, async Python I/O, and the repository's existing
   formatting and typing rules.
 

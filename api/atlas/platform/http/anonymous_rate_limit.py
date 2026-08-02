@@ -16,7 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from atlas.domains.access.api_keys import verify_api_key
 from atlas.domains.access.jwt import verify_bearer_jwt
-from atlas.domains.access.request_state import API_KEY_PRINCIPAL_STATE_KEY
+from atlas.domains.access.request_state import mark_api_key_verification
 from atlas.platform.http.anonymous_rate_limit_support import (
     _ACTOR_EMAIL_HEADER,
     _ACTOR_ID_HEADER,
@@ -70,6 +70,9 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         self._limiter = _SlidingWindowLimiter()
         self._api_key_cache: dict[str, _ApiKeyCacheEntry] = {}
         self._bearer_cache: dict[str, _InvalidBearerCacheEntry] = {}
+        self._client_verification_locks = tuple(
+            asyncio.Lock() for _ in range(_CREDENTIAL_VERIFICATION_LOCK_STRIPES)
+        )
         self._credential_verification_locks = tuple(
             asyncio.Lock() for _ in range(_CREDENTIAL_VERIFICATION_LOCK_STRIPES)
         )
@@ -87,15 +90,16 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         if has_credential_headers:
             credential_specs = self._credential_bucket_specs()
             authenticated = False
-            async with self._credential_verification_lock(client_key):
+            async with self._client_verification_lock(client_key):
                 result = await self._limiter.reserve(client_key, credential_specs)
                 if not result.allowed:
                     return self._rate_limited_response(request, client_key, result)
-                if await self._is_authenticated_request(request):
-                    await self._limiter.refund(client_key, credential_specs)
-                    authenticated = True
-                else:
-                    self._log_invalid_credential_attempt(request, client_key)
+                async with self._credential_verification_lock(request):
+                    if await self._is_authenticated_request(request):
+                        await self._limiter.refund(client_key, credential_specs)
+                        authenticated = True
+                    else:
+                        self._log_invalid_credential_attempt(request, client_key)
             if authenticated:
                 return await call_next(request)
 
@@ -175,6 +179,8 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
     async def _is_authenticated_request(self, request: Request) -> bool:
         if self._has_trusted_internal_actor(request):
             return True
+        if self._credential_kind(request) == "multiple":
+            return False
         if await self._has_valid_api_key(request):
             return True
         return self._has_valid_bearer(request)
@@ -182,12 +188,18 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
     def _has_credential_headers(self, request: Request) -> bool:
         return bool(request.headers.get("authorization") or request.headers.get("x-api-key"))
 
-    def _credential_verification_lock(self, client_key: str) -> asyncio.Lock:
-        digest = hashlib.sha256(client_key.encode("utf-8")).digest()
-        index = int.from_bytes(digest[:2], byteorder="big") % len(
-            self._credential_verification_locks
-        )
-        return self._credential_verification_locks[index]
+    @staticmethod
+    def _striped_lock(value: str, locks: tuple[asyncio.Lock, ...]) -> asyncio.Lock:
+        digest = hashlib.sha256(value.encode("utf-8")).digest()
+        index = int.from_bytes(digest[:2], byteorder="big") % len(locks)
+        return locks[index]
+
+    def _client_verification_lock(self, client_key: str) -> asyncio.Lock:
+        return self._striped_lock(client_key, self._client_verification_locks)
+
+    def _credential_verification_lock(self, request: Request) -> asyncio.Lock:
+        credential = request.headers.get("x-api-key") or request.headers.get("authorization", "")
+        return self._striped_lock(credential, self._credential_verification_locks)
 
     def _has_valid_bearer(self, request: Request) -> bool:
         authorization = request.headers.get("authorization")
@@ -240,10 +252,8 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         cached = self._api_key_cache.get(cache_key)
         now = time.monotonic()
         if cached is not None and cached.expires_at > now:
-            if cached.principal is not None:
-                setattr(request.state, API_KEY_PRINCIPAL_STATE_KEY, cached.principal)
-                return True
-            return False
+            mark_api_key_verification(request, cached.principal)
+            return cached.principal is not None
         if cached is not None:
             del self._api_key_cache[cache_key]
 
@@ -254,6 +264,7 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
                 "API key verification failed before anonymous rate limiting",
                 extra={"event": "api_key_rate_limit_bypass_check_failed"},
             )
+            mark_api_key_verification(request, None)
             return False
 
         self._prune_api_key_cache(now)
@@ -261,10 +272,8 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
             principal=principal,
             expires_at=now + _API_KEY_CACHE_TTL_SECONDS,
         )
-        if principal is None:
-            return False
-        setattr(request.state, API_KEY_PRINCIPAL_STATE_KEY, principal)
-        return True
+        mark_api_key_verification(request, principal)
+        return principal is not None
 
     def _prune_api_key_cache(self, now: float) -> None:
         for cache_key, entry in list(self._api_key_cache.items()):

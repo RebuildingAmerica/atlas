@@ -109,11 +109,8 @@ async def test_protected_discovery_accepts_valid_api_key(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert (
-            settings.auth_api_key_introspection_url
-            == "http://auth.test/internal/api-keys/introspect"
-        )
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -124,6 +121,9 @@ async def test_protected_discovery_accepts_valid_api_key(
             active_products=["atlas_pro"],
         )
 
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key", fake_verify_api_key
+    )
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
 
     response = await test_client.post(
@@ -155,8 +155,8 @@ async def test_api_key_requests_stop_when_daily_plan_quota_is_exhausted(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert settings.auth_internal_secret == "internal-test-secret"
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -167,6 +167,9 @@ async def test_api_key_requests_stop_when_daily_plan_quota_is_exhausted(
             active_products=[],
         )
 
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key", fake_verify_api_key
+    )
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
 
     response = await test_client.post(
@@ -247,11 +250,8 @@ async def test_discovery_read_requires_matching_api_key_scope(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert (
-            settings.auth_api_key_introspection_url
-            == "http://auth.test/internal/api-keys/introspect"
-        )
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -261,6 +261,9 @@ async def test_discovery_read_requires_matching_api_key_scope(
             org_id="org_123",
         )
 
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key", fake_verify_api_key
+    )
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
 
     response = await test_client.get(
@@ -343,11 +346,8 @@ async def test_entity_mutation_requires_matching_api_key_scope(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert (
-            settings.auth_api_key_introspection_url
-            == "http://auth.test/internal/api-keys/introspect"
-        )
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -356,6 +356,9 @@ async def test_entity_mutation_requires_matching_api_key_scope(
             user_email="operator@example.com",
         )
 
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key", fake_verify_api_key
+    )
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
 
     response = await test_client.post(

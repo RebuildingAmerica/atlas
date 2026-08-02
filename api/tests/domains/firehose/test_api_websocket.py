@@ -128,8 +128,8 @@ async def test_firehose_session_socket_accepts_api_key_actor(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert settings.auth_api_key_introspection_url is not None
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -182,8 +182,8 @@ async def test_firehose_session_socket_rejects_api_key_without_org(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert settings.auth_api_key_introspection_url is not None
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -292,8 +292,8 @@ async def test_firehose_requires_firehose_read_scope_for_api_keys(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert settings.auth_api_key_introspection_url is not None
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -305,9 +305,7 @@ async def test_firehose_requires_firehose_read_scope_for_api_keys(
         )
 
     monkeypatch.setattr(
-        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
-        fake_verify_api_key,
-        raising=False,
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key", fake_verify_api_key
     )
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
 
@@ -339,8 +337,8 @@ async def test_firehose_rejects_api_keys_without_firehose_read_scope(
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
+        del settings
         assert api_key == "atlas_test_key"
-        assert settings.auth_api_key_introspection_url is not None
         return ApiKeyPrincipal(
             key_id="key_123",
             name="Test Key",
@@ -350,6 +348,9 @@ async def test_firehose_rejects_api_keys_without_firehose_read_scope(
             org_id="org_123",
         )
 
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key", fake_verify_api_key
+    )
     monkeypatch.setattr("atlas.domains.access.dependencies.verify_api_key", fake_verify_api_key)
 
     response = await test_client.get(

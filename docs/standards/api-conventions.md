@@ -349,7 +349,8 @@ pre-auth buckets of 60 requests per minute and 600 requests per hour, because a
 header is not authentication until Atlas verifies it. Valid API keys, OAuth
 JWTs, browser sessions, and trusted app-to-API requests do not spend anonymous
 buckets after verification. Invalid credentials fall through to the anonymous
-buckets.
+buckets. External callers must send exactly one authentication method; combining
+`Authorization` and `X-API-Key` is rejected as ambiguous.
 
 ## CORS
 
