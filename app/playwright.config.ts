@@ -143,7 +143,7 @@ export default defineConfig({
         CORS_ORIGINS: `["${appUrl}"]`,
         DATABASE_URL: `sqlite:///${apiDbPath}`,
         DISCOVERY_JOB_WORKER_ENABLED: "false",
-        ENVIRONMENT: "dev",
+        ENVIRONMENT: "staging",
         LOG_LEVEL: "info",
         PORT: apiPort,
         SEARCH_API_KEY: "",
