@@ -16,8 +16,6 @@ on:
         required: false
       STRIPE_API_KEY:
         required: false
-      STRIPE_WEBHOOK_SECRET:
-        required: false
       STRIPE_ATLAS_CATALOG:
         required: false
     outputs:
@@ -233,7 +231,6 @@ jobs:
       - name: Verify Stripe credentials and catalog before spending CI time
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
         run: pnpm run stripe:verify:ci
       - name: Install Stripe CLI

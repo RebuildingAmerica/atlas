@@ -146,6 +146,19 @@ void describe("Stripe catalog verifier", () => {
     );
   });
 
+  void it("allows an acceptance preflight to use its later ephemeral webhook secret", () => {
+    const env = completeEnv();
+    env.delete("STRIPE_WEBHOOK_SECRET");
+    const expandedEnv = expandStripeCatalogEnv(env);
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, matchingSnapshot(expandedEnv), {
+        requireWebhookSecret: false,
+      }),
+      [],
+    );
+  });
+
   void it("flags price drift", () => {
     const env = completeEnv();
     const expandedEnv = expandStripeCatalogEnv(env);

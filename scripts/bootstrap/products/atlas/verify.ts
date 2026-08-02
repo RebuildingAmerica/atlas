@@ -109,6 +109,7 @@ export interface StripeCatalogSnapshot {
 
 interface StripeCatalogVerificationOptions {
   expectedWebhookUrl?: string;
+  requireWebhookSecret?: boolean;
 }
 
 interface VerifyCliArgs {
@@ -144,6 +145,12 @@ export function verifyStripeCatalogSnapshot(
   let expandedEnv: Map<string, string>;
 
   for (const key of STRIPE_ENV_KEYS) {
+    if (
+      key === "STRIPE_WEBHOOK_SECRET" &&
+      options.requireWebhookSecret === false
+    ) {
+      continue;
+    }
     if (!env.get(key)?.trim()) {
       missingEnvKeys.add(key);
       issues.push(issue("missing_env", key, `${key} is missing.`));

@@ -6,22 +6,18 @@ async function source(path) {
   return readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 }
 
-test("production Stripe acceptance receives the complete runtime contract", async () => {
+test("production Stripe acceptance validates catalog before minting an ephemeral webhook secret", async () => {
   const ci = await source(".github/workflows/ci.yml");
   const production = await source(".github/workflows/deploy-production.yml");
   const verifier = await source("scripts/ci/verify-stripe-runtime-catalog.ts");
 
-  assert.match(ci, /STRIPE_WEBHOOK_SECRET:\s*\n\s*required: false/);
-  assert.match(
+  assert.doesNotMatch(
     ci,
     /STRIPE_WEBHOOK_SECRET: \$\{\{ secrets\.STRIPE_WEBHOOK_SECRET \}\}/,
   );
-  assert.match(
+  assert.doesNotMatch(
     production,
     /STRIPE_WEBHOOK_SECRET: \$\{\{ secrets\.STRIPE_WEBHOOK_SECRET \}\}/,
   );
-  assert.match(
-    verifier,
-    /"STRIPE_API_KEY",\s*"STRIPE_WEBHOOK_SECRET",\s*"STRIPE_ATLAS_CATALOG"/,
-  );
+  assert.match(verifier, /requireWebhookSecret: false/);
 });

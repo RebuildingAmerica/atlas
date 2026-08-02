@@ -21,11 +21,7 @@ const STRIPE_API_VERSION = "2026-06-24.dahlia";
 
 function envFromProcess(): Map<string, string> {
   const env = new Map<string, string>();
-  for (const key of [
-    "STRIPE_API_KEY",
-    "STRIPE_WEBHOOK_SECRET",
-    "STRIPE_ATLAS_CATALOG",
-  ]) {
+  for (const key of ["STRIPE_API_KEY", "STRIPE_ATLAS_CATALOG"]) {
     const value = process.env[key]?.trim();
     if (value) {
       env.set(key, value);
@@ -57,7 +53,12 @@ async function main(): Promise<void> {
   const expandedEnv = expandStripeCatalogEnv(env);
   const stripe = new Stripe(apiKey, { apiVersion: STRIPE_API_VERSION });
   const snapshot = await fetchStripeCatalogSnapshot(stripe, expandedEnv);
-  const issues = verifyStripeCatalogSnapshot(env, snapshot);
+  // The acceptance runner obtains an ephemeral webhook secret from `stripe
+  // listen` after this fast catalog preflight. It is not a hosted runtime
+  // secret and is intentionally absent here.
+  const issues = verifyStripeCatalogSnapshot(env, snapshot, {
+    requireWebhookSecret: false,
+  });
 
   if (issues.length === 0) {
     console.log("ok Stripe runtime catalog matches STRIPE_ATLAS_CATALOG");
