@@ -43,6 +43,18 @@ test("staging API deploy enables the ATProto OAuth harness for hosted identity p
   );
 });
 
+test("API deploy summary receives the deployment environment", async () => {
+  const action = await workflowSource(
+    ".github/actions/deploy-atlas-api/action.yml",
+  );
+  const summaryStep = action.slice(action.indexOf("- name: Write deploy summary"));
+
+  assert.match(
+    summaryStep,
+    /ATLAS_DEPLOY_MODE: \$\{\{ inputs\.environment-name \}\}/,
+  );
+});
+
 test("staging hosted identity proof runs against a branch app without Vercel deploy credentials", async () => {
   const source = await workflowSource(".github/workflows/deploy-staging.yml");
   const hostedIdentityJob = source.slice(source.indexOf("hosted-identity:"));

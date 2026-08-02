@@ -230,6 +230,7 @@ runs:
       if: always()
       shell: bash
       env:
+        ATLAS_DEPLOY_MODE: ${{ inputs.environment-name }}
         API_URL: ${{ steps.api-url.outputs.url }}
         API_REVISION: ${{ steps.api-url.outputs.revision }}
         IMAGE: ${{ inputs.image-registry }}/atlas-api:${{ inputs.image-tag }}
