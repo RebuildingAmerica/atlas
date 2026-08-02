@@ -118,6 +118,22 @@ describe("ATProto identity hooks", () => {
     });
   });
 
+  it("does not block managed identity completion on the collection refresh", async () => {
+    mocks.invalidateQueries.mockReturnValue(new Promise(() => undefined));
+    const { useProvisionManagedAtprotoIdentity } =
+      await import("@/domains/access/atproto-identities");
+
+    useProvisionManagedAtprotoIdentity();
+    const provision = mocks.useMutation.mock.calls[0]?.[0] as {
+      onSettled: () => unknown;
+    };
+
+    expect(provision.onSettled()).toBeUndefined();
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["auth", "atproto-identities"],
+    });
+  });
+
   it("refuses to provision a managed identity outside the server", async () => {
     vi.stubEnv("SSR", false);
     vi.resetModules();

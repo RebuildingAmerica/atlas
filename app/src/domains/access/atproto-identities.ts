@@ -86,8 +86,8 @@ export function useProvisionManagedAtprotoIdentity(): UseMutationResult<
   return useMutation({
     mutationFn: async (handle) =>
       await provisionManagedAtprotoIdentityForCurrentUser({ data: { handle } }),
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: atprotoIdentitiesQueryKey });
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: atprotoIdentitiesQueryKey });
     },
   });
 }
