@@ -14,6 +14,10 @@ inputs:
     description: Optional pnpm workspace filter used when installing dependencies.
     required: false
     default: ""
+  cache-scope:
+    description: Optional Turbo cache namespace. Defaults to the current GitHub job.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -39,11 +43,10 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .turbo/cache
-        key: turbo-${{ runner.os }}-${{ github.job }}-${{ github.ref_name }}-${{ github.sha }}-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', '**/turbo.json') }}
+        key: turbo-${{ runner.os }}-${{ inputs.cache-scope || github.job }}-${{ github.ref_name }}-${{ github.sha }}-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', '**/turbo.json') }}
         restore-keys: |
-          turbo-${{ runner.os }}-${{ github.job }}-${{ github.ref_name }}-
-          turbo-${{ runner.os }}-${{ github.job }}-
-          turbo-${{ runner.os }}-
+          turbo-${{ runner.os }}-${{ inputs.cache-scope || github.job }}-${{ github.ref_name }}-
+          turbo-${{ runner.os }}-${{ inputs.cache-scope || github.job }}-
 
     - if: inputs.python == 'true'
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0

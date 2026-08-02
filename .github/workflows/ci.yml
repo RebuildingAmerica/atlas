@@ -133,20 +133,6 @@ jobs:
     if: needs.changes.outputs.python_tests == 'true' || needs.changes.outputs.app_tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: postgres # pragma: allowlist secret - disposable CI service password
-          POSTGRES_USER: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d postgres"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
       ATLAS_TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres # pragma: allowlist secret - disposable CI service URL
       ATLAS_SCOUT_E2E_FILE_CREDENTIAL_STORE: "1"
@@ -156,6 +142,31 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-toolchain
+        with:
+          python: ${{ needs.changes.outputs.python_tests }}
+          cache-scope: ${{ needs.changes.outputs.python_tests == 'true' && needs.changes.outputs.app_tests == 'true' && 'test-full' || needs.changes.outputs.python_tests == 'true' && 'test-python' || 'test-app' }}
+      - name: Start PostgreSQL for Python tests
+        if: needs.changes.outputs.python_tests == 'true'
+        env:
+          POSTGRES_PASSWORD: postgres # pragma: allowlist secret - disposable CI service password
+        run: |
+          docker run --detach \
+            --name atlas-test-postgres \
+            --publish 5432:5432 \
+            --env POSTGRES_DB=postgres \
+            --env POSTGRES_PASSWORD \
+            --env POSTGRES_USER=postgres \
+            postgres:16
+
+          for _ in {1..30}; do
+            if docker exec atlas-test-postgres pg_isready -U postgres -d postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs atlas-test-postgres
+          exit 1
       - name: Run test suites
         run: |
           affected_args=()

@@ -173,6 +173,15 @@
       "dependsOn": [
         "@rebuildingamerica/atlas-api-client#api-client"
       ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!coverage/**",
+        "!playwright.config.ts",
+        "!playwright.hosted*.config.ts",
+        "!scripts/e2e/**",
+        "!tests/acceptance/**/*.spec.ts",
+        "!tests/e2e/**/*.spec.ts"
+      ],
       "env": [
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
         "ATLAS_AUTH_INTERNAL_SECRET",
@@ -186,9 +195,7 @@
         "ENVIRONMENT",
         "LOG_LEVEL"
       ],
-      "outputs": [
-        "coverage/**"
-      ]
+      "outputs": []
     },
     "test:e2e": {
       "env": [
