@@ -21,6 +21,8 @@ describe("turbo config", () => {
     expect(envForTask(config, "test:acceptance:browser")).not.toContain("STRIPE_ATLAS_CATALOG");
     expect(envForTask(config, "test:acceptance:stripe")).toContain("STRIPE_API_KEY");
     expect(envForTask(config, "test:acceptance:stripe")).toContain("STRIPE_ATLAS_CATALOG");
+    expect(envForTask(config, "start:e2e")).toContain("STRIPE_API_KEY");
+    expect(envForTask(config, "start:e2e")).toContain("STRIPE_ATLAS_CATALOG");
   });
 
   it("forwards the ATProto OAuth harness flag to the API acceptance server", () => {

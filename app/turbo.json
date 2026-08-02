@@ -82,7 +82,9 @@
         "NODE_ENV",
         "ATLAS_PUBLIC_URL",
         "ATLAS_SERVER_API_PROXY_TARGET",
-        "PORT"
+        "PORT",
+        "STRIPE_API_KEY",
+        "STRIPE_ATLAS_CATALOG"
       ],
       "persistent": true
     },
