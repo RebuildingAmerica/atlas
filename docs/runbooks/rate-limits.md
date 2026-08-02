@@ -33,8 +33,9 @@ use one credential to subsidize verification of the other.
    and signed origin identity headers in the `http_request_late_transform`
    phase.
 2. **App proxy** protects public `/api/*`, `/openapi.json`, and `/mcp` traffic
-   that reaches the app server before it forwards to the API. Credential headers
-   alone do not bypass this layer; only a real browser session can.
+   that reaches the app server before it forwards to the API. External
+   credential headers bypass the proxy's anonymous bucket because the proxy
+   cannot validate them; the API still verifies and limits those requests.
 3. **API middleware** protects direct API-origin traffic and keeps the same
    anonymous and credential-present buckets available when Cloudflare or the app
    proxy is bypassed.
