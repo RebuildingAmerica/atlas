@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
+from atlas.platform.dates import date_string
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -124,9 +126,9 @@ def _place_label(row: dict[str, Any]) -> str | None:
 
 
 def _date_prefix(value: object) -> str | None:
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, date | datetime | str) or not value:
         return None
-    return value[:10]
+    return date_string(value)
 
 
 def _latest_source_date(sources: Sequence[dict[str, Any]]) -> str | None:

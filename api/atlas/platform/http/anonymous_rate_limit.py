@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import time
@@ -42,6 +43,7 @@ from atlas.platform.http.anonymous_rate_limit_support import (
 )
 
 _MAX_TRACKED_RATE_LIMIT_BUCKETS = _SUPPORT_MAX_TRACKED_RATE_LIMIT_BUCKETS
+_CREDENTIAL_VERIFICATION_LOCK_STRIPES = 256
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -68,6 +70,9 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         self._limiter = _SlidingWindowLimiter()
         self._api_key_cache: dict[str, _ApiKeyCacheEntry] = {}
         self._bearer_cache: dict[str, _InvalidBearerCacheEntry] = {}
+        self._credential_verification_locks = tuple(
+            asyncio.Lock() for _ in range(_CREDENTIAL_VERIFICATION_LOCK_STRIPES)
+        )
 
     async def dispatch(self, request: Request, call_next: Dispatch) -> Response:
         """Apply anonymous rate limits or pass the request through."""
@@ -79,14 +84,20 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
 
         client_key = self._client_key(request)
         has_credential_headers = self._has_credential_headers(request)
-        if await self._is_authenticated_request(request):
-            return await call_next(request)
-
         if has_credential_headers:
-            result = await self._limiter.reserve(client_key, self._credential_bucket_specs())
-            if not result.allowed:
-                return self._rate_limited_response(request, client_key, result)
-            self._log_invalid_credential_attempt(request, client_key)
+            credential_specs = self._credential_bucket_specs()
+            authenticated = False
+            async with self._credential_verification_lock(client_key):
+                result = await self._limiter.reserve(client_key, credential_specs)
+                if not result.allowed:
+                    return self._rate_limited_response(request, client_key, result)
+                if await self._is_authenticated_request(request):
+                    await self._limiter.refund(client_key, credential_specs)
+                    authenticated = True
+                else:
+                    self._log_invalid_credential_attempt(request, client_key)
+            if authenticated:
+                return await call_next(request)
 
         buckets = self._bucket_specs(request)
         result = await self._limiter.reserve(client_key, buckets)
@@ -170,6 +181,13 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
 
     def _has_credential_headers(self, request: Request) -> bool:
         return bool(request.headers.get("authorization") or request.headers.get("x-api-key"))
+
+    def _credential_verification_lock(self, client_key: str) -> asyncio.Lock:
+        digest = hashlib.sha256(client_key.encode("utf-8")).digest()
+        index = int.from_bytes(digest[:2], byteorder="big") % len(
+            self._credential_verification_locks
+        )
+        return self._credential_verification_locks[index]
 
     def _has_valid_bearer(self, request: Request) -> bool:
         authorization = request.headers.get("authorization")

@@ -124,6 +124,22 @@ class _SlidingWindowLimiter:
                 retry_after=max(retry_values),
             )
 
+    async def refund(
+        self,
+        client_key: str,
+        bucket_specs: tuple[_BucketSpec, ...],
+    ) -> None:
+        """Return the most recent reservation for a successfully verified client."""
+        async with self._lock:
+            for spec in bucket_specs:
+                key = (client_key, spec.name)
+                timestamps = self._events.get(key)
+                if not timestamps:
+                    continue
+                timestamps.pop()
+                if not timestamps:
+                    del self._events[key]
+
     @staticmethod
     def _prune(timestamps: deque[float], now: float, window_seconds: int) -> None:
         cutoff = now - window_seconds

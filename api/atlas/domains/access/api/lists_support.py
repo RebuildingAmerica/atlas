@@ -20,6 +20,7 @@ from atlas.domains.catalog.schemas.public import (
 )
 from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.dates import date_string
 from atlas.platform.mcp.data import EntityRecordContext, _entity_record
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ async def _hydrate_entry_with_sources(
             latest_source_date=(
                 next(
                     (
-                        source["published_date"] or source["ingested_at"][:10]
+                        date_string(source.get("published_date") or source.get("ingested_at"))
                         for source in sources
                         if source.get("published_date") or source.get("ingested_at")
                     ),

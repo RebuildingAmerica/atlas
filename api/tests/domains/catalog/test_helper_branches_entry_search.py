@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -63,6 +64,13 @@ def test_latest_source_date_prefers_public_visible_dates() -> None:
     ]
     assert entry_search._latest_source_date(sources) == "2026-01-03"
     assert entry_search._latest_source_date([]) is None
+
+
+def test_latest_source_date_accepts_postgres_source_timestamps() -> None:
+    """Public map freshness should retain PostgreSQL-native source timestamps."""
+    sources = [{"ingested_at": datetime(2026, 8, 1, 18, 30, tzinfo=UTC)}]
+
+    assert entry_search._latest_source_date(sources) == "2026-08-01"
 
 
 @pytest.mark.parametrize("value", [None, "", 123])

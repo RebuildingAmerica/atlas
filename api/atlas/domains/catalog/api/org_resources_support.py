@@ -14,6 +14,7 @@ from atlas.domains.catalog.services.directory_domains import (
 )
 from atlas.models import EntryCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.dates import date_string
 from atlas.platform.mcp.data import (
     EntityRecordContext,
     _entity_record,
@@ -272,7 +273,7 @@ async def _entry_to_source_linked_detail_response(
     source_types = sorted({str(source["type"]) for source in sources})
     latest_source_date = next(
         (
-            str(source["published_date"] or source["ingested_at"][:10])
+            date_string(source.get("published_date") or source.get("ingested_at"))
             for source in sources
             if source.get("published_date") or source.get("ingested_at")
         ),

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
-from atlas.models import SourceCRUD
+from atlas.models import EntryCRUD, SourceCRUD
 from tests.domains.catalog.org_resources_support import (
     ENTRY_PAYLOAD,
     ORG_ID,
@@ -93,6 +95,51 @@ class TestOrgEntriesPublicDirectory:
         assert entry["id"] == entry_id
         assert entry["sources"][0]["id"] == source_id
         assert entry["claim_evidence"]["summary"]["source_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_public_directory_accepts_postgres_source_timestamps(
+        self,
+        directory_capable_client: object,
+        test_db: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Published directories should render PostgreSQL-native source timestamps."""
+        create_resp = await directory_capable_client.post(
+            f"/api/orgs/{ORG_ID}/entries", json=ENTRY_PAYLOAD
+        )
+        entry_id = create_resp.json()["id"]
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.test/postgres-directory-source",
+            source_type="community_archive",
+            extraction_method="manual",
+            title="PostgreSQL directory source",
+        )
+        await SourceCRUD.link_to_entry(test_db, entry_id, source_id, "Source-backed profile.")
+        publish_resp = await directory_capable_client.put(
+            f"/api/orgs/{ORG_ID}/entries/{entry_id}/publish"
+        )
+        assert publish_resp.status_code == STATUS_OK
+
+        original_get_with_sources = EntryCRUD.get_with_sources
+
+        async def get_with_postgres_timestamp(
+            connection: object, requested_entry_id: str
+        ) -> tuple[object, list[dict[str, object]]]:
+            entry, sources = await original_get_with_sources(connection, requested_entry_id)
+            sources[0]["ingested_at"] = datetime(2026, 8, 1, 18, 30, tzinfo=UTC)
+            return entry, sources
+
+        monkeypatch.setattr(EntryCRUD, "get_with_sources", get_with_postgres_timestamp)
+
+        directory_resp = await directory_capable_client.get(
+            f"/api/orgs/{ORG_ID}/entries/public-directory"
+        )
+
+        assert directory_resp.status_code == STATUS_OK
+        assert (
+            directory_resp.json()["entries"][0]["freshness"]["latest_source_date"] == "2026-08-01"
+        )
 
     @pytest.mark.asyncio
     async def test_public_directory_index_lists_source_backed_published_directories(

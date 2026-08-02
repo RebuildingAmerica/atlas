@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from csv import DictReader
+from datetime import UTC, datetime
 from io import StringIO
 
 import pytest
@@ -120,6 +121,49 @@ class TestSavedListsAPI:
                 "type": "news_article",
             }
         ]
+
+    @pytest.mark.asyncio
+    async def test_export_list_accepts_postgres_source_timestamps(
+        self,
+        test_client: object,
+        test_db: object,
+        claimable_org: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Saved-list exports should render PostgreSQL-native source timestamps."""
+        source_id = await SourceCRUD.create(
+            test_db,
+            url="https://example.com/postgres-list-source",
+            source_type="news_article",
+            extraction_method="manual",
+            title="PostgreSQL list source",
+        )
+        await SourceCRUD.link_to_entry(test_db, claimable_org, source_id)
+        create_resp = await test_client.post("/api/lists", json={"name": "Timestamp leads"})
+        list_id = create_resp.json()["id"]
+        await test_client.post(
+            f"/api/lists/{list_id}/items",
+            json={"entry_id": claimable_org},
+        )
+
+        original_get_with_sources = EntryCRUD.get_with_sources
+
+        async def get_with_postgres_timestamp(
+            connection: object, requested_entry_id: str
+        ) -> tuple[object, list[dict[str, object]]]:
+            entry, sources = await original_get_with_sources(connection, requested_entry_id)
+            sources[0]["ingested_at"] = datetime(2026, 8, 1, 18, 30, tzinfo=UTC)
+            return entry, sources
+
+        monkeypatch.setattr(EntryCRUD, "get_with_sources", get_with_postgres_timestamp)
+
+        export_resp = await test_client.get(f"/api/lists/{list_id}/export")
+
+        assert export_resp.status_code == 200
+        assert (
+            export_resp.json()["items"][0]["entry"]["freshness"]["latest_source_date"]
+            == "2026-08-01"
+        )
 
     @pytest.mark.asyncio
     async def test_export_list_as_csv_preserves_research_rows(

@@ -10,10 +10,11 @@ never consume anonymous rate-limit buckets while invalid credentials remain
 throttled.
 
 **Architecture:** The app proxy forwards credential-bearing traffic to the API
-because only the API can validate Atlas credentials. The API verifies
-credentials first, immediately admits valid actors, caches failed bearer
-verification by a bounded one-way fingerprint, and applies credential plus
-anonymous buckets only after validation fails.
+because only the API can validate Atlas credentials. The API admits trusted
+internal actors immediately, then uses bounded per-client verification admission
+for other credentials. Credential capacity is reserved before unknown
+verification work and refunded on success; failed credentials retain that
+capacity and continue into anonymous admission control.
 
 **Tech Stack:** TypeScript, TanStack Start server proxy, Python 3.12,
 FastAPI/Starlette middleware, Vitest, pytest.
@@ -25,6 +26,10 @@ FastAPI/Starlette middleware, Vitest, pytest.
   validation.
 - Never retain or log raw API keys, bearer tokens, or client addresses.
 - Keep the API as the authoritative credential trust boundary.
+- Bound rotating invalid credentials before JWT/JWKS work or remote
+  introspection.
+- Serialize concurrent verification per client without retaining raw client
+  addresses.
 - Use behavioral tests, pnpm, async Python I/O, and the repository's existing
   formatting and typing rules.
 
@@ -98,11 +103,13 @@ cannot outlive token expiry.
 
 - [ ] **Step 2: Reorder API admission**
 
-For limited requests, preserve the trusted-internal fast path, then call
-`_is_authenticated_request()`. Return `call_next(request)` immediately when
-validation succeeds. Only after validation fails should credential-bearing
-requests reserve credential buckets and emit the invalid-credential event;
-failed requests then continue through anonymous read/write and hourly buckets.
+For limited requests, preserve the trusted-internal fast path. Other
+credential-bearing requests must reserve credential verification capacity inside
+the bounded per-client verification gate before calling
+`_is_authenticated_request()`. Refund that reservation immediately when
+validation succeeds. Failed credentials retain the reservation, emit the
+invalid-credential event, and continue through anonymous read/write and hourly
+buckets.
 
 - [ ] **Step 3: Defer proxy credential validation to the API**
 
@@ -163,3 +170,40 @@ longer stalls behind anonymous limits while invalid traffic remains protected.
 Issue more authenticated moderation writes than the previous threshold and
 confirm none return `429`. Independently exercise anonymous traffic above its
 configured threshold and confirm it still returns `429` with `Retry-After`.
+
+### Task 4: Close pre-merge review findings
+
+**Files:**
+
+- Modify: `api/atlas/platform/http/anonymous_rate_limit.py`
+- Modify: `api/atlas/platform/http/anonymous_rate_limit_support.py`
+- Modify: `api/atlas/domains/catalog/api/org_resources_support.py`
+- Modify: `api/atlas/domains/catalog/models/entry_search_helpers.py`
+- Modify: `api/atlas/domains/access/api/lists_support.py`
+- Test the corresponding middleware, public-directory, public-map, and
+  saved-list surfaces.
+
+- [ ] **Step 1: Prove rotating invalid credentials are bounded**
+
+Use distinct API keys and bearer values from one client after a one-request
+credential limit. Assert only the first value reaches verification. Exercise
+concurrent requests for one valid API key and assert they both succeed with one
+remote introspection.
+
+- [ ] **Step 2: Add temporary reservation refund behavior**
+
+Serialize credential checks through a fixed-size client-keyed lock stripe,
+reserve credential capacity before verification, and refund it immediately on
+success. Keep the reservation on every failed or errored verification.
+
+- [ ] **Step 3: Normalize every source-linked database date boundary**
+
+Use `date_string()` for entity details, public directories, public map records,
+and saved-list exports. Exercise each affected public endpoint or output helper
+with PostgreSQL-native `datetime` values.
+
+- [ ] **Step 4: Run the complete gates and obtain a clean independent review**
+
+Run focused affected suites, Ruff, MyPy, the full API suite, the app proxy
+suite, frontend type checking, and then request a new review of the complete
+branch before integration.

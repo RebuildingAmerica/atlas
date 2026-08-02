@@ -108,6 +108,35 @@ async def test_sliding_window_limiter_expires_old_events() -> None:
     assert second.allowed is True
 
 
+@pytest.mark.asyncio
+async def test_sliding_window_limiter_refund_restores_capacity() -> None:
+    """Successful credential verification should return its temporary reservation."""
+    limiter = _SlidingWindowLimiter()
+    bucket = (_BucketSpec(name="credential-minute", limit=1, window_seconds=60),)
+
+    first = await limiter.reserve("client", bucket)
+    await limiter.refund("client", bucket)
+    second = await limiter.reserve("client", bucket)
+
+    assert first.allowed is True
+    assert second.allowed is True
+
+
+@pytest.mark.asyncio
+async def test_sliding_window_limiter_refund_preserves_earlier_failures() -> None:
+    """Refunding a valid check should retain earlier invalid-attempt capacity."""
+    limiter = _SlidingWindowLimiter()
+    bucket = (_BucketSpec(name="credential-minute", limit=2, window_seconds=60),)
+
+    await limiter.reserve("client", bucket)
+    await limiter.reserve("client", bucket)
+    await limiter.refund("client", bucket)
+    await limiter.refund("missing-client", bucket)
+    final = await limiter.reserve("client", bucket)
+
+    assert final.allowed is True
+
+
 def test_sliding_window_limiter_uses_window_size_for_empty_retry_after() -> None:
     """An empty bucket should fall back to its configured window size."""
     retry_after = _SlidingWindowLimiter._retry_after(  # noqa: SLF001
@@ -232,6 +261,31 @@ async def test_has_valid_api_key_removes_expired_cache_entries(
     assert cached.expires_at > current_time
 
 
+@pytest.mark.asyncio
+async def test_has_valid_api_key_reuses_active_negative_cache(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Known invalid API keys should fail without another introspection request."""
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=_settings(db_url))
+    cache_key = hashlib.sha256(b"invalid").hexdigest()
+    middleware._api_key_cache = {  # noqa: SLF001
+        cache_key: _ApiKeyCacheEntry(principal=None, expires_at=10.0),
+    }
+    request = SimpleNamespace(headers={"x-api-key": "invalid"}, state=SimpleNamespace())
+
+    async def unexpected_introspection(_api_key: str, _settings: object) -> None:
+        raise AssertionError
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_api_key",
+        unexpected_introspection,
+    )
+
+    with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=2.0):
+        assert await middleware._has_valid_api_key(request) is False  # noqa: SLF001
+
+
 def test_has_valid_bearer_removes_expired_cache_entries(
     db_url: str,
     monkeypatch: pytest.MonkeyPatch,
@@ -258,6 +312,31 @@ def test_has_valid_bearer_removes_expired_cache_entries(
         assert middleware._has_valid_bearer(request) is True  # noqa: SLF001
 
     assert cache_key not in middleware._bearer_cache  # noqa: SLF001
+
+
+def test_has_valid_bearer_reuses_active_negative_cache(
+    db_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Known invalid bearer values should fail without another JWT verification."""
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=_settings(db_url))
+    authorization = "Bearer invalid"
+    cache_key = hashlib.sha256(authorization.encode()).hexdigest()
+    middleware._bearer_cache = {  # noqa: SLF001
+        cache_key: _InvalidBearerCacheEntry(expires_at=10.0),
+    }
+    request = SimpleNamespace(headers={"authorization": authorization})
+
+    def unexpected_verification(_authorization: str | None, **_kwargs: object) -> None:
+        raise AssertionError
+
+    monkeypatch.setattr(
+        "atlas.platform.http.anonymous_rate_limit.verify_bearer_jwt",
+        unexpected_verification,
+    )
+
+    with patch("atlas.platform.http.anonymous_rate_limit.time.monotonic", return_value=2.0):
+        assert middleware._has_valid_bearer(request) is False  # noqa: SLF001
 
 
 @pytest.mark.asyncio

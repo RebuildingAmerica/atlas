@@ -255,14 +255,14 @@ class Settings(BaseSettings):
         ge=0,
         validation_alias="ATLAS_ANON_CREDENTIAL_RATE_LIMIT_PER_MINUTE",
     )
-    """Credential-bearing requests allowed before auth verification per client per minute."""
+    """Credential checks per client per minute; successful verifications are refunded."""
 
     anonymous_credential_rate_limit_total_per_hour: int = Field(
         default=600,
         ge=0,
         validation_alias="ATLAS_ANON_CREDENTIAL_RATE_LIMIT_TOTAL_PER_HOUR",
     )
-    """Credential-bearing requests allowed before auth verification per client per hour."""
+    """Credential checks per client per hour; successful verifications are refunded."""
 
     trusted_proxy_hops: int = Field(
         default=1,
