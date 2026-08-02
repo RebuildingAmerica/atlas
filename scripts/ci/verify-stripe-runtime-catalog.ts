@@ -21,7 +21,11 @@ const STRIPE_API_VERSION = "2026-06-24.dahlia";
 
 function envFromProcess(): Map<string, string> {
   const env = new Map<string, string>();
-  for (const key of ["STRIPE_API_KEY", "STRIPE_ATLAS_CATALOG"]) {
+  for (const key of [
+    "STRIPE_API_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_ATLAS_CATALOG",
+  ]) {
     const value = process.env[key]?.trim();
     if (value) {
       env.set(key, value);
