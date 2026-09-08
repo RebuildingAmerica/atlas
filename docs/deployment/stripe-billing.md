@@ -74,6 +74,34 @@ Production reads the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable and
 falls back to `false` when it is unset. Set that variable to `true` only after
 `https://atlas.rebuildingus.org/browse` returns results.
 
+## Staging to production cutover
+
+Stripe secrets live at the repository level today, and neither the `staging` nor
+the `production` GitHub environment defines its own. The repository value is
+test mode — `scripts/ci/verify-stripe-runtime-catalog.ts` asserts it with
+`validateStripeApiKeyMode(apiKey, "test")` and that check gates the Stripe
+acceptance job. A production deploy reads the same secret, so without further
+configuration it writes a test-mode key into Vercel production and overwrites
+whatever `pnpm setup:prod` put there.
+
+The production deploy now refuses that. It fails when `STRIPE_API_KEY` is not
+`sk_live_` or `rk_live_`, and the staging deploy fails when its key is not test
+mode, so neither environment can quietly run against the wrong ledger.
+
+The cutover is therefore three settings, and nothing else:
+
+1. Add `STRIPE_API_KEY` (live restricted key) and `STRIPE_ATLAS_CATALOG` (live
+   catalog) as secrets on the `production` GitHub environment. Environment
+   secrets take precedence over repository secrets for jobs that target that
+   environment, so this leaves CI and staging on test mode untouched.
+2. Confirm `STRIPE_WEBHOOK_SECRET` is present in Vercel production. The deploy
+   already fails without it.
+3. Set the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable to `true`.
+
+Do the third only after `https://atlas.rebuildingus.org/browse` returns results.
+The catalog probe enforces that at runtime regardless, but the variable is the
+deliberate decision.
+
 ## Sales tax
 
 Checkout sessions enable Stripe Tax, require a billing address, and offer tax ID

@@ -204,6 +204,26 @@ jobs:
           add_vercel_env ATLAS_BILLING_CHECKOUT_ENABLED "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}"
           add_vercel_env ATLAS_BILLING_AUTOMATIC_TAX "${ATLAS_BILLING_AUTOMATIC_TAX:-true}"
 
+          # STRIPE_API_KEY resolves from the production GitHub environment when
+          # that environment defines it, and falls back to the repository
+          # secret otherwise. The repository secret is test mode: the CI
+          # acceptance verifier asserts it with
+          # validateStripeApiKeyMode(apiKey, "test"). Without this guard a
+          # production deploy silently writes a test-mode key into Vercel
+          # production and overwrites whatever `pnpm setup:prod` put there,
+          # so Atlas would look configured and take no money.
+          case "$STRIPE_API_KEY" in
+            sk_live_*|rk_live_*) ;;
+            "")
+              echo "::error title=Missing STRIPE_API_KEY::Production deploy has no Stripe key."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Stripe key is not live mode::Production would be deployed with a test-mode Stripe key. Define STRIPE_API_KEY and STRIPE_ATLAS_CATALOG as secrets on the production GitHub environment, where they take precedence over the repository-level test values."
+              exit 1
+              ;;
+          esac
+
           # STRIPE_WEBHOOK_SECRET is deliberately not synced here. The Stripe
           # acceptance run mints an ephemeral secret from `stripe listen`, and
           # a static one in this workflow would make that run prove nothing.

@@ -396,15 +396,16 @@ async function selectStripeCard(page: Page): Promise<void> {
  * @param page - The Stripe Checkout page.
  */
 async function fillStripeBillingAddress(page: Page): Promise<void> {
-  await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Ave");
+  await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Blvd");
   await fillTextIfVisible(page, 'input[name="billingLocality"]', "Kansas City");
 
-  const stateSelect = page.locator('select[name="billingAdministrativeArea"]').first();
-  if ((await stateSelect.count()) > 0 && (await stateSelect.isVisible())) {
-    await stateSelect.selectOption("MO");
-    return;
-  }
-  await fillTextIfVisible(page, 'input[name="billingAdministrativeArea"]', "MO");
+  // Stripe renders State as a real <select> labelled "State", not an input,
+  // and its name attribute is not stable enough to target directly. Going
+  // through the accessible role is what actually selects it; a CSS miss here
+  // leaves the field empty and the submit silently never completes.
+  const stateSelect = page.getByRole("combobox", { name: "State" }).first();
+  await expect(stateSelect).toBeVisible({ timeout: 15_000 });
+  await stateSelect.selectOption("MO");
 }
 
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
@@ -462,7 +463,7 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
         'input[autocomplete="postal-code"]',
         'input[placeholder*="ZIP"]',
       ],
-      "12345",
+      "64106",
       "postal code",
     );
     await fillStripeBillingAddress(page);

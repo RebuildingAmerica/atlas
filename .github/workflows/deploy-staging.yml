@@ -213,6 +213,14 @@ jobs:
           export ATLAS_SERVER_API_PROXY_TARGET="$atlas_api_origin"
           # Staging exists to exercise the paid funnel before production does.
           export ATLAS_BILLING_CHECKOUT_ENABLED=true
+          # And it must never do so against live money.
+          case "${STRIPE_API_KEY:-}" in
+            sk_test_*|rk_test_*|"") ;;
+            *)
+              echo "::error title=Stripe key is not test mode::Staging would exercise checkout against live Stripe."
+              exit 1
+              ;;
+          esac
           export DATABASE_BACKEND=postgres
           export NODE_ENV=development
           export PORT=3100
