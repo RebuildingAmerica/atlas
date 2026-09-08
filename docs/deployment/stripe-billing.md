@@ -299,6 +299,34 @@ The expected state is:
   tech coupons.
 - Research Pass checkout stays a one-time payment and never grants SSO or SCIM.
 
+## What the acceptance suite proves, and what it stopped proving
+
+Stripe gates agent-driven checkout. Its hosted page renders two attestations,
+the second revealed by ticking the first, plus instructions telling the agent to
+complete the purchase through Link CLI so the buyer's real payment credentials
+are never exposed to it. With both ticked and every field valid, Stripe never
+issues `/v1/payment_pages/{id}/confirm`. Typing a test card into that page is no
+longer a supported way to finish a purchase, and evading the detection is not
+something this suite should do.
+
+`app/tests/acceptance/domains/billing/oobe.spec.ts` therefore stops at the
+boundary and checks the session against Stripe's own API: status, mode,
+`metadata.workspace_id`, `metadata.purchase_intent_id`, `automatic_tax`, and
+`tax_id_collection` for each of the three paid plans. Unit tests assert those
+parameters against a mocked SDK; this asserts them against Stripe.
+
+Three things are no longer covered by any automated test:
+
+- Submitting a card on Stripe's hosted page.
+- The redirect back to `/onboarding/complete`.
+- A genuine payment producing a webhook that grants entitlement.
+
+The webhook handler and the entitlement queries are covered by unit tests, so
+the gap is the seam between them and a real Stripe payment. Close it before
+relying on the suite as a release gate for billing: either rebuild the payment
+leg against Stripe's API rather than its hosted page, or ask Stripe to permit
+automated testing on the test-mode account.
+
 ## Discount review access
 
 Discount requests are submitted from

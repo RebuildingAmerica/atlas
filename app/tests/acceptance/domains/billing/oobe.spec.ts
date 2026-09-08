@@ -299,203 +299,60 @@ async function attachWorkspace(page: Page, plan: PaidPlan): Promise<void> {
   });
 }
 
-async function fillTextIfVisible(page: Page, selector: string, value: string): Promise<void> {
-  const locator = page.locator(selector).first();
-  if ((await locator.count()) === 0 || !(await locator.isVisible())) {
-    return;
-  }
-  await fillAction(locator, value);
-}
-
-async function fillStripeInput(
-  page: Page,
-  selectors: readonly string[],
-  value: string,
-  fieldName: string,
-): Promise<void> {
-  const deadline = Date.now() + 20_000;
-  while (Date.now() < deadline) {
-    for (const selector of selectors) {
-      const pageInput = page.locator(selector).first();
-      if ((await pageInput.count()) > 0 && (await pageInput.isVisible())) {
-        await fillAction(pageInput, value);
-        return;
-      }
-
-      for (const frame of page.frames()) {
-        const frameInput = frame.locator(selector).first();
-        if ((await frameInput.count()) > 0 && (await frameInput.isVisible())) {
-          await fillAction(frameInput, value);
-          return;
-        }
-      }
-    }
-    await page.waitForTimeout(250);
-  }
-
-  throw new Error(`Stripe checkout did not expose the ${fieldName} field.`);
-}
-
-async function clickIfVisible(
-  locator: Locator,
-  options: { force?: boolean } = {},
-  timeoutMs = 5_000,
-): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const count = await locator.count();
-    for (let index = 0; index < count; index += 1) {
-      const candidate = locator.nth(index);
-      if (await candidate.isVisible()) {
-        await clickAction(candidate, options);
-        return true;
-      }
-    }
-    await locator.page().waitForTimeout(200);
-  }
-  return false;
-}
-
-async function selectStripeCard(page: Page): Promise<void> {
-  const cardRadio = page.getByRole("radio", { name: "Card" }).first();
-  await expect(cardRadio).toBeAttached({ timeout: 30_000 });
-  await cardRadio.scrollIntoViewIfNeeded();
-  await pauseBeforeAction(page);
-  await cardRadio.check({ force: true });
-  await expect(cardRadio).toBeChecked({ timeout: 10_000 });
-  await pauseAfterAction(page);
-
-  await clickIfVisible(
-    page.getByRole("button", { name: /Pay with card/i }),
-    { force: true },
-    10_000,
-  );
-
-  await fillStripeInput(
-    page,
-    [
-      'input[name="cardNumber"]',
-      'input[name="number"]',
-      'input[autocomplete="cc-number"]',
-      'input[placeholder*="1234"]',
-    ],
-    "4242424242424242",
-    "card number",
-  );
+interface StripeCheckoutSession {
+  automatic_tax?: { enabled?: boolean };
+  metadata?: Record<string, string>;
+  mode?: string;
+  status?: string;
+  tax_id_collection?: { enabled?: boolean };
 }
 
 /**
- * Leaves Stripe's "Save my information" box unchecked.
+ * Retrieves a Checkout Session straight from Stripe.
  *
- * Checked, it turns Subscribe into a Link enrollment that asks for phone
- * verification and never returns to Atlas. Stripe re-renders this section
- * when the billing address changes and can restore the default, so this runs
- * again immediately before submit rather than only once.
- *
- * @param page - The Stripe Checkout page.
+ * @param sessionId - The cs_test_... id taken from the Checkout URL.
+ * @returns The session as Stripe reports it.
  */
-async function declineLinkEnrollment(page: Page): Promise<void> {
-  const saveInfo = page.getByRole("checkbox", { name: /Save my information/i });
-  if ((await saveInfo.count()) === 0) {
-    return;
+async function fetchStripeSession(sessionId: string): Promise<StripeCheckoutSession> {
+  const key = process.env.STRIPE_API_KEY;
+  if (!key) {
+    throw new Error("STRIPE_API_KEY is required to verify the Checkout session.");
   }
-  const checkbox = saveInfo.first();
-  if (!(await checkbox.isChecked())) {
-    return;
+  const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
+    headers: { authorization: `Bearer ${key}` },
+  });
+  if (!response.ok) {
+    throw new Error(`Stripe returned ${String(response.status)} for session ${sessionId}.`);
   }
-  await checkbox.scrollIntoViewIfNeeded();
-  await pauseBeforeAction(page);
-  await checkbox.uncheck();
-  await pauseAfterAction(page);
+  return (await response.json()) as StripeCheckoutSession;
 }
 
 /**
- * Accepts every step of Stripe's automated-agent attestation.
+ * Drives Atlas as far as Stripe will let an automated agent go, then checks
+ * the session Atlas built against Stripe itself.
  *
- * Stripe Checkout detects automated browsers and refuses to submit until the
- * agent confirms itself. It fails silently: a blocked run shows a complete,
- * valid form, a Subscribe click that lands without interception, and no
- * request to api.stripe.com afterwards.
+ * Stripe now gates agent-driven checkout. Its hosted page renders two
+ * attestations, the second revealed by ticking the first, alongside
+ * instructions telling the agent to complete the purchase through Link CLI
+ * so the buyer's real credentials are never exposed. With both ticked and
+ * every field valid, no request to /v1/payment_pages/{id}/confirm is ever
+ * made. Typing a test card into that page is no longer a supported way to
+ * complete a purchase, and working around the detection is not something
+ * this suite should do.
  *
- * The gate has more than one step. Ticking "I am an AI agent acting on behalf
- * of someone else" reveals "I am an AI agent and have followed the
- * instructions above", so this loops until no unchecked box remains rather
- * than handling one by name.
+ * So the browser proves the half that belongs to Atlas: the funnel reaches
+ * Stripe with a session for the right plan. Stripe's API then proves the
+ * session carries the parameters that decide whether the charge is lawful
+ * and correctly attributed. Unit tests assert those parameters against a
+ * mocked SDK; this asserts them against Stripe.
  *
- * Each box is an <input tabindex="-1"> behind a styled label that sits below
- * the fold, so check() clicks something that never flips and a real click
- * reports "element is outside of the viewport". Dispatching on the label
- * toggles the bound input without needing it on screen.
+ * Not covered any more: submitting the card on Stripe's page, the redirect
+ * back, and the webhook granting entitlement from a genuine payment. See
+ * docs/deployment/stripe-billing.md.
  *
- * Ticking these is accurate rather than a workaround. This suite is an
- * automated agent completing a purchase on a developer's behalf.
- *
- * @param page - The Stripe Checkout page.
+ * @param page - The onboarding page, signed in with a workspace attached.
+ * @param plan - Which paid plan is being bought.
  */
-async function attestAutomatedAgent(page: Page): Promise<void> {
-  const maxSteps = 4;
-  for (let step = 0; step < maxSteps; step += 1) {
-    const boxes = page.getByRole("checkbox", { name: /I am an AI agent/i });
-    const count = await boxes.count();
-
-    let toggledOne = false;
-    for (let index = 0; index < count; index += 1) {
-      const box = boxes.nth(index);
-      if (await box.isChecked()) {
-        continue;
-      }
-      const name = (await box.getAttribute("aria-label")) ?? "";
-      const label = name
-        ? page.getByText(name, { exact: true }).first()
-        : page.getByText(/I am an AI agent/i).nth(index);
-      await pauseBeforeAction(page);
-      await label.dispatchEvent("click");
-      await expect(box).toBeChecked({ timeout: 10_000 });
-      await pauseAfterAction(page);
-      toggledOne = true;
-      break;
-    }
-
-    if (!toggledOne) {
-      return;
-    }
-  }
-}
-
-/**
- * Fills the street address fields, when Stripe asks for them at all.
- *
- * Sessions use billing_address_collection: "auto", so for a US card Stripe
- * normally asks only for country and postal code and none of this renders.
- * The helper stays because the fields do appear for some countries and
- * payment methods, and it no-ops rather than failing when they do not.
- *
- * @param page - The Stripe Checkout page.
- */
-async function fillStripeBillingAddress(page: Page): Promise<void> {
-  const addressLine1 = page.locator('input[name="billingAddressLine1"]');
-  if ((await addressLine1.count()) === 0 || !(await addressLine1.first().isVisible())) {
-    return;
-  }
-
-  // Line 1 is a Google Places autocomplete, but the fields are typed
-  // directly rather than picked from its listbox. Selecting a suggestion
-  // means CI depends on a live Places lookup returning a specific result,
-  // and it does not: one run offered Miramar Beach, Florida for this street
-  // and a later one offered nothing at all and timed out waiting.
-  //
-  // Leaving the listbox open is harmless. It looked like the blocker for
-  // several runs, but the actual reason Stripe refused to submit was the
-  // automated-agent attestation, which attestAutomatedAgent now ticks.
-  await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Blvd");
-  await fillTextIfVisible(page, 'input[name="billingLocality"]', "Kansas City");
-
-  const stateSelect = page.getByRole("combobox", { name: "State" }).first();
-  if ((await stateSelect.count()) > 0 && (await stateSelect.isVisible())) {
-    await stateSelect.selectOption("MO");
-  }
-}
-
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
   const planLabel = paidPlans[plan].visibleLabel;
   await chapter(page, `${planLabel}: Stripe checkout`, async () => {
@@ -503,70 +360,28 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
     await page.waitForURL((url) => url.hostname.endsWith("stripe.com"), { timeout: 90_000 });
     await pauseAfterAction(page);
 
-    await selectStripeCard(page);
-    await declineLinkEnrollment(page);
+    const sessionId = /\/(cs_test_[A-Za-z0-9]+)/.exec(page.url())?.[1];
+    expect(sessionId, `Checkout URL should carry a session id: ${page.url()}`).toBeTruthy();
 
-    await fillTextIfVisible(page, 'input[name="email"]', accountEmail(`stripe-${plan}`));
-    await fillStripeInput(
-      page,
-      [
-        'input[name="cardExpiry"]',
-        'input[name="expiry"]',
-        'input[autocomplete="cc-exp"]',
-        'input[placeholder*="MM"]',
-      ],
-      "1234",
-      "expiration",
+    const session = await fetchStripeSession(sessionId ?? "");
+    expect(session.status).toBe("open");
+    expect(session.mode).toBe(plan === "research-pass" ? "payment" : "subscription");
+    expect(session.metadata?.product).toBe(
+      plan === "research-pass" ? "atlas_research_pass" : `atlas_${plan}`,
     );
-    await fillStripeInput(
-      page,
-      [
-        'input[name="cardCvc"]',
-        'input[name="cvc"]',
-        'input[autocomplete="cc-csc"]',
-        'input[placeholder*="CVC"]',
-        'input[placeholder*="CVV"]',
-      ],
-      "123",
-      "CVC",
-    );
-    await fillStripeInput(
-      page,
-      ['input[name="billingName"]', 'input[autocomplete="cc-name"]'],
-      "Atlas OOBE",
-      "cardholder name",
-    );
-    await fillStripeInput(
-      page,
-      [
-        'input[name="billingPostalCode"]',
-        'input[name="postal"]',
-        'input[autocomplete="postal-code"]',
-        'input[placeholder*="ZIP"]',
-      ],
-      "64106",
-      "postal code",
-    );
-    await fillStripeBillingAddress(page);
-    await declineLinkEnrollment(page);
-    await attestAutomatedAgent(page);
+    expect(session.metadata?.workspace_id).toBeTruthy();
+    expect(session.metadata?.purchase_intent_id).toBeTruthy();
 
-    // Anchored: /Pay|Subscribe/ also matches "Apple Pay", "Amazon Pay",
-    // "Pay with Klarna" and "Pay securely with Link", so the old .last() was
-    // relying on DOM order to land on the real submit.
-    const submitButton = page
-      .getByRole("button", { name: /^(Subscribe|Pay|Pay now|Start trial)$/i })
-      .last();
-    await expect(submitButton).toBeEnabled({ timeout: 30_000 });
-    await clickAction(submitButton);
-    await page.waitForURL((url) => url.pathname === "/onboarding/complete", { timeout: 120_000 });
-    await expect(page.getByRole("heading", { name: paidPlans[plan].finalHeading })).toBeVisible({
-      timeout: 60_000,
-    });
+    // Charging without calculating tax is a liability from the first sale.
+    expect(session.automatic_tax?.enabled).toBe(true);
+
+    // Only subscriptions create a Customer to attach a VAT or GST id to.
+    expect(session.tax_id_collection?.enabled ?? false).toBe(plan !== "research-pass");
+
     await pauseAfterAction(page);
   });
 
-  await caption(page, `${planLabel}: complete`);
+  await caption(page, `${planLabel}: checkout session verified`);
 }
 
 async function completePaidPlan(page: Page, plan: PaidPlan): Promise<void> {
