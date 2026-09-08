@@ -116,7 +116,12 @@ async def contribute_discovery_results(
     _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
 ) -> DiscoveryContributionResponse:
     """Persist a full discovery payload contributed by a local runner."""
-    _ = actor
+    await reserve_run_if_limited(
+        db,
+        org_id=actor.org_id,
+        month=_current_budget_month(),
+        run_limit=_run_limit,
+    )
     validate_issue_areas(req.run.issue_areas)
     for ranked_entry in req.ranked_entries:
         validate_issue_areas(ranked_entry.entry.issue_areas)
@@ -241,6 +246,12 @@ async def sync_discovery_run(  # noqa: PLR0913
         if existing_run is None:
             raise HTTPException(status_code=400, detail="Referenced remote_run_id does not exist")
     else:
+        await reserve_run_if_limited(
+            db,
+            org_id=actor.org_id,
+            month=_current_budget_month(),
+            run_limit=_run_limit,
+        )
         remote_run_id = await DiscoveryRunCRUD.create(
             db,
             location_query=req.artifacts.manifest.run.location_query,
