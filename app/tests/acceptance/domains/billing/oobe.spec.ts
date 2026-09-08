@@ -435,12 +435,18 @@ async function attestAutomatedAgent(page: Page): Promise<void> {
     return;
   }
 
-  // The input is <input tabindex="-1" type="checkbox"/> behind a styled
-  // label, so check() clicks something that never flips the state and
-  // retries until the test times out. Clicking the label is what a person
-  // does and what actually toggles it.
+  // Two things make this awkward. The input is
+  // <input tabindex="-1" type="checkbox"/> behind a styled label, so check()
+  // clicks something that never flips the state. And the label sits below
+  // the fold in a container Playwright cannot bring into view, so a real
+  // click reports "element is outside of the viewport" and retries until the
+  // test times out. Both failures cost ten minutes each to observe.
+  //
+  // Dispatching the event on the label toggles the bound input without
+  // needing it on screen.
   await pauseBeforeAction(page);
-  await page.getByText(/I am an AI agent acting on behalf/i).click();
+  const label = page.getByText(/I am an AI agent acting on behalf/i).first();
+  await label.dispatchEvent("click");
   await expect(checkbox).toBeChecked({ timeout: 10_000 });
   await pauseAfterAction(page);
 }
