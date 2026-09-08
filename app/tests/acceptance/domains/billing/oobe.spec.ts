@@ -410,6 +410,37 @@ async function declineLinkEnrollment(page: Page): Promise<void> {
 }
 
 /**
+ * Accepts Stripe's automated-agent attestation when it is shown.
+ *
+ * Stripe Checkout now detects automated browsers and refuses to submit until
+ * this box is ticked. It fails silently: the trace for a blocked run shows a
+ * complete, valid form, a Subscribe click that lands without interception,
+ * and not a single request to api.stripe.com afterwards.
+ *
+ * Ticking it is accurate rather than a workaround. This suite is an
+ * automated agent completing a purchase on a developer's behalf, which is
+ * what the attestation describes.
+ *
+ * @param page - The Stripe Checkout page.
+ */
+async function attestAutomatedAgent(page: Page): Promise<void> {
+  const attestation = page.getByRole("checkbox", {
+    name: /AI agent acting on behalf/i,
+  });
+  if ((await attestation.count()) === 0) {
+    return;
+  }
+  const checkbox = attestation.first();
+  if (await checkbox.isChecked()) {
+    return;
+  }
+  await checkbox.scrollIntoViewIfNeeded();
+  await pauseBeforeAction(page);
+  await checkbox.check();
+  await pauseAfterAction(page);
+}
+
+/**
  * Fills the street address fields, when Stripe asks for them at all.
  *
  * Sessions use billing_address_collection: "auto", so for a US card Stripe
@@ -439,16 +470,6 @@ async function fillStripeBillingAddress(page: Page): Promise<void> {
   const suggestion = page.getByRole("option", { name: /Kansas City, MO/ }).first();
   await expect(suggestion).toBeVisible({ timeout: 15_000 });
   await clickAction(suggestion);
-
-  // Selecting a suggestion fills the rest of the address but leaves focus in
-  // the autocomplete, which reopens its listbox. Moving focus to a plain
-  // field closes it for good; the previous run reached submit with the
-  // listbox open again and Stripe refused to confirm.
-  const cardholderName = page.locator('input[name="billingName"]').first();
-  if ((await cardholderName.count()) > 0) {
-    await cardholderName.click();
-  }
-  await expect(addressLine1.first()).toHaveAttribute("aria-expanded", "false");
 }
 
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
@@ -504,11 +525,7 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
     );
     await fillStripeBillingAddress(page);
     await declineLinkEnrollment(page);
-
-    const addressCombobox = page.locator('input[name="billingAddressLine1"]').first();
-    if ((await addressCombobox.count()) > 0) {
-      await expect(addressCombobox).toHaveAttribute("aria-expanded", "false");
-    }
+    await attestAutomatedAgent(page);
 
     // Anchored: /Pay|Subscribe/ also matches "Apple Pay", "Amazon Pay",
     // "Pay with Klarna" and "Pay securely with Link", so the old .last() was
