@@ -439,7 +439,16 @@ async function fillStripeBillingAddress(page: Page): Promise<void> {
   const suggestion = page.getByRole("option", { name: /Kansas City, MO/ }).first();
   await expect(suggestion).toBeVisible({ timeout: 15_000 });
   await clickAction(suggestion);
-  await expect(page.getByRole("listbox")).toHaveCount(0);
+
+  // Selecting a suggestion fills the rest of the address but leaves focus in
+  // the autocomplete, which reopens its listbox. Moving focus to a plain
+  // field closes it for good; the previous run reached submit with the
+  // listbox open again and Stripe refused to confirm.
+  const cardholderName = page.locator('input[name="billingName"]').first();
+  if ((await cardholderName.count()) > 0) {
+    await cardholderName.click();
+  }
+  await expect(addressLine1.first()).toHaveAttribute("aria-expanded", "false");
 }
 
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
@@ -495,6 +504,11 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
     );
     await fillStripeBillingAddress(page);
     await declineLinkEnrollment(page);
+
+    const addressCombobox = page.locator('input[name="billingAddressLine1"]').first();
+    if ((await addressCombobox.count()) > 0) {
+      await expect(addressCombobox).toHaveAttribute("aria-expanded", "false");
+    }
 
     // Anchored: /Pay|Subscribe/ also matches "Apple Pay", "Amazon Pay",
     // "Pay with Klarna" and "Pay securely with Link", so the old .last() was
