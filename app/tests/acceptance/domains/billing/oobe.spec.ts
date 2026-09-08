@@ -385,6 +385,31 @@ async function selectStripeCard(page: Page): Promise<void> {
 }
 
 /**
+ * Leaves Stripe's "Save my information" box unchecked.
+ *
+ * Checked, it turns Subscribe into a Link enrollment that asks for phone
+ * verification and never returns to Atlas. Stripe re-renders this section
+ * when the billing address changes and can restore the default, so this runs
+ * again immediately before submit rather than only once.
+ *
+ * @param page - The Stripe Checkout page.
+ */
+async function declineLinkEnrollment(page: Page): Promise<void> {
+  const saveInfo = page.getByRole("checkbox", { name: /Save my information/i });
+  if ((await saveInfo.count()) === 0) {
+    return;
+  }
+  const checkbox = saveInfo.first();
+  if (!(await checkbox.isChecked())) {
+    return;
+  }
+  await checkbox.scrollIntoViewIfNeeded();
+  await pauseBeforeAction(page);
+  await checkbox.uncheck();
+  await pauseAfterAction(page);
+}
+
+/**
  * Fills the full billing address Stripe renders for automatic tax.
  *
  * Checkout sessions set billing_address_collection: "required" so Stripe can
@@ -416,14 +441,7 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
     await pauseAfterAction(page);
 
     await selectStripeCard(page);
-    const saveInfo = page.getByRole("checkbox", { name: /Save my information/i });
-    if ((await saveInfo.count()) > 0 && (await saveInfo.first().isChecked())) {
-      const saveInfoCheckbox = saveInfo.first();
-      await saveInfoCheckbox.scrollIntoViewIfNeeded();
-      await pauseBeforeAction(page);
-      await saveInfoCheckbox.uncheck();
-      await pauseAfterAction(page);
-    }
+    await declineLinkEnrollment(page);
 
     await fillTextIfVisible(page, 'input[name="email"]', accountEmail(`stripe-${plan}`));
     await fillStripeInput(
@@ -467,8 +485,14 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
       "postal code",
     );
     await fillStripeBillingAddress(page);
+    await declineLinkEnrollment(page);
 
-    const submitButton = page.getByRole("button", { name: /Pay|Subscribe/i }).last();
+    // Anchored: /Pay|Subscribe/ also matches "Apple Pay", "Amazon Pay",
+    // "Pay with Klarna" and "Pay securely with Link", so the old .last() was
+    // relying on DOM order to land on the real submit.
+    const submitButton = page
+      .getByRole("button", { name: /^(Subscribe|Pay|Pay now|Start trial)$/i })
+      .last();
     await expect(submitButton).toBeEnabled({ timeout: 30_000 });
     await clickAction(submitButton);
     await page.waitForURL((url) => url.pathname === "/onboarding/complete", { timeout: 120_000 });
