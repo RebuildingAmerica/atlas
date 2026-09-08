@@ -422,6 +422,15 @@ async function declineLinkEnrollment(page: Page): Promise<void> {
  */
 async function fillStripeBillingAddress(page: Page): Promise<void> {
   await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Blvd");
+
+  // Line 1 is an autocomplete combobox. Typing into it leaves the suggestion
+  // list expanded, and Stripe treats the address as uncommitted while it is:
+  // the trace for the previous failure showed the field expanded, no
+  // /payment_pages/{id}/confirm request, and a Subscribe button that had
+  // focus but never submitted. Escape commits the typed value and closes the
+  // list so it cannot overlay the button either.
+  await page.keyboard.press("Escape");
+
   await fillTextIfVisible(page, 'input[name="billingLocality"]', "Kansas City");
 
   // Stripe renders State as a real <select> labelled "State", not an input,
@@ -431,6 +440,12 @@ async function fillStripeBillingAddress(page: Page): Promise<void> {
   const stateSelect = page.getByRole("combobox", { name: "State" }).first();
   await expect(stateSelect).toBeVisible({ timeout: 15_000 });
   await stateSelect.selectOption("MO");
+
+  // Prove the autocomplete actually closed rather than assuming Escape landed.
+  await expect(page.getByRole("combobox", { name: "Address" }).first()).not.toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
 }
 
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
