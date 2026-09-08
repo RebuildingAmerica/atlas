@@ -410,45 +410,56 @@ async function declineLinkEnrollment(page: Page): Promise<void> {
 }
 
 /**
- * Accepts Stripe's automated-agent attestation when it is shown.
+ * Accepts every step of Stripe's automated-agent attestation.
  *
- * Stripe Checkout now detects automated browsers and refuses to submit until
- * this box is ticked. It fails silently: the trace for a blocked run shows a
- * complete, valid form, a Subscribe click that lands without interception,
- * and not a single request to api.stripe.com afterwards.
+ * Stripe Checkout detects automated browsers and refuses to submit until the
+ * agent confirms itself. It fails silently: a blocked run shows a complete,
+ * valid form, a Subscribe click that lands without interception, and no
+ * request to api.stripe.com afterwards.
  *
- * Ticking it is accurate rather than a workaround. This suite is an
- * automated agent completing a purchase on a developer's behalf, which is
- * what the attestation describes.
+ * The gate has more than one step. Ticking "I am an AI agent acting on behalf
+ * of someone else" reveals "I am an AI agent and have followed the
+ * instructions above", so this loops until no unchecked box remains rather
+ * than handling one by name.
+ *
+ * Each box is an <input tabindex="-1"> behind a styled label that sits below
+ * the fold, so check() clicks something that never flips and a real click
+ * reports "element is outside of the viewport". Dispatching on the label
+ * toggles the bound input without needing it on screen.
+ *
+ * Ticking these is accurate rather than a workaround. This suite is an
+ * automated agent completing a purchase on a developer's behalf.
  *
  * @param page - The Stripe Checkout page.
  */
 async function attestAutomatedAgent(page: Page): Promise<void> {
-  const attestation = page.getByRole("checkbox", {
-    name: /AI agent acting on behalf/i,
-  });
-  if ((await attestation.count()) === 0) {
-    return;
-  }
-  const checkbox = attestation.first();
-  if (await checkbox.isChecked()) {
-    return;
-  }
+  const maxSteps = 4;
+  for (let step = 0; step < maxSteps; step += 1) {
+    const boxes = page.getByRole("checkbox", { name: /I am an AI agent/i });
+    const count = await boxes.count();
 
-  // Two things make this awkward. The input is
-  // <input tabindex="-1" type="checkbox"/> behind a styled label, so check()
-  // clicks something that never flips the state. And the label sits below
-  // the fold in a container Playwright cannot bring into view, so a real
-  // click reports "element is outside of the viewport" and retries until the
-  // test times out. Both failures cost ten minutes each to observe.
-  //
-  // Dispatching the event on the label toggles the bound input without
-  // needing it on screen.
-  await pauseBeforeAction(page);
-  const label = page.getByText(/I am an AI agent acting on behalf/i).first();
-  await label.dispatchEvent("click");
-  await expect(checkbox).toBeChecked({ timeout: 10_000 });
-  await pauseAfterAction(page);
+    let toggledOne = false;
+    for (let index = 0; index < count; index += 1) {
+      const box = boxes.nth(index);
+      if (await box.isChecked()) {
+        continue;
+      }
+      const name = (await box.getAttribute("aria-label")) ?? "";
+      const label = name
+        ? page.getByText(name, { exact: true }).first()
+        : page.getByText(/I am an AI agent/i).nth(index);
+      await pauseBeforeAction(page);
+      await label.dispatchEvent("click");
+      await expect(box).toBeChecked({ timeout: 10_000 });
+      await pauseAfterAction(page);
+      toggledOne = true;
+      break;
+    }
+
+    if (!toggledOne) {
+      return;
+    }
+  }
 }
 
 /**
