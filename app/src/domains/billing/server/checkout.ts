@@ -98,12 +98,16 @@ export async function createCheckoutSession(
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
     metadata: workspaceMetadata,
-    // Stripe cannot pick a jurisdiction without an address, so collecting one
-    // is a precondition for automatic tax rather than a preference.
+    // "auto" lets Stripe collect exactly what it needs to pick a jurisdiction,
+    // which for a US card is country and postal code. "required" renders a
+    // full street form backed by Google Places autocomplete, and that costs a
+    // real buyer an extra step for a rooftop-versus-postal accuracy gain that
+    // does not matter at $5 to $250. Postal-level rating is standard for SaaS
+    // of this size.
     ...(automaticTax
       ? {
           automatic_tax: { enabled: true },
-          billing_address_collection: "required" as const,
+          billing_address_collection: "auto" as const,
           // Team and Research Pass sell to organisations that need their VAT
           // or GST number on the invoice to reclaim it.
           tax_id_collection: { enabled: true },

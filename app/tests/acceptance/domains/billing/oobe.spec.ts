@@ -410,42 +410,28 @@ async function declineLinkEnrollment(page: Page): Promise<void> {
 }
 
 /**
- * Fills the full billing address Stripe renders for automatic tax.
+ * Fills the street address fields, when Stripe asks for them at all.
  *
- * Checkout sessions set billing_address_collection: "required" so Stripe can
- * rate a sale by rooftop rather than by ZIP, since a US ZIP can straddle two
- * tax jurisdictions. That turns on street, city and state fields the card
- * form alone does not have, and the submit button stays disabled until they
- * are filled.
+ * Sessions use billing_address_collection: "auto", so for a US card Stripe
+ * normally asks only for country and postal code and none of this renders.
+ * The helper stays because the fields do appear for some countries and
+ * payment methods, and it no-ops rather than failing when they do not.
  *
  * @param page - The Stripe Checkout page.
  */
 async function fillStripeBillingAddress(page: Page): Promise<void> {
+  const addressLine1 = page.locator('input[name="billingAddressLine1"]');
+  if ((await addressLine1.count()) === 0 || !(await addressLine1.first().isVisible())) {
+    return;
+  }
+
   await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Blvd");
-
-  // Line 1 is an autocomplete combobox. Typing into it leaves the suggestion
-  // list expanded, and Stripe treats the address as uncommitted while it is:
-  // the trace for the previous failure showed the field expanded, no
-  // /payment_pages/{id}/confirm request, and a Subscribe button that had
-  // focus but never submitted. Escape commits the typed value and closes the
-  // list so it cannot overlay the button either.
-  await page.keyboard.press("Escape");
-
   await fillTextIfVisible(page, 'input[name="billingLocality"]', "Kansas City");
 
-  // Stripe renders State as a real <select> labelled "State", not an input,
-  // and its name attribute is not stable enough to target directly. Going
-  // through the accessible role is what actually selects it; a CSS miss here
-  // leaves the field empty and the submit silently never completes.
   const stateSelect = page.getByRole("combobox", { name: "State" }).first();
-  await expect(stateSelect).toBeVisible({ timeout: 15_000 });
-  await stateSelect.selectOption("MO");
-
-  // Prove the autocomplete actually closed rather than assuming Escape landed.
-  await expect(page.getByRole("combobox", { name: "Address" }).first()).not.toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
+  if ((await stateSelect.count()) > 0 && (await stateSelect.isVisible())) {
+    await stateSelect.selectOption("MO");
+  }
 }
 
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {

@@ -175,7 +175,7 @@ describe("createCheckoutSession", () => {
 
       const params = sessionParams();
       expect(params.automatic_tax).toEqual({ enabled: true });
-      expect(params.billing_address_collection).toBe("required");
+      expect(params.billing_address_collection).toBe("auto");
       expect(params.tax_id_collection).toEqual({ enabled: true });
     });
 
