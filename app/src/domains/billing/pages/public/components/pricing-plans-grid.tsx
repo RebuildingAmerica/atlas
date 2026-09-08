@@ -201,8 +201,9 @@ export function PricingPlansGrid({
       </div>
 
       <p className="type-body-small text-ink-soft leading-relaxed">
-        All plans include full access to the Atlas graph. Professional plans can be cancelled
-        anytime.
+        All plans include full access to the Atlas graph. Atlas Pro and Atlas Team renew
+        automatically until you cancel, and you can cancel anytime from the billing portal. The
+        Research Pass is a single charge and does not renew.
       </p>
     </div>
   );

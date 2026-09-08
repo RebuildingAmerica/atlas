@@ -31,7 +31,7 @@ describe("routes/_public/terms", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Last updated:").parentElement).toHaveTextContent(
-      "Last updated: April 23, 2026",
+      "Last updated: September 8, 2026",
     );
   });
 
@@ -61,5 +61,18 @@ describe("routes/_public/terms", () => {
       rel: "canonical",
       href: "https://atlas.rebuildingamerica.com/terms",
     });
+  });
+  it("discloses automatic renewal and how to get a refund", async () => {
+    // Selling auto-renewing subscriptions without saying so is a compliance
+    // problem from the first charge, not at scale.
+    const { TermsPage } = await import("@/platform/pages/terms-page");
+    render(<TermsPage />);
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Automatic renewal" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Refunds" })).toBeInTheDocument();
+    expect(screen.getByText(/renew automatically until you cancel/)).toBeInTheDocument();
+    expect(screen.getAllByText(/hello@rebuildingus\.org/).length).toBeGreaterThan(0);
   });
 });

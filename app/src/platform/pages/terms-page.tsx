@@ -35,6 +35,28 @@ const TERMS_SECTIONS = [
     ],
   },
   {
+    title: "Automatic renewal",
+    paragraphs: [
+      "Atlas Pro and Atlas Team are subscriptions that renew automatically until you cancel. Atlas Pro renews every month or every year, and the student option renews every four months. Atlas Team renews every month or every year, and per-seat charges renew on the same schedule. The Atlas Research Pass is a single charge that does not renew.",
+      "Each renewal is charged to the payment method on file at the price shown at checkout, plus any applicable tax. We will tell you before a price change takes effect on your subscription.",
+      "You can cancel at any time from the billing portal in your workspace settings. Cancelling stops the next renewal and keeps your access until the end of the period you have already paid for. We do not cancel a subscription on your behalf when you simply stop using Atlas.",
+    ],
+  },
+  {
+    title: "Refunds",
+    paragraphs: [
+      "If Atlas charged you for something you did not intend to buy, or a renewal took you by surprise, write to hello@rebuildingus.org within 30 days of the charge and we will refund it. We would rather return the money than keep a subscription somebody did not want.",
+      "If Atlas is substantially unavailable for a sustained period during a term you paid for, tell us and we will refund or credit that term.",
+      "Refunds return to the original payment method. Refunding a term ends the paid access it covered.",
+    ],
+  },
+  {
+    title: "Failed payments",
+    paragraphs: [
+      "When a renewal payment fails, Stripe retries it for a period and your paid features stay available while it does. If payment does not recover, paid features stop and the workspace returns to the free tier. Your notes, shortlists, and other saved work remain readable.",
+    ],
+  },
+  {
     title: "Availability and changes",
     paragraphs: [
       "Atlas may evolve over time. We may add, remove, or change features, pricing, and policies as the product develops.",
@@ -51,8 +73,8 @@ export function TermsPage() {
   return (
     <PolicyPage
       title="Terms of Service"
-      summary="These terms explain the basic rules for using Atlas, including acceptable use, public-directory limitations, account responsibilities, and how paid access works."
-      lastUpdated="April 23, 2026"
+      summary="These terms explain the basic rules for using Atlas, including acceptable use, public-directory limitations, account responsibilities, how paid access works, when subscriptions renew, and how to get a refund."
+      lastUpdated="September 8, 2026"
       sections={TERMS_SECTIONS}
     />
   );
