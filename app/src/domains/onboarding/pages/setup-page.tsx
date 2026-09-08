@@ -7,6 +7,7 @@ import { createWorkspace } from "@/domains/access/organizations.functions";
 import {
   attachPurchaseWorkspace,
   ensurePurchaseOnboarding,
+  isCheckoutRefusalMessage,
   loadPurchaseOnboarding,
   startPurchaseCheckout,
 } from "@/domains/billing/purchase-onboarding.functions";
@@ -253,11 +254,28 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     }
     let cancelled = false;
     const start = async () => {
-      const intent = await ensurePurchaseOnboarding({
-        data: { product: selectedProduct, interval: selectedInterval },
-      });
-      if (!cancelled) {
-        setPurchaseIntent(intent);
+      try {
+        const intent = await ensurePurchaseOnboarding({
+          data: { product: selectedProduct, interval: selectedInterval },
+        });
+        if (!cancelled) {
+          setPurchaseIntent(intent);
+        }
+      } catch (error) {
+        // ensurePurchaseOnboarding refuses outright when the funnel is
+        // closed. /onboarding is reachable directly and by bookmark, so the
+        // disabled pricing buttons do not gate it, and without this the
+        // rejection went to the console while the buyer watched a step that
+        // never advanced.
+        if (!cancelled) {
+          // Only the guard's own wording is safe to show. Any other failure
+          // here is internal and its message can name environment variables
+          // or database state.
+          const message = error instanceof Error ? error.message : "";
+          setErrorMessage(
+            isCheckoutRefusalMessage(message) ? message : "Atlas could not start that purchase.",
+          );
+        }
       }
     };
     void start();

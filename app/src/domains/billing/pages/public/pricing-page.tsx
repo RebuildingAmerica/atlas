@@ -63,8 +63,12 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
     queryKey: ["billing", "checkout-availability"],
     queryFn: () => loadCheckoutAvailability(),
     staleTime: 30_000,
+    retry: false,
   });
-  const isCheckoutUnavailable = availability.data?.available === false;
+  // A failed query is treated as unavailable. The alternative leaves the CTAs
+  // live and the banner hidden on exactly the deployment where the server
+  // functions are going to refuse anyway.
+  const isCheckoutUnavailable = availability.data?.available === false || availability.isError;
   // Auto-resume runs with no user in the loop, so it waits for a confirmed
   // yes. A deliberate click may proceed while the probe is still in flight
   // because the server function refuses with a readable message anyway.

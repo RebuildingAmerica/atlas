@@ -219,8 +219,8 @@ describe("createCheckoutSession", () => {
       expect(params.customer_update).toBeUndefined();
     });
 
-    it("stays on for any value other than an exact false", async () => {
-      vi.stubEnv("ATLAS_BILLING_AUTOMATIC_TAX", "no");
+    it("stays on when the flag is absent", async () => {
+      vi.stubEnv("ATLAS_BILLING_AUTOMATIC_TAX", "");
       create.mockResolvedValue({ url: "https://checkout.stripe.test/c/pro" });
 
       await createCheckoutSession({
@@ -234,6 +234,22 @@ describe("createCheckoutSession", () => {
       });
 
       expect(sessionParams().automatic_tax).toEqual({ enabled: true });
+    });
+
+    it("refuses a value it cannot parse rather than quietly leaving tax on", async () => {
+      vi.stubEnv("ATLAS_BILLING_AUTOMATIC_TAX", "no");
+
+      await expect(
+        createCheckoutSession({
+          workspaceId: "org_pro",
+          product: "atlas_pro",
+          priceId: "price_pro_monthly",
+          seatPriceId: null,
+          successUrl: "https://atlas.test/ok",
+          cancelUrl: "https://atlas.test/no",
+          customerEmail: "buyer@atlas.test",
+        }),
+      ).rejects.toThrow(/must be "true" or "false"/);
     });
   });
 });

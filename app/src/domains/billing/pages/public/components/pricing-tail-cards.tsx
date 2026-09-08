@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ctaLabel } from "./plan-card";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { checkoutKey, type PricingCheckoutInterval } from "../pricing-page-helpers";
 
@@ -42,11 +43,7 @@ export function PricingResearchPassCard({
             }}
             disabled={pendingCheckoutKey === weeklyKey || isCheckoutUnavailable}
           >
-            {isCheckoutUnavailable
-              ? "Temporarily unavailable"
-              : pendingCheckoutKey === weeklyKey
-                ? "Opening checkout…"
-                : "Get 7-day pass"}
+            {ctaLabel("Get 7-day pass", pendingCheckoutKey === weeklyKey, isCheckoutUnavailable)}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$4</p>
           <Button
@@ -56,11 +53,7 @@ export function PricingResearchPassCard({
             }}
             disabled={pendingCheckoutKey === onceKey || isCheckoutUnavailable}
           >
-            {isCheckoutUnavailable
-              ? "Temporarily unavailable"
-              : pendingCheckoutKey === onceKey
-                ? "Opening checkout…"
-                : "Get 30-day pass"}
+            {ctaLabel("Get 30-day pass", pendingCheckoutKey === onceKey, isCheckoutUnavailable)}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$9</p>
         </div>

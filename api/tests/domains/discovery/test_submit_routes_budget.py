@@ -77,6 +77,36 @@ class TestContributionBudget:
         assert exc_info.value.status_code == HTTPStatus.CONFLICT
 
     @pytest.mark.asyncio
+    async def test_rejected_payload_does_not_spend_a_run(self, db: object) -> None:
+        """A 400 must not cost a run, because reserve_run has no rollback."""
+        actor = _make_actor()
+        month = _current_budget_month()
+        await OrgDiscoveryBudgetCRUD.set_budget(
+            db,
+            org_id=ORG_ID,
+            month=month,
+            monthly_run_limit=2,
+            used_runs=0,
+        )
+        request = make_contribution_request()
+        request.run.issue_areas = ["not_a_real_issue_area"]
+
+        with pytest.raises(HTTPException) as exc_info:
+            await contribute_discovery_results(
+                req=request,
+                response=Response(),
+                actor=actor,
+                db=db,
+                _cap=None,
+                _run_limit=2,
+            )
+
+        assert exc_info.value.status_code == HTTPStatus.BAD_REQUEST
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
+        assert budget is not None
+        assert budget.used_runs == 0
+
+    @pytest.mark.asyncio
     async def test_unlimited_plan_skips_the_budget(self, db: object) -> None:
         """A plan with no run ceiling contributes without reserving."""
         actor = _make_actor()

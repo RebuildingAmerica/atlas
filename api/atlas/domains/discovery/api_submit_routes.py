@@ -116,15 +116,21 @@ async def contribute_discovery_results(
     _run_limit: int | None = Depends(enforce_limit("research_runs_per_month")),
 ) -> DiscoveryContributionResponse:
     """Persist a full discovery payload contributed by a local runner."""
+    # Validate before reserving. reserve_run increments used_runs with no
+    # rollback, so reserving first meant a 400 for a bad taxonomy slug spent a
+    # run the caller never got anything for, and a client retrying a malformed
+    # payload could burn a free workspace's whole month. sync_discovery_run
+    # already reserves after its validation.
+    validate_issue_areas(req.run.issue_areas)
+    for ranked_entry in req.ranked_entries:
+        validate_issue_areas(ranked_entry.entry.issue_areas)
+
     await reserve_run_if_limited(
         db,
         org_id=actor.org_id,
         month=_current_budget_month(),
         run_limit=_run_limit,
     )
-    validate_issue_areas(req.run.issue_areas)
-    for ranked_entry in req.ranked_entries:
-        validate_issue_areas(ranked_entry.entry.issue_areas)
 
     run_id = await DiscoveryRunCRUD.create(
         db,
@@ -245,13 +251,34 @@ async def sync_discovery_run(  # noqa: PLR0913
         existing_run = await DiscoveryRunCRUD.get_by_id(db, remote_run_id)
         if existing_run is None:
             raise HTTPException(status_code=400, detail="Referenced remote_run_id does not exist")
-    else:
-        await reserve_run_if_limited(
+        # get_by_id only proves the run exists. Without this a caller could
+        # graft artifacts onto another workspace's run.
+        await _ensure_workspace_run_ownership(
             db,
-            org_id=actor.org_id,
-            month=_current_budget_month(),
-            run_limit=_run_limit,
+            run_id=remote_run_id,
+            workspace_id=sync_workspace_id,
+            actor=actor,
         )
+
+    # Reserved after both the existence and the ownership checks, and for the
+    # pinned branch as well as the create branch. Charging only the create
+    # branch left the metering one client-supplied field from useless:
+    # manifest.sync.remote_run_id is attacker-controlled, so a workspace could
+    # spend one run, keep the returned id, and pin it into every later bundle
+    # to persist unlimited fresh artifacts for free. Reserving above those
+    # checks instead spent a run on a request that then 400s or 403s, which is
+    # the same no-rollback bug as the contribution route had.
+    #
+    # An identical re-sync never reaches here, because get_by_identity
+    # returned above, so a retry of the same artifacts still costs nothing.
+    await reserve_run_if_limited(
+        db,
+        org_id=actor.org_id,
+        month=_current_budget_month(),
+        run_limit=_run_limit,
+    )
+
+    if not remote_run_id:
         remote_run_id = await DiscoveryRunCRUD.create(
             db,
             location_query=req.artifacts.manifest.run.location_query,

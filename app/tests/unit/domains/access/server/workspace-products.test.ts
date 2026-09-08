@@ -48,30 +48,46 @@ describe("workspace-products", () => {
 
   it("keeps a past_due product entitled while Stripe retries the invoice", () => {
     db.prepare(
-      "INSERT INTO workspace_products (id, workspace_id, product, status) VALUES (?, ?, ?, ?)",
-    ).run("wp_1", "org_1", "atlas_pro", "past_due");
+      "INSERT INTO workspace_products (id, workspace_id, product, status, stripe_event_at) VALUES (?, ?, ?, ?, ?)",
+    ).run("wp_1", "org_1", "atlas_pro", "past_due", new Date().toISOString());
     const products = queryActiveProductsSqlite(db, "org_1");
     expect(products).toEqual(["atlas_pro"]);
   });
 
-  it("keeps syncing seats for a past_due Team subscription", () => {
+  it("drops a past_due product once the grace window has run out", () => {
+    // Subscriptions are stored with expires_at NULL, so without this bound a
+    // stuck past_due row is paid access for life.
     db.prepare(
-      "INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id) VALUES (?, ?, ?, ?, ?)",
-    ).run("wp_1", "org_1", "atlas_team", "past_due", "sub_team");
-    const row = db
-      .prepare(
-        `SELECT stripe_subscription_id FROM workspace_products
-         WHERE workspace_id = ? AND product = 'atlas_team' AND status IN ('active', 'past_due')
-         LIMIT 1`,
-      )
-      .get("org_1") as { stripe_subscription_id: string } | undefined;
-    expect(row?.stripe_subscription_id).toBe("sub_team");
+      "INSERT INTO workspace_products (id, workspace_id, product, status, stripe_event_at) VALUES (?, ?, ?, ?, ?)",
+    ).run("wp_1", "org_1", "atlas_pro", "past_due", "2020-01-01T00:00:00.000Z");
+    expect(queryActiveProductsSqlite(db, "org_1")).toEqual([]);
+  });
+
+  it("drops a past_due product that carries no Stripe event timestamp", () => {
+    db.prepare(
+      "INSERT INTO workspace_products (id, workspace_id, product, status) VALUES (?, ?, ?, ?)",
+    ).run("wp_1", "org_1", "atlas_pro", "past_due");
+    expect(queryActiveProductsSqlite(db, "org_1")).toEqual([]);
+  });
+
+  it("keeps a past_due Team product entitled inside the grace window", () => {
+    db.prepare(
+      "INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_event_at) VALUES (?, ?, ?, ?, ?, ?)",
+    ).run("wp_1", "org_1", "atlas_team", "past_due", "sub_team", new Date().toISOString());
+    expect(queryActiveProductsSqlite(db, "org_1")).toEqual(["atlas_team"]);
   });
 
   it("drops a past_due product once its expiry has passed", () => {
     db.prepare(
-      "INSERT INTO workspace_products (id, workspace_id, product, status, expires_at) VALUES (?, ?, ?, ?, ?)",
-    ).run("wp_1", "org_1", "atlas_research_pass", "past_due", "2020-01-01T00:00:00.000Z");
+      "INSERT INTO workspace_products (id, workspace_id, product, status, expires_at, stripe_event_at) VALUES (?, ?, ?, ?, ?, ?)",
+    ).run(
+      "wp_1",
+      "org_1",
+      "atlas_research_pass",
+      "past_due",
+      "2020-01-01T00:00:00.000Z",
+      new Date().toISOString(),
+    );
     const products = queryActiveProductsSqlite(db, "org_1");
     expect(products).toEqual([]);
   });

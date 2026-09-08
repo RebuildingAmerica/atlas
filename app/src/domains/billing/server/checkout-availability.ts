@@ -1,5 +1,6 @@
 import "@tanstack/react-start/server-only";
 
+import { readBillingFlag } from "./billing-flags";
 import { getServerApiBaseUrl } from "@/platform/config/app-config";
 
 /**
@@ -23,20 +24,27 @@ interface CachedProbe {
 
 const PROBE_PATH = "/entities?limit=1";
 const PROBE_TIMEOUT_MS = 2500;
-const PROBE_CACHE_MS = 30_000;
+const HEALTHY_CACHE_MS = 30_000;
+// A negative answer expires sooner than a positive one. One slow cold start
+// should not refuse every sale for half a minute, and a genuinely down API
+// gets re-probed cheaply.
+const UNHEALTHY_CACHE_MS = 5_000;
 
 let cachedProbe: CachedProbe | null = null;
+// Concurrent callers share one probe. Without this a slow API gets a probe
+// per request from the busiest anonymous route on the site.
+let inFlightProbe: Promise<boolean> | null = null;
 
 /**
  * Returns whether an operator has enabled the paid checkout funnel.
  *
  * Defaults to disabled. An operator who has not made a deliberate choice
- * should not be selling, and the repo forbids silent permissive defaults.
+ * should not be selling.
  *
- * @returns True only when ATLAS_BILLING_CHECKOUT_ENABLED is exactly "true".
+ * @returns True when ATLAS_BILLING_CHECKOUT_ENABLED is "true".
  */
 export function isCheckoutEnabled(): boolean {
-  return process.env.ATLAS_BILLING_CHECKOUT_ENABLED?.trim().toLowerCase() === "true";
+  return readBillingFlag("ATLAS_BILLING_CHECKOUT_ENABLED", { whenUnset: false });
 }
 
 /**
@@ -47,6 +55,7 @@ export function isCheckoutEnabled(): boolean {
  */
 export function resetCatalogProbeCache(): void {
   cachedProbe = null;
+  inFlightProbe = null;
 }
 
 /**
@@ -56,26 +65,53 @@ export function resetCatalogProbeCache(): void {
  * is unreachable, so this asks for one real entry instead. Any transport
  * error, non-200 status, or empty result set counts as unhealthy.
  *
- * @param now - Current epoch milliseconds, injectable for tests.
  * @returns True when the API returned at least one catalog entry.
  */
-export async function probeCatalogHealth(now: number = Date.now()): Promise<boolean> {
-  if (cachedProbe && cachedProbe.expiresAt > now) {
+export async function probeCatalogHealth(): Promise<boolean> {
+  if (cachedProbe && cachedProbe.expiresAt > Date.now()) {
     return cachedProbe.healthy;
   }
+  if (inFlightProbe) {
+    return inFlightProbe;
+  }
 
-  const healthy = await runCatalogProbe();
-  cachedProbe = { healthy, expiresAt: now + PROBE_CACHE_MS };
-  return healthy;
+  inFlightProbe = runCatalogProbe()
+    .then((healthy) => {
+      // Sampled after the request, not before it, so a 2.5s probe does not
+      // spend a tenth of its own cache window waiting.
+      const ttl = healthy ? HEALTHY_CACHE_MS : UNHEALTHY_CACHE_MS;
+      cachedProbe = { healthy, expiresAt: Date.now() + ttl };
+      return healthy;
+    })
+    .finally(() => {
+      inFlightProbe = null;
+    });
+
+  return inFlightProbe;
 }
 
 async function runCatalogProbe(): Promise<boolean> {
+  let probeUrl: string;
+  try {
+    // Resolved outside the request try/catch. A missing
+    // ATLAS_SERVER_API_PROXY_TARGET is a deployment fault, not a sick
+    // catalog, and swallowing it silently reported "temporarily
+    // unavailable" forever with nothing anywhere saying why.
+    probeUrl = `${getServerApiBaseUrl({
+      ATLAS_PUBLIC_URL: process.env.ATLAS_PUBLIC_URL,
+      ATLAS_SERVER_API_PROXY_TARGET: process.env.ATLAS_SERVER_API_PROXY_TARGET,
+    })}${PROBE_PATH}`;
+  } catch (error) {
+    console.error("Atlas checkout catalog probe is misconfigured.", error);
+    return false;
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => {
     controller.abort();
   }, PROBE_TIMEOUT_MS);
   try {
-    const response = await fetch(`${getServerApiBaseUrl()}${PROBE_PATH}`, {
+    const response = await fetch(probeUrl, {
       signal: controller.signal,
       headers: { accept: "application/json" },
     });
@@ -84,7 +120,11 @@ async function runCatalogProbe(): Promise<boolean> {
     }
     const payload: unknown = await response.json();
     return hasAtLeastOneEntry(payload);
-  } catch {
+  } catch (error) {
+    // Failing closed is right; failing closed silently is not. Atlas has no
+    // error reporting, so without this line "why can nobody buy" has no
+    // answer anywhere.
+    console.error("Atlas checkout catalog probe failed.", error);
     return false;
   } finally {
     clearTimeout(timer);

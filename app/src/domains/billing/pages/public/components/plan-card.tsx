@@ -41,13 +41,16 @@ const SECONDARY_LINK_BUTTON_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-outlin
 const TEAM_CTA_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-transparent bg-surface-container-lowest text-on-surface hover:bg-surface-container-high focus:ring-surface-container-lowest`;
 
 /**
- * Returns the CTA text for the plan button's current state.
+ * Returns the CTA text for a paid call to action's current state.
+ *
+ * Exported so the Research Pass card shows the same wording and the same
+ * precedence rather than open-coding the ternary a third time.
  *
  * @param ctaText - The plan's normal call to action.
  * @param isPending - Whether a checkout redirect is in flight.
  * @param isUnavailable - Whether the paid funnel is closed.
  */
-function ctaLabel(ctaText: string, isPending?: boolean, isUnavailable?: boolean): string {
+export function ctaLabel(ctaText: string, isPending?: boolean, isUnavailable?: boolean): string {
   if (isUnavailable) {
     return "Temporarily unavailable";
   }

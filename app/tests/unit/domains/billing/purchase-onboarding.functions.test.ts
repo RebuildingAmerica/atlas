@@ -1000,6 +1000,24 @@ describe("purchase onboarding functions", () => {
       expect(mocks.ensurePurchaseIntent).not.toHaveBeenCalled();
     });
 
+    it("still refuses when the result carries no reason", async () => {
+      // Gating the throw on the reason let an unavailable result reach Stripe.
+      mocks.resolveCheckoutAvailability.mockResolvedValue({
+        available: false,
+        reason: null,
+      });
+
+      const { ensurePurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await ensurePurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { product: "atlas_pro", interval: "monthly" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeDefined();
+      expect(mocks.ensurePurchaseIntent).not.toHaveBeenCalled();
+    });
+
     it("refuses to create a Stripe session while the catalog cannot serve", async () => {
       mocks.resolveCheckoutAvailability.mockResolvedValue({
         available: false,
@@ -1016,6 +1034,34 @@ describe("purchase onboarding functions", () => {
       expect(response.error).toBeDefined();
       // The refusal must land before Stripe is touched, not after.
       expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+    });
+  });
+  describe("checkout refusal messages", () => {
+    it("recognises only the guard's own wording", async () => {
+      const { isCheckoutRefusalMessage, CHECKOUT_UNAVAILABLE_FALLBACK } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+
+      expect(isCheckoutRefusalMessage(CHECKOUT_UNAVAILABLE_FALLBACK)).toBe(true);
+      expect(isCheckoutRefusalMessage("Atlas is not selling subscriptions right now.")).toBe(true);
+      // Internal failures must not reach a buyer: this one names an env var.
+      expect(
+        isCheckoutRefusalMessage("ATLAS_SERVER_API_PROXY_TARGET is required for Atlas API calls."),
+      ).toBe(false);
+      expect(isCheckoutRefusalMessage("")).toBe(false);
+    });
+
+    it("refuses to read availability from the browser bundle", async () => {
+      vi.stubEnv("SSR", false);
+      vi.resetModules();
+      const { loadCheckoutAvailability } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+
+      const response = (await loadCheckoutAvailability.__executeServer({
+        method: "GET",
+        data: undefined,
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeDefined();
     });
   });
 });

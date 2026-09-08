@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type Stripe from "stripe";
+import { readBillingFlag } from "./billing-flags";
 import { getStripeClient } from "./stripe-client";
 
 /**
@@ -37,10 +38,12 @@ export interface CreateCheckoutOptions {
  * the first charge, so the safe value is the default and the opt-out is
  * explicit. Set ATLAS_BILLING_AUTOMATIC_TAX to "false" only for a Stripe
  * account that has not activated Stripe Tax yet, and understand that such an
- * account is under-collecting.
+ * account is under-collecting. Any other value is refused rather than guessed
+ * at, so ATLAS_BILLING_AUTOMATIC_TAX=off fails loudly instead of quietly
+ * leaving tax on and looking like it was turned off.
  */
 function isAutomaticTaxEnabled(): boolean {
-  return process.env.ATLAS_BILLING_AUTOMATIC_TAX?.trim().toLowerCase() !== "false";
+  return readBillingFlag("ATLAS_BILLING_AUTOMATIC_TAX", { whenUnset: true });
 }
 
 /**
@@ -108,9 +111,11 @@ export async function createCheckoutSession(
       ? {
           automatic_tax: { enabled: true },
           billing_address_collection: "auto" as const,
-          // Team and Research Pass sell to organisations that need their VAT
-          // or GST number on the invoice to reclaim it.
-          tax_id_collection: { enabled: true },
+          // Organisations need their VAT or GST number on the invoice to
+          // reclaim it. Only offered in subscription mode: a one-time
+          // Research Pass with no saved customer creates none by default, so
+          // Stripe would have nowhere to attach the collected id.
+          ...(mode === "subscription" ? { tax_id_collection: { enabled: true } } : {}),
         }
       : {}),
     // Propagate workspace context to subscription objects so webhook handlers

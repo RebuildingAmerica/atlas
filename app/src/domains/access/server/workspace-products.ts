@@ -52,10 +52,17 @@ function manualGrantId(input: WorkspaceProductGrantInput): string {
  * and either its expires_at is NULL or it has not yet expired.
  *
  * past_due counts because Stripe is still retrying the invoice for a period
- * the customer has already been billed for. Stripe owns that retry schedule
- * and ends it by moving the subscription to unpaid or canceled, which the
- * webhook maps to 'cancelled'. Requiring 'active' here revoked every paid
- * feature on the first failed card while Stripe was still trying.
+ * the customer has already been billed for. Requiring 'active' here revoked
+ * every paid feature on the first failed card while Stripe was still trying.
+ *
+ * It counts for 30 days from the last Stripe event and no longer. Ending the
+ * grace period cannot be left to Stripe alone: the webhook writes
+ * expires_at NULL for every subscription, so an unbounded past_due row is
+ * paid access forever. That is what a dashboard configured to leave
+ * subscriptions past_due produces, and what one dropped
+ * customer.subscription.updated webhook produces. Thirty days outlasts
+ * Stripe's own retry schedule, so a recovering customer is never cut off
+ * early, and a stuck row expires on its own.
  *
  * @param db - The better-sqlite3 Database instance.
  * @param workspaceId - The workspace (organization) ID to query.
@@ -68,7 +75,14 @@ export function queryActiveProductsSqlite(
     .prepare(
       `SELECT product FROM workspace_products
        WHERE workspace_id = ?
-         AND status IN ('active', 'past_due')
+         AND (
+           status = 'active'
+           OR (
+             status = 'past_due'
+             AND stripe_event_at IS NOT NULL
+             AND stripe_event_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-30 days')
+           )
+         )
          AND (expires_at IS NULL OR expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
     )
     .all(workspaceId) as WorkspaceProductRow[];
@@ -90,7 +104,14 @@ export async function queryActiveProducts(workspaceId: string): Promise<AtlasPro
     const result = await pool.query(
       `SELECT product FROM workspace_products
        WHERE workspace_id = $1
-         AND status IN ('active', 'past_due')
+         AND (
+           status = 'active'
+           OR (
+             status = 'past_due'
+             AND stripe_event_at IS NOT NULL
+             AND stripe_event_at > now() - interval '30 days'
+           )
+         )
          AND (expires_at IS NULL OR expires_at > now())`,
       [workspaceId],
     );
@@ -158,7 +179,16 @@ export async function queryActiveTeamSubscriptionId(workspaceId: string): Promis
   if (pool) {
     const result = await pool.query(
       `SELECT stripe_subscription_id FROM workspace_products
-       WHERE workspace_id = $1 AND product = 'atlas_team' AND status IN ('active', 'past_due')
+       WHERE workspace_id = $1
+         AND product = 'atlas_team'
+         AND (
+           status = 'active'
+           OR (
+             status = 'past_due'
+             AND stripe_event_at IS NOT NULL
+             AND stripe_event_at > now() - interval '30 days'
+           )
+         )
        LIMIT 1`,
       [workspaceId],
     );
@@ -171,7 +201,16 @@ export async function queryActiveTeamSubscriptionId(workspaceId: string): Promis
     const row = db
       .prepare(
         `SELECT stripe_subscription_id FROM workspace_products
-         WHERE workspace_id = ? AND product = 'atlas_team' AND status IN ('active', 'past_due')
+         WHERE workspace_id = ?
+           AND product = 'atlas_team'
+           AND (
+             status = 'active'
+             OR (
+               status = 'past_due'
+               AND stripe_event_at IS NOT NULL
+               AND stripe_event_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-30 days')
+             )
+           )
          LIMIT 1`,
       )
       .get(workspaceId) as TeamSubscriptionRow | undefined;

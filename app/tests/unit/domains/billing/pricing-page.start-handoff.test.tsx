@@ -254,4 +254,14 @@ describe("PricingPage start handoff", () => {
       expect(readRouterMocks().navigate).not.toHaveBeenCalled();
     });
   });
+  it("treats a failed availability probe as unavailable", async () => {
+    mocks.loadCheckoutAvailability.mockRejectedValue(new Error("probe exploded"));
+
+    render(<PricingPage intent="atlas_pro" interval="yearly" />);
+
+    // The dangerous alternative is live buttons plus a silently dropped
+    // intent on exactly the deployment whose server functions will refuse.
+    expect(await screen.findByText("Paid plans are temporarily unavailable")).toBeInTheDocument();
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
+  });
 });

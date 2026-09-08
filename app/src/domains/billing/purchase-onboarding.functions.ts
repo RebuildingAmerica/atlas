@@ -9,6 +9,7 @@ import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/worksp
 import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 import { getAtlasBillingProducts } from "@/domains/billing/products";
 import type { AtlasBillingProducts } from "@/domains/billing/products";
+import type * as CheckoutAvailabilityExports from "@/domains/billing/server/checkout-availability";
 import type {
   CheckoutAvailability,
   CheckoutBlockReason,
@@ -145,11 +146,46 @@ async function loadPurchaseServerModules() {
   throw new Error("Purchase onboarding is only available on the server.");
 }
 
+export const CHECKOUT_UNAVAILABLE_FALLBACK = "Atlas is not accepting payments right now.";
+
 const CHECKOUT_BLOCK_MESSAGES: Record<CheckoutBlockReason, string> = {
   disabled: "Atlas is not selling subscriptions right now.",
   catalog_unavailable:
     "Atlas cannot reach the civic directory right now, so checkout is paused. Nobody should pay for a directory that cannot answer a query.",
 };
+
+type CheckoutAvailabilityModule = typeof CheckoutAvailabilityExports;
+
+/**
+ * Returns true when a message came from the checkout availability guard.
+ *
+ * Only these strings are safe to render. Everything else reaching the
+ * onboarding catch is an internal failure whose text can name environment
+ * variables and database state.
+ *
+ * @param message - The error message to classify.
+ */
+export function isCheckoutRefusalMessage(message: string): boolean {
+  return (
+    message === CHECKOUT_UNAVAILABLE_FALLBACK ||
+    Object.values(CHECKOUT_BLOCK_MESSAGES).includes(message)
+  );
+}
+
+/**
+ * Loads only the availability module.
+ *
+ * loadPurchaseServerModules pulls in Better Auth, the Stripe SDK, the webhook
+ * handler and five more modules. The pricing page is public and anonymous, so
+ * evaluating that graph to read one env var and maybe issue one probe is work
+ * the busiest unauthenticated route should not do.
+ */
+async function loadCheckoutAvailabilityModule(): Promise<CheckoutAvailabilityModule> {
+  if (import.meta.env.SSR) {
+    return import("@/domains/billing/server/checkout-availability");
+  }
+  throw new Error("Purchase onboarding is only available on the server.");
+}
 
 /**
  * Throws when an operator has paused checkout or the catalog cannot serve.
@@ -159,12 +195,14 @@ const CHECKOUT_BLOCK_MESSAGES: Record<CheckoutBlockReason, string> = {
  *
  * @param availability - Module namespace exposing resolveCheckoutAvailability.
  */
-async function assertCheckoutAvailable(availability: {
-  resolveCheckoutAvailability: () => Promise<CheckoutAvailability>;
-}): Promise<void> {
+async function assertCheckoutAvailable(availability: CheckoutAvailabilityModule): Promise<void> {
   const result = await availability.resolveCheckoutAvailability();
-  if (!result.available && result.reason) {
-    throw new Error(CHECKOUT_BLOCK_MESSAGES[result.reason]);
+  if (!result.available) {
+    // Refusing without a reason still refuses. Gating the throw on the reason
+    // let an unavailable result through to Stripe.
+    throw new Error(
+      result.reason ? CHECKOUT_BLOCK_MESSAGES[result.reason] : CHECKOUT_UNAVAILABLE_FALLBACK,
+    );
   }
 }
 
@@ -173,8 +211,8 @@ async function assertCheckoutAvailable(availability: {
  */
 export const loadCheckoutAvailability = createServerFn({ method: "GET" }).handler(
   async (): Promise<CheckoutAvailability> => {
-    const { checkoutAvailability } = await loadPurchaseServerModules();
-    return checkoutAvailability.resolveCheckoutAvailability();
+    const availability = await loadCheckoutAvailabilityModule();
+    return availability.resolveCheckoutAvailability();
   },
 );
 
