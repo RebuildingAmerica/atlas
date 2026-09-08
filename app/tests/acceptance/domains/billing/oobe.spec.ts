@@ -467,20 +467,22 @@ async function fillStripeBillingAddress(page: Page): Promise<void> {
     return;
   }
 
-  await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Blvd");
-
-  // Line 1 is a Google Places autocomplete. Typing opens a listbox whose
-  // first entry is pre-selected, and for this street that is Miramar Beach,
-  // Florida rather than Kansas City. Stripe will not submit while a
-  // suggestion is pending: the trace showed the listbox open, every other
-  // field valid, and no POST to /v1/payment_pages/{id}/confirm.
+  // Line 1 is a Google Places autocomplete, but the fields are typed
+  // directly rather than picked from its listbox. Selecting a suggestion
+  // means CI depends on a live Places lookup returning a specific result,
+  // and it does not: one run offered Miramar Beach, Florida for this street
+  // and a later one offered nothing at all and timed out waiting.
   //
-  // Picking the intended suggestion commits a geocoded address and closes
-  // the listbox. Stripe fills city, state and postal code from it, so those
-  // are not typed here.
-  const suggestion = page.getByRole("option", { name: /Kansas City, MO/ }).first();
-  await expect(suggestion).toBeVisible({ timeout: 15_000 });
-  await clickAction(suggestion);
+  // Leaving the listbox open is harmless. It looked like the blocker for
+  // several runs, but the actual reason Stripe refused to submit was the
+  // automated-agent attestation, which attestAutomatedAgent now ticks.
+  await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Blvd");
+  await fillTextIfVisible(page, 'input[name="billingLocality"]', "Kansas City");
+
+  const stateSelect = page.getByRole("combobox", { name: "State" }).first();
+  if ((await stateSelect.count()) > 0 && (await stateSelect.isVisible())) {
+    await stateSelect.selectOption("MO");
+  }
 }
 
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
