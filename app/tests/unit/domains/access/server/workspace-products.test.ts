@@ -46,6 +46,36 @@ describe("workspace-products", () => {
     expect(products).toEqual(["atlas_pro"]);
   });
 
+  it("keeps a past_due product entitled while Stripe retries the invoice", () => {
+    db.prepare(
+      "INSERT INTO workspace_products (id, workspace_id, product, status) VALUES (?, ?, ?, ?)",
+    ).run("wp_1", "org_1", "atlas_pro", "past_due");
+    const products = queryActiveProductsSqlite(db, "org_1");
+    expect(products).toEqual(["atlas_pro"]);
+  });
+
+  it("keeps syncing seats for a past_due Team subscription", () => {
+    db.prepare(
+      "INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id) VALUES (?, ?, ?, ?, ?)",
+    ).run("wp_1", "org_1", "atlas_team", "past_due", "sub_team");
+    const row = db
+      .prepare(
+        `SELECT stripe_subscription_id FROM workspace_products
+         WHERE workspace_id = ? AND product = 'atlas_team' AND status IN ('active', 'past_due')
+         LIMIT 1`,
+      )
+      .get("org_1") as { stripe_subscription_id: string } | undefined;
+    expect(row?.stripe_subscription_id).toBe("sub_team");
+  });
+
+  it("drops a past_due product once its expiry has passed", () => {
+    db.prepare(
+      "INSERT INTO workspace_products (id, workspace_id, product, status, expires_at) VALUES (?, ?, ?, ?, ?)",
+    ).run("wp_1", "org_1", "atlas_research_pass", "past_due", "2020-01-01T00:00:00.000Z");
+    const products = queryActiveProductsSqlite(db, "org_1");
+    expect(products).toEqual([]);
+  });
+
   it("excludes cancelled products", () => {
     db.prepare(
       "INSERT INTO workspace_products (id, workspace_id, product, status) VALUES (?, ?, ?, ?)",

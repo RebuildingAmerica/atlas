@@ -48,8 +48,14 @@ function manualGrantId(input: WorkspaceProductGrantInput): string {
 /**
  * Queries active products for a workspace from a SQLite database.
  *
- * A product is considered active when its status is 'active' and either its
- * expires_at is NULL or it has not yet expired.
+ * A product entitles a workspace when its status is 'active' or 'past_due'
+ * and either its expires_at is NULL or it has not yet expired.
+ *
+ * past_due counts because Stripe is still retrying the invoice for a period
+ * the customer has already been billed for. Stripe owns that retry schedule
+ * and ends it by moving the subscription to unpaid or canceled, which the
+ * webhook maps to 'cancelled'. Requiring 'active' here revoked every paid
+ * feature on the first failed card while Stripe was still trying.
  *
  * @param db - The better-sqlite3 Database instance.
  * @param workspaceId - The workspace (organization) ID to query.
@@ -62,7 +68,7 @@ export function queryActiveProductsSqlite(
     .prepare(
       `SELECT product FROM workspace_products
        WHERE workspace_id = ?
-         AND status = 'active'
+         AND status IN ('active', 'past_due')
          AND (expires_at IS NULL OR expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
     )
     .all(workspaceId) as WorkspaceProductRow[];
@@ -84,7 +90,7 @@ export async function queryActiveProducts(workspaceId: string): Promise<AtlasPro
     const result = await pool.query(
       `SELECT product FROM workspace_products
        WHERE workspace_id = $1
-         AND status = 'active'
+         AND status IN ('active', 'past_due')
          AND (expires_at IS NULL OR expires_at > now())`,
       [workspaceId],
     );
@@ -152,7 +158,7 @@ export async function queryActiveTeamSubscriptionId(workspaceId: string): Promis
   if (pool) {
     const result = await pool.query(
       `SELECT stripe_subscription_id FROM workspace_products
-       WHERE workspace_id = $1 AND product = 'atlas_team' AND status = 'active'
+       WHERE workspace_id = $1 AND product = 'atlas_team' AND status IN ('active', 'past_due')
        LIMIT 1`,
       [workspaceId],
     );
@@ -165,7 +171,7 @@ export async function queryActiveTeamSubscriptionId(workspaceId: string): Promis
     const row = db
       .prepare(
         `SELECT stripe_subscription_id FROM workspace_products
-         WHERE workspace_id = ? AND product = 'atlas_team' AND status = 'active'
+         WHERE workspace_id = ? AND product = 'atlas_team' AND status IN ('active', 'past_due')
          LIMIT 1`,
       )
       .get(workspaceId) as TeamSubscriptionRow | undefined;
