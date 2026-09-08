@@ -125,6 +125,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
           STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
+          ATLAS_BILLING_CHECKOUT_ENABLED: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "::error title=Missing VERCEL_TOKEN::Vercel CLI production deploys still require a Vercel access token. GitHub OIDC is used for protected hosted smoke requests, not CLI authentication."
@@ -199,6 +200,19 @@ jobs:
           add_vercel_env NITRO_PRESET "vercel"
           add_vercel_env STRIPE_API_KEY "$STRIPE_API_KEY"
           add_vercel_env STRIPE_ATLAS_CATALOG "$STRIPE_ATLAS_CATALOG"
+          add_vercel_env ATLAS_BILLING_CHECKOUT_ENABLED "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}"
+
+          # STRIPE_WEBHOOK_SECRET is deliberately not synced here. The Stripe
+          # acceptance run mints an ephemeral secret from `stripe listen`, and
+          # a static one in this workflow would make that run prove nothing.
+          # The hosted runtime still needs one, set out of band by
+          # `pnpm setup:prod`, so fail the deploy when it is missing instead
+          # of shipping a build whose every webhook 500s.
+          if ! pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color 2>/dev/null \
+            | grep -q '^[[:space:]]*STRIPE_WEBHOOK_SECRET[[:space:]]'; then
+            echo "::error title=Missing STRIPE_WEBHOOK_SECRET::Vercel production has no STRIPE_WEBHOOK_SECRET. Stripe webhooks would fail signature verification and paid accounts would never activate. Run 'STRIPE_API_KEY=rk_live_... pnpm setup:prod' to provision it, then re-run this deploy."
+            exit 1
+          fi
 
           deployment_output="$(pnpm exec vercel "${vercel_args[@]}")"
           printf '%s\n' "$deployment_output"

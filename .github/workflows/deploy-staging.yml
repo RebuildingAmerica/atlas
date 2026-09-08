@@ -211,6 +211,8 @@ jobs:
           export ATLAS_PDS_INVITE_BROKER_URL="https://atlas-pds-staging.rebuildingus.org/_atlas/pds/invites"
           export ATLAS_PDS_PUBLIC_URL="https://atlas-pds-staging.rebuildingus.org"
           export ATLAS_SERVER_API_PROXY_TARGET="$atlas_api_origin"
+          # Staging exists to exercise the paid funnel before production does.
+          export ATLAS_BILLING_CHECKOUT_ENABLED=true
           export DATABASE_BACKEND=postgres
           export NODE_ENV=development
           export PORT=3100

@@ -161,6 +161,9 @@ export default defineConfig({
         ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
         ATLAS_ATPROTO_PDS_E2E_HARNESS: atprotoPdsHarness,
+        // The acceptance run has to be able to buy. The e2e API seeds
+        // profiles before it boots, so the catalog probe finds entries.
+        ATLAS_BILLING_CHECKOUT_ENABLED: "true",
         NODE_ENV: "development",
         PORT: appPort,
         ATLAS_AUTH_DB_PATH: authDbPath,
