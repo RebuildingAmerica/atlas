@@ -384,6 +384,29 @@ async function selectStripeCard(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Fills the full billing address Stripe renders for automatic tax.
+ *
+ * Checkout sessions set billing_address_collection: "required" so Stripe can
+ * rate a sale by rooftop rather than by ZIP, since a US ZIP can straddle two
+ * tax jurisdictions. That turns on street, city and state fields the card
+ * form alone does not have, and the submit button stays disabled until they
+ * are filled.
+ *
+ * @param page - The Stripe Checkout page.
+ */
+async function fillStripeBillingAddress(page: Page): Promise<void> {
+  await fillTextIfVisible(page, 'input[name="billingAddressLine1"]', "500 Grand Ave");
+  await fillTextIfVisible(page, 'input[name="billingLocality"]', "Kansas City");
+
+  const stateSelect = page.locator('select[name="billingAdministrativeArea"]').first();
+  if ((await stateSelect.count()) > 0 && (await stateSelect.isVisible())) {
+    await stateSelect.selectOption("MO");
+    return;
+  }
+  await fillTextIfVisible(page, 'input[name="billingAdministrativeArea"]', "MO");
+}
+
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
   const planLabel = paidPlans[plan].visibleLabel;
   await chapter(page, `${planLabel}: Stripe checkout`, async () => {
@@ -442,6 +465,7 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
       "12345",
       "postal code",
     );
+    await fillStripeBillingAddress(page);
 
     const submitButton = page.getByRole("button", { name: /Pay|Subscribe/i }).last();
     await expect(submitButton).toBeEnabled({ timeout: 30_000 });

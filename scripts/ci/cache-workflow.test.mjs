@@ -51,7 +51,7 @@ test("test caches distinguish app, Python, and full release work", async () => {
   assert.match(testJob, /'test-app'/);
 });
 
-test("app-only test runs skip Python and PostgreSQL setup", async () => {
+test("app-only test runs skip PostgreSQL but still install Python", async () => {
   const workflow = await source(".github/workflows/ci.yml");
   const testJob = workflow.slice(
     workflow.indexOf("  test:"),
@@ -59,10 +59,19 @@ test("app-only test runs skip Python and PostgreSQL setup", async () => {
   );
 
   assert.doesNotMatch(testJob, /^    services:/m);
-  assert.match(
+
+  // Python is NOT conditional. App tests reach //#openapi through
+  // @rebuildingamerica/atlas-api-client, and that task shells out to uv, so
+  // gating the toolchain on python_tests broke every app-only run whose
+  // turbo cache was cold. That is what left main red from 2026-08-02.
+  assert.match(testJob, /python: "true"/);
+  assert.doesNotMatch(
     testJob,
     /python: \$\{\{ needs\.changes\.outputs\.python_tests \}\}/,
   );
+
+  // The PostgreSQL container is still worth skipping: nothing in the app
+  // test path talks to it.
   assert.match(testJob, /name: Start PostgreSQL for Python tests/);
   assert.match(
     testJob,
