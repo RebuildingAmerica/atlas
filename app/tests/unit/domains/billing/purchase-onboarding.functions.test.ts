@@ -965,4 +965,57 @@ describe("purchase onboarding functions", () => {
       "Purchase onboarding is only available on the server.",
     );
   });
+  describe("checkout availability guard", () => {
+    it("reports the funnel state for the pricing page", async () => {
+      mocks.resolveCheckoutAvailability.mockResolvedValue({
+        available: false,
+        reason: "catalog_unavailable",
+      });
+
+      const { loadCheckoutAvailability } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await loadCheckoutAvailability.__executeServer({
+        method: "GET",
+        data: undefined,
+      })) as ServerFnExecutionResponse<{ available: boolean; reason: string | null }>;
+
+      expect(response.error).toBeUndefined();
+      expect(response.result).toEqual({ available: false, reason: "catalog_unavailable" });
+    });
+
+    it("refuses to open a purchase intent while an operator has checkout paused", async () => {
+      mocks.resolveCheckoutAvailability.mockResolvedValue({
+        available: false,
+        reason: "disabled",
+      });
+
+      const { ensurePurchaseOnboarding } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await ensurePurchaseOnboarding.__executeServer({
+        method: "POST",
+        data: { product: "atlas_pro", interval: "monthly" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeDefined();
+      expect(mocks.ensurePurchaseIntent).not.toHaveBeenCalled();
+    });
+
+    it("refuses to create a Stripe session while the catalog cannot serve", async () => {
+      mocks.resolveCheckoutAvailability.mockResolvedValue({
+        available: false,
+        reason: "catalog_unavailable",
+      });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_123" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeDefined();
+      // The refusal must land before Stripe is touched, not after.
+      expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+    });
+  });
 });
