@@ -104,12 +104,15 @@ deliberate decision.
 
 ## Sales tax
 
-Checkout sessions enable Stripe Tax, require a billing address, and offer tax ID
-collection so an organisation can put its VAT or GST number on the invoice. The
-address is not a preference: Stripe cannot pick a jurisdiction without one, and
-it rejects `automatic_tax` against a saved customer unless the session may write
-that address back, which is why sessions with a customer also send
-`customer_update`.
+Checkout sessions enable Stripe Tax, let Stripe collect whatever address it
+needs, and offer tax ID collection so an organisation can put its VAT or GST
+number on the invoice. Address collection is `auto` rather than `required`: for
+a US card Stripe asks for country and postal code, which is enough to rate the
+sale, while `required` renders a full street form backed by Google Places
+autocomplete and costs every buyer an extra step. Postal-level rating is
+standard for SaaS at these prices. Stripe rejects `automatic_tax` against a
+saved customer unless the session may write the address back, which is why
+sessions with a customer also send `customer_update`.
 
 This requires Stripe Tax to be activated on the account, in the same mode as the
 key in use, with a registration for every jurisdiction Atlas collects in.
