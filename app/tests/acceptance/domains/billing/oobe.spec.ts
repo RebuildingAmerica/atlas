@@ -434,9 +434,14 @@ async function attestAutomatedAgent(page: Page): Promise<void> {
   if (await checkbox.isChecked()) {
     return;
   }
-  await checkbox.scrollIntoViewIfNeeded();
+
+  // The input is <input tabindex="-1" type="checkbox"/> behind a styled
+  // label, so check() clicks something that never flips the state and
+  // retries until the test times out. Clicking the label is what a person
+  // does and what actually toggles it.
   await pauseBeforeAction(page);
-  await checkbox.check();
+  await page.getByText(/I am an AI agent acting on behalf/i).click();
+  await expect(checkbox).toBeChecked({ timeout: 10_000 });
   await pauseAfterAction(page);
 }
 
