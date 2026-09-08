@@ -19,7 +19,24 @@ export interface AtlasProductDefinition {
   readonly envProductKey: string;
   readonly prices: readonly AtlasPriceDefinition[];
   readonly perUnit?: boolean;
+  /**
+   * Stripe tax code used to rate the product. Without one Stripe falls back
+   * to the account default, which rates Atlas as whatever that happens to be
+   * rather than as software.
+   */
+  readonly taxCode: string;
 }
+
+/**
+ * Stripe tax code applied to every Atlas product.
+ *
+ * `txcd_10103000` is Stripe's general Software as a Service code, which fits
+ * a catalog sold to both individuals and organisations. Confirm it against
+ * the account's tax settings before the first live charge; Stripe rejects an
+ * unknown code at product creation, so a wrong value fails bootstrap rather
+ * than silently mis-rating a sale.
+ */
+export const ATLAS_SAAS_TAX_CODE = "txcd_10103000";
 
 export interface AtlasCouponDefinition {
   readonly id: string;
@@ -41,6 +58,7 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     description:
       "The Atlas plan for people doing a short-term research project that can fit in a month.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_RESEARCH_PASS",
+    taxCode: ATLAS_SAAS_TAX_CODE,
     prices: [
       {
         id: "research-pass-once",
@@ -62,6 +80,7 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     description:
       "Professional workspace for individual researchers with unlimited research runs, exports, and API access.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_PRO",
+    taxCode: ATLAS_SAAS_TAX_CODE,
     prices: [
       {
         id: "pro-monthly",
@@ -92,6 +111,7 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     description:
       "Shared workspace for newsrooms, nonprofits, and research teams.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_TEAM_BASE",
+    taxCode: ATLAS_SAAS_TAX_CODE,
     prices: [
       {
         id: "team-base-monthly",
@@ -114,6 +134,7 @@ export const ATLAS_PRODUCTS: AtlasProductDefinition[] = [
     stripeName: "Atlas Team Seat",
     description: "Per-member seat for Atlas Team workspaces.",
     envProductKey: "STRIPE_PRODUCT_ATLAS_TEAM_SEAT",
+    taxCode: ATLAS_SAAS_TAX_CODE,
     perUnit: true,
     prices: [
       {

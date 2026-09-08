@@ -30,6 +30,20 @@ export interface CreateCheckoutOptions {
 }
 
 /**
+ * Returns whether Stripe should calculate and collect sales tax.
+ *
+ * Defaults to on. Selling subscriptions into US states and, from a public
+ * pricing page, other countries without calculating tax is a liability from
+ * the first charge, so the safe value is the default and the opt-out is
+ * explicit. Set ATLAS_BILLING_AUTOMATIC_TAX to "false" only for a Stripe
+ * account that has not activated Stripe Tax yet, and understand that such an
+ * account is under-collecting.
+ */
+function isAutomaticTaxEnabled(): boolean {
+  return process.env.ATLAS_BILLING_AUTOMATIC_TAX?.trim().toLowerCase() !== "false";
+}
+
+/**
  * Creates a Stripe Checkout Session for the given Atlas product.
  *
  * Subscription mode is used for recurring products (atlas_pro, atlas_team).
@@ -65,15 +79,36 @@ export async function createCheckoutSession(
     lineItems.push({ price: options.seatPriceId, quantity: seatQuantity });
   }
 
+  const automaticTax = isAutomaticTaxEnabled();
+
   const sharedParams: Pick<
     Stripe.Checkout.SessionCreateParams,
-    "mode" | "line_items" | "success_url" | "cancel_url" | "metadata" | "subscription_data"
+    | "mode"
+    | "line_items"
+    | "success_url"
+    | "cancel_url"
+    | "metadata"
+    | "subscription_data"
+    | "automatic_tax"
+    | "billing_address_collection"
+    | "tax_id_collection"
   > = {
     mode,
     line_items: lineItems,
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
     metadata: workspaceMetadata,
+    // Stripe cannot pick a jurisdiction without an address, so collecting one
+    // is a precondition for automatic tax rather than a preference.
+    ...(automaticTax
+      ? {
+          automatic_tax: { enabled: true },
+          billing_address_collection: "required" as const,
+          // Team and Research Pass sell to organisations that need their VAT
+          // or GST number on the invoice to reclaim it.
+          tax_id_collection: { enabled: true },
+        }
+      : {}),
     // Propagate workspace context to subscription objects so webhook handlers
     // for customer.subscription.created can resolve the workspace without
     // relying solely on the checkout session.
@@ -91,6 +126,9 @@ export async function createCheckoutSession(
     sessionParams = {
       ...baseParams,
       customer: options.stripeCustomerId,
+      // Stripe rejects automatic_tax against a saved customer unless the
+      // session is allowed to write the address it just collected back.
+      ...(automaticTax ? { customer_update: { address: "auto" as const } } : {}),
     };
   } else {
     sessionParams = {

@@ -4,11 +4,14 @@ import type Stripe from "stripe";
 import type {
   AtlasCouponDefinition,
   AtlasPriceDefinition,
+  AtlasProductDefinition,
 } from "../../config/products.js";
+import { ATLAS_SAAS_TAX_CODE } from "../../config/products.js";
 import {
   ensureCoupon,
   ensureDefaultProductPrice,
   ensurePrice,
+  ensureProduct,
   retireNonCatalogPrices,
 } from "./catalog.js";
 
@@ -347,5 +350,110 @@ void describe("Stripe Atlas catalog helpers", () => {
         params: { default_price: "price_canonical" },
       },
     ]);
+  });
+});
+
+void describe("ensureProduct tax codes", () => {
+  const definition: AtlasProductDefinition = {
+    id: "pro",
+    stripeName: "Atlas Pro",
+    description: "For the individual researcher",
+    envProductKey: "STRIPE_PRODUCT_ATLAS_PRO",
+    taxCode: ATLAS_SAAS_TAX_CODE,
+    prices: [],
+  };
+
+  function stripeStub(
+    existing: Partial<Stripe.Product> | null,
+    sink: {
+      created: Stripe.ProductCreateParams[];
+      updated: Stripe.ProductUpdateParams[];
+    },
+  ) {
+    return {
+      products: {
+        search: () => Promise.resolve({ data: existing ? [existing] : [] }),
+        // findActiveProductByName paginates with `for await`, so the stub
+        // has to be async-iterable rather than a plain promise.
+        list: () => ({
+          async *[Symbol.asyncIterator]() {
+            // No name collisions in these cases.
+          },
+        }),
+        create: (params: Stripe.ProductCreateParams) => {
+          sink.created.push(params);
+          return Promise.resolve({
+            id: "prod_new",
+            ...params,
+          } as Stripe.Product);
+        },
+        update: (_id: string, params: Stripe.ProductUpdateParams) => {
+          sink.updated.push(params);
+          return Promise.resolve({ id: "prod_existing" } as Stripe.Product);
+        },
+      },
+    } as unknown as Stripe;
+  }
+
+  void it("rates a newly created product as software", async () => {
+    const sink = { created: [], updated: [] } as {
+      created: Stripe.ProductCreateParams[];
+      updated: Stripe.ProductUpdateParams[];
+    };
+
+    await ensureProduct(stripeStub(null, sink), definition);
+
+    assert.equal(sink.created[0]?.tax_code, ATLAS_SAAS_TAX_CODE);
+  });
+
+  void it("backfills a product that predates Atlas setting tax codes", async () => {
+    const sink = { created: [], updated: [] } as {
+      created: Stripe.ProductCreateParams[];
+      updated: Stripe.ProductUpdateParams[];
+    };
+    const existing = {
+      id: "prod_existing",
+      description: definition.description,
+      metadata: { atlas_product_id: definition.id },
+      tax_code: null,
+    };
+
+    await ensureProduct(stripeStub(existing, sink), definition);
+
+    assert.equal(sink.updated[0]?.tax_code, ATLAS_SAAS_TAX_CODE);
+  });
+
+  void it("leaves a product alone once its tax code already matches", async () => {
+    const sink = { created: [], updated: [] } as {
+      created: Stripe.ProductCreateParams[];
+      updated: Stripe.ProductUpdateParams[];
+    };
+    const existing = {
+      id: "prod_existing",
+      description: definition.description,
+      metadata: { atlas_product_id: definition.id },
+      tax_code: ATLAS_SAAS_TAX_CODE,
+    };
+
+    await ensureProduct(stripeStub(existing, sink), definition);
+
+    assert.equal(sink.updated.length, 0);
+  });
+
+  void it("reads a tax code that Stripe expanded into an object", async () => {
+    const sink = { created: [], updated: [] } as {
+      created: Stripe.ProductCreateParams[];
+      updated: Stripe.ProductUpdateParams[];
+    };
+    const existing = {
+      id: "prod_existing",
+      description: definition.description,
+      metadata: { atlas_product_id: definition.id },
+      tax_code: { id: ATLAS_SAAS_TAX_CODE },
+    };
+
+    await ensureProduct(stripeStub(existing, sink), definition);
+
+    assert.equal(sink.updated.length, 0);
   });
 });

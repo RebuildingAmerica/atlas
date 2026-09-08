@@ -40,6 +40,7 @@ export async function ensureProduct(
   const product = await stripe.products.create({
     name: definition.stripeName,
     description: definition.description,
+    tax_code: definition.taxCode,
     metadata: {
       atlas_product_id: definition.id,
     },
@@ -68,15 +69,26 @@ async function updateProductMetadata(
   product: Stripe.Product,
   definition: AtlasProductDefinition,
 ): Promise<Stripe.Product> {
+  // tax_code comes back as an id string or an expanded object depending on
+  // the request, so compare both shapes. Without this an existing product
+  // created before Atlas set tax codes would keep the account default
+  // forever, because nothing else about it changed.
+  const currentTaxCode =
+    typeof product.tax_code === "string"
+      ? product.tax_code
+      : (product.tax_code?.id ?? null);
+
   if (
     product.metadata?.atlas_product_id === definition.id &&
-    product.description === definition.description
+    product.description === definition.description &&
+    currentTaxCode === definition.taxCode
   ) {
     return product;
   }
 
   return stripe.products.update(product.id, {
     description: definition.description,
+    tax_code: definition.taxCode,
     metadata: {
       ...product.metadata,
       atlas_product_id: definition.id,

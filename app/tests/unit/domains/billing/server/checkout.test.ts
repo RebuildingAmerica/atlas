@@ -155,4 +155,85 @@ describe("createCheckoutSession", () => {
 
     expect(create).not.toHaveBeenCalled();
   });
+  describe("automatic tax", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("collects an address and a tax id so Stripe can rate the sale", async () => {
+      create.mockResolvedValue({ url: "https://checkout.stripe.test/c/pro" });
+
+      await createCheckoutSession({
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+        priceId: "price_pro_monthly",
+        seatPriceId: null,
+        successUrl: "https://atlas.test/ok",
+        cancelUrl: "https://atlas.test/no",
+        customerEmail: "buyer@atlas.test",
+      });
+
+      const params = sessionParams();
+      expect(params.automatic_tax).toEqual({ enabled: true });
+      expect(params.billing_address_collection).toBe("required");
+      expect(params.tax_id_collection).toEqual({ enabled: true });
+    });
+
+    it("lets the session write the collected address back to a saved customer", async () => {
+      create.mockResolvedValue({ url: "https://checkout.stripe.test/c/pro" });
+
+      await createCheckoutSession({
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+        priceId: "price_pro_monthly",
+        seatPriceId: null,
+        successUrl: "https://atlas.test/ok",
+        cancelUrl: "https://atlas.test/no",
+        customerEmail: "buyer@atlas.test",
+        stripeCustomerId: "cus_existing",
+      });
+
+      // Stripe rejects automatic_tax against a saved customer without this.
+      expect(sessionParams().customer_update).toEqual({ address: "auto" });
+    });
+
+    it("omits every tax parameter when an operator opts out", async () => {
+      vi.stubEnv("ATLAS_BILLING_AUTOMATIC_TAX", "false");
+      create.mockResolvedValue({ url: "https://checkout.stripe.test/c/pro" });
+
+      await createCheckoutSession({
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+        priceId: "price_pro_monthly",
+        seatPriceId: null,
+        successUrl: "https://atlas.test/ok",
+        cancelUrl: "https://atlas.test/no",
+        customerEmail: "buyer@atlas.test",
+        stripeCustomerId: "cus_existing",
+      });
+
+      const params = sessionParams();
+      expect(params.automatic_tax).toBeUndefined();
+      expect(params.billing_address_collection).toBeUndefined();
+      expect(params.tax_id_collection).toBeUndefined();
+      expect(params.customer_update).toBeUndefined();
+    });
+
+    it("stays on for any value other than an exact false", async () => {
+      vi.stubEnv("ATLAS_BILLING_AUTOMATIC_TAX", "no");
+      create.mockResolvedValue({ url: "https://checkout.stripe.test/c/pro" });
+
+      await createCheckoutSession({
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+        priceId: "price_pro_monthly",
+        seatPriceId: null,
+        successUrl: "https://atlas.test/ok",
+        cancelUrl: "https://atlas.test/no",
+        customerEmail: "buyer@atlas.test",
+      });
+
+      expect(sessionParams().automatic_tax).toEqual({ enabled: true });
+    });
+  });
 });
