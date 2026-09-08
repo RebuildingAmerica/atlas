@@ -3,6 +3,21 @@
 Use this runbook when the hosted catalog is empty or scheduled discovery is not
 creating runs.
 
+## How you find out
+
+The Production Canary workflow probes the app, the API health endpoint, the
+sitemap, the PDS, and the catalog itself every thirty minutes, and fails when
+any of them is wrong. It asks `/api/entities?limit=1` for real rows rather than
+trusting `/health`, which answers `ok` while the database is unreachable.
+
+It exists because OpenStatus watches one URL, the app homepage, and that page is
+static. It answered 200 for the whole five-week outage that began on 2026-08-02
+while the API, the PDS, the directory, the map and the sitemap were all down. A
+monitor that cannot fail is not a monitor.
+
+Run it on demand from the Actions tab when you want a quick verdict on whether
+production is serving.
+
 ## Check Current State
 
 Confirm the public API and the backing database agree:

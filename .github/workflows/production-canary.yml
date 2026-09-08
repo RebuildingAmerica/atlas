@@ -1,0 +1,73 @@
+name: Production Canary
+
+# OpenStatus watches one URL: the app homepage. That page is static and
+# answered 200 for the whole five-week outage that started on 2026-08-02,
+# while the API, the PDS, the directory, the map and the sitemap were all
+# down. A monitor that cannot fail is not a monitor.
+#
+# This checks the surfaces a reader actually depends on, and asks the catalog
+# for real rows rather than trusting a health endpoint that returns ok while
+# the database is unreachable.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-canary
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe the public surfaces
+        env:
+          APP_URL: https://atlas.rebuildingus.org
+          API_URL: https://atlas-api.rebuildingus.org
+          PDS_URL: https://atlas-pds.rebuildingus.org
+        run: |
+          set -uo pipefail
+          failures=0
+
+          check_status() {
+            local label="$1" url="$2" expected="$3"
+            local actual
+            # curl already prints 000 on a connection failure, so a fallback
+            # echo would concatenate and report 000000.
+            actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$url" 2>/dev/null || true)"
+            [ -n "$actual" ] || actual=000
+            if [ "$actual" = "$expected" ]; then
+              echo "ok    $label ($actual) $url"
+            else
+              echo "::error title=$label is unhealthy::Expected $expected from $url, got $actual."
+              failures=$((failures + 1))
+            fi
+          }
+
+          check_status "App"          "$APP_URL/"                  200
+          check_status "API health"   "$API_URL/health"            200
+          check_status "Sitemap"      "$APP_URL/sitemap.xml"       200
+          check_status "PDS health"   "$PDS_URL/xrpc/_health"      200
+
+          # The directory is the product. A reachable API serving nothing is
+          # still an outage to the person who came here to look someone up.
+          entries="$(curl -sS --max-time 25 "$API_URL/api/entities?limit=1" || echo '')"
+          count="$(printf '%s' "$entries" | grep -o '"id"' | wc -l | tr -d ' ')"
+          if [ "${count:-0}" -ge 1 ]; then
+            echo "ok    Catalog returns rows"
+          else
+            echo "::error title=Catalog is empty or unreachable::GET /api/entities?limit=1 returned no rows."
+            failures=$((failures + 1))
+          fi
+
+          if [ "$failures" -gt 0 ]; then
+            echo "::error title=Production canary failed::$failures check(s) failed."
+            exit 1
+          fi
+          echo "All production checks passed."
