@@ -11,6 +11,7 @@ interface PricingPlansGridProps {
   billing: BillingPeriod;
   freeCta: PlanCardLinkCta;
   pendingCheckoutKey: string | null;
+  isCheckoutUnavailable: boolean;
   proCheckoutInterval: PricingCheckoutInterval;
   teamCheckoutInterval: PricingCheckoutInterval;
   onBillingChange: (period: BillingPeriod) => void;
@@ -27,6 +28,7 @@ export function PricingPlansGrid({
   billing,
   freeCta,
   pendingCheckoutKey,
+  isCheckoutUnavailable,
   proCheckoutInterval,
   teamCheckoutInterval,
   onBillingChange,
@@ -152,6 +154,7 @@ export function PricingPlansGrid({
           ctaInterval={proCheckoutInterval}
           onCheckout={onCheckout}
           isPending={pendingCheckoutKey === checkoutKey("atlas_pro", proCheckoutInterval)}
+          isUnavailable={isCheckoutUnavailable}
           discountNote="Verified students pay $12.80 every 4 months; independent creators and journalists get 50% off individual Pro"
         />
 
@@ -191,6 +194,7 @@ export function PricingPlansGrid({
           ctaInterval={teamCheckoutInterval}
           onCheckout={onCheckout}
           isPending={pendingCheckoutKey === checkoutKey("atlas_team", teamCheckoutInterval)}
+          isUnavailable={isCheckoutUnavailable}
           discountNote="Team is priced the same for every organization"
           isTeam
         />

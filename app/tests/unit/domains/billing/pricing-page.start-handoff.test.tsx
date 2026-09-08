@@ -2,7 +2,8 @@
 import "@testing-library/jest-dom/vitest";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, screen, waitFor } from "@testing-library/react";
+import { renderWithProviders as render } from "@/../tests/helpers/render-with-providers";
 import userEvent from "@testing-library/user-event";
 import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 import {
@@ -12,6 +13,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
+  loadCheckoutAvailability: vi.fn(),
   useAtlasSession: vi.fn(),
 }));
 
@@ -19,6 +21,10 @@ vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
   return harness.installRouterMocks();
 });
+
+vi.mock("@/domains/billing/purchase-onboarding.functions", () => ({
+  loadCheckoutAvailability: mocks.loadCheckoutAvailability,
+}));
 
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
@@ -29,6 +35,7 @@ vi.mock("@rebuildingamerica/atlas-ui/layout/page-layout", () => ({
 }));
 
 vi.mock("@rebuildingamerica/atlas-ui/ui/confirm-dialog", () => ({
+  ConfirmDialogProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   useConfirmDialog: () => ({ confirm: mocks.confirm }),
 }));
 
@@ -39,6 +46,8 @@ describe("PricingPage start handoff", () => {
     mocks.confirm.mockReset();
     mocks.useAtlasSession.mockReset();
     resetRouterMocks();
+    mocks.loadCheckoutAvailability.mockReset();
+    mocks.loadCheckoutAvailability.mockResolvedValue({ available: true, reason: null });
     mocks.useAtlasSession.mockReturnValue({ data: null });
   });
 
@@ -78,14 +87,17 @@ describe("PricingPage start handoff", () => {
     });
     expect(mocks.confirm).not.toHaveBeenCalled();
   });
-  it("resumes the checkout an anonymous visitor started before signing in", () => {
+  it("resumes the checkout an anonymous visitor started before signing in", async () => {
     mocks.useAtlasSession.mockReturnValue({ data: createAtlasSessionFixture() });
 
     render(<PricingPage intent="atlas_pro" interval="yearly" />);
 
-    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
-      to: "/onboarding",
-      search: { interval: "yearly", product: "atlas_pro" },
+    // Resume waits for the availability probe to confirm the funnel is open.
+    await waitFor(() => {
+      expect(readRouterMocks().navigate).toHaveBeenCalledWith({
+        to: "/onboarding",
+        search: { interval: "yearly", product: "atlas_pro" },
+      });
     });
   });
 
@@ -194,6 +206,52 @@ describe("PricingPage start handoff", () => {
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
       search: { interval: "monthly", product: "atlas_team" },
+    });
+  });
+  describe("when checkout is unavailable", () => {
+    beforeEach(() => {
+      mocks.loadCheckoutAvailability.mockResolvedValue({
+        available: false,
+        reason: "catalog_unavailable",
+      });
+    });
+
+    it("explains that paid plans are paused", async () => {
+      render(<PricingPage />);
+
+      expect(await screen.findByText("Paid plans are temporarily unavailable")).toBeInTheDocument();
+    });
+
+    it("makes every paid call to action inert", async () => {
+      render(<PricingPage />);
+
+      await screen.findByText("Paid plans are temporarily unavailable");
+
+      const inert = screen.getAllByRole("button", { name: "Temporarily unavailable" });
+      expect(inert.length).toBe(4);
+      for (const button of inert) {
+        expect(button).toBeDisabled();
+      }
+    });
+
+    it("does not route a click to purchase onboarding", async () => {
+      const user = userEvent.setup();
+      render(<PricingPage />);
+
+      await screen.findByText("Paid plans are temporarily unavailable");
+      for (const button of screen.getAllByRole("button", { name: "Temporarily unavailable" })) {
+        await user.click(button);
+      }
+
+      expect(readRouterMocks().navigate).not.toHaveBeenCalled();
+    });
+
+    it("does not auto-resume a checkout the visitor was bounced out of", async () => {
+      render(<PricingPage intent="atlas_pro" interval="yearly" />);
+
+      await screen.findByText("Paid plans are temporarily unavailable");
+
+      expect(readRouterMocks().navigate).not.toHaveBeenCalled();
     });
   });
 });

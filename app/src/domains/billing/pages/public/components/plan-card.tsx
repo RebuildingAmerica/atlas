@@ -27,6 +27,7 @@ interface PlanCardProps {
   ctaInterval?: PricingCheckoutInterval;
   onCheckout?: (params: PricingCheckoutParams) => Promise<void>;
   isPending?: boolean;
+  isUnavailable?: boolean;
   linkCta?: PlanCardLinkCta;
   isTeam?: boolean;
   discountNote?: ReactNode;
@@ -38,6 +39,20 @@ const PLAN_BUTTON_BASE_CLASSES =
 const SECONDARY_LINK_BUTTON_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-outline-variant bg-surface-container-lowest text-on-surface hover:border-outline hover:bg-surface-container-high focus:ring-border-strong`;
 
 const TEAM_CTA_CLASSES = `${PLAN_BUTTON_BASE_CLASSES} border-transparent bg-surface-container-lowest text-on-surface hover:bg-surface-container-high focus:ring-surface-container-lowest`;
+
+/**
+ * Returns the CTA text for the plan button's current state.
+ *
+ * @param ctaText - The plan's normal call to action.
+ * @param isPending - Whether a checkout redirect is in flight.
+ * @param isUnavailable - Whether the paid funnel is closed.
+ */
+function ctaLabel(ctaText: string, isPending?: boolean, isUnavailable?: boolean): string {
+  if (isUnavailable) {
+    return "Temporarily unavailable";
+  }
+  return isPending ? "Opening checkout…" : ctaText;
+}
 
 /**
  * Single plan card on the pricing surface.  Renders the plan name,
@@ -61,6 +76,7 @@ export function PlanCard({
   ctaInterval,
   onCheckout,
   isPending,
+  isUnavailable,
   linkCta,
   isTeam,
   discountNote,
@@ -123,19 +139,19 @@ export function PlanCard({
         <button
           type="button"
           onClick={handleCta}
-          disabled={isPending}
-          className={`${TEAM_CTA_CLASSES} ${isPending ? "cursor-not-allowed opacity-50" : ""}`}
+          disabled={isPending || isUnavailable}
+          className={`${TEAM_CTA_CLASSES} ${isPending || isUnavailable ? "cursor-not-allowed opacity-50" : ""}`}
         >
-          {isPending ? "Opening checkout…" : ctaText}
+          {ctaLabel(ctaText, isPending, isUnavailable)}
         </button>
       ) : (
         <Button
           variant="primary"
           className="w-full justify-center"
           onClick={handleCta}
-          disabled={isPending}
+          disabled={isPending || isUnavailable}
         >
-          {isPending ? "Opening checkout…" : ctaText}
+          {ctaLabel(ctaText, isPending, isUnavailable)}
         </Button>
       )}
 

@@ -5,6 +5,7 @@ import type { PricingCheckoutParams } from "@/domains/billing/pages/public/prici
 
 interface PricingPlansGridHarnessProps {
   onCheckout?: (params: PricingCheckoutParams) => Promise<void>;
+  isCheckoutUnavailable?: boolean;
 }
 
 async function completeCheckout(): Promise<void> {
@@ -13,6 +14,7 @@ async function completeCheckout(): Promise<void> {
 
 export function PricingPlansGridHarness({
   onCheckout = completeCheckout,
+  isCheckoutUnavailable = false,
 }: PricingPlansGridHarnessProps) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   return (
@@ -21,6 +23,7 @@ export function PricingPlansGridHarness({
       billing={billing}
       freeCta={{ label: "Create account", to: "/sign-up" }}
       pendingCheckoutKey={null}
+      isCheckoutUnavailable={isCheckoutUnavailable}
       proCheckoutInterval={
         billing === "student" ? "four_month" : billing === "annual" ? "yearly" : "monthly"
       }

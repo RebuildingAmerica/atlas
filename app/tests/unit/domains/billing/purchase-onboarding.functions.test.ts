@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   reconcilePaidCheckoutSession: vi.fn(),
   requireAtlasSessionState: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
+  resolveCheckoutAvailability: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", async () => {
@@ -46,6 +47,10 @@ vi.mock("@/domains/access/server/session-state", () => ({
 
 vi.mock("@/domains/billing/server/checkout", () => ({
   createCheckoutSession: mocks.createCheckoutSession,
+}));
+
+vi.mock("@/domains/billing/server/checkout-availability", () => ({
+  resolveCheckoutAvailability: mocks.resolveCheckoutAvailability,
 }));
 
 vi.mock("@/domains/billing/server/purchase-intents", () => ({
@@ -77,6 +82,7 @@ describe("purchase onboarding functions", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({ publicBaseUrl: "https://atlas.test" });
     mocks.getBrowserSessionHeaders.mockReturnValue(new Headers({ cookie: "test" }));
     mocks.reconcilePaidCheckoutSession.mockResolvedValue(false);
+    mocks.resolveCheckoutAvailability.mockResolvedValue({ available: true, reason: null });
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     mocks.requireReadyAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({

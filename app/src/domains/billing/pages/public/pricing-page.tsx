@@ -1,7 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
+import { AlertCircle } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
+import { loadCheckoutAvailability } from "@/domains/billing/purchase-onboarding.functions";
 import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 import type { BillingPeriod, PlanCardLinkCta } from "./components/plan-card";
 import { PricingComparisonTable } from "./components/pricing-comparison-table";
@@ -40,9 +43,12 @@ interface PricingPageProps {
  * Public-facing pricing page.
  *
  * Accessible without authentication. Shows Atlas's three product tiers and
- * a Research Pass option. CTA buttons call startCheckout(), which redirects
- * through Stripe Checkout. Users must be signed in to purchase; unauthenticated
- * users are redirected to /sign-in first.
+ * a Research Pass option. CTA buttons route into /onboarding, which collects
+ * an account, a passkey, and a workspace before handing off to Stripe.
+ *
+ * The CTAs go inert when checkout is unavailable, either because an operator
+ * paused the funnel or because the catalog cannot serve directory results.
+ * The server functions refuse independently, so this is presentation only.
  *
  * When the page is rendered with `intent`+`interval` search params and the
  * viewer is signed in, checkout is auto-resumed once. This preserves the
@@ -53,7 +59,21 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   const session = useAtlasSession();
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [pendingCheckoutKey, setPendingCheckoutKey] = useState<string | null>(null);
+  const availability = useQuery({
+    queryKey: ["billing", "checkout-availability"],
+    queryFn: () => loadCheckoutAvailability(),
+    staleTime: 30_000,
+  });
+  const isCheckoutUnavailable = availability.data?.available === false;
+  // Auto-resume runs with no user in the loop, so it waits for a confirmed
+  // yes. A deliberate click may proceed while the probe is still in flight
+  // because the server function refuses with a readable message anyway.
+  const isCheckoutConfirmedOpen = availability.data?.available === true;
 
+  // No unavailability guard here: every CTA container takes a required
+  // isCheckoutUnavailable prop and disables its buttons, and the server
+  // functions refuse on their own. A guard in this handler would be
+  // unreachable and would only look like protection.
   async function handleCheckout({ product, interval }: PricingCheckoutParams) {
     setPendingCheckoutKey(checkoutKey(product, interval));
     try {
@@ -64,11 +84,11 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   }
 
   useEffect(() => {
-    if (!intent || !intentInterval) {
+    if (!intent || !intentInterval || !isCheckoutConfirmedOpen) {
       return;
     }
     void navigate({ to: "/onboarding", search: { product: intent, interval: intentInterval } });
-  }, [intent, intentInterval, navigate]);
+  }, [intent, intentInterval, isCheckoutConfirmedOpen, navigate]);
 
   const activeWorkspace = session.data?.workspace.activeOrganization ?? null;
   const isAuthed = Boolean(session.data);
@@ -98,11 +118,28 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           </p>
         </div>
 
+        {isCheckoutUnavailable && (
+          <div
+            role="status"
+            className="bg-error-container text-on-error-container mb-8 rounded-[1.4rem] px-4 py-6"
+          >
+            <div className="flex items-center gap-2 font-semibold">
+              <AlertCircle className="h-5 w-5" aria-hidden />
+              Paid plans are temporarily unavailable
+            </div>
+            <p className="type-body-medium mt-2">
+              We have paused checkout while we finish work on the public directory. Browsing and
+              search stay free, and nothing on this page will charge you today.
+            </p>
+          </div>
+        )}
+
         <PricingPlansGrid
           activeWorkspaceName={activeWorkspace?.name ?? null}
           billing={billing}
           freeCta={freeCta}
           pendingCheckoutKey={pendingCheckoutKey}
+          isCheckoutUnavailable={isCheckoutUnavailable}
           proCheckoutInterval={proCheckoutInterval}
           teamCheckoutInterval={teamCheckoutInterval}
           onBillingChange={setBilling}
@@ -111,6 +148,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
 
         <PricingResearchPassCard
           pendingCheckoutKey={pendingCheckoutKey}
+          isCheckoutUnavailable={isCheckoutUnavailable}
           onPurchase={(interval) => {
             void handleCheckout({
               product: "atlas_research_pass",

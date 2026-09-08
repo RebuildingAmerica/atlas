@@ -4,6 +4,7 @@ import { checkoutKey, type PricingCheckoutInterval } from "../pricing-page-helpe
 
 interface ResearchPassCardProps {
   pendingCheckoutKey: string | null;
+  isCheckoutUnavailable: boolean;
   onPurchase: (interval: PricingCheckoutInterval) => void;
 }
 
@@ -12,7 +13,11 @@ interface ResearchPassCardProps {
  * Atlas Research Pass purchase for operators who need Team-level individual
  * access for a fixed window without committing to a subscription.
  */
-export function PricingResearchPassCard({ pendingCheckoutKey, onPurchase }: ResearchPassCardProps) {
+export function PricingResearchPassCard({
+  pendingCheckoutKey,
+  isCheckoutUnavailable,
+  onPurchase,
+}: ResearchPassCardProps) {
   const weeklyKey = checkoutKey("atlas_research_pass", "weekly");
   const onceKey = checkoutKey("atlas_research_pass", "once");
   return (
@@ -35,9 +40,13 @@ export function PricingResearchPassCard({ pendingCheckoutKey, onPurchase }: Rese
             onClick={() => {
               onPurchase("weekly");
             }}
-            disabled={pendingCheckoutKey === weeklyKey}
+            disabled={pendingCheckoutKey === weeklyKey || isCheckoutUnavailable}
           >
-            {pendingCheckoutKey === weeklyKey ? "Opening checkout…" : "Get 7-day pass"}
+            {isCheckoutUnavailable
+              ? "Temporarily unavailable"
+              : pendingCheckoutKey === weeklyKey
+                ? "Opening checkout…"
+                : "Get 7-day pass"}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$4</p>
           <Button
@@ -45,9 +54,13 @@ export function PricingResearchPassCard({ pendingCheckoutKey, onPurchase }: Rese
             onClick={() => {
               onPurchase("once");
             }}
-            disabled={pendingCheckoutKey === onceKey}
+            disabled={pendingCheckoutKey === onceKey || isCheckoutUnavailable}
           >
-            {pendingCheckoutKey === onceKey ? "Opening checkout…" : "Get 30-day pass"}
+            {isCheckoutUnavailable
+              ? "Temporarily unavailable"
+              : pendingCheckoutKey === onceKey
+                ? "Opening checkout…"
+                : "Get 30-day pass"}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$9</p>
         </div>

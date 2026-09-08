@@ -92,7 +92,13 @@ describe("PricingPlansGrid", () => {
     const user = userEvent.setup();
     const onPurchase = vi.fn();
 
-    render(<PricingResearchPassCard pendingCheckoutKey={null} onPurchase={onPurchase} />);
+    render(
+      <PricingResearchPassCard
+        pendingCheckoutKey={null}
+        isCheckoutUnavailable={false}
+        onPurchase={onPurchase}
+      />,
+    );
 
     expect(screen.getByText(/Team-level quotas for one person/)).toBeInTheDocument();
 

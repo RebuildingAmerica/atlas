@@ -9,6 +9,10 @@ import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/worksp
 import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 import { getAtlasBillingProducts } from "@/domains/billing/products";
 import type { AtlasBillingProducts } from "@/domains/billing/products";
+import type {
+  CheckoutAvailability,
+  CheckoutBlockReason,
+} from "@/domains/billing/server/checkout-availability";
 import type { PurchaseIntentRecord } from "@/domains/billing/server/purchase-intents";
 
 const purchaseProductSchema = z.enum(["atlas_pro", "atlas_team", "atlas_research_pass"]);
@@ -107,6 +111,7 @@ async function loadPurchaseServerModules() {
     const [
       auth,
       checkout,
+      checkoutAvailability,
       purchaseIntents,
       requestHeaders,
       runtime,
@@ -116,6 +121,7 @@ async function loadPurchaseServerModules() {
     ] = await Promise.all([
       import("@/domains/access/server/auth"),
       import("@/domains/billing/server/checkout"),
+      import("@/domains/billing/server/checkout-availability"),
       import("@/domains/billing/server/purchase-intents"),
       import("@/domains/access/server/request-headers"),
       import("@/domains/access/server/runtime"),
@@ -126,6 +132,7 @@ async function loadPurchaseServerModules() {
     return {
       auth,
       checkout,
+      checkoutAvailability,
       purchaseIntents,
       requestHeaders,
       runtime,
@@ -138,10 +145,45 @@ async function loadPurchaseServerModules() {
   throw new Error("Purchase onboarding is only available on the server.");
 }
 
+const CHECKOUT_BLOCK_MESSAGES: Record<CheckoutBlockReason, string> = {
+  disabled: "Atlas is not selling subscriptions right now.",
+  catalog_unavailable:
+    "Atlas cannot reach the civic directory right now, so checkout is paused. Nobody should pay for a directory that cannot answer a query.",
+};
+
+/**
+ * Throws when an operator has paused checkout or the catalog cannot serve.
+ *
+ * Both server functions that can lead to a Stripe charge call this, so the
+ * refusal does not depend on the browser honouring a disabled button.
+ *
+ * @param availability - Module namespace exposing resolveCheckoutAvailability.
+ */
+async function assertCheckoutAvailable(availability: {
+  resolveCheckoutAvailability: () => Promise<CheckoutAvailability>;
+}): Promise<void> {
+  const result = await availability.resolveCheckoutAvailability();
+  if (!result.available && result.reason) {
+    throw new Error(CHECKOUT_BLOCK_MESSAGES[result.reason]);
+  }
+}
+
+/**
+ * Reports whether the paid funnel is open, for rendering the pricing CTAs.
+ */
+export const loadCheckoutAvailability = createServerFn({ method: "GET" }).handler(
+  async (): Promise<CheckoutAvailability> => {
+    const { checkoutAvailability } = await loadPurchaseServerModules();
+    return checkoutAvailability.resolveCheckoutAvailability();
+  },
+);
+
 export const ensurePurchaseOnboarding = createServerFn({ method: "POST" })
   .validator(ensurePurchaseInputSchema)
   .handler(async ({ data }) => {
-    const { purchaseIntents, sessionState } = await loadPurchaseServerModules();
+    const { checkoutAvailability, purchaseIntents, sessionState } =
+      await loadPurchaseServerModules();
+    await assertCheckoutAvailable(checkoutAvailability);
     const session = await sessionState.requireAtlasSessionState();
     return purchaseIntents.ensurePurchaseIntent({
       interval: data.interval,
@@ -202,12 +244,14 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
     const {
       auth: authModule,
       checkout,
+      checkoutAvailability,
       purchaseIntents,
       requestHeaders,
       runtime: runtimeModule,
       sessionState,
       stripeCustomer,
     } = await loadPurchaseServerModules();
+    await assertCheckoutAvailable(checkoutAvailability);
     const session = await sessionState.requireReadyAtlasSessionState();
     const intent = await purchaseIntents.loadPurchaseIntent({
       id: data.purchaseId,
