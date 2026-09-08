@@ -206,7 +206,7 @@ class TestRequireCapabilityDependency:
         assert detail["plan_required"] == "pro"
 
     @pytest.mark.asyncio
-    async def test_ungranted_team_capability_names_team_plan(self) -> None:
+    async def test_contract_capability_does_not_name_a_purchasable_plan(self) -> None:
         actor = _build_actor(auth_type="oauth_jwt", products=["atlas_pro"])
         dependency = require_capability("coverage.underwriting")
 
@@ -215,8 +215,27 @@ class TestRequireCapabilityDependency:
 
         detail = cast("dict[str, object]", excinfo.value.detail)
         assert detail["error"] == "plan_required"
-        assert detail["plan_required"] == "team"
-        assert "Atlas Team" in cast("str", detail["message"])
+        assert detail["plan_required"] == "enterprise"
+        assert "Atlas Enterprise agreement" in cast("str", detail["message"])
+        assert "Atlas Team" not in cast("str", detail["message"])
+
+    @pytest.mark.asyncio
+    async def test_team_customer_is_not_told_to_buy_team_again(self) -> None:
+        """A Team workspace hitting a contract feature gets a coherent refusal.
+
+        No product in PRODUCT_CAPABILITIES grants coverage.underwriting, so the
+        old mapping sent a paying Team customer to buy the plan they already
+        had, forever.
+        """
+        actor = _build_actor(auth_type="oauth_jwt", products=["atlas_team"])
+        dependency = require_capability("coverage.underwriting")
+
+        with pytest.raises(HTTPException) as excinfo:
+            await dependency(actor=actor, settings=_build_settings())  # type: ignore[call-arg]
+
+        detail = cast("dict[str, object]", excinfo.value.detail)
+        assert detail["plan_required"] == "enterprise"
+        assert "Atlas Team" not in cast("str", detail["message"])
 
 
 class TestEnforceLimitDependency:

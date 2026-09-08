@@ -226,15 +226,23 @@ _REQUIRED_PLAN_FOR_CAPABILITY: dict[str, str] = {
     "monitoring.watchlists": "team",
     "auth.sso": "team",
     "auth.scim": "team",
-    "coverage.targets": "team",
-    "public.directories": "team",
-    "coverage.underwriting": "team",
+    # These three are contract features, not self-serve ones. No product in
+    # PRODUCT_CAPABILITIES grants them, so telling a buyer to upgrade to Team
+    # sent a paying Team customer to buy the plan they already had, and the
+    # feature stayed shut. Coverage Underwriting in particular is a
+    # funder-facing grant report sold as a contract line, not a $25 add-on.
+    "coverage.targets": "enterprise",
+    "public.directories": "enterprise",
+    "coverage.underwriting": "enterprise",
 }
 
 _REQUIRED_PLAN_LABELS: dict[str, str] = {
     "pro": "Pro",
     "team": "Team",
+    "enterprise": "Enterprise",
 }
+
+_CONTRACT_ONLY_PLANS: frozenset[str] = frozenset({"enterprise"})
 
 
 def _resolve_pricing_url(settings: Settings) -> str | None:
@@ -289,10 +297,19 @@ def require_capability(cap: str) -> Callable[..., Awaitable[None]]:
         required_plan = _REQUIRED_PLAN_FOR_CAPABILITY.get(cap, "pro")
         required_plan_label = _REQUIRED_PLAN_LABELS[required_plan]
         pricing_url = _resolve_pricing_url(settings)
-        description = (
-            f"This request requires the Atlas {required_plan_label} plan "
-            f"(missing capability: {cap})."
-        )
+        if required_plan in _CONTRACT_ONLY_PLANS:
+            # No checkout unlocks this, so point at a conversation rather than
+            # a plan the buyer could purchase and still be refused.
+            description = (
+                f"This request requires an Atlas {required_plan_label} agreement, "
+                f"which is arranged with Atlas rather than bought from the pricing "
+                f"page (missing capability: {cap})."
+            )
+        else:
+            description = (
+                f"This request requires the Atlas {required_plan_label} plan "
+                f"(missing capability: {cap})."
+            )
 
         headers: dict[str, str] | None = None
         if actor.auth_type == "oauth_jwt":
