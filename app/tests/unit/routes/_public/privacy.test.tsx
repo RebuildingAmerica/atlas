@@ -28,8 +28,22 @@ describe("routes/_public/privacy", () => {
       screen.getByRole("heading", { level: 2, name: "Public-source data in Atlas" }),
     ).toBeInTheDocument();
     expect(screen.getByText("To process billing and administer subscriptions")).toBeInTheDocument();
+    // A privacy policy that will not name its subprocessors cannot answer the
+    // first question any enterprise buyer's DPA review asks.
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Service providers we rely on" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Stripe — processes payments, subscriptions, and tax calculation/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Your rights over your account data" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "If Atlas lists you" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Last updated:").parentElement).toHaveTextContent(
-      "Last updated: April 23, 2026",
+      "Last updated: September 9, 2026",
     );
   });
 
@@ -50,13 +64,13 @@ describe("routes/_public/privacy", () => {
           name: "description",
           content: "How Atlas handles account, billing, usage, and public-source civic data.",
         },
-        { property: "og:url", content: "https://atlas.rebuildingamerica.com/privacy" },
+        { property: "og:url", content: "https://atlas.rebuildingus.org/privacy" },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/privacy",
+      href: "https://atlas.rebuildingus.org/privacy",
     });
   });
 });
