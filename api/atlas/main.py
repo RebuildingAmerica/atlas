@@ -29,7 +29,7 @@ from atlas.platform.mcp import (
     get_mcp_asgi_app,
     split_cors_origins,
 )
-from atlas.platform.observability import configure_json_logging, log_requests
+from atlas.platform.observability import RequestLogMiddleware, configure_json_logging
 from atlas.platform.openapi import (
     OPENAPI_CONTACT,
     OPENAPI_DESCRIPTION,
@@ -61,18 +61,12 @@ class McpMountPathAliasMiddleware:
         await self.app(scope, receive, send)
 
 
-def configure_logging() -> None:
-    """Configure logging for the application.
-
-    JSON rather than the previous plain text: Cloud Run lifts ``severity``
-    and ``message`` out of structured stdout, so a failing request becomes a
-    queryable record naming its route instead of an unattributed line.
-    """
-    configure_json_logging(logging.INFO)
-
-
-# Configure logging
-configure_logging()
+# JSON rather than the previous plain text: Cloud Run lifts ``severity`` and
+# ``message`` out of structured stdout, so a failing request becomes a queryable
+# record naming its route instead of an unattributed line. This runs at import
+# rather than in the lifespan so that anything logged while the module graph is
+# still loading is structured too.
+configure_json_logging(logging.INFO)
 
 
 @asynccontextmanager
@@ -204,9 +198,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(McpMountPathAliasMiddleware)
-    # Outermost of the HTTP middlewares so every request, including one
-    # rejected by the rate limiter, gets an id and a log line.
-    app.middleware("http")(log_requests)
+    # Added last, so it is outermost: every request gets an id and a log line,
+    # including one the rate limiter rejects.
+    app.add_middleware(RequestLogMiddleware)
 
     # Health check endpoint
     @app.get(
