@@ -35,18 +35,18 @@ describe("routes/_public/index", () => {
       expect.arrayContaining([
         {
           property: "og:url",
-          content: "https://atlas.rebuildingamerica.com",
+          content: "https://atlas.rebuildingus.org",
         },
         {
           property: "og:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://atlas.rebuildingus.org/social/atlas-card.png",
         },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com",
+      href: "https://atlas.rebuildingus.org",
     });
   });
 });

@@ -1,4 +1,4 @@
-const DEFAULT_PUBLIC_ORIGIN = "https://atlas.rebuildingamerica.com";
+const DEFAULT_PUBLIC_ORIGIN = "https://atlas.rebuildingus.org";
 const DEFAULT_SITE_NAME = "Atlas";
 const DEFAULT_SOCIAL_IMAGE_PATH = "/social/atlas-card.png";
 const DEFAULT_SOCIAL_IMAGE_WIDTH = "1200";

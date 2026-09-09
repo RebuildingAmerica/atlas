@@ -172,7 +172,7 @@ describe("actor profile answer-card placement", () => {
     );
 
     expect(actionClusterCaptures.shareUrls.at(-1)).toBe(
-      "https://atlas.rebuildingamerica.com/profiles/people/jane-doe",
+      "https://atlas.rebuildingus.org/profiles/people/jane-doe",
     );
 
     cleanup();
@@ -189,7 +189,7 @@ describe("actor profile answer-card placement", () => {
     );
 
     expect(actionClusterCaptures.shareUrls.at(-1)).toBe(
-      "https://atlas.rebuildingamerica.com/profiles/organizations/housing-justice-kc",
+      "https://atlas.rebuildingus.org/profiles/organizations/housing-justice-kc",
     );
   });
 });

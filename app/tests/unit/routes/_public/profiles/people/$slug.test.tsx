@@ -73,7 +73,7 @@ describe("routes/_public/profiles/people/$slug", () => {
     );
     expect(headPayload.links[0]).toEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/profiles/people/jane",
+      href: "https://atlas.rebuildingus.org/profiles/people/jane",
     });
   });
 
@@ -112,11 +112,11 @@ describe("routes/_public/profiles/people/$slug", () => {
       expect.arrayContaining([
         {
           property: "og:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://atlas.rebuildingus.org/social/atlas-card.png",
         },
         {
           name: "twitter:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://atlas.rebuildingus.org/social/atlas-card.png",
         },
       ]),
     );

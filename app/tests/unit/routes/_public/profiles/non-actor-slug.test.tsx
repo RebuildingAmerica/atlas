@@ -80,7 +80,7 @@ describe.each([
     );
     expect(headPayload.links[0]).toEqual({
       rel: "canonical",
-      href: `https://atlas.rebuildingamerica.com${canonicalPath}/${scope}-slug`,
+      href: `https://atlas.rebuildingus.org${canonicalPath}/${scope}-slug`,
     });
   });
 

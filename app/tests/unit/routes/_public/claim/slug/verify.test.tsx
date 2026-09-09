@@ -140,13 +140,13 @@ describe("routes/_public/claim/$slug verification", () => {
     expect(head.meta).toEqual(
       expect.arrayContaining([
         { title: "Verify Acme | Atlas" },
-        { property: "og:url", content: "https://atlas.rebuildingamerica.com/claim/acme" },
+        { property: "og:url", content: "https://atlas.rebuildingus.org/claim/acme" },
         { name: "robots", content: "noindex,nofollow" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/claim/acme",
+      href: "https://atlas.rebuildingus.org/claim/acme",
     });
   });
 

@@ -45,7 +45,7 @@ describe("non-actor profiles", () => {
       });
       expect(metaOf(head)).toContainEqual({ content: "article", property: "og:type" });
       expect("links" in head ? head.links : []).toContainEqual({
-        href: "https://atlas.rebuildingamerica.com/profiles/initiatives/delta-housing-initiative",
+        href: "https://atlas.rebuildingus.org/profiles/initiatives/delta-housing-initiative",
         rel: "canonical",
       });
     });

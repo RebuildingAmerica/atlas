@@ -110,7 +110,7 @@ export async function expectPlaceSlugRoute(expectation: PlaceSlugRouteExpectatio
   expect(head.meta).toContainEqual({ title: `${data.identity.name} | Atlas` });
   expect(head.links).toContainEqual({
     rel: "canonical",
-    href: `https://atlas.rebuildingamerica.com${expectation.canonicalPath}`,
+    href: `https://atlas.rebuildingus.org${expectation.canonicalPath}`,
   });
 
   readRouterMocks().useLoaderData.mockReturnValue(loaded);
