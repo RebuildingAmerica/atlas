@@ -123,8 +123,6 @@ jobs:
           ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
           ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
           ATLAS_BILLING_CHECKOUT_ENABLED: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
           ATLAS_BILLING_AUTOMATIC_TAX: ${{ vars.ATLAS_BILLING_AUTOMATIC_TAX }}
         run: |
@@ -199,55 +197,37 @@ jobs:
           add_vercel_env DATABASE_BACKEND "postgres"
           add_vercel_env DATABASE_URL "$DATABASE_URL"
           add_vercel_env NITRO_PRESET "vercel"
-          add_vercel_env STRIPE_API_KEY "$STRIPE_API_KEY"
-          add_vercel_env STRIPE_ATLAS_CATALOG "$STRIPE_ATLAS_CATALOG"
           add_vercel_env ATLAS_BILLING_AUTOMATIC_TAX "${ATLAS_BILLING_AUTOMATIC_TAX:-true}"
 
-          # Deploying the app and being able to sell are separate concerns, and
-          # an earlier version of this guard conflated them: it hard-failed on a
-          # test-mode key, which meant an unrelated security fix could not reach
-          # production until the Stripe cutover was finished. Nothing about a
-          # test key makes the rest of a release unsafe to ship.
+          # Stripe config is NOT synced from GitHub secrets. `pnpm setup:prod`
+          # owns it: that command validates live/test mode against the target
+          # with validateStripeApiKeyMode, creates or verifies the live
+          # catalog, registers the webhook endpoint, and writes all three
+          # values into Vercel itself.
           #
-          # STRIPE_API_KEY resolves from the production GitHub environment when
-          # that environment defines it, and falls back to the repository
-          # secret otherwise. The repository secret is test mode: the CI
-          # acceptance verifier asserts it with
-          # validateStripeApiKeyMode(apiKey, "test"). So the fallback is always
-          # the wrong key for production, and selling with it would look
-          # configured and take no money.
-          checkout_enabled="${ATLAS_BILLING_CHECKOUT_ENABLED:-false}"
-          stripe_live=false
-          case "$STRIPE_API_KEY" in
-            sk_live_*|rk_live_*) stripe_live=true ;;
-          esac
+          # Syncing them here as well gave Stripe two sources of truth, and
+          # the repository-level secret is deliberately test mode for the CI
+          # acceptance verifier. A deploy would therefore have overwritten a
+          # correctly provisioned live key with a test one, leaving Atlas
+          # looking configured while taking no money. This deploy checks the
+          # values are present and leaves them alone.
+          missing_stripe=""
+          hosted_env="$(pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color 2>/dev/null || true)"
+          for key in STRIPE_API_KEY STRIPE_ATLAS_CATALOG STRIPE_WEBHOOK_SECRET; do
+            if ! printf '%s' "$hosted_env" | grep -q "^[[:space:]]*${key}[[:space:]]"; then
+              missing_stripe="$missing_stripe $key"
+            fi
+          done
 
-          if [ "$stripe_live" != "true" ]; then
-            if [ "$checkout_enabled" = "true" ]; then
-              echo "::error title=Cannot sell with a test-mode Stripe key::ATLAS_BILLING_CHECKOUT_ENABLED is true but STRIPE_API_KEY is not live mode. Define STRIPE_API_KEY and STRIPE_ATLAS_CATALOG as secrets on the production GitHub environment, where they take precedence over the repository-level test values."
+          if [ -n "$missing_stripe" ]; then
+            if [ "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}" = "true" ]; then
+              echo "::error title=Stripe is not provisioned::Checkout is enabled but Vercel production is missing:$missing_stripe. Run 'STRIPE_API_KEY=rk_live_... pnpm bootstrap --product atlas --target prod --live' and re-run this deploy."
               exit 1
             fi
-            echo "::warning title=Stripe is not live mode::Deploying with checkout closed because STRIPE_API_KEY is not a live key. The release ships; Atlas will not sell until live Stripe secrets exist on the production environment."
+            echo "::warning title=Stripe is not provisioned::Vercel production is missing:$missing_stripe. Harmless while checkout is closed."
           fi
 
-          # STRIPE_WEBHOOK_SECRET is deliberately not synced here. The Stripe
-          # acceptance run mints an ephemeral secret from `stripe listen`, and
-          # a static one in this workflow would make that run prove nothing.
-          # The hosted runtime still needs one, set out of band by
-          # `pnpm setup:prod`. A missing secret only matters once money can
-          # move, so it blocks a selling deploy and warns on a closed one.
-          if ! pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color 2>/dev/null \
-            | grep -q '^[[:space:]]*STRIPE_WEBHOOK_SECRET[[:space:]]'; then
-            if [ "$checkout_enabled" = "true" ]; then
-              echo "::error title=Missing STRIPE_WEBHOOK_SECRET::Vercel production has no STRIPE_WEBHOOK_SECRET, so every Stripe webhook would fail signature verification and paid accounts would never activate. Run 'STRIPE_API_KEY=rk_live_... pnpm setup:prod' to provision it, then re-run this deploy."
-              exit 1
-            fi
-            echo "::warning title=Missing STRIPE_WEBHOOK_SECRET::Vercel production has no STRIPE_WEBHOOK_SECRET. Harmless while checkout is closed; provision it with 'pnpm setup:prod' before opening the funnel."
-          fi
-
-          # Written after the guards so a contradictory pair of settings fails
-          # the deploy rather than reaching Vercel.
-          add_vercel_env ATLAS_BILLING_CHECKOUT_ENABLED "$checkout_enabled"
+          add_vercel_env ATLAS_BILLING_CHECKOUT_ENABLED "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}"
 
           deployment_output="$(pnpm exec vercel "${vercel_args[@]}")"
           printf '%s\n' "$deployment_output"
