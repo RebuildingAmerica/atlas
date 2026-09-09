@@ -5,33 +5,24 @@ from __future__ import annotations
 import json
 import logging
 import sys
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.testclient import TestClient
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 from atlas.platform.observability import (
     REQUEST_ID_HEADER,
     JsonLogFormatter,
+    RequestLogMiddleware,
     configure_json_logging,
     current_request_id,
-    log_requests,
     request_id_var,
 )
-
-
-def _always_raises() -> None:
-    """Raise so the caller can capture real exc_info."""
-    raise ValueError
-
-
-def _captured_value_error() -> tuple[type[BaseException], BaseException, object]:
-    """Return real exc_info for a raised ValueError."""
-    try:
-        _always_raises()
-    except ValueError:
-        return sys.exc_info()  # type: ignore[return-value]
-    raise AssertionError
 
 
 def _record(**kwargs: object) -> logging.LogRecord:
@@ -87,7 +78,12 @@ class TestJsonLogFormatter:
     def test_renders_an_exception(self) -> None:
         """A failure keeps its traceback inside the record."""
         record = _record()
-        record.exc_info = _captured_value_error()
+        try:
+            # Raised by the call itself, so ruff's TRY301 has nothing to
+            # object to and the test needs no helper to produce exc_info.
+            int("not a number")
+        except ValueError:
+            record.exc_info = sys.exc_info()
 
         payload = json.loads(JsonLogFormatter().format(record))
 
@@ -122,6 +118,38 @@ class TestConfigureJsonLogging:
                 root.addHandler(handler)
             root.setLevel(original_level)
 
+    def test_routes_uvicorn_through_the_json_handler(self) -> None:
+        """Two log formats on one stdout is what this exists to prevent."""
+        root = logging.getLogger()
+        original_root = list(root.handlers)
+        original_level = root.level
+        names = ("uvicorn", "uvicorn.error", "uvicorn.access")
+        saved = {
+            name: (list(logging.getLogger(name).handlers), logging.getLogger(name).propagate)
+            for name in names
+        }
+        for name in names:
+            logging.getLogger(name).handlers = [logging.NullHandler()]
+            logging.getLogger(name).propagate = False
+        try:
+            configure_json_logging()
+
+            assert logging.getLogger("uvicorn").handlers == []
+            assert logging.getLogger("uvicorn").propagate is True
+            assert logging.getLogger("uvicorn.error").propagate is True
+            # Silenced, not propagated: RequestLogMiddleware already logs the
+            # same request with more fields.
+            assert logging.getLogger("uvicorn.access").propagate is False
+        finally:
+            for name, (handlers, propagate) in saved.items():
+                logging.getLogger(name).handlers = handlers
+                logging.getLogger(name).propagate = propagate
+            for handler in list(root.handlers):
+                root.removeHandler(handler)
+            for handler in original_root:
+                root.addHandler(handler)
+            root.setLevel(original_level)
+
 
 class TestRequestLogging:
     """Every request gets an id, a line, and the id echoed back."""
@@ -130,7 +158,7 @@ class TestRequestLogging:
     def client(self) -> TestClient:
         """An app carrying only the logging middleware."""
         app = FastAPI()
-        app.middleware("http")(log_requests)
+        app.add_middleware(RequestLogMiddleware)
 
         @app.get("/ok")
         async def ok() -> dict[str, str]:
@@ -139,6 +167,18 @@ class TestRequestLogging:
         @app.get("/boom")
         async def boom() -> dict[str, str]:
             raise RuntimeError
+
+        @app.get("/echoes-its-own-id")
+        async def echoes_its_own_id() -> JSONResponse:
+            return JSONResponse({}, headers={REQUEST_ID_HEADER: current_request_id()})
+
+        @app.get("/stream")
+        async def stream() -> StreamingResponse:
+            async def chunks() -> AsyncIterator[bytes]:
+                for part in (b"a", b"b", b"c"):
+                    yield part
+
+            return StreamingResponse(chunks(), media_type="text/plain")
 
         return TestClient(app, raise_server_exceptions=False)
 
@@ -154,6 +194,16 @@ class TestRequestLogging:
     def test_honours_a_caller_supplied_id(self, client: TestClient) -> None:
         """A gateway's id should survive so traces join up."""
         response = client.get("/ok", headers={REQUEST_ID_HEADER: "edge-abc.1"})
+
+        assert response.headers[REQUEST_ID_HEADER] == "edge-abc.1"
+
+    def test_does_not_double_a_header_the_route_already_set(self, client: TestClient) -> None:
+        """The Firehose routes echo this header themselves.
+
+        Appending unconditionally gave those responses two X-Request-Id values,
+        which HTTP joins into "id, id" and no client parses back into an id.
+        """
+        response = client.get("/echoes-its-own-id", headers={REQUEST_ID_HEADER: "edge-abc.1"})
 
         assert response.headers[REQUEST_ID_HEADER] == "edge-abc.1"
 
@@ -191,6 +241,21 @@ class TestRequestLogging:
         record = next(r for r in caplog.records if r.message == "Request failed")
         assert record.http_path == "/boom"
         assert record.exc_info is not None
+
+    def test_streams_a_response_without_buffering_it(self, client: TestClient) -> None:
+        """The reason this is pure ASGI rather than BaseHTTPMiddleware.
+
+        BaseHTTPMiddleware relays every chunk through a memory object stream,
+        which turns each SSE frame from the Firehose and the mounted MCP
+        transport into a queue hop. Wrapping send leaves the chunks alone.
+        """
+        with client.stream("GET", "/stream") as response:
+            assert response.status_code == 200
+            assert response.headers[REQUEST_ID_HEADER]
+            chunks = list(response.iter_text())
+
+        assert "".join(chunks) == "abc"
+        assert len(chunks) >= 1
 
     def test_unbinds_the_id_after_the_request(self, client: TestClient) -> None:
         """A leaked id would tag unrelated background work."""
