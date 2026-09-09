@@ -16,11 +16,13 @@ from fastapi import HTTPException, Response
 from atlas.domains.discovery.api_submit_routes import (
     _current_budget_month,
     contribute_discovery_results,
+    sync_discovery_run,
 )
 from atlas.domains.discovery.budget import (
     OrgDiscoveryBudgetCRUD,
     release_run_if_reserved,
 )
+from tests.domains.discovery.api_edges_support import _bundle_with_ranked_entry
 from tests.domains.discovery.api_org_support import ORG_ID, _make_actor
 from tests.domains.discovery.submit_routes_support import make_contribution_request
 
@@ -179,7 +181,7 @@ class TestContributionBudgetRelease:
             used_runs=0,
         )
 
-        await release_run_if_reserved(db, org_id=ORG_ID, month=month, reserved=reserved)
+        await release_run_if_reserved(db, reserved)
 
         budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
         assert budget is not None
@@ -189,6 +191,99 @@ class TestContributionBudgetRelease:
     async def test_unmetered_plan_releases_nothing(self, db: object) -> None:
         """An unlimited plan never reserved, so there is nothing to give back."""
         month = _current_budget_month()
-        await release_run_if_reserved(db, org_id=ORG_ID, month=month, reserved=None)
+        await release_run_if_reserved(db, None)
 
         assert await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month) is None
+
+
+class TestReservationCeiling:
+    """The ceiling holds and the counter never overshoots it.
+
+    These are sequential, so they do not prove the UPDATE is atomic — a real
+    proof needs two connections racing, which this in-memory fixture cannot
+    express. The limit test living in the WHERE clause is what makes it
+    atomic; this only pins the behaviour that clause has to preserve.
+    """
+
+    @pytest.mark.asyncio
+    async def test_the_last_run_can_be_taken_only_once(self, db: object) -> None:
+        """Taking the final run leaves the budget spent, not overspent."""
+        month = _current_budget_month()
+        await OrgDiscoveryBudgetCRUD.set_budget(
+            db, org_id=ORG_ID, month=month, monthly_run_limit=2, used_runs=1
+        )
+
+        first = await OrgDiscoveryBudgetCRUD.reserve_run(db, org_id=ORG_ID, month=month)
+        assert first.used_runs == 2
+
+        with pytest.raises(HTTPException) as exc_info:
+            await OrgDiscoveryBudgetCRUD.reserve_run(db, org_id=ORG_ID, month=month)
+        assert exc_info.value.status_code == HTTPStatus.CONFLICT
+
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
+        assert budget is not None
+        assert budget.used_runs == 2
+
+    @pytest.mark.asyncio
+    async def test_a_failure_creating_the_run_refunds_it(
+        self, db: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Run creation sits after the committed reservation, so it needs the guard too."""
+        month = _current_budget_month()
+        await OrgDiscoveryBudgetCRUD.set_budget(
+            db, org_id=ORG_ID, month=month, monthly_run_limit=2, used_runs=0
+        )
+
+        from atlas.domains.discovery import api_submit_routes
+
+        async def boom(*_args: object, **_kwargs: object) -> str:
+            raise RuntimeError
+
+        monkeypatch.setattr(api_submit_routes.DiscoveryRunCRUD, "create", boom)
+
+        with pytest.raises(RuntimeError):
+            await contribute_discovery_results(
+                req=make_contribution_request(),
+                response=Response(),
+                actor=_make_actor(),
+                db=db,
+                _cap=None,
+                _run_limit=2,
+            )
+
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
+        assert budget is not None
+        assert budget.used_runs == 0
+
+    @pytest.mark.asyncio
+    async def test_a_failure_creating_a_synced_run_refunds_it(
+        self, db: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The sync route reserves before creating the run, exactly as contribution does."""
+        month = _current_budget_month()
+        await OrgDiscoveryBudgetCRUD.set_budget(
+            db, org_id=ORG_ID, month=month, monthly_run_limit=2, used_runs=0
+        )
+
+        from atlas.domains.discovery import api_submit_routes
+
+        async def boom(*_args: object, **_kwargs: object) -> str:
+            raise RuntimeError
+
+        monkeypatch.setattr(api_submit_routes.DiscoveryRunCRUD, "create", boom)
+
+        with pytest.raises(RuntimeError):
+            await sync_discovery_run(
+                req=_bundle_with_ranked_entry(),
+                response=Response(),
+                actor=_make_actor(),
+                db=db,
+                x_atlas_upload_target=None,
+                x_atlas_workspace_id=None,
+                _cap=None,
+                _run_limit=2,
+            )
+
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
+        assert budget is not None
+        assert budget.used_runs == 0
