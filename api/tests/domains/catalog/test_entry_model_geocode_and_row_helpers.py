@@ -335,15 +335,6 @@ class _PostgresLikeConnection:
 
 
 @pytest.mark.asyncio
-async def test_search_fts_postgres_branch_emits_tsquery_sql() -> None:
-    """search_fts should emit Postgres tsquery SQL when backend == 'postgres' (line 484)."""
-    conn = _PostgresLikeConnection()
-    rows = await EntryCRUD.search_fts(conn, "anything")
-    assert rows == []
-    assert any("plainto_tsquery" in sql for sql, _ in conn.executed)
-
-
-@pytest.mark.asyncio
 async def test_search_public_ids_postgres_branch_emits_tsquery_sql() -> None:
     """_search_public_ids should emit Postgres tsquery SQL when backend == 'postgres' (line 957)."""
     conn = _PostgresLikeConnection()

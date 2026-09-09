@@ -79,52 +79,6 @@ class EntryListingMixin:
         return await _hydrate_atproto_identities(conn, entries)
 
     @staticmethod
-    async def search_fts(
-        conn: aiosqlite.Connection,
-        query: str,
-        limit: int = 50,
-    ) -> builtin_list[EntryModel]:
-        """
-        Full-text search entries by name and description.
-
-        Parameters
-        ----------
-        conn : aiosqlite.Connection
-            Database connection.
-        query : str
-            Search query.
-        limit : int, optional
-            Result limit. Default is 50.
-
-        Returns
-        -------
-        list[EntryModel]
-            Matching entries.
-        """
-        if getattr(conn, "backend", None) == "postgres":
-            sql = """
-                SELECT e.* FROM entries e
-                WHERE e.search_vector @@ plainto_tsquery('english', ?)
-                LIMIT ?
-            """
-        else:
-            sql = """
-                SELECT e.* FROM entries e
-                JOIN entries_fts fts ON e.rowid = fts.rowid
-                WHERE entries_fts MATCH ?
-                LIMIT ?
-            """
-        cursor = await conn.execute(sql, (query, limit))
-        rows = await cursor.fetchall()
-
-        if not rows:
-            return []
-
-        columns = [col[0] for col in cursor.description]
-        entries = [_row_to_entry(dict(zip(columns, row, strict=False))) for row in rows]
-        return await _hydrate_atproto_identities(conn, entries)
-
-    @staticmethod
     async def filter_by_issue_area(
         conn: aiosqlite.Connection,
         issue_area: str,
