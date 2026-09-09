@@ -11,7 +11,10 @@ name: Production Canary
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    # Hourly, not every 30 minutes: GitHub bills a minimum of one minute
+    # per job and runner boot is most of the wall clock, so the tighter
+    # schedule cost ~1,440 runner-minutes a month for ~2s of curl.
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +22,9 @@ permissions:
 
 concurrency:
   group: production-canary
-  cancel-in-progress: true
+  # Never cancel a probe in flight: a killed monitor reports nothing, which is
+  # indistinguishable from a healthy one.
+  cancel-in-progress: false
 
 jobs:
   probe:
@@ -28,8 +33,11 @@ jobs:
     steps:
       - name: Probe the public surfaces
         env:
-          APP_URL: https://atlas.rebuildingus.org
-          API_URL: https://atlas-api.rebuildingus.org
+          # From secrets, like every other workflow. A hardcoded origin keeps
+          # probing a retired host, and a parked page that still answers 200 is
+          # exactly the silent monitor this job exists to replace.
+          APP_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          API_URL: ${{ secrets.ATLAS_API_URL }}
           PDS_URL: https://atlas-pds.rebuildingus.org
         run: |
           set -uo pipefail
@@ -45,20 +53,25 @@ jobs:
             if [ "$actual" = "$expected" ]; then
               echo "ok    $label ($actual) $url"
             else
-              echo "::error title=$label is unhealthy::Expected $expected from $url, got $actual."
+              echo "::error title=$label is unhealthy::Expected 200 from $url, got $actual."
               failures=$((failures + 1))
             fi
           }
 
-          check_status "App"          "$APP_URL/"                  200
-          check_status "API health"   "$API_URL/health"            200
-          check_status "Sitemap"      "$APP_URL/sitemap.xml"       200
-          check_status "PDS health"   "$PDS_URL/xrpc/_health"      200
+          # /health is deliberately absent: it answers ok while the database is
+          # unreachable, and the catalog probe below proves reachability and
+          # content together.
+          check_status "App"        "$APP_URL/"
+          check_status "Sitemap"    "$APP_URL/sitemap.xml"
+          check_status "PDS health" "$PDS_URL/xrpc/_health"
 
           # The directory is the product. A reachable API serving nothing is
           # still an outage to the person who came here to look someone up.
-          entries="$(curl -sS --max-time 25 "$API_URL/api/entities?limit=1" || echo '')"
-          count="$(printf '%s' "$entries" | grep -o '"id"' | wc -l | tr -d ' ')"
+          # Parse the payload rather than grepping for a quoted key: an error
+          # envelope that happens to carry an "id" field would pass a grep, and
+          # a monitor that cannot fail is the thing being replaced.
+          entries="$(curl -sS --max-time 25 "$API_URL/api/entities?limit=1")"
+          count="$(printf '%s' "$entries" | jq 'try ((.items // []) | length) catch 0' 2>/dev/null)"
           if [ "${count:-0}" -ge 1 ]; then
             echo "ok    Catalog returns rows"
           else
