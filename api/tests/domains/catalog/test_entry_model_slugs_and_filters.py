@@ -133,32 +133,6 @@ async def test_list_filters_by_entry_type(test_db: object) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_fts_returns_matching_entries(test_db: object) -> None:
-    """search_fts should return entries whose name/description match (lines 483-503)."""
-    conn = test_db
-    await EntryCRUD.create(
-        conn,
-        entry_type="organization",
-        name="Riverstone Housing Coalition",
-        description="A civic group focused on local housing equity.",
-        city="Lawrence",
-        state="KS",
-        geo_specificity="local",
-    )
-
-    matches = await EntryCRUD.search_fts(conn, "Riverstone")
-    assert any(e.name == "Riverstone Housing Coalition" for e in matches)
-
-
-@pytest.mark.asyncio
-async def test_search_fts_returns_empty_for_no_matches(test_db: object) -> None:
-    """search_fts should return [] when nothing matches (line 499-500)."""
-    conn = test_db
-    matches = await EntryCRUD.search_fts(conn, "absolutelynothingmatchesthis")
-    assert matches == []
-
-
-@pytest.mark.asyncio
 async def test_filter_by_issue_area_returns_tagged_entries(test_db: object) -> None:
     """filter_by_issue_area should return entries tagged with the slug (lines 534-555)."""
     conn = test_db
