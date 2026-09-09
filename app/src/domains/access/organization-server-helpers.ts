@@ -1,5 +1,8 @@
 import { createServerOnlyFn } from "@tanstack/react-start";
-import type { AtlasSessionPayload, AtlasWorkspaceMembership } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import type {
+  AtlasSessionPayload,
+  AtlasWorkspaceMembership,
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 
 const loadOrganizationServerModules = createServerOnlyFn(async () => {

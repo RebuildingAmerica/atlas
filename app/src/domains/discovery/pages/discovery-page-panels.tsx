@@ -9,10 +9,7 @@ import {
   formatQueueStatus,
   queueItems,
 } from "@rebuildingamerica/atlas-catalog/discovery/page-utils";
-import {
-  confidenceCount,
-  stalePreviewItems,
-} from "./discovery-page-utils";
+import { confidenceCount, stalePreviewItems } from "./discovery-page-utils";
 
 interface ResearchOperationsPanelProps {
   isLoading: boolean;

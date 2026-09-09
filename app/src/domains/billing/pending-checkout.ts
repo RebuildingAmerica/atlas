@@ -1,4 +1,7 @@
-import { SELF_SERVE_PRODUCTS, type AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import {
+  SELF_SERVE_PRODUCTS,
+  type AtlasSelfServeProduct,
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { PRICING_CHECKOUT_INTERVALS, type PricingCheckoutInterval } from "./checkout-intervals";
 
 /**
