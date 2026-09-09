@@ -127,7 +127,16 @@ class OrgDiscoveryBudgetCRUD:
         month: str,
         default_monthly_limit: int = DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT,
     ) -> OrgDiscoveryBudgetModel:
-        """Reserve one discovery run or raise HTTP 409 with the current budget state."""
+        """Reserve one discovery run or raise HTTP 409 with the current budget state.
+
+        The increment carries its own limit test. Reading ``used_runs`` in
+        Python and then incrementing unconditionally let two concurrent
+        callers both observe the second-to-last run and both take it, so a
+        workspace capped at two could spend three. Pushing the comparison
+        into the UPDATE makes claiming the last run atomic at any isolation
+        level, and a zero row count is what "someone else took it" looks
+        like.
+        """
         budget = await OrgDiscoveryBudgetCRUD.get_budget(conn, org_id=org_id, month=month)
         if budget is None:
             budget = await OrgDiscoveryBudgetCRUD.set_budget(
@@ -138,28 +147,70 @@ class OrgDiscoveryBudgetCRUD:
                 used_runs=0,
             )
 
-        if budget.used_runs >= budget.monthly_run_limit:
-            detail = OrgDiscoveryBudgetExceededResponse(
-                org_id=budget.org_id,
-                month=budget.month,
-                monthly_run_limit=budget.monthly_run_limit,
-                used_runs=budget.used_runs,
-                remaining_runs=budget.remaining_runs,
-            )
-            raise HTTPException(status_code=409, detail=detail.model_dump())
-
-        await conn.execute(
+        cursor = await conn.execute(
             """
             UPDATE org_discovery_budgets
             SET used_runs = used_runs + 1, updated_at = ?
-            WHERE org_id = ? AND month = ?
+            WHERE org_id = ? AND month = ? AND used_runs < monthly_run_limit
             """,
             (db_util.now_iso(), org_id, month),
         )
+        claimed = cursor.rowcount
         await conn.commit()
+
         reserved = await OrgDiscoveryBudgetCRUD.get_budget(conn, org_id=org_id, month=month)
         assert reserved is not None, "budget existed before reservation"
+
+        if not claimed:
+            detail = OrgDiscoveryBudgetExceededResponse(
+                org_id=reserved.org_id,
+                month=reserved.month,
+                monthly_run_limit=reserved.monthly_run_limit,
+                used_runs=reserved.used_runs,
+                remaining_runs=reserved.remaining_runs,
+            )
+            raise HTTPException(status_code=409, detail=detail.model_dump())
+
         return reserved
+
+    @staticmethod
+    async def release_run(
+        conn: aiosqlite.Connection,
+        reserved: OrgDiscoveryBudgetModel,
+    ) -> None:
+        """Give back a run reserved by :meth:`reserve_run`.
+
+        ``reserve_run`` commits its increment so concurrent callers cannot both
+        claim the last run of the month. That commit means a later failure
+        leaves the run spent with nothing persisted, and on a free workspace
+        capped at two runs a month two timeouts exhaust the month for nothing.
+        This is the compensating write.
+
+        It is a compensation rather than a rollback, so a process that dies
+        between the failure and this call still leaks the run. Holding the
+        reservation open in the request transaction instead would let two
+        concurrent callers past the same limit, which is the worse trade.
+
+        The workspace and month come from the reservation itself rather than
+        from the caller, so a refund cannot be aimed at a different budget row
+        than the one that was charged.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        reserved : OrgDiscoveryBudgetModel
+            The budget row as it stood immediately after the reservation.
+        """
+        await conn.execute(
+            """
+            UPDATE org_discovery_budgets
+            SET used_runs = MAX(used_runs - 1, 0), updated_at = ?
+            WHERE org_id = ? AND month = ?
+            """,
+            (db_util.now_iso(), reserved.org_id, reserved.month),
+        )
+        await conn.commit()
 
 
 def _resolve_dependency_limit(run_limit: object) -> int | None:
@@ -173,48 +224,22 @@ def _resolve_dependency_limit(run_limit: object) -> int | None:
 
 async def release_run_if_reserved(
     conn: aiosqlite.Connection,
-    *,
-    org_id: str | None,
-    month: str,
     reserved: OrgDiscoveryBudgetModel | None,
 ) -> None:
-    """Give back a reserved discovery run when the work it paid for failed.
-
-    ``reserve_run`` commits its increment so concurrent callers cannot both
-    claim the last run of the month. That commit means a later failure leaves
-    the run spent with nothing persisted, and on a free workspace capped at
-    two runs a month two timeouts exhaust the month for nothing. This is the
-    compensating write.
-
-    It is a compensation rather than a rollback, so a process that dies
-    between the failure and this call still leaks the run. Holding the
-    reservation open in the request transaction instead would let two
-    concurrent callers past the same limit, which is the worse trade.
+    """Refund a discovery run when the work it paid for failed.
 
     Parameters
     ----------
     conn : aiosqlite.Connection
         Database connection.
-    org_id : str | None
-        Workspace whose budget was charged, or None when unmetered.
-    month : str
-        Budget month in YYYY-MM form.
     reserved : OrgDiscoveryBudgetModel | None
-        What :func:`reserve_run_if_limited` returned. None means no
-        reservation was made and there is nothing to give back.
+        What :func:`reserve_run_if_limited` returned. None means the plan is
+        uncapped or the caller has no workspace, so nothing was charged.
     """
-    if org_id is None or reserved is None:
+    if reserved is None:
         return
 
-    await conn.execute(
-        """
-        UPDATE org_discovery_budgets
-        SET used_runs = MAX(used_runs - 1, 0), updated_at = ?
-        WHERE org_id = ? AND month = ?
-        """,
-        (db_util.now_iso(), org_id, month),
-    )
-    await conn.commit()
+    await OrgDiscoveryBudgetCRUD.release_run(conn, reserved)
 
 
 async def reserve_run_if_limited(

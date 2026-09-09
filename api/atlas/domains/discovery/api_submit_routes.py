@@ -125,21 +125,26 @@ async def contribute_discovery_results(
     for ranked_entry in req.ranked_entries:
         validate_issue_areas(ranked_entry.entry.issue_areas)
 
-    budget_month = _current_budget_month()
     reserved = await reserve_run_if_limited(
         db,
         org_id=actor.org_id,
-        month=budget_month,
+        month=_current_budget_month(),
         run_limit=_run_limit,
     )
 
-    run_id = await DiscoveryRunCRUD.create(
-        db,
-        location_query=req.run.location_query,
-        state=req.run.state,
-        issue_areas=req.run.issue_areas,
-        research_goal=req.run.research_goal,
-    )
+    # Creation sits inside the guard: the reservation has already committed,
+    # so a failure here would otherwise charge a run that produced nothing.
+    try:
+        run_id = await DiscoveryRunCRUD.create(
+            db,
+            location_query=req.run.location_query,
+            state=req.run.state,
+            issue_areas=req.run.issue_areas,
+            research_goal=req.run.research_goal,
+        )
+    except Exception:
+        await release_run_if_reserved(db, reserved)
+        raise
 
     try:
         from atlas.domains.discovery import api as discovery_api
@@ -152,12 +157,10 @@ async def contribute_discovery_results(
             stats=req.stats,
         )
     except Exception as exc:
+        # Refund before the status write: both touch the same database, and if
+        # it is the database that failed, the quota matters more than the flag.
+        await release_run_if_reserved(db, reserved)
         await DiscoveryRunCRUD.fail(db, run_id, str(exc))
-        # The reservation is already committed, so a failure here would
-        # otherwise charge a run that persisted nothing.
-        await release_run_if_reserved(
-            db, org_id=actor.org_id, month=budget_month, reserved=reserved
-        )
         raise
 
     apply_no_store_headers(response)
@@ -277,22 +280,27 @@ async def sync_discovery_run(  # noqa: PLR0913
     #
     # An identical re-sync never reaches here, because get_by_identity
     # returned above, so a retry of the same artifacts still costs nothing.
-    budget_month = _current_budget_month()
     reserved = await reserve_run_if_limited(
         db,
         org_id=actor.org_id,
-        month=budget_month,
+        month=_current_budget_month(),
         run_limit=_run_limit,
     )
 
+    # Creation sits inside the guard: the reservation has already committed,
+    # so a failure here would otherwise charge a run that produced nothing.
     if not remote_run_id:
-        remote_run_id = await DiscoveryRunCRUD.create(
-            db,
-            location_query=req.artifacts.manifest.run.location_query,
-            state=req.artifacts.manifest.run.state,
-            issue_areas=req.artifacts.manifest.run.issue_areas,
-            research_goal=req.artifacts.manifest.run.research_goal,
-        )
+        try:
+            remote_run_id = await DiscoveryRunCRUD.create(
+                db,
+                location_query=req.artifacts.manifest.run.location_query,
+                state=req.artifacts.manifest.run.state,
+                issue_areas=req.artifacts.manifest.run.issue_areas,
+                research_goal=req.artifacts.manifest.run.research_goal,
+            )
+        except Exception:
+            await release_run_if_reserved(db, reserved)
+            raise
 
     try:
         from atlas.domains.discovery import api as discovery_api
@@ -331,10 +339,10 @@ async def sync_discovery_run(  # noqa: PLR0913
             sync_status="synced",
         )
     except Exception as exc:
+        # Refund before the status write: both touch the same database, and if
+        # it is the database that failed, the quota matters more than the flag.
+        await release_run_if_reserved(db, reserved)
         await DiscoveryRunCRUD.fail(db, remote_run_id, str(exc))
-        await release_run_if_reserved(
-            db, org_id=actor.org_id, month=budget_month, reserved=reserved
-        )
         raise
 
     apply_no_store_headers(response)
