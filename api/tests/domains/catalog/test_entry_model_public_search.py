@@ -292,3 +292,77 @@ async def test_build_facets_returns_empty_payload_for_empty_ids(test_db: object)
         "source_types": [],
         "source_patterns": [],
     }
+
+
+@pytest.mark.asyncio
+async def test_searching_a_city_name_finds_the_groups_based_there(test_db: object) -> None:
+    """The product's headline search is a place name, so place has to match.
+
+    Both text indexes cover only name and description, so a group whose own
+    description never says its city was invisible to someone searching that
+    city. Salt Lake City returned one of the three groups based there.
+    """
+    conn = test_db
+    named = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Sweet Streets SLC",
+        description="Organizing for people-first streets in Salt Lake City.",
+        city="Salt Lake City",
+        state="UT",
+        geo_specificity="local",
+    )
+    unnamed = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Utah Transit Riders Union",
+        description="Campaigning for the legislature to fund transit statewide.",
+        city="Salt Lake City",
+        state="UT",
+        geo_specificity="statewide",
+    )
+    elsewhere = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Bike Cleveland",
+        description="Advocating for safe and equitable streets.",
+        city="Cleveland",
+        state="OH",
+        geo_specificity="local",
+    )
+
+    result = await EntryCRUD.search_public(conn, query="Salt Lake City")
+
+    found = {item["entry"].id for item in result["entries"]}
+    assert found == {named, unnamed}
+    assert elsewhere not in found
+
+
+@pytest.mark.asyncio
+async def test_searching_a_state_code_finds_that_state(test_db: object) -> None:
+    """A two-letter query is a state, not a word anybody expects in a name."""
+    conn = test_db
+    utah = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Bike Utah",
+        description="Making the state a better place to ride.",
+        city="Salt Lake City",
+        state="UT",
+        geo_specificity="statewide",
+    )
+    ohio = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Bike Cleveland",
+        description="Advocating for safe and equitable streets.",
+        city="Cleveland",
+        state="OH",
+        geo_specificity="local",
+    )
+
+    result = await EntryCRUD.search_public(conn, query="ut")
+
+    found = {item["entry"].id for item in result["entries"]}
+    assert utah in found
+    assert ohio not in found
