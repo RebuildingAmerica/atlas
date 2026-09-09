@@ -62,13 +62,13 @@ describe("routes/_public/pricing", () => {
           content:
             "Choose Atlas access for individual research, team workflows, and civic data reuse.",
         },
-        { property: "og:url", content: "https://atlas.rebuildingamerica.com/pricing" },
+        { property: "og:url", content: "https://atlas.rebuildingus.org/pricing" },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/pricing",
+      href: "https://atlas.rebuildingus.org/pricing",
     });
   });
 

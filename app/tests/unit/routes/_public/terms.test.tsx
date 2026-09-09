@@ -53,13 +53,13 @@ describe("routes/_public/terms", () => {
           content:
             "Terms for using Atlas public profiles, workspaces, subscriptions, and source-linked data.",
         },
-        { property: "og:url", content: "https://atlas.rebuildingamerica.com/terms" },
+        { property: "og:url", content: "https://atlas.rebuildingus.org/terms" },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/terms",
+      href: "https://atlas.rebuildingus.org/terms",
     });
   });
   it("discloses automatic renewal and how to get a refund", async () => {

@@ -86,11 +86,11 @@ describe("routes/_public/firehose", () => {
       ]),
     );
     expect(head.links).toContainEqual({
-      href: "https://atlas.rebuildingamerica.com/firehose",
+      href: "https://atlas.rebuildingus.org/firehose",
       rel: "canonical",
     });
     expect(head.links).toContainEqual({
-      href: "https://atlas.rebuildingamerica.com/firehose.rss",
+      href: "https://atlas.rebuildingus.org/firehose.rss",
       rel: "alternate",
     });
   });

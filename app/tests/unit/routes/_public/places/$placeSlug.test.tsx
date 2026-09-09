@@ -77,13 +77,13 @@ describe("routes/_public/places/$placeSlug", () => {
         },
         {
           property: "og:url",
-          content: "https://atlas.rebuildingamerica.com/places/las-vegas-nv",
+          content: "https://atlas.rebuildingus.org/places/las-vegas-nv",
         },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/places/las-vegas-nv",
+      href: "https://atlas.rebuildingus.org/places/las-vegas-nv",
     });
   });
 

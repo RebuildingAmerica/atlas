@@ -82,18 +82,18 @@ describe("routes/_public/map", () => {
         },
         {
           property: "og:url",
-          content: "https://atlas.rebuildingamerica.com/map",
+          content: "https://atlas.rebuildingus.org/map",
         },
         {
           property: "og:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://atlas.rebuildingus.org/social/atlas-card.png",
         },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/map",
+      href: "https://atlas.rebuildingus.org/map",
     });
   });
 

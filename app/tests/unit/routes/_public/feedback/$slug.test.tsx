@@ -88,13 +88,13 @@ describe("routes/_public/feedback/$slug", () => {
     expect(head.meta).toEqual(
       expect.arrayContaining([
         { title: "Improve Acme | Atlas" },
-        { property: "og:url", content: "https://atlas.rebuildingamerica.com/feedback/acme" },
+        { property: "og:url", content: "https://atlas.rebuildingus.org/feedback/acme" },
         { name: "robots", content: "noindex,nofollow" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/feedback/acme",
+      href: "https://atlas.rebuildingus.org/feedback/acme",
     });
   });
 

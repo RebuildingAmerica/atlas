@@ -75,7 +75,7 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     );
     expect(headPayload.links[0]).toEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/profiles/organizations/acme",
+      href: "https://atlas.rebuildingus.org/profiles/organizations/acme",
     });
   });
 
@@ -114,11 +114,11 @@ describe("routes/_public/profiles/organizations/$slug", () => {
       expect.arrayContaining([
         {
           property: "og:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://atlas.rebuildingus.org/social/atlas-card.png",
         },
         {
           name: "twitter:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://atlas.rebuildingus.org/social/atlas-card.png",
         },
       ]),
     );

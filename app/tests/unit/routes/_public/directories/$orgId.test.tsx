@@ -81,14 +81,14 @@ describe("routes/_public/directories/$orgId", () => {
         { title: "Tenant KC civic directory | Atlas" },
         {
           property: "og:url",
-          content: "https://atlas.rebuildingamerica.com/directories/tenant-kc",
+          content: "https://atlas.rebuildingus.org/directories/tenant-kc",
         },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/directories/tenant-kc",
+      href: "https://atlas.rebuildingus.org/directories/tenant-kc",
     });
   });
 

@@ -51,13 +51,13 @@ describe("routes/_public/security", () => {
           content:
             "Atlas security practices for account access, infrastructure, and responsible disclosure.",
         },
-        { property: "og:url", content: "https://atlas.rebuildingamerica.com/security" },
+        { property: "og:url", content: "https://atlas.rebuildingus.org/security" },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/security",
+      href: "https://atlas.rebuildingus.org/security",
     });
   });
 });

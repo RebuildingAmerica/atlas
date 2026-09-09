@@ -4,12 +4,12 @@ import { buildCanonicalUrl, buildPageHead } from "@/platform/seo";
 describe("SEO helpers", () => {
   it("builds canonical URLs from the production origin by default", () => {
     expect(buildCanonicalUrl("/profiles/people/jane")).toBe(
-      "https://atlas.rebuildingamerica.com/profiles/people/jane",
+      "https://atlas.rebuildingus.org/profiles/people/jane",
     );
   });
 
   it("builds the canonical origin for the root path", () => {
-    expect(buildCanonicalUrl("")).toBe("https://atlas.rebuildingamerica.com");
+    expect(buildCanonicalUrl("")).toBe("https://atlas.rebuildingus.org");
   });
 
   it("uses the configured public origin for canonical URLs", () => {

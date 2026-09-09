@@ -76,18 +76,18 @@ describe("routes/_public/browse", () => {
         },
         {
           property: "og:url",
-          content: "https://atlas.rebuildingamerica.com/browse",
+          content: "https://atlas.rebuildingus.org/browse",
         },
         {
           property: "og:image",
-          content: "https://atlas.rebuildingamerica.com/social/atlas-card.png",
+          content: "https://atlas.rebuildingus.org/social/atlas-card.png",
         },
         { name: "twitter:card", content: "summary_large_image" },
       ]),
     );
     expect(head.links).toContainEqual({
       rel: "canonical",
-      href: "https://atlas.rebuildingamerica.com/browse",
+      href: "https://atlas.rebuildingus.org/browse",
     });
   });
 

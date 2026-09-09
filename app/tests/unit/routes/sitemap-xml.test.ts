@@ -64,9 +64,9 @@ describe("routes/sitemap.xml", () => {
     );
 
     const body = await readSitemapXml();
-    expect(body).toContain("https://atlas.rebuildingamerica.com/profiles/people/jane-doe");
-    expect(body).toContain("https://atlas.rebuildingamerica.com/profiles/organizations/acme");
-    expect(body).toContain("https://atlas.rebuildingamerica.com/directories/tenant-kc");
+    expect(body).toContain("https://atlas.rebuildingus.org/profiles/people/jane-doe");
+    expect(body).toContain("https://atlas.rebuildingus.org/profiles/organizations/acme");
+    expect(body).toContain("https://atlas.rebuildingus.org/directories/tenant-kc");
     expect(body).toContain("<lastmod>2024-04-03</lastmod>");
     expect(body).toContain("<lastmod>2024-04-01</lastmod>");
     expect(body).not.toContain("/profiles/people/null");
@@ -91,7 +91,7 @@ describe("routes/sitemap.xml", () => {
       .find((block) => block.includes("/directories/prairie-network"));
 
     expect(directoryBlock).toContain(
-      "<loc>https://atlas.rebuildingamerica.com/directories/prairie-network</loc>",
+      "<loc>https://atlas.rebuildingus.org/directories/prairie-network</loc>",
     );
     expect(directoryBlock).not.toContain("<lastmod>");
   });
@@ -161,7 +161,7 @@ describe("routes/sitemap.xml", () => {
 
     expect(body).toContain("https://preview.atlas.example/profiles/people/jane-doe");
     expect(body).toContain("https://preview.atlas.example/browse");
-    expect(body).not.toContain("https://atlas.rebuildingamerica.com/profiles/people/jane-doe");
+    expect(body).not.toContain("https://atlas.rebuildingus.org/profiles/people/jane-doe");
   });
 
   it("renders the static sitemap header when no entries are returned", async () => {
@@ -170,7 +170,7 @@ describe("routes/sitemap.xml", () => {
     vi.mocked(api.entries.list).mockResolvedValue(buildSitemapEntryListResponse([]));
 
     const body = await readSitemapXml();
-    expect(body).toContain("https://atlas.rebuildingamerica.com</loc>");
-    expect(body).toContain("https://atlas.rebuildingamerica.com/browse</loc>");
+    expect(body).toContain("https://atlas.rebuildingus.org</loc>");
+    expect(body).toContain("https://atlas.rebuildingus.org/browse</loc>");
   });
 });
