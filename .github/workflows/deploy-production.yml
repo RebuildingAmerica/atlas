@@ -276,47 +276,16 @@ jobs:
           ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
 
-  hosted-identity:
-    needs:
-      - hosted-smoke
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 20
-    permissions:
-      artifact-metadata: write
-      contents: read
-      id-token: write
+  # hosted-identity is deliberately not run against production.
+  #
+  # The spec drives ATLAS_ATPROTO_OAUTH_E2E_HARNESS, a synthetic authorize
+  # endpoint that mints a session without a real ATProto provider. Production
+  # never sets that variable, and should not: the harness exists to make an
+  # end-to-end test possible, and a production instance that honours it is a
+  # session-minting backdoor. So the job could only ever pass here by weakening
+  # production, and it failed for exactly that reason.
+  #
+  # Deploy Staging runs the same spec against the staging app, where the
+  # harness is enabled on purpose, and that run is green. The identity proof
+  # therefore still exists; it runs where the fixture is legitimate.
 
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
-
-      - name: Mint Vercel Trusted Source OIDC token
-        id: vercel-oidc
-        uses: ./.github/actions/vercel-trusted-oidc
-
-      - name: Install Playwright browser
-        run: |
-          pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
-          timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
-
-      - name: Run hosted ATProto identity verification
-        env:
-          ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
-          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
-          ATLAS_HOSTED_E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
-          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
-        run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity
-
-      - name: Upload hosted identity Playwright traces
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: hosted-identity-test-results-${{ github.run_id }}-${{ github.run_attempt }}
-          path: app/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
