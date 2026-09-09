@@ -1,4 +1,7 @@
-import type { AtlasProduct, SerializedResolvedCapabilities } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import type {
+  AtlasProduct,
+  SerializedResolvedCapabilities,
+} from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type {
   AtlasSessionPayload,
   AtlasWorkspaceMembership,

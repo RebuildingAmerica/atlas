@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
+import Stripe from "stripe";
 import { installVirtualAuthenticator, pollLatestMessage } from "../../helpers/auth";
 import { extractFirstUrlFromEmail } from "../../helpers/email";
 
@@ -28,7 +29,10 @@ type PaidPlan = "pro" | "team" | "research-pass";
 interface PaidPlanConfig {
   ctaName: RegExp;
   emailPrefix: string;
-  finalHeading: RegExp;
+  /** Checkout mode Stripe should report for this plan's session. */
+  mode: Stripe.Checkout.Session.Mode;
+  /** `metadata.product` the webhook keys entitlement off. */
+  metadataProduct: string;
   productLabel: string;
   visibleLabel: string;
 }
@@ -37,21 +41,24 @@ const paidPlans: Record<PaidPlan, PaidPlanConfig> = {
   pro: {
     ctaName: /Get Atlas Pro/i,
     emailPrefix: "pro",
-    finalHeading: /Thanks for backing Atlas/i,
+    mode: "subscription",
+    metadataProduct: "atlas_pro",
     productLabel: "Atlas Pro",
     visibleLabel: "Atlas Pro",
   },
   team: {
     ctaName: /Get Atlas Team/i,
     emailPrefix: "team",
-    finalHeading: /Your team workspace is ready/i,
+    mode: "subscription",
+    metadataProduct: "atlas_team",
     productLabel: "Atlas Team",
     visibleLabel: "Atlas Team",
   },
   "research-pass": {
     ctaName: /Get 30-day pass/i,
     emailPrefix: "research-pass",
-    finalHeading: /Thanks for backing Atlas/i,
+    mode: "payment",
+    metadataProduct: "atlas_research_pass",
     productLabel: "Atlas Research Pass",
     visibleLabel: "Research Pass",
   },
@@ -149,10 +156,10 @@ async function goHome(page: Page, label: string): Promise<void> {
   });
 }
 
-async function signOutIfNeeded(page: Page): Promise<boolean> {
+async function signOutIfNeeded(page: Page): Promise<void> {
   const profileMenu = page.getByRole("button", { name: "Profile menu" });
   if ((await profileMenu.count()) === 0) {
-    return false;
+    return;
   }
 
   await profileMenu.click();
@@ -161,7 +168,6 @@ async function signOutIfNeeded(page: Page): Promise<boolean> {
     page.getByRole("button", { name: "Sign out" }).click(),
   ]);
   await page.waitForLoadState("networkidle");
-  return true;
 }
 
 async function resetSession(page: Page, label: string): Promise<void> {
@@ -299,32 +305,22 @@ async function attachWorkspace(page: Page, plan: PaidPlan): Promise<void> {
   });
 }
 
-interface StripeCheckoutSession {
-  automatic_tax?: { enabled?: boolean };
-  metadata?: Record<string, string>;
-  mode?: string;
-  status?: string;
-  tax_id_collection?: { enabled?: boolean };
-}
-
 /**
  * Retrieves a Checkout Session straight from Stripe.
+ *
+ * Goes through the SDK the application itself uses, so the session is typed by
+ * the same definitions the production code is checked against and a field
+ * renamed by an API version bump fails here rather than reading as undefined.
  *
  * @param sessionId - The cs_test_... id taken from the Checkout URL.
  * @returns The session as Stripe reports it.
  */
-async function fetchStripeSession(sessionId: string): Promise<StripeCheckoutSession> {
+async function fetchStripeSession(sessionId: string): Promise<Stripe.Checkout.Session> {
   const key = process.env.STRIPE_API_KEY;
   if (!key) {
     throw new Error("STRIPE_API_KEY is required to verify the Checkout session.");
   }
-  const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
-    headers: { authorization: `Bearer ${key}` },
-  });
-  if (!response.ok) {
-    throw new Error(`Stripe returned ${String(response.status)} for session ${sessionId}.`);
-  }
-  return (await response.json()) as StripeCheckoutSession;
+  return await new Stripe(key).checkout.sessions.retrieve(sessionId);
 }
 
 /**
@@ -354,21 +350,22 @@ async function fetchStripeSession(sessionId: string): Promise<StripeCheckoutSess
  * @param plan - Which paid plan is being bought.
  */
 async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void> {
-  const planLabel = paidPlans[plan].visibleLabel;
+  const config = paidPlans[plan];
+  const planLabel = config.visibleLabel;
   await chapter(page, `${planLabel}: Stripe checkout`, async () => {
     await clickAction(page.getByRole("button", { name: "Continue to Stripe" }));
     await page.waitForURL((url) => url.hostname.endsWith("stripe.com"), { timeout: 90_000 });
     await pauseAfterAction(page);
 
     const sessionId = /\/(cs_test_[A-Za-z0-9]+)/.exec(page.url())?.[1];
-    expect(sessionId, `Checkout URL should carry a session id: ${page.url()}`).toBeTruthy();
+    if (!sessionId) {
+      throw new Error(`Checkout URL should carry a session id: ${page.url()}`);
+    }
 
-    const session = await fetchStripeSession(sessionId ?? "");
+    const session = await fetchStripeSession(sessionId);
     expect(session.status).toBe("open");
-    expect(session.mode).toBe(plan === "research-pass" ? "payment" : "subscription");
-    expect(session.metadata?.product).toBe(
-      plan === "research-pass" ? "atlas_research_pass" : `atlas_${plan}`,
-    );
+    expect(session.mode).toBe(config.mode);
+    expect(session.metadata?.product).toBe(config.metadataProduct);
     expect(session.metadata?.workspace_id).toBeTruthy();
     expect(session.metadata?.purchase_intent_id).toBeTruthy();
 
@@ -377,8 +374,6 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
 
     // Only subscriptions create a Customer to attach a VAT or GST id to.
     expect(session.tax_id_collection?.enabled ?? false).toBe(plan !== "research-pass");
-
-    await pauseAfterAction(page);
   });
 
   await caption(page, `${planLabel}: checkout session verified`);

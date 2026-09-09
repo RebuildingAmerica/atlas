@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
-import type { AtlasSessionPayload, AtlasWorkspaceMembership } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import type {
+  AtlasSessionPayload,
+  AtlasWorkspaceMembership,
+} from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import {
   loadOrganizationRequestContext,
   requireManagedTeamWorkspace,

@@ -11,7 +11,10 @@ import {
   toAtlasOrganizationDetails,
   workspaceSlugSchema,
 } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
-import { buildWorkspaceSSOState, rawWorkspaceSSOProviderListSchema } from "@rebuildingamerica/atlas-access/workspace/organization-sso";
+import {
+  buildWorkspaceSSOState,
+  rawWorkspaceSSOProviderListSchema,
+} from "@rebuildingamerica/atlas-access/workspace/organization-sso";
 import {
   assertOrganizationManagementEnabled,
   loadOrganizationRequestContext,
