@@ -53,17 +53,34 @@ async def search_public_ids(  # noqa: PLR0913
     params: list[Any] = []
 
     if query:
+        # Place is part of what a free-text query means here, and neither index
+        # carries it: the Postgres search_vector and the SQLite FTS table both
+        # cover only name and description. Someone who types their city was
+        # getting whichever local groups happened to name the city in their own
+        # description, so Salt Lake City returned one of the three groups based
+        # there. The city prefix and the state code are matched alongside the
+        # text index rather than folded into it, because changing a generated
+        # column and an FTS table would need a migration this schema has no
+        # framework for.
         if getattr(conn, "backend", None) == "postgres":
             query_sql += """
-                AND e.search_vector @@ plainto_tsquery('english', ?)
+                AND (
+                    e.search_vector @@ plainto_tsquery('english', ?)
+                    OR LOWER(e.city) LIKE LOWER(?) || '%'
+                    OR LOWER(e.state) = LOWER(?)
+                )
             """
         else:
             query_sql += """
-                AND e.rowid IN (
-                    SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?
+                AND (
+                    e.rowid IN (
+                        SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?
+                    )
+                    OR LOWER(e.city) LIKE LOWER(?) || '%'
+                    OR LOWER(e.state) = LOWER(?)
                 )
             """
-        params.append(query)
+        params.extend([query, query, query])
     place_clause = _entry_place_clause(
         states=states,
         cities=cities,
