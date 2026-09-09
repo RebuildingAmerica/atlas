@@ -26,6 +26,7 @@ __all__ = [
     "OrgDiscoveryBudgetCRUD",
     "OrgDiscoveryBudgetExceededResponse",
     "OrgDiscoveryBudgetModel",
+    "release_run_if_reserved",
     "reserve_run_if_limited",
 ]
 
@@ -168,6 +169,52 @@ def _resolve_dependency_limit(run_limit: object) -> int | None:
     if isinstance(run_limit, int):
         return run_limit
     return DEFAULT_ORG_DISCOVERY_MONTHLY_LIMIT
+
+
+async def release_run_if_reserved(
+    conn: aiosqlite.Connection,
+    *,
+    org_id: str | None,
+    month: str,
+    reserved: OrgDiscoveryBudgetModel | None,
+) -> None:
+    """Give back a reserved discovery run when the work it paid for failed.
+
+    ``reserve_run`` commits its increment so concurrent callers cannot both
+    claim the last run of the month. That commit means a later failure leaves
+    the run spent with nothing persisted, and on a free workspace capped at
+    two runs a month two timeouts exhaust the month for nothing. This is the
+    compensating write.
+
+    It is a compensation rather than a rollback, so a process that dies
+    between the failure and this call still leaks the run. Holding the
+    reservation open in the request transaction instead would let two
+    concurrent callers past the same limit, which is the worse trade.
+
+    Parameters
+    ----------
+    conn : aiosqlite.Connection
+        Database connection.
+    org_id : str | None
+        Workspace whose budget was charged, or None when unmetered.
+    month : str
+        Budget month in YYYY-MM form.
+    reserved : OrgDiscoveryBudgetModel | None
+        What :func:`reserve_run_if_limited` returned. None means no
+        reservation was made and there is nothing to give back.
+    """
+    if org_id is None or reserved is None:
+        return
+
+    await conn.execute(
+        """
+        UPDATE org_discovery_budgets
+        SET used_runs = MAX(used_runs - 1, 0), updated_at = ?
+        WHERE org_id = ? AND month = ?
+        """,
+        (db_util.now_iso(), org_id, month),
+    )
+    await conn.commit()
 
 
 async def reserve_run_if_limited(

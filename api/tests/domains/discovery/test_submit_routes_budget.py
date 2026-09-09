@@ -17,7 +17,10 @@ from atlas.domains.discovery.api_submit_routes import (
     _current_budget_month,
     contribute_discovery_results,
 )
-from atlas.domains.discovery.budget import OrgDiscoveryBudgetCRUD
+from atlas.domains.discovery.budget import (
+    OrgDiscoveryBudgetCRUD,
+    release_run_if_reserved,
+)
 from tests.domains.discovery.api_org_support import ORG_ID, _make_actor
 from tests.domains.discovery.submit_routes_support import make_contribution_request
 
@@ -123,3 +126,69 @@ class TestContributionBudget:
 
         budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
         assert budget is None or budget.used_runs == 0
+
+
+class TestContributionBudgetRelease:
+    """A charged run that persists nothing has to be given back."""
+
+    @pytest.mark.asyncio
+    async def test_failed_persistence_gives_the_run_back(
+        self, db: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """reserve_run commits, so a later failure would otherwise spend a run."""
+        actor = _make_actor()
+        month = _current_budget_month()
+        await OrgDiscoveryBudgetCRUD.set_budget(
+            db,
+            org_id=ORG_ID,
+            month=month,
+            monthly_run_limit=2,
+            used_runs=0,
+        )
+
+        from atlas.domains.discovery import api as discovery_api
+
+        async def boom(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError
+
+        monkeypatch.setattr(discovery_api, "persist_discovery_results", boom)
+
+        with pytest.raises(RuntimeError):
+            await contribute_discovery_results(
+                req=make_contribution_request(),
+                response=Response(),
+                actor=actor,
+                db=db,
+                _cap=None,
+                _run_limit=2,
+            )
+
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
+        assert budget is not None
+        assert budget.used_runs == 0
+
+    @pytest.mark.asyncio
+    async def test_release_never_drives_the_count_negative(self, db: object) -> None:
+        """A release against a zeroed budget floors at zero rather than wrapping."""
+        month = _current_budget_month()
+        reserved = await OrgDiscoveryBudgetCRUD.set_budget(
+            db,
+            org_id=ORG_ID,
+            month=month,
+            monthly_run_limit=2,
+            used_runs=0,
+        )
+
+        await release_run_if_reserved(db, org_id=ORG_ID, month=month, reserved=reserved)
+
+        budget = await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month)
+        assert budget is not None
+        assert budget.used_runs == 0
+
+    @pytest.mark.asyncio
+    async def test_unmetered_plan_releases_nothing(self, db: object) -> None:
+        """An unlimited plan never reserved, so there is nothing to give back."""
+        month = _current_budget_month()
+        await release_run_if_reserved(db, org_id=ORG_ID, month=month, reserved=None)
+
+        assert await OrgDiscoveryBudgetCRUD.get_budget(db, org_id=ORG_ID, month=month) is None

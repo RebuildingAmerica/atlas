@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.access.capabilities import enforce_limit, require_capability
-from atlas.domains.discovery.budget import reserve_run_if_limited
+from atlas.domains.discovery.budget import release_run_if_reserved, reserve_run_if_limited
 from atlas.domains.discovery.models import (
     DiscoveryRunSyncCRUD,
 )
@@ -125,10 +125,11 @@ async def contribute_discovery_results(
     for ranked_entry in req.ranked_entries:
         validate_issue_areas(ranked_entry.entry.issue_areas)
 
-    await reserve_run_if_limited(
+    budget_month = _current_budget_month()
+    reserved = await reserve_run_if_limited(
         db,
         org_id=actor.org_id,
-        month=_current_budget_month(),
+        month=budget_month,
         run_limit=_run_limit,
     )
 
@@ -152,6 +153,11 @@ async def contribute_discovery_results(
         )
     except Exception as exc:
         await DiscoveryRunCRUD.fail(db, run_id, str(exc))
+        # The reservation is already committed, so a failure here would
+        # otherwise charge a run that persisted nothing.
+        await release_run_if_reserved(
+            db, org_id=actor.org_id, month=budget_month, reserved=reserved
+        )
         raise
 
     apply_no_store_headers(response)
@@ -271,10 +277,11 @@ async def sync_discovery_run(  # noqa: PLR0913
     #
     # An identical re-sync never reaches here, because get_by_identity
     # returned above, so a retry of the same artifacts still costs nothing.
-    await reserve_run_if_limited(
+    budget_month = _current_budget_month()
+    reserved = await reserve_run_if_limited(
         db,
         org_id=actor.org_id,
-        month=_current_budget_month(),
+        month=budget_month,
         run_limit=_run_limit,
     )
 
@@ -325,6 +332,9 @@ async def sync_discovery_run(  # noqa: PLR0913
         )
     except Exception as exc:
         await DiscoveryRunCRUD.fail(db, remote_run_id, str(exc))
+        await release_run_if_reserved(
+            db, org_id=actor.org_id, month=budget_month, reserved=reserved
+        )
         raise
 
     apply_no_store_headers(response)
