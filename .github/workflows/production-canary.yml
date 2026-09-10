@@ -43,40 +43,57 @@ jobs:
           set -uo pipefail
           failures=0
 
+          fail() {
+            echo "::error title=$1::$2"
+            failures=$((failures + 1))
+          }
+
+          # curl prints 000 itself on a connection failure, so nothing here
+          # needs a fallback that would concatenate onto a real status.
           check_status() {
-            local label="$1" url="$2" expected="$3"
+            local label="$1" url="$2"
             local actual
-            # curl already prints 000 on a connection failure, so a fallback
-            # echo would concatenate and report 000000.
-            actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$url" 2>/dev/null || true)"
-            [ -n "$actual" ] || actual=000
-            if [ "$actual" = "$expected" ]; then
-              echo "ok    $label ($actual) $url"
+            actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$url" 2>/dev/null)"
+            if [ "$actual" = "200" ]; then
+              echo "ok    $label ($actual)"
             else
-              echo "::error title=$label is unhealthy::Expected 200 from $url, got $actual."
-              failures=$((failures + 1))
+              fail "$label is unhealthy" "Expected 200 from $url, got $actual."
             fi
           }
 
-          # /health is deliberately absent: it answers ok while the database is
-          # unreachable, and the catalog probe below proves reachability and
-          # content together.
+          # Counts the items in an entities payload, or 0 for anything that is
+          # not one. Parsing beats grepping for a quoted key: an error envelope
+          # carrying an "id" field would satisfy a grep, and a monitor that
+          # cannot fail is the thing this replaces.
+          entity_count() {
+            curl -sS --max-time 25 "$1" 2>/dev/null \
+              | jq 'try ((.items // []) | length) catch 0' 2>/dev/null
+          }
+
+          # /health is deliberately absent. It answers ok while the database is
+          # unreachable, which is the exact case that matters.
           check_status "App"        "$APP_URL/"
           check_status "Sitemap"    "$APP_URL/sitemap.xml"
           check_status "PDS health" "$PDS_URL/xrpc/_health"
 
           # The directory is the product. A reachable API serving nothing is
           # still an outage to the person who came here to look someone up.
-          # Parse the payload rather than grepping for a quoted key: an error
-          # envelope that happens to carry an "id" field would pass a grep, and
-          # a monitor that cannot fail is the thing being replaced.
-          entries="$(curl -sS --max-time 25 "$API_URL/api/entities?limit=1")"
-          count="$(printf '%s' "$entries" | jq 'try ((.items // []) | length) catch 0' 2>/dev/null)"
-          if [ "${count:-0}" -ge 1 ]; then
+          listed="$(entity_count "$API_URL/api/entities?limit=1")"
+          if [ "${listed:-0}" -ge 1 ]; then
             echo "ok    Catalog returns rows"
           else
-            echo "::error title=Catalog is empty or unreachable::GET /api/entities?limit=1 returned no rows."
-            failures=$((failures + 1))
+            fail "Catalog is empty or unreachable" "GET /api/entities?limit=1 returned no rows."
+          fi
+
+          # Searching a place is the thing Atlas is for, and it runs a
+          # different query path from the plain listing above. A malformed
+          # LIKE clause took this out in production on 2026-09-09 while the
+          # listing kept answering 200, so the listing alone proves nothing.
+          found="$(entity_count "$API_URL/api/entities?query=transit&limit=5")"
+          if [ "${found:-0}" -ge 1 ]; then
+            echo "ok    Search returns rows"
+          else
+            fail "Search is broken" "GET /api/entities?query=transit returned no rows."
           fi
 
           if [ "$failures" -gt 0 ]; then
