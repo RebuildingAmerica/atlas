@@ -178,6 +178,68 @@ describe("ActionCluster", () => {
     expect(screen.getByRole("button", { name: /^share$/i })).toBeInTheDocument();
   });
 
+  it("restarts the reset window when the visitor shares twice in a row", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    render(<ActionCluster {...baseProps} isSignedIn={false} />);
+    const share = async () => {
+      await act(async () => {
+        screen.getByRole("button", { name: /share|link copied/i }).click();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+
+    await share();
+    act(() => {
+      vi.advanceTimersByTime(1_500);
+    });
+    await share();
+
+    // The first timer would have fired here had the second share not replaced
+    // it, dropping the label while the copy was still fresh.
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(screen.getByRole("button", { name: /link copied/i })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(screen.getByRole("button", { name: /^share$/i })).toBeInTheDocument();
+  });
+
+  it("clears the pending reset when the visitor leaves the profile", async () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    const view = render(<ActionCluster {...baseProps} isSignedIn={false} />);
+    await act(async () => {
+      screen.getByRole("button", { name: /share/i }).click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    view.unmount();
+
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
+  });
+
+  it("leaves nothing to clear when the visitor never shared", () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
+
+    render(<ActionCluster {...baseProps} isSignedIn={false} />).unmount();
+
+    expect(clearTimeoutSpy).not.toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
+  });
+
   it("uses the Web Share API when available and shows the 'Shared' label", async () => {
     vi.useFakeTimers();
     const share = vi.fn().mockResolvedValue(undefined);

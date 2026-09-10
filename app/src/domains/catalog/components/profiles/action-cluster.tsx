@@ -8,7 +8,7 @@
  * the real list-picker and follow toggle.
  */
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { copyToClipboard } from "@/lib/clipboard";
 import {
   useFollowProfile,
@@ -93,21 +93,39 @@ export function ActionCluster({
   const isFollowing = Boolean(followQuery.data);
   const isWorkspaceWatched = Boolean(workspaceWatchQuery.data?.watched);
 
+  // Cleared on unmount: a visitor who navigates away from a profile within
+  // the two seconds would otherwise leave a timer setting state on a gone
+  // component.
+  const resetTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  function flashShareState(next: "copied" | "shared") {
+    setShareState(next);
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+    resetTimerRef.current = window.setTimeout(() => {
+      resetTimerRef.current = null;
+      setShareState("idle");
+    }, 2_000);
+  }
+
   async function handleShare() {
     const shared = await shareViaWebApi(shareUrl, shareTitle);
     if (shared) {
-      setShareState("shared");
-      window.setTimeout(() => {
-        setShareState("idle");
-      }, 2_000);
+      flashShareState("shared");
       return;
     }
     const copied = await copyToClipboard(shareUrl);
     if (copied) {
-      setShareState("copied");
-      window.setTimeout(() => {
-        setShareState("idle");
-      }, 2_000);
+      flashShareState("copied");
     }
   }
 
