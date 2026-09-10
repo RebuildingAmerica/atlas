@@ -106,13 +106,17 @@ test("the deployed funnel opens a Stripe checkout session in the expected mode",
   const workspaceName = page.getByLabel("Workspace name");
   await expect(workspaceName).toBeVisible({ timeout: 60_000 });
 
+  // Both buttons stay disabled until the purchase intent lands, so wait for
+  // one to become enabled rather than clicking the moment the step renders.
   const useExisting = page.getByRole("button", { name: /^Use / });
-  if (await useExisting.count()) {
-    await expect(useExisting.first()).toBeEnabled({ timeout: 30_000 });
+  const createWorkspace = page.getByRole("button", { name: /^Continue to payment$/ });
+  await expect(useExisting.or(createWorkspace).first()).toBeEnabled({ timeout: 60_000 });
+
+  if ((await useExisting.count()) && (await useExisting.first().isEnabled())) {
     await useExisting.first().click();
   } else {
     await workspaceName.fill(`Checkout proof ${run.runId}`);
-    await page.getByRole("button", { name: /^Continue to payment$/ }).click();
+    await createWorkspace.click();
   }
 
   await expect(

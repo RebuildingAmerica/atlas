@@ -383,7 +383,15 @@ describe("SetupPage", () => {
 
     render(<SetupPage product="atlas_team" interval="monthly" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Use My Workspace" }));
+    // Disabled, not merely inert. Both handlers return early without a
+    // purchase id, so an early click used to do nothing and say nothing, and
+    // the step never advanced. A hosted checkout proof clicked the button the
+    // moment it rendered and sat on step 3 until it timed out.
+    const useWorkspace = await screen.findByRole("button", { name: "Use My Workspace" });
+    expect(useWorkspace).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Continue to payment" })).toBeDisabled();
+
+    fireEvent.click(useWorkspace);
     fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
 
     expect(mocks.attachPurchaseWorkspace).not.toHaveBeenCalled();
