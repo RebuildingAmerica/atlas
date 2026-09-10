@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  checkEmailAccountExists: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   loadAtlasSession: vi.fn(),
   loadOidcRpLogoutRedirect: vi.fn(),
@@ -25,7 +24,6 @@ vi.mock("@/domains/access/server/runtime", () => ({
 }));
 
 vi.mock("@/domains/access/server/session-state", () => ({
-  checkEmailAccountExists: mocks.checkEmailAccountExists,
   loadAtlasSession: mocks.loadAtlasSession,
   requestMagicLinkForEmail: mocks.requestMagicLinkForEmail,
   requireAtlasSessionState: mocks.requireAtlasSessionState,
@@ -36,7 +34,6 @@ vi.mock("@/domains/access/server/session-state", () => ({
 describe("session.functions", () => {
   beforeEach(() => {
     vi.resetModules();
-    mocks.checkEmailAccountExists.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.loadAtlasSession.mockReset();
     mocks.loadOidcRpLogoutRedirect.mockReset();
@@ -196,21 +193,6 @@ describe("session.functions", () => {
     });
   });
 
-  it("reports whether an Atlas account already exists for an email", async () => {
-    mocks.checkEmailAccountExists.mockResolvedValue(true);
-
-    const { checkAccountExists } = await import("@/domains/access/session.functions");
-    const response = await checkAccountExists.__executeServer({
-      method: "POST",
-      data: { email: "operator@atlas.test" },
-    });
-
-    expect(response).toMatchObject({
-      error: undefined,
-      result: { exists: true },
-    });
-    expect(mocks.checkEmailAccountExists).toHaveBeenCalledWith("operator@atlas.test");
-  });
   it("refuses to read the deploy mode outside the server", async () => {
     vi.stubEnv("SSR", false);
     vi.resetModules();

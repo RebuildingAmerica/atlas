@@ -93,21 +93,6 @@ export const sendVerificationEmail = createServerFn({ method: "POST" }).handler(
 });
 
 /**
- * Checks whether an Atlas account already exists for a given email address.
- */
-export const checkAccountExists = createServerFn({ method: "POST" })
-  .validator(
-    z.object({
-      email: z.string().email(),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const { checkEmailAccountExists } = await loadSessionStateModule();
-    const exists = await checkEmailAccountExists(data.email);
-    return { exists };
-  });
-
-/**
  * Returns the OIDC RP-Initiated Logout 1.0 redirect URL for the active
  * session, or `null` when no linked OIDC account exists or the IdP does not
  * advertise an `end_session_endpoint`.  Sign-out call sites invoke this

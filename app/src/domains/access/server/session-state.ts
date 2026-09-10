@@ -6,12 +6,7 @@ import {
   serializeResolvedCapabilities,
   type AtlasProduct,
 } from "@rebuildingamerica/atlas-access/workspace/capabilities";
-import {
-  canEmailAccessAtlas,
-  ensureAuthReady,
-  hasExistingAccount,
-  type AtlasPasskeyAuth,
-} from "./auth";
+import { canEmailAccessAtlas, ensureAuthReady, type AtlasPasskeyAuth } from "./auth";
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
@@ -259,13 +254,4 @@ export async function sendVerificationEmailForCurrentSession(): Promise<{ ok: tr
   return {
     ok: true,
   };
-}
-
-/**
- * Checks whether an Atlas account already exists for a given email address.
- *
- * @param email - The email address to look up.
- */
-export async function checkEmailAccountExists(email: string): Promise<boolean> {
-  return await hasExistingAccount(email);
 }

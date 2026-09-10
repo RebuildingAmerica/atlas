@@ -5,7 +5,6 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 
 const mocks = vi.hoisted(() => ({
-  checkAccountExists: vi.fn(),
   invalidateQueries: vi.fn(),
   requestMagicLink: vi.fn(),
   useAtlasSession: vi.fn(),
@@ -26,7 +25,6 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
 }));
 
 vi.mock("@/domains/access/session.functions", () => ({
-  checkAccountExists: mocks.checkAccountExists,
   requestMagicLink: mocks.requestMagicLink,
 }));
 
@@ -34,7 +32,6 @@ import { SignUpPage } from "@/domains/access/pages/auth/sign-up-page";
 
 describe("SignUpPage", () => {
   beforeEach(() => {
-    mocks.checkAccountExists.mockReset();
     mocks.invalidateQueries.mockReset();
     resetRouterMocks();
     mocks.requestMagicLink.mockReset();
@@ -58,8 +55,7 @@ describe("SignUpPage", () => {
     expect(screen.getByRole("button", { name: /Continue with team setup/i })).toBeInTheDocument();
   });
 
-  it("redirects existing-account emails to sign-in without URL account-state claims", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: true });
+  it("gives an existing account the same answer as a new one", async () => {
     render(<SignUpPage />);
 
     fireEvent.change(screen.getByLabelText(/Email/i), {
@@ -73,16 +69,14 @@ describe("SignUpPage", () => {
       await Promise.resolve();
     });
 
-    const navArgs = readRouterMocks().navigate.mock.calls[0]?.[0] as
-      { to: string; search: { email: string } } | undefined;
-    expect(navArgs?.to).toBe("/sign-in");
-    expect(navArgs?.search.email).toBe("operator@atlas.test");
-    expect(navArgs?.search).not.toHaveProperty("existing");
-    expect(mocks.requestMagicLink).not.toHaveBeenCalled();
+    // Same response either way, so the page reveals nothing about the address.
+    const magicLinkArgs = mocks.requestMagicLink.mock.calls[0]?.[0] as
+      { data: { email: string } } | undefined;
+    expect(magicLinkArgs?.data.email).toBe("operator@atlas.test");
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
   });
 
   it("transitions to the sent-confirmation phase after a successful magic-link request", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     render(<SignUpPage />);
 
@@ -104,7 +98,6 @@ describe("SignUpPage", () => {
 
   it("re-enables Resend after the cooldown elapses", async () => {
     vi.useFakeTimers();
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     render(<SignUpPage />);
 
@@ -128,7 +121,6 @@ describe("SignUpPage", () => {
 
   it("resends the magic link and surfaces the success status", async () => {
     vi.useFakeTimers();
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     render(<SignUpPage />);
 
@@ -158,7 +150,6 @@ describe("SignUpPage", () => {
   });
 
   it("returns to the form when the operator chooses to use a different email", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     render(<SignUpPage />);
 
@@ -178,7 +169,6 @@ describe("SignUpPage", () => {
 
   it("renders the resend-error message when requestMagicLink rejects with the email-delivery code", async () => {
     vi.useFakeTimers();
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink
       .mockResolvedValueOnce({ ok: true, captureMailboxUrl: null })
       .mockRejectedValueOnce(new Error("EMAIL_DELIVERY_FAILED"));
@@ -212,7 +202,6 @@ describe("SignUpPage", () => {
 
   it("renders the generic resend-error message for unrelated rejections", async () => {
     vi.useFakeTimers();
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink
       .mockResolvedValueOnce({ ok: true, captureMailboxUrl: null })
       .mockRejectedValueOnce(new Error("unknown"));
@@ -243,7 +232,6 @@ describe("SignUpPage", () => {
   });
 
   it("redirects ready accounts to the effective redirect path when the session lands on the sent screen", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     const assignSpy = vi.fn();
     Object.defineProperty(window, "location", {
@@ -271,7 +259,6 @@ describe("SignUpPage", () => {
   });
 
   it("does not assign protocol-relative redirects after sign-up", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     const assignSpy = vi.fn();
     Object.defineProperty(window, "location", {
@@ -299,7 +286,6 @@ describe("SignUpPage", () => {
   });
 
   it("sends incomplete accounts to setup when no redirect is configured and the session arrives", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     const assignSpy = vi.fn();
     Object.defineProperty(window, "location", {
@@ -327,7 +313,6 @@ describe("SignUpPage", () => {
   });
 
   it("does not put unsafe redirects into setup for incomplete accounts", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     const assignSpy = vi.fn();
     Object.defineProperty(window, "location", {
@@ -355,7 +340,6 @@ describe("SignUpPage", () => {
   });
 
   it("keeps incomplete paid sign-ups in the purchase start flow", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
     const assignSpy = vi.fn();
     Object.defineProperty(window, "location", {
@@ -383,7 +367,6 @@ describe("SignUpPage", () => {
   });
 
   it("renders the generic submit-error when the magic-link send rejects on the form", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockRejectedValue(new Error("network"));
     render(<SignUpPage />);
 
@@ -402,28 +385,7 @@ describe("SignUpPage", () => {
     });
   });
 
-  it("preserves the redirect param when bouncing an existing account to /sign-in", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: true });
-    render(<SignUpPage redirectTo="/workspace/billing" />);
-
-    fireEvent.change(screen.getByLabelText(/Email/i), {
-      target: { value: "operator@atlas.test" },
-    });
-    const form = screen.getByRole("button", { name: "Create account" }).closest("form");
-    if (!form) throw new Error("expected sign-up form");
-    await act(async () => {
-      fireEvent.submit(form);
-      await Promise.resolve();
-    });
-
-    const navArgs = readRouterMocks().navigate.mock.calls[0]?.[0] as
-      { to: string; search: { email: string; redirect?: string } } | undefined;
-    expect(navArgs?.search.redirect).toBe("/workspace/billing");
-    expect(navArgs?.search).not.toHaveProperty("existing");
-  });
-
   it("maps a recognised auth-error code to its localised submit label", async () => {
-    mocks.checkAccountExists.mockResolvedValue({ exists: false });
     mocks.requestMagicLink.mockRejectedValue(new Error("EMAIL_DELIVERY_FAILED"));
     render(<SignUpPage />);
 

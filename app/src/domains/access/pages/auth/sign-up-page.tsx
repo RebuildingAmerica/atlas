@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+
 import { useEffect, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { sanitizeAtlasRedirectPath } from "@rebuildingamerica/atlas-access/redirect-paths";
-import { checkAccountExists, requestMagicLink } from "@/domains/access/session.functions";
+import { requestMagicLink } from "@/domains/access/session.functions";
 import {
   AUTH_ERROR_CODE,
   buildAuthErrorLabels,
@@ -73,7 +73,6 @@ function buildPostCredentialTarget(accountReady: boolean, redirectTo: string | u
  *   precedence over the intent default.
  */
 export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const session = useAtlasSession();
 
@@ -143,18 +142,11 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
     window.location.assign(target);
   }, [phase, session.data, effectiveRedirect]);
 
-  const sendMagicLinkRequest = async (): Promise<boolean> => {
-    const accountCheck = await checkAccountExists({ data: { email } });
-    if (accountCheck.exists) {
-      await navigate({
-        to: "/sign-in",
-        search: effectiveRedirect ? { email, redirect: effectiveRedirect } : { email },
-      });
-      return false;
-    }
+  // The magic link signs in an existing operator and registers a new one, so
+  // one path serves both and the response reveals neither.
+  const sendMagicLinkRequest = async (): Promise<void> => {
     const result = await requestMagicLink({ data: { callbackURL, email } });
     setCaptureMailboxUrl(result.captureMailboxUrl ?? null);
-    return true;
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -163,13 +155,11 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
     setIsPending(true);
 
     try {
-      const sent = await sendMagicLinkRequest();
-      if (sent) {
-        setSecondsUntilExpiry(MAGIC_LINK_EXPIRY_SECONDS);
-        setSecondsUntilResend(RESEND_COOLDOWN_SECONDS);
-        setResendStatus(null);
-        setPhase("sent");
-      }
+      await sendMagicLinkRequest();
+      setSecondsUntilExpiry(MAGIC_LINK_EXPIRY_SECONDS);
+      setSecondsUntilResend(RESEND_COOLDOWN_SECONDS);
+      setResendStatus(null);
+      setPhase("sent");
     } catch (error) {
       const code = extractAuthErrorCode(error);
       setErrorMessage(code ? SIGN_UP_ERROR_LABELS[code] : "Sign-up is temporarily unavailable.");
