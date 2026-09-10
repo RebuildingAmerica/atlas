@@ -57,7 +57,10 @@ jobs:
           check_status() {
             local label="$1" url="$2"
             local actual
-            actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$url" 2>/dev/null)"
+            # `|| true` as well as the shell override above: curl exits
+            # non-zero on a timeout or an unresolvable host, and the status it
+            # printed is the thing worth reporting either way.
+            actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$url" 2>/dev/null || true)"
             if [ "$actual" = "200" ]; then
               echo "ok    $label ($actual)"
             else
@@ -70,7 +73,7 @@ jobs:
           # carrying an "id" field would satisfy a grep, and a monitor that
           # cannot fail is the thing this replaces.
           entity_count() {
-            curl -sS --max-time 30 "$1" 2>/dev/null \
+            (curl -sS --max-time 30 "$1" 2>/dev/null || true) \
               | jq 'try ((.items // []) | length) catch 0' 2>/dev/null
           }
 
