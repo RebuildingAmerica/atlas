@@ -1,0 +1,130 @@
+name: Error Alerting
+
+# Atlas has structured logs and no way to be told about them. The API writes
+# JSON to stdout with a severity, Cloud Logging indexes it, and nothing reads
+# it back. Every production failure this project has had was found by a person
+# looking, including a search outage on 2026-09-09 that ran for an hour.
+#
+# This provisions a Cloud Monitoring alert policy on ERROR-severity logs from
+# the Cloud Run service, and an email channel to deliver it. Run it once by
+# hand; it is idempotent, so running it again reconciles rather than
+# duplicates.
+
+on:
+  workflow_dispatch:
+    inputs:
+      alert_email:
+        description: Address to notify when the API logs an error.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Report what this service account may do
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          set -uo pipefail
+          # Printed before anything is created so a permission failure names
+          # the missing role rather than appearing as an opaque 403.
+          for permission in \
+            monitoring.alertPolicies.create \
+            monitoring.alertPolicies.list \
+            monitoring.notificationChannels.create \
+            logging.logEntries.list; do
+            granted="$(gcloud projects test-iam-permissions "$GCP_PROJECT_ID" \
+              --permissions="$permission" --format='value(permissions)' 2>/dev/null)"
+            if [ -n "$granted" ]; then
+              echo "ok      $permission"
+            else
+              echo "::warning title=Missing permission::$permission is not granted to this service account."
+            fi
+          done
+
+      - name: Provision the error alert
+        env:
+          ALERT_EMAIL: ${{ inputs.alert_email }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          SERVICE_NAME: ${{ secrets.ATLAS_API_SERVICE_NAME || 'atlas-api' }}
+        run: |
+          set -euo pipefail
+
+          channel="$(gcloud alpha monitoring channels list \
+            --project="$GCP_PROJECT_ID" \
+            --filter="type=email AND labels.email_address=$ALERT_EMAIL" \
+            --format='value(name)' | head -1)"
+
+          if [ -z "$channel" ]; then
+            channel="$(gcloud alpha monitoring channels create \
+              --project="$GCP_PROJECT_ID" \
+              --display-name="Atlas production errors" \
+              --type=email \
+              --channel-labels="email_address=$ALERT_EMAIL" \
+              --format='value(name)')"
+            echo "Created notification channel $channel"
+          else
+            echo "Reusing notification channel $channel"
+          fi
+
+          # Matches the JSON that atlas.platform.observability writes. Cloud Run
+          # lifts "severity" out of structured stdout, so this catches both an
+          # unhandled exception and anything logged at ERROR on purpose.
+          cat > policy.json <<JSON
+          {
+            "displayName": "Atlas API errors",
+            "documentation": {
+              "content": "The Atlas API logged an error. Logs: https://console.cloud.google.com/run/detail/${SERVICE_NAME}/logs",
+              "mimeType": "text/markdown"
+            },
+            "conditions": [
+              {
+                "displayName": "ERROR severity from ${SERVICE_NAME}",
+                "conditionMatchedLog": {
+                  "filter": "resource.type=\\"cloud_run_revision\\" AND resource.labels.service_name=\\"${SERVICE_NAME}\\" AND severity>=ERROR"
+                }
+              }
+            ],
+            "alertStrategy": {
+              "notificationRateLimit": { "period": "300s" },
+              "autoClose": "1800s"
+            },
+            "combiner": "OR",
+            "enabled": true,
+            "notificationChannels": ["${channel}"]
+          }
+          JSON
+
+          existing="$(gcloud alpha monitoring policies list \
+            --project="$GCP_PROJECT_ID" \
+            --filter='displayName="Atlas API errors"' \
+            --format='value(name)' | head -1)"
+
+          if [ -n "$existing" ]; then
+            gcloud alpha monitoring policies update "$existing" \
+              --project="$GCP_PROJECT_ID" --policy-from-file=policy.json
+            echo "Updated $existing"
+          else
+            gcloud alpha monitoring policies create \
+              --project="$GCP_PROJECT_ID" --policy-from-file=policy.json
+            echo "Created the alert policy"
+          fi
