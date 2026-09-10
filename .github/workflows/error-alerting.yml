@@ -43,6 +43,10 @@ jobs:
       - name: Report what this service account may do
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        # Overrides the default bash -e. The point of this step is to report a
+        # refusal, and -e turns the first refusal into an exit before anything
+        # is printed.
+        shell: bash --noprofile --norc {0}
         run: |
           set -uo pipefail
           # Printed before anything is created so a permission failure names
@@ -53,7 +57,8 @@ jobs:
             monitoring.notificationChannels.create \
             logging.logEntries.list; do
             granted="$(gcloud projects test-iam-permissions "$GCP_PROJECT_ID" \
-              --permissions="$permission" --format='value(permissions)' 2>/dev/null)"
+              --permissions="$permission" --format='value(permissions)' 2>&1 || true)"
+            case "$granted" in *"$permission"*) granted="$permission" ;; *) granted="" ;; esac
             if [ -n "$granted" ]; then
               echo "ok      $permission"
             else
