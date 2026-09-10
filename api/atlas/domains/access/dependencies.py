@@ -297,12 +297,15 @@ async def require_org_actor(
             detail="Organization context required",
         )
 
-    if not settings.auth_membership_verification_url:
-        # No remote membership service: trust the org_id from the token as-is.
-        if actor.is_local:
-            actor.org_role = "owner"
-            actor.org_slug = actor.org_id
-            actor.workspace_type = "individual"
+    # A local deployment has no membership service to ask, whether or not a
+    # verification URL is configured.
+    if actor.is_local:
+        actor.org_role = "owner"
+        actor.org_slug = actor.org_id
+        actor.workspace_type = "individual"
+
+    if actor.is_local or not settings.auth_membership_verification_url:
+        # Nothing remote to ask: trust the org_id on the token.
         actor.active_products = actor.active_products or []
         actor.resolved_capabilities = resolve_capabilities(
             actor.active_products,

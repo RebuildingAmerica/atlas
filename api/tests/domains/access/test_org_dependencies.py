@@ -162,6 +162,25 @@ async def test_require_org_actor_treats_unset_membership_url_as_dev_mode() -> No
     assert result.resolved_capabilities is not None
 
 
+async def test_require_org_actor_serves_a_local_operator_with_a_membership_url() -> None:
+    """A local actor is served even when a verification URL is configured."""
+    actor = AuthenticatedActor(
+        user_id="local-operator",
+        email="local@atlas.rebuildingus.org",
+        auth_type="local",
+        is_local=True,
+        org_id="local",
+    )
+    settings = _make_settings(membership_url="https://atlas.example/api/auth/internal/membership")
+
+    result = await require_org_actor(actor=actor, settings=settings)
+
+    assert result.org_role == "owner"
+    assert result.org_slug == "local"
+    assert result.workspace_type == "individual"
+    assert result.resolved_capabilities is not None
+
+
 async def test_require_org_actor_grants_local_operator_workspace_export() -> None:
     """A single-user operator gets the capability without holding a paid tier.
 
