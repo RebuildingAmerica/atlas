@@ -338,6 +338,15 @@ class _PostgresLikeConnection:
 async def test_search_public_ids_postgres_branch_emits_tsquery_sql() -> None:
     """_search_public_ids should emit Postgres tsquery SQL when backend == 'postgres' (line 957)."""
     conn = _PostgresLikeConnection()
-    ids = await EntryCRUD._search_public_ids(conn, query="anything")  # noqa: SLF001
+    ids = await EntryCRUD._search_public_ids(conn, query="Anything")  # noqa: SLF001
     assert ids == []
     assert any("plainto_tsquery" in sql for sql, _ in conn.executed)
+
+    # No literal % may reach psycopg: the adapter rewrites ? to %s, and psycopg
+    # then reads every remaining % as a placeholder it does not recognise.
+    # Building "LIKE LOWER(?) || '%'" in SQL made every Postgres search 500
+    # while every SQLite test still passed, so the wildcard belongs in the
+    # parameter instead.
+    for sql, parameters in conn.executed:
+        assert "%" not in sql, sql
+        assert "anything%" in tuple(parameters)

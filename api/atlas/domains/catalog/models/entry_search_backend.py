@@ -66,7 +66,7 @@ async def search_public_ids(  # noqa: PLR0913
             query_sql += """
                 AND (
                     e.search_vector @@ plainto_tsquery('english', ?)
-                    OR LOWER(e.city) LIKE LOWER(?) || '%'
+                    OR LOWER(e.city) LIKE ?
                     OR LOWER(e.state) = LOWER(?)
                 )
             """
@@ -76,11 +76,15 @@ async def search_public_ids(  # noqa: PLR0913
                     e.rowid IN (
                         SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?
                     )
-                    OR LOWER(e.city) LIKE LOWER(?) || '%'
+                    OR LOWER(e.city) LIKE ?
                     OR LOWER(e.state) = LOWER(?)
                 )
             """
-        params.extend([query, query, query])
+        # The wildcard is built here rather than concatenated in SQL. A literal
+        # % in the statement text is a parameter placeholder to psycopg, so
+        # "LIKE LOWER(?) || '%'" made every search 500 against Postgres while
+        # passing against SQLite.
+        params.extend([query, f"{query.lower()}%", query])
     place_clause = _entry_place_clause(
         states=states,
         cities=cities,
