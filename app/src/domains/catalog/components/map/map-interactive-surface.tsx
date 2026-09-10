@@ -118,7 +118,9 @@ export function MapInteractiveSurface({
           controlsRevealed ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="absolute right-3 bottom-3 sm:right-4 sm:bottom-4">
+        {/* Above the results panel: zoom must stay clickable wherever the
+            panel happens to reach. */}
+        <div className="absolute right-3 bottom-3 z-50 sm:right-4 sm:bottom-4">
           <MapControls reducedMotion={reducedMotion} />
         </div>
       </div>

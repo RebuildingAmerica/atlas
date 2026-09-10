@@ -86,7 +86,7 @@ const apiWebServer = {
   cwd: repoRoot,
   env: {
     ...baseWebServerEnv,
-    ANTHROPIC_API_KEY: "screenshots-test-key",
+    ANTHROPIC_API_KEY: "screenshots-test-key", // pragma: allowlist secret
     ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
     ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
     ATLAS_AUTH_INTERNAL_SECRET: internalSecret,
