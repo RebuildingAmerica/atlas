@@ -149,6 +149,45 @@ describe("routes/sitemap.xml", () => {
     expect(entryListCalls.every((params) => params?.limit === 100)).toBe(true);
   });
 
+  it("requests every later page at once rather than one after another", async () => {
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
+
+    const requestedLaterOffsets: number[] = [];
+    let releaseLaterPages: () => void = () => undefined;
+    const laterPagesReleased = new Promise<void>((resolve) => {
+      releaseLaterPages = resolve;
+    });
+
+    vi.mocked(api.entries.list).mockImplementation(async (params) => {
+      if (!params?.entry_types?.includes("person")) {
+        return buildSitemapEntryListResponse([]);
+      }
+      if (params.offset === 0) {
+        return buildSitemapEntryListResponse(
+          [buildSitemapEntry({ type: "person", slug: "jane-doe" })],
+          { hasMore: true, limit: 100, offset: 0, total: 201 },
+        );
+      }
+      requestedLaterOffsets.push(params.offset ?? 0);
+      await laterPagesReleased;
+      return buildSitemapEntryListResponse(
+        [buildSitemapEntry({ type: "person", slug: `page-${params.offset}` })],
+        { limit: 100, offset: params.offset, total: 201 },
+      );
+    });
+
+    const bodyPromise = readSitemapXml();
+    await vi.waitFor(() => {
+      expect(requestedLaterOffsets).toEqual([100, 200]);
+    });
+    releaseLaterPages();
+
+    const body = await bodyPromise;
+    expect(body).toContain("/profiles/people/page-100");
+    expect(body).toContain("/profiles/people/page-200");
+  });
+
   it("uses the configured public origin for sitemap URLs", async () => {
     vi.stubEnv("ATLAS_PUBLIC_URL", "https://preview.atlas.example/app");
     const { api } = await import("@rebuildingamerica/atlas-api-client");

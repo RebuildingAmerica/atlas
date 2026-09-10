@@ -15,24 +15,27 @@ const SITEMAP_PAGE_SIZE = 100;
 
 type SitemapEntryType = Extract<EntryType, "person" | "organization">;
 
+function fetchSitemapPage(entryType: SitemapEntryType, offset: number) {
+  return api.entries.list({
+    entry_types: [entryType],
+    limit: SITEMAP_PAGE_SIZE,
+    offset,
+  });
+}
+
+// The API caps a page at 100 rows, so a growing catalog means more pages. The
+// production canary timed out walking them one after another against a cold
+// Cloud Run instance, so the first page's total drives the rest in parallel.
 async function listSitemapEntries(entryType: SitemapEntryType): Promise<Entry[]> {
-  const entries: Entry[] = [];
-  let offset = 0;
+  const firstPage = await fetchSitemapPage(entryType, 0);
+  const pageCount = Math.ceil(firstPage.pagination.total / SITEMAP_PAGE_SIZE);
+  const laterPages = await Promise.all(
+    Array.from({ length: Math.max(pageCount - 1, 0) }, (_unused, index) =>
+      fetchSitemapPage(entryType, (index + 1) * SITEMAP_PAGE_SIZE),
+    ),
+  );
 
-  for (;;) {
-    const response = await api.entries.list({
-      entry_types: [entryType],
-      limit: SITEMAP_PAGE_SIZE,
-      offset,
-    });
-    entries.push(...response.data);
-    if (!response.pagination.has_more) {
-      break;
-    }
-    offset += SITEMAP_PAGE_SIZE;
-  }
-
-  return entries;
+  return [firstPage, ...laterPages].flatMap((page) => page.data);
 }
 
 export const Route = createFileRoute("/sitemap.xml")({
