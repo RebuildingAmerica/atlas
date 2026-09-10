@@ -39,6 +39,10 @@ jobs:
           APP_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           API_URL: ${{ secrets.ATLAS_API_URL }}
           PDS_URL: https://atlas-pds.rebuildingus.org
+        # Overrides the default bash -e. curl exits non-zero on a timeout, and
+        # under -e that killed the step at the first slow request instead of
+        # reporting which check failed.
+        shell: bash --noprofile --norc {0}
         run: |
           set -uo pipefail
           failures=0
@@ -53,7 +57,7 @@ jobs:
           check_status() {
             local label="$1" url="$2"
             local actual
-            actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$url" 2>/dev/null)"
+            actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$url" 2>/dev/null)"
             if [ "$actual" = "200" ]; then
               echo "ok    $label ($actual)"
             else
@@ -66,9 +70,14 @@ jobs:
           # carrying an "id" field would satisfy a grep, and a monitor that
           # cannot fail is the thing this replaces.
           entity_count() {
-            curl -sS --max-time 25 "$1" 2>/dev/null \
+            curl -sS --max-time 30 "$1" 2>/dev/null \
               | jq 'try ((.items // []) | length) catch 0' 2>/dev/null
           }
+
+          # Cloud Run runs the API at min-instances=0, so the first request
+          # after an idle hour pays a cold start. Absorb it here rather than
+          # charging it to a probe and reporting an outage that is not one.
+          curl -sS -o /dev/null --max-time 60 "$API_URL/health" 2>/dev/null || true
 
           # /health is deliberately absent. It answers ok while the database is
           # unreachable, which is the exact case that matters.
