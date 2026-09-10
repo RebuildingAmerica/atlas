@@ -459,7 +459,16 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
           {alert}
 
           {canUseActiveWorkspace && activeWorkspace ? (
-            <Button onClick={() => void handleUseActiveWorkspace()} disabled={isPending} size="lg">
+            // Also gated on purchaseId, like the form button below it. The
+            // purchase intent is created by an effect after this step renders,
+            // and handleUseActiveWorkspace returns early without it, so an
+            // early click did nothing and showed nothing. The step simply never
+            // advanced.
+            <Button
+              onClick={() => void handleUseActiveWorkspace()}
+              disabled={isPending || !purchaseId}
+              size="lg"
+            >
               Use {activeWorkspace.name}
             </Button>
           ) : null}
