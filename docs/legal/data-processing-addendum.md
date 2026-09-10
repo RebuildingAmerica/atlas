@@ -1,29 +1,25 @@
 # Data Processing Addendum (template)
 
-Status: Unreviewed draft. No lawyer has read this. Owner: Rebuilding America
-Project Last updated: 2026-09-10
+Status: Unreviewed draft. Owner: Rebuilding America Project. Last updated:
+2026-09-10
 
 ## Who this is for
 
-You are answering an enterprise buyer who asked for a DPA before signing. Fill
-the four bracketed fields in Section 1, send it, and record what you sent. Get
-counsel to review it before the first signature, because Atlas publishes
-information about people who never agreed to anything and that makes this
-sharper than a normal SaaS DPA.
+For an enterprise buyer who asked for a DPA before signing. Fill the four
+bracketed fields in Section 1, send it, and record what you sent. Counsel should
+review it before the first signature: Atlas publishes information about people
+who did not agree to it, which makes this sharper than a normal SaaS DPA.
 
 ## What this document decides
 
 It commits Atlas to processing customer personal data only on the customer's
-instructions, names every subprocessor, and sets a 72-hour breach notice. It
-deliberately does **not** treat the public directory as customer data. That
-boundary is the one term a buyer is most likely to push on, and Section 3
-explains why we hold it.
+instructions, names every subprocessor, and sets a 72-hour breach notice.
+Section 3 places the public directory outside customer data, which is the term a
+buyer is most likely to push on.
 
-We chose a single addendum covering GDPR, UK GDPR, and the US state laws rather
-than separate annexes per regime. A three-annex document is more precise and
-nobody at either end would keep it current. If a buyer's counsel requires the EU
-Standard Contractual Clauses as a separate signed instrument, attach the current
-SCCs and say so in Section 9 instead of restating them here.
+One addendum covers GDPR, UK GDPR and the US state laws. Where a buyer's counsel
+requires the EU Standard Contractual Clauses as a separate signed instrument,
+attach the current SCCs and reference them in Section 9.
 
 ---
 
@@ -70,15 +66,11 @@ directory. Atlas is the Controller of those records, not the Processor, and
 Customer's instructions do not govern them. A Customer cannot direct Atlas to
 publish, alter, suppress, or delete a directory record about a third party.
 
-We hold this line because the alternative makes Atlas a private data broker
-acting on a paying customer's instructions about non-consenting individuals. The
-removal and correction process for people described in the directory is
-published in the Privacy Policy at https://atlas.rebuildingus.org/privacy and
-applies to everyone equally.
-
-What would change our mind: a Customer whose own employees appear in the
-directory may ask for those specific records under the published process, on the
-same terms as anyone else.
+This keeps Atlas from acting as a private data broker on a customer's
+instructions about people who did not agree to be listed. The removal and
+correction process is published in the Privacy Policy at
+https://atlas.rebuildingus.org/privacy and applies to everyone on the same
+terms, including a Customer whose own employees appear in the directory.
 
 ## 4. Instructions
 
@@ -103,9 +95,8 @@ the permissions they need, supports passkey authentication so an account need
 not depend on a password, and supports SAML/OIDC single sign-on and SCIM
 provisioning for Atlas Team workspaces.
 
-Atlas holds no third-party security certification today. Do not claim SOC 2, ISO
-27001, or any other attestation in response to a questionnaire. Say that none
-exists.
+Describe only the controls listed above. Atlas holds no third-party security
+attestation, and a questionnaire answer must say so.
 
 ## 7. Subprocessors
 
@@ -190,15 +181,3 @@ Customer may export workspace content through the product before termination.
 Each party's liability under this DPA is subject to the limitations in the
 underlying agreement. Where this DPA conflicts with the underlying agreement on
 the processing of Personal Data, this DPA prevails.
-
----
-
-## What is still open
-
-Four things a buyer may ask for that Atlas cannot supply today:
-
-- No SOC 2, ISO 27001, or equivalent attestation exists. Say so plainly.
-- No cyber liability insurance certificate.
-- No formal penetration test report.
-- No named Data Protection Officer or EU representative. Appoint one before
-  selling into the EU.
