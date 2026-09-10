@@ -284,15 +284,12 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     };
   }, [purchase, purchaseIntent, selectedInterval, selectedProduct, sessionData, validSelection]);
 
-  const handleUseActiveWorkspace = async () => {
-    if (!purchaseId || !activeWorkspace) {
-      return;
-    }
+  const attachActiveWorkspace = async (id: string, workspaceId: string) => {
     setErrorMessage(null);
     setIsPending(true);
     try {
       await attachPurchaseWorkspace({
-        data: { purchaseId, workspaceId: activeWorkspace.id },
+        data: { purchaseId: id, workspaceId },
       }).then(setPurchaseIntent);
     } catch {
       setErrorMessage("Atlas could not attach that workspace. Try again.");
@@ -334,8 +331,15 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     }
   };
 
-  // Both actions need a purchase to act on, so without one there is no
+  // Every action needs a purchase to act on, so without one there is no
   // handler at all rather than a handler that silently declines.
+  const handleUseActiveWorkspace =
+    purchaseId === null || activeWorkspace === null
+      ? undefined
+      : () => {
+          void attachActiveWorkspace(purchaseId, activeWorkspace.id);
+        };
+
   const handleCreateWorkspace =
     purchaseId === null
       ? undefined
@@ -459,14 +463,14 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
           {alert}
 
           {canUseActiveWorkspace && activeWorkspace ? (
-            // Also gated on purchaseId, like the form button below it. The
+            // Disabled without a handler, like the form button below it. The
             // purchase intent is created by an effect after this step renders,
-            // and handleUseActiveWorkspace returns early without it, so an
-            // early click did nothing and showed nothing. The step simply never
-            // advanced.
+            // and this button used to stay clickable in that window while its
+            // handler declined in silence, so the step never advanced and said
+            // nothing about why.
             <Button
-              onClick={() => void handleUseActiveWorkspace()}
-              disabled={isPending || !purchaseId}
+              onClick={handleUseActiveWorkspace}
+              disabled={isPending || !handleUseActiveWorkspace}
               size="lg"
             >
               Use {activeWorkspace.name}
