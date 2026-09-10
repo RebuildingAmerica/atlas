@@ -82,54 +82,10 @@ describe("AccountSetupPage", () => {
       queryKey: ["auth", "session"],
     });
     expect(screen.getByText("Verification email sent.")).not.toBeNull();
-    expect(accountSetupPageMocks.createWorkspace).toHaveBeenCalledWith({
-      data: {
-        name: "Test Operator's Workspace",
-        slug: "test-operator-s-workspace",
-        workspaceType: "individual",
-      },
-    });
-    expect(assignMock).toHaveBeenCalledWith("/account");
-  });
-
-  it("skips solo-workspace creation for an operator who already has a workspace", async () => {
-    accountSetupPageMocks.mutateStates.push({}, {}, {});
-    accountSetupPageMocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: false,
-        hasPasskey: false,
-        passkeyCount: 0,
-        user: {
-          email: "operator@atlas.test",
-          emailVerified: false,
-        },
-        workspace: defaultWorkspace,
-      },
-      isPending: false,
-      isRefetching: false,
-      refetch: accountSetupPageMocks.refetch.mockResolvedValue({
-        data: {
-          accountReady: true,
-          hasPasskey: true,
-          passkeyCount: 1,
-          user: { name: "Test Operator", email: "operator@atlas.test", emailVerified: true },
-          workspace: {
-            onboarding: {
-              hasPendingInvitations: false,
-              needsWorkspace: false,
-            },
-          },
-        },
-      }),
-    });
-    const { AccountSetupPage } = await import("@/domains/access/pages/auth/account-setup-page");
-
-    render(<AccountSetupPage redirectTo="/account" />);
-
-    await waitFor(() => {
-      expect(assignMock).toHaveBeenCalledWith("/account");
-    });
+    // The session load provisions the personal workspace server-side, so the
+    // page creates nothing.
     expect(accountSetupPageMocks.createWorkspace).not.toHaveBeenCalled();
+    expect(assignMock).toHaveBeenCalledWith("/account");
   });
 
   it("signs operators out from the setup flow", async () => {

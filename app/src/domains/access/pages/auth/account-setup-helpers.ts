@@ -35,22 +35,6 @@ export function useRelativeTimestamp(timestamp: number | null): string | null {
 }
 
 /**
- * Builds the workspace slug Atlas uses when auto-creating the operator's
- * first solo workspace.
- */
-export function deriveSoloWorkspaceSlug(displayName: string | null | undefined): {
-  name: string;
-  slug: string;
-} {
-  const workspaceName = displayName ? `${displayName}'s Workspace` : "My Workspace";
-  const workspaceSlug = workspaceName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return { name: workspaceName, slug: workspaceSlug };
-}
-
-/**
  * Resolves the destination Atlas should navigate to once the operator's
  * required setup steps are done.  Hands pending-invitation operators to
  * /organization so they can accept; everyone else lands on the explicit

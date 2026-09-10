@@ -4,17 +4,11 @@ import { getAuthClient } from "@/domains/access/client/auth-client";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { waitForAtlasPasskeyRegistration } from "@/domains/access/client/session-confirmation";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import { createWorkspace } from "@/domains/access/organizations.functions";
 import { resolvePasskeyName } from "@rebuildingamerica/atlas-access/passkey-names";
 import { updatePasskey } from "@/domains/access/passkeys.functions";
 import { getRpLogoutRedirect, sendVerificationEmail } from "@/domains/access/session.functions";
 import { describePasskeyError } from "@rebuildingamerica/atlas-access/auth-errors";
-import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
-import {
-  deriveSoloWorkspaceSlug,
-  resolveReadyDestination,
-  useRelativeTimestamp,
-} from "./account-setup-helpers";
+import { resolveReadyDestination, useRelativeTimestamp } from "./account-setup-helpers";
 import {
   AccountSetupChecklist,
   type AccountSetupChecklistItem,
@@ -75,20 +69,6 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
     },
   });
 
-  const ensureSoloWorkspaceForReadySession = useCallback(
-    async (readySession: AtlasSessionPayload) => {
-      const { onboarding } = readySession.workspace;
-      if (!onboarding.needsWorkspace || onboarding.hasPendingInvitations) {
-        return;
-      }
-      const { name, slug } = deriveSoloWorkspaceSlug(readySession.user.name);
-      await createWorkspace({
-        data: { name, slug, workspaceType: "individual" },
-      });
-    },
-    [],
-  );
-
   const refreshStatus = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: atlasSessionQueryKey });
     const refreshed = await atlasSession.refetch();
@@ -101,9 +81,8 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
     if (!refreshed?.accountReady || !refreshed.hasPasskey) {
       return;
     }
-    await ensureSoloWorkspaceForReadySession(refreshed);
     window.location.assign(resolveReadyDestination(refreshed, redirectTo));
-  }, [ensureSoloWorkspaceForReadySession, redirectTo, refreshStatus]);
+  }, [redirectTo, refreshStatus]);
 
   // Auto-refresh on mount to pick up verification completed in another tab.
   useEffect(() => {
