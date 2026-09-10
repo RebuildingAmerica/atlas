@@ -80,6 +80,49 @@
         ".githooks/pre-push"
       ]
     },
+    "//#screenshots:api": {
+      "inputs": [
+        "api/**",
+        "!api/.coverage",
+        "!api/.coverage.*",
+        "!api/.hypothesis/**",
+        "!api/.mypy_cache/**",
+        "!api/.pytest_cache/**",
+        "!api/.ruff_cache/**",
+        "!api/.venv/**",
+        "!api/**/__pycache__/**",
+        "!api/**/*.pyc",
+        "!api/htmlcov/**",
+        "!api/node_modules/**",
+        "!api/.turbo/**",
+        "!api/atlas.db",
+        "!api/openapi/**",
+        "openapi/atlas.openapi.json"
+      ],
+      "env": [
+        "ANTHROPIC_API_KEY",
+        "ATLAS_AUTH_JWT_AUDIENCES",
+        "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
+        "ATLAS_AUTH_MEMBERSHIP_URL",
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "ATLAS_ANON_RATE_LIMIT_ENABLED",
+        "ATLAS_DEMO_ORG_ID",
+        "ATLAS_DEMO_USER_ID",
+        "ATLAS_DEPLOY_MODE",
+        "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        "ATLAS_PUBLIC_URL",
+        "CORS_ORIGINS",
+        "DATABASE_URL",
+        "DISCOVERY_JOB_WORKER_ENABLED",
+        "ENABLE_OPENAPI_SPEC",
+        "ENVIRONMENT",
+        "LOG_LEVEL",
+        "PORT",
+        "SEARCH_API_KEY"
+      ],
+      "cache": false,
+      "persistent": true
+    },
     "//#e2e:api": {
       "inputs": [
         "api/**",

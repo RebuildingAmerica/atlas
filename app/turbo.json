@@ -229,6 +229,18 @@
       ],
       "cache": false
     },
+    "screenshots": {
+      "env": [
+        "ATLAS_SCREENSHOTS_API_URL",
+        "ATLAS_SCREENSHOTS_APP_URL",
+        "ATLAS_SCREENSHOTS_LIVE_TILES",
+        "ATLAS_SCREENSHOTS_MAILBOX_URL",
+        "ATLAS_SCREENSHOTS_MODE",
+        "ATLAS_SCREENSHOTS_OUT_DIR"
+      ],
+      "outputs": [],
+      "cache": false
+    },
     "test:acceptance": {
       "dependsOn": [
         "e2e:cleanup"

@@ -96,7 +96,10 @@ data/
 .playwright-mcp/
 blob-report/
 playwright-report/
-screenshots/
+# Generated screenshot audit output. Anchored so it does not swallow the
+# harness source in app/tests/screenshots and app/scripts/screenshots.
+/screenshots/
+/tmp/
 test-results/
 
 # ============================================

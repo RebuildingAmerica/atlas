@@ -36,7 +36,7 @@ export default defineConfig({
         // scripts/e2e: the `test:acceptance`, `e2e:mail` and `e2e:cleanup` scripts
         "scripts/e2e/**",
         // screenshots + route-tree generation: `screenshots` and `predev`/`prebuild`
-        "scripts/screenshots.mjs",
+        "scripts/screenshots/**",
         "scripts/generate-route-tree.mjs",
       ],
       thresholds: {

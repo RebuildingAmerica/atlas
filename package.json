@@ -45,6 +45,8 @@
     "turbo:validate": "node ./scripts/validate-turbo-selectors.mjs",
     "e2e:api": "uv --directory ./api run python -m atlas.seed_profiles --database-url ${DATABASE_URL:-sqlite:///atlas.db} && uv --directory ./api run python -m atlas.main",
     "seed:profiles": "uv --directory ./api run python -m atlas.seed_profiles",
+    "screenshots": "turbo run @rebuildingamerica/atlas-app#screenshots",
+    "screenshots:api": "uv --directory ./api run python -m atlas.seed_profiles --database-url ${DATABASE_URL:-sqlite:///atlas.db} && uv --directory ./api run python -m atlas.seed_briefing_room_demo && uv --directory ./api run python -m atlas.main",
     "demo:briefing-room": "uv --directory ./api run python -m atlas.seed_briefing_room_demo",
     "demo:briefing-room:staging": "tsx --tsconfig app/tsconfig.json app/scripts/provision-briefing-room-workspace.ts && if [ \"${ATLAS_DEMO_DATA:-briefing_room}\" != \"none\" ]; then uv --directory ./api run python -m atlas.seed_briefing_room_demo --org-id ${ATLAS_DEMO_ORG_ID:-briefing-room-demo} --user-id ${ATLAS_DEMO_USER_ID:-briefing-room-operator}; fi",
     "mcp:gen-publisher-key": "node ./scripts/mcp-gen-publisher-key.mjs",

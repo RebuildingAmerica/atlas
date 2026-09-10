@@ -41,7 +41,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "tsx scripts/screenshots/run.ts",
+    "screenshots:local": "tsx scripts/screenshots/run.ts --mode local",
+    "screenshots:session": "tsx scripts/screenshots/run.ts --mode session"
   },
   "keywords": [],
   "author": "",

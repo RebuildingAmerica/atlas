@@ -15,6 +15,7 @@
     "playwright.hosted-identity.config.ts",
     "playwright.hosted.config.ts",
     "playwright.config.ts",
+    "playwright.screenshots.config.ts",
     "orval.config.ts",
     "vite.config.ts",
     "vitest.config.ts"

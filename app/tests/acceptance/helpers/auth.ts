@@ -27,7 +27,12 @@ function createAccountEmail(): string {
   return `person+${randomUUID()}@atlas.test`;
 }
 
-async function createReadyWorkspace(page: Page) {
+/**
+ * Creates a workspace when the account does not have one yet.
+ *
+ * @param page - The active Playwright page, already signed in.
+ */
+export async function createReadyWorkspace(page: Page) {
   if (new URL(page.url()).pathname !== "/organization") {
     await page.goto("/organization", { waitUntil: "networkidle" });
   }
