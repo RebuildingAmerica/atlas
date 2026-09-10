@@ -89,8 +89,6 @@ export function createSSOSignInResolutionFixture(
   overrides: Partial<AtlasSSOSignInResolution> = {},
 ): AtlasSSOSignInResolution {
   return {
-    organizationName: overrides.organizationName ?? "Atlas Team",
-    organizationSlug: overrides.organizationSlug ?? "atlas-team",
     providerId: overrides.providerId ?? "atlas-team-google-workspace-saml",
     providerType: overrides.providerType ?? "saml",
   };

@@ -9,6 +9,7 @@ import {
   createStoredWorkspaceIdentityFixture,
   createStoredWorkspaceSSOProviderFixture,
 } from "../../../fixtures/access/sso";
+import { DEFAULT_ANONYMOUS_RATE_LIMIT } from "@/domains/access/server/anonymous-rate-limit";
 import {
   createServerFnStub,
   createServerOnlyFnStub,
@@ -235,6 +236,90 @@ describe("sso.functions sign-in resolution", () => {
 
     expect(response.error).toBeUndefined();
     expect(response.result).toBeNull();
+  });
+
+  it("still resolves by domain when getInvitation rejects for a signed-out invitee", async () => {
+    authApi.getInvitation.mockRejectedValue(new Error("UNAUTHORIZED"));
+    ssoFunctionsMocks.loadStoredWorkspaceIdentity.mockReturnValue(
+      createStoredWorkspaceIdentityFixture({
+        primaryProviderId: "atlas-team-google-workspace-oidc",
+      }),
+    );
+    ssoFunctionsMocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture(),
+    ]);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "owner@atlas.test", invitationId: "inv_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).toEqual(
+      createSSOSignInResolutionFixture({
+        providerId: "atlas-team-google-workspace-oidc",
+        providerType: "oidc",
+      }),
+    );
+  });
+
+  it("returns null once a client exceeds the anonymous write budget", async () => {
+    ssoFunctionsMocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture(),
+    ]);
+    ssoFunctionsMocks.loadStoredWorkspaceIdentity.mockReturnValue(
+      createStoredWorkspaceIdentityFixture({
+        primaryProviderId: "atlas-team-google-workspace-oidc",
+      }),
+    );
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const probe = async () =>
+      (await resolveWorkspaceSSOSignIn.__executeServer({
+        method: "POST",
+        data: { email: "owner@atlas.test" },
+      })) as ServerFnExecutionResponse;
+
+    for (let attempt = 0; attempt < DEFAULT_ANONYMOUS_RATE_LIMIT.writesPerMinute; attempt += 1) {
+      expect((await probe()).result).not.toBeNull();
+    }
+
+    const blocked = await probe();
+    expect(blocked.error).toBeUndefined();
+    expect(blocked.result).toBeNull();
+  });
+
+  it("skips the limiter when anonymous rate limiting is turned off", async () => {
+    ssoFunctionsMocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: { ...DEFAULT_ANONYMOUS_RATE_LIMIT, enabled: false, writesPerMinute: 0 },
+      publicBaseUrl: "https://atlas.test",
+      samlAllowedIssuerOrigins: new Set(["https://accounts.google.com"]),
+      samlSpPrivateKey: null,
+      samlSpPrivateKeyPass: null,
+    });
+    ssoFunctionsMocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture(),
+    ]);
+    ssoFunctionsMocks.loadStoredWorkspaceIdentity.mockReturnValue(
+      createStoredWorkspaceIdentityFixture({
+        primaryProviderId: "atlas-team-google-workspace-oidc",
+      }),
+    );
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "owner@atlas.test" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toEqual(
+      createSSOSignInResolutionFixture({
+        providerId: "atlas-team-google-workspace-oidc",
+        providerType: "oidc",
+      }),
+    );
   });
 
   it("falls back to generic resolution when invitation has no matching identity", async () => {

@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
+  SlidingWindowRateLimiter,
+  bucketSpecsForRequest,
+  logAnonymousRateLimit,
+  resolveClientIpFromHeaders,
+} from "./server/anonymous-rate-limit";
+import { getAuthRuntimeConfig } from "./server/runtime";
+import {
   groupStoredProvidersByWorkspace,
   resolveStoredWorkspaceSSOSignIn,
 } from "./sso-sign-in-resolution";
@@ -9,6 +16,16 @@ import {
   requireManagedTeamWorkspace,
 } from "./organization-server-helpers";
 import { loadWorkspaceSSOServerModules, saveWorkspacePrimarySSOProvider } from "./sso.functions";
+
+/**
+ * Throttles the one unauthenticated server function in this domain.
+ *
+ * Home-realm discovery has to answer before anyone signs in, so the handler
+ * below runs for any email a caller supplies. The bucket keeps that from being
+ * a cheap way to sweep company domains. Like the proxy limiter it is
+ * per-instance, which slows a sweep rather than stopping a distributed one.
+ */
+const anonymousSSOResolutionLimiter = new SlidingWindowRateLimiter();
 
 /**
  * Hostnames Atlas refuses to fetch SAML IdP entry points from. The list
@@ -214,6 +231,7 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
     }
     /* v8 ignore stop */
     const emailDomain = rawDomain.trim().toLowerCase();
+
     const {
       auth: authModule,
       requestHeaders,
@@ -225,15 +243,42 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
     const authPromise = ensureAuthReady();
     const auth = await authPromise;
     const headers = getBrowserSessionHeaders();
+
+    const runtime = getAuthRuntimeConfig();
+    if (runtime.anonymousRateLimit.enabled) {
+      const clientKey =
+        resolveClientIpFromHeaders(headers, runtime.anonymousRateLimit.trustedProxyHops) ??
+        "unknown";
+      const reservation = anonymousSSOResolutionLimiter.reserve(
+        clientKey,
+        bucketSpecsForRequest("POST", runtime.anonymousRateLimit),
+      );
+      if (!reservation.allowed) {
+        logAnonymousRateLimit(reservation, {
+          clientKey,
+          layer: "sso-resolution",
+          method: "POST",
+          pathname: "/_serverFn/resolveWorkspaceSSOSignIn",
+        });
+        return null;
+      }
+    }
+
     const storedProviders = await listStoredWorkspaceSSOProviders();
 
     if (data.invitationId) {
-      const invitation = await auth.api.getInvitation({
-        headers,
-        query: {
-          id: data.invitationId,
-        },
-      });
+      // getInvitation requires a session and throws UNAUTHORIZED before it
+      // looks anything up. Invitees arrive here signed out, so an unguarded
+      // call took the whole sign-in down with it and the magic link was never
+      // sent. Without a session, fall through to domain resolution.
+      const invitation = await auth.api
+        .getInvitation({
+          headers,
+          query: {
+            id: data.invitationId,
+          },
+        })
+        .catch(() => null);
 
       if (invitation?.organizationId) {
         const workspaceIdentity = await loadStoredWorkspaceIdentity(invitation.organizationId);

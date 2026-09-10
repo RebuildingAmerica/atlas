@@ -1,6 +1,7 @@
 import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
 import { createSSOFunctionsAuthApi } from "../../../mocks/access/sso-functions-auth";
 import { createStoredWorkspaceIdentityFixture } from "../../../fixtures/access/sso";
+import { DEFAULT_ANONYMOUS_RATE_LIMIT } from "@/domains/access/server/anonymous-rate-limit";
 import type { Mock } from "vitest";
 
 type SsoFunctionsMock = Mock;
@@ -42,6 +43,7 @@ export function createSsoFunctionsTestHarness(mocks: SsoFunctionsMockMap) {
       api: authApi,
     });
     mocks.getAuthRuntimeConfig.mockReturnValue({
+      anonymousRateLimit: DEFAULT_ANONYMOUS_RATE_LIMIT,
       publicBaseUrl: "https://atlas.test",
       samlAllowedIssuerOrigins: new Set(["https://accounts.google.com"]),
       samlSpPrivateKey: null,

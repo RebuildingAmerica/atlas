@@ -88,9 +88,11 @@ export function resolveStoredWorkspaceSSOSignIn(params: {
     return null;
   }
 
+  // Provider only. The workspace name and slug are not needed to start the
+  // redirect, and this runs unauthenticated for any email anyone types, so
+  // returning them would let a caller walk company domains and collect a
+  // customer list.
   return {
-    organizationName: params.workspaceIdentity.name,
-    organizationSlug: params.workspaceIdentity.slug,
     providerId: preferredProvider.providerId,
     providerType: preferredProvider.providerType,
   };

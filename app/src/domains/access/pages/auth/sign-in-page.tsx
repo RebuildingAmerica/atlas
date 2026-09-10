@@ -192,8 +192,7 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
       });
 
       if (ssoResolution) {
-        const organizationLabel = ssoResolution.organizationName ?? "your organization";
-        setStatusMessage(`Redirecting to ${organizationLabel}'s sign-in...`);
+        setStatusMessage("Redirecting to your organization's sign-in...");
 
         const ssoResult = await authClient.signIn.sso({
           callbackURL,

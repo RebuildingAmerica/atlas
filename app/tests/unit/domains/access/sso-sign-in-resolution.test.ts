@@ -123,8 +123,6 @@ describe("sso-sign-in-resolution", () => {
       });
 
       expect(resolution).toEqual({
-        organizationName: "Atlas",
-        organizationSlug: "atlas",
         providerId: "google-oidc",
         providerType: "oidc",
       });
