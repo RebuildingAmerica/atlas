@@ -98,8 +98,8 @@ describe("MapPage", () => {
     expect(skip.getAttribute("href")).toBe("#map-results-list");
     expect(resultsList).not.toBeNull();
     expect(resultsList?.getAttribute("tabindex")).toBe("-1");
-    expect(resultsList?.className).toContain("focus-within:not-sr-only");
-    expect(resultsList?.className).toContain("focus-within:absolute");
+    expect(resultsList?.className).not.toContain("sr-only");
+    expect(resultsList?.className).toContain("absolute");
   });
 
   it("shows the result count pill when points are placed", () => {

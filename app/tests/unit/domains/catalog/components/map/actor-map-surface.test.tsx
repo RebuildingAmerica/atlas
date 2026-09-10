@@ -46,7 +46,7 @@ describe("ActorMapSurface", () => {
     expect(props?.touchPitch).toBe(false);
     expect(props?.maxPitch).toBe(0);
     // Dragging should feel anchored, not coast after the pointer is released.
-    expect(props?.dragPan).toEqual({ deceleration: 100_000, maxSpeed: 0 });
+    expect(props?.dragPan).toEqual({ deceleration: 100_000, linearity: 0.01, maxSpeed: 0 });
   });
 
   it("threads the Atlas basemap style into the map", () => {

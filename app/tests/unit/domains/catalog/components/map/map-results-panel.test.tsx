@@ -22,7 +22,7 @@ beforeEach(async () => {
 afterEach(cleanup);
 
 describe("MapResultsPanel", () => {
-  it("owns the skip target and focus-revealed layout", () => {
+  it("owns the skip target and stays visible as the map scan companion", () => {
     const panelRef = createRef<HTMLElement>();
     render(
       <MapResultsPanel
@@ -38,8 +38,70 @@ describe("MapResultsPanel", () => {
     expect(panelRef.current).toBe(panel);
     expect(panel?.getAttribute("tabindex")).toBe("-1");
     expect(panel?.getAttribute("aria-label")).toBe("Civic actors on the map");
-    expect(panel?.className).toContain("focus-within:not-sr-only");
-    expect(panel?.className).toContain("focus-within:absolute");
+    expect(panel?.className).not.toContain("sr-only");
+    expect(panel?.className).toContain("absolute");
+  });
+
+  it("summarizes the visible civic landscape before the actor rows", () => {
+    render(
+      <MapResultsPanel
+        points={[
+          makePoint({
+            id: "1",
+            type: "organization",
+            place_label: "Kansas City, MO",
+            issue_areas: ["housing-affordability"],
+            source_count: 2,
+          }),
+          makePoint({
+            id: "2",
+            type: "person",
+            place_label: "Detroit, MI",
+            issue_areas: ["worker_power"],
+            source_count: 3,
+          }),
+        ]}
+        isLoading={false}
+        onFocusActor={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Landscape")).toBeTruthy();
+    expect(screen.getByText("2 people and groups")).toBeTruthy();
+    expect(screen.getByText("2 places")).toBeTruthy();
+    expect(screen.getByText("5 sources")).toBeTruthy();
+    expect(screen.getByText("Housing Affordability")).toBeTruthy();
+    expect(screen.getByText("Worker Power")).toBeTruthy();
+    expect(screen.getByText("Organizations")).toBeTruthy();
+    expect(screen.getByText("People")).toBeTruthy();
+  });
+
+  it("counts only the actors that carry a place", () => {
+    render(
+      <MapResultsPanel
+        points={[
+          makePoint({
+            id: "1",
+            type: "organization",
+            place_label: "Tulsa, OK",
+            issue_areas: ["housing-affordability"],
+            source_count: 1,
+          }),
+          makePoint({
+            id: "2",
+            type: "organization",
+            place_label: null,
+            issue_areas: ["housing-affordability"],
+            source_count: 1,
+          }),
+        ]}
+        isLoading={false}
+        onFocusActor={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("2 people and groups")).toBeTruthy();
+    expect(screen.getByText("1 place")).toBeTruthy();
   });
 
   it("shows the loading state before rows arrive", () => {
@@ -52,7 +114,7 @@ describe("MapResultsPanel", () => {
   it("shows the empty state when the viewport has no rows", () => {
     render(<MapResultsPanel points={[]} isLoading={false} onFocusActor={vi.fn()} />);
 
-    expect(screen.getByText("No people or groups in view.")).toBeTruthy();
+    expect(screen.getByText("No people or groups in this area.")).toBeTruthy();
     expect(screen.queryByRole("list")).toBeNull();
   });
 
