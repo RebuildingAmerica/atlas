@@ -463,11 +463,8 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
           {alert}
 
           {canUseActiveWorkspace && activeWorkspace ? (
-            // Disabled without a handler, like the form button below it. The
-            // purchase intent is created by an effect after this step renders,
-            // and this button used to stay clickable in that window while its
-            // handler declined in silence, so the step never advanced and said
-            // nothing about why.
+            // The purchase intent arrives from an effect after this step
+            // renders, and the handler is undefined until it does.
             <Button
               onClick={handleUseActiveWorkspace}
               disabled={isPending || !handleUseActiveWorkspace}

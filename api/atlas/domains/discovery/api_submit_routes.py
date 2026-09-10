@@ -132,8 +132,7 @@ async def contribute_discovery_results(
         run_limit=_run_limit,
     )
 
-    # Creation sits inside the guard: the reservation has already committed,
-    # so a failure here would otherwise charge a run that produced nothing.
+    # The reservation has already committed, so a failure here refunds it.
     try:
         run_id = await DiscoveryRunCRUD.create(
             db,
@@ -269,17 +268,10 @@ async def sync_discovery_run(  # noqa: PLR0913
             actor=actor,
         )
 
-    # Reserved after both the existence and the ownership checks, and for the
-    # pinned branch as well as the create branch. Charging only the create
-    # branch left the metering one client-supplied field from useless:
-    # manifest.sync.remote_run_id is attacker-controlled, so a workspace could
-    # spend one run, keep the returned id, and pin it into every later bundle
-    # to persist unlimited fresh artifacts for free. Reserving above those
-    # checks instead spent a run on a request that then 400s or 403s, which is
-    # the same no-rollback bug as the contribution route had.
-    #
-    # An identical re-sync never reaches here, because get_by_identity
-    # returned above, so a retry of the same artifacts still costs nothing.
+    # Charged here so that both the create and the pinned branch pay:
+    # manifest.sync.remote_run_id is client-controlled, and pinning a spent id
+    # into later bundles would otherwise persist artifacts for free. An
+    # identical re-sync returns above at get_by_identity and costs nothing.
     reserved = await reserve_run_if_limited(
         db,
         org_id=actor.org_id,

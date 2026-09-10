@@ -306,11 +306,8 @@ async function attachWorkspace(page: Page, plan: PaidPlan): Promise<void> {
 }
 
 /**
- * Retrieves a Checkout Session straight from Stripe.
- *
- * Goes through the SDK the application itself uses, so the session is typed by
- * the same definitions the production code is checked against and a field
- * renamed by an API version bump fails here rather than reading as undefined.
+ * Retrieves a Checkout Session from Stripe through the SDK the application
+ * uses, so an API version bump that renames a field fails here.
  *
  * @param sessionId - The cs_test_... id taken from the Checkout URL.
  * @returns The session as Stripe reports it.
@@ -324,27 +321,13 @@ async function fetchStripeSession(sessionId: string): Promise<Stripe.Checkout.Se
 }
 
 /**
- * Drives Atlas as far as Stripe will let an automated agent go, then checks
- * the session Atlas built against Stripe itself.
+ * Drives the funnel to Stripe, then checks the session Atlas built against
+ * Stripe's own API.
  *
- * Stripe now gates agent-driven checkout. Its hosted page renders two
- * attestations, the second revealed by ticking the first, alongside
- * instructions telling the agent to complete the purchase through Link CLI
- * so the buyer's real credentials are never exposed. With both ticked and
- * every field valid, no request to /v1/payment_pages/{id}/confirm is ever
- * made. Typing a test card into that page is no longer a supported way to
- * complete a purchase, and working around the detection is not something
- * this suite should do.
- *
- * So the browser proves the half that belongs to Atlas: the funnel reaches
- * Stripe with a session for the right plan. Stripe's API then proves the
- * session carries the parameters that decide whether the charge is lawful
- * and correctly attributed. Unit tests assert those parameters against a
- * mocked SDK; this asserts them against Stripe.
- *
- * Not covered any more: submitting the card on Stripe's page, the redirect
- * back, and the webhook granting entitlement from a genuine payment. See
- * docs/deployment/stripe-billing.md.
+ * Stripe gates agent-driven checkout on its hosted page and directs agents to
+ * Link CLI, so the browser covers the Atlas half and the API covers the
+ * session parameters. Card submission, the redirect back and the entitlement
+ * webhook are out of scope; see docs/deployment/stripe-billing.md.
  *
  * @param page - The onboarding page, signed in with a workspace attached.
  * @param plan - Which paid plan is being bought.

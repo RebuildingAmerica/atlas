@@ -1,14 +1,7 @@
 name: Error Alerting
 
-# Atlas has structured logs and no way to be told about them. The API writes
-# JSON to stdout with a severity, Cloud Logging indexes it, and nothing reads
-# it back. Every production failure this project has had was found by a person
-# looking, including a search outage on 2026-09-09 that ran for an hour.
-#
-# This provisions a Cloud Monitoring alert policy on ERROR-severity logs from
-# the Cloud Run service, and an email channel to deliver it. Run it once by
-# hand; it is idempotent, so running it again reconciles rather than
-# duplicates.
+# Creates the Cloud Monitoring alert on ERROR-severity API logs and the email
+# channel it notifies. Dispatch by hand; re-running reconciles.
 
 on:
   workflow_dispatch:
@@ -43,14 +36,11 @@ jobs:
       - name: Report what this service account may do
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        # Overrides the default bash -e. The point of this step is to report a
-        # refusal, and -e turns the first refusal into an exit before anything
-        # is printed.
+        # The default bash -e exits on the first refusal, before this reports
+        # which permission is missing.
         shell: bash --noprofile --norc {0}
         run: |
           set -uo pipefail
-          # Printed before anything is created so a permission failure names
-          # the missing role rather than appearing as an opaque 403.
           missing=""
           for permission in \
             monitoring.alertPolicies.create \
@@ -78,8 +68,8 @@ jobs:
           ALERT_EMAIL: ${{ inputs.alert_email }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           SERVICE_NAME: ${{ secrets.ATLAS_API_SERVICE_NAME || 'atlas-api' }}
-        # The REST API rather than `gcloud alpha monitoring`, which prompts to
-        # install the alpha component and cannot be answered on a runner.
+        # REST because `gcloud alpha monitoring` prompts to install the alpha
+        # component, and a runner cannot answer it.
         run: |
           set -euo pipefail
           token="$(gcloud auth print-access-token)"
@@ -109,9 +99,8 @@ jobs:
             echo "Reusing notification channel $channel"
           fi
 
-          # Matches the JSON atlas.platform.observability writes. Cloud Run
-          # lifts "severity" out of structured stdout, so this catches an
-          # unhandled exception and anything logged at ERROR on purpose.
+          # Cloud Run lifts "severity" out of the JSON that
+          # atlas.platform.observability writes.
           policy="$(jq -n \
             --arg service "$SERVICE_NAME" \
             --arg channel "$channel" \

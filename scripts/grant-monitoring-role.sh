@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
 #
-# Grants the Atlas deploy service account permission to create the production
-# error alert, then triggers the workflow that creates it.
+# Grants the Atlas deploy service account the monitoring roles the Error
+# Alerting workflow needs, then dispatches it. Granting project IAM needs an
+# account with IAM admin, which the CI service account is not.
 #
-# The CI service account deploys Cloud Run and nothing else. It holds none of
-# monitoring.alertPolicies.create, monitoring.alertPolicies.list,
-# monitoring.notificationChannels.create, or logging.logEntries.list, so the
-# Error Alerting workflow refuses before it touches anything. Granting the role
-# needs an account with project IAM admin, which CI deliberately is not.
-#
-# Run this once. It is idempotent.
+# Run once. Idempotent.
 
 set -euo pipefail
 
@@ -27,9 +22,6 @@ done
 echo "gcloud and gh are both present."
 
 step 2 "Sign in to Google Cloud"
-# The token on this machine expired on 2026-09-09 and cannot be refreshed
-# without a browser, which is why this script exists rather than a gcloud call
-# in the agent's session.
 if ! gcloud auth print-access-token >/dev/null 2>&1; then
   echo "Your gcloud credentials are expired. A browser window will open."
   gcloud auth login
@@ -63,8 +55,8 @@ if [ -z "$SERVICE_ACCOUNT" ]; then
 fi
 
 step 4 "Grant the two roles the alert needs"
-# monitoring.editor covers creating the policy and the notification channel.
-# logging.viewer lets a future job read back what the alert fired on.
+# monitoring.editor covers the policy and the channel; logging.viewer lets a
+# later job read back what fired.
 for role in roles/monitoring.editor roles/logging.viewer; do
   echo "Granting $role ..."
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \

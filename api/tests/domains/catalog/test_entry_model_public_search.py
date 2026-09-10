@@ -296,12 +296,8 @@ async def test_build_facets_returns_empty_payload_for_empty_ids(test_db: object)
 
 @pytest.mark.asyncio
 async def test_searching_a_city_name_finds_the_groups_based_there(test_db: object) -> None:
-    """The product's headline search is a place name, so place has to match.
-
-    Both text indexes cover only name and description, so a group whose own
-    description never says its city was invisible to someone searching that
-    city. Salt Lake City returned one of the three groups based there.
-    """
+    """Searching a place name finds the groups located there, whatever their
+    description says."""
     conn = test_db
     named = await EntryCRUD.create(
         conn,

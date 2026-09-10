@@ -342,11 +342,8 @@ async def test_search_public_ids_postgres_branch_emits_tsquery_sql() -> None:
     assert ids == []
     assert any("plainto_tsquery" in sql for sql, _ in conn.executed)
 
-    # No literal % may reach psycopg: the adapter rewrites ? to %s, and psycopg
-    # then reads every remaining % as a placeholder it does not recognise.
-    # Building "LIKE LOWER(?) || '%'" in SQL made every Postgres search 500
-    # while every SQLite test still passed, so the wildcard belongs in the
-    # parameter instead.
+    # The adapter rewrites ? to %s, and psycopg reads any remaining % as a
+    # placeholder, so the wildcard belongs in the parameter.
     for sql, parameters in conn.executed:
         assert "%" not in sql, sql
         assert "anything%" in tuple(parameters)

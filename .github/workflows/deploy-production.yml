@@ -199,18 +199,10 @@ jobs:
           add_vercel_env NITRO_PRESET "vercel"
           add_vercel_env ATLAS_BILLING_AUTOMATIC_TAX "${ATLAS_BILLING_AUTOMATIC_TAX:-true}"
 
-          # Stripe config is NOT synced from GitHub secrets. `pnpm setup:prod`
-          # owns it: that command validates live/test mode against the target
-          # with validateStripeApiKeyMode, creates or verifies the live
-          # catalog, registers the webhook endpoint, and writes all three
-          # values into Vercel itself.
-          #
-          # Syncing them here as well gave Stripe two sources of truth, and
-          # the repository-level secret is deliberately test mode for the CI
-          # acceptance verifier. A deploy would therefore have overwritten a
-          # correctly provisioned live key with a test one, leaving Atlas
-          # looking configured while taking no money. This deploy checks the
-          # values are present and leaves them alone.
+          # `pnpm setup:prod` owns the Stripe config: it validates the key
+          # mode, provisions the catalog and webhook, and writes all three
+          # values into Vercel. The repository secret is test mode for the CI
+          # verifier, so this deploy checks presence and leaves them alone.
           missing_stripe=""
           hosted_env="$(pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color 2>/dev/null || true)"
           for key in STRIPE_API_KEY STRIPE_ATLAS_CATALOG STRIPE_WEBHOOK_SECRET; do

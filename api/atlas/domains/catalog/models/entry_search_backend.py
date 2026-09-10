@@ -53,15 +53,8 @@ async def search_public_ids(  # noqa: PLR0913
     params: list[Any] = []
 
     if query:
-        # Place is part of what a free-text query means here, and neither index
-        # carries it: the Postgres search_vector and the SQLite FTS table both
-        # cover only name and description. Someone who types their city was
-        # getting whichever local groups happened to name the city in their own
-        # description, so Salt Lake City returned one of the three groups based
-        # there. The city prefix and the state code are matched alongside the
-        # text index rather than folded into it, because changing a generated
-        # column and an FTS table would need a migration this schema has no
-        # framework for.
+        # Both text indexes cover name and description only, so place matches
+        # separately.
         if getattr(conn, "backend", None) == "postgres":
             query_sql += """
                 AND (
@@ -80,10 +73,8 @@ async def search_public_ids(  # noqa: PLR0913
                     OR LOWER(e.state) = LOWER(?)
                 )
             """
-        # The wildcard is built here rather than concatenated in SQL. A literal
-        # % in the statement text is a parameter placeholder to psycopg, so
-        # "LIKE LOWER(?) || '%'" made every search 500 against Postgres while
-        # passing against SQLite.
+        # psycopg reads a literal % in the statement as a placeholder, so the
+        # wildcard goes in the parameter.
         params.extend([query, f"{query.lower()}%", query])
     place_clause = _entry_place_clause(
         states=states,

@@ -1,13 +1,7 @@
 """Structured request logging for the Atlas API.
 
-Atlas had no error reporting of any kind, and its logs were plain text with
-no request identity. A five-week outage went unnoticed partly because the
-only monitor watched a page that could not fail; the other half of that
-problem is that when something does break, nothing says what.
-
-Cloud Run parses JSON on stdout and lifts ``severity`` into the log level and
-``message`` into the summary line, so emitting JSON here turns unstructured
-text into queryable records without adding a vendor or a DSN.
+Cloud Run parses JSON on stdout, lifting ``severity`` into the log level and
+``message`` into the summary line.
 """
 
 from __future__ import annotations
@@ -40,10 +34,8 @@ REQUEST_ID_HEADER = "X-Request-Id"
 _REQUEST_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,128}\Z")
 """Shape a caller-supplied id must match to be echoed back and logged.
 
-The 128 cap matches MAX_REQUEST_ID_LENGTH in atlas.domains.firehose.http so a
-Firehose request and a request log line cannot end up describing the same
-request with two different ids. Validating with a compiled pattern rather than
-a per-character loop keeps a 128-character header off the hot path.
+The 128 cap matches MAX_REQUEST_ID_LENGTH in atlas.domains.firehose.http, so a
+Firehose request and its log line carry the same id.
 """
 
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("atlas_request_id", default="")
@@ -58,7 +50,7 @@ _STANDARD_RECORD_FIELDS = frozenset(logging.LogRecord("", 0, "", 0, "", None, No
 
 
 _LOGGER = logging.getLogger("atlas.request")
-"""Resolved once: getLogger takes a lock, and this name never changes."""
+"""Resolved once, since getLogger takes a lock and this name is fixed."""
 
 
 def current_request_id() -> str:
@@ -132,16 +124,11 @@ def configure_json_logging(level: int = logging.INFO) -> None:
 
 
 def _defer_uvicorn_logging_to_root() -> None:
-    """Stop uvicorn from emitting its own plain-text lines beside ours.
+    """Route uvicorn's records through the JSON handler on root.
 
-    Uvicorn installs handlers on ``uvicorn`` and ``uvicorn.access`` with
-    ``propagate`` off, so the JSON handler on root never sees those records and
-    Cloud Run gets two formats interleaved. Clearing the handlers and letting
-    the records propagate gives every line one shape.
-
-    ``uvicorn.access`` stays silent rather than propagating: RequestLogMiddleware
-    already emits a line per request carrying the method, path, status, duration
-    and request id, and uvicorn's version of it repeats a strict subset.
+    Uvicorn installs its own handlers with ``propagate`` off, which gives Cloud
+    Run two formats. ``uvicorn.access`` stays silent because
+    RequestLogMiddleware already logs each request with more fields.
     """
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logger = logging.getLogger(name)
@@ -165,12 +152,9 @@ def _resolve_request_id(raw: str | None) -> str:
 class RequestLogMiddleware:
     """Bind a request id, echo it back, and emit one structured line per request.
 
-    Pure ASGI rather than a BaseHTTPMiddleware dispatch function. Starlette's
-    BaseHTTPMiddleware runs the downstream app in a child task and relays every
-    response chunk through a memory object stream; that turns each SSE frame
-    from the Firehose and the mounted MCP transport into a queue hop and keeps
-    the middleware task alive for the life of the stream. Wrapping ``send``
-    costs nothing per chunk and leaves streaming responses untouched.
+    Pure ASGI so that wrapping ``send`` leaves streaming responses alone.
+    BaseHTTPMiddleware relays every chunk through a memory object stream, which
+    turns each Firehose and MCP frame into a queue hop.
     """
 
     def __init__(self, app: ASGIApp) -> None:
@@ -192,11 +176,9 @@ class RequestLogMiddleware:
         async def send_with_request_id(message: Message) -> None:
             if message["type"] == "http.response.start":
                 status_holder["status"] = int(message["status"])
-                # Replace rather than append. The Firehose routes echo this
-                # header themselves, and appending gave those responses two
-                # X-Request-Id values that HTTP joins with a comma, which no
-                # client parses back into an id. The middleware's id wins so the
-                # header always names the request the log line describes.
+                # The Firehose routes set this header themselves, and two
+                # values join with a comma. The middleware's id wins, so the
+                # header names the request its log line describes.
                 headers = [
                     (key, value)
                     for key, value in (message.get("headers") or [])

@@ -61,11 +61,8 @@ class McpMountPathAliasMiddleware:
         await self.app(scope, receive, send)
 
 
-# JSON rather than the previous plain text: Cloud Run lifts ``severity`` and
-# ``message`` out of structured stdout, so a failing request becomes a queryable
-# record naming its route instead of an unattributed line. This runs at import
-# rather than in the lifespan so that anything logged while the module graph is
-# still loading is structured too.
+# Cloud Run lifts ``severity`` and ``message`` out of structured stdout. This
+# runs at import so that logging during module load is structured too.
 configure_json_logging(logging.INFO)
 
 

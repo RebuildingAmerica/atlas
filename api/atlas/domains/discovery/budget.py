@@ -129,13 +129,9 @@ class OrgDiscoveryBudgetCRUD:
     ) -> OrgDiscoveryBudgetModel:
         """Reserve one discovery run or raise HTTP 409 with the current budget state.
 
-        The increment carries its own limit test. Reading ``used_runs`` in
-        Python and then incrementing unconditionally let two concurrent
-        callers both observe the second-to-last run and both take it, so a
-        workspace capped at two could spend three. Pushing the comparison
-        into the UPDATE makes claiming the last run atomic at any isolation
-        level, and a zero row count is what "someone else took it" looks
-        like.
+        The UPDATE carries its own limit test, which makes claiming the last
+        run of the month atomic at any isolation level. A zero row count means
+        another caller took it.
         """
         budget = await OrgDiscoveryBudgetCRUD.get_budget(conn, org_id=org_id, month=month)
         if budget is None:
@@ -180,20 +176,10 @@ class OrgDiscoveryBudgetCRUD:
     ) -> None:
         """Give back a run reserved by :meth:`reserve_run`.
 
-        ``reserve_run`` commits its increment so concurrent callers cannot both
-        claim the last run of the month. That commit means a later failure
-        leaves the run spent with nothing persisted, and on a free workspace
-        capped at two runs a month two timeouts exhaust the month for nothing.
-        This is the compensating write.
-
-        It is a compensation rather than a rollback, so a process that dies
-        between the failure and this call still leaks the run. Holding the
-        reservation open in the request transaction instead would let two
-        concurrent callers past the same limit, which is the worse trade.
-
-        The workspace and month come from the reservation itself rather than
-        from the caller, so a refund cannot be aimed at a different budget row
-        than the one that was charged.
+        A compensating write, since ``reserve_run`` commits its increment to
+        keep the limit atomic. A process that dies between the failure and this
+        call leaks the run. The workspace and month come from the reservation,
+        so a refund always lands on the row that was charged.
 
         Parameters
         ----------

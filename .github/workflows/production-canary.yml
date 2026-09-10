@@ -1,19 +1,11 @@
 name: Production Canary
 
-# OpenStatus watches one URL: the app homepage. That page is static and
-# answered 200 for the whole five-week outage that started on 2026-08-02,
-# while the API, the PDS, the directory, the map and the sitemap were all
-# down. A monitor that cannot fail is not a monitor.
-#
-# This checks the surfaces a reader actually depends on, and asks the catalog
-# for real rows rather than trusting a health endpoint that returns ok while
-# the database is unreachable.
+# Hourly probe of the app, the sitemap, the PDS, the catalog and search.
 
 on:
   schedule:
-    # Hourly, not every 30 minutes: GitHub bills a minimum of one minute
-    # per job and runner boot is most of the wall clock, so the tighter
-    # schedule cost ~1,440 runner-minutes a month for ~2s of curl.
+    # Hourly: GitHub bills a minimum of a minute per job, and runner boot is
+    # most of the wall clock.
     - cron: "17 * * * *"
   workflow_dispatch:
 
@@ -22,8 +14,7 @@ permissions:
 
 concurrency:
   group: production-canary
-  # Never cancel a probe in flight: a killed monitor reports nothing, which is
-  # indistinguishable from a healthy one.
+  # A cancelled probe reports nothing, which reads as healthy.
   cancel-in-progress: false
 
 jobs:
@@ -33,15 +24,11 @@ jobs:
     steps:
       - name: Probe the public surfaces
         env:
-          # From secrets, like every other workflow. A hardcoded origin keeps
-          # probing a retired host, and a parked page that still answers 200 is
-          # exactly the silent monitor this job exists to replace.
           APP_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           API_URL: ${{ secrets.ATLAS_API_URL }}
           PDS_URL: https://atlas-pds.rebuildingus.org
-        # Overrides the default bash -e. curl exits non-zero on a timeout, and
-        # under -e that killed the step at the first slow request instead of
-        # reporting which check failed.
+        # curl exits non-zero on a timeout, and the default bash -e turns that
+        # into a dead step with no diagnostics.
         shell: bash --noprofile --norc {0}
         run: |
           set -uo pipefail
@@ -52,14 +39,10 @@ jobs:
             failures=$((failures + 1))
           }
 
-          # curl prints 000 itself on a connection failure, so nothing here
-          # needs a fallback that would concatenate onto a real status.
+          # curl prints 000 itself on a connection failure.
           check_status() {
             local label="$1" url="$2"
             local actual
-            # `|| true` as well as the shell override above: curl exits
-            # non-zero on a timeout or an unresolvable host, and the status it
-            # printed is the thing worth reporting either way.
             actual="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$url" 2>/dev/null || true)"
             if [ "$actual" = "200" ]; then
               echo "ok    $label ($actual)"
@@ -68,28 +51,23 @@ jobs:
             fi
           }
 
-          # Counts the items in an entities payload, or 0 for anything that is
-          # not one. Parsing beats grepping for a quoted key: an error envelope
-          # carrying an "id" field would satisfy a grep, and a monitor that
-          # cannot fail is the thing this replaces.
+          # Counts items in an entities payload, or 0 for anything else. An
+          # error envelope can carry an "id" field, so this parses.
           entity_count() {
             (curl -sS --max-time 30 "$1" 2>/dev/null || true) \
               | jq 'try ((.items // []) | length) catch 0' 2>/dev/null
           }
 
           # Cloud Run runs the API at min-instances=0, so the first request
-          # after an idle hour pays a cold start. Absorb it here rather than
-          # charging it to a probe and reporting an outage that is not one.
+          # after an idle hour pays a cold start. Absorb it here.
           curl -sS -o /dev/null --max-time 60 "$API_URL/health" 2>/dev/null || true
 
-          # /health is deliberately absent. It answers ok while the database is
-          # unreachable, which is the exact case that matters.
+          # /health answers ok while the database is unreachable, so the
+          # catalog probe below covers reachability and content together.
           check_status "App"        "$APP_URL/"
           check_status "Sitemap"    "$APP_URL/sitemap.xml"
           check_status "PDS health" "$PDS_URL/xrpc/_health"
 
-          # The directory is the product. A reachable API serving nothing is
-          # still an outage to the person who came here to look someone up.
           listed="$(entity_count "$API_URL/api/entities?limit=1")"
           if [ "${listed:-0}" -ge 1 ]; then
             echo "ok    Catalog returns rows"
@@ -97,10 +75,7 @@ jobs:
             fail "Catalog is empty or unreachable" "GET /api/entities?limit=1 returned no rows."
           fi
 
-          # Searching a place is the thing Atlas is for, and it runs a
-          # different query path from the plain listing above. A malformed
-          # LIKE clause took this out in production on 2026-09-09 while the
-          # listing kept answering 200, so the listing alone proves nothing.
+          # A different query path from the listing above.
           found="$(entity_count "$API_URL/api/entities?query=transit&limit=5")"
           if [ "${found:-0}" -ge 1 ]; then
             echo "ok    Search returns rows"

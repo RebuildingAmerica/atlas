@@ -198,11 +198,8 @@ class TestRequestLogging:
         assert response.headers[REQUEST_ID_HEADER] == "edge-abc.1"
 
     def test_does_not_double_a_header_the_route_already_set(self, client: TestClient) -> None:
-        """The Firehose routes echo this header themselves.
-
-        Appending unconditionally gave those responses two X-Request-Id values,
-        which HTTP joins into "id, id" and no client parses back into an id.
-        """
+        """The Firehose routes set this header themselves, and two values join
+        with a comma."""
         response = client.get("/echoes-its-own-id", headers={REQUEST_ID_HEADER: "edge-abc.1"})
 
         assert response.headers[REQUEST_ID_HEADER] == "edge-abc.1"
@@ -243,12 +240,7 @@ class TestRequestLogging:
         assert record.exc_info is not None
 
     def test_streams_a_response_without_buffering_it(self, client: TestClient) -> None:
-        """The reason this is pure ASGI rather than BaseHTTPMiddleware.
-
-        BaseHTTPMiddleware relays every chunk through a memory object stream,
-        which turns each SSE frame from the Firehose and the mounted MCP
-        transport into a queue hop. Wrapping send leaves the chunks alone.
-        """
+        """Wrapping send leaves each chunk alone, which is why this is pure ASGI."""
         with client.stream("GET", "/stream") as response:
             assert response.status_code == 200
             assert response.headers[REQUEST_ID_HEADER]

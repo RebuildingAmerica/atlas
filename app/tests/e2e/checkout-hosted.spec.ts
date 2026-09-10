@@ -1,21 +1,12 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 /**
- * Proves the deployed funnel reaches Stripe with a session in the mode the
- * deployment claims to be in.
+ * Proves the deployed funnel opens a Stripe session in the mode the deployment
+ * claims. The session id prefix is the assertion: `cs_live_` means real
+ * charges, `cs_test_` means none.
  *
- * Nothing else did. `ci / stripe-acceptance` drives the same funnel against
- * Stripe test mode, and the production deploy checks only that STRIPE_API_KEY
- * exists in Vercel, not what kind of key it is. A test key in production
- * therefore left Atlas looking configured, rendering live "Get Atlas Pro"
- * buttons, and taking no money — with every gate green.
- *
- * The session id prefix is the whole assertion: `cs_live_` means real charges,
- * `cs_test_` means none. Stripe now blocks agent-driven card entry on its
- * hosted page, so this stops at the session rather than completing a purchase.
- *
- * This creates an abandoned Checkout Session on every production deploy. They
- * expire on their own and cost nothing.
+ * It stops at the session because Stripe blocks agent-driven card entry on its
+ * hosted page. Each run leaves one abandoned Checkout Session, which expires.
  */
 
 interface HostedAccount {
@@ -78,12 +69,7 @@ async function signInHostedOwner(page: Page): Promise<HostedRun> {
   return run;
 }
 
-/**
- * The mode the deployment says it is in.
- *
- * Defaults to live because production is the deployment this exists to guard.
- * Staging sets it to test.
- */
+/** The mode the deployment claims. Staging sets this to test. */
 function expectedSessionPrefix(): "cs_live_" | "cs_test_" {
   return process.env.ATLAS_HOSTED_EXPECT_STRIPE_MODE?.trim() === "test" ? "cs_test_" : "cs_live_";
 }
@@ -99,15 +85,12 @@ test("the deployed funnel opens a Stripe checkout session in the expected mode",
     waitUntil: "domcontentloaded",
   });
 
-  // The workspace step always offers the naming form, and adds a "Use <name>"
-  // button only when the account already has a workspace it may attach. The
-  // hosted E2E helper seeds accounts and passkeys but no workspace, so which
-  // one appears depends on what an earlier run left behind.
+  // The step always offers the naming form, and adds "Use <name>" when the
+  // account already has a workspace to attach.
   const workspaceName = page.getByLabel("Workspace name");
   await expect(workspaceName).toBeVisible({ timeout: 60_000 });
 
-  // Both buttons stay disabled until the purchase intent lands, so wait for
-  // one to become enabled rather than clicking the moment the step renders.
+  // Both buttons stay disabled until the purchase intent lands.
   const useExisting = page.getByRole("button", { name: /^Use / });
   const createWorkspace = page.getByRole("button", { name: /^Continue to payment$/ });
   await expect(useExisting.or(createWorkspace).first()).toBeEnabled({ timeout: 60_000 });
