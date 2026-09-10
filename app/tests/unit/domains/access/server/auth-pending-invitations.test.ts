@@ -285,33 +285,4 @@ describe("auth — invitation success path and organization invitation email", (
       expect.stringContaining('update "oauthClient" set "requirePKCE"'),
     );
   });
-
-  it("returns the Postgres-backed account existence count", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      operatorAllowedEmails: new Set(),
-      authJwtAudience: null,
-      apiBaseUrl: null,
-      apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api-key",
-      databaseUrl: "postgres://atlas",
-      localMode: false,
-      openRegistration: false,
-      captureUrl: "http://127.0.0.1:8025/messages",
-      cimdAllowedHostSuffixes: [],
-      dbPath: "/tmp/atlas/auth.sqlite",
-      emailFrom: "Atlas <auth@atlas.test>",
-      emailProvider: "capture",
-      internalSecret: "internal-test-secret",
-      passkeyRpId: null,
-      publicBaseUrl: "https://atlas.test",
-      publicDomain: "atlas.test",
-      resendApiKey: null,
-      samlAllowedIssuerOrigins: new Set(),
-      samlSpPrivateKey: null,
-      samlSpPrivateKeyPass: null,
-    });
-    mocks.pgPoolQuery.mockResolvedValueOnce({ rows: [{ userCount: 1 }] });
-
-    const { hasExistingAccount } = await import("@/domains/access/server/auth");
-    await expect(hasExistingAccount("operator@atlas.test")).resolves.toBe(true);
-  });
 });

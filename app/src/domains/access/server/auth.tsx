@@ -44,7 +44,6 @@ export {
   canEmailAccessAtlas,
   createMagicLinkSender,
   createVerificationEmailSender,
-  hasExistingAccount,
 } from "./auth-callbacks";
 
 /**

@@ -5,7 +5,6 @@ import { createSessionStateAuthApi } from "../../../../../mocks/access/session-s
 const mocks = vi.hoisted(() => ({
   canEmailAccessAtlas: vi.fn(),
   ensureAuthReady: vi.fn(),
-  hasExistingAccount: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   validateAuthRuntimeConfig: vi.fn(),
@@ -14,7 +13,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/domains/access/server/auth", () => ({
   canEmailAccessAtlas: mocks.canEmailAccessAtlas,
   ensureAuthReady: mocks.ensureAuthReady,
-  hasExistingAccount: mocks.hasExistingAccount,
 }));
 
 vi.mock("@/domains/access/server/request-headers", () => ({

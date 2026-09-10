@@ -64,7 +64,6 @@ import {
   createMagicLinkSender,
   createVerificationEmailSender,
   ensureAuthReady,
-  hasExistingAccount,
 } from "@/domains/access/server/auth";
 
 describe("canEmailAccessAtlas", () => {
@@ -139,59 +138,6 @@ describe("canEmailAccessAtlas", () => {
 
     expect(await canEmailAccessAtlas("anyone@atlas.test")).toBe(true);
     expect(mocks.pgPoolQuery).not.toHaveBeenCalled();
-  });
-});
-
-describe("hasExistingAccount", () => {
-  beforeEach(() => {
-    mocks.pgPoolQuery.mockReset();
-    mocks.sqliteGet.mockReset();
-    mocks.sqlitePrepare.mockReset();
-    mocks.getAuthRuntimeConfig.mockReset();
-    mocks.sqlitePrepare.mockReturnValue({ get: mocks.sqliteGet });
-  });
-
-  it("returns true when an account row exists in Postgres", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      localMode: false,
-      databaseUrl: "postgres://...",
-    });
-    mocks.pgPoolQuery.mockResolvedValue({ rows: [{ userCount: 1 }] });
-
-    expect(await hasExistingAccount("OPERATOR@atlas.test")).toBe(true);
-    expect(mocks.pgPoolQuery).toHaveBeenCalledWith(expect.any(String), ["operator@atlas.test"]);
-  });
-
-  it("returns false when Postgres reports a count of zero", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      localMode: false,
-      databaseUrl: "postgres://...",
-    });
-    mocks.pgPoolQuery.mockResolvedValue({ rows: [{ userCount: 0 }] });
-
-    expect(await hasExistingAccount("missing@atlas.test")).toBe(false);
-  });
-
-  it("returns true when an account row exists in SQLite", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      localMode: false,
-      databaseUrl: undefined,
-      dbPath: "test.db",
-    });
-    mocks.sqliteGet.mockReturnValue({ userCount: 1 });
-
-    expect(await hasExistingAccount("operator@atlas.test")).toBe(true);
-  });
-
-  it("returns false when SQLite reports a count of zero", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      localMode: false,
-      databaseUrl: undefined,
-      dbPath: "test.db",
-    });
-    mocks.sqliteGet.mockReturnValue({ userCount: 0 });
-
-    expect(await hasExistingAccount("missing@atlas.test")).toBe(false);
   });
 });
 

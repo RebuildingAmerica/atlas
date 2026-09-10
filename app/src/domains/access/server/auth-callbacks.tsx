@@ -16,14 +16,6 @@ interface StoredMembershipCountRow {
   membershipCount: number;
 }
 
-/**
- * Result row returned when Atlas checks whether an account exists for a given
- * email address.
- */
-interface StoredUserCountRow {
-  userCount: number;
-}
-
 async function sendMagicLinkEmail(email: string, url: string): Promise<void> {
   const runtime = getAuthRuntimeConfig();
   const emailService = createEmailService(runtime);
@@ -136,34 +128,6 @@ async function hasExistingOrganizationMembership(email: string): Promise<boolean
   // count(*) always yields a single aggregate row.
   const membershipCountRow = statement.get(email) as StoredMembershipCountRow;
   return membershipCountRow.membershipCount > 0;
-}
-
-export async function hasExistingAccount(email: string): Promise<boolean> {
-  const normalizedEmail = normalizeEmail(email);
-  const pool = getAuthPgPool();
-
-  if (pool) {
-    const result = await pool.query<StoredUserCountRow>(
-      'select count(id) as "userCount" from "user" where lower(email) = $1',
-      [normalizedEmail],
-    );
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- count(*) always yields a single aggregate row
-    return result.rows[0]!.userCount > 0;
-  }
-
-  const database = getAuthDatabase();
-  /* v8 ignore start -- defensive: getAuthDatabase only returns null in postgres mode, which the pool branch above already covers */
-  if (!database) {
-    throw new Error("Auth database unavailable in current mode");
-  }
-  /* v8 ignore stop */
-
-  const statement = database.prepare(
-    "select count(id) as userCount from user where lower(email) = ?",
-  );
-  // count(*) always yields a single aggregate row.
-  const row = statement.get(normalizedEmail) as StoredUserCountRow;
-  return row.userCount > 0;
 }
 
 export async function canEmailAccessAtlas(email: string): Promise<boolean> {

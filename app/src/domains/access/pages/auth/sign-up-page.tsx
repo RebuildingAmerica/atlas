@@ -55,9 +55,9 @@ function buildPostCredentialTarget(accountReady: boolean, redirectTo: string | u
 /**
  * Sign-up page for new Atlas accounts.
  *
- * Collects an email address and sends a magic link.  When the email already
- * has an account, redirects to /sign-in with the email prefilled. After the link is
- * sent the page swaps into a confirmation view that:
+ * Collects an email address and sends a magic link, with the same response
+ * whether or not the address is registered. After the link is sent the page
+ * swaps into a confirmation view that:
  *
  *   - counts the magic-link TTL down to zero,
  *   - exposes a Resend button gated by a 30 s cool-down,
