@@ -33,6 +33,7 @@
     "test:acceptance:stripe": "tsx scripts/e2e/stripe-playwright.ts tests/acceptance/domains/billing",
     "test:acceptance:headed": "playwright test --headed",
     "test:hosted-identity": "playwright test --config playwright.hosted-identity.config.ts",
+    "test:hosted-checkout": "playwright test --config playwright.hosted-checkout.config.ts",
     "test:hosted-smoke": "playwright test --config playwright.hosted.config.ts",
     "test:watch": "vitest --watch",
     "lint": "eslint src tests --max-warnings 0",
