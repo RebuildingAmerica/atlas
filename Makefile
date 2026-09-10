@@ -94,10 +94,10 @@ docker-logs: ## Tail Docker logs
 # Database
 # ============================================
 db-init: ## Initialize database schema
-	cd api && python3 -m atlas.db_init
+	cd api && uv run python -m atlas.db_init
 
 db-reset: ## Reset database (WARNING: deletes all data)
-	cd api && rm -f atlas.db && python3 -m atlas.db_init
+	cd api && rm -f atlas.db && uv run python -m atlas.db_init
 
 backfill-geocodes: ## Place unplaced entries on the map (gazetteer; USE_CENSUS=1 for rooftop)
 	cd api && uv run python -m atlas.backfill_geocodes $(if $(filter 1,$(USE_CENSUS)),--use-census,)

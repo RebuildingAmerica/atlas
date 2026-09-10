@@ -116,7 +116,7 @@ pnpm run openapi                  # Regenerate OpenAPI spec from FastAPI
 cd app && pnpm run api-client     # Regenerate TypeScript types from OpenAPI spec
 
 # Database
-cd api && python3 -m atlas.db_init  # Initialize schema
+cd api && uv run python -m atlas.db_init  # Initialize schema
 make db-reset                       # Drop and recreate (deletes data)
 ```
 
