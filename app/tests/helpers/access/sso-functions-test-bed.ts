@@ -7,6 +7,7 @@ const ssoFunctionsMocks = vi.hoisted(() => ({
   getSamlAllowedIssuerOrigins: vi.fn(),
   isAllowedSamlIssuer: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
+  getServerFnRequest: vi.fn(),
   loadOrganizationRequestContext: vi.fn(),
   loadStoredWorkspaceIdentity: vi.fn(),
   listStoredWorkspaceSSOProviders: vi.fn(),

@@ -4,7 +4,7 @@ import {
   SlidingWindowRateLimiter,
   bucketSpecsForRequest,
   logAnonymousRateLimit,
-  resolveClientIpFromHeaders,
+  resolveClientIp,
 } from "./server/anonymous-rate-limit";
 import { getAuthRuntimeConfig } from "./server/runtime";
 import {
@@ -26,6 +26,26 @@ import { loadWorkspaceSSOServerModules, saveWorkspacePrimarySSOProvider } from "
  * per-instance, which slows a sweep rather than stopping a distributed one.
  */
 const anonymousSSOResolutionLimiter = new SlidingWindowRateLimiter();
+
+/**
+ * The status-bearing shape Better Auth's APIError presents to a caller.
+ */
+interface AuthApiRejection {
+  statusCode: number;
+}
+
+/**
+ * Reports whether a Better Auth API call failed for want of a session.
+ *
+ * @param error - The value a rejected `auth.api.*` promise produced.
+ */
+function isUnauthenticatedApiRejection(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  const { statusCode } = error as Partial<AuthApiRejection>;
+  return statusCode === 401 || statusCode === 403;
+}
 
 /**
  * Hostnames Atlas refuses to fetch SAML IdP entry points from. The list
@@ -238,7 +258,7 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
       ssoProviderStore,
     } = await loadWorkspaceSSOServerModules();
     const { ensureAuthReady } = authModule;
-    const { getBrowserSessionHeaders } = requestHeaders;
+    const { getBrowserSessionHeaders, getServerFnRequest } = requestHeaders;
     const { listStoredWorkspaceSSOProviders, loadStoredWorkspaceIdentity } = ssoProviderStore;
     const authPromise = ensureAuthReady();
     const auth = await authPromise;
@@ -246,19 +266,22 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
 
     const runtime = getAuthRuntimeConfig();
     if (runtime.anonymousRateLimit.enabled) {
+      const request = getServerFnRequest();
       const clientKey =
-        resolveClientIpFromHeaders(headers, runtime.anonymousRateLimit.trustedProxyHops) ??
-        "unknown";
+        resolveClientIp(request, runtime.anonymousRateLimit.trustedProxyHops) ?? "unknown";
+      // A read charged against the read budget. POST is only how TanStack
+      // moves a server function over the wire; nothing here mutates, and the
+      // write budget is tight enough to lock out an office behind one NAT.
       const reservation = anonymousSSOResolutionLimiter.reserve(
         clientKey,
-        bucketSpecsForRequest("POST", runtime.anonymousRateLimit),
+        bucketSpecsForRequest("GET", runtime.anonymousRateLimit),
       );
       if (!reservation.allowed) {
         logAnonymousRateLimit(reservation, {
           clientKey,
           layer: "sso-resolution",
-          method: "POST",
-          pathname: "/_serverFn/resolveWorkspaceSSOSignIn",
+          method: request.method,
+          pathname: new URL(request.url).pathname,
         });
         return null;
       }
@@ -270,7 +293,9 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
       // getInvitation requires a session and throws UNAUTHORIZED before it
       // looks anything up. Invitees arrive here signed out, so an unguarded
       // call took the whole sign-in down with it and the magic link was never
-      // sent. Without a session, fall through to domain resolution.
+      // sent. Without a session, fall through to domain resolution. Anything
+      // that is not an auth rejection still propagates, so an outage reads as
+      // an outage rather than a workspace with no SSO.
       const invitation = await auth.api
         .getInvitation({
           headers,
@@ -278,7 +303,12 @@ export const resolveWorkspaceSSOSignIn = createServerFn({ method: "POST" })
             id: data.invitationId,
           },
         })
-        .catch(() => null);
+        .catch((error: unknown) => {
+          if (isUnauthenticatedApiRejection(error)) {
+            return null;
+          }
+          throw error;
+        });
 
       if (invitation?.organizationId) {
         const workspaceIdentity = await loadStoredWorkspaceIdentity(invitation.organizationId);

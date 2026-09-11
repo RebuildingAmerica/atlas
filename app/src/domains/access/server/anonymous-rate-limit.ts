@@ -244,24 +244,9 @@ export function logAnonymousRateLimit(
 }
 
 export function resolveClientIp(request: Request, trustedProxyHops: number): string | null {
-  return resolveClientIpFromHeaders(request.headers, trustedProxyHops);
-}
-
-/**
- * Resolves the client IP from headers alone, for callers that hold a header
- * bag rather than a Request. Server functions reach the request through
- * `getRequestHeaders()`.
- *
- * @param headers - Request headers to read the forwarding chain from.
- * @param trustedProxyHops - Proxies in front of Atlas whose entries are trusted.
- */
-export function resolveClientIpFromHeaders(
-  headers: Headers,
-  trustedProxyHops: number,
-): string | null {
   return (
-    forwardedForClientIp(headers.get("x-forwarded-for"), trustedProxyHops) ??
-    forwardedHeaderClientIp(headers.get("forwarded"))
+    forwardedForClientIp(request.headers.get("x-forwarded-for"), trustedProxyHops) ??
+    forwardedHeaderClientIp(request.headers.get("forwarded"))
   );
 }
 

@@ -4,6 +4,7 @@ import {
   getSsoFunctionsMocks,
   resetSsoFunctionsTestBed,
 } from "../../../helpers/access/sso-functions-test-bed";
+import { createSsoServerFnRequest } from "./sso.functions.test-harness";
 import {
   createSSOSignInResolutionFixture,
   createStoredWorkspaceIdentityFixture,
@@ -27,6 +28,7 @@ vi.mock("@/domains/access/server/auth", () => ({
 
 vi.mock("@/domains/access/server/request-headers", () => ({
   getBrowserSessionHeaders: getSsoFunctionsMocks().getBrowserSessionHeaders,
+  getServerFnRequest: getSsoFunctionsMocks().getServerFnRequest,
 }));
 
 vi.mock("@/domains/access/server/runtime", () => ({
@@ -239,7 +241,9 @@ describe("sso.functions sign-in resolution", () => {
   });
 
   it("still resolves by domain when getInvitation rejects for a signed-out invitee", async () => {
-    authApi.getInvitation.mockRejectedValue(new Error("UNAUTHORIZED"));
+    authApi.getInvitation.mockRejectedValue(
+      Object.assign(new Error("UNAUTHORIZED"), { statusCode: 401 }),
+    );
     ssoFunctionsMocks.loadStoredWorkspaceIdentity.mockReturnValue(
       createStoredWorkspaceIdentityFixture({
         primaryProviderId: "atlas-team-google-workspace-oidc",
@@ -264,7 +268,71 @@ describe("sso.functions sign-in resolution", () => {
     );
   });
 
-  it("returns null once a client exceeds the anonymous write budget", async () => {
+  it("treats a forbidden invitation lookup as no invitation", async () => {
+    authApi.getInvitation.mockRejectedValue(
+      Object.assign(new Error("FORBIDDEN"), { statusCode: 403 }),
+    );
+    ssoFunctionsMocks.loadStoredWorkspaceIdentity.mockReturnValue(
+      createStoredWorkspaceIdentityFixture({
+        primaryProviderId: "atlas-team-google-workspace-oidc",
+      }),
+    );
+    ssoFunctionsMocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture(),
+    ]);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "owner@atlas.test", invitationId: "inv_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).not.toBeNull();
+  });
+
+  it.each([
+    ["an error carrying no status", new Error("Neon connection terminated")],
+    ["a non-object rejection", "Neon connection terminated"],
+  ])("propagates %s from getInvitation", async (_label, rejection) => {
+    authApi.getInvitation.mockRejectedValue(rejection);
+    ssoFunctionsMocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture(),
+    ]);
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "owner@atlas.test", invitationId: "inv_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeDefined();
+  });
+
+  it("falls back to a shared bucket when no forwarding chain identifies the caller", async () => {
+    ssoFunctionsMocks.getServerFnRequest.mockImplementation(
+      () => new Request("https://atlas.test/_serverFn/probe", { method: "POST" }),
+    );
+    ssoFunctionsMocks.listStoredWorkspaceSSOProviders.mockReturnValue([
+      createStoredWorkspaceSSOProviderFixture(),
+    ]);
+    ssoFunctionsMocks.loadStoredWorkspaceIdentity.mockReturnValue(
+      createStoredWorkspaceIdentityFixture({
+        primaryProviderId: "atlas-team-google-workspace-oidc",
+      }),
+    );
+
+    const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
+    const response = (await resolveWorkspaceSSOSignIn.__executeServer({
+      method: "POST",
+      data: { email: "owner@atlas.test" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeUndefined();
+    expect(response.result).not.toBeNull();
+  });
+
+  it("spends one client's budget without touching another's", async () => {
     ssoFunctionsMocks.listStoredWorkspaceSSOProviders.mockReturnValue([
       createStoredWorkspaceSSOProviderFixture(),
     ]);
@@ -276,19 +344,27 @@ describe("sso.functions sign-in resolution", () => {
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     const { resolveWorkspaceSSOSignIn } = await import("@/domains/access/sso.functions");
-    const probe = async () =>
-      (await resolveWorkspaceSSOSignIn.__executeServer({
+    const probe = async (clientIp: string) => {
+      ssoFunctionsMocks.getServerFnRequest.mockImplementation(() =>
+        createSsoServerFnRequest(clientIp),
+      );
+      return (await resolveWorkspaceSSOSignIn.__executeServer({
         method: "POST",
         data: { email: "owner@atlas.test" },
       })) as ServerFnExecutionResponse;
+    };
 
-    for (let attempt = 0; attempt < DEFAULT_ANONYMOUS_RATE_LIMIT.writesPerMinute; attempt += 1) {
-      expect((await probe()).result).not.toBeNull();
+    // A read, so this spends the read budget rather than the tighter write one.
+    for (let attempt = 0; attempt < DEFAULT_ANONYMOUS_RATE_LIMIT.readsPerMinute; attempt += 1) {
+      expect((await probe("198.51.100.4")).result).not.toBeNull();
     }
 
-    const blocked = await probe();
+    const blocked = await probe("198.51.100.4");
     expect(blocked.error).toBeUndefined();
     expect(blocked.result).toBeNull();
+
+    const otherClient = await probe("203.0.113.99");
+    expect(otherClient.result).not.toBeNull();
   });
 
   it("skips the limiter when anonymous rate limiting is turned off", async () => {
