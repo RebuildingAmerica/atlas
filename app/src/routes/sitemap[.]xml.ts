@@ -6,16 +6,21 @@
  * it directly.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import type { Entry, EntryType } from "@rebuildingamerica/atlas-api-client";
+import type { Entry, EntryListResponse, EntryType } from "@rebuildingamerica/atlas-api-client";
 import { api } from "@rebuildingamerica/atlas-api-client";
 import { buildCanonicalUrl } from "@/platform/seo";
 
 const ONE_HOUR = 3600;
 const SITEMAP_PAGE_SIZE = 100;
 
+// Cloud Run runs the API at four instances of eight, so 32 requests is the
+// whole service. Six leaves room for the other entry type's walk and for a
+// visitor who arrives mid-render.
+const SITEMAP_PAGE_CONCURRENCY = 6;
+
 type SitemapEntryType = Extract<EntryType, "person" | "organization">;
 
-function fetchSitemapPage(entryType: SitemapEntryType, offset: number) {
+function fetchSitemapPage(entryType: SitemapEntryType, offset: number): Promise<EntryListResponse> {
   return api.entries.list({
     entry_types: [entryType],
     limit: SITEMAP_PAGE_SIZE,
@@ -23,19 +28,29 @@ function fetchSitemapPage(entryType: SitemapEntryType, offset: number) {
   });
 }
 
-// The API caps a page at 100 rows, so a growing catalog means more pages. The
-// production canary timed out walking them one after another against a cold
-// Cloud Run instance, so the first page's total drives the rest in parallel.
+// The API caps a page at 100 rows, so a growing catalog means more pages.
+// Walking them one after another timed the production canary out against a
+// cold Cloud Run instance, and firing all of them at once would out-scale the
+// service the moment the catalog grows, so they go in fixed-size waves.
 async function listSitemapEntries(entryType: SitemapEntryType): Promise<Entry[]> {
   const firstPage = await fetchSitemapPage(entryType, 0);
-  const pageCount = Math.ceil(firstPage.pagination.total / SITEMAP_PAGE_SIZE);
-  const laterPages = await Promise.all(
-    Array.from({ length: Math.max(pageCount - 1, 0) }, (_unused, index) =>
-      fetchSitemapPage(entryType, (index + 1) * SITEMAP_PAGE_SIZE),
-    ),
+  const total = firstPage.pagination.total;
+  if (!Number.isInteger(total) || total < 0) {
+    throw new Error(`Sitemap cannot page ${entryType}: the API reported a total of ${total}.`);
+  }
+
+  const laterOffsets = Array.from(
+    { length: Math.max(Math.ceil(total / SITEMAP_PAGE_SIZE) - 1, 0) },
+    (_unused, index) => (index + 1) * SITEMAP_PAGE_SIZE,
   );
 
-  return [firstPage, ...laterPages].flatMap((page) => page.data);
+  const pages = [firstPage];
+  for (let start = 0; start < laterOffsets.length; start += SITEMAP_PAGE_CONCURRENCY) {
+    const wave = laterOffsets.slice(start, start + SITEMAP_PAGE_CONCURRENCY);
+    pages.push(...(await Promise.all(wave.map((offset) => fetchSitemapPage(entryType, offset)))));
+  }
+
+  return pages.flatMap((page) => page.data);
 }
 
 export const Route = createFileRoute("/sitemap.xml")({

@@ -149,6 +149,48 @@ describe("routes/sitemap.xml", () => {
     expect(entryListCalls.every((params) => params?.limit === 100)).toBe(true);
   });
 
+  it("caps how many pages are in flight at once", async () => {
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
+
+    // 1,001 people is 11 pages: one to read the total, then ten more that must
+    // not all leave at the same time.
+    const PEOPLE_TOTAL = 1001;
+    let inFlight = 0;
+    let peakInFlight = 0;
+
+    vi.mocked(api.entries.list).mockImplementation(async (params) => {
+      if (!params?.entry_types?.includes("person")) {
+        return buildSitemapEntryListResponse([]);
+      }
+      inFlight += 1;
+      peakInFlight = Math.max(peakInFlight, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+      return buildSitemapEntryListResponse(
+        [buildSitemapEntry({ type: "person", slug: `page-${params.offset ?? 0}` })],
+        { limit: 100, offset: params.offset, total: PEOPLE_TOTAL },
+      );
+    });
+
+    const body = await readSitemapXml();
+
+    expect(peakInFlight).toBeLessThanOrEqual(6);
+    expect(body).toContain("/profiles/people/page-1000");
+  });
+
+  it("refuses to page when the API reports a nonsense total", async () => {
+    const { api } = await import("@rebuildingamerica/atlas-api-client");
+    vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
+    vi.mocked(api.entries.list).mockResolvedValue(
+      buildSitemapEntryListResponse([buildSitemapEntry({ type: "person", slug: "jane-doe" })], {
+        total: Number.NaN,
+      }),
+    );
+
+    await expect(readSitemapXml()).rejects.toThrow(/reported a total of NaN/);
+  });
+
   it("requests every later page at once rather than one after another", async () => {
     const { api } = await import("@rebuildingamerica/atlas-api-client");
     vi.mocked(api.publicDirectories.list).mockResolvedValue({ directories: [] });
