@@ -1,7 +1,11 @@
 export const CLOUD_COST_POLICY = {
   artifactRegistryFreeGiB: 0.5,
   cloudRun: {
-    maxConcurrency: 1,
+    // Cloud Run bills instance time, so one request per instance is the most
+    // expensive setting available, not the cheapest: a parallel fan-out pays
+    // for that many containers and that many cold starts. Sharing a warm
+    // instance is what keeps both the bill and the latency down.
+    maxConcurrency: 8,
     maxCpu: 1,
     maxMemoryMiB: 768,
   },

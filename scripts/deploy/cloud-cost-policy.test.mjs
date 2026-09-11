@@ -36,6 +36,27 @@ void describe("cloud cost policy", () => {
     assert.deepEqual(posture.blockers, []);
   });
 
+  void it("warns without blocking when concurrency climbs past the target", () => {
+    const posture = evaluateCloudRunCostPosture({
+      name: "atlas-api",
+      template: {
+        annotations: {},
+        containerConcurrency: 40,
+        containers: [
+          {
+            resources: { limits: { cpu: "1", memory: "768Mi" } },
+          },
+        ],
+      },
+    });
+
+    assert.equal(posture.status, "pass");
+    assert.match(
+      posture.warnings.join("\n"),
+      /concurrency 40 exceeds policy target 8/,
+    );
+  });
+
   void it("blocks paid-idle Cloud Run drift before deploy work starts", () => {
     const posture = evaluateCloudRunCostPosture({
       name: "atlas-api",

@@ -774,7 +774,7 @@ function deployService(
         `--max-instances=4 ` +
         `--memory=768Mi ` +
         `--cpu=1 ` +
-        `--concurrency=1 ` +
+        `--concurrency=8 ` +
         `--timeout=900 ` +
         `--port=${options.port} ` +
         `--env-vars-file="${envFilePath}" ` +

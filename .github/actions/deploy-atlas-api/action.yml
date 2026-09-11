@@ -169,7 +169,7 @@ runs:
           --memory=768Mi
           --cpu=1
           --timeout=900
-          --concurrency=1
+          --concurrency=8
           --port=8000
           --remove-env-vars=ATLAS_AUTH_ALLOWED_EMAILS
         env_vars: |
