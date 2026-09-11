@@ -135,6 +135,12 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
     // /api/auth/oauth2/token — that endpoint stays live.
     disabledPaths: ["/token"],
     rateLimit: {
+      // Vercel runs this on serverless instances that share nothing, so the
+      // default in-memory counter gave each instance its own budget and an
+      // attacker got the magic-link cap of 5 per 60s multiplied by however
+      // many instances answered. The counter lives in Postgres so the cap is
+      // one number across the fleet.
+      storage: "database",
       customRules: {
         // OAuth device clients must poll this endpoint until browser approval.
         // The opaque, high-entropy device code preserves the exchange boundary;
