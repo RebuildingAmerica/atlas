@@ -230,6 +230,7 @@ export function validateClientIdMetadataDocument(
       "CIMD document is missing the required `redirect_uris` array.",
     );
   }
+  const clientIdOrigin = new URL(documentUrl).origin;
   for (const uri of redirectUris) {
     try {
       const parsed = new URL(uri);
@@ -238,6 +239,15 @@ export function validateClientIdMetadataDocument(
         throw new ClientIdMetadataError(
           "invalid_document",
           `CIMD redirect_uri ${uri} must be HTTPS or an http://localhost loopback.`,
+        );
+      }
+      // Anyone who can host a JSON file could otherwise point authorization
+      // codes at an origin they do not control. Loopback is exempt because a
+      // native client redirects to itself, not to its metadata host.
+      if (!isLoopback && parsed.origin !== clientIdOrigin) {
+        throw new ClientIdMetadataError(
+          "invalid_document",
+          `CIMD redirect_uri ${uri} must share an origin with the client_id at ${clientIdOrigin}.`,
         );
       }
     } catch (error) {

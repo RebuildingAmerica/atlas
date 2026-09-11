@@ -46,6 +46,23 @@ describe("validateClientIdMetadataDocument", () => {
     ).toThrow(/HTTPS or an http:\/\/localhost loopback/);
   });
 
+  it("rejects an https redirect_uri on a different origin from the client_id", () => {
+    expect(() =>
+      validateClientIdMetadataDocument(
+        { ...VALID_DOCUMENT, redirect_uris: ["https://attacker.example/cb"] },
+        VALID_DOCUMENT.client_id,
+      ),
+    ).toThrow(/must share an origin with the client_id/);
+  });
+
+  it("accepts a loopback redirect_uri from a hosted client_id", () => {
+    const result = validateClientIdMetadataDocument(
+      { ...VALID_DOCUMENT, redirect_uris: ["http://127.0.0.1:4321/cb"] },
+      VALID_DOCUMENT.client_id,
+    );
+    expect(result.redirect_uris).toEqual(["http://127.0.0.1:4321/cb"]);
+  });
+
   it("rejects token_endpoint_auth_method values other than 'none'", () => {
     expect(() =>
       validateClientIdMetadataDocument(
