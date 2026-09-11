@@ -71,20 +71,37 @@ printf '%s' "$BRAVE_TOKEN" | gh secret set SEARCH_API_KEY --repo RebuildingAmeri
 echo "SEARCH_API_KEY is set. Staging and production both read it at deploy time."
 
 step 5 "Redeploy production so the API picks it up"
-TAG="v$(date -u +%Y.%m.%d)-$(( $(git tag --list "v$(date -u +%Y.%m.%d)-*" | wc -l | tr -d ' ') + 1 ))"
-echo "Tagging $TAG on the current main."
-git fetch origin main --quiet
-git tag -a "$TAG" origin/main -m "Release $TAG"
-git push origin "$TAG"
-echo "Watching the production deploy ..."
-sleep 20
-RUN_ID="$(gh run list --workflow='Deploy Production' --limit 1 --json databaseId -q '.[0].databaseId')"
-gh run watch "$RUN_ID" --exit-status
+# The deploy action passes SEARCH_API_KEY to Cloud Run through
+# --update-env-vars, so the running revision keeps the empty value it was
+# created with until something redeploys. Dispatching the workflow against
+# the tag already in production ships the same code with the new key, and
+# mints no version tag.
+git fetch origin --tags --quiet
+LATEST_TAG="$(git tag --list 'v*' --sort=-creatordate | head -1)"
+echo "The newest release tag is $LATEST_TAG."
+echo
+read -r -p "Redeploy production from $LATEST_TAG now? [y/N] " REDEPLOY
+case "$REDEPLOY" in
+  [yY]*)
+    gh workflow run "Deploy Production" --repo RebuildingAmerica/atlas --ref "$LATEST_TAG"
+    echo "Dispatched. Watching the run ..."
+    sleep 20
+    RUN_ID="$(gh run list --workflow='Deploy Production' --limit 1 --json databaseId -q '.[0].databaseId')"
+    gh run watch "$RUN_ID" --exit-status
+    ;;
+  *)
+    echo "Skipped. The key is stored but production still runs without it."
+    echo "Deploy when you are ready:"
+    echo
+    echo "  gh workflow run 'Deploy Production' --ref $LATEST_TAG"
+    exit 0
+    ;;
+esac
 
 step 6 "Confirm discovery can search"
 echo "Trigger a discovery run from the operator console, or wait for the"
 echo "nightly Cloud Scheduler job. Then check the catalog count:"
 echo
-echo "  curl -s 'https://atlas.rebuildingus.org/api/entities?limit=1' | jq .pagination.total"
+echo "  curl -s 'https://atlas.rebuildingus.org/api/entities?limit=1' | jq .total"
 echo
 echo "It reads 436 today. A working run moves it."
