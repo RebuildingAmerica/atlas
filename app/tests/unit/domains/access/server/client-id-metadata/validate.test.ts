@@ -46,6 +46,12 @@ describe("validateClientIdMetadataDocument", () => {
     ).toThrow(/HTTPS or an http:\/\/localhost loopback/);
   });
 
+  it("reports an unparseable client_id as a validation error, not a TypeError", () => {
+    expect(() =>
+      validateClientIdMetadataDocument({ ...VALID_DOCUMENT, client_id: "not-a-url" }, "not-a-url"),
+    ).toThrow(/is not a valid URL/);
+  });
+
   it("rejects an https redirect_uri on a different origin from the client_id", () => {
     expect(() =>
       validateClientIdMetadataDocument(

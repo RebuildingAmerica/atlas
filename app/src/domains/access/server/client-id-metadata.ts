@@ -230,7 +230,15 @@ export function validateClientIdMetadataDocument(
       "CIMD document is missing the required `redirect_uris` array.",
     );
   }
-  const clientIdOrigin = new URL(documentUrl).origin;
+  let clientIdOrigin: string;
+  try {
+    clientIdOrigin = new URL(documentUrl).origin;
+  } catch {
+    throw new ClientIdMetadataError(
+      "invalid_url",
+      `CIMD client_id ${documentUrl} is not a valid URL.`,
+    );
+  }
   for (const uri of redirectUris) {
     try {
       const parsed = new URL(uri);

@@ -155,9 +155,6 @@ export interface AtlasWorkspaceSSOState {
 }
 
 /**
- * Public sign-in hint Atlas can safely compute before a session exists.
- */
-/**
  * What the unauthenticated sign-in page learns about a workspace's SSO.
  *
  * Provider identity only: naming the workspace here would let anyone resolve a

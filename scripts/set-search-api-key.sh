@@ -10,9 +10,18 @@
 
 set -euo pipefail
 
+# Runnable from anywhere. The git and gh calls below both need the checkout.
+cd "$(dirname "$0")/.."
+
 step() {
   printf '\n\033[1mStep %s: %s\033[0m\n' "$1" "$2"
 }
+
+probe_body=""
+cleanup() {
+  [ -n "$probe_body" ] && rm -f "$probe_body"
+}
+trap cleanup EXIT
 
 step 1 "Check the tools this needs"
 for tool in gh curl; do
@@ -48,7 +57,8 @@ if [ -z "$BRAVE_TOKEN" ]; then
 fi
 
 step 3 "Confirm the token actually works"
-http_status="$(curl -sS -o /tmp/brave-probe.json -w '%{http_code}' \
+probe_body="$(mktemp)"
+http_status="$(curl -sS -o "$probe_body" -w '%{http_code}' \
   --max-time 30 \
   -H "Accept: application/json" \
   -H "X-Subscription-Token: $BRAVE_TOKEN" \
@@ -56,14 +66,12 @@ http_status="$(curl -sS -o /tmp/brave-probe.json -w '%{http_code}' \
 
 if [ "$http_status" != "200" ]; then
   echo "Brave answered $http_status rather than 200. The response was:"
-  cat /tmp/brave-probe.json
+  cat "$probe_body"
   echo
   echo "A 401 means the token is wrong. A 429 means the subscription is not"
   echo "active yet, which can take a few minutes after you subscribe."
-  rm -f /tmp/brave-probe.json
   exit 1
 fi
-rm -f /tmp/brave-probe.json
 echo "Brave returned results for a live query."
 
 step 4 "Store the token as a repository secret"
@@ -78,15 +86,38 @@ step 5 "Redeploy production so the API picks it up"
 # mints no version tag.
 git fetch origin --tags --quiet
 LATEST_TAG="$(git tag --list 'v*' --sort=-creatordate | head -1)"
+if [ -z "$LATEST_TAG" ]; then
+  echo "No v* release tag exists, so there is nothing to redeploy from."
+  echo "The key is stored. Tag a release and production will pick it up."
+  exit 0
+fi
 echo "The newest release tag is $LATEST_TAG."
 echo
 read -r -p "Redeploy production from $LATEST_TAG now? [y/N] " REDEPLOY
 case "$REDEPLOY" in
   [yY]*)
+    # Recorded before the dispatch so the poll below cannot latch onto the
+    # deploy that is already sitting at the top of the list.
+    PREVIOUS_RUN="$(gh run list --workflow='Deploy Production' --limit 1 \
+      --json databaseId -q '.[0].databaseId // ""')"
     gh workflow run "Deploy Production" --repo RebuildingAmerica/atlas --ref "$LATEST_TAG"
-    echo "Dispatched. Watching the run ..."
-    sleep 20
-    RUN_ID="$(gh run list --workflow='Deploy Production' --limit 1 --json databaseId -q '.[0].databaseId')"
+    echo "Dispatched. Waiting for the run to register ..."
+    RUN_ID=""
+    for _ in $(seq 1 20); do
+      sleep 5
+      RUN_ID="$(gh run list --workflow='Deploy Production' --event workflow_dispatch \
+        --limit 1 --json databaseId -q '.[0].databaseId // ""')"
+      if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "$PREVIOUS_RUN" ]; then
+        break
+      fi
+      RUN_ID=""
+    done
+    if [ -z "$RUN_ID" ]; then
+      echo "The dispatch did not appear within 100 seconds. Watch it yourself:"
+      echo "  gh run list --workflow='Deploy Production'"
+      exit 1
+    fi
+    echo "Watching run $RUN_ID ..."
     gh run watch "$RUN_ID" --exit-status
     ;;
   *)
