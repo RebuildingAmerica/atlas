@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from atlas_discovery_engine import ProPublicaRegistryProvider, RegistryProvider
 from atlas_shared import (
     DiscoveryRunStats,
     DiscoveryRunStatus,
@@ -27,6 +28,10 @@ from atlas.domains.discovery.pipeline.query_generator import (
     sample_queries_across_categories,
 )
 from atlas.domains.discovery.pipeline.ranker import rank_entries
+from atlas.domains.discovery.pipeline.registry_entries import (
+    collect_registry_organizations,
+    registry_organizations_to_entries,
+)
 from atlas.domains.discovery.pipeline.source_fetcher import build_search_provider, fetch_sources
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.models import DiscoveryRunCRUD, EntryCRUD
@@ -132,6 +137,7 @@ async def run_discovery_pipeline(  # noqa: PLR0915
     job: DiscoveryPipelineJob,
     credentials: DiscoveryPipelineCredentials | None = None,
     settings: Settings | None = None,
+    registry_provider: RegistryProvider | None = None,
 ) -> None:
     """Execute the full discovery pipeline for an existing run.
 
@@ -229,6 +235,25 @@ async def run_discovery_pipeline(  # noqa: PLR0915
                 entry_dict["source_contexts"] = {source.url: item.extraction_context}
                 entry_dict["last_seen"] = source.published_date or today_iso
                 extracted_entries.append(entry_dict)
+        # The register is keyless, so it still yields candidates when the
+        # search vendor refuses the account. Structured rows need no model
+        # call, so they join at deduplication rather than through extraction.
+        registry_limit = active_settings.discovery_registry_max_organizations
+        if registry_provider is not None and registry_limit:
+            organizations = await collect_registry_organizations(
+                registry_provider,
+                state=job.state,
+                issue_areas=job.issue_areas,
+                limit=registry_limit,
+            )
+            extracted_entries.extend(
+                registry_organizations_to_entries(
+                    organizations,
+                    issue_areas=job.issue_areas,
+                    today_iso=_today_iso_date(),
+                )
+            )
+
         logger.info(
             "Pipeline step completed",
             extra={
@@ -363,6 +388,7 @@ async def run_discovery_pipeline_for_run(
     job: DiscoveryPipelineJob,
     credentials: DiscoveryPipelineCredentials | None = None,
     settings: Settings | None = None,
+    registry_provider: RegistryProvider | None = None,
 ) -> None:
     """Open a connection and execute a discovery run."""
     conn = await get_db_connection(database_url)
@@ -372,6 +398,7 @@ async def run_discovery_pipeline_for_run(
             job=job,
             credentials=credentials,
             settings=settings,
+            registry_provider=registry_provider or ProPublicaRegistryProvider(),
         )
     finally:
         await conn.close()
