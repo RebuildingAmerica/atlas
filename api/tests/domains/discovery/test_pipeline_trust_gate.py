@@ -6,6 +6,7 @@ import importlib
 import importlib.util
 
 import pytest
+from atlas_discovery_engine import ProPublicaRegistryProvider
 from atlas_shared import RawEntry
 
 from atlas.domains.discovery.pipeline.runner import (
@@ -90,6 +91,37 @@ class TestTrustGateUpsert:
         assert stored.active is False
         assert [item.entity_id for item in pending] == [entity_id]
         assert pending[0].hold_reason == "uncorroborated_web_only"
+
+    @pytest.mark.asyncio
+    async def test_an_ein_filing_releases_an_organization_already_held(
+        self, test_db: object
+    ) -> None:
+        """A second run citing the register publishes what the first run held.
+
+        The gate runs on creation only, so without this the nine organizations
+        an Omaha run found before the register was wired to the gate would stay
+        invisible no matter how often a later run confirmed them.
+        """
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+        held = _make_deduped_entry(
+            entry_type="organization", name="Lincoln Housing Trust", city="Lincoln", state="NE"
+        )
+        entity_id = await runner_module._upsert_entry(test_db, held)  # noqa: SLF001
+
+        corroborated = _make_deduped_entry(
+            entry_type="organization", name="Lincoln Housing Trust", city="Lincoln", state="NE"
+        )
+        corroborated.source_urls = [
+            f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456",
+        ]
+        assert await runner_module._upsert_entry(test_db, corroborated) == entity_id  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, entity_id)
+        assert stored is not None
+        assert stored.active is True
+        assert await ReviewQueueCRUD.list_pending(test_db) == []
 
     @pytest.mark.asyncio
     async def test_publish_decision_creates_active_entry_without_queueing(

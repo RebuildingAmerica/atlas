@@ -2,9 +2,14 @@
 #
 # Gives Atlas a Brave Search subscription token, stores it as the
 # SEARCH_API_KEY repository secret, and redeploys so the discovery pipeline
-# can actually search. Without this key build_search_provider returns None
-# and every discovery run finds nothing, which is why the catalog has been
-# stuck at 436 records.
+# can actually search.
+#
+# A key is already set. Brave answers HTTP 402 Payment Required to every one
+# of its queries, which a production run reported as "40 x HTTP 402", so the
+# account behind that key has no active subscription. Discovery therefore
+# finds people only through the nonprofit register, and the register records
+# officer pay as a dollar total rather than a name. That is why the catalog
+# has no discovered people at all.
 #
 # Run once. Re-running replaces the key.
 
@@ -70,8 +75,10 @@ if [ "$http_status" != "200" ]; then
   echo "Brave answered $http_status rather than 200. The response was:"
   cat "$probe_body"
   echo
-  echo "A 401 means the token is wrong. A 429 means the subscription is not"
-  echo "active yet, which can take a few minutes after you subscribe."
+  echo "A 401 means the token is wrong. A 402 means the account has no active"
+  echo "subscription, which is exactly the state production is in now, so"
+  echo "finish step 2.2 before pasting a token. A 429 means the subscription"
+  echo "is not live yet, which can take a few minutes after you subscribe."
   exit 1
 fi
 echo "Brave returned results for a live query."
