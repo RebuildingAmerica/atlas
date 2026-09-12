@@ -81,3 +81,34 @@ export function setupAtprotoOAuthMocks(): void {
   atprotoOAuthMocks.authorize.mockResolvedValue(new URL("https://bsky.social/oauth/authorize"));
   vi.stubGlobal("fetch", atprotoOAuthMocks.fetch);
 }
+
+/**
+ * Arrange a harness callback that returns one already-linked identity.
+ *
+ * The harness stands in for the external ATProto provider, so a test using it
+ * exercises the callback path without a network call.
+ */
+export function configureHarnessCallback(returnTo: string, responseStatus = 201): void {
+  vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
+  const get = vi.fn().mockReturnValue({
+    value: JSON.stringify({
+      requestedHandle: "org.example",
+      returnTo,
+      userId: "user_1",
+    }),
+  });
+  atprotoOAuthMocks.getAuthDatabase.mockReturnValue({
+    prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+  });
+  atprotoOAuthMocks.fetch.mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        current_handle: "org.example",
+        did: "did:web:org.example",
+        id: "identity_harness",
+        pds_url: "https://pds.atlas-e2e.test",
+      }),
+      { status: responseStatus },
+    ),
+  );
+}
