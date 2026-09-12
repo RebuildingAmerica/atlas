@@ -14,6 +14,7 @@ import asyncio
 import logging
 import re
 from abc import ABC, abstractmethod
+from collections import Counter
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -77,6 +78,16 @@ class SearchProvider(ABC):
         list[SearchResult]
             Normalized results aggregated across the queries.
         """
+
+    def last_failure_reason(self) -> str | None:
+        """Explain why the most recent search came back short, if it did.
+
+        Implementations swallow per-query failures so one bad query cannot
+        zero out a run, which leaves a caller unable to tell a spent quota
+        from a revoked key from a genuinely empty result set. Returning None
+        means nothing failed worth reporting.
+        """
+        return None
 
 
 def _parse_result_age(age_value: str | None) -> str | None:
@@ -155,12 +166,14 @@ class BraveSearchProvider(SearchProvider):
             else min_query_interval
         )
         self._sleep = sleep or asyncio.sleep
+        self._failures: Counter[str] = Counter()
 
     async def search(self, queries: Sequence[str]) -> list[SearchResult]:
         """Run each query against Brave, skipping any that fail transiently."""
         headers = {"Accept": "application/json", "X-Subscription-Token": self._api_key}
         results: list[SearchResult] = []
         dropped = 0
+        self._failures.clear()
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             for index, query in enumerate(queries):
                 if index and self._min_query_interval > 0:
@@ -199,15 +212,26 @@ class BraveSearchProvider(SearchProvider):
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code != httpx.codes.TOO_MANY_REQUESTS:
                     logger.warning("Brave search failed for query %r: %s", query, exc)
+                    self._failures[f"HTTP {exc.response.status_code}"] += 1
                     return []
                 if attempt == self._max_retries:
                     logger.warning("Brave search rate-limited for query %r; skipping", query)
+                    self._failures["HTTP 429 after retries"] += 1
                     return []
                 await self._sleep(self._retry_delay(exc.response))
             except httpx.RequestError as exc:
                 logger.warning("Brave search request error for query %r: %s", query, exc)
+                self._failures[type(exc).__name__] += 1
                 return []
         return []  # pragma: no cover - loop always returns inside the body
+
+    def last_failure_reason(self) -> str | None:
+        """Summarize how the most recent search's queries failed."""
+        if not self._failures:
+            return None
+        return ", ".join(
+            f"{count} x {reason}" for reason, count in sorted(self._failures.most_common())
+        )
 
     def _retry_delay(self, response: httpx.Response) -> float:
         """Derive a bounded retry delay from a 429's Retry-After header."""

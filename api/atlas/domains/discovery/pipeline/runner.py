@@ -179,6 +179,17 @@ async def run_discovery_pipeline(  # noqa: PLR0915
             units=len(queries),
             estimated_cost=estimate_search_cost(len(queries)),
         )
+        search_failure = search_provider.last_failure_reason() if search_provider else None
+        if not fetched_sources:
+            # A completed run holding no sources is the pipeline's most common
+            # and least legible outcome. Whatever the vendor said goes on the
+            # run itself, because Cloud Run logs need credentials an operator
+            # reading the catalog does not have.
+            await DiscoveryRunCRUD.note_empty_fetch(
+                conn,
+                run_id=run_id,
+                reason=search_failure or "Search returned no results and reported no failure.",
+            )
         logger.info(
             "Pipeline step completed",
             extra={
@@ -186,6 +197,7 @@ async def run_discovery_pipeline(  # noqa: PLR0915
                 "step": "source_fetch",
                 "count": len(fetched_sources),
                 "queries": len(queries),
+                "search_failure": search_failure,
                 "duration_ms": int((time.monotonic() - t0) * 1000),
             },
         )

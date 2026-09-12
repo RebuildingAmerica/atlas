@@ -96,6 +96,36 @@ class DiscoveryRunCRUDOps:
         )
 
     @staticmethod
+    async def note_empty_fetch(
+        conn: aiosqlite.Connection,
+        *,
+        run_id: str,
+        reason: str,
+    ) -> bool:
+        """Record why a run reached the end of search holding no sources.
+
+        The run still completes, because finding nothing is an outcome rather
+        than a fault. Writing the reason onto the run is what lets an operator
+        tell a spent search quota from a revoked key without reading Cloud Run
+        logs.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        run_id : str
+            The run that fetched nothing.
+        reason : str
+            What the search vendor reported, or that it reported nothing.
+
+        Returns
+        -------
+        bool
+            True when the run row was updated.
+        """
+        return await DiscoveryRunCRUDCore.update(conn, run_id, error_message=reason)
+
+    @staticmethod
     async def fail(
         conn: aiosqlite.Connection,
         run_id: str,

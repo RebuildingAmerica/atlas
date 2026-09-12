@@ -254,6 +254,68 @@ class TestBraveSearchProvider:
         assert client.calls == 2
         assert slept == []
 
+    async def test_reports_nothing_when_every_query_succeeded(self, monkeypatch: Any) -> None:
+        """A clean search has no failure to explain."""
+        client = _ScriptedClient([_FakeResponse(status_code=200, payload=_brave_payload())])
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
+
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
+        await provider.search(["housing"])
+
+        assert provider.last_failure_reason() is None
+
+    async def test_reports_a_spent_quota_distinctly_from_a_bad_key(self, monkeypatch: Any) -> None:
+        """429 and 401 both yield no results, and must not read the same."""
+        rate_limited = _ScriptedClient(
+            [_FakeResponse(status_code=429, headers={"Retry-After": "1"}) for _ in range(4)]
+        )
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: rate_limited)
+
+        async def fake_sleep(_seconds: float) -> None:
+            return None
+
+        throttled = BraveSearchProvider(api_key="test-key", min_query_interval=0, sleep=fake_sleep)
+        await throttled.search(["housing"])
+        throttled_reason = throttled.last_failure_reason()
+
+        unauthorized = _ScriptedClient([_FakeResponse(status_code=401)])
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: unauthorized)
+        rejected = BraveSearchProvider(api_key="bad-key", min_query_interval=0)
+        await rejected.search(["housing"])
+        rejected_reason = rejected.last_failure_reason()
+
+        assert throttled_reason is not None
+        assert "429" in throttled_reason
+        assert rejected_reason is not None
+        assert "401" in rejected_reason
+        assert throttled_reason != rejected_reason
+
+    async def test_reports_a_transport_failure_by_name(self, monkeypatch: Any) -> None:
+        """A network failure is neither a quota nor a key problem."""
+
+        class _Failing:
+            async def __aenter__(self) -> _Failing:
+                return self
+
+            async def __aexit__(self, *_args: Any) -> None:
+                return None
+
+            async def get(self, *_args: Any, **_kwargs: Any) -> Any:
+                raise httpx.ConnectTimeout("no route")
+
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: _Failing())
+
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
+        await provider.search(["housing"])
+
+        reason = provider.last_failure_reason()
+        assert reason is not None
+        assert "ConnectTimeout" in reason
+
+    async def test_a_provider_with_nothing_to_report_says_so(self) -> None:
+        """The contract's default covers providers that cannot fail partway."""
+        assert StaticSearchProvider([]).last_failure_reason() is None
+
     async def test_persistent_429_skips_the_query_without_raising(self, monkeypatch: Any) -> None:
         """When every attempt is rate-limited, the query yields nothing and does not raise."""
         client = _ScriptedClient(
