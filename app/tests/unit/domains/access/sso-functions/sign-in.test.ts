@@ -3,19 +3,19 @@ import {
   getSsoFunctionsAuthApi,
   getSsoFunctionsMocks,
   resetSsoFunctionsTestBed,
-} from "../../../helpers/access/sso-functions-test-bed";
-import { createSsoServerFnRequest } from "./sso.functions.test-harness";
+} from "../../../../helpers/access/sso-functions-test-bed";
+import { createSsoServerFnRequest } from "./test-harness";
 import {
   createSSOSignInResolutionFixture,
   createStoredWorkspaceIdentityFixture,
   createStoredWorkspaceSSOProviderFixture,
-} from "../../../fixtures/access/sso";
+} from "../../../../fixtures/access/sso";
 import { DEFAULT_ANONYMOUS_RATE_LIMIT } from "@/domains/access/server/anonymous-rate-limit";
 import {
   createServerFnStub,
   createServerOnlyFnStub,
   type ServerFnExecutionResponse,
-} from "../../../helpers/server-fn-stub";
+} from "../../../../helpers/server-fn-stub";
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: createServerFnStub(),

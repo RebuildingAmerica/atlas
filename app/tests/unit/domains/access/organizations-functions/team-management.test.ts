@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
 import {
   fullOrganizationFixture,
   individualWorkspaceSession,
   subscribedTeamSession,
-} from "./organizations.functions.support";
-import { authApi, mocks, resetOrganizationFunctionMocks } from "./organizations.functions.mocks";
+} from "./support";
+import { authApi, mocks, resetOrganizationFunctionMocks } from "./mocks";
 
 describe("organizations.functions team management", () => {
   beforeEach(() => {

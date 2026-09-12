@@ -6,7 +6,7 @@ import {
   createAtlasResolvedCapabilities,
   createAtlasSessionFixture,
   createAtlasWorkspace,
-} from "../../../fixtures/access/sessions";
+} from "../../../../fixtures/access/sessions";
 
 export const browserSessionHeaders = new Headers({ cookie: "test" });
 

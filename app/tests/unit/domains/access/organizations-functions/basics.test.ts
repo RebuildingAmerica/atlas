@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
-import { authApi, mocks, resetOrganizationFunctionMocks } from "./organizations.functions.mocks";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
+import { authApi, mocks, resetOrganizationFunctionMocks } from "./mocks";
 
 describe("organizations.functions basics", () => {
   beforeEach(() => {
@@ -8,7 +8,7 @@ describe("organizations.functions basics", () => {
   });
 
   it("gets organization details", async () => {
-    const session = (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture();
+    const session = (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture();
     mocks.ensureAtlasSession.mockResolvedValue(session);
 
     authApi.getFullOrganization.mockResolvedValue({
@@ -34,7 +34,7 @@ describe("organizations.functions basics", () => {
   });
 
   it("creates a workspace", async () => {
-    const session = (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture();
+    const session = (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture();
     mocks.ensureReadyAtlasSession.mockResolvedValue(session);
     authApi.createOrganization.mockResolvedValue({ id: "new_org", slug: "new-workspace" });
 
@@ -50,7 +50,7 @@ describe("organizations.functions basics", () => {
   it("sets the active workspace", async () => {
     authApi.setActiveOrganization.mockResolvedValue({ id: "org_123" });
     mocks.ensureAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture(),
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture(),
     );
 
     const { setActiveWorkspace } = await import("@/domains/access/organizations.functions");
@@ -65,7 +65,7 @@ describe("organizations.functions basics", () => {
   it("updates workspace profile", async () => {
     authApi.updateOrganization.mockResolvedValue({ id: "org_team" });
     mocks.ensureAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture(),
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture(),
     );
 
     const { updateWorkspaceProfile } = await import("@/domains/access/organizations.functions");
@@ -96,7 +96,7 @@ describe("organizations.functions basics", () => {
   it("leaves a workspace", async () => {
     authApi.leaveOrganization.mockResolvedValue(undefined);
     mocks.ensureAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture({
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture({
         role: "admin",
       }),
     );
@@ -122,7 +122,7 @@ describe("organizations.functions basics", () => {
 
   it("rejects leaving a workspace as owner", async () => {
     mocks.ensureAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture({
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture({
         role: "owner",
       }),
     );
@@ -153,7 +153,7 @@ describe("organizations.functions basics", () => {
   });
 
   it("returns organization details as null when no active workspace exists", async () => {
-    const session = (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture({
+    const session = (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture({
       workspace: {
         activeOrganization: null,
         activeProducts: [],
@@ -195,7 +195,7 @@ describe("organizations.functions basics", () => {
 
   it("returns organization details as null when Better Auth has no record", async () => {
     mocks.ensureAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture(),
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture(),
     );
     authApi.getFullOrganization.mockResolvedValue(null);
     authApi.listSSOProviders.mockResolvedValue({ providers: [] });
@@ -212,7 +212,7 @@ describe("organizations.functions basics", () => {
 
   it("reports an available workspace slug when Better Auth approves it", async () => {
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture(),
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture(),
     );
     authApi.checkOrganizationSlug.mockResolvedValue({ status: true });
 
@@ -229,7 +229,7 @@ describe("organizations.functions basics", () => {
 
   it("reports an unavailable workspace slug when Better Auth rejects it", async () => {
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture(),
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture(),
     );
     authApi.checkOrganizationSlug.mockRejectedValue(new Error("ORGANIZATION_SLUG_IS_TAKEN"));
 
@@ -246,7 +246,7 @@ describe("organizations.functions basics", () => {
 
   it("reports an unavailable workspace slug when Better Auth returns a non-true status", async () => {
     mocks.ensureReadyAtlasSession.mockResolvedValue(
-      (await import("../../../fixtures/access/sessions")).createAtlasSessionFixture(),
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture(),
     );
     authApi.checkOrganizationSlug.mockResolvedValue({ status: false });
 

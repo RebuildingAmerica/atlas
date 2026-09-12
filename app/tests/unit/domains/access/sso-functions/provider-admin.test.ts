@@ -4,13 +4,13 @@ import {
   getSsoFunctionsBrowserSessionHeaders,
   getSsoFunctionsMocks,
   resetSsoFunctionsTestBed,
-} from "../../../helpers/access/sso-functions-test-bed";
-import { createStoredWorkspaceIdentityFixture } from "../../../fixtures/access/sso";
+} from "../../../../helpers/access/sso-functions-test-bed";
+import { createStoredWorkspaceIdentityFixture } from "../../../../fixtures/access/sso";
 import {
   createServerFnStub,
   createServerOnlyFnStub,
   type ServerFnExecutionResponse,
-} from "../../../helpers/server-fn-stub";
+} from "../../../../helpers/server-fn-stub";
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: createServerFnStub(),

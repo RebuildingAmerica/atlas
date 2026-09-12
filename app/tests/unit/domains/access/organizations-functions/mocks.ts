@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { browserSessionHeaders } from "./organizations.functions.support";
+import { browserSessionHeaders } from "./support";
 
 export const mocks = {
   ensureAtlasSession: vi.fn(),
@@ -14,7 +14,7 @@ export const mocks = {
 
 vi.mock("@tanstack/react-start", async () => {
   const { createServerFnStub, createServerOnlyFnStub } =
-    await import("../../../helpers/server-fn-stub");
+    await import("../../../../helpers/server-fn-stub");
   return {
     createServerFn: createServerFnStub(),
     createServerOnlyFn: createServerOnlyFnStub(),

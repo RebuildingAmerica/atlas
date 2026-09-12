@@ -4,12 +4,12 @@ import {
   getSsoFunctionsAuthApi,
   getSsoFunctionsMocks,
   resetSsoFunctionsTestBed,
-} from "../../../helpers/access/sso-functions-test-bed";
+} from "../../../../helpers/access/sso-functions-test-bed";
 import {
   createServerFnStub,
   createServerOnlyFnStub,
   type ServerFnExecutionResponse,
-} from "../../../helpers/server-fn-stub";
+} from "../../../../helpers/server-fn-stub";
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: createServerFnStub(),

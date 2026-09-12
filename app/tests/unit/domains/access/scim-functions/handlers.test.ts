@@ -4,8 +4,8 @@ import {
   serializeResolvedCapabilities,
 } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type * as OrganizationServerHelpersModule from "@/domains/access/organization-server-helpers";
-import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   deleteSCIMProviderConnection: vi.fn(),
@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-start", async () => {
   const { createServerFnStub, createServerOnlyFnStub } =
-    await import("../../../helpers/server-fn-stub");
+    await import("../../../../helpers/server-fn-stub");
   return {
     createServerFn: createServerFnStub(),
     createServerOnlyFn: createServerOnlyFnStub(),

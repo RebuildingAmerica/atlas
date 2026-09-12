@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import { createSsoFunctionsTestHarness } from "../../unit/domains/access/sso.functions.test-harness";
+import { createSsoFunctionsTestHarness } from "../../unit/domains/access/sso-functions/test-harness";
 
 const ssoFunctionsMocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
-import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   ensureAtlasSession: vi.fn(),
@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-start", async () => {
-  const { createServerFnStub } = await import("../../../helpers/server-fn-stub");
+  const { createServerFnStub } = await import("../../../../helpers/server-fn-stub");
   return { createServerFn: createServerFnStub() };
 });
 

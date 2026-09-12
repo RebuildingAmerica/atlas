@@ -1,6 +1,6 @@
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
-import { createSSOFunctionsAuthApi } from "../../../mocks/access/sso-functions-auth";
-import { createStoredWorkspaceIdentityFixture } from "../../../fixtures/access/sso";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
+import { createSSOFunctionsAuthApi } from "../../../../mocks/access/sso-functions-auth";
+import { createStoredWorkspaceIdentityFixture } from "../../../../fixtures/access/sso";
 import { DEFAULT_ANONYMOUS_RATE_LIMIT } from "@/domains/access/server/anonymous-rate-limit";
 import { vi, type Mock } from "vitest";
 

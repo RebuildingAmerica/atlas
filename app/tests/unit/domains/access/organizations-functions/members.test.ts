@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
-import { authApi, mocks, resetOrganizationFunctionMocks } from "./organizations.functions.mocks";
-import { fullOrganizationFixture, subscribedTeamSession } from "./organizations.functions.support";
+import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
+import { createAtlasSessionFixture } from "../../../../fixtures/access/sessions";
+import { authApi, mocks, resetOrganizationFunctionMocks } from "./mocks";
+import { fullOrganizationFixture, subscribedTeamSession } from "./support";
 
 describe("organizations.functions members", () => {
   beforeEach(() => {

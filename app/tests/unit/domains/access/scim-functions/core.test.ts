@@ -4,7 +4,7 @@ import {
   serializeResolvedCapabilities,
 } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import { requireWorkspaceScimAccess } from "@/domains/access/scim.functions";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../fixtures/access/sessions";
+import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
 
 describe("scim.functions", () => {
   it("allows managed Team workspaces with the SCIM capability", () => {
