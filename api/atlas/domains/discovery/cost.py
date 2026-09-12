@@ -30,7 +30,7 @@ CeilingScope = Literal["run", "daily", "kill_switch"]
 DAILY_WINDOW_HOURS = 24
 """Width of the rolling window the daily ceiling is measured over."""
 
-_SEARCH_COST_PER_RESULT = 0.005
+_SEARCH_COST_PER_QUERY = 0.005
 """Estimated spend (USD) attributed to each returned search result."""
 
 _LLM_COST_PER_1K_TOKENS = 0.003
@@ -55,19 +55,22 @@ class CostCeilingExceeded(Exception):  # noqa: N818
 
 
 def estimate_search_cost(units: float) -> float:
-    """Estimate the spend (USD) for a search call returning ``units`` results.
+    """Estimate the spend (USD) for issuing ``units`` search queries.
+
+    Search vendors bill per query sent, not per result kept, so a run that
+    searches hard and fetches nothing still spends.
 
     Parameters
     ----------
     units : float
-        Number of search results returned by the call.
+        Number of search queries issued.
 
     Returns
     -------
     float
         Estimated cost in USD.
     """
-    return units * _SEARCH_COST_PER_RESULT
+    return units * _SEARCH_COST_PER_QUERY
 
 
 def estimate_llm_cost(units: float) -> float:

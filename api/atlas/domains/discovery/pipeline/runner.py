@@ -168,13 +168,16 @@ async def run_discovery_pipeline(  # noqa: PLR0915
         await assert_within_budget(conn, run_id=run_id, settings=active_settings)
         search_provider = build_search_provider(active_credentials.search_api_key)
         fetched_sources = await fetch_sources(queries, search_provider)
+        # Billed on queries sent, not sources kept. Counting sources booked
+        # zero spend for a run that issued 40 queries and fetched nothing,
+        # which also meant the per-run ceiling could never trip on search.
         await record_cost(
             conn,
             run_id=run_id,
             kind="search",
             provider=_SEARCH_PROVIDER_NAME,
-            units=len(fetched_sources),
-            estimated_cost=estimate_search_cost(len(fetched_sources)),
+            units=len(queries),
+            estimated_cost=estimate_search_cost(len(queries)),
         )
         logger.info(
             "Pipeline step completed",
@@ -182,6 +185,7 @@ async def run_discovery_pipeline(  # noqa: PLR0915
                 "run_id": run_id,
                 "step": "source_fetch",
                 "count": len(fetched_sources),
+                "queries": len(queries),
                 "duration_ms": int((time.monotonic() - t0) * 1000),
             },
         )

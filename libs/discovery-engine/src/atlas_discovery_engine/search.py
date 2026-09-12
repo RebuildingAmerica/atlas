@@ -160,11 +160,24 @@ class BraveSearchProvider(SearchProvider):
         """Run each query against Brave, skipping any that fail transiently."""
         headers = {"Accept": "application/json", "X-Subscription-Token": self._api_key}
         results: list[SearchResult] = []
+        dropped = 0
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             for index, query in enumerate(queries):
                 if index and self._min_query_interval > 0:
                     await self._sleep(self._min_query_interval)
-                results.extend(await self._search_one(client, query, headers))
+                one = await self._search_one(client, query, headers)
+                if not one:
+                    dropped += 1
+                results.extend(one)
+        # A run that fetches no pages reads the same whether the vendor
+        # answered nothing or every answer was filtered out later. Saying how
+        # many queries came back empty separates the two.
+        logger.info(
+            "Brave search completed: %d queries, %d empty, %d results",
+            len(queries),
+            dropped,
+            len(results),
+        )
         return results
 
     async def _search_one(
