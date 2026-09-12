@@ -86,8 +86,8 @@ async def fetch_sources(
     -------
     list[FetchedSource]
         List of fetched sources. A provider that returns no results (for
-        example during a vendor outage) yields an empty list rather than
-        failing the run.
+        example during a vendor outage) yields an empty list, and a page that
+        refuses to be fetched is skipped, rather than failing the run.
     """
     if not queries:
         return []
@@ -107,7 +107,18 @@ async def fetch_sources(
     fetched: list[FetchedSource] = []
     async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as client:
         for url, result in unique.items():
-            content = await _extract_page_text(client, url)
+            # Paywalls and bot walls answer 403 to anything that is not a
+            # browser, and a search across open-web sources hits them
+            # constantly. Skipping the page keeps the other results; raising
+            # threw away the whole run over one publisher.
+            try:
+                content = await _extract_page_text(client, url)
+            except httpx.HTTPError as error:
+                logger.info(
+                    "Source skipped",
+                    extra={"url": url, "reason": type(error).__name__},
+                )
+                continue
             if not _should_keep_source(content, result.published):
                 continue
             fetched.append(

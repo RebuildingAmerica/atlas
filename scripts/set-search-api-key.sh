@@ -13,6 +13,8 @@ set -euo pipefail
 # Runnable from anywhere. The git and gh calls below both need the checkout.
 cd "$(dirname "$0")/.."
 
+ATLAS_URL="https://atlas.rebuildingus.org"
+
 step() {
   printf '\n\033[1mStep %s: %s\033[0m\n' "$1" "$2"
 }
@@ -129,10 +131,17 @@ case "$REDEPLOY" in
     ;;
 esac
 
-step 6 "Confirm discovery can search"
-echo "Trigger a discovery run from the operator console, or wait for the"
-echo "nightly Cloud Scheduler job. Then check the catalog count:"
+step 6 "Report what the key does and does not unblock"
+total="$(curl -sS --max-time 30 "$ATLAS_URL/api/entities?limit=1" |
+  sed -n 's/.*"total":\([0-9]*\).*/\1/p')"
+echo "The public catalog holds ${total:-an unknown number of} records."
 echo
-echo "  curl -s 'https://atlas.rebuildingus.org/api/entities?limit=1' | jq .total"
+echo "The key lets discovery search. It does not give it anywhere to look."
+echo "Cloud Scheduler fires every enabled discovery target nightly at 02:00"
+echo "America/Chicago, and a deployment with no targets searches nothing."
+echo "List them, and add one if the list is empty:"
 echo
-echo "It reads 436 today. A working run moves it."
+echo "  GET  $ATLAS_URL/api/discovery-schedules?enabled_only=true"
+echo "  POST $ATLAS_URL/api/discovery-schedules"
+echo
+echo "Both need the X-Atlas-Internal-Secret header that Cloud Scheduler sends."

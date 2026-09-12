@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
 from atlas_discovery_engine import BraveSearchProvider, SearchProvider, SearchResult
 
@@ -14,6 +15,33 @@ from atlas.domains.discovery.pipeline.source_fetcher import (
     build_search_provider,
     fetch_sources,
 )
+
+
+class _StubAsyncClient:
+    """Stands in for httpx.AsyncClient; every fetch is patched out anyway."""
+
+    def __init__(self, **_kwargs: object) -> None:
+        pass
+
+    async def __aenter__(self) -> _StubAsyncClient:
+        return self
+
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+        return None
+
+
+class _StaticProvider(SearchProvider):
+    """Returns a fixed result list, standing in for Brave."""
+
+    def __init__(self, *results: SearchResult) -> None:
+        self._results = list(results)
+
+    async def search(self, _queries: object) -> list[SearchResult]:
+        return self._results
+
+
+def _result(url: str, title: str) -> SearchResult:
+    return SearchResult(url=url, title=title, publication="Example News", published="2026-01-15")
 
 
 class TestSourceFetchingHelpers:
@@ -95,67 +123,64 @@ class TestSourceFetchingHelpers:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Fetching should deduplicate URLs and keep only useful extracted pages."""
-
-        class FakeProvider(SearchProvider):
-            async def search(self, _queries: object) -> list[SearchResult]:
-                return [
-                    SearchResult(
-                        url="https://example.com/story",
-                        title="Story",
-                        publication="Example News",
-                        published="2026-01-15",
-                    ),
-                    SearchResult(
-                        url="https://example.com/story",
-                        title="Story Duplicate",
-                        publication="Example News",
-                        published="2026-01-15",
-                    ),
-                    SearchResult(
-                        url="https://example.com/short",
-                        title="Short",
-                        publication="Example News",
-                        published="2026-01-15",
-                    ),
-                ]
-
-        class FakeClient:
-            def __init__(self, **_kwargs: object) -> None:
-                pass
-
-            async def __aenter__(self) -> FakeClient:
-                return self
-
-            async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
-                return None
+        provider = _StaticProvider(
+            _result("https://example.com/story", "Story"),
+            _result("https://example.com/story", "Story Duplicate"),
+            _result("https://example.com/short", "Short"),
+        )
 
         async def fake_extract(_client: object, url: str) -> str:
-            if url.endswith("/short"):
-                return "tiny"
-            return "word " * 250
+            return "tiny" if url.endswith("/short") else "word " * 250
 
         monkeypatch.setattr(
             "atlas.domains.discovery.pipeline.source_fetcher._extract_page_text", fake_extract
         )
         monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.source_fetcher.httpx.AsyncClient", FakeClient
+            "atlas.domains.discovery.pipeline.source_fetcher.httpx.AsyncClient", _StubAsyncClient
         )
 
-        results = await fetch_sources(["housing"], FakeProvider())
+        results = await fetch_sources(["housing"], provider)
 
         assert len(results) == 1
         assert results[0].url == "https://example.com/story"
         assert results[0].published_date == "2026-01-15"
 
     @pytest.mark.asyncio
+    async def test_fetch_sources_skips_a_page_that_refuses_the_fetch(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A paywalled 403 should cost one source, not the whole run."""
+        provider = _StaticProvider(
+            _result("https://paywalled.example/story", "Blocked"),
+            _result("https://open.example/story", "Open"),
+        )
+        forbidden = "403 Forbidden"
+
+        async def fake_extract(_client: object, url: str) -> str:
+            if url.startswith("https://paywalled"):
+                raise httpx.HTTPStatusError(
+                    forbidden,
+                    request=httpx.Request("GET", url),
+                    response=httpx.Response(403),
+                )
+            return "word " * 250
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.source_fetcher._extract_page_text", fake_extract
+        )
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.source_fetcher.httpx.AsyncClient", _StubAsyncClient
+        )
+
+        results = await fetch_sources(["housing"], provider)
+
+        assert [source.url for source in results] == ["https://open.example/story"]
+
+    @pytest.mark.asyncio
     async def test_fetch_sources_survives_a_provider_with_no_results(self) -> None:
         """A search outage that empties results must not fail the whole run."""
 
-        class EmptyProvider(SearchProvider):
-            async def search(self, _queries: object) -> list[SearchResult]:
-                return []
-
-        assert await fetch_sources(["housing"], EmptyProvider()) == []
+        assert await fetch_sources(["housing"], _StaticProvider()) == []
 
     @pytest.mark.asyncio
     async def test_fetch_sources_returns_empty_without_provider(self) -> None:
