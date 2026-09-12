@@ -1,11 +1,11 @@
 """API adapter around the shared discovery-engine query generation."""
 
-from atlas_discovery_engine import SearchQuery
+from atlas_discovery_engine import SearchQuery, sample_queries_across_categories
 from atlas_discovery_engine import generate_queries as _generate_queries
 
 from atlas.domains.discovery.pipeline.local_context import LOCAL_CONTEXT
 
-__all__ = ["SearchQuery", "generate_queries"]
+__all__ = ["SearchQuery", "generate_queries", "sample_queries_across_categories"]
 
 
 def generate_queries(

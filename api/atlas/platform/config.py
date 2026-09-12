@@ -207,6 +207,19 @@ class Settings(BaseSettings):
     """Maximum link-following depth."""
 
     # Cost controls
+    discovery_max_queries_per_run: int = Field(
+        default=40, gt=0, validation_alias="DISCOVERY_MAX_QUERIES_PER_RUN"
+    )
+    """Search queries a single discovery run may issue.
+
+    One city and one issue area generate roughly 300 queries. At the Brave free
+    tier's one-per-second floor that is five minutes of search before any
+    extraction starts, and the run outlives the window Cloud Run keeps a
+    background worker alive, so it dies and restarts with nothing saved. A
+    smaller run finishes, and the monthly search quota stretches across far
+    more places.
+    """
+
     discovery_max_run_cost: float = Field(default=5.0, validation_alias="DISCOVERY_MAX_RUN_COST")
     """Maximum estimated spend (USD) a single discovery run may incur."""
 

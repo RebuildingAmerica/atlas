@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from itertools import chain, islice, zip_longest
 
 from atlas_shared import ISSUE_SEARCH_TERMS
 
-__all__ = ["SearchQuery", "generate_queries", "generate_queries_stream"]
+__all__ = [
+    "SearchQuery",
+    "generate_queries",
+    "generate_queries_stream",
+    "sample_queries_across_categories",
+]
 
 _DEFAULT_SOURCE_PATTERNS: dict[str, list[str]] = {
     "local_journalism": [
@@ -106,6 +113,42 @@ def generate_queries(
                         )
 
     return queries
+
+
+def sample_queries_across_categories(
+    queries: list[SearchQuery], limit: int
+) -> list[SearchQuery]:
+    """Take up to ``limit`` queries, spread evenly over source categories.
+
+    :func:`generate_queries` emits every query for one category before moving
+    to the next, so truncating the list head-first would search local
+    journalism and nothing else. This deals one query from each category in
+    turn, so a capped run still reaches nonprofits, government, coalitions and
+    the rest.
+
+    Parameters
+    ----------
+    queries : list[SearchQuery]
+        The full generated query list, grouped by source category.
+    limit : int
+        Maximum number of queries to keep. A non-positive limit keeps none.
+
+    Returns
+    -------
+    list[SearchQuery]
+        At most ``limit`` queries, ordered by round-robin over categories.
+    """
+    if limit <= 0:
+        return []
+    if len(queries) <= limit:
+        return queries
+
+    by_category: defaultdict[str, list[SearchQuery]] = defaultdict(list)
+    for query in queries:
+        by_category[query.source_category].append(query)
+
+    interleaved = chain.from_iterable(zip_longest(*by_category.values()))
+    return list(islice((query for query in interleaved if query is not None), limit))
 
 
 async def generate_queries_stream(

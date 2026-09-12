@@ -20,7 +20,12 @@ from atlas_discovery_engine.extraction import (
     strip_code_fence,
     validate_entries,
 )
-from atlas_discovery_engine.querying import SearchQuery, generate_queries, generate_queries_stream
+from atlas_discovery_engine.querying import (
+    SearchQuery,
+    generate_queries,
+    generate_queries_stream,
+    sample_queries_across_categories,
+)
 from atlas_discovery_engine.scoring import (
     ScoredRecord,
     score_ranked_records,
@@ -54,6 +59,7 @@ __all__ = [
     "deduplicate_raw_entries_stream",
     "generate_queries",
     "generate_queries_stream",
+    "sample_queries_across_categories",
     "normalize_entity_type",
     "normalize_geo_specificity",
     "parse_extraction_response",

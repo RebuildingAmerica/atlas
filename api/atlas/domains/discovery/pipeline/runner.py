@@ -22,7 +22,10 @@ from atlas.domains.discovery.cost import (
 )
 from atlas.domains.discovery.pipeline.deduplicator import deduplicate_entries
 from atlas.domains.discovery.pipeline.extractor import extract_entries
-from atlas.domains.discovery.pipeline.query_generator import generate_queries
+from atlas.domains.discovery.pipeline.query_generator import (
+    generate_queries,
+    sample_queries_across_categories,
+)
 from atlas.domains.discovery.pipeline.ranker import rank_entries
 from atlas.domains.discovery.pipeline.source_fetcher import build_search_provider, fetch_sources
 from atlas.domains.discovery.trust_gate import evaluate_publication
@@ -146,13 +149,17 @@ async def run_discovery_pipeline(  # noqa: PLR0915
         city = job.location_query.split(",", maxsplit=1)[0].strip()
 
         t0 = time.monotonic()
-        queries = generate_queries(city=city, state=job.state, issue_areas=job.issue_areas)
+        generated = generate_queries(city=city, state=job.state, issue_areas=job.issue_areas)
+        queries = sample_queries_across_categories(
+            generated, active_settings.discovery_max_queries_per_run
+        )
         logger.info(
             "Pipeline step completed",
             extra={
                 "run_id": run_id,
                 "step": "query_gen",
                 "count": len(queries),
+                "generated": len(generated),
                 "duration_ms": int((time.monotonic() - t0) * 1000),
             },
         )
