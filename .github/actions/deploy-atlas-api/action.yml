@@ -181,7 +181,7 @@ runs:
           DATABASE_URL=${{ inputs.database-url }}
           ANTHROPIC_API_KEY=${{ inputs.anthropic-api-key }}
           SEARCH_API_KEY=${{ inputs.search-api-key }}
-          DISCOVERY_REGISTRY_MAX_ORGANIZATIONS=50
+          DISCOVERY_REGISTRY_MAX_ORGANIZATIONS=250
           ATLAS_AUTH_INTERNAL_SECRET=${{ inputs.auth-internal-secret }}
           ATLAS_EDGE_ORIGIN_SECRET=${{ inputs.edge-origin-secret }}
           ATLAS_AUTH_API_KEY_INTROSPECTION_URL=${{ steps.hosted-auth.outputs.auth-api-key-introspection-url }}
