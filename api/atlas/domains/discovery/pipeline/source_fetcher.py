@@ -23,7 +23,15 @@ logger = logging.getLogger(__name__)
 __all__ = ["FetchedSource", "build_search_provider", "fetch_sources"]
 
 MAX_SOURCE_AGE_DAYS = 730
-MIN_SOURCE_WORDS = 200
+
+# Tuned for news articles, which is all discovery searched for originally. It
+# now also asks for nonprofit homepages, directory entries and profiles, and
+# those extract short: measured against six organizations already in the
+# catalog, trafilatura yielded 109 to 241 words and only two cleared 200. Bike
+# Walk Nebraska, an existing Atlas record, yields 156 and its own fetcher would
+# have thrown it away. A page with nothing extractable still scores zero and
+# still goes, which is the case this floor needs to catch.
+MIN_SOURCE_WORDS = 40
 
 # 40 queries come back as up to 200 unique URLs. Fetched one after another at a
 # 20-second timeout each, that outlived the window Cloud Run keeps a background
@@ -31,6 +39,17 @@ MIN_SOURCE_WORDS = 200
 # slowest phase of the pipeline from minutes into seconds without hammering any
 # single host, since the URLs are spread across publishers.
 PAGE_FETCH_CONCURRENCY = 10
+
+# httpx announces itself as "python-httpx/x.y", which a lot of hosts refuse.
+# Measured over eight civic and policy sites, that default reached five; saying
+# who we are and where to complain reached all eight, and beating a Chrome
+# impersonation that reached seven. Atlas publishes the sources it reads, so it
+# can afford to be honest about fetching them.
+PAGE_FETCH_HEADERS = {
+    "User-Agent": "AtlasBot/1.0 (+https://atlas.rebuildingus.org)",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 
 @dataclass
@@ -112,7 +131,9 @@ async def fetch_sources(
             continue
         unique[result.url] = result
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as client:
+    async with httpx.AsyncClient(
+        follow_redirects=True, timeout=20.0, headers=PAGE_FETCH_HEADERS
+    ) as client:
         gate = asyncio.Semaphore(PAGE_FETCH_CONCURRENCY)
         candidates = await asyncio.gather(
             *(_fetch_one_source(client, gate, url, result) for url, result in unique.items())

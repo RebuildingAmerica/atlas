@@ -68,6 +68,21 @@ class TestSourceFetchingHelpers:
         assert _should_keep_source("word " * 250, old_date) is False
         assert _should_keep_source("word " * 250, "2026-01-01") is True
 
+    def test_should_keep_source_accepts_an_organization_homepage(self) -> None:
+        """Org homepages extract short, and they are what discovery looks for.
+
+        Measured against organizations already in the catalog, trafilatura
+        yields roughly 109 to 241 words for a homepage. A floor set for news
+        articles rejected most of them.
+        """
+        assert _should_keep_source("word " * 109, None) is True
+        assert _should_keep_source("word " * 156, "2026-01-15") is True
+
+    def test_should_keep_source_still_rejects_a_page_with_nothing_on_it(self) -> None:
+        """A JS-only page extracts to nothing and carries no actor to find."""
+        assert _should_keep_source("", None) is False
+        assert _should_keep_source("Skip to main content", None) is False
+
     def test_should_keep_source_accepts_long_undated_content(self) -> None:
         """Long-form sources without a publication date should still be eligible."""
         assert _should_keep_source("word " * 250, None) is True
