@@ -109,6 +109,8 @@ async def _upsert_entry(
                 "geocode_precision": located.precision,
                 "geocode_source": located.source,
             }
+    if is_registry_corroborated(entry.source_urls):
+        await ReviewQueueCRUD.release_corroborated(conn, entity_id=str(match.id))
     await EntryCRUD.update(
         conn,
         match.id,

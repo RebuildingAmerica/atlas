@@ -230,6 +230,35 @@ class ReviewQueueCRUD:
         await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
 
     @staticmethod
+    async def release_corroborated(conn: Any, *, entity_id: str) -> None:
+        """Publish a held record once an authoritative registry confirms it.
+
+        The publication gate runs when a record is created, so a record held
+        as uncorroborated stays held even after a later run cites an EIN
+        filing for it. This is how that new evidence takes effect.
+
+        Only an uncorroborated hold is released. A possible duplicate stays
+        held because merging is a reviewer's decision, and a record a human
+        already rejected has no pending item left to release.
+
+        Parameters
+        ----------
+        conn
+            Open database connection.
+        entity_id : str
+            The entry that gained registry corroboration.
+        """
+        cursor = await conn.execute(
+            """
+            SELECT id FROM review_queue
+            WHERE entity_id = ? AND status = 'pending' AND hold_reason = ?
+            """,
+            (entity_id, "uncorroborated_web_only"),
+        )
+        for row in await cursor.fetchall():
+            await ReviewQueueCRUD.approve(conn, row[0], reviewed_by="registry")
+
+    @staticmethod
     async def reject(conn: Any, item_id: str, *, reviewed_by: str) -> None:
         """Reject a held record: leave its entry inactive, close the item."""
         await ReviewQueueCRUD._close(conn, item_id, "rejected", reviewed_by)

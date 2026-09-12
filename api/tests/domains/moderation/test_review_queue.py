@@ -301,6 +301,89 @@ async def test_count_pending_tracks_open_items(db_url: str) -> None:
     assert after_one_closed == 1
 
 
+async def _held_organization(conn: object, hold_reason: str) -> tuple[str, str]:
+    """Create an inactive organization holding on ``hold_reason``."""
+    entity_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name=f"Housing Trust {hold_reason}",
+        description="A registered nonprofit.",
+        city="Lincoln",
+        state="NE",
+        geo_specificity="local",
+        active=False,
+    )
+    item_id = await ReviewQueueCRUD.enqueue(
+        conn,
+        entity_id=entity_id,
+        kind="organization",
+        hold_reason=hold_reason,
+        score=0.5,
+        dedup_suspect=hold_reason == "dedup_suspect",
+        dedup_note=None,
+    )
+    return str(entity_id), str(item_id)
+
+
+@pytest.mark.asyncio
+async def test_registry_corroboration_publishes_an_uncorroborated_hold(db_url: str) -> None:
+    """A later run citing an EIN filing releases what the gate held."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id, item_id = await _held_organization(conn, "uncorroborated_web_only")
+
+        await ReviewQueueCRUD.release_corroborated(conn, entity_id=entity_id)
+
+        entry = await EntryCRUD.get_by_id(conn, entity_id)
+        item = await ReviewQueueCRUD.get_by_id(conn, item_id)
+    finally:
+        await conn.close()
+
+    assert entry is not None
+    assert entry.active is True
+    assert item is not None
+    assert item.status == "approved"
+    assert item.reviewed_by == "registry"
+
+
+@pytest.mark.asyncio
+async def test_registry_corroboration_leaves_a_possible_duplicate_held(db_url: str) -> None:
+    """Merging stays a reviewer's decision, whatever the register says."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id, item_id = await _held_organization(conn, "dedup_suspect")
+
+        await ReviewQueueCRUD.release_corroborated(conn, entity_id=entity_id)
+
+        entry = await EntryCRUD.get_by_id(conn, entity_id)
+        item = await ReviewQueueCRUD.get_by_id(conn, item_id)
+    finally:
+        await conn.close()
+
+    assert entry is not None
+    assert entry.active is False
+    assert item is not None
+    assert item.status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_registry_corroboration_does_not_reopen_a_rejected_record(db_url: str) -> None:
+    """A curator's rejection outranks any later automated evidence."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id, item_id = await _held_organization(conn, "uncorroborated_web_only")
+        await ReviewQueueCRUD.reject(conn, item_id, reviewed_by="curator@atlas")
+
+        await ReviewQueueCRUD.release_corroborated(conn, entity_id=entity_id)
+
+        entry = await EntryCRUD.get_by_id(conn, entity_id)
+    finally:
+        await conn.close()
+
+    assert entry is not None
+    assert entry.active is False
+
+
 def test_coerce_date_handles_missing_and_invalid_values() -> None:
     """Review queue timestamps should parse conservatively."""
     assert coerce_date(None) is None
