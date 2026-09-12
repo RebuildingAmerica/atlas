@@ -1,0 +1,88 @@
+name: Read API Logs
+
+# Prints recent Atlas API log entries. The API logs why a discovery run found
+# nothing, and reading Cloud Run logs needs GCP credentials that only CI holds,
+# so this is the operator's way to see them without a gcloud login.
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: Substring the log line must contain (blank for all).
+        required: false
+        default: "Brave search completed"
+        type: string
+      freshness:
+        description: How far back to look, as a gcloud duration.
+        required: false
+        default: "2h"
+        type: string
+      limit:
+        description: Maximum entries to print.
+        required: false
+        default: "40"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Print matching log entries
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          SERVICE_NAME: ${{ secrets.ATLAS_API_SERVICE_NAME || 'atlas-api' }}
+          FILTER: ${{ inputs.filter }}
+          FRESHNESS: ${{ inputs.freshness }}
+          LIMIT: ${{ inputs.limit }}
+        # Reading logs needs roles/logging.viewer. The deploy service account
+        # may not have it, so say that plainly rather than failing on a raw
+        # permission error.
+        shell: bash --noprofile --norc {0}
+        run: |
+          set -uo pipefail
+          query="resource.type=\"cloud_run_revision\"
+          resource.labels.service_name=\"$SERVICE_NAME\""
+          if [ -n "$FILTER" ]; then
+            query="$query
+          textPayload:\"$FILTER\" OR jsonPayload.message:\"$FILTER\""
+          fi
+
+          output="$(gcloud logging read "$query" \
+            --project="$GCP_PROJECT_ID" \
+            --freshness="$FRESHNESS" \
+            --limit="$LIMIT" \
+            --order=desc \
+            --format='value(timestamp, textPayload, jsonPayload.message)' 2>&1)"
+          status=$?
+
+          if [ $status -ne 0 ]; then
+            echo "::error title=Could not read logs::$output"
+            echo "If this is a permissions error, the deploy service account needs"
+            echo "roles/logging.viewer. scripts/grant-monitoring-role.sh grants it."
+            exit 1
+          fi
+
+          if [ -z "$output" ]; then
+            echo "No log entries matched in the last $FRESHNESS."
+            exit 0
+          fi
+
+          echo "$output"
