@@ -40,9 +40,9 @@ def evaluate_publication(
     2. A person is always held — wrong facts about a named individual are the
        core liability.
     3. An organization auto-publishes only when corroborated by an authoritative
-       registry (EIN/990/FEC). In Phase 0 no registry connectors exist yet, so
-       ``registry_corroborated`` is effectively always False and orgs hold too —
-       the intended conservative posture.
+       registry (EIN/990/FEC). The nonprofit register supplies that signal, so
+       an organization found by web search alone still holds while one carrying
+       an IRS filing publishes.
     4. Everything else is held as uncorroborated web-only.
 
     Parameters

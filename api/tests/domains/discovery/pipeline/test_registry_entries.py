@@ -12,6 +12,7 @@ from atlas_discovery_engine import (
 from atlas.domains.discovery.pipeline.registry_entries import (
     build_registry_provider,
     collect_registry_organizations,
+    is_registry_corroborated,
     registry_organizations_to_entries,
 )
 
@@ -150,6 +151,34 @@ class TestRegistryOrganizationsToEntries:
         )
 
         assert entries == []
+
+
+class TestIsRegistryCorroborated:
+    def test_a_register_filing_page_corroborates(self) -> None:
+        """The EIN page is the authoritative record the trust gate asks for."""
+        entries = registry_organizations_to_entries(
+            [
+                RegistryOrganization(
+                    name="Housing Trust",
+                    city="Lincoln",
+                    state="NE",
+                    registry_id="470123456",
+                    source_url=f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456",
+                )
+            ],
+            issue_areas=[],
+            today_iso="2026-09-12",
+        )
+
+        assert is_registry_corroborated(entries[0]["source_urls"]) is True
+
+    def test_an_ordinary_web_source_does_not(self) -> None:
+        """A news article about an organization is not a filing."""
+        assert is_registry_corroborated(["https://example.org/about-us"]) is False
+
+    def test_a_record_citing_nothing_does_not(self) -> None:
+        """An entry with no sources has nothing to corroborate it."""
+        assert is_registry_corroborated([]) is False
 
 
 class TestBuildRegistryProvider:

@@ -15,6 +15,7 @@ from atlas_shared import (
 
 from atlas.domains.catalog.geo import geocode_entry
 from atlas.domains.catalog.models.relationships import RelationshipCRUD
+from atlas.domains.discovery.pipeline.registry_entries import is_registry_corroborated
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, SourceCRUD
@@ -57,7 +58,7 @@ async def _upsert_entry(
         today_iso = _today_iso_date()
         decision = evaluate_publication(
             kind=str(entry.entry_type),
-            registry_corroborated=False,
+            registry_corroborated=is_registry_corroborated(entry.source_urls),
             dedup_suspect=dedup_suspect,
             score=score,
         )

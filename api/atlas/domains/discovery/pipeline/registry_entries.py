@@ -32,10 +32,33 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "build_registry_provider",
     "collect_registry_organizations",
+    "is_registry_corroborated",
     "registry_organizations_to_entries",
 ]
 
 _SOURCE_TYPE = "government_record"
+
+
+def is_registry_corroborated(source_urls: Sequence[str]) -> bool:
+    """Report whether a record cites the nonprofit register itself.
+
+    The trust gate auto-publishes an organization only when an authoritative
+    registry confirms it, meaning an EIN or 990 filing. A register source URL
+    is that filing's public page, so citing one is the corroboration the gate
+    asks for. A city council page is also a government record and is not.
+
+    Parameters
+    ----------
+    source_urls : Sequence[str]
+        Every source the record cites.
+
+    Returns
+    -------
+    bool
+        True when at least one source is a register filing page.
+    """
+    prefix = ProPublicaRegistryProvider.ORGANIZATION_URL
+    return any(url.startswith(prefix) for url in source_urls)
 
 
 def build_registry_provider(limit: int) -> RegistryProvider | None:
