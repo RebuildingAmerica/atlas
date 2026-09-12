@@ -158,6 +158,10 @@ class ProPublicaRegistryProvider(RegistryProvider):
                 self.SEARCH_ENDPOINT,
                 params={"q": term, "state[id]": state, "page": page},
             )
+            # ProPublica answers 404 for a term nothing matches rather than an
+            # empty result set, so a term with no filers is not a failure.
+            if response.status_code == httpx.codes.NOT_FOUND:
+                return {"organizations": []}
             response.raise_for_status()
             decoded = response.json()
         except httpx.HTTPError as error:

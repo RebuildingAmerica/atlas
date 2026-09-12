@@ -132,6 +132,14 @@ class TestProPublicaRegistryProvider:
         assert await ProPublicaRegistryProvider().search_organizations("h", "CA", limit=0) == []
         assert client.pages == []
 
+    async def test_a_term_nothing_matches_is_not_a_failure(self, monkeypatch: Any) -> None:
+        """ProPublica answers 404 for an unmatched term, not an empty page."""
+        client = _ScriptedClient([_FakeResponse(status_code=404)])
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
+
+        assert await ProPublicaRegistryProvider().search_organizations("zzz", "NE", limit=5) == []
+        assert client.pages == [0]
+
     @pytest.mark.parametrize(
         "response",
         [
