@@ -111,6 +111,10 @@ class BraveSearchProvider(SearchProvider):
     ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
     DEFAULT_RETRY_SECONDS = 1.0
     MAX_RETRY_SECONDS = 30.0
+    # Brave's free tier allows one query per second. Without a gap between
+    # queries every one after the first came back 429, exhausted its retries,
+    # and was dropped, so a 40-query run searched the web and found nothing.
+    DEFAULT_MIN_QUERY_INTERVAL_SECONDS = 1.1
 
     def __init__(
         self,
@@ -119,6 +123,7 @@ class BraveSearchProvider(SearchProvider):
         count: int = 5,
         timeout: float = 20.0,
         max_retries: int = 2,
+        min_query_interval: float | None = None,
         sleep: SleepFn | None = None,
     ) -> None:
         """Configure the Brave adapter.
@@ -133,6 +138,9 @@ class BraveSearchProvider(SearchProvider):
             Per-request timeout in seconds. Default is 20.0.
         max_retries : int, optional
             Retries after the initial attempt when rate-limited. Default is 2.
+        min_query_interval : float | None, optional
+            Seconds to leave between queries, pacing the run under the
+            provider's per-second quota. Defaults to the free tier's ceiling.
         sleep : SleepFn | None, optional
             Awaitable sleep used between retries; defaults to ``asyncio.sleep``.
             Injectable so tests can run without real delays.
@@ -141,6 +149,11 @@ class BraveSearchProvider(SearchProvider):
         self._count = count
         self._timeout = timeout
         self._max_retries = max_retries
+        self._min_query_interval = (
+            self.DEFAULT_MIN_QUERY_INTERVAL_SECONDS
+            if min_query_interval is None
+            else min_query_interval
+        )
         self._sleep = sleep or asyncio.sleep
 
     async def search(self, queries: Sequence[str]) -> list[SearchResult]:
@@ -148,7 +161,9 @@ class BraveSearchProvider(SearchProvider):
         headers = {"Accept": "application/json", "X-Subscription-Token": self._api_key}
         results: list[SearchResult] = []
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            for query in queries:
+            for index, query in enumerate(queries):
+                if index and self._min_query_interval > 0:
+                    await self._sleep(self._min_query_interval)
                 results.extend(await self._search_one(client, query, headers))
         return results
 

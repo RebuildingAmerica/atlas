@@ -115,9 +115,7 @@ def generate_queries(
     return queries
 
 
-def sample_queries_across_categories(
-    queries: list[SearchQuery], limit: int
-) -> list[SearchQuery]:
+def sample_queries_across_categories(queries: list[SearchQuery], limit: int) -> list[SearchQuery]:
     """Take up to ``limit`` queries, spread evenly over source categories.
 
     :func:`generate_queries` emits every query for one category before moving

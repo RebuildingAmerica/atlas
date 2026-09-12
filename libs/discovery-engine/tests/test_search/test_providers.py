@@ -136,7 +136,7 @@ class TestBraveSearchProvider:
         client = _ScriptedClient([_FakeResponse(status_code=200, payload=_brave_payload())])
         monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
 
-        provider = BraveSearchProvider(api_key="test-key")
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
         results = await provider.search(["housing"])
 
         assert results == [
@@ -170,7 +170,7 @@ class TestBraveSearchProvider:
         client = _ScriptedClient([_FakeResponse(status_code=200, payload=payload)])
         monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
 
-        provider = BraveSearchProvider(api_key="test-key")
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
         results = await provider.search(["housing"])
 
         assert results == [
@@ -188,7 +188,7 @@ class TestBraveSearchProvider:
         client = _ScriptedClient([_FakeResponse(status_code=200, payload=payload)])
         monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
 
-        provider = BraveSearchProvider(api_key="test-key")
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
 
         assert await provider.search(["housing"]) == []
 
@@ -213,6 +213,46 @@ class TestBraveSearchProvider:
         assert client.calls == 2
         assert slept == [2.0]
         assert results[0].url == "https://example.com/story"
+
+    async def test_paces_queries_under_the_provider_quota(self, monkeypatch: Any) -> None:
+        """Queries wait between calls, since the free tier allows one a second."""
+        client = _ScriptedClient(
+            [_FakeResponse(status_code=200, payload=_brave_payload()) for _ in range(3)]
+        )
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
+
+        slept: list[float] = []
+
+        async def fake_sleep(seconds: float) -> None:
+            slept.append(seconds)
+
+        provider = BraveSearchProvider(api_key="test-key", sleep=fake_sleep)
+        await provider.search(["one", "two", "three"])
+
+        assert client.calls == 3
+        # A gap before each query but the first, and none of it spent retrying.
+        assert slept == [
+            BraveSearchProvider.DEFAULT_MIN_QUERY_INTERVAL_SECONDS,
+            BraveSearchProvider.DEFAULT_MIN_QUERY_INTERVAL_SECONDS,
+        ]
+
+    async def test_pacing_can_be_disabled_for_a_paid_quota(self, monkeypatch: Any) -> None:
+        """A caller with headroom can turn the gap off."""
+        client = _ScriptedClient(
+            [_FakeResponse(status_code=200, payload=_brave_payload()) for _ in range(2)]
+        )
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
+
+        slept: list[float] = []
+
+        async def fake_sleep(seconds: float) -> None:
+            slept.append(seconds)
+
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0, sleep=fake_sleep)
+        await provider.search(["one", "two"])
+
+        assert client.calls == 2
+        assert slept == []
 
     async def test_persistent_429_skips_the_query_without_raising(self, monkeypatch: Any) -> None:
         """When every attempt is rate-limited, the query yields nothing and does not raise."""
@@ -278,7 +318,7 @@ class TestBraveSearchProvider:
         client = _ScriptedClient([_FakeResponse(status_code=500)])
         monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
 
-        provider = BraveSearchProvider(api_key="test-key")
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
 
         assert await provider.search(["housing"]) == []
         assert client.calls == 1
@@ -294,7 +334,7 @@ class TestBraveSearchProvider:
         )
         monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
 
-        provider = BraveSearchProvider(api_key="test-key")
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
         results = await provider.search(["first", "second"])
 
         # First query errors out and is skipped; second query succeeds.
@@ -313,7 +353,7 @@ class TestBraveSearchProvider:
         )
         monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
 
-        provider = BraveSearchProvider(api_key="test-key")
+        provider = BraveSearchProvider(api_key="test-key", min_query_interval=0)
         results = await provider.search(["a", "b"])
 
         assert len(results) == 4
