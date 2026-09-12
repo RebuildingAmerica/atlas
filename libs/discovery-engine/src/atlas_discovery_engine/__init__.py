@@ -26,6 +26,12 @@ from atlas_discovery_engine.querying import (
     generate_queries_stream,
     sample_queries_across_categories,
 )
+from atlas_discovery_engine.registry import (
+    ProPublicaRegistryProvider,
+    RegistryOrganization,
+    RegistryProvider,
+    registry_terms_for_issue,
+)
 from atlas_discovery_engine.scoring import (
     ScoredRecord,
     score_ranked_records,
@@ -46,6 +52,9 @@ __all__ = [
     "DeduplicationFlag",
     "ExtractionFailedError",
     "FallbackSearchProvider",
+    "ProPublicaRegistryProvider",
+    "RegistryOrganization",
+    "RegistryProvider",
     "ScoredRecord",
     "SearchProvider",
     "SearchQuery",
@@ -63,6 +72,7 @@ __all__ = [
     "normalize_geo_specificity",
     "parse_extraction_response",
     "parse_identify_response",
+    "registry_terms_for_issue",
     "sample_queries_across_categories",
     "score_ranked_records",
     "score_ranked_stream",
