@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import pytest
-from atlas_discovery_engine import RegistryOrganization, RegistryProvider
+from atlas_discovery_engine import (
+    ProPublicaRegistryProvider,
+    RegistryOrganization,
+    RegistryProvider,
+)
 
 from atlas.domains.discovery.pipeline.registry_entries import (
+    build_registry_provider,
     collect_registry_organizations,
     registry_organizations_to_entries,
 )
@@ -145,3 +150,16 @@ class TestRegistryOrganizationsToEntries:
         )
 
         assert entries == []
+
+
+class TestBuildRegistryProvider:
+    def test_no_budget_means_no_register_and_no_network(self) -> None:
+        """A run configured for nothing must not reach a public API."""
+        assert build_registry_provider(0) is None
+        assert build_registry_provider(-1) is None
+
+    def test_a_budget_yields_the_propublica_adapter(self) -> None:
+        """Given budget, the register is the IRS index ProPublica publishes."""
+        provider = build_registry_provider(25)
+
+        assert isinstance(provider, ProPublicaRegistryProvider)

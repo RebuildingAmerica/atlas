@@ -221,13 +221,14 @@ class Settings(BaseSettings):
     """
 
     discovery_registry_max_organizations: int = Field(
-        default=50, ge=0, validation_alias="DISCOVERY_REGISTRY_MAX_ORGANIZATIONS"
+        default=0, ge=0, validation_alias="DISCOVERY_REGISTRY_MAX_ORGANIZATIONS"
     )
     """Organizations a run may take from the public nonprofit register.
 
     The register needs no API key, so this is the one discovery source that
-    keeps working when the search vendor refuses the account. Zero turns it
-    off.
+    keeps working when the search vendor refuses the account. It is off by
+    default for the same reason search is off without a key: a test that
+    configures nothing must reach no network. Production sets it.
     """
 
     discovery_max_run_cost: float = Field(default=5.0, validation_alias="DISCOVERY_MAX_RUN_COST")

@@ -15,20 +15,48 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from atlas_discovery_engine import RegistryOrganization, registry_terms_for_issue
+from atlas_discovery_engine import (
+    ProPublicaRegistryProvider,
+    RegistryOrganization,
+    RegistryProvider,
+    registry_terms_for_issue,
+)
 
 from atlas.taxonomy.search_terms import ISSUE_SEARCH_TERMS
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from atlas_discovery_engine import RegistryProvider
-
 logger = logging.getLogger(__name__)
 
-__all__ = ["collect_registry_organizations", "registry_organizations_to_entries"]
+__all__ = [
+    "build_registry_provider",
+    "collect_registry_organizations",
+    "registry_organizations_to_entries",
+]
 
 _SOURCE_TYPE = "government_record"
+
+
+def build_registry_provider(limit: int) -> RegistryProvider | None:
+    """Build the register adapter for a run, or None to skip the register.
+
+    Mirrors build_search_provider: a run that was given no budget reaches no
+    network, which keeps a test that configures nothing offline by default.
+
+    Parameters
+    ----------
+    limit : int
+        Organizations the run may take from the register. Zero skips it.
+
+    Returns
+    -------
+    RegistryProvider | None
+        A ProPublica-backed adapter when there is budget, else None.
+    """
+    if limit <= 0:
+        return None
+    return ProPublicaRegistryProvider()
 
 
 async def collect_registry_organizations(
