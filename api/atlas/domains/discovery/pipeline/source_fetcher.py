@@ -8,6 +8,7 @@ zeroing out a city, and the vendor stays swappable without touching pipeline
 code.
 """
 
+import asyncio
 import logging
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -23,6 +24,13 @@ __all__ = ["FetchedSource", "build_search_provider", "fetch_sources"]
 
 MAX_SOURCE_AGE_DAYS = 730
 MIN_SOURCE_WORDS = 200
+
+# 40 queries come back as up to 200 unique URLs. Fetched one after another at a
+# 20-second timeout each, that outlived the window Cloud Run keeps a background
+# worker alive, and the run died with nothing saved. Ten at a time turns the
+# slowest phase of the pipeline from minutes into seconds without hammering any
+# single host, since the URLs are spread across publishers.
+PAGE_FETCH_CONCURRENCY = 10
 
 
 @dataclass
@@ -104,35 +112,43 @@ async def fetch_sources(
             continue
         unique[result.url] = result
 
-    fetched: list[FetchedSource] = []
     async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as client:
-        for url, result in unique.items():
-            # Paywalls and bot walls answer 403 to anything that is not a
-            # browser, and a search across open-web sources hits them
-            # constantly. Skipping the page keeps the other results; raising
-            # threw away the whole run over one publisher.
-            try:
-                content = await _extract_page_text(client, url)
-            except httpx.HTTPError as error:
-                logger.info(
-                    "Source skipped",
-                    extra={"url": url, "reason": type(error).__name__},
-                )
-                continue
-            if not _should_keep_source(content, result.published):
-                continue
-            fetched.append(
-                FetchedSource(
-                    url=url,
-                    title=result.title,
-                    publication=result.publication,
-                    published_date=result.published,
-                    content=content,
-                    source_type=_infer_source_type(url, result.title),
-                )
-            )
+        gate = asyncio.Semaphore(PAGE_FETCH_CONCURRENCY)
+        candidates = await asyncio.gather(
+            *(_fetch_one_source(client, gate, url, result) for url, result in unique.items())
+        )
 
-    return fetched
+    return [source for source in candidates if source is not None]
+
+
+async def _fetch_one_source(
+    client: httpx.AsyncClient,
+    gate: asyncio.Semaphore,
+    url: str,
+    result: SearchResult,
+) -> FetchedSource | None:
+    """Fetch and qualify one search result, or return None to drop it."""
+    async with gate:
+        # Paywalls and bot walls answer 403 to anything that is not a browser,
+        # and a search across open-web sources hits them constantly. Skipping
+        # the page keeps the other results; raising threw away the whole run
+        # over one publisher.
+        try:
+            content = await _extract_page_text(client, url)
+        except httpx.HTTPError as error:
+            logger.info("Source skipped", extra={"url": url, "reason": type(error).__name__})
+            return None
+
+    if not _should_keep_source(content, result.published):
+        return None
+    return FetchedSource(
+        url=url,
+        title=result.title,
+        publication=result.publication,
+        published_date=result.published,
+        content=content,
+        source_type=_infer_source_type(url, result.title),
+    )
 
 
 def _normalize_queries(queries: Iterable[object]) -> list[str]:

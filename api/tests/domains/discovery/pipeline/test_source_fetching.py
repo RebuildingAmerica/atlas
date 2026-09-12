@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 import pytest
 from atlas_discovery_engine import BraveSearchProvider, SearchProvider, SearchResult
 
 from atlas.domains.discovery.pipeline.query_generator import generate_queries
 from atlas.domains.discovery.pipeline.source_fetcher import (
+    PAGE_FETCH_CONCURRENCY,
     _extract_page_text,
     _infer_source_type,
     _normalize_queries,
@@ -175,6 +178,70 @@ class TestSourceFetchingHelpers:
         results = await fetch_sources(["housing"], provider)
 
         assert [source.url for source in results] == ["https://open.example/story"]
+
+    @pytest.mark.asyncio
+    async def test_fetch_sources_overlaps_page_fetches(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Pages must be fetched together; sequentially they outlive the worker."""
+        provider = _StaticProvider(
+            *(_result(f"https://example.com/story-{index}", f"Story {index}") for index in range(8))
+        )
+        in_flight = 0
+        peak_in_flight = 0
+
+        async def fake_extract(_client: object, _url: str) -> str:
+            nonlocal in_flight, peak_in_flight
+            in_flight += 1
+            peak_in_flight = max(peak_in_flight, in_flight)
+            await asyncio.sleep(0)
+            in_flight -= 1
+            return "word " * 250
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.source_fetcher._extract_page_text", fake_extract
+        )
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.source_fetcher.httpx.AsyncClient", _StubAsyncClient
+        )
+
+        results = await fetch_sources(["housing"], provider)
+
+        assert len(results) == 8
+        assert peak_in_flight > 1
+
+    @pytest.mark.asyncio
+    async def test_fetch_sources_holds_page_fetches_under_the_concurrency_cap(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The cap keeps a wide result set from opening unbounded connections."""
+        provider = _StaticProvider(
+            *(
+                _result(f"https://example.com/story-{index}", f"Story {index}")
+                for index in range(PAGE_FETCH_CONCURRENCY * 3)
+            )
+        )
+        in_flight = 0
+        peak_in_flight = 0
+
+        async def fake_extract(_client: object, _url: str) -> str:
+            nonlocal in_flight, peak_in_flight
+            in_flight += 1
+            peak_in_flight = max(peak_in_flight, in_flight)
+            await asyncio.sleep(0)
+            in_flight -= 1
+            return "word " * 250
+
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.source_fetcher._extract_page_text", fake_extract
+        )
+        monkeypatch.setattr(
+            "atlas.domains.discovery.pipeline.source_fetcher.httpx.AsyncClient", _StubAsyncClient
+        )
+
+        await fetch_sources(["housing"], provider)
+
+        assert peak_in_flight <= PAGE_FETCH_CONCURRENCY
 
     @pytest.mark.asyncio
     async def test_fetch_sources_survives_a_provider_with_no_results(self) -> None:
