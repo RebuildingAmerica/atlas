@@ -7,7 +7,14 @@ from typing import Any
 import aiosqlite
 import pytest
 
-from atlas.models import database_migrations as migrations
+from atlas.models.database_migrations import (
+    atproto_graph,
+    atproto_queries,
+    atproto_reconcile,
+    atproto_records,
+    atproto_verify,
+    schema_introspection,
+)
 
 
 class _Cursor:
@@ -43,7 +50,7 @@ class _Connection:
 @pytest.mark.asyncio
 async def test_migration_rejects_unknown_backend() -> None:
     with pytest.raises(ValueError, match="Unsupported database backend"):
-        await migrations.migrate_atproto_identity_graph(_Connection(), backend="other")
+        await atproto_graph.migrate_atproto_identity_graph(_Connection(), backend="other")
 
 
 @pytest.mark.asyncio
@@ -57,9 +64,9 @@ async def test_sqlite_migration_rolls_back_a_transaction_it_opened_on_failure(
         msg = "simulated migration failure"
         raise RuntimeError(msg)
 
-    monkeypatch.setattr(migrations, "_migrate_atproto_identity_graph", failed_graph_migration)
+    monkeypatch.setattr(atproto_graph, "_migrate_atproto_identity_graph", failed_graph_migration)
     with pytest.raises(RuntimeError, match="simulated migration failure"):
-        await migrations.migrate_atproto_identity_graph(conn, backend="sqlite")
+        await atproto_graph.migrate_atproto_identity_graph(conn, backend="sqlite")
 
     assert conn.rolled_back
 
@@ -74,9 +81,9 @@ async def test_sqlite_migration_preserves_the_callers_transaction_on_failure(
         msg = "simulated migration failure"
         raise RuntimeError(msg)
 
-    monkeypatch.setattr(migrations, "_migrate_atproto_identity_graph", failed_graph_migration)
+    monkeypatch.setattr(atproto_graph, "_migrate_atproto_identity_graph", failed_graph_migration)
     with pytest.raises(RuntimeError, match="simulated migration failure"):
-        await migrations.migrate_atproto_identity_graph(conn, backend="sqlite")
+        await atproto_graph.migrate_atproto_identity_graph(conn, backend="sqlite")
 
     assert not conn.rolled_back
 
@@ -91,8 +98,8 @@ async def test_postgres_migration_acquires_the_transaction_advisory_lock(
         assert backend == "postgres"
         return {"resolution_status"} if table == "atproto_identities" else set()
 
-    monkeypatch.setattr(migrations, "_table_columns", global_identity_columns)
-    await migrations._migrate_atproto_identity_graph(conn, backend="postgres")
+    monkeypatch.setattr(atproto_graph, "_table_columns", global_identity_columns)
+    await atproto_graph._migrate_atproto_identity_graph(conn, backend="postgres")
 
     assert conn.statements == ["SELECT pg_advisory_xact_lock(?)"]
 
@@ -100,14 +107,16 @@ async def test_postgres_migration_acquires_the_transaction_advisory_lock(
 @pytest.mark.asyncio
 async def test_postgres_migration_helpers_use_information_schema_and_safe_ddl() -> None:
     columns_conn = _Connection([_Cursor(all_rows=[("id",), ("linked_atproto_did",)])])
-    assert await migrations._table_columns(columns_conn, "entries", backend="postgres") == {
+    assert await schema_introspection._table_columns(
+        columns_conn, "entries", backend="postgres"
+    ) == {
         "id",
         "linked_atproto_did",
     }
     assert "information_schema.columns" in columns_conn.statements[0]
 
     removal_conn = _Connection()
-    await migrations._remove_legacy_atproto_storage(
+    await atproto_graph._remove_legacy_atproto_storage(
         removal_conn,
         backend="postgres",
         legacy_entry_columns={"linked_atproto_did"},
@@ -118,7 +127,7 @@ async def test_postgres_migration_helpers_use_information_schema_and_safe_ddl() 
     ]
 
     lock_conn = _Connection()
-    await migrations._lock_atproto_migration_sources(
+    await atproto_queries._lock_atproto_migration_sources(
         lock_conn, backend="postgres", tables=("entries", "atproto_identities")
     )
     assert lock_conn.statements == [
@@ -134,24 +143,24 @@ async def test_migration_rejects_unrecognized_source_schemas(
         del backend
         return {"id"} if table == "atproto_identities" else set()
 
-    monkeypatch.setattr(migrations, "_table_columns", columns)
+    monkeypatch.setattr(atproto_graph, "_table_columns", columns)
     with pytest.raises(RuntimeError, match="Unrecognized atproto_identities"):
-        await migrations._migrate_atproto_identity_graph(_Connection(), backend="sqlite")
+        await atproto_graph._migrate_atproto_identity_graph(_Connection(), backend="sqlite")
 
     async def archived(_conn: object, _table: str, *, backend: str) -> set[str]:
         del backend
         return {"id"}
 
-    monkeypatch.setattr(migrations, "_table_columns", archived)
+    monkeypatch.setattr(atproto_graph, "_table_columns", archived)
     with pytest.raises(RuntimeError, match="archive already exists"):
-        await migrations._archive_legacy_atproto_identities(_Connection(), backend="sqlite")
+        await atproto_graph._archive_legacy_atproto_identities(_Connection(), backend="sqlite")
 
     with pytest.raises(RuntimeError, match="user_atproto_controls"):
-        await migrations._load_existing_atproto_graph_rows(
+        await atproto_queries._load_existing_atproto_graph_rows(
             _Connection(), control_columns={"bad"}, profile_link_columns=set()
         )
     with pytest.raises(RuntimeError, match="profile_atproto_links"):
-        await migrations._load_existing_atproto_graph_rows(
+        await atproto_queries._load_existing_atproto_graph_rows(
             _Connection(),
             control_columns=set(),
             profile_link_columns={"bad"},
@@ -160,16 +169,16 @@ async def test_migration_rejects_unrecognized_source_schemas(
 
 def test_existing_graph_reconciliation_edges() -> None:
     first = ("nonpreferred", "identity", "user", "active", None, None, "a", "a")
-    preferred_id = migrations._migration_id("control", "identity", "user")
+    preferred_id = atproto_reconcile._migration_id("control", "identity", "user")
     preferred = (preferred_id, "identity", "user", "active", None, None, "b", "b")
-    assert migrations._deduplicate_existing_controls([first, preferred]) == [preferred]
+    assert atproto_reconcile._deduplicate_existing_controls([first, preferred]) == [preferred]
     with pytest.raises(RuntimeError, match="unknown identity"):
-        migrations._remap_existing_identity_id(first, identity_id_map={}, identity_index=1)
+        atproto_reconcile._remap_existing_identity_id(first, identity_id_map={}, identity_index=1)
 
 
 @pytest.mark.asyncio
 async def test_profile_link_migration_rejects_conflicting_existing_relation() -> None:
-    link = migrations._LegacyEntryAtprotoLink(
+    link = atproto_records._LegacyEntryAtprotoLink(
         entry_id="entry",
         did="did:plc:legacy",
         handle="legacy.example",
@@ -185,7 +194,7 @@ async def test_profile_link_migration_rejects_conflicting_existing_relation() ->
         ]
     )
     with pytest.raises(RuntimeError, match="conflicts with legacy entry"):
-        await migrations._migrate_legacy_profile_link_rows(
+        await atproto_graph._migrate_legacy_profile_link_rows(
             conn, legacy_links=[link], proof_links={}
         )
 
@@ -193,7 +202,7 @@ async def test_profile_link_migration_rejects_conflicting_existing_relation() ->
 @pytest.mark.asyncio
 async def test_remove_legacy_storage_skips_absent_columns_and_archive() -> None:
     conn = _Connection()
-    await migrations._remove_legacy_atproto_storage(
+    await atproto_graph._remove_legacy_atproto_storage(
         conn,
         backend="sqlite",
         legacy_entry_columns=set(),
@@ -217,8 +226,10 @@ async def test_migration_builds_graph_from_entry_columns_without_legacy_identity
             )
             """
         )
-        await migrations.migrate_atproto_identity_graph(conn, backend="sqlite")
-        columns = await migrations._table_columns(conn, "atproto_identities", backend="sqlite")
+        await atproto_graph.migrate_atproto_identity_graph(conn, backend="sqlite")
+        columns = await schema_introspection._table_columns(
+            conn, "atproto_identities", backend="sqlite"
+        )
         assert "resolution_status" in columns
 
 
@@ -226,31 +237,32 @@ async def test_migration_builds_graph_from_entry_columns_without_legacy_identity
 async def test_legacy_loaders_reject_corrupt_rows_and_ignore_empty_values() -> None:
     missing_id = _Connection([_Cursor(all_rows=[("", "user", "did", "handle", None, 1, 1, 1, 1)])])
     with pytest.raises(RuntimeError, match="missing identifier"):
-        await migrations._load_legacy_identities(missing_id)
+        await atproto_queries._load_legacy_identities(missing_id)
 
     missing_time = _Connection(
         [_Cursor(all_rows=[("id", "user", "did", "handle", None, None, None, 1, 1)])]
     )
     with pytest.raises(RuntimeError, match="missing audit timestamps"):
-        await migrations._load_legacy_identities(missing_time)
+        await atproto_queries._load_legacy_identities(missing_time)
 
-    assert await migrations._load_legacy_entry_links(_Connection(), entry_columns=set()) == []
+    assert await atproto_queries._load_legacy_entry_links(_Connection(), entry_columns=set()) == []
     empty = _Connection([_Cursor(all_rows=[("entry", None, None, None, 1, 1)])])
     assert (
-        await migrations._load_legacy_entry_links(empty, entry_columns={"id", "updated_at"}) == []
+        await atproto_queries._load_legacy_entry_links(empty, entry_columns={"id", "updated_at"})
+        == []
     )
     missing_link_time = _Connection([_Cursor(all_rows=[("entry", "did", "handle", None, None, 1)])])
     with pytest.raises(RuntimeError, match="missing audit timestamps"):
-        await migrations._load_legacy_entry_links(
+        await atproto_queries._load_legacy_entry_links(
             missing_link_time,
-            entry_columns={"id", *migrations._LEGACY_ENTRY_ATPROTO_COLUMNS, "updated_at"},
+            entry_columns={"id", *atproto_records._LEGACY_ENTRY_ATPROTO_COLUMNS, "updated_at"},
         )
 
 
 @pytest.mark.asyncio
 async def test_proof_loader_filters_malformed_metadata() -> None:
     assert (
-        await migrations._load_matching_atproto_proofs(
+        await atproto_queries._load_matching_atproto_proofs(
             _Connection(), claim_columns=set(), proof_columns=set()
         )
         == {}
@@ -263,15 +275,15 @@ async def test_proof_loader_filters_malformed_metadata() -> None:
     ]
     conn = _Connection([_Cursor(all_rows=rows)])
     assert (
-        await migrations._load_matching_atproto_proofs(
+        await atproto_queries._load_matching_atproto_proofs(
             conn, claim_columns={"id"}, proof_columns={"id"}
         )
         == {}
     )
 
 
-def _identity() -> migrations._GlobalAtprotoIdentity:
-    return migrations._GlobalAtprotoIdentity(
+def _identity() -> atproto_records._GlobalAtprotoIdentity:
+    return atproto_records._GlobalAtprotoIdentity(
         id="identity",
         did="did:plc:test",
         current_handle="test.example",
@@ -288,37 +300,39 @@ def _identity() -> migrations._GlobalAtprotoIdentity:
 @pytest.mark.asyncio
 async def test_migration_assertions_report_each_invariant() -> None:
     with pytest.raises(RuntimeError, match="row-count mismatch"):
-        await migrations._assert_atproto_migration(
+        await atproto_verify._assert_atproto_migration(
             _Connection([_Cursor(one=(0,)), _Cursor(one=(0,)), _Cursor(one=(0,))]),
-            migrations._AtprotoMigrationExpectations(1, 0, 0, {}, [], []),
+            atproto_records._AtprotoMigrationExpectations(1, 0, 0, {}, [], []),
         )
 
     identity = _identity()
     with pytest.raises(RuntimeError, match="data mismatch for DID"):
-        await migrations._assert_atproto_migration(
+        await atproto_verify._assert_atproto_migration(
             _Connection(
                 [_Cursor(one=(1,)), _Cursor(one=(0,)), _Cursor(one=(0,)), _Cursor(one=None)]
             ),
-            migrations._AtprotoMigrationExpectations(1, 0, 0, {identity.did: identity}, [], []),
+            atproto_records._AtprotoMigrationExpectations(
+                1, 0, 0, {identity.did: identity}, [], []
+            ),
         )
 
     control = ("control", "identity", "user", "active", None, None, "now", "now")
     with pytest.raises(RuntimeError, match="control migration data mismatch"):
-        await migrations._assert_atproto_migration(
+        await atproto_verify._assert_atproto_migration(
             _Connection(
                 [_Cursor(one=(0,)), _Cursor(one=(1,)), _Cursor(one=(0,)), _Cursor(one=None)]
             ),
-            migrations._AtprotoMigrationExpectations(0, 1, 0, {}, [control], []),
+            atproto_records._AtprotoMigrationExpectations(0, 1, 0, {}, [control], []),
         )
 
     link = ("link", "entry", "identity", None, None, "verified", "now", "now", None, "now", "now")
     with pytest.raises(RuntimeError, match="profile-link migration data mismatch"):
-        await migrations._assert_atproto_migration(
+        await atproto_verify._assert_atproto_migration(
             _Connection(
                 [_Cursor(one=(0,)), _Cursor(one=(0,)), _Cursor(one=(1,)), _Cursor(one=None)]
             ),
-            migrations._AtprotoMigrationExpectations(0, 0, 1, {}, [], [link]),
+            atproto_records._AtprotoMigrationExpectations(0, 0, 1, {}, [], [link]),
         )
 
     with pytest.raises(RuntimeError, match="Could not count migration table"):
-        await migrations._table_count(_Connection([_Cursor(one=None)]), "missing")
+        await atproto_queries._table_count(_Connection([_Cursor(one=None)]), "missing")
