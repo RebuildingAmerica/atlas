@@ -354,3 +354,76 @@ class TestWorkerExecution:
         await stop_job_worker()
 
         assert calls["n"] >= _EXPECTED_RECOVERY_DB_CONNECTION_ATTEMPTS
+
+
+class TestLeaseRenewal:
+    @pytest.mark.asyncio
+    async def test_renewal_pushes_a_running_jobs_lease_forward(
+        self, db_url: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A long run keeps its lease, so no other worker reclaims it mid-run."""
+        from atlas.domains.discovery import worker
+
+        conn = await get_db_connection(db_url)
+        run_id = await DiscoveryRunCRUD.create(
+            conn, location_query="Omaha, NE", state="NE", issue_areas=["housing_affordability"]
+        )
+        job_id = await DiscoveryJobCRUD.create(conn, run_id=run_id)
+        claimed = await DiscoveryJobCRUD.claim_next(conn, claimed_by="w", lease_seconds=1)
+        assert claimed is not None
+        before = claimed.claimed_until
+        await conn.close()
+
+        monkeypatch.setattr(worker, "_LEASE_RENEWAL_SECONDS", _POLL_TEST_INTERVAL_SECONDS)
+        renewal = asyncio.create_task(
+            worker._renew_lease(
+                db_url, database_backend=None, job_id=job_id, progress={"step": "running"}
+            )
+        )
+
+        async def renewed() -> bool:
+            check = await get_db_connection(db_url)
+            try:
+                job = await DiscoveryJobCRUD.get_by_id(check, job_id)
+            finally:
+                await check.close()
+            return job is not None and job.claimed_until != before and job.status == "running"
+
+        try:
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + _WORKER_RECOVERY_TIMEOUT_SECONDS
+            while not await renewed():
+                if loop.time() > deadline:
+                    pytest.fail("Lease was never renewed.")
+                await asyncio.sleep(_POLL_TEST_INTERVAL_SECONDS)
+        finally:
+            renewal.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await renewal
+
+    @pytest.mark.asyncio
+    async def test_a_failed_renewal_is_retried_rather_than_ending_the_run(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """A database blip must not cancel the pipeline it is guarding."""
+        from atlas.domains.discovery import worker
+
+        attempts = 0
+
+        async def unreachable(*_args: object, **_kwargs: object) -> object:
+            nonlocal attempts
+            attempts += 1
+            msg = "database unavailable"
+            raise ConnectionError(msg)
+
+        monkeypatch.setattr(worker, "_LEASE_RENEWAL_SECONDS", _POLL_TEST_INTERVAL_SECONDS)
+        monkeypatch.setattr(worker, "get_db_connection", unreachable)
+        renewal = asyncio.create_task(
+            worker._renew_lease("sqlite:///unused", database_backend=None, job_id="j", progress={})
+        )
+
+        await _wait_until(lambda: attempts >= 2, timeout_seconds=_WORKER_RECOVERY_TIMEOUT_SECONDS)
+        renewal.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await renewal
+        assert "Lease renewal failed for job j" in caplog.text

@@ -27,6 +27,11 @@ __all__ = ["start_job_worker", "stop_job_worker"]
 
 _POLL_INTERVAL_SECONDS = 10
 _LEASE_SECONDS = 900
+# A run that reads the nonprofit register and its IRS returns takes 10 to 20
+# minutes, longer than one lease. Renewing well inside the lease keeps another
+# worker from reclaiming and re-running a job that is still healthily working,
+# while a crashed instance still lets its job lapse within one lease.
+_LEASE_RENEWAL_SECONDS = 60
 
 _worker_task: asyncio.Task[None] | None = None
 
@@ -130,6 +135,15 @@ async def _worker_loop(
                     lease_seconds=_LEASE_SECONDS,
                 )
 
+                renewal = asyncio.create_task(
+                    _renew_lease(
+                        database_url,
+                        database_backend=database_backend,
+                        job_id=job.id,
+                        progress={"step": "running", "run_id": run.id},
+                    ),
+                    name=f"discovery-lease-{job.id}",
+                )
                 try:
                     await run_discovery_pipeline(
                         conn,
@@ -146,6 +160,10 @@ async def _worker_loop(
                         logger.warning("Job %s failed, re-queued for retry: %s", job.id, error_msg)
                     else:
                         logger.exception("Job %s failed permanently: %s", job.id, error_msg)
+                finally:
+                    renewal.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await renewal
 
             finally:
                 await conn.close()
@@ -155,3 +173,43 @@ async def _worker_loop(
         except Exception:
             logger.exception("Job worker encountered an unexpected error")
             await asyncio.sleep(_POLL_INTERVAL_SECONDS)
+
+
+async def _renew_lease(
+    database_url: str,
+    *,
+    database_backend: str | None,
+    job_id: str,
+    progress: dict[str, str],
+) -> None:
+    """Push a running job's lease forward until the run finishes.
+
+    Each renewal opens its own connection, because the pipeline holds the
+    worker's connection inside its own transactions and a renewal must never
+    interleave with them. A renewal that fails is logged and retried on the
+    next tick; if every renewal fails the lease lapses and the job is retried,
+    which is the same outcome as the instance dying.
+
+    Parameters
+    ----------
+    database_url : str
+        Database the job lives in.
+    database_backend : str | None
+        Backend override, as the worker loop received it.
+    job_id : str
+        The job whose lease to keep.
+    progress : dict[str, str]
+        Progress payload to write with each renewal.
+    """
+    while True:
+        await asyncio.sleep(_LEASE_RENEWAL_SECONDS)
+        try:
+            conn = await get_db_connection(database_url, backend=database_backend)
+            try:
+                await DiscoveryJobCRUD.update_progress(
+                    conn, job_id, progress, lease_seconds=_LEASE_SECONDS
+                )
+            finally:
+                await conn.close()
+        except Exception:
+            logger.warning("Lease renewal failed for job %s", job_id, exc_info=True)
