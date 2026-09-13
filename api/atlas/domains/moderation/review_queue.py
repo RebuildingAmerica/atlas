@@ -11,11 +11,22 @@ from typing import Any
 from atlas.platform.database import db
 from atlas.platform.dates import coerce_date, row_timestamp_string
 
-__all__ = ["ReviewQueueCRUD", "ReviewQueueItemModel"]
+__all__ = ["RESOLVABLE_HOLD_REASONS", "ReviewQueueCRUD", "ReviewQueueItemModel"]
 
 STALE_SOURCE_REVIEW_DAYS = 365
 STALE_SOURCE_REVIEW_KIND = "source_staleness"
 STALE_SOURCE_REVIEW_REASON = "stale_public_source_review"
+# Holds that a later resolution of the same entity may lift. A possible
+# duplicate and a stale public source are left for a person to close.
+RESOLVABLE_HOLD_REASONS = frozenset(
+    {
+        "uncorroborated_web_only",
+        "person_requires_review",
+        "type_conflict",
+        "identity_ambiguous",
+        "no_current_role",
+    }
+)
 
 
 @dataclass
@@ -230,34 +241,91 @@ class ReviewQueueCRUD:
         await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
 
     @staticmethod
-    async def release_corroborated(conn: Any, *, entity_id: str) -> None:
-        """Publish a held record once an authoritative registry confirms it.
+    async def release_resolved(conn: Any, *, entity_id: str) -> bool:
+        """Publish a record the resolution stage now finds publishable.
 
-        The publication gate runs when a record is created, so a record held
-        for want of corroboration stays held even after a later run cites the
-        filing that corroborates it. This is how that new evidence takes
-        effect, for an organization's register page and a person's return.
+        The gate that held a record runs again whenever a later run resolves
+        the same entity, so a person held because their return was stale
+        publishes once a newer return lists them. Every pending hold that
+        resolution can decide is closed as approved by ``registry``.
 
-        Only a hold for missing corroboration is released. A possible
-        duplicate stays held because merging is a reviewer's decision, and a
-        record a human already rejected has no pending item left to release.
+        Nothing changes when a curator rejected the record, because a human
+        decision outranks later automated evidence, or when a possible
+        duplicate is pending, because merging is a reviewer's decision.
 
         Parameters
         ----------
         conn
             Open database connection.
         entity_id : str
-            The entry that gained registry corroboration.
+            The entry resolution found publishable.
+
+        Returns
+        -------
+        bool
+            True when the entry was published.
         """
         cursor = await conn.execute(
             """
-            SELECT id FROM review_queue
-            WHERE entity_id = ? AND status = 'pending' AND hold_reason IN (?, ?)
+            SELECT 1 FROM review_queue
+            WHERE entity_id = ?
+              AND (status = 'rejected' OR (status = 'pending' AND hold_reason = ?))
+            LIMIT 1
             """,
-            (entity_id, "uncorroborated_web_only", "person_requires_review"),
+            (entity_id, "dedup_suspect"),
+        )
+        if await cursor.fetchone() is not None:
+            return False
+        placeholders = ", ".join("?" for _ in RESOLVABLE_HOLD_REASONS)
+        cursor = await conn.execute(
+            f"""
+            SELECT id FROM review_queue
+            WHERE entity_id = ? AND status = 'pending' AND hold_reason IN ({placeholders})
+            """,
+            (entity_id, *sorted(RESOLVABLE_HOLD_REASONS)),
         )
         for row in await cursor.fetchall():
-            await ReviewQueueCRUD.approve(conn, row[0], reviewed_by="registry")
+            await ReviewQueueCRUD._close(conn, row[0], "approved", "registry")
+        await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (entity_id,))
+        await conn.commit()
+        return True
+
+    @staticmethod
+    async def hold_for_resolution(
+        conn: Any, *, entity_id: str, kind: str, hold_reason: str
+    ) -> None:
+        """Queue a resolution hold for review once per entity and reason.
+
+        A run resolves the same entities again and again. Queuing only once
+        keeps an ambiguous name a curator already approved from returning to
+        the queue on every run.
+
+        Parameters
+        ----------
+        conn
+            Open database connection.
+        entity_id : str
+            The entry resolution held.
+        kind : str
+            The entry's type.
+        hold_reason : str
+            Why resolution held it.
+        """
+        cursor = await conn.execute(
+            "SELECT 1 FROM review_queue WHERE entity_id = ? AND hold_reason = ? LIMIT 1",
+            (entity_id, hold_reason),
+        )
+        if await cursor.fetchone() is not None:
+            return
+        await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind=kind,
+            hold_reason=hold_reason,
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+        )
 
     @staticmethod
     async def reject(conn: Any, item_id: str, *, reviewed_by: str) -> None:

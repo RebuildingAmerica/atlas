@@ -20,12 +20,17 @@ from atlas_discovery_engine.extraction import (
     strip_code_fence,
     validate_entries,
 )
-from atlas_discovery_engine.filings import (
+from atlas_discovery_engine.filing_returns import (
     FilingOfficer,
+    FilingPosition,
+    FilingReturn,
+    NameField,
+    parse_return,
+)
+from atlas_discovery_engine.filings import (
     FilingOfficerProvider,
     IrsFilingOfficerProvider,
     OrganizationFiling,
-    parse_officers,
 )
 from atlas_discovery_engine.querying import (
     SearchQuery,
@@ -63,7 +68,10 @@ __all__ = [
     "FallbackSearchProvider",
     "FilingOfficer",
     "FilingOfficerProvider",
+    "FilingPosition",
+    "FilingReturn",
     "IrsFilingOfficerProvider",
+    "NameField",
     "OrganizationFiling",
     "ProPublicaRegistryProvider",
     "RegistryOrganization",
@@ -85,7 +93,7 @@ __all__ = [
     "normalize_geo_specificity",
     "parse_extraction_response",
     "parse_identify_response",
-    "parse_officers",
+    "parse_return",
     "registry_terms_for_issue",
     "sample_queries_across_categories",
     "score_ranked_records",

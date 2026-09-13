@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import httpx
-import pytest
-from defusedxml import DefusedXmlException
+from datetime import date
 
+import httpx
+
+from atlas_discovery_engine.filing_returns import FilingOfficer
 from atlas_discovery_engine.filings import (
     IRS_DOWNLOADS_PAGE,
-    FilingOfficer,
     IrsFilingOfficerProvider,
     OrganizationFiling,
-    parse_officers,
 )
 from atlas_discovery_engine.registry import ProPublicaRegistryProvider
 
@@ -48,105 +47,6 @@ def _provider(host: FakeHost) -> IrsFilingOfficerProvider:
     return IrsFilingOfficerProvider(client_factory=host.client)
 
 
-class TestParseOfficers:
-    def test_reads_names_and_titles_from_each_return_form(self) -> None:
-        """Form 990, 990-EZ and 990-PF each name officers under a different tag."""
-        document = filing_xml(
-            officer("Ana Ortiz", "President"),
-            officer("Ben Lee", "Treasurer", tag="OfficerDirectorTrusteeEmplGrp"),
-            officer("Cy Diaz", "Trustee", tag="OfficerDirTrstKeyEmplGrp"),
-        )
-
-        assert parse_officers(document) == [
-            FilingOfficer("Ana Ortiz", "President"),
-            FilingOfficer("Ben Lee", "Treasurer"),
-            FilingOfficer("Cy Diaz", "Trustee"),
-        ]
-
-    def test_skips_a_business_listed_as_an_officer(self) -> None:
-        """A management company is not a person Atlas should list."""
-        business = (
-            "<Form990PartVIISectionAGrp><BusinessName><BusinessNameLine1Txt>"
-            "Acme Mgmt LLC</BusinessNameLine1Txt></BusinessName></Form990PartVIISectionAGrp>"
-        )
-        document = filing_xml(business, officer("Ana Ortiz", "Chair"))
-
-        assert parse_officers(document) == [FilingOfficer("Ana Ortiz", "Chair")]
-
-    def test_keeps_a_person_once_and_cleans_the_text(self) -> None:
-        """A filer that lists someone twice, or pads a name, still yields one clean row."""
-        document = filing_xml(
-            officer("  Dana   O&apos;Neil ", "   "),
-            officer("DANA O'NEIL", "Director"),
-            officer("Eli Park"),
-        )
-
-        assert parse_officers(document) == [
-            FilingOfficer("Dana O'Neil", None),
-            FilingOfficer("Eli Park", None),
-        ]
-
-    def test_skips_officers_the_return_marks_as_former(self) -> None:
-        """Someone who left during the year is not listed as holding the role."""
-        former = (
-            "<Form990PartVIISectionAGrp><PersonNm>Old Chair</PersonNm>"
-            "<TitleTxt>Chair</TitleTxt><FormerOfcrDirectorTrusteeInd>X"
-            "</FormerOfcrDirectorTrusteeInd></Form990PartVIISectionAGrp>"
-        )
-        document = filing_xml(former, officer("Ana Ortiz", "Chair"))
-
-        assert parse_officers(document) == [FilingOfficer("Ana Ortiz", "Chair")]
-
-    def test_skips_a_departure_written_into_the_name_or_title(self) -> None:
-        """Filers write 'RESIGNED' or 'FORMER' instead of setting the flag."""
-        document = filing_xml(
-            officer("ANNE GRUENWALD RESIGNED", "FORMER PRESI"),
-            officer("Ben Lee", "Former Treasurer"),
-            officer("Cy Diaz Deceased"),
-            officer("Dee Fox", "Treasurer"),
-        )
-
-        assert parse_officers(document) == [FilingOfficer("Dee Fox", "Treasurer")]
-
-    @pytest.mark.parametrize(
-        "institution",
-        [
-            "BANK OF AMERICA",
-            "BANK OF AMERICA N A",
-            "Wells Fargo Bank N.A.",
-            "Northern Trust Company",
-            "Smith Family LLC",
-            "Acme Inc.",
-            "First Fiduciary Corp",
-        ],
-    )
-    def test_skips_an_institution_named_as_an_officer(self, institution: str) -> None:
-        """A corporate trustee in the person-name field is not a person."""
-        document = filing_xml(officer(institution, "Trustee"), officer("Ana Ortiz", "Chair"))
-
-        assert parse_officers(document) == [FilingOfficer("Ana Ortiz", "Chair")]
-
-    def test_keeps_people_whose_names_only_resemble_a_designator(self) -> None:
-        """Nobody named Inca, Banks or Company-Jones is dropped by a partial match."""
-        document = filing_xml(officer("Maria Inca"), officer("Tom Banks"), officer("Sue Corporan"))
-
-        assert [o.name for o in parse_officers(document)] == [
-            "Maria Inca",
-            "Tom Banks",
-            "Sue Corporan",
-        ]
-
-    def test_refuses_a_return_that_expands_entities(self) -> None:
-        """A hostile document is rejected rather than expanded in memory."""
-        bomb = (
-            b'<?xml version="1.0"?><!DOCTYPE r [<!ENTITY a "aaaa"><!ENTITY b "&a;&a;&a;">]>'
-            b"<r><Form990PartVIISectionAGrp><PersonNm>&b;</PersonNm></Form990PartVIISectionAGrp></r>"
-        )
-
-        with pytest.raises(DefusedXmlException):
-            parse_officers(bomb)
-
-
 class TestIrsFilingOfficerProvider:
     async def test_reads_officers_from_the_newest_return(self) -> None:
         """The run cites the exact return a name came from."""
@@ -157,7 +57,13 @@ class TestIrsFilingOfficerProvider:
             },
             archives={
                 ARCHIVE_2025: build_zip(
-                    {f"{NEW}_public.xml": filing_xml(officer("Ana Ortiz", "Chair"))}
+                    {
+                        f"{NEW}_public.xml": filing_xml(
+                            officer("Ana Ortiz", "Chair"),
+                            header="<ReturnTypeCd>990EZ</ReturnTypeCd>"
+                            "<TaxPeriodEndDt>2024-12-31</TaxPeriodEndDt>",
+                        )
+                    }
                 ),
                 ARCHIVE_2024: build_zip({f"{OLD}_public.xml": filing_xml(officer("Old Name"))}),
             },
@@ -166,7 +72,13 @@ class TestIrsFilingOfficerProvider:
         filings = await _provider(host).filings_for(["111"])
 
         assert filings == [
-            OrganizationFiling("111", NEW, (FilingOfficer("Ana Ortiz", "Chair"),)),
+            OrganizationFiling(
+                "111",
+                NEW,
+                (FilingOfficer("Ana Ortiz", "Chair"),),
+                return_type="990EZ",
+                tax_period_end=date(2024, 12, 31),
+            ),
         ]
         assert filings[0].source_url == f"{ORG_URL}/111/{NEW}/full"
         assert f"GET {ARCHIVE_2024}" in host.requests

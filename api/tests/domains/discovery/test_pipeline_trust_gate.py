@@ -93,75 +93,29 @@ class TestTrustGateUpsert:
         assert pending[0].hold_reason == "uncorroborated_web_only"
 
     @pytest.mark.asyncio
-    async def test_an_ein_filing_releases_an_organization_already_held(
-        self, test_db: object
-    ) -> None:
-        """A second run citing the register publishes what the first run held.
+    async def test_a_web_record_citing_a_registry_page_is_still_held(self, test_db: object) -> None:
+        """A page on a registry's domain is a page, not the registry's record.
 
-        The gate runs on creation only, so without this the nine organizations
-        an Omaha run found before the register was wired to the gate would stay
-        invisible no matter how often a later run confirmed them.
+        Only resolution, which reads the EIN and the return's rows, publishes
+        from the register. Treating the URL as proof would let anything a model
+        extracted from a fetched ProPublica page publish as authoritative.
         """
         from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 
         runner_module = _load_runner_module()
-        held = _make_deduped_entry(
-            entry_type="organization", name="Lincoln Housing Trust", city="Lincoln", state="NE"
+        cited = _make_deduped_entry(
+            entry_type="person", name="Ana Ortiz", city="Lincoln", state="NE"
         )
-        entity_id = await runner_module._upsert_entry(test_db, held)  # noqa: SLF001
+        cited.source_urls = [f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456/2025/full"]
 
-        corroborated = _make_deduped_entry(
-            entry_type="organization", name="Lincoln Housing Trust", city="Lincoln", state="NE"
-        )
-        corroborated.source_urls = [
-            f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456",
-        ]
-        assert await runner_module._upsert_entry(test_db, corroborated) == entity_id  # noqa: SLF001
+        entity_id = await runner_module._upsert_entry(test_db, cited)  # noqa: SLF001
+        assert await runner_module._upsert_entry(test_db, cited) == entity_id  # noqa: SLF001
 
         stored = await EntryCRUD.get_by_id(test_db, entity_id)
         assert stored is not None
-        assert stored.active is True
-        assert await ReviewQueueCRUD.list_pending(test_db) == []
-
-    @pytest.mark.asyncio
-    async def test_a_person_named_on_a_return_publishes_and_a_register_page_does_not(
-        self, test_db: object
-    ) -> None:
-        """Only the return that lists someone is authoritative about them."""
-        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
-
-        runner_module = _load_runner_module()
-        named = _make_deduped_entry(
-            entry_type="person", name="Ana Ortiz", city="Lincoln", state="NE"
-        )
-        named.source_urls = [f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456/2025/full"]
-        register_only = _make_deduped_entry(
-            entry_type="person", name="Ben Lee", city="Lincoln", state="NE"
-        )
-        register_only.source_urls = [f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456"]
-
-        named_id = await runner_module._upsert_entry(test_db, named)  # noqa: SLF001
-        held_id = await runner_module._upsert_entry(test_db, register_only)  # noqa: SLF001
-
-        named_row = await EntryCRUD.get_by_id(test_db, named_id)
-        held_row = await EntryCRUD.get_by_id(test_db, held_id)
-        assert named_row is not None
-        assert named_row.active is True
-        assert held_row is not None
-        assert held_row.active is False
+        assert stored.active is False
         pending = await ReviewQueueCRUD.list_pending(test_db)
-        assert [(item.entity_id, item.hold_reason) for item in pending] == [
-            (held_id, "person_requires_review")
-        ]
-
-        # The same person cited later by their return is released from review.
-        register_only.source_urls = [
-            f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456/2025/full"
-        ]
-        await runner_module._upsert_entry(test_db, register_only)  # noqa: SLF001
-        released = await EntryCRUD.get_by_id(test_db, held_id)
-        assert released is not None
-        assert released.active is True
+        assert [item.hold_reason for item in pending] == ["person_requires_review"]
 
     @pytest.mark.asyncio
     async def test_publish_decision_creates_active_entry_without_queueing(

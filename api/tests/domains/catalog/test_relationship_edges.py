@@ -285,3 +285,37 @@ class TestRelationshipValidation:
                 evidence_label="Staff profile",
                 confidence=1.5,
             )
+
+
+@pytest.mark.asyncio
+async def test_an_edge_is_dated_by_its_evidence_and_never_moves_backward(
+    test_db: object,
+) -> None:
+    """Reading last year's return after this year's keeps the role dated to this year."""
+    person_id = await _make_actor(test_db, "Ana Ortiz", entry_type="person")
+    organization_id = await _make_actor(test_db, "Lincoln Food Bank")
+    source_id = await _make_source(test_db)
+
+    async def observe(when: str) -> None:
+        await RelationshipCRUD.upsert_edge(
+            test_db,
+            source_entry_id=person_id,
+            target_entry_id=organization_id,
+            relationship_type="officer",
+            source_id=source_id,
+            evidence_label="Chair",
+            confidence=0.95,
+            observed_at=when,
+        )
+
+    await observe("2025-06-30T00:00:00+00:00")
+    await observe("2024-06-30T00:00:00+00:00")
+    await observe("2025-01-31T00:00:00+00:00")
+
+    [edge] = await RelationshipCRUD.list_edges_for_entry(test_db, person_id)
+    assert str(edge.first_seen).startswith("2024-06-30")
+    assert str(edge.last_seen).startswith("2025-06-30")
+    assert (
+        await RelationshipCRUD.has_identity_key(test_db, entry_id=organization_id, key_type="ein")
+        is False
+    )

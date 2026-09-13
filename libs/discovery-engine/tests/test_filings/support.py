@@ -102,16 +102,23 @@ class FakeHost:
         return httpx.Response(206, content=data[start : end + 1])
 
 
-def filing_xml(*groups: str) -> bytes:
+def filing_xml(*groups: str, header: str = "") -> bytes:
     """Wrap officer groups in the envelope an IRS return uses."""
     body = "".join(groups)
     return (
         '<?xml version="1.0"?><Return xmlns="http://www.irs.gov/efile">'
+        f"<ReturnHeader>{header}</ReturnHeader>"
         f"<ReturnData><IRS990>{body}</IRS990></ReturnData></Return>"
     ).encode()
 
 
-def officer(name: str, title: str | None = None, tag: str = "Form990PartVIISectionAGrp") -> str:
-    """One officer row, with or without a title."""
+def officer(
+    name: str,
+    title: str | None = None,
+    tag: str = "Form990PartVIISectionAGrp",
+    flags: tuple[str, ...] = (),
+) -> str:
+    """One officer row, with or without a title and checked boxes."""
     title_xml = f"<TitleTxt>{title}</TitleTxt>" if title is not None else ""
-    return f"<{tag}><PersonNm>{name}</PersonNm>{title_xml}</{tag}>"
+    flag_xml = "".join(f"<{flag}>X</{flag}>" for flag in flags)
+    return f"<{tag}><PersonNm>{name}</PersonNm>{title_xml}{flag_xml}</{tag}>"

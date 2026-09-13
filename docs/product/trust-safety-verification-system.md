@@ -1,8 +1,7 @@
 # Trust, Safety, And Verification System
 
-Status: Product architecture reference
-Last updated: 2026-07-05
-Audience: Product, engineering, review, policy, partnerships, and operators
+Status: Product architecture reference Last updated: 2026-07-05 Audience:
+Product, engineering, review, policy, partnerships, and operators
 
 ## Purpose
 
@@ -41,8 +40,8 @@ Every trust component must protect a user-visible outcome:
 - Reviewers can slow down risky publication before harm reaches the public map.
 - Workspace users can collaborate privately without private notes becoming
   public evidence.
-- API and export users receive provenance, limits, and safety context instead
-  of detached rows.
+- API and export users receive provenance, limits, and safety context instead of
+  detached rows.
 
 ## System Map
 
@@ -103,8 +102,8 @@ without review.
 
 A decision that a proof meets the threshold for a specific action. Verification
 is scoped. "Verified email domain," "verified workspace domain," "verified
-steward," "verified linked handle," and "reviewer-approved claim" mean
-different things and must not be collapsed into one generic badge.
+steward," "verified linked handle," and "reviewer-approved claim" mean different
+things and must not be collapsed into one generic badge.
 
 **Real-world identity**
 
@@ -200,8 +199,8 @@ is strong enough for their next action.
 - Showing a weak allegation as a profile fact.
 - Treating a stale source as current role evidence.
 - Detaching exported rows from provenance.
-- Letting one source imply endorsement, membership, or employment beyond what
-  it says.
+- Letting one source imply endorsement, membership, or employment beyond what it
+  says.
 - Hiding uncertainty behind a generic confidence score.
 
 ## Layer 2: Discovery Pipeline And Publication Gate
@@ -213,42 +212,52 @@ confidently publishing risky or duplicate information.
 
 ### Current Gate
 
-The discovery publication gate is intentionally conservative:
+The discovery publication gate is intentionally conservative, and it has two
+halves because discovery has two kinds of evidence.
 
-- Possible duplicates are always held because merging records is a reviewer
-  decision.
-- People are always held because wrong facts about named individuals are the
-  core liability.
-- Organizations can auto-publish only when corroborated by an authoritative
-  registry such as EIN, Form 990, or FEC data.
-- Everything else is held as uncorroborated web-only.
+A record extracted from a web page never publishes on its own. Possible
+duplicates hold as `dedup_suspect`, people hold as `person_requires_review`, and
+everything else holds as `uncorroborated_web_only`. A page's URL is never
+treated as corroboration, even when the page sits on a registry's domain.
 
-The current code keeps the gate pure and testable: the caller supplies entity
-kind, registry corroboration, duplicate suspicion, and score; the gate returns a
-publish or hold decision with a machine-readable reason.
+A record resolved from the nonprofit register or an IRS return goes through the
+resolution stage described in
+[the entity resolution plan](../plans/2026-09-13-discovery-entity-resolution.md).
+An organization resolved on its EIN publishes. A person named on a return
+publishes only when resolution is sure the row names a person, sure which person
+it is, and sure the role is current.
+
+Both gates are pure functions in `api/atlas/domains/discovery/trust_gate.py`. A
+later resolution of the same entity can lift a resolution hold, but never a
+curator's rejection or a pending duplicate, and a hold never unpublishes a
+public record. It queues the record for review instead.
 
 ### Hold Reasons
 
-| Hold reason               | Meaning                                         | Reviewer need                                                       |
-| ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------- |
-| `dedup_suspect`           | The new record may duplicate an existing actor. | Decide merge, alias, reject, or separate profile.                   |
-| `person_requires_review`  | The entity is a named person.                   | Confirm identity, source quality, safety context, and public value. |
-| `uncorroborated_web_only` | The record lacks authoritative corroboration.   | Decide whether sources are sufficient, stale, or unsafe.            |
+| Hold reason               | Meaning                                                                  | Reviewer need                                                       |
+| ------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `dedup_suspect`           | The new record may duplicate an existing actor.                          | Decide merge, alias, reject, or separate profile.                   |
+| `person_requires_review`  | A web page names a person.                                               | Confirm identity, source quality, safety context, and public value. |
+| `uncorroborated_web_only` | The record lacks authoritative corroboration.                            | Decide whether sources are sufficient, stale, or unsafe.            |
+| `type_conflict`           | A return row may not name a person, such as a bank or an annotated name. | Reject an institution, or approve a real person.                    |
+| `identity_ambiguous`      | Another person with the same name exists in the state.                   | Decide whether the records are one person or two.                   |
+| `no_current_role`         | The return marks the role as left, or the return is over two years old.  | Confirm a current role from a newer source, or leave held.          |
 
 ### Publication Rules
 
 - A strong discovery score is not enough to bypass the gate.
 - Deduplication risk outranks confidence.
-- Person records require human review even when sources look direct.
-- Registry corroboration can support organization auto-publication, but does
-  not prove current staff roles, endorsement, impact, or contact accuracy.
+- A person found on the web requires human review even when sources look direct.
+- A return proves a role for its tax period only. It does not prove endorsement,
+  impact, or contact accuracy, and it stops counting as current evidence two
+  years after the period ends.
 - A held record should keep enough source metadata for reviewers to resolve it
   without repeating the discovery work.
 
 ### Future Additions
 
-- Registry connectors for IRS/Form 990, FEC, state business registries, and
-  other authoritative public datasets.
+- Registry connectors for FEC, state business registries, and other
+  authoritative public datasets.
 - Risk signals for sensitive roles, minors, private addresses, vulnerable
   communities, law-enforcement surveillance risk, and harassment patterns.
 - Review queue metrics for hold volume, resolution time, reversal rate, and
@@ -435,8 +444,8 @@ organization-admin path.
 
 The public directory custom-domain path should perform server-side DNS TXT
 lookup against the configured domain before marking the domain verified. A
-client-submitted TXT record should be treated as input to verify, not as proof by
-itself.
+client-submitted TXT record should be treated as input to verify, not as proof
+by itself.
 
 ### Rules
 
@@ -461,8 +470,7 @@ source-backed trust model.
 1. Email domain proof.
 2. Manual evidence review.
 3. ATProto proof, specified for future support.
-4. W3C Verifiable Credential proof, recommended as a future verifier-first
-   path.
+4. W3C Verifiable Credential proof, recommended as a future verifier-first path.
 
 ### Trust State Contract
 

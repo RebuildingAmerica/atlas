@@ -217,6 +217,20 @@ class RelationshipCRUD:
         return str(row[0]) if row else None
 
     @staticmethod
+    async def has_identity_key(
+        conn: aiosqlite.Connection,
+        *,
+        entry_id: str,
+        key_type: str,
+    ) -> bool:
+        """Report whether an actor already carries a stable key of this kind."""
+        cursor = await conn.execute(
+            "SELECT 1 FROM entity_identity_keys WHERE entry_id = ? AND key_type = ? LIMIT 1",
+            (entry_id, key_type.strip().lower()),
+        )
+        return await cursor.fetchone() is not None
+
+    @staticmethod
     async def get_identity_key(
         conn: aiosqlite.Connection,
         *,
@@ -247,9 +261,14 @@ class RelationshipCRUD:
         source_id: str,
         evidence_label: str,
         confidence: float,
+        observed_at: str | None = None,
     ) -> str:
         """
         Persist or strengthen a source-backed actor relationship.
+
+        ``first_seen`` and ``last_seen`` bound when the source says the
+        relationship held. Reading an older source after a newer one never
+        moves ``last_seen`` back, so a role stays dated by its latest evidence.
 
         Parameters
         ----------
@@ -267,6 +286,9 @@ class RelationshipCRUD:
             Short human-readable evidence phrase.
         confidence : float
             Trust score from 0 to 1.
+        observed_at : str | None, optional
+            ISO timestamp the source dates the relationship to, such as the end
+            of the tax period a return covers. Defaults to now.
 
         Returns
         -------
@@ -284,6 +306,7 @@ class RelationshipCRUD:
         _validate_confidence(confidence)
 
         now = db.now_iso()
+        seen = observed_at or now
         edge_id = db.generate_uuid()
         await conn.execute(
             """
@@ -305,7 +328,16 @@ class RelationshipCRUD:
                     ELSE entity_relationship_edges.confidence
                 END,
                 evidence_count = entity_relationship_edges.evidence_count + 1,
-                last_seen = excluded.last_seen,
+                first_seen = CASE
+                    WHEN excluded.first_seen < entity_relationship_edges.first_seen
+                        THEN excluded.first_seen
+                    ELSE entity_relationship_edges.first_seen
+                END,
+                last_seen = CASE
+                    WHEN excluded.last_seen > entity_relationship_edges.last_seen
+                        THEN excluded.last_seen
+                    ELSE entity_relationship_edges.last_seen
+                END,
                 updated_at = excluded.updated_at
             """,
             (
@@ -316,8 +348,8 @@ class RelationshipCRUD:
                 source_id,
                 normalized_label,
                 confidence,
-                now,
-                now,
+                seen,
+                seen,
                 now,
                 now,
             ),

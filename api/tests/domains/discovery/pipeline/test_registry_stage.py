@@ -1,13 +1,15 @@
-"""The keyless stage: organizations from the register, people from their returns."""
+"""The keyless stage: organization mentions from the register, people from their returns."""
 
 from __future__ import annotations
 
+from datetime import date
 from typing import TYPE_CHECKING
 
 import pytest
 from atlas_discovery_engine import (
     FilingOfficer,
     FilingOfficerProvider,
+    NameField,
     OrganizationFiling,
     ProPublicaRegistryProvider,
     RegistryOrganization,
@@ -44,7 +46,17 @@ class _OneOrganization(RegistryProvider):
 class _OneReturn(FilingOfficerProvider):
     async def filings_for(self, eins: Sequence[str]) -> list[OrganizationFiling]:
         return [
-            OrganizationFiling(ein, RETURN_ID, (FilingOfficer("Ana Ortiz", "President"),))
+            OrganizationFiling(
+                ein,
+                RETURN_ID,
+                (
+                    FilingOfficer("ANA ORTIZ", "President"),
+                    FilingOfficer("Acme Bank", "Trustee", NameField.BUSINESS),
+                    FilingOfficer("Ben Lee", "Treasurer"),
+                ),
+                return_type="990EZ",
+                tax_period_end=date(2025, 12, 31),
+            )
             for ein in eins
         ]
 
@@ -63,7 +75,10 @@ def _offline_providers(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def _discover(settings: Settings) -> registry_stage.RegistryDiscovery:
     return await discover_from_registry(
-        state="NE", issue_areas=["housing_affordability"], settings=settings, today_iso="2026-09-12"
+        state="NE",
+        issue_areas=["housing_affordability"],
+        settings=settings,
+        today=date(2026, 9, 12),
     )
 
 
@@ -72,8 +87,7 @@ async def test_a_run_with_no_register_budget_produces_nothing() -> None:
     """A run configured for nothing stays off the network entirely."""
     result = await _discover(Settings())
 
-    assert result.entries == []
-    assert result.sources == []
+    assert (result.organizations, result.people, result.mention_count) == ([], [], 0)
 
 
 @pytest.mark.asyncio
@@ -82,34 +96,35 @@ async def test_organizations_alone_cite_the_register_as_a_government_record() ->
     """The register page is a federal filing index, not the organization's website."""
     result = await _discover(Settings(discovery_registry_max_organizations=5))
 
-    assert [entry["entry_type"] for entry in result.entries] == ["organization"]
-    [source] = result.sources
-    assert source.url == f"{ORG_URL}/470123456"
-    assert source.source_type == SourceType.GOVERNMENT_RECORD
-    assert source.title == "Lincoln Food Bank: IRS Form 990 filings"
+    [organization] = result.organizations
+    assert (organization.ein, result.people) == ("470123456", [])
+    assert organization.source.url == f"{ORG_URL}/470123456"
+    assert organization.source.source_type == SourceType.GOVERNMENT_RECORD
+    assert organization.source.title == "Lincoln Food Bank: IRS Form 990 filings"
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("_offline_providers")
-async def test_people_cite_the_return_that_names_them() -> None:
-    """Each officer points at the exact return, recorded as a government record."""
+async def test_people_cite_the_return_that_names_them_within_budget() -> None:
+    """Each person points at the exact return; a business row names no person."""
     result = await _discover(
-        Settings(discovery_registry_max_organizations=5, discovery_registry_max_people=5)
+        Settings(discovery_registry_max_organizations=5, discovery_registry_max_people=1)
     )
 
-    assert [entry["entry_type"] for entry in result.entries] == ["organization", "person"]
-    return_url = f"{ORG_URL}/470123456/{RETURN_ID}/full"
-    assert result.entries[1]["source_urls"] == [return_url]
-    by_url = {source.url: source for source in result.sources}
-    assert by_url[return_url].source_type == SourceType.GOVERNMENT_RECORD
-    assert by_url[return_url].title == f"Lincoln Food Bank: IRS Form 990 return {RETURN_ID}"
+    [person] = result.people
+    assert (person.name, person.display_name) == ("ANA ORTIZ", "Ana Ortiz")
+    assert person.organization is result.organizations[0]
+    assert person.source.url == f"{ORG_URL}/470123456/{RETURN_ID}/full"
+    assert person.source.title == f"Lincoln Food Bank: IRS Form 990-EZ return {RETURN_ID}"
+    assert person.role.current is True
+    assert result.mention_count == 2
 
 
 @pytest.mark.asyncio
-async def test_a_nameless_register_row_yields_no_candidate_and_no_source(
+async def test_a_nameless_register_row_yields_no_mention(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A filer with no name cannot be listed, so nothing should cite it either."""
+    """A filer with no name cannot be listed, so its returns are not read either."""
 
     class _Nameless(RegistryProvider):
         async def search_organizations(
@@ -122,8 +137,10 @@ async def test_a_nameless_register_row_yields_no_candidate_and_no_source(
             ][:limit]
 
     monkeypatch.setattr(registry_stage, "build_registry_provider", lambda _limit: _Nameless())
+    monkeypatch.setattr(registry_stage, "build_filing_provider", lambda _limit: _OneReturn())
 
-    result = await _discover(Settings(discovery_registry_max_organizations=5))
+    result = await _discover(
+        Settings(discovery_registry_max_organizations=5, discovery_registry_max_people=5)
+    )
 
-    assert result.entries == []
-    assert result.sources == []
+    assert (result.organizations, result.people) == ([], [])
