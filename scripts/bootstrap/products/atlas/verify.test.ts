@@ -19,7 +19,7 @@ import {
   verifyStripeTargetSnapshot,
 } from "./verify-catalog.js";
 import { formatStripeVerificationFollowUp } from "./verify.js";
-import { stripeLiveRestrictedKeySetupSteps } from "./bootstrap.js";
+import { stripeLiveRestrictedKeySetupSteps } from "./stripe-copy.js";
 
 function completeEnv(): Map<string, string> {
   const stripeIds = new Map<string, string>();

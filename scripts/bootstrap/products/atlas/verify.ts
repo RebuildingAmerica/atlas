@@ -12,7 +12,7 @@ import {
   resolveStripeMode,
   validateStripeApiKeyMode,
 } from "./env.js";
-import { stripeLiveRestrictedKeySetupSteps } from "./bootstrap.js";
+import { stripeLiveRestrictedKeySetupSteps } from "./stripe-copy.js";
 import type { StripeBootstrapTarget } from "./env.js";
 import type {
   StripeCatalogSnapshot,

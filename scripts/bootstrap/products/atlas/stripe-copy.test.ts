@@ -12,7 +12,7 @@ import {
   formatStripeMetadataUnavailablePrompt,
   formatStripeVerificationRetryPrompt,
   stripeAccountDisplayName,
-} from "./bootstrap.js";
+} from "./stripe-copy.js";
 
 void describe("Stripe bootstrap account review", () => {
   void it("uses the clearest Stripe account display name", () => {
