@@ -174,6 +174,16 @@ test.describe("hosted public catalog", () => {
         "public app catalog",
       ),
     );
+    // Discovery publishes continuously, so the catalog can grow between two
+    // reads. Reading the API on both sides of the public read still proves the
+    // public app serves the live catalog: a stale cache would report a total
+    // from before the first API read.
+    const apiCatalogAfter = parseCatalogSummary(
+      await parseJsonResponse(
+        await fetch(absoluteHostedUrl(apiOrigin, catalogPath)),
+        "direct API catalog, read again",
+      ),
+    );
     const map = parseMapSummary(
       await parseJsonResponse(
         await fetch(absoluteHostedUrl(publicOrigin, mapPath), hostedPublicRequestInit()),
@@ -183,7 +193,12 @@ test.describe("hosted public catalog", () => {
 
     expect(apiCatalog.total).toBeGreaterThan(0);
     expect(apiCatalog.items.length).toBeGreaterThan(0);
-    expect(publicCatalog.total).toBe(apiCatalog.total);
+    expect(publicCatalog.total).toBeGreaterThanOrEqual(
+      Math.min(apiCatalog.total, apiCatalogAfter.total),
+    );
+    expect(publicCatalog.total).toBeLessThanOrEqual(
+      Math.max(apiCatalog.total, apiCatalogAfter.total),
+    );
     expect(publicCatalog.items.length).toBeGreaterThan(0);
     const publicCatalogItem = firstItem(publicCatalog.items, "public catalog");
     expect(publicCatalogItem.sourceCount).toBeGreaterThan(0);
