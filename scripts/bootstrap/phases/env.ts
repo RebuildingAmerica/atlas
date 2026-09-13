@@ -7,7 +7,8 @@ import { parseEnvFile, mergeEnvFile } from "../lib/env-file.js";
 import { generateSecret, isPlaceholder } from "../lib/secret.js";
 import { promptOrExit, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
-import { getVercelScope, detectAndLink, syncEnvVars } from "../lib/vercel.js";
+import { getVercelScope, detectAndLink } from "../lib/vercel.js";
+import { syncEnvVars } from "../lib/vercel-env.js";
 import {
   buildVercelEnvVars,
   ensureProductionRoutingConfig,

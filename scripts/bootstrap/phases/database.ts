@@ -19,7 +19,8 @@ import {
 } from "../lib/hosted-target.js";
 import { promptOrExit, promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
-import { getVercelScope, syncEnvVars, type VercelVar } from "../lib/vercel.js";
+import { getVercelScope, type VercelVar } from "../lib/vercel.js";
+import { syncEnvVars } from "../lib/vercel-env.js";
 import { vercelEnvironmentsForTarget } from "./env-routing.js";
 
 const SCHEMA_PARTS_RELATIVE_PATH = "api/atlas/models/schema_parts";

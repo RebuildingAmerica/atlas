@@ -3,13 +3,12 @@ import Stripe from "stripe";
 import { log, note, password, spinner, text } from "@clack/prompts";
 import pc from "picocolors";
 import { mergeEnvFile, parseEnvFile } from "../../lib/env-file.js";
+import { detectAndLink, getVercelScope } from "../../lib/vercel.js";
 import {
-  detectAndLink,
   fetchExistingKeys,
-  getVercelScope,
   hasVercelEnvKey,
   syncEnvVars,
-} from "../../lib/vercel.js";
+} from "../../lib/vercel-env.js";
 import { logSubline, promptConfirm, promptOrExit } from "../../lib/ui.js";
 import type { PhaseResult, ReadinessState } from "../../state.js";
 import { markPhase } from "../../state.js";

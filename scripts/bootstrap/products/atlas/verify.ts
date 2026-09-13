@@ -3,11 +3,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import Stripe from "stripe";
 import { parseEnvFile } from "../../lib/env-file.js";
-import {
-  fetchExistingKeys,
-  getVercelScope,
-  hasVercelEnvKey,
-} from "../../lib/vercel.js";
+import { getVercelScope } from "../../lib/vercel.js";
+import { fetchExistingKeys, hasVercelEnvKey } from "../../lib/vercel-env.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
 import {
   STRIPE_ATLAS_CATALOG_ENV_KEY,

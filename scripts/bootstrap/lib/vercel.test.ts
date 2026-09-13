@@ -1,15 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  formatVercelSyncPreview,
-  requiresProductionConfirmation,
   formatVercelProjectPrompt,
   formatVercelProjectNamePromptMessage,
   formatVercelProductionSyncPromptMessage,
   formatVercelTeamPromptMessage,
-  shouldAutoConfirmVercelSync,
   shouldUseDetectedVercelProject,
 } from "./vercel.js";
+import {
+  formatVercelSyncPreview,
+  requiresProductionConfirmation,
+  shouldAutoConfirmVercelSync,
+} from "./vercel-env.js";
 
 void describe("Vercel env sync preview", () => {
   void it("summarizes project context and groups changes by environment", () => {
