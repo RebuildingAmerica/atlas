@@ -231,6 +231,15 @@ class Settings(BaseSettings):
     configures nothing must reach no network. Production sets it.
     """
 
+    discovery_registry_max_people: int = Field(
+        default=0, ge=0, validation_alias="DISCOVERY_REGISTRY_MAX_PEOPLE"
+    )
+    """People a run may take from the IRS returns of the organizations it found.
+
+    Keyless like the register, and off by default for the same reason: a test
+    that configures nothing must reach no network. Production sets it.
+    """
+
     discovery_max_run_cost: float = Field(default=5.0, validation_alias="DISCOVERY_MAX_RUN_COST")
     """Maximum estimated spend (USD) a single discovery run may incur."""
 

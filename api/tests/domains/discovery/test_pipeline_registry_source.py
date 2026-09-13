@@ -8,6 +8,7 @@ import pytest
 from atlas_discovery_engine import RegistryOrganization, RegistryProvider
 
 from atlas.domains.discovery.models import DiscoveryRunCRUD
+from atlas.domains.discovery.pipeline import registry_stage
 from atlas.domains.discovery.pipeline import runner as runner_module
 from atlas.domains.discovery.pipeline.runner import (
     DiscoveryPipelineCredentials,
@@ -58,7 +59,7 @@ class TestRegistryAsADiscoverySource:
         monkeypatch.setattr(runner_module, "fetch_sources", no_sources)
         monkeypatch.setattr(runner_module, "extract_entries", no_extraction)
         monkeypatch.setattr(
-            runner_module, "build_registry_provider", lambda _limit: _OneOrganization()
+            registry_stage, "build_registry_provider", lambda _limit: _OneOrganization()
         )
 
         run_id = await DiscoveryRunCRUD.create(
@@ -100,7 +101,7 @@ class TestRegistryAsADiscoverySource:
             return []
 
         monkeypatch.setattr(runner_module, "fetch_sources", no_sources)
-        monkeypatch.setattr(runner_module, "build_registry_provider", spy)
+        monkeypatch.setattr(registry_stage, "build_registry_provider", spy)
 
         run_id = await DiscoveryRunCRUD.create(
             test_db,

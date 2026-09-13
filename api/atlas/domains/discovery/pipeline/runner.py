@@ -27,11 +27,7 @@ from atlas.domains.discovery.pipeline.query_generator import (
     sample_queries_across_categories,
 )
 from atlas.domains.discovery.pipeline.ranker import rank_entries
-from atlas.domains.discovery.pipeline.registry_entries import (
-    build_registry_provider,
-    collect_registry_organizations,
-    registry_organizations_to_entries,
-)
+from atlas.domains.discovery.pipeline.registry_stage import discover_from_registry
 from atlas.domains.discovery.pipeline.source_fetcher import build_search_provider, fetch_sources
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.models import DiscoveryRunCRUD, EntryCRUD
@@ -237,23 +233,13 @@ async def run_discovery_pipeline(  # noqa: PLR0915
         # The register is keyless, so it still yields candidates when the
         # search vendor refuses the account. Structured rows need no model
         # call, so they join at deduplication rather than through extraction.
-        registry_provider = build_registry_provider(
-            active_settings.discovery_registry_max_organizations
+        registry = await discover_from_registry(
+            state=job.state,
+            issue_areas=job.issue_areas,
+            settings=active_settings,
+            today_iso=_today_iso_date(),
         )
-        if registry_provider is not None:
-            organizations = await collect_registry_organizations(
-                registry_provider,
-                state=job.state,
-                issue_areas=job.issue_areas,
-                limit=active_settings.discovery_registry_max_organizations,
-            )
-            extracted_entries.extend(
-                registry_organizations_to_entries(
-                    organizations,
-                    issue_areas=job.issue_areas,
-                    today_iso=_today_iso_date(),
-                )
-            )
+        extracted_entries.extend(registry.entries)
 
         logger.info(
             "Pipeline step completed",
@@ -299,7 +285,10 @@ async def run_discovery_pipeline(  # noqa: PLR0915
         }
         ranked = rank_entries(deduped.entries, source_counts=source_counts)
         shared_ranked = [_ranked_entry_to_shared(entry) for entry in ranked]
-        shared_sources = [_fetched_source_to_page_content(source) for source in fetched_sources]
+        shared_sources = [
+            *(_fetched_source_to_page_content(source) for source in fetched_sources),
+            *registry.sources,
+        ]
         logger.info(
             "Pipeline step completed",
             extra={

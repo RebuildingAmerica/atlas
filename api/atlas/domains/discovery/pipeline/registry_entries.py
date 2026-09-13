@@ -21,6 +21,7 @@ from atlas_discovery_engine import (
     RegistryProvider,
     registry_terms_for_issue,
 )
+from atlas_shared import SourceType
 
 from atlas.taxonomy.search_terms import ISSUE_SEARCH_TERMS
 
@@ -33,10 +34,9 @@ __all__ = [
     "build_registry_provider",
     "collect_registry_organizations",
     "is_registry_corroborated",
+    "registry_candidate",
     "registry_organizations_to_entries",
 ]
-
-_SOURCE_TYPE = "government_record"
 
 
 def is_registry_corroborated(source_urls: Sequence[str]) -> bool:
@@ -146,41 +146,91 @@ def registry_organizations_to_entries(
     list[dict[str, Any]]
         Candidate dictionaries ready for deduplication.
     """
-    entries: list[dict[str, Any]] = []
-    for organization in organizations:
-        if not organization.name:
-            continue
-        context = _context_for(organization)
-        entries.append(
-            {
-                "name": organization.name,
-                # Extraction emits "type" while persistence reads
-                # "entry_type", and deduplication passes both through
-                # untouched. Carrying both keeps a registry candidate
-                # indistinguishable from an extracted one on either side.
-                "type": "organization",
-                "entry_type": "organization",
-                "description": context,
-                "city": organization.city,
-                "state": organization.state,
-                "geo_specificity": "local",
-                "issue_areas": list(issue_areas),
-                "region": None,
-                "website": organization.website,
-                "email": None,
-                "social_media": {},
-                "affiliated_org": None,
-                "extraction_context": context,
-                "mentioned_entities": [],
-                "discovery_leads": [],
-                "source_urls": [organization.source_url],
-                "source_dates": [today_iso],
-                "source_contexts": {organization.source_url: context},
-                "source_types": [_SOURCE_TYPE],
-                "last_seen": today_iso,
-            }
+    return [
+        registry_candidate(
+            name=organization.name,
+            entry_type="organization",
+            context=_context_for(organization),
+            city=organization.city,
+            state=organization.state,
+            issue_areas=issue_areas,
+            website=organization.website,
+            affiliated_org=None,
+            source_url=organization.source_url,
+            today_iso=today_iso,
         )
-    return entries
+        for organization in organizations
+        if organization.name
+    ]
+
+
+def registry_candidate(  # noqa: PLR0913
+    *,
+    name: str,
+    entry_type: str,
+    context: str,
+    city: str | None,
+    state: str | None,
+    issue_areas: Sequence[str],
+    website: str | None,
+    affiliated_org: str | None,
+    source_url: str,
+    today_iso: str,
+) -> dict[str, Any]:
+    """Shape one register-derived record like the entries extraction produces.
+
+    Parameters
+    ----------
+    name : str
+        The organization's or person's name as the filing gives it.
+    entry_type : str
+        ``organization`` or ``person``.
+    context : str
+        What the filing asserts, used as both description and citation.
+    city, state : str | None
+        Where the filer is based.
+    issue_areas : Sequence[str]
+        Issue areas from the run's schedule.
+    website : str | None
+        Website the register publishes, when it publishes one.
+    affiliated_org : str | None
+        For a person, the organization whose return names them.
+    source_url : str
+        The register page or return the record cites.
+    today_iso : str
+        Date the register was read.
+
+    Returns
+    -------
+    dict[str, Any]
+        A candidate ready for deduplication.
+    """
+    return {
+        "name": name,
+        # Extraction emits "type" while persistence reads "entry_type", and
+        # deduplication passes both through untouched. Carrying both keeps a
+        # registry candidate indistinguishable from an extracted one.
+        "type": entry_type,
+        "entry_type": entry_type,
+        "description": context,
+        "city": city,
+        "state": state,
+        "geo_specificity": "local",
+        "issue_areas": list(issue_areas),
+        "region": None,
+        "website": website,
+        "email": None,
+        "social_media": {},
+        "affiliated_org": affiliated_org,
+        "extraction_context": context,
+        "mentioned_entities": [],
+        "discovery_leads": [],
+        "source_urls": [source_url],
+        "source_dates": [today_iso],
+        "source_contexts": {source_url: context},
+        "source_types": [str(SourceType.GOVERNMENT_RECORD)],
+        "last_seen": today_iso,
+    }
 
 
 def _context_for(organization: RegistryOrganization) -> str:

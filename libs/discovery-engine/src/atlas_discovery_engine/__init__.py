@@ -20,6 +20,13 @@ from atlas_discovery_engine.extraction import (
     strip_code_fence,
     validate_entries,
 )
+from atlas_discovery_engine.filings import (
+    FilingOfficer,
+    FilingOfficerProvider,
+    IrsFilingOfficerProvider,
+    OrganizationFiling,
+    parse_officers,
+)
 from atlas_discovery_engine.querying import (
     SearchQuery,
     generate_queries,
@@ -27,6 +34,7 @@ from atlas_discovery_engine.querying import (
     sample_queries_across_categories,
 )
 from atlas_discovery_engine.registry import (
+    ATLAS_USER_AGENT,
     ProPublicaRegistryProvider,
     RegistryOrganization,
     RegistryProvider,
@@ -46,12 +54,17 @@ from atlas_discovery_engine.search import (
 )
 
 __all__ = [
+    "ATLAS_USER_AGENT",
     "BraveSearchProvider",
     "CoverageSummary",
     "DedupResult",
     "DeduplicationFlag",
     "ExtractionFailedError",
     "FallbackSearchProvider",
+    "FilingOfficer",
+    "FilingOfficerProvider",
+    "IrsFilingOfficerProvider",
+    "OrganizationFiling",
     "ProPublicaRegistryProvider",
     "RegistryOrganization",
     "RegistryProvider",
@@ -72,6 +85,7 @@ __all__ = [
     "normalize_geo_specificity",
     "parse_extraction_response",
     "parse_identify_response",
+    "parse_officers",
     "registry_terms_for_issue",
     "sample_queries_across_categories",
     "score_ranked_records",

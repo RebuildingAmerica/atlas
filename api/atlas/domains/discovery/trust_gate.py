@@ -9,6 +9,11 @@ from dataclasses import dataclass
 
 __all__ = ["GateDecision", "evaluate_publication"]
 
+# Only these kinds have an authoritative registry: the nonprofit register for an
+# organization, and the return that names a person. A campaign or an event that
+# happens to cite a register page is not corroborated by it.
+_REGISTERED_KINDS = frozenset({"organization", "person"})
+
 
 @dataclass(frozen=True)
 class GateDecision:
@@ -37,12 +42,11 @@ def evaluate_publication(
 
     Rules (in priority order):
     1. A possible duplicate is always held — merging is a reviewer decision.
-    2. A person is always held — wrong facts about a named individual are the
-       core liability.
-    3. An organization auto-publishes only when corroborated by an authoritative
-       registry (EIN/990/FEC). The nonprofit register supplies that signal, so
-       an organization found by web search alone still holds while one carrying
-       an IRS filing publishes.
+    2. An organization or person an authoritative registry corroborates
+       publishes. For an organization that is its register filing; for a
+       person it is the IRS return that names them.
+    3. Any other person is held — wrong facts about a named individual are the
+       core liability, and a web page is not enough to publish one.
     4. Everything else is held as uncorroborated web-only.
 
     Parameters
@@ -64,8 +68,8 @@ def evaluate_publication(
     _ = score
     if dedup_suspect:
         return GateDecision(publish=False, hold_reason="dedup_suspect")
+    if registry_corroborated and kind in _REGISTERED_KINDS:
+        return GateDecision(publish=True, hold_reason=None)
     if kind == "person":
         return GateDecision(publish=False, hold_reason="person_requires_review")
-    if kind == "organization" and registry_corroborated:
-        return GateDecision(publish=True, hold_reason=None)
     return GateDecision(publish=False, hold_reason="uncorroborated_web_only")

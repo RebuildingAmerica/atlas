@@ -124,6 +124,46 @@ class TestTrustGateUpsert:
         assert await ReviewQueueCRUD.list_pending(test_db) == []
 
     @pytest.mark.asyncio
+    async def test_a_person_named_on_a_return_publishes_and_a_register_page_does_not(
+        self, test_db: object
+    ) -> None:
+        """Only the return that lists someone is authoritative about them."""
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+        named = _make_deduped_entry(
+            entry_type="person", name="Ana Ortiz", city="Lincoln", state="NE"
+        )
+        named.source_urls = [f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456/2025/full"]
+        register_only = _make_deduped_entry(
+            entry_type="person", name="Ben Lee", city="Lincoln", state="NE"
+        )
+        register_only.source_urls = [f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456"]
+
+        named_id = await runner_module._upsert_entry(test_db, named)  # noqa: SLF001
+        held_id = await runner_module._upsert_entry(test_db, register_only)  # noqa: SLF001
+
+        named_row = await EntryCRUD.get_by_id(test_db, named_id)
+        held_row = await EntryCRUD.get_by_id(test_db, held_id)
+        assert named_row is not None
+        assert named_row.active is True
+        assert held_row is not None
+        assert held_row.active is False
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert [(item.entity_id, item.hold_reason) for item in pending] == [
+            (held_id, "person_requires_review")
+        ]
+
+        # The same person cited later by their return is released from review.
+        register_only.source_urls = [
+            f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456/2025/full"
+        ]
+        await runner_module._upsert_entry(test_db, register_only)  # noqa: SLF001
+        released = await EntryCRUD.get_by_id(test_db, held_id)
+        assert released is not None
+        assert released.active is True
+
+    @pytest.mark.asyncio
     async def test_publish_decision_creates_active_entry_without_queueing(
         self,
         test_db: object,

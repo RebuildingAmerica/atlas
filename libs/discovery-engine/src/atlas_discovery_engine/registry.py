@@ -22,7 +22,12 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# Sent to every public data source, so its operator can see who is calling and
+# where to reach them.
+ATLAS_USER_AGENT = "AtlasBot/1.0 (+https://atlas.rebuildingus.org)"
+
 __all__ = [
+    "ATLAS_USER_AGENT",
     "ProPublicaRegistryProvider",
     "RegistryOrganization",
     "RegistryProvider",
@@ -102,7 +107,7 @@ class ProPublicaRegistryProvider(RegistryProvider):
         self,
         *,
         timeout: float = 20.0,
-        user_agent: str = "AtlasBot/1.0 (+https://atlas.rebuildingus.org)",
+        user_agent: str = ATLAS_USER_AGENT,
     ) -> None:
         """Configure the ProPublica adapter.
 

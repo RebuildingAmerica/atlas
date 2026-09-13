@@ -234,12 +234,13 @@ class ReviewQueueCRUD:
         """Publish a held record once an authoritative registry confirms it.
 
         The publication gate runs when a record is created, so a record held
-        as uncorroborated stays held even after a later run cites an EIN
-        filing for it. This is how that new evidence takes effect.
+        for want of corroboration stays held even after a later run cites the
+        filing that corroborates it. This is how that new evidence takes
+        effect, for an organization's register page and a person's return.
 
-        Only an uncorroborated hold is released. A possible duplicate stays
-        held because merging is a reviewer's decision, and a record a human
-        already rejected has no pending item left to release.
+        Only a hold for missing corroboration is released. A possible
+        duplicate stays held because merging is a reviewer's decision, and a
+        record a human already rejected has no pending item left to release.
 
         Parameters
         ----------
@@ -251,9 +252,9 @@ class ReviewQueueCRUD:
         cursor = await conn.execute(
             """
             SELECT id FROM review_queue
-            WHERE entity_id = ? AND status = 'pending' AND hold_reason = ?
+            WHERE entity_id = ? AND status = 'pending' AND hold_reason IN (?, ?)
             """,
-            (entity_id, "uncorroborated_web_only"),
+            (entity_id, "uncorroborated_web_only", "person_requires_review"),
         )
         for row in await cursor.fetchall():
             await ReviewQueueCRUD.approve(conn, row[0], reviewed_by="registry")
