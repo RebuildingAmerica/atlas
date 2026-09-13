@@ -292,3 +292,43 @@ async def test_get_sources_for_entries_returns_empty_for_empty_input(
     """get_sources_for_entries should short-circuit on empty list (line 795)."""
     result = await EntryCRUD.get_sources_for_entries(test_db, [])
     assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_find_by_name_matches_a_national_entry_with_no_place(test_db: object) -> None:
+    """A national entry has no city or state, and SQL = never matches NULL to NULL."""
+    national = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="National Housing Coalition",
+        description="A national coalition.",
+        city=None,
+        state=None,
+        geo_specificity="national",
+    )
+    await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="National Housing Coalition",
+        description="A same-named local chapter.",
+        city="Omaha",
+        state="NE",
+        geo_specificity="local",
+    )
+
+    found = await EntryCRUD.find_by_name(
+        test_db,
+        entry_type="organization",
+        name="  national housing coalition ",
+        state=None,
+        city=None,
+    )
+
+    assert found is not None
+    assert found.id == national
+    assert (
+        await EntryCRUD.find_by_name(
+            test_db, entry_type="person", name="National Housing Coalition", state=None, city=None
+        )
+        is None
+    )

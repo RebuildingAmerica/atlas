@@ -211,6 +211,54 @@ class EntryLookupMixin:
         return (await _hydrate_atproto_identities(conn, [_row_to_entry(data)]))[0]
 
     @staticmethod
+    async def find_by_name(
+        conn: aiosqlite.Connection,
+        *,
+        entry_type: str,
+        name: str,
+        state: str | None,
+        city: str | None,
+    ) -> EntryModel | None:
+        """Find the most recently updated entry with this exact name and place.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        entry_type : str
+            Entry type to match.
+        name : str
+            Name to match, ignoring case and surrounding whitespace.
+        state : str | None
+            State to match; None matches entries with no state.
+        city : str | None
+            City to match; None matches entries with no city.
+
+        Returns
+        -------
+        EntryModel | None
+            The matching entry, active or not, or None.
+        """
+        clauses = ["type = ?", "LOWER(TRIM(name)) = ?"]
+        params: list[Any] = [entry_type, name.strip().lower()]
+        # A national entry has no city or state, and = never matches NULL. The
+        # NULL case is chosen here rather than with a "? IS NULL" parameter,
+        # which PostgreSQL cannot infer a type for.
+        for column, value in (("state", state), ("city", city)):
+            if value is None:
+                clauses.append(f"{column} IS NULL")
+            else:
+                clauses.append(f"{column} = ?")
+                params.append(value)
+        cursor = await conn.execute(
+            f"SELECT id FROM entries WHERE {' AND '.join(clauses)} "
+            "ORDER BY updated_at DESC LIMIT 1",
+            params,
+        )
+        row = await cursor.fetchone()
+        return await EntryLookupMixin.get_by_id(conn, str(row[0])) if row else None
+
+    @staticmethod
     async def get_by_slug(conn: aiosqlite.Connection, slug: str) -> EntryModel | None:
         """Look up an active entry by its URL slug.
 

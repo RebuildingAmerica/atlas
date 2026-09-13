@@ -16,6 +16,7 @@ from atlas_shared import (
 from atlas.domains.catalog.geo import geocode_entry
 from atlas.domains.catalog.models.relationships import RelationshipCRUD
 from atlas.domains.discovery.pipeline.registry_entries import is_registry_corroborated
+from atlas.domains.discovery.pipeline.registry_people import is_filing_corroborated
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, SourceCRUD
@@ -58,7 +59,7 @@ async def _upsert_entry(
         today_iso = _today_iso_date()
         decision = evaluate_publication(
             kind=str(entry.entry_type),
-            registry_corroborated=is_registry_corroborated(entry.source_urls),
+            registry_corroborated=_is_corroborated(entry),
             dedup_suspect=dedup_suspect,
             score=score,
         )
@@ -109,7 +110,7 @@ async def _upsert_entry(
                 "geocode_precision": located.precision,
                 "geocode_source": located.source,
             }
-    if is_registry_corroborated(entry.source_urls):
+    if _is_corroborated(entry):
         await ReviewQueueCRUD.release_corroborated(conn, entity_id=str(match.id))
     await EntryCRUD.update(
         conn,
@@ -125,26 +126,28 @@ async def _upsert_entry(
     return str(match.id)
 
 
+def _is_corroborated(entry: SharedDeduplicatedEntry) -> bool:
+    """Report whether an authoritative filing backs this record.
+
+    A register page proves an organization filed but names nobody, so a person
+    needs the return that lists them.
+    """
+    if str(entry.entry_type) == "person":
+        return is_filing_corroborated(entry.source_urls)
+    return is_registry_corroborated(entry.source_urls)
+
+
 async def _find_existing_entry(
     conn: Connection,
     entry: SharedDeduplicatedEntry,
 ) -> Any | None:
     """Find a stored actor that should absorb a repeated public mention."""
-    candidates = await EntryCRUD.list(
+    exact_match = await EntryCRUD.find_by_name(
         conn,
+        entry_type=str(entry.entry_type),
+        name=entry.name,
         state=entry.state,
         city=entry.city,
-        active_only=False,
-        limit=500,
-    )
-    exact_match = next(
-        (
-            candidate
-            for candidate in candidates
-            if candidate.type == str(entry.entry_type)
-            and candidate.name.strip().lower() == entry.name.strip().lower()
-        ),
-        None,
     )
     if exact_match is not None:
         return exact_match
