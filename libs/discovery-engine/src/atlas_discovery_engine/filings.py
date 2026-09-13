@@ -69,6 +69,15 @@ _FORMER_OFFICER_FLAG = "FormerOfcrDirectorTrusteeInd"
 # "ANNE GRUENWALD RESIGNED" with title "FORMER PRESI". Publishing that row would
 # show a departure note as part of a name and imply the role is current.
 _DEPARTED = re.compile(r"\b(resigned|deceased|former|terminated)\b", re.IGNORECASE)
+# A trust names its corporate trustee in the person-name field, so a return can
+# list "BANK OF AMERICA N A" as an officer. These are legal and banking
+# designators no person's name carries; matching them keeps an institution from
+# being published as a person.
+_INSTITUTION = re.compile(
+    r"\b(bank|trust\s+(company|co)|n\.?\s?a\.?$|fsb|llc|llp|pllc|inc|corp|corporation"
+    r"|company|ltd|foundation|association|fiduciary)\b\.?",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -104,7 +113,8 @@ class OrganizationFiling:
 def parse_officers(document: bytes) -> list[FilingOfficer]:
     """Read the named officers out of a Form 990, 990-EZ or 990-PF return.
 
-    A row naming a business rather than a person is skipped, as is anyone the
+    A row naming a business rather than a person is skipped, including a bank
+    written into the person-name field as a corporate trustee. So is anyone the
     return marks as having left, and a person listed twice is kept once.
 
     Parameters
@@ -130,7 +140,7 @@ def parse_officers(document: bytes) -> list[FilingOfficer]:
             continue
         name = _child_text(element, "PersonNm")
         title = _child_text(element, "TitleTxt")
-        if name is None or _has_left(element, name, title):
+        if name is None or _INSTITUTION.search(name) or _has_left(element, name, title):
             continue
         seen.setdefault(name.casefold(), FilingOfficer(name=name, title=title))
     return list(seen.values())

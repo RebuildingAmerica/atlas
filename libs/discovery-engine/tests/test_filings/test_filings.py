@@ -108,6 +108,34 @@ class TestParseOfficers:
 
         assert parse_officers(document) == [FilingOfficer("Dee Fox", "Treasurer")]
 
+    @pytest.mark.parametrize(
+        "institution",
+        [
+            "BANK OF AMERICA",
+            "BANK OF AMERICA N A",
+            "Wells Fargo Bank N.A.",
+            "Northern Trust Company",
+            "Smith Family LLC",
+            "Acme Inc.",
+            "First Fiduciary Corp",
+        ],
+    )
+    def test_skips_an_institution_named_as_an_officer(self, institution: str) -> None:
+        """A corporate trustee in the person-name field is not a person."""
+        document = filing_xml(officer(institution, "Trustee"), officer("Ana Ortiz", "Chair"))
+
+        assert parse_officers(document) == [FilingOfficer("Ana Ortiz", "Chair")]
+
+    def test_keeps_people_whose_names_only_resemble_a_designator(self) -> None:
+        """Nobody named Inca, Banks or Company-Jones is dropped by a partial match."""
+        document = filing_xml(officer("Maria Inca"), officer("Tom Banks"), officer("Sue Corporan"))
+
+        assert [o.name for o in parse_officers(document)] == [
+            "Maria Inca",
+            "Tom Banks",
+            "Sue Corporan",
+        ]
+
     def test_refuses_a_return_that_expands_entities(self) -> None:
         """A hostile document is rejected rather than expanded in memory."""
         bomb = (
