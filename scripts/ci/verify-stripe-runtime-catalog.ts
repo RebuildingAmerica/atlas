@@ -12,10 +12,8 @@ import {
   expandStripeCatalogEnv,
   validateStripeApiKeyMode,
 } from "../bootstrap/products/atlas/env.js";
-import {
-  fetchStripeCatalogSnapshot,
-  verifyStripeCatalogSnapshot,
-} from "../bootstrap/products/atlas/verify.js";
+import { verifyStripeCatalogSnapshot } from "../bootstrap/products/atlas/verify-catalog.js";
+import { fetchStripeCatalogSnapshot } from "../bootstrap/products/atlas/verify.js";
 
 const STRIPE_API_VERSION = "2026-06-24.dahlia";
 
