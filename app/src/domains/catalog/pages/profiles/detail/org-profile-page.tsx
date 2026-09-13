@@ -93,7 +93,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
 
         <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
 
-        <SignatureQuote sources={entry.sources ?? []} />
+        <SignatureQuote sources={entry.sources ?? []} description={entry.description} />
 
         <ProfileStats items={stats} />
 

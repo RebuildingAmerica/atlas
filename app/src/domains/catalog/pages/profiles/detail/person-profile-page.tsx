@@ -124,7 +124,7 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
 
         <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
 
-        <SignatureQuote sources={entry.sources ?? []} />
+        <SignatureQuote sources={entry.sources ?? []} description={entry.description} />
 
         <ProfileStats items={stats} />
 

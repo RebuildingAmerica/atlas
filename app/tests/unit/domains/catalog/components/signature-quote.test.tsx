@@ -67,4 +67,41 @@ describe("SignatureQuote", () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("does not quote a profile's own description back as coverage", () => {
+    const sentence =
+      "Listed as PRESIDENT of Affordable Community Housing Trust on its IRS Form 990.";
+    const { container } = render(
+      <SignatureQuote
+        description={`${sentence} `}
+        sources={[
+          createSourceFixture({
+            extraction_context: sentence,
+            publication: "ProPublica Nonprofit Explorer",
+          }),
+        ]}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("still quotes a source whose words differ from the description", () => {
+    render(
+      <SignatureQuote
+        description="Listed as PRESIDENT of Affordable Community Housing Trust."
+        sources={[
+          createSourceFixture({
+            extraction_context: "Listed as PRESIDENT of Affordable Community Housing Trust.",
+          }),
+          createSourceFixture({
+            extraction_context: "Jon has chaired the trust since 2019.",
+            id: "source-2",
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Jon has chaired the trust since 2019.")).toBeInTheDocument();
+  });
 });

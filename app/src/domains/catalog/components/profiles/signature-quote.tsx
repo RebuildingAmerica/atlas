@@ -5,6 +5,11 @@
  * quote in the editorial serif, and credits the publication and date. Returns
  * null when no quote-bearing source is available so the panel doesn't appear
  * for thin profiles.
+ *
+ * A context identical to the profile's own description is not a quote. Records
+ * built from structured filings, such as an officer listed on an IRS Form 990,
+ * carry an Atlas-written sentence as both, and showing it in quotation marks
+ * credited to the publication would attribute Atlas's words to that source.
  */
 import {
   MONTH_YEAR,
@@ -15,14 +20,21 @@ import type { Source } from "@rebuildingamerica/atlas-api-client";
 
 interface SignatureQuoteProps {
   sources: Source[];
+  /** The profile's own description, which a quote must not merely repeat. */
+  description?: string | null;
 }
 
-function findQuoteSource(sources: Source[]): Source | null {
-  return sources.find((source) => source.extraction_context?.trim()) ?? null;
+function findQuoteSource(sources: Source[], description: string): Source | null {
+  return (
+    sources.find((source) => {
+      const context = source.extraction_context?.trim();
+      return Boolean(context) && context !== description;
+    }) ?? null
+  );
 }
 
-export function SignatureQuote({ sources }: SignatureQuoteProps) {
-  const source = findQuoteSource(sources);
+export function SignatureQuote({ sources, description }: SignatureQuoteProps) {
+  const source = findQuoteSource(sources, description?.trim() ?? "");
   if (!source) return null;
 
   // `published_date` is a calendar day, so the credit line stays pinned to UTC

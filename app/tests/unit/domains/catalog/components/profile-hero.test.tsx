@@ -11,12 +11,12 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 describe("ProfileHero", () => {
-  it("leads with the subject's name, role and place", () => {
+  it("leads with the subject's name, record type and place", () => {
     render(<ProfileHero entry={createEntryFixture()} />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Jane Doe" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Jane Doe" })).toHaveTextContent(
-      "Community organizer · Community organizer focused on housing.",
+      "Person · Community organizer focused on housing.",
     );
     expect(screen.getByText("Jackson, MS")).toBeInTheDocument();
   });
@@ -99,6 +99,6 @@ describe("ProfileHero", () => {
   it("omits the description clause when the record has none", () => {
     render(<ProfileHero entry={createEntryFixture({ description: undefined })} />);
     expect(screen.queryByText("Community organizer focused on housing.")).not.toBeInTheDocument();
-    expect(screen.getByText("Community organizer")).toBeInTheDocument();
+    expect(screen.getByText("Person")).toBeInTheDocument();
   });
 });

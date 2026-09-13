@@ -66,7 +66,7 @@ export function ProfileHero({ entry, affiliation }: ProfileHeroProps) {
               {entry.name}
             </h1>
             <p className="text-ink-strong text-base font-medium sm:text-lg">
-              {entry.type === "organization" ? "Organization" : "Community organizer"}
+              {entry.type === "organization" ? "Organization" : "Person"}
               {entry.description ? (
                 <>
                   <span className="text-ink-soft"> &middot; </span>
