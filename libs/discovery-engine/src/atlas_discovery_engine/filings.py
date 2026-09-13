@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -62,6 +63,12 @@ _OFFICER_GROUPS = frozenset(
     {"Form990PartVIISectionAGrp", "OfficerDirectorTrusteeEmplGrp", "OfficerDirTrstKeyEmplGrp"}
 )
 _FILINGS_TRIED_PER_ORGANIZATION = 2
+# A return lists people who left during the year, and marks them with this flag.
+_FORMER_OFFICER_FLAG = "FormerOfcrDirectorTrusteeInd"
+# Filers also write the departure into the name or title instead, as in
+# "ANNE GRUENWALD RESIGNED" with title "FORMER PRESI". Publishing that row would
+# show a departure note as part of a name and imply the role is current.
+_DEPARTED = re.compile(r"\b(resigned|deceased|former|terminated)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -97,8 +104,8 @@ class OrganizationFiling:
 def parse_officers(document: bytes) -> list[FilingOfficer]:
     """Read the named officers out of a Form 990, 990-EZ or 990-PF return.
 
-    A row naming a business rather than a person is skipped, and a person the
-    return lists twice is kept once.
+    A row naming a business rather than a person is skipped, as is anyone the
+    return marks as having left, and a person listed twice is kept once.
 
     Parameters
     ----------
@@ -122,10 +129,18 @@ def parse_officers(document: bytes) -> list[FilingOfficer]:
         if _local_name(element) not in _OFFICER_GROUPS:
             continue
         name = _child_text(element, "PersonNm")
-        if name is not None:
-            officer = FilingOfficer(name=name, title=_child_text(element, "TitleTxt"))
-            seen.setdefault(name.casefold(), officer)
+        title = _child_text(element, "TitleTxt")
+        if name is None or _has_left(element, name, title):
+            continue
+        seen.setdefault(name.casefold(), FilingOfficer(name=name, title=title))
     return list(seen.values())
+
+
+def _has_left(element: Element, name: str, title: str | None) -> bool:
+    """Report whether a row describes someone no longer in the role."""
+    if _child_text(element, _FORMER_OFFICER_FLAG) is not None:
+        return True
+    return bool(_DEPARTED.search(name) or (title and _DEPARTED.search(title)))
 
 
 def _local_name(element: Element) -> str:

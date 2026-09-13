@@ -86,6 +86,28 @@ class TestParseOfficers:
             FilingOfficer("Eli Park", None),
         ]
 
+    def test_skips_officers_the_return_marks_as_former(self) -> None:
+        """Someone who left during the year is not listed as holding the role."""
+        former = (
+            "<Form990PartVIISectionAGrp><PersonNm>Old Chair</PersonNm>"
+            "<TitleTxt>Chair</TitleTxt><FormerOfcrDirectorTrusteeInd>X"
+            "</FormerOfcrDirectorTrusteeInd></Form990PartVIISectionAGrp>"
+        )
+        document = filing_xml(former, officer("Ana Ortiz", "Chair"))
+
+        assert parse_officers(document) == [FilingOfficer("Ana Ortiz", "Chair")]
+
+    def test_skips_a_departure_written_into_the_name_or_title(self) -> None:
+        """Filers write 'RESIGNED' or 'FORMER' instead of setting the flag."""
+        document = filing_xml(
+            officer("ANNE GRUENWALD RESIGNED", "FORMER PRESI"),
+            officer("Ben Lee", "Former Treasurer"),
+            officer("Cy Diaz Deceased"),
+            officer("Dee Fox", "Treasurer"),
+        )
+
+        assert parse_officers(document) == [FilingOfficer("Dee Fox", "Treasurer")]
+
     def test_refuses_a_return_that_expands_entities(self) -> None:
         """A hostile document is rejected rather than expanded in memory."""
         bomb = (
