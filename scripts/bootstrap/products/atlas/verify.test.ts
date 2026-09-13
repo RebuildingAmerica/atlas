@@ -12,13 +12,13 @@ import type {
   StripePriceSnapshot,
   StripeProductSnapshot,
   StripeWebhookEndpointSnapshot,
-} from "./verify.js";
+} from "./verify-types.js";
 import {
-  formatStripeVerificationFollowUp,
   verifyHostedStripeEnvKeys,
   verifyStripeCatalogSnapshot,
   verifyStripeTargetSnapshot,
-} from "./verify.js";
+} from "./verify-catalog.js";
+import { formatStripeVerificationFollowUp } from "./verify.js";
 import { stripeLiveRestrictedKeySetupSteps } from "./bootstrap.js";
 
 function completeEnv(): Map<string, string> {
