@@ -1,31 +1,49 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+const TILEJSON_URL = "https://tiles.openfreemap.org/planet";
+const STUB_TILE_TEMPLATE = "https://tiles.openfreemap.org/planet/stub/{z}/{x}/{y}.pbf";
+
+/**
+ * Serves the basemap offline: a TileJSON pointing at stub tiles, and an empty
+ * vector tile for every request, counting how many the map asked for.
+ */
+async function stubBasemap(page: Page): Promise<() => number> {
+  let vectorTileRequests = 0;
+  await page.route(TILEJSON_URL, (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        tilejson: "3.0.0",
+        tiles: [STUB_TILE_TEMPLATE],
+        minzoom: 0,
+        maxzoom: 14,
+      }),
+    }),
+  );
+  await page.route(
+    /https:\/\/tiles\.openfreemap\.org\/planet\/stub\/\d+\/\d+\/\d+\.pbf/,
+    (route) => {
+      vectorTileRequests += 1;
+      return route.fulfill({ contentType: "application/x-protobuf", body: Buffer.alloc(0) });
+    },
+  );
+  await page.route(/https:\/\/tiles\.openfreemap\.org\/fonts\//, (route) =>
+    route.fulfill({ contentType: "application/x-protobuf", body: Buffer.alloc(0) }),
+  );
+  return () => vectorTileRequests;
+}
 
 test.describe("public map", () => {
-  const transparentPng = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-    "base64",
-  );
-
   test("keeps the map viewport-bound and anchors filter menus to their triggers", async ({
     page,
   }) => {
-    let rasterTileRequests = 0;
-    await page.route(
-      /https:\/\/[abcd]\.basemaps\.cartocdn\.com\/light_all\/\d+\/\d+\/\d+\.png/,
-      async (route) => {
-        rasterTileRequests += 1;
-        await route.fulfill({
-          contentType: "image/png",
-          body: transparentPng,
-        });
-      },
-    );
+    const vectorTileRequests = await stubBasemap(page);
     await page.goto("/map?lng=-99.8588&lat=35.8948&z=2.5");
 
     await expect(page.locator("footer")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Issues/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Zoom in" })).toBeVisible();
-    await expect.poll(() => rasterTileRequests).toBeGreaterThan(0);
+    await expect.poll(vectorTileRequests).toBeGreaterThan(0);
 
     await expect
       .poll(async () => page.evaluate(() => document.scrollingElement?.scrollHeight))
@@ -42,24 +60,9 @@ test.describe("public map", () => {
     await expect.poll(() => new URL(page.url()).searchParams.get("z")).not.toBe("2.5");
   });
 
-  test("loads the dark basemap tiles when the device theme is dark", async ({ page }) => {
+  test("draws the basemap under the dark device theme", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
-    let darkRasterTileRequests = 0;
-    let lightRasterTileRequests = 0;
-    await page.route(
-      /https:\/\/[abcd]\.basemaps\.cartocdn\.com\/(dark_all|light_all)\/\d+\/\d+\/\d+\.png/,
-      async (route) => {
-        if (route.request().url().includes("/dark_all/")) {
-          darkRasterTileRequests += 1;
-        } else {
-          lightRasterTileRequests += 1;
-        }
-        await route.fulfill({
-          contentType: "image/png",
-          body: transparentPng,
-        });
-      },
-    );
+    const vectorTileRequests = await stubBasemap(page);
 
     await page.goto("/map?lng=-99.8588&lat=35.8948&z=2.5");
 
@@ -67,7 +70,6 @@ test.describe("public map", () => {
     await expect
       .poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme))
       .toBe("dark");
-    await expect.poll(() => darkRasterTileRequests).toBeGreaterThan(0);
-    expect(lightRasterTileRequests).toBe(0);
+    await expect.poll(vectorTileRequests).toBeGreaterThan(0);
   });
 });

@@ -21,12 +21,6 @@ const STATIC_STYLES = `
   ::-webkit-scrollbar { display: none !important; }
 `;
 
-/** A 1x1 transparent PNG, served in place of every remote basemap tile. */
-const BLANK_TILE = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-  "base64",
-);
-
 /**
  * Installs everything that must be in place before the first navigation.
  *
@@ -56,8 +50,23 @@ export async function preparePage(page: Page, liveTiles: boolean): Promise<void>
   );
 
   if (!liveTiles) {
-    await page.route("**basemaps.cartocdn.com/**", (route) =>
-      route.fulfill({ body: BLANK_TILE, contentType: "image/png", status: 200 }),
+    // An empty vector tile draws no geography, which keeps screenshots stable
+    // without reaching OpenFreeMap.
+    await page.route("**tiles.openfreemap.org/planet/**", (route) =>
+      route.fulfill({ body: Buffer.alloc(0), contentType: "application/x-protobuf", status: 200 }),
+    );
+    await page.route("**tiles.openfreemap.org/planet", (route) =>
+      route.fulfill({
+        body: JSON.stringify({
+          tilejson: "3.0.0",
+          tiles: ["https://tiles.openfreemap.org/planet/stub/{z}/{x}/{y}.pbf"],
+        }),
+        contentType: "application/json",
+        status: 200,
+      }),
+    );
+    await page.route("**tiles.openfreemap.org/fonts/**", (route) =>
+      route.fulfill({ body: Buffer.alloc(0), contentType: "application/x-protobuf", status: 200 }),
     );
   }
 }
