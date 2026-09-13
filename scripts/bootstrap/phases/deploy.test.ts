@@ -3,27 +3,29 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
+import { atlasApiServiceName } from "./deploy.js";
+import { formatCloudRunEnvVarsFileContent } from "./deploy-config.js";
 import {
-  atlasApiServiceName,
   buildAtlasApiImageSpec,
   buildCloudBuildDockerConfig,
   classifyDockerPreflight,
+  formatBootstrapImageTag,
+  formatCloudBuildDockerConfig,
+  formatCloudBuildSubmitCommand,
+  formatDockerBuildCommand,
   formatDockerBuildFallbackPrompt,
   formatDockerDaemonRecovery,
   formatDockerStartPrompt,
+  resolveDockerBuildPlan,
+} from "./deploy-docker.js";
+import {
   formatCloudBuildSourceAccessFollowUp,
   formatCloudBuildSourceAccessGrantCommand,
   formatCloudBuildSourceAccessRecoveryNote,
-  formatCloudBuildDockerConfig,
-  formatCloudRunEnvVarsFileContent,
-  formatCloudBuildSubmitCommand,
-  formatDockerBuildCommand,
-  formatBootstrapImageTag,
   formatGcloudReauthenticationRecovery,
   isGcloudReauthenticationFailure,
   parseCloudBuildSourceAccessFailure,
-  resolveDockerBuildPlan,
-} from "./deploy.js";
+} from "./deploy-recovery.js";
 
 void describe("deploy resilience", () => {
   void it("deploys a distinct Cloud Run service name per target", () => {
