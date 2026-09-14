@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHydrated } from "@/platform/runtime/use-hydrated";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { loadCloudCostPosture } from "./cloud-costs.functions";
 import { CloudCostsView } from "./cloud-costs-view";
 
@@ -14,9 +15,7 @@ export function CloudCostsAdminPage() {
   });
 
   const errorMessage = postureQuery.isError
-    ? postureQuery.error instanceof Error
-      ? postureQuery.error.message
-      : "Cloud costs could not load."
+    ? userFacingErrorMessage(postureQuery.error, "Cloud costs could not load.")
     : !postureQuery.isPending && !postureQuery.data
       ? "Cloud costs could not load."
       : undefined;

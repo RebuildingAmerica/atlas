@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { Agent } from "@atproto/api";
 import { NodeOAuthClient, type OAuthClientOptions } from "@atproto/oauth-client-node";
 import { createInternalAuthHeaders } from "@/domains/access/config";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import {
   createAtprotoOAuthStores,
   pruneAtprotoOAuthStores as pruneAtprotoOAuthStoreRows,
@@ -139,7 +140,7 @@ export function createAtprotoHarnessProviderCallbackUrl(params: URLSearchParams)
   const state = params.get("state")?.trim();
   const handle = params.get("handle")?.trim();
   if (!state || !handle) {
-    throw new Error("ATProto provider harness needs state and handle.");
+    throw new UserFacingError("ATProto provider harness needs state and handle.");
   }
   return e2eHarnessCallbackUrl(handle, state);
 }
@@ -156,7 +157,7 @@ export async function completeAtprotoAuthorization(params: URLSearchParams): Pro
     const stateKey = result.state;
     const state = stateKey ? await appStateStore.get(stateKey) : undefined;
     if (!stateKey || state?.userId !== session.user.id) {
-      throw new Error("ATProto verification state could not be matched to this session.");
+      throw new UserFacingError("ATProto verification state could not be matched to this session.");
     }
     await appStateStore.del(stateKey);
 
@@ -236,7 +237,7 @@ export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Re
     if (pendingState?.flow === "sign-in" && pendingState.e2eHarness === true) {
       return await completeE2EHarnessSignIn(params, stateKey, pendingState);
     }
-    throw new Error("ATProto sign-in is unavailable.");
+    throw new UserFacingError("ATProto sign-in is unavailable.");
   }
   const client = await getAtprotoOAuthClient();
   const result = await client.callback(params);
@@ -244,7 +245,7 @@ export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Re
     const stateKey = result.state;
     const state = stateKey ? await appStateStore.get(stateKey) : undefined;
     if (!stateKey || state?.flow !== "sign-in") {
-      throw new Error("ATProto sign-in is unavailable.");
+      throw new UserFacingError("ATProto sign-in is unavailable.");
     }
     await appStateStore.del(stateKey);
 
@@ -254,13 +255,13 @@ export async function completeAtprotoSignIn(params: URLSearchParams): Promise<Re
       profile.data.did !== result.session.did ||
       profile.data.handle.toLowerCase() !== state.requestedHandle.toLowerCase()
     ) {
-      throw new Error("ATProto sign-in is unavailable.");
+      throw new UserFacingError("ATProto sign-in is unavailable.");
     }
     await verifyResolvedAtprotoIdentity(agent, {
       did: result.session.did,
       handle: profile.data.handle,
     }).catch(() => {
-      throw new Error("ATProto sign-in is unavailable.");
+      throw new UserFacingError("ATProto sign-in is unavailable.");
     });
 
     const userId = await resolveAtprotoSignInController({ did: result.session.did });
@@ -287,10 +288,10 @@ async function completeE2EHarnessSignIn(
 ): Promise<Response> {
   const handle = params.get("handle")?.trim() ?? "";
   if (!handle) {
-    throw new Error("ATProto sign-in is unavailable.");
+    throw new UserFacingError("ATProto sign-in is unavailable.");
   }
   if (state.requestedHandle.toLowerCase() !== handle.toLowerCase()) {
-    throw new Error("ATProto sign-in is unavailable.");
+    throw new UserFacingError("ATProto sign-in is unavailable.");
   }
   await appStateStore.del(stateKey);
   const userId = await resolveAtprotoSignInController({ handle });
@@ -308,7 +309,7 @@ async function completeE2EHarnessAuthorization(
   const handle = params.get("handle")?.trim() ?? "";
   const state = stateKey ? await appStateStore.get(stateKey) : undefined;
   if (state?.userId !== userId || !handle) {
-    throw new Error("ATProto verification state could not be matched to this session.");
+    throw new UserFacingError("ATProto verification state could not be matched to this session.");
   }
   if (state.requestedHandle.toLowerCase() !== handle.toLowerCase()) {
     throw recoverableAtprotoOAuthError(
@@ -379,7 +380,7 @@ async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
 async function requireSignedInAtlasSession() {
   const session = await loadAtlasSession();
   if (!session) {
-    throw new Error("Sign in before verifying an ATProto account.");
+    throw new UserFacingError("Sign in before verifying an ATProto account.");
   }
   return session;
 }
@@ -398,7 +399,7 @@ async function verifyResolvedAtprotoIdentity(
     resolved.data.handle.toLowerCase() !== input.handle.toLowerCase() ||
     didDocId !== input.did
   ) {
-    throw new Error("ATProto identity could not be verified.");
+    throw new UserFacingError("ATProto identity could not be verified.");
   }
 }
 
@@ -419,7 +420,7 @@ async function persistLinkedAtprotoIdentity(
     method: "POST",
   });
   if (!response.ok) {
-    throw new Error("ATProto identity could not be linked.");
+    throw new UserFacingError("ATProto identity could not be linked.");
   }
   return (await response.json()) as LinkedAtprotoIdentity;
 }
@@ -441,11 +442,11 @@ async function resolveAtprotoSignInController(
     method: "POST",
   });
   if (!response.ok) {
-    throw new Error("ATProto sign-in is unavailable.");
+    throw new UserFacingError("ATProto sign-in is unavailable.");
   }
   const payload = (await response.json()) as { user_id?: unknown };
   if (typeof payload.user_id !== "string" || !payload.user_id) {
-    throw new Error("ATProto sign-in is unavailable.");
+    throw new UserFacingError("ATProto sign-in is unavailable.");
   }
   return payload.user_id;
 }
@@ -455,7 +456,7 @@ export function parseAtprotoReturnTo(value: string): AtprotoReturnContext {
   const publicOrigin = new URL(runtime.publicBaseUrl).origin;
   const parsed = new URL(value, runtime.publicBaseUrl);
   if (parsed.origin !== publicOrigin) {
-    throw new Error("ATProto return destination is not allowed.");
+    throw new UserFacingError("ATProto return destination is not allowed.");
   }
   if (parsed.pathname === "/account") {
     return { kind: "account" };
@@ -468,7 +469,7 @@ export function parseAtprotoReturnTo(value: string): AtprotoReturnContext {
   if (manage?.[1]) {
     return { kind: "manage", slug: decodeURIComponent(manage[1]) };
   }
-  throw new Error("ATProto return destination is not allowed.");
+  throw new UserFacingError("ATProto return destination is not allowed.");
 }
 
 function sanitizeReturnTo(value: string): string {

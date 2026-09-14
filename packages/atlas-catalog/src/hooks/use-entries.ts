@@ -1,4 +1,8 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  type UseQueryOptions,
+} from "@tanstack/react-query";
 import { api } from "@rebuildingamerica/atlas-api-client";
 import type {
   Entry,
@@ -7,13 +11,19 @@ import type {
   EntrySlugScope,
 } from "@rebuildingamerica/atlas-api-client";
 
+type EntryListQueryOptions = UseQueryOptions<EntryListResponse>;
+
 interface UseEntriesOptions {
   /** Pause the catalog query until a deliberate retry or new route load. */
   enabled?: boolean;
   /** Hydrate the React Query cache with this server-side payload on first render. */
   initialData?: EntryListResponse;
-  /** Whether React Query should automatically retry failed catalog reads. */
-  retry?: boolean;
+  /** Whether to refetch when the browser comes back online. */
+  refetchOnReconnect?: EntryListQueryOptions["refetchOnReconnect"];
+  /** Whether, or for which failures, React Query retries a failed catalog read. */
+  retry?: EntryListQueryOptions["retry"];
+  /** How long React Query waits before each retry. */
+  retryDelay?: EntryListQueryOptions["retryDelay"];
 }
 
 export function useEntries(
@@ -27,7 +37,9 @@ export function useEntries(
     staleTime: 1000 * 60 * 10,
     enabled: options?.enabled ?? true,
     initialData: options?.initialData,
+    refetchOnReconnect: options?.refetchOnReconnect,
     retry: options?.retry ?? false,
+    retryDelay: options?.retryDelay,
   });
 }
 

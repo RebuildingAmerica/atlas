@@ -74,7 +74,6 @@ export function BriefCreatePage() {
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">Briefing Room</Badge>
-            <Badge>Source-linked</Badge>
           </div>
           <div className="space-y-2">
             <h1 className="type-display-small text-ink-strong">New Atlas Brief</h1>

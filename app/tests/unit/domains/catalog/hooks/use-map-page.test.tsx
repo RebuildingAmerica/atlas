@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
+import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
 import { CONUS_VIEW } from "@rebuildingamerica/atlas-catalog/map/map-viewport";
 import { makePoint } from "../../../../helpers/catalog/map-clustering-harness";
 import { makeFakeMap } from "../../../../helpers/catalog/fake-map";
@@ -269,6 +270,15 @@ describe("useMapPage", () => {
       useMapPage({ search: {}, navigate: requireMapPageMocks().navigate, initialPoints: seeded }),
     );
     expect(readMapPageMocks().lastOptions()?.initialData).toBe(seeded);
+  });
+
+  it("fetches unseeded points in the browser and retries them quietly", () => {
+    renderHook(() => useMapPage({ search: {}, navigate: requireMapPageMocks().navigate }));
+
+    expect(readMapPageMocks().lastOptions()).toEqual({
+      ...PUBLIC_QUERY_RETRY_OPTIONS,
+      initialData: undefined,
+    });
   });
 
   it("still sets a place's filter and opens an actor before the map mounts", () => {

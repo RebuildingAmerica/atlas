@@ -378,10 +378,12 @@ export async function resolveClientIdMetadataDocument(
       redirect: "error",
       signal: controller.signal,
     });
-  } catch (error) {
+  } catch {
+    // This description reaches the OAuth client and the browser tab behind
+    // it, while the socket error it replaced named hosts and resolver state.
     throw new ClientIdMetadataError(
       "fetch_failed",
-      `CIMD fetch failed: ${error instanceof Error ? error.message : String(error)}`,
+      "CIMD fetch failed: Atlas could not reach the client metadata URL.",
     );
   } finally {
     clearTimeout(timeout);

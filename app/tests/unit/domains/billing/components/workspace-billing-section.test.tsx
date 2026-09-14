@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkspaceBillingSection } from "@/domains/billing/components/workspace-billing-section";
 import { installRouterMocks } from "../../../../helpers/router-harness";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const mocks = vi.hoisted(() => ({
   createPortalSession: vi.fn(),
@@ -83,7 +84,7 @@ describe("WorkspaceBillingSection", () => {
 
     it("explains why the portal did not open and lets the operator retry", async () => {
       mocks.createPortalSession.mockRejectedValue(
-        new Error("This workspace has no Stripe customer yet."),
+        new UserFacingError("This workspace has no Stripe customer yet."),
       );
       render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
 
@@ -107,7 +108,9 @@ describe("WorkspaceBillingSection", () => {
     it("clears a previous failure when the operator tries again", async () => {
       const assign = vi.fn();
       vi.stubGlobal("location", { ...window.location, assign });
-      mocks.createPortalSession.mockRejectedValueOnce(new Error("Stripe was unreachable."));
+      mocks.createPortalSession.mockRejectedValueOnce(
+        new UserFacingError("Stripe was unreachable."),
+      );
       mocks.createPortalSession.mockResolvedValue({ url: "https://billing.stripe.test/p/session" });
       render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
 

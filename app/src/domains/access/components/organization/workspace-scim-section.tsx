@@ -6,6 +6,7 @@ import {
   loadWorkspaceSCIMSetup,
   type AtlasWorkspaceSCIMTokenResult,
 } from "@/domains/access/scim.functions";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { useToast } from "@rebuildingamerica/atlas-ui/ui/toast";
@@ -62,9 +63,7 @@ export function WorkspaceSCIMSection({ canManageOrganization }: WorkspaceSCIMSec
       await refreshSetup();
       toast.success("SCIM token generated.");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Atlas could not generate a SCIM token.",
-      );
+      toast.error(userFacingErrorMessage(error, "Atlas could not generate a SCIM token."));
     }
   }
 
@@ -81,9 +80,7 @@ export function WorkspaceSCIMSection({ canManageOrganization }: WorkspaceSCIMSec
       await refreshSetup();
       toast.success("SCIM connection removed.");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Atlas could not remove that SCIM connection.",
-      );
+      toast.error(userFacingErrorMessage(error, "Atlas could not remove that SCIM connection."));
     }
   }
 

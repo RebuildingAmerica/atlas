@@ -1,6 +1,13 @@
+import { isNotFound } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlacePageData } from "@rebuildingamerica/atlas-api-client";
-import { buildPlaceRouteHead, loadPlaceRoute } from "@/domains/catalog/pages/place-route";
+import { AtlasApiError } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
+import {
+  buildPlaceRouteHead,
+  loadPlaceRoute,
+  loadPlaceRouteOrDegrade,
+  placePageQueryKey,
+} from "@/domains/catalog/pages/place-route";
 import { placePageFixture } from "../../../../fixtures/catalog/place-page";
 
 const apiMocks = vi.hoisted(() => ({
@@ -29,6 +36,65 @@ describe("place route data", () => {
       await loadPlaceRoute({ placeSlug: "las-vegas-nv" });
 
       expect(apiMocks.getPage).toHaveBeenCalledWith("las-vegas-nv");
+    });
+
+    it("answers a place the API does not know with not-found", async () => {
+      apiMocks.getPage.mockRejectedValue(new AtlasApiError(404, "Place not found"));
+
+      const thrown: unknown = await loadPlaceRoute({ placeSlug: "atlantis" }).catch(
+        (error: unknown) => error,
+      );
+
+      expect(isNotFound(thrown)).toBe(true);
+    });
+
+    it("passes any other failure through for the caller to degrade", async () => {
+      const outage = new AtlasApiError(429, "Too many requests");
+      apiMocks.getPage.mockRejectedValue(outage);
+
+      await expect(loadPlaceRoute({ placeSlug: "las-vegas-nv" })).rejects.toBe(outage);
+    });
+  });
+
+  describe("loadPlaceRouteOrDegrade", () => {
+    it("returns the place when the API answers", async () => {
+      await expect(
+        loadPlaceRouteOrDegrade({ placeSlug: "las-vegas-nv" }, { kind: "city" }),
+      ).resolves.toEqual(placePageFixture);
+      expect(apiMocks.getPage).toHaveBeenCalledWith("las-vegas-nv", { kind: "city" });
+    });
+
+    it("returns nothing during an outage so the page renders placeholders", async () => {
+      apiMocks.getPage.mockRejectedValue(new AtlasApiError(429, "Too many requests"));
+
+      await expect(loadPlaceRouteOrDegrade({ placeSlug: "las-vegas-nv" })).resolves.toBeUndefined();
+    });
+
+    it("still answers a missing place with not-found", async () => {
+      apiMocks.getPage.mockRejectedValue(new AtlasApiError(404, "Place not found"));
+
+      const thrown: unknown = await loadPlaceRouteOrDegrade({ placeSlug: "atlantis" }).catch(
+        (error: unknown) => error,
+      );
+
+      expect(isNotFound(thrown)).toBe(true);
+    });
+  });
+
+  describe("placePageQueryKey", () => {
+    it("keys a place separately for each geography kind a route pins", () => {
+      expect(placePageQueryKey({ placeSlug: "las-vegas-nv" }, { kind: "city" })).toEqual([
+        "places",
+        "page",
+        "city",
+        "las-vegas-nv",
+      ]);
+      expect(placePageQueryKey({ placeSlug: "las-vegas-nv" })).toEqual([
+        "places",
+        "page",
+        "any",
+        "las-vegas-nv",
+      ]);
     });
   });
 

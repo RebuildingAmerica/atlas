@@ -1,5 +1,6 @@
 import { Sparkles } from "lucide-react";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { CompanionSpotlight, SectionHeading } from "./profile-showcase-primitives";
 import { SpotlightCard } from "./spotlight-card";
 
@@ -29,7 +30,9 @@ export function ProfilesMarquee({
           subtitle="Spotlight"
           title="Featured profiles"
         />
-        <p className="type-body-medium text-on-error-container">{error.message}</p>
+        <p className="type-body-medium text-on-error-container">
+          {userFacingErrorMessage(error, "Featured profiles couldn't load. Try again in a moment.")}
+        </p>
       </section>
     );
   }

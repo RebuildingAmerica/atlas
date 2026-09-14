@@ -386,7 +386,9 @@ describe("useOrganizationPageWorkspaceActions behavior", () => {
       await result.current.onUpgradeToTeam();
     });
 
-    expect(feedback.setErrorMessage).toHaveBeenCalledWith("nope");
+    expect(feedback.setErrorMessage).toHaveBeenCalledWith(
+      "Atlas could not upgrade that workspace.",
+    );
     expect(readRouterMocks().navigate).not.toHaveBeenCalled();
   });
 });

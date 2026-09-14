@@ -7,6 +7,7 @@ import {
   reviewDiscountVerification,
 } from "../../discount-verifications.functions";
 import { DiscountAdminView } from "./discount-admin-view";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 type VerificationReviewStatus = VerificationUpdateRequest["status"];
 
@@ -41,9 +42,7 @@ export function DiscountAdminPage() {
   const records = verificationQuery.data?.records || [];
   const total = verificationQuery.data?.total || 0;
   const errorMessage = verificationQuery.isError
-    ? verificationQuery.error instanceof Error
-      ? verificationQuery.error.message
-      : "Discount verifications could not load."
+    ? userFacingErrorMessage(verificationQuery.error, "Discount verifications could not load.")
     : undefined;
   const reviewRecord = (record: VerificationRecordResponse, status: VerificationReviewStatus) => {
     reviewMutation.mutate({

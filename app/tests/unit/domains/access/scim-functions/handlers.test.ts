@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import {
   resolveCapabilities,
   serializeResolvedCapabilities,
 } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type * as OrganizationServerHelpersModule from "@/domains/access/organization-server-helpers";
 import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
+import {
+  createAtlasSessionFixture,
+  createAtlasWorkspace,
+} from "../../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   deleteSCIMProviderConnection: vi.fn(),
@@ -117,7 +121,7 @@ describe("scim.functions handlers", () => {
       data: undefined,
     })) as ServerFnExecutionResponse;
 
-    expect(response.error).toEqual(new Error("SCIM setup is available on Atlas Team."));
+    expect(response.error).toEqual(new UserFacingError("SCIM setup is available on Atlas Team."));
     expect(mocks.listSCIMProviderConnections).not.toHaveBeenCalled();
   });
 
@@ -196,7 +200,7 @@ describe("scim.functions handlers", () => {
       method: "POST",
     })) as ServerFnExecutionResponse;
 
-    expect(response.error).toEqual(new Error("SCIM setup is available on Atlas Team."));
+    expect(response.error).toEqual(new UserFacingError("SCIM setup is available on Atlas Team."));
     expect(mocks.deleteSCIMProviderConnection).not.toHaveBeenCalled();
   });
 

@@ -7,6 +7,7 @@ import {
   useDeleteSavedList,
   useSavedLists,
 } from "@/domains/catalog/hooks/use-claims";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
@@ -37,7 +38,7 @@ function ListsRoute() {
       setDescription("");
       setShowCreate(false);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not create list.");
+      setErrorMessage(userFacingErrorMessage(err, "Could not create list."));
     }
   }
 

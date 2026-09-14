@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  UserFacingError,
+  userFacingErrorMessage,
+} from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 async function authorizeWithAtprotoHarness(request: Request): Promise<Response> {
   if (!import.meta.env.SSR) {
-    throw new Error("ATProto OAuth is only available on the server.");
+    throw new UserFacingError("ATProto OAuth is only available on the server.");
   }
 
   const requestUrl = new URL(request.url);
@@ -22,7 +26,7 @@ export const Route = createFileRoute("/api/atproto/oauth/harness/authorize")({
           return await authorizeWithAtprotoHarness(request);
         } catch (error) {
           return Response.json(
-            { error: error instanceof Error ? error.message : "ATProto provider failed." },
+            { error: userFacingErrorMessage(error, "ATProto provider failed.") },
             { status: 400 },
           );
         }

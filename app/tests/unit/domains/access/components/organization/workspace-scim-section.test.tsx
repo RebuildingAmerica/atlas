@@ -2,6 +2,7 @@
 
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { WorkspaceSCIMSection } from "@/domains/access/components/organization/workspace-scim-section";
 import { renderWithProviders } from "../../../../../helpers/render-with-providers";
 
@@ -133,7 +134,7 @@ describe("WorkspaceSCIMSection", () => {
 
   it("explains why a token could not be issued", async () => {
     mocks.generateWorkspaceSCIMToken.mockRejectedValue(
-      new Error("SCIM setup is available on Atlas Team."),
+      new UserFacingError("SCIM setup is available on Atlas Team."),
     );
 
     renderWithProviders(<WorkspaceSCIMSection canManageOrganization />);
@@ -234,13 +235,30 @@ describe("WorkspaceSCIMSection", () => {
   });
 
   it("explains a connection Atlas could not remove", async () => {
-    mocks.deleteWorkspaceSCIMProviderConnection.mockRejectedValue(new Error("still in use"));
+    mocks.deleteWorkspaceSCIMProviderConnection.mockRejectedValue(
+      new UserFacingError("still in use"),
+    );
 
     renderWithProviders(<WorkspaceSCIMSection canManageOrganization />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
 
     expect(await screen.findByText("still in use")).toBeInTheDocument();
+  });
+
+  it("hides an internal removal failure behind safe copy", async () => {
+    mocks.deleteWorkspaceSCIMProviderConnection.mockRejectedValue(
+      new Error("relation scimProvider does not exist"),
+    );
+
+    renderWithProviders(<WorkspaceSCIMSection canManageOrganization />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
+
+    expect(
+      await screen.findByText("Atlas could not remove that SCIM connection."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/scimProvider/)).toBeNull();
   });
 
   it("falls back to safe copy when the removal failure carries no message", async () => {

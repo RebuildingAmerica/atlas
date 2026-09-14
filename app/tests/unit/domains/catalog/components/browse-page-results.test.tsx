@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createEntryFixture } from "@/../tests/fixtures/catalog/entries";
 import { BrowsePage } from "@/domains/catalog/components/browse/browse-page";
+import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
 import { getNavigateCalls, mocks } from "./browse-page-test-setup";
 
 describe("BrowsePage results", () => {
@@ -55,10 +56,11 @@ describe("BrowsePage results", () => {
     );
   });
 
-  it("shows an in-page results error when the route could not seed entries", () => {
+  it("fetches results in the browser and retries quietly when the route could not seed them", () => {
+    mocks.useEntries.mockReturnValue({ data: undefined, error: null, isLoading: true });
+
     render(
       <BrowsePage
-        initialEntriesLoadFailed
         search={{
           issue_areas: undefined,
           offset: undefined,
@@ -70,11 +72,11 @@ describe("BrowsePage results", () => {
       />,
     );
 
-    expect(mocks.useEntries).toHaveBeenCalledWith(expect.objectContaining({ limit: 20 }), {
-      enabled: false,
-      retry: false,
-    });
-    expect(screen.getByRole("alert").textContent).toBe("Results could not load.");
+    expect(mocks.useEntries).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 20 }),
+      PUBLIC_QUERY_RETRY_OPTIONS,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("converts place-plus-issue search phrases into browse filters", () => {
@@ -246,7 +248,7 @@ describe("BrowsePage results", () => {
         entry_types: ["person"],
         query: "organizer",
       }),
-      { retry: false },
+      PUBLIC_QUERY_RETRY_OPTIONS,
     );
   });
 

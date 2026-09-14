@@ -172,7 +172,9 @@ describe("routes/_workspace/lists", () => {
 
   it("surfaces a create error message and persists null description for empty input", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const createMutation = vi.fn().mockRejectedValue(new Error("boom"));
+    const { UserFacingError } =
+      await import("@rebuildingamerica/atlas-api-client/user-facing-errors");
+    const createMutation = vi.fn().mockRejectedValue(new UserFacingError("boom"));
     vi.mocked(claims.useCreateSavedList).mockReturnValue({
       mutateAsync: createMutation,
       isPending: false,
@@ -197,6 +199,35 @@ describe("routes/_workspace/lists", () => {
     });
     expect(createMutation).toHaveBeenCalledWith({ name: "Outreach", description: null });
     expect(screen.getByRole("alert")).toHaveTextContent("boom");
+  });
+
+  it("hides an internal create failure's message behind safe copy", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const createMutation = vi.fn().mockRejectedValue(new Error("relation saved_list unknown"));
+    vi.mocked(claims.useCreateSavedList).mockReturnValue({
+      mutateAsync: createMutation,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useCreateSavedList>);
+    vi.mocked(claims.useSavedLists).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedLists>);
+
+    const routeModule = await import("@/routes/_workspace/lists");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    fireEvent.click(screen.getByRole("button", { name: /New list/ }));
+    fireEvent.change(screen.getByPlaceholderText("List name"), { target: { value: "Outreach" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Create list/ }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not create list.");
+    expect(screen.queryByText(/saved_list/)).toBeNull();
   });
 
   it("uses the generic create-error fallback when the rejection is not an Error", async () => {

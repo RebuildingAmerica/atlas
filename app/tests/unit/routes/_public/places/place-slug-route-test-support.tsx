@@ -80,7 +80,8 @@ export interface PlaceSlugRouteExpectation {
 
 /**
  * Exercises one `places/<kind>/$placeSlug` route end to end: the loader asks
- * the API for the right geography kind, the head advertises a kind-specific
+ * the API for the right geography kind and degrades when the API fails, the
+ * head advertises a kind-specific
  * canonical URL, and the component renders the loaded place.
  *
  * The six place-kind routes are byte-identical apart from their kind and path,
@@ -100,6 +101,10 @@ export async function expectPlaceSlugRoute(expectation: PlaceSlugRouteExpectatio
 
   expect(placeApi.places.getPage).toHaveBeenCalledWith(slug, { kind });
   expect(loaded).toBe(data);
+
+  // A rate-limited API must leave the page to render placeholders, not an error screen.
+  placeApi.places.getPage.mockRejectedValueOnce(new Error("Too many requests."));
+  await expect(Route.options.loader({ params: { placeSlug: slug } })).resolves.toBeUndefined();
 
   if (!Route.options.head) throw new Error("Expected a route head");
   const head = Route.options.head({

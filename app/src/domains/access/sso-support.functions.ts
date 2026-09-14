@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import {
   SlidingWindowRateLimiter,
@@ -169,7 +170,12 @@ export const checkWorkspaceSAMLProviderHealth = createServerFn({ method: "POST" 
         entryPointStatus = response.status;
         entryPointReachable = response.status < 500;
       } catch (error) {
-        reason = error instanceof Error ? error.message : "Atlas could not reach the IdP.";
+        // Node's fetch reports "fetch failed" or a socket code here, which
+        // tells an admin nothing about what to change at their IdP.
+        reason =
+          error instanceof Error && error.name === "TimeoutError"
+            ? "The IdP entry point did not respond within 5 seconds."
+            : "Atlas could not reach the IdP entry point. Check the sign-in URL and that it accepts public traffic.";
       }
     }
 
@@ -203,7 +209,7 @@ export const rotateWorkspaceSAMLCertificate = createServerFn({ method: "POST" })
       headers,
     });
     if (provider?.organizationId !== activeWorkspace.id) {
-      throw new Error("This SAML provider is not registered to the active workspace.");
+      throw new UserFacingError("This SAML provider is not registered to the active workspace.");
     }
 
     await auth.api.updateSSOProvider({

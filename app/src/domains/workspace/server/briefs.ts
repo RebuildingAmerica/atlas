@@ -187,7 +187,7 @@ export async function loadWorkspaceBriefsData(): Promise<AtlasBriefCollection> {
 /**
  * Creates a private Atlas Brief for the signed-in workspace.
  *
- * @param input - Source-linked brief fields to persist.
+ * @param input - Brief fields to persist.
  * @returns Created workspace brief artifact.
  */
 export async function createWorkspaceBriefData(input: AtlasBriefCreateInput): Promise<AtlasBrief> {

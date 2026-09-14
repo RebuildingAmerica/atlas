@@ -1,3 +1,5 @@
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
+
 /**
  * Shared flash/error state setters used by organization-page mutation hooks.
  */
@@ -35,9 +37,7 @@ export async function runOrganizationPageMutation<T>(params: {
 
     return mutationResult;
   } catch (error) {
-    const message = error instanceof Error ? error.message : params.fallbackMessage;
-
-    params.feedback.setErrorMessage(message);
+    params.feedback.setErrorMessage(userFacingErrorMessage(error, params.fallbackMessage));
 
     return null;
   }

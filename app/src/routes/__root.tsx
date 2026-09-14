@@ -25,6 +25,11 @@ function RootDocument() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="alternate icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+        {/* Values mirror --color-background in styles/app.css for each color scheme. */}
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f1e7" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17130f" />
       </head>
       <body className="bg-background text-on-surface flex min-h-screen flex-col">
         <Outlet />

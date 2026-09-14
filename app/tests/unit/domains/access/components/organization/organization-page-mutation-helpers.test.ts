@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { runOrganizationPageMutation } from "@/domains/access/components/organization/organization-page-mutation-helpers";
 
 describe("runOrganizationPageMutation", () => {
@@ -23,8 +24,8 @@ describe("runOrganizationPageMutation", () => {
     expect(refreshWorkspaceData).toHaveBeenCalled();
   });
 
-  it("handles Error instances", async () => {
-    const action = vi.fn().mockRejectedValue(new Error("specific error"));
+  it("shows a message written for the workspace admin", async () => {
+    const action = vi.fn().mockRejectedValue(new UserFacingError("specific error"));
     const result = await runOrganizationPageMutation({
       action,
       fallbackMessage: "fail",
@@ -35,6 +36,19 @@ describe("runOrganizationPageMutation", () => {
 
     expect(result).toBeNull();
     expect(feedback.setErrorMessage).toHaveBeenCalledWith("specific error");
+  });
+
+  it("hides an internal error's message behind the fallback", async () => {
+    const action = vi.fn().mockRejectedValue(new Error("Auth database unavailable"));
+    await runOrganizationPageMutation({
+      action,
+      fallbackMessage: "fail",
+      feedback,
+      refreshWorkspaceData,
+      successMessage: "pass",
+    });
+
+    expect(feedback.setErrorMessage).toHaveBeenLastCalledWith("fail");
   });
 
   it("handles non-Error failures with fallback message", async () => {

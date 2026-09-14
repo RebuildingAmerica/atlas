@@ -6,12 +6,12 @@ const ONE_HOUR = 3600;
 function buildLlmsTxt(): string {
   return `# Atlas
 
-Atlas provides source-linked public profiles for civic people, organizations, and initiatives across America.
+Atlas provides public profiles for civic people, organizations, and initiatives across America.
 
 ## Public entry points
 
 - Home: ${buildCanonicalUrl("")}
-- Browse source-linked public profiles: ${buildCanonicalUrl("/browse")}
+- Browse public profiles: ${buildCanonicalUrl("/browse")}
 - Map civic actors by place: ${buildCanonicalUrl("/map")}
 - XML sitemap: ${buildCanonicalUrl("/sitemap.xml")}
 - OpenAPI schema: ${buildCanonicalUrl("/openapi.json")}

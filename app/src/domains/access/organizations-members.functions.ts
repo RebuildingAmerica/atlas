@@ -1,4 +1,5 @@
 import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
@@ -68,7 +69,7 @@ export const inviteWorkspaceMember = createServerFn({ method: "POST" })
     const activeWorkspace = requireManagedTeamWorkspace(session);
 
     if (!hasSerializedCapability(session.workspace.resolvedCapabilities, "workspace.shared")) {
-      throw new Error("This workspace cannot invite members.");
+      throw new UserFacingError("This workspace cannot invite members.");
     }
 
     const maxMembers = session.workspace.resolvedCapabilities.limits.max_members;
@@ -84,7 +85,7 @@ export const inviteWorkspaceMember = createServerFn({ method: "POST" })
           (invitation) => invitation.status === "pending",
         ).length;
         if (details.members.length + pendingInvites >= maxMembers) {
-          throw new Error(
+          throw new UserFacingError(
             `This workspace has reached its limit of ${maxMembers} members. Remove a member or cancel a pending invitation before inviting someone new.`,
           );
         }
@@ -119,7 +120,7 @@ export const resendWorkspaceInvitation = createServerFn({ method: "POST" })
     const activeWorkspace = requireManagedTeamWorkspace(session);
 
     if (!hasSerializedCapability(session.workspace.resolvedCapabilities, "workspace.shared")) {
-      throw new Error("This workspace cannot invite members.");
+      throw new UserFacingError("This workspace cannot invite members.");
     }
 
     await auth.api.createInvitation({
@@ -252,7 +253,7 @@ export const leaveWorkspace = createServerFn({ method: "POST" }).handler(async (
   const activeWorkspace = requireManagedTeamWorkspace(session);
 
   if (activeWorkspace.role === "owner") {
-    throw new Error("Transfer workspace ownership before leaving this team.");
+    throw new UserFacingError("Transfer workspace ownership before leaving this team.");
   }
 
   await auth.api.leaveOrganization({

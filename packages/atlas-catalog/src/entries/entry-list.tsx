@@ -4,6 +4,7 @@ import { EntryCard } from "./entry-card";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Spinner } from "@rebuildingamerica/atlas-ui/ui/spinner";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 export interface EntryListProps {
   entries: Entry[];
@@ -38,7 +39,9 @@ export function EntryList({
           <AlertCircle className="h-5 w-5" />
           Search unavailable
         </div>
-        <p className="mt-2 text-sm">{error.message}</p>
+        <p className="mt-2 text-sm">
+          {userFacingErrorMessage(error, "Atlas couldn't run that search. Try again in a moment.")}
+        </p>
       </div>
     );
   }

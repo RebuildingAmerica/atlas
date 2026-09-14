@@ -90,13 +90,14 @@ describe("CloudCostsAdminPage", () => {
   });
 
   it("keeps the cloud-cost shell visible when posture data fails", async () => {
-    mocks.loadCloudCostPosture.mockRejectedValue(new Error("Cloud cost posture unavailable"));
+    mocks.loadCloudCostPosture.mockRejectedValue(new Error("ATLAS_API_TEMPORARILY_UNAVAILABLE"));
 
     renderCloudCostsAdminPage();
 
     expect(screen.getByRole("heading", { name: "Cloud costs" })).toBeInTheDocument();
-    expect(await screen.findByText("Cloud cost posture unavailable")).toBeInTheDocument();
-    expect(screen.getAllByText("Cloud cost posture unavailable")).toHaveLength(1);
+    expect(await screen.findByText("Cloud costs could not load.")).toBeInTheDocument();
+    expect(screen.getAllByText("Cloud costs could not load.")).toHaveLength(1);
+    expect(screen.queryByText("ATLAS_API_TEMPORARILY_UNAVAILABLE")).toBeNull();
   });
 
   it("renders cloud cost posture from the authenticated server function", async () => {

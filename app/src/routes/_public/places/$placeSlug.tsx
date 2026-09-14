@@ -1,14 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PlacePage } from "@/domains/catalog/pages/place-page";
-import { buildPlaceRouteHead, loadPlaceRoute } from "@/domains/catalog/pages/place-route";
+import { buildPlaceRouteHead, loadPlaceRouteOrDegrade } from "@/domains/catalog/pages/place-route";
+import { PlaceRoutePage } from "@/domains/catalog/pages/place-route-page";
 
 export const Route = createFileRoute("/_public/places/$placeSlug")({
-  loader: async ({ params }) => loadPlaceRoute(params),
+  loader: async ({ params }) => loadPlaceRouteOrDegrade(params),
   head: ({ loaderData, params }) => buildPlaceRouteHead(loaderData, `/places/${params.placeSlug}`),
   component: PlaceRoute,
 });
 
 function PlaceRoute() {
-  const data = Route.useLoaderData();
-  return <PlacePage data={data} />;
+  return <PlaceRoutePage loaderData={Route.useLoaderData()} params={Route.useParams()} />;
 }

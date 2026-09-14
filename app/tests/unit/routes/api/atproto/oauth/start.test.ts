@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { callRouteGet } from "@/../tests/helpers/routes-server-handler";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const mocks = vi.hoisted(() => ({
   createAtprotoAuthorizationUrl: vi.fn(),
@@ -100,7 +101,9 @@ describe("routes/api/atproto/oauth/start", () => {
   });
 
   it("reports why authorization could not be started", async () => {
-    mocks.createAtprotoAuthorizationUrl.mockRejectedValue(new Error("PDS did not respond."));
+    mocks.createAtprotoAuthorizationUrl.mockRejectedValue(
+      new UserFacingError("PDS did not respond."),
+    );
     const routeModule = await import("@/routes/api/atproto/oauth/start");
 
     const response = await callRouteGet(
@@ -139,5 +142,18 @@ describe("routes/api/atproto/oauth/start", () => {
       error: "ATProto OAuth is only available on the server.",
     });
     expect(mocks.createAtprotoAuthorizationUrl).not.toHaveBeenCalled();
+  });
+
+  it("hides an internal authorization failure's message behind safe copy", async () => {
+    mocks.createAtprotoAuthorizationUrl.mockRejectedValue(new Error("ECONNREFUSED"));
+    const routeModule = await import("@/routes/api/atproto/oauth/start");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/start?handle=org.example"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "ATProto authorization failed." });
   });
 });

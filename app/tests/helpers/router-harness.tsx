@@ -176,6 +176,10 @@ export function buildRouterMockModule(api: RouterMockApi): Record<string, unknow
     createRootRoute: (options: unknown) => attachHooks(options),
     createRootRouteWithContext: () => (options: unknown) => attachHooks(options),
     useRouterState: api.useRouterState,
+    isNotFound: isMockNotFound,
+    isRedirect: isMockRedirect,
+    notFound: mockNotFound,
+    rootRouteId: "__root__",
     useNavigate: () => api.navigate,
     useRouter: () => ({ invalidate: api.invalidate, navigate: api.navigate }),
     redirect: api.redirect,
@@ -196,6 +200,54 @@ export function buildRouterMockModule(api: RouterMockApi): Record<string, unknow
       </a>
     ),
   };
+}
+
+/**
+ * Shape of the not-found marker the stub `notFound()` returns or throws. It
+ * mirrors the production object, which is a plain tagged object and not an
+ * Error, so code that tells a missing record from a failure behaves the same.
+ */
+export interface RouterMockNotFound {
+  isNotFound: true;
+  routeId?: string;
+  throw?: boolean;
+}
+
+/**
+ * Stub of `notFound()`: builds the marker, and throws it when asked to.
+ *
+ * @param options - The options production code passed to `notFound(...)`.
+ * @returns The marker, when `throw` is not set.
+ */
+export function mockNotFound(
+  options: Omit<RouterMockNotFound, "isNotFound"> = {},
+): RouterMockNotFound {
+  const marker: RouterMockNotFound = { ...options, isNotFound: true };
+  if (options.throw) {
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- production `notFound` throws this same non-Error marker, and code under test tells the two apart by it.
+    throw marker;
+  }
+  return marker;
+}
+
+/**
+ * Stub of `isNotFound()`.
+ *
+ * @param value - Anything a loader or query threw.
+ * @returns Whether it is a not-found marker.
+ */
+export function isMockNotFound(value: unknown): value is RouterMockNotFound {
+  return typeof value === "object" && value !== null && "isNotFound" in value;
+}
+
+/**
+ * Stub of `isRedirect()`, matching what the stub `redirect()` throws.
+ *
+ * @param value - Anything a loader threw.
+ * @returns Whether it is a redirect.
+ */
+export function isMockRedirect(value: unknown): value is RouterMockRedirectError {
+  return value instanceof Error && "isRedirect" in value;
 }
 
 /**

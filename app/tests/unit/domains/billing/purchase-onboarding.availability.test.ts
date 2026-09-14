@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
 import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
 import {
@@ -138,7 +139,11 @@ describe("purchase onboarding functions", () => {
         data: { product: "atlas_pro", interval: "monthly" },
       })) as ServerFnExecutionResponse;
 
-      expect(response.error).toBeDefined();
+      // The buyer reads the refusal, and nothing else from this server
+      // function reaches the page.
+      expect(response.error).toEqual(
+        new UserFacingError("Atlas is not selling subscriptions right now."),
+      );
       expect(mocks.ensurePurchaseIntent).not.toHaveBeenCalled();
     });
 
@@ -180,19 +185,6 @@ describe("purchase onboarding functions", () => {
   });
 
   describe("checkout refusal messages", () => {
-    it("recognises only the guard's own wording", async () => {
-      const { isCheckoutRefusalMessage, CHECKOUT_UNAVAILABLE_FALLBACK } =
-        await import("@/domains/billing/purchase-onboarding.functions");
-
-      expect(isCheckoutRefusalMessage(CHECKOUT_UNAVAILABLE_FALLBACK)).toBe(true);
-      expect(isCheckoutRefusalMessage("Atlas is not selling subscriptions right now.")).toBe(true);
-      // Internal failures must not reach a buyer: this one names an env var.
-      expect(
-        isCheckoutRefusalMessage("ATLAS_SERVER_API_PROXY_TARGET is required for Atlas API calls."),
-      ).toBe(false);
-      expect(isCheckoutRefusalMessage("")).toBe(false);
-    });
-
     it("refuses to read availability from the browser bundle", async () => {
       vi.stubEnv("SSR", false);
       vi.resetModules();

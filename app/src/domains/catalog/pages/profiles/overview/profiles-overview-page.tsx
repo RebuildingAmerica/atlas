@@ -16,6 +16,7 @@ import {
   type ProfileBrowseScope,
 } from "@/domains/catalog/profile-browse";
 import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
+import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
 import type { Entry, EntryListResponse } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfilesOverviewPageProps {
@@ -98,21 +99,30 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
     [taxonomyQuery.data],
   );
 
+  // Every slice retries until the API answers. A failed slice keeps its
+  // section's placeholder up in the meantime, because a public page never
+  // shows a visitor an error in place of content.
   const catalogQuery = useEntries(
     {
       entry_types: lockedEntryTypesForScope(scope),
       limit: 18,
     },
-    { initialData: initialCatalog },
+    { ...PUBLIC_QUERY_RETRY_OPTIONS, initialData: initialCatalog },
   );
-  const peopleQuery = useEntries({
-    entry_types: ["person"],
-    limit: 10,
-  });
-  const organizationsQuery = useEntries({
-    entry_types: ["organization"],
-    limit: 10,
-  });
+  const peopleQuery = useEntries(
+    {
+      entry_types: ["person"],
+      limit: 10,
+    },
+    PUBLIC_QUERY_RETRY_OPTIONS,
+  );
+  const organizationsQuery = useEntries(
+    {
+      entry_types: ["organization"],
+      limit: 10,
+    },
+    PUBLIC_QUERY_RETRY_OPTIONS,
+  );
 
   const liveCatalogEntries = useMemo(
     () => catalogQuery.data?.data ?? [],
@@ -124,9 +134,11 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
     [organizationsQuery.data?.data],
   );
 
+  // `isPending` rather than `isLoading`: React Query pauses a retry while the
+  // visitor is offline, and a paused slice has no data yet either.
   const isLoading =
-    catalogQuery.isLoading ||
-    (scope === "all" && (peopleQuery.isLoading || organizationsQuery.isLoading));
+    catalogQuery.isPending ||
+    (scope === "all" && (peopleQuery.isPending || organizationsQuery.isPending));
   const catalogEntries = liveCatalogEntries;
 
   const heroEntries = catalogEntries.slice(0, 3);
@@ -171,7 +183,6 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
 
   const shouldShowEmptyState =
     !isLoading &&
-    !catalogQuery.error &&
     heroEntries.length === 0 &&
     peopleShelfEntries.length === 0 &&
     organizationShelfEntries.length === 0 &&
@@ -189,8 +200,7 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
           <>
             <ProfilesMarquee
               entries={heroEntries}
-              error={catalogQuery.error}
-              isLoading={catalogQuery.isLoading}
+              isLoading={catalogQuery.isPending}
               issueAreaLabels={issueAreaLabels}
             />
 
@@ -198,18 +208,16 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
               <>
                 <ProfilesShelf
                   entries={peopleShelfEntries}
-                  error={peopleQuery.error}
                   icon={PROFILE_SHOWCASE_ICONS.people}
-                  isLoading={peopleQuery.isLoading}
+                  isLoading={peopleQuery.isPending}
                   issueAreaLabels={issueAreaLabels}
                   subtitle="People"
                   title="People worth knowing"
                 />
                 <ProfilesShelf
                   entries={organizationShelfEntries}
-                  error={organizationsQuery.error}
                   icon={PROFILE_SHOWCASE_ICONS.organizations}
-                  isLoading={organizationsQuery.isLoading}
+                  isLoading={organizationsQuery.isPending}
                   issueAreaLabels={issueAreaLabels}
                   subtitle="Organizations"
                   title="Organizations doing the work"
@@ -221,7 +229,7 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
               <ProfilesShelf
                 entries={peopleShelfEntries}
                 icon={PROFILE_SHOWCASE_ICONS.people}
-                isLoading={catalogQuery.isLoading && heroEntries.length === 0}
+                isLoading={catalogQuery.isPending && heroEntries.length === 0}
                 issueAreaLabels={issueAreaLabels}
                 subtitle="People"
                 title="People worth knowing"
@@ -232,7 +240,7 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
               <ProfilesShelf
                 entries={organizationShelfEntries}
                 icon={PROFILE_SHOWCASE_ICONS.organizations}
-                isLoading={catalogQuery.isLoading && heroEntries.length === 0}
+                isLoading={catalogQuery.isPending && heroEntries.length === 0}
                 issueAreaLabels={issueAreaLabels}
                 subtitle="Organizations"
                 title="Organizations doing the work"
@@ -241,9 +249,9 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
 
             <ProfilesIssueLandscape
               groups={issueLandscapeGroups}
-              isLoading={catalogQuery.isLoading}
+              isLoading={catalogQuery.isPending}
             />
-            <ProfilesFreshList entries={freshEntries} isLoading={catalogQuery.isLoading} />
+            <ProfilesFreshList entries={freshEntries} isLoading={catalogQuery.isPending} />
           </>
         )}
       </div>

@@ -17,20 +17,11 @@ vi.mock("@/domains/catalog", () => {
 });
 
 vi.mock("@/domains/catalog/components/map/map-page", () => ({
-  MapPage: ({
-    search,
-    initialPoints,
-    initialPointsLoadFailed,
-  }: {
-    initialPoints: unknown;
-    initialPointsLoadFailed?: boolean;
-    search: unknown;
-  }) => (
+  MapPage: ({ search, initialPoints }: { initialPoints: unknown; search: unknown }) => (
     <div
       data-testid="map-page"
       data-search={JSON.stringify(search)}
       data-seeded={JSON.stringify(initialPoints)}
-      data-load-failed={String(initialPointsLoadFailed ?? false)}
     />
   ),
 }));
@@ -158,10 +149,10 @@ describe("routes/_public/map", () => {
       },
     });
 
-    expect(result).toEqual({ initialPointsLoadFailed: true });
+    expect(result).toEqual({ initialPoints: undefined });
   });
 
-  it("surfaces a coding error from the map loader instead of hiding it", async () => {
+  it("keeps the map route mounted whatever the initial points request fails with", async () => {
     const routeModule = await import("@/routes/_public/map");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
@@ -170,7 +161,7 @@ describe("routes/_public/map", () => {
     const loader = Route.options.loader;
     if (!loader) throw new Error("Expected Route.options.loader");
 
-    await expect(loader({ deps: { search: {} } })).rejects.toThrow("deps.search.z is not a number");
+    await expect(loader({ deps: { search: {} } })).resolves.toEqual({ initialPoints: undefined });
   });
 
   it("renders MapPage with the search params and the seeded points", async () => {
@@ -179,10 +170,7 @@ describe("routes/_public/map", () => {
     const Route = asRouteStub(routeModule.Route);
     const router = readRouterMocks();
     router.useSearch.mockReturnValue({ issue_areas: "housing-affordability" });
-    router.useLoaderData.mockReturnValue({
-      initialPoints: undefined,
-      initialPointsLoadFailed: true,
-    });
+    router.useLoaderData.mockReturnValue({ initialPoints: undefined });
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
@@ -190,6 +178,5 @@ describe("routes/_public/map", () => {
     const node = view.getByTestId("map-page");
     expect(node.dataset.search).toBe(JSON.stringify({ issue_areas: "housing-affordability" }));
     expect(node.dataset.seeded).toBeUndefined();
-    expect(node.dataset.loadFailed).toBe("true");
   });
 });

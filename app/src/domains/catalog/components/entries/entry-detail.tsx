@@ -5,6 +5,7 @@ import { formatFreshness } from "@/domains/catalog/components/profiles/detail/pr
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 interface EntryDetailProps {
   entry?: Entry;
@@ -106,7 +107,7 @@ function verificationBadge(entry: Entry): VerificationBadgeInfo {
   if (entry.trust.level === "corroborated") {
     return { variant: "info", label: "Corroborated" };
   }
-  return { variant: "default", label: "Source-linked" };
+  return { variant: "default", label: "Uncorroborated" };
 }
 
 function recordFreshnessWarning(entry: Entry): string | null {
@@ -154,15 +155,15 @@ export function EntryDetail({
   issueAreaLabels = {},
 }: EntryDetailProps) {
   if (isLoading) {
-    return (
-      <p className="type-body-medium text-on-surface-variant">
-        Loading source-linked entry details…
-      </p>
-    );
+    return <p className="type-body-medium text-on-surface-variant">Loading entry details…</p>;
   }
 
   if (error) {
-    return <p className="type-body-medium text-on-error-container">{error.message}</p>;
+    return (
+      <p className="type-body-medium text-on-error-container">
+        {userFacingErrorMessage(error, "This entry couldn't load. Try again in a moment.")}
+      </p>
+    );
   }
 
   if (!entry) {
@@ -184,8 +185,7 @@ export function EntryDetail({
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="info">{humanize(entry.type)}</Badge>
             <Badge variant={verification.variant}>{verification.label}</Badge>
-            <Badge>Source-backed record</Badge>
-            <Badge>{pluralize(entry.source_count, "source packet")}</Badge>
+            <Badge>{pluralize(entry.source_count, "source")}</Badge>
           </div>
           <div className="space-y-2">
             <CardTitle className="type-headline-medium">{entry.name}</CardTitle>
@@ -226,7 +226,7 @@ export function EntryDetail({
                 Why this record is usable
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge>{pluralize(entry.source_count, "source packet")}</Badge>
+                <Badge>{pluralize(entry.source_count, "source")}</Badge>
                 <Badge variant={verification.variant}>{verification.label}</Badge>
                 {entry.latest_source_date ? (
                   <Badge>Latest source: {entry.latest_source_date}</Badge>
@@ -314,12 +314,11 @@ export function EntryDetail({
       <Card className="rounded-3xl">
         <CardHeader className="space-y-3">
           <div className="space-y-1">
-            <CardTitle>Source trail</CardTitle>
-            <p className="type-body-medium text-on-surface-variant">Evidence packets</p>
+            <CardTitle>Sources</CardTitle>
           </div>
           {sourceSummary.packetCount > 0 ? (
             <div className="flex flex-wrap gap-2">
-              <Badge>{pluralize(sourceSummary.packetCount, "source packet")}</Badge>
+              <Badge>{pluralize(sourceSummary.packetCount, "source")}</Badge>
               <Badge>{pluralize(sourceSummary.typeCount, "source type")}</Badge>
             </div>
           ) : null}
@@ -351,9 +350,7 @@ export function EntryDetail({
                 </a>
                 {source.extraction_context ? (
                   <div className="border-border-strong mt-3 border-l-2 pl-3">
-                    <p className="type-label-medium text-on-surface-variant uppercase">
-                      Quoted evidence
-                    </p>
+                    <p className="type-label-medium text-on-surface-variant uppercase">Quote</p>
                     <p className="type-body-medium text-ink-soft mt-1">
                       {source.extraction_context}
                     </p>

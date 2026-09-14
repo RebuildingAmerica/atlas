@@ -114,7 +114,7 @@ export function PrivacyPage() {
   return (
     <PolicyPage
       title="Privacy Policy"
-      summary="Atlas collects only the information needed to operate the service, secure accounts, process subscriptions, and maintain a source-linked public directory. This policy names every company that processes that information, says how long we keep it, and explains how to get your data or a directory listing changed."
+      summary="Atlas collects only the information needed to operate the service, secure accounts, process subscriptions, and maintain the public directory. This policy names every company that processes that information, says how long we keep it, and explains how to get your data or a directory listing changed."
       lastUpdated="September 9, 2026"
       sections={PRIVACY_SECTIONS}
     />

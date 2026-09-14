@@ -10,9 +10,13 @@ import {
   useVerifyClaimDomain,
   useVerifyClaimEmail,
 } from "@/domains/catalog/hooks/use-claims";
+import { DeferredEntry } from "@/domains/catalog/pages/profiles/detail/deferred-entry";
+import { SkeletonBlock } from "@/domains/catalog/pages/profiles/detail/profile-page-skeleton";
 import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
 import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { buildPageHead } from "@/platform/seo";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import {
   ClaimContextRail,
   ClaimHero,
@@ -36,7 +40,7 @@ type ClaimSearch = z.infer<typeof claimSearchSchema>;
 export const Route = createFileRoute("/_public/claim/$slug")({
   validateSearch: claimSearchSchema,
   loader: async ({ params }) => {
-    const entry = await loadEntryBySlugAny({ data: { slug: params.slug } });
+    const entry = await loadOrDegrade(() => loadEntryBySlugAny({ data: { slug: params.slug } }));
     return { entry };
   },
   head: ({ loaderData }) => {
@@ -54,8 +58,53 @@ export const Route = createFileRoute("/_public/claim/$slug")({
 
 function ClaimRoute() {
   const { slug } = Route.useParams();
-  const search = Route.useSearch();
   const { entry } = Route.useLoaderData();
+
+  if (entry) {
+    return <ClaimPage entry={entry} />;
+  }
+
+  return (
+    <DeferredEntry lookup={{ scope: "any", slug }} placeholder={<ClaimPagePlaceholder />}>
+      {(fetched) => <ClaimPage entry={fetched} />}
+    </DeferredEntry>
+  );
+}
+
+/**
+ * The claim page's frame while the browser fetches the entry its loader could
+ * not. Every part that names or describes the profile holds a placeholder,
+ * because a visitor verifying a profile must never act on the wrong one.
+ */
+function ClaimPagePlaceholder() {
+  return (
+    <PageLayout className="pt-0 pb-12">
+      <div
+        aria-busy="true"
+        className="mx-auto max-w-6xl py-10 lg:py-12"
+        data-testid="claim-page-placeholder"
+      >
+        <span role="status" className="sr-only">
+          Loading profile
+        </span>
+        <SkeletonBlock className="h-5 w-32 rounded-sm" />
+        <SkeletonBlock className="mt-6 h-40 w-full rounded-[1.25rem]" />
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
+          <SkeletonBlock className="order-1 h-64 rounded-[1rem] lg:order-2" />
+          <SkeletonBlock className="order-2 h-96 rounded-[1rem] lg:order-1" />
+        </div>
+      </div>
+    </PageLayout>
+  );
+}
+
+interface ClaimPageProps {
+  entry: Entry;
+}
+
+function ClaimPage({ entry }: ClaimPageProps) {
+  const { slug } = Route.useParams();
+  const search = Route.useSearch();
   const sessionQuery = useAtlasSession();
   const isSignedIn = Boolean(sessionQuery.data);
 

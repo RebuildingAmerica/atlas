@@ -5,6 +5,7 @@ import {
   useRevalidateProfileAtprotoLinks,
 } from "@/domains/catalog/hooks/use-claims";
 import { useHydrated } from "@/platform/runtime/use-hydrated";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { ProfileClaimReviewView } from "./profile-claim-review-view";
 
 export function ProfileClaimReviewPage() {
@@ -15,9 +16,7 @@ export function ProfileClaimReviewPage() {
   const revalidateAtproto = useRevalidateProfileAtprotoLinks();
   const claims = reviews.data?.items ?? [];
   const errorMessage = reviews.isError
-    ? reviews.error instanceof Error
-      ? reviews.error.message
-      : "Profile verifications could not load."
+    ? userFacingErrorMessage(reviews.error, "Profile verifications could not load.")
     : undefined;
 
   return (

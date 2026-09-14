@@ -11,13 +11,13 @@ describe("ProfilesShowcaseHeader", () => {
   it("matches its heading to the people scope", () => {
     render(<ProfilesShowcaseHeader scope="people" />);
     expect(screen.getByRole("heading", { level: 1, name: "People" })).toBeInTheDocument();
-    expect(screen.getByText(/Source-linked records for people/)).toBeInTheDocument();
+    expect(screen.getByText(/People working across public record/)).toBeInTheDocument();
   });
 
   it("matches its heading to the organizations scope", () => {
     render(<ProfilesShowcaseHeader scope="organizations" />);
     expect(screen.getByRole("heading", { level: 1, name: "Organizations" })).toBeInTheDocument();
-    expect(screen.getByText(/Source-linked records for organizations/)).toBeInTheDocument();
+    expect(screen.getByText(/Organizations grounded in local reporting/)).toBeInTheDocument();
   });
 
   it("falls back to the combined heading for the all scope", () => {

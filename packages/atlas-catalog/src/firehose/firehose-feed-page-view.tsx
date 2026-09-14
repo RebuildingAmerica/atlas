@@ -19,6 +19,7 @@ import {
   FirehoseFeedItemRenderer,
   VirtualFirehoseFeedItem,
 } from "./firehose-feed-page-components";
+import { FirehoseFeedTitle } from "./firehose-feed-page-placeholder";
 
 interface FirehoseFeedViewProps {
   liveState: PublicFirehoseLiveState;
@@ -268,12 +269,7 @@ export function FirehoseFeedView({
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <header className="border-outline-variant mb-5 border-b pb-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <h1 className="type-display-small text-ink-strong">Firehose</h1>
-              <p className="type-body-large text-ink-soft">
-                Latest source-backed public civic updates.
-              </p>
-            </div>
+            <FirehoseFeedTitle />
             <div className="flex flex-wrap items-center gap-2">
               <span className="type-label-medium bg-surface-container text-ink-strong rounded-md px-3 py-1.5">
                 {liveStateLabel(liveState)}

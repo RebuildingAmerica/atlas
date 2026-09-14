@@ -1,4 +1,5 @@
 import type { AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 export type {
   PricingCheckoutInterval,
   PricingCheckoutParams,
@@ -6,15 +7,12 @@ export type {
 import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 
 /**
- * Readable error string for the checkout error banner.  Falls back to a
- * generic prompt so the operator never sees a stack trace or empty
- * banner.
+ * Readable error string for the checkout error banner.  Only a message
+ * written for the buyer is shown, so the banner never names an environment
+ * variable, a Stripe error, or an empty string.
  */
 export function readCheckoutErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-  return "Atlas could not start checkout. Try again.";
+  return userFacingErrorMessage(error, "Atlas could not start checkout. Try again.");
 }
 
 /**

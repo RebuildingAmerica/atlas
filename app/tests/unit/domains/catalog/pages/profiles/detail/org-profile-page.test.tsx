@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { QueryClient } from "@tanstack/react-query";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { OrgProfilePage } from "@/domains/catalog/pages/profiles/detail/org-profile-page";
@@ -102,6 +102,7 @@ describe("OrgProfilePage", () => {
     ["2026-07-01", "today"],
     ["2026-06-28", "3d"],
     ["2026-06-10", "3w"],
+    ["2026-03-01", "4mo"],
     ["2023-01-01", "3y+"],
   ])("dates the last confirmation of %s as %s", (latestSourceDate, expected) => {
     renderWithProviders(
@@ -177,7 +178,7 @@ describe("OrgProfilePage", () => {
     expect(screen.getByRole("region", { name: "Appearances and coverage" })).toBeInTheDocument();
   });
 
-  it("counts nobody tied while the affiliated-people lookup is still in flight", () => {
+  it("holds a dash, not a zero, while the affiliated-people lookup is still in flight", () => {
     renderWithProviders(<OrgProfilePage entry={organization()} />, {
       seed: (queryClient) => {
         queryClient.setQueryData(["auth", "session"], null);
@@ -185,8 +186,25 @@ describe("OrgProfilePage", () => {
       },
     });
 
-    expect(statValue("People tied")).toBe("0");
+    expect(statValue("People tied")).toBe("—");
     expect(screen.queryByRole("region", { name: "People tied to this organization" })).toBeNull();
+  });
+
+  it("keeps the network section loading while its request fails instead of claiming no connections", async () => {
+    const { requests } = stubFetch({ body: { detail: "Too many requests." }, status: 429 });
+    renderWithProviders(<OrgProfilePage entry={organization()} />, { seed: seedAnonymous });
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.url.includes("connections"))).toBe(true);
+    });
+    const network = screen.getByRole("region", {
+      name: "Network — actors related to this profile",
+    });
+    await waitFor(() => {
+      expect(within(network).getByText("Loading connections…")).toBeInTheDocument();
+    });
+    expect(within(network).queryByText("No connections surfaced yet for this profile.")).toBeNull();
+    expect(screen.queryByText(/too many requests/i)).toBeNull();
   });
 
   it("falls back to the raw issue slug before the taxonomy arrives", () => {

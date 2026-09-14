@@ -15,7 +15,6 @@ import type { buildBrowseSearch } from "@rebuildingamerica/atlas-catalog/search-
 import { type BrowseFilterKey } from "@rebuildingamerica/atlas-catalog/search-state";
 import { STATE_NAME_BY_CODE } from "@rebuildingamerica/atlas-catalog/us-state-grid";
 import type { Entry, EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
-export const INITIAL_ENTRIES_ERROR = new Error("Results could not load.");
 
 export const PROFILE_PATH_BY_TYPE: Record<EntryType, string> = {
   campaign: "/profiles/campaigns",

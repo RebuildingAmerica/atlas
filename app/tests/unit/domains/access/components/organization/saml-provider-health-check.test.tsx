@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const ssoMocks = vi.hoisted(() => ({
   checkWorkspaceSAMLProviderHealth: vi.fn(),
@@ -155,14 +156,29 @@ describe("SamlProviderHealthCheck", () => {
     });
   });
 
-  it("renders an error message when the health check throws", async () => {
+  it("shows a sentence written for the admin when the health check refuses", async () => {
+    ssoMocks.checkWorkspaceSAMLProviderHealth.mockRejectedValue(
+      new UserFacingError("This SAML provider is not registered to the active workspace."),
+    );
+
+    render(<SamlProviderHealthCheck providerId="saml-1" />);
+    fireEvent.click(screen.getByRole("button", { name: /Re-run health check/i }));
+    await waitFor(() => {
+      expect(
+        screen.getByText("This SAML provider is not registered to the active workspace."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("hides an internal failure's message when the health check throws", async () => {
     ssoMocks.checkWorkspaceSAMLProviderHealth.mockRejectedValue(new Error("network down"));
 
     render(<SamlProviderHealthCheck providerId="saml-1" />);
     fireEvent.click(screen.getByRole("button", { name: /Re-run health check/i }));
     await waitFor(() => {
-      expect(screen.getByText(/network down/i)).toBeInTheDocument();
+      expect(screen.getByText(/Atlas could not run the SAML health check/i)).toBeInTheDocument();
     });
+    expect(screen.queryByText(/network down/i)).toBeNull();
   });
 
   it("falls back to a generic error when the health check rejects with a non-Error", async () => {

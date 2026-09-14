@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import type { ServerFnExecutionResponse } from "../../../helpers/server-fn-stub";
 import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
 
@@ -178,7 +179,7 @@ describe("scout-devices.functions", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toEqual(
-      new Error("Atlas could not release that Scout worker's active jobs."),
+      new UserFacingError("Atlas could not release that Scout worker's active jobs."),
     );
   });
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IndependentJournalistForm } from "@/domains/billing/verification/independent-journalist-form";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 describe("IndependentJournalistForm", () => {
   it("asks for a portfolio URL before anything is entered", async () => {
@@ -48,7 +49,9 @@ describe("IndependentJournalistForm", () => {
   });
 
   it("shows the reason the server gave for rejecting the request", async () => {
-    const onSubmit = vi.fn().mockRejectedValue(new Error("That byline is already verified."));
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValue(new UserFacingError("That byline is already verified."));
     render(<IndependentJournalistForm onSubmit={onSubmit} />);
 
     await userEvent.type(
@@ -70,7 +73,9 @@ describe("IndependentJournalistForm", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Request Verification" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Submission failed");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Atlas couldn't submit your verification. Try again in a moment.",
+    );
   });
 
   it("disables the field and says it is submitting while in flight", () => {

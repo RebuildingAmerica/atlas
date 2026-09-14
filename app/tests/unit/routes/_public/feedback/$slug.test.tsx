@@ -3,9 +3,11 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", async () => {
+// The real `isNotFound` stays so the loader's degrade path can tell a missing
+// record from an outage.
+vi.mock("@tanstack/react-router", async (importOriginal) => {
   const harness = await import("@/../tests/helpers/router-harness");
-  return harness.installRouterMocks();
+  return { ...(await importOriginal<object>()), ...harness.installRouterMocks() };
 });
 
 vi.mock("@/domains/catalog/server/profiles/profile-loaders", () => ({
@@ -42,8 +44,9 @@ vi.mock("@rebuildingamerica/atlas-ui/ui/button", () => ({
 
 describe("routes/_public/feedback/$slug", () => {
   beforeEach(async () => {
-    const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const { readRouterMocks, resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
+    readRouterMocks().useParams.mockReturnValue({ slug: "acme" });
     const { createEntityFlag } =
       await import("@rebuildingamerica/atlas-api-client/generated/atlas");
     vi.mocked(createEntityFlag).mockReset();
@@ -352,5 +355,59 @@ describe("routes/_public/feedback/$slug", () => {
     if (!Component) throw new Error("Expected Route.options.component");
 
     expect(() => render(<Component />)).toThrow("Unsupported feedback kind: sabotage");
+  });
+
+  it("renders the review page without an entry when the API call fails", async () => {
+    const { loadEntryBySlugAny } =
+      await import("@/domains/catalog/server/profiles/profile-loaders");
+    vi.mocked(loadEntryBySlugAny).mockRejectedValue(
+      Object.assign(new Error("Too many requests."), { status: 429 }),
+    );
+
+    const routeModule = await import("@/routes/_public/feedback/$slug");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.loader) throw new Error("Expected loader");
+    await expect(Route.options.loader({ params: { slug: "acme" } })).resolves.toEqual({
+      entry: undefined,
+    });
+  });
+
+  it("holds the review dialog's frame until the browser fetches the entry", async () => {
+    const { loadEntryBySlugAny } =
+      await import("@/domains/catalog/server/profiles/profile-loaders");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const { renderWithProviders } = await import("@/../tests/helpers/render-with-providers");
+    let deliver: ((entry: Awaited<ReturnType<typeof loadEntryBySlugAny>>) => void) | undefined;
+    vi.mocked(loadEntryBySlugAny).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          deliver = resolve;
+        }),
+    );
+    const router = readRouterMocks();
+    router.useSearch.mockReturnValue({ kind: "incorrect" });
+    router.useLoaderData.mockReturnValue({ entry: undefined });
+
+    const routeModule = await import("@/routes/_public/feedback/$slug");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    renderWithProviders(<Component />);
+
+    expect(screen.getByTestId("feedback-page-placeholder")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading profile");
+    expect(screen.queryByRole("button", { name: "Submit for review" })).toBeNull();
+    expect(loadEntryBySlugAny).toHaveBeenCalledWith({ data: { slug: "acme" } });
+
+    await act(async () => {
+      deliver?.({ id: "entry-1", name: "Acme", slug: "acme", type: "organization" } as Awaited<
+        ReturnType<typeof loadEntryBySlugAny>
+      >);
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByText("Review Acme")).toBeInTheDocument();
+    expect(screen.queryByTestId("feedback-page-placeholder")).toBeNull();
   });
 });

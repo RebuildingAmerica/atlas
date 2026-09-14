@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CivicTechForm } from "@/domains/billing/verification/civic-tech-form";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 describe("CivicTechForm", () => {
   describe("validation", () => {
@@ -80,7 +81,9 @@ describe("CivicTechForm", () => {
     });
 
     it("shows the reason the server gave for rejecting the request", async () => {
-      const onSubmit = vi.fn().mockRejectedValue(new Error("That project is already verified."));
+      const onSubmit = vi
+        .fn()
+        .mockRejectedValue(new UserFacingError("That project is already verified."));
       render(<CivicTechForm onSubmit={onSubmit} />);
 
       await userEvent.type(screen.getByLabelText("Project URL"), "https://example.org/civic");
@@ -106,7 +109,9 @@ describe("CivicTechForm", () => {
       );
       await userEvent.click(screen.getByRole("button", { name: "Request Verification" }));
 
-      expect(await screen.findByRole("alert")).toHaveTextContent("Submission failed");
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Atlas couldn't submit your verification. Try again in a moment.",
+      );
     });
   });
 

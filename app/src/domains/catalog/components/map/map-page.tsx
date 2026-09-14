@@ -51,8 +51,6 @@ interface MapPageProps {
   search: MapRouteSearch;
   /** SSR-seeded continental-US points, hydrated as the first query data. */
   initialPoints?: MapPointCollection;
-  /** Whether route-level seeding failed before the map could mount. */
-  initialPointsLoadFailed?: boolean;
 }
 
 /**
@@ -68,7 +66,7 @@ interface MapPageProps {
  * the count after every change, and the detail panel is a non-modal dialog that
  * closes on Escape and hands focus back to the map.
  */
-export function MapPage({ search, initialPoints, initialPointsLoadFailed = false }: MapPageProps) {
+export function MapPage({ search, initialPoints }: MapPageProps) {
   const routerNavigate = useNavigate();
   // Adapt the router's promise-returning navigate to the page's fire-and-forget
   // contract: a URL update is a side effect the page never awaits.
@@ -85,7 +83,6 @@ export function MapPage({ search, initialPoints, initialPointsLoadFailed = false
     navigate,
     map: mapCamera,
     initialPoints,
-    initialPointsLoadFailed,
   });
   const reducedMotion = useReducedMotion();
   const deviceColorScheme = useDeviceColorScheme();
@@ -119,7 +116,7 @@ export function MapPage({ search, initialPoints, initialPointsLoadFailed = false
       : `cluster:${selection.clusterId}`
     : null;
   const hasFetched = pointsQuery.data !== undefined;
-  const showMapError = initialPointsLoadFailed || pointsQuery.isError;
+  const showMapError = pointsQuery.isError;
   const isEmpty = hasFetched && points.length === 0 && !showMapError;
   const pill = sparsityPill(points);
   const activeCounts = {

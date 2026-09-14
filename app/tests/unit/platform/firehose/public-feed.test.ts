@@ -27,6 +27,21 @@ describe("fetchPublicFirehoseSignals", () => {
     );
   });
 
+  it("leaves the browser on this origin instead of resolving the server-only API address", async () => {
+    vi.stubGlobal("window", {});
+    mocks.fetchCatalogPublicFirehoseSignals.mockResolvedValue({ signals: [] });
+    const { fetchPublicFirehoseSignals } = await import("@/platform/firehose/public-feed");
+
+    await fetchPublicFirehoseSignals({ place: ["detroit-mi"] });
+
+    expect(mocks.getServerApiBaseUrl).not.toHaveBeenCalled();
+    expect(mocks.fetchCatalogPublicFirehoseSignals).toHaveBeenCalledWith(
+      { place: ["detroit-mi"] },
+      undefined,
+      undefined,
+    );
+  });
+
   it("passes a reader's filters and an injected fetcher straight through", async () => {
     mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
     mocks.fetchCatalogPublicFirehoseSignals.mockResolvedValue({ signals: [] });

@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import {
+  UserFacingError,
+  userFacingErrorMessage,
+} from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 async function completeAtprotoCallback(request: Request): Promise<Response> {
   if (!import.meta.env.SSR) {
-    throw new Error("ATProto OAuth is only available on the server.");
+    throw new UserFacingError("ATProto OAuth is only available on the server.");
   }
 
   const requestUrl = new URL(request.url);
@@ -61,7 +65,7 @@ export const Route = createFileRoute("/api/atproto/oauth/callback")({
           const redirect = await recoverableCallbackRedirect(request, error);
           if (redirect) return redirect;
           return Response.json(
-            { error: error instanceof Error ? error.message : "ATProto callback failed." },
+            { error: userFacingErrorMessage(error, "ATProto callback failed.") },
             { status: 400 },
           );
         }

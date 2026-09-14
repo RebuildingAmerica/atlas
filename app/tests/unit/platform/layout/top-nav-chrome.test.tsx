@@ -41,7 +41,9 @@ describe("TopNavChrome", () => {
 
     render(<TopNavChrome />);
 
-    expect(screen.getByRole("link", { name: "A Atlas" })).toHaveAttribute("data-link-to", "/");
+    const brandLink = screen.getByRole("link", { name: "Atlas" });
+    expect(brandLink).toHaveAttribute("data-link-to", "/");
+    expect(within(brandLink).getByTestId("atlas-brand-mark")).toHaveClass("h-7", "w-7");
     expect(screen.getByRole("search")).toHaveAttribute("action", "/browse");
     expect(screen.getByRole("searchbox", { name: "Search Atlas" })).toHaveAttribute(
       "name",

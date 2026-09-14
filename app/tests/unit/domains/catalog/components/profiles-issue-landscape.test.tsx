@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { ProfilesIssueLandscape } from "@/domains/catalog/components/profiles/profiles-issue-landscape";
 import { createEntryFixture } from "../../../../fixtures/catalog/entries";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -70,7 +71,7 @@ describe("ProfilesIssueLandscape", () => {
         groups={[
           {
             entries: [],
-            error: new Error("Housing cluster is unavailable."),
+            error: new UserFacingError("Housing cluster is unavailable."),
             issueArea: "housing_affordability",
             title: "Housing affordability",
           },
@@ -85,6 +86,26 @@ describe("ProfilesIssueLandscape", () => {
 
     expect(screen.getByText("Housing cluster is unavailable.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Ada Reyes/ })).toBeInTheDocument();
+  });
+
+  it("hides an internal cluster failure's message behind safe copy", () => {
+    render(
+      <ProfilesIssueLandscape
+        groups={[
+          {
+            entries: [],
+            error: new Error("relation issue_cluster_view unknown"),
+            issueArea: "housing_affordability",
+            title: "Housing affordability",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText("These profiles couldn't load. Try again in a moment."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/issue_cluster_view/)).toBeNull();
   });
 
   it("drops clusters that came back empty", () => {

@@ -101,7 +101,6 @@ interface HarnessInternals {
   handlers: MapPageHandlers;
   state: HarnessState;
   searches: MapRouteSearch[];
-  initialPointsLoadFailures: boolean[];
   navigates: MapNavigate[];
   harness: MapPageHarness | null;
 }
@@ -116,7 +115,6 @@ const internals: HarnessInternals = {
     bounds: DEFAULT_BOUNDS,
   },
   searches: [],
-  initialPointsLoadFailures: [],
   navigates: [],
   harness: null,
 };
@@ -127,13 +125,8 @@ const internals: HarnessInternals = {
  * was given so a test can drive the page's promise-to-void navigate adapter.
  */
 export const mapPageHookMock = vi.fn(
-  (options: {
-    initialPointsLoadFailed?: boolean;
-    search: MapRouteSearch;
-    navigate: MapNavigate;
-  }): MapPageState => {
+  (options: { search: MapRouteSearch; navigate: MapNavigate }): MapPageState => {
     internals.searches.push(options.search);
-    internals.initialPointsLoadFailures.push(options.initialPointsLoadFailed ?? false);
     internals.navigates.push(options.navigate);
     const { state, handlers } = internals;
     return {
@@ -161,7 +154,6 @@ export function installMapPageComponentMocks(): MapPageHarness {
     bounds: DEFAULT_BOUNDS,
   };
   internals.searches = [];
-  internals.initialPointsLoadFailures = [];
   internals.navigates = [];
   taxonomy = DEFAULT_TAXONOMY;
   chromeRevealed = true;
@@ -191,8 +183,6 @@ export function requireMapPageHarness(): MapPageHarness {
 export function readMapPageHarness() {
   return {
     lastSearch: (): MapRouteSearch | undefined => internals.searches.at(-1),
-    lastInitialPointsLoadFailed: (): boolean | undefined =>
-      internals.initialPointsLoadFailures.at(-1),
     lastNavigate: (): MapNavigate | undefined => internals.navigates.at(-1),
   };
 }

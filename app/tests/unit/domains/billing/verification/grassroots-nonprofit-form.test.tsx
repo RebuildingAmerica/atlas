@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GrassrootsNonprofitForm } from "@/domains/billing/verification/grassroots-nonprofit-form";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 describe("GrassrootsNonprofitForm", () => {
   describe("validation", () => {
@@ -66,7 +67,9 @@ describe("GrassrootsNonprofitForm", () => {
 
   describe("submission", () => {
     it("shows the reason the server gave for rejecting the request", async () => {
-      const onSubmit = vi.fn().mockRejectedValue(new Error("We could not find that EIN."));
+      const onSubmit = vi
+        .fn()
+        .mockRejectedValue(new UserFacingError("We could not find that EIN."));
       render(<GrassrootsNonprofitForm onSubmit={onSubmit} />);
 
       await userEvent.type(screen.getByLabelText("Organization Name or EIN"), "12-3456789");
@@ -84,7 +87,9 @@ describe("GrassrootsNonprofitForm", () => {
       await userEvent.type(screen.getByLabelText("Annual Budget"), "$500,000");
       await userEvent.click(screen.getByRole("button", { name: "Request Verification" }));
 
-      expect(await screen.findByRole("alert")).toHaveTextContent("Submission failed");
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Atlas couldn't submit your verification. Try again in a moment.",
+      );
     });
   });
 

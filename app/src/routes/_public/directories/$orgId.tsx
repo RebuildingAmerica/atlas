@@ -1,23 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { GitBranch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { loadPublicDirectory } from "@/domains/catalog/server/public-directory";
+import { PublicDirectorySkeleton } from "@/domains/catalog/pages/public-directory-skeleton";
+import {
+  loadPublicDirectory,
+  type PublicDirectoryResponse,
+} from "@/domains/catalog/server/public-directory";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
+import { useDegradedRouteData } from "@/platform/routes/use-degraded-route-data";
 import { buildPageHead } from "@/platform/seo";
 import { formatStableDateTime, MEDIUM_DATE } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
+interface PublicDirectoryContentProps {
+  directory: PublicDirectoryResponse;
+}
+
 export const Route = createFileRoute("/_public/directories/$orgId")({
-  loader: async ({ params }) => {
-    const directory = await loadPublicDirectory({ data: { orgId: params.orgId } });
-    return { directory };
-  },
+  loader: async ({ params }) => ({
+    directory: await loadOrDegrade(() => loadPublicDirectory({ data: { orgId: params.orgId } })),
+  }),
   head: ({ loaderData, params }) => {
     const directory = loaderData?.directory;
     if (!directory) return {};
 
     return buildPageHead({
       title: `${directory.title} | Atlas`,
-      description: "A source-linked public civic directory.",
+      description: "A public civic directory.",
       path: `/directories/${params.orgId}`,
     });
   },
@@ -26,6 +35,27 @@ export const Route = createFileRoute("/_public/directories/$orgId")({
 
 function PublicDirectoryPage() {
   const { directory } = Route.useLoaderData();
+
+  if (directory) {
+    return <PublicDirectoryContent directory={directory} />;
+  }
+  return <DegradedPublicDirectory />;
+}
+
+function DegradedPublicDirectory() {
+  const { orgId } = Route.useParams();
+  const directory = useDegradedRouteData({
+    queryFn: () => loadPublicDirectory({ data: { orgId } }),
+    queryKey: ["directories", "public", orgId],
+  });
+
+  if (directory) {
+    return <PublicDirectoryContent directory={directory} />;
+  }
+  return <PublicDirectorySkeleton />;
+}
+
+function PublicDirectoryContent({ directory }: PublicDirectoryContentProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const entryCount = directory.stats.record_count;
@@ -55,7 +85,7 @@ function PublicDirectoryPage() {
               <p className="type-label-large text-ink-soft">{directory.sponsor_label}</p>
             ) : null}
             <p className="type-body-large text-ink-soft max-w-3xl">
-              Source-linked actors, profiles, and public evidence.
+              Actors, profiles, and public evidence.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

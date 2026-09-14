@@ -4,9 +4,11 @@ import { render, cleanup } from "@testing-library/react";
 import type { PageHead } from "@/platform/seo";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", async () => {
+// The real `isNotFound` and `notFound` stay so the loader's degrade path can
+// tell a missing record from an outage.
+vi.mock("@tanstack/react-router", async (importOriginal) => {
   const harness = await import("@/../tests/helpers/router-harness");
-  return harness.installRouterMocks();
+  return { ...(await importOriginal<object>()), ...harness.installRouterMocks() };
 });
 
 vi.mock("@/domains/catalog/pages/profiles/detail/person-profile-page", () => ({
@@ -126,6 +128,7 @@ describe("routes/_public/profiles/people/$slug", () => {
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const router = readRouterMocks();
     router.useLoaderData.mockReturnValue({ entry: { name: "Jane" } });
+    router.useParams.mockReturnValue({ slug: "jane" });
 
     const routeModule = await import("@/routes/_public/profiles/people/$slug");
     const Route = asRouteStub(routeModule.Route);
@@ -134,5 +137,35 @@ describe("routes/_public/profiles/people/$slug", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     const view = render(<Component />);
     expect(view.getByTestId("person-profile").dataset.name).toBe("Jane");
+  });
+
+  it("hands the page no entry instead of failing when the API call fails", async () => {
+    const { loadProfileBySlug } = await import("@/domains/catalog/server/profiles/profile-loaders");
+    vi.mocked(loadProfileBySlug).mockRejectedValue(
+      Object.assign(new Error("Too many requests."), { status: 429 }),
+    );
+
+    const routeModule = await import("@/routes/_public/profiles/people/$slug");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.loader) throw new Error("Expected loader");
+    await expect(Route.options.loader({ params: { slug: "jane" } })).resolves.toEqual({
+      entry: undefined,
+    });
+  });
+
+  it("still answers a missing person with not-found", async () => {
+    const { notFound } = await import("@tanstack/react-router");
+    const { loadProfileBySlug } = await import("@/domains/catalog/server/profiles/profile-loaders");
+    const missing = notFound();
+    vi.mocked(loadProfileBySlug).mockRejectedValue(missing);
+
+    const routeModule = await import("@/routes/_public/profiles/people/$slug");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.loader) throw new Error("Expected loader");
+    await expect(Route.options.loader({ params: { slug: "jane" } })).rejects.toBe(missing);
   });
 });

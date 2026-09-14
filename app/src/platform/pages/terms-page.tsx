@@ -4,7 +4,7 @@ const TERMS_SECTIONS = [
   {
     title: "About Atlas",
     paragraphs: [
-      "Atlas is a source-linked civic directory and research product operated by Rebuilding America Project. These Terms of Service govern your use of the Atlas website, public directory, and account-based features.",
+      "Atlas is a civic directory and research product operated by Rebuilding America Project. These Terms of Service govern your use of the Atlas website, public directory, and account-based features.",
       "By using Atlas, you agree to these terms. If you do not agree, do not use the service.",
     ],
   },

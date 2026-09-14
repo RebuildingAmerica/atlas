@@ -6,8 +6,7 @@ export const Route = createFileRoute("/_public/terms")({
   head: () =>
     buildPageHead({
       title: "Terms | Atlas",
-      description:
-        "Terms for using Atlas public profiles, workspaces, subscriptions, and source-linked data.",
+      description: "Terms for using Atlas public profiles, workspaces, subscriptions, and data.",
       path: "/terms",
     }),
   component: TermsPage,

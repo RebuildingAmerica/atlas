@@ -187,7 +187,7 @@ describe("routes/_public/browse", () => {
       },
     });
 
-    expect(loaderResult).toEqual({ initialEntriesLoadFailed: true });
+    expect(loaderResult).toEqual({ initialEntries: undefined });
   });
 
   it("keeps the browse route mounted when the initial entries request returns an HTTP 5xx", async () => {
@@ -217,10 +217,10 @@ describe("routes/_public/browse", () => {
       },
     });
 
-    expect(loaderResult).toEqual({ initialEntriesLoadFailed: true });
+    expect(loaderResult).toEqual({ initialEntries: undefined });
   });
 
-  it("surfaces a coding error from the browse loader instead of hiding it", async () => {
+  it("keeps the browse route mounted whatever the initial entries request fails with", async () => {
     const routeModule = await import("@/routes/_public/browse");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
@@ -238,9 +238,9 @@ describe("routes/_public/browse", () => {
     });
     mocks.api.entries.list.mockRejectedValue(new TypeError("filters.cities is not iterable"));
 
-    await expect(Route.options.loader?.({ deps: { search: {} } })).rejects.toThrow(
-      "filters.cities is not iterable",
-    );
+    await expect(Route.options.loader?.({ deps: { search: {} } })).resolves.toEqual({
+      initialEntries: undefined,
+    });
   });
 
   it("renders BrowsePage with the search params from useSearch", async () => {
@@ -249,10 +249,7 @@ describe("routes/_public/browse", () => {
     const Route = asRouteStub(routeModule.Route);
     const router = readRouterMocks();
     router.useSearch.mockReturnValue({ query: "hello", offset: 0 });
-    router.useLoaderData.mockReturnValue({
-      initialEntries: undefined,
-      initialEntriesLoadFailed: true,
-    });
+    router.useLoaderData.mockReturnValue({ initialEntries: undefined });
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
@@ -261,7 +258,6 @@ describe("routes/_public/browse", () => {
     expect(node.dataset.search).toBe(JSON.stringify({ query: "hello", offset: 0 }));
     expect(mocks.browsePageProps).toHaveBeenCalledWith({
       initialEntries: undefined,
-      initialEntriesLoadFailed: true,
       search: { query: "hello", offset: 0 },
     });
   });

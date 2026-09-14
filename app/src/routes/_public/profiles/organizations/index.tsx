@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ProfilesOverviewPage } from "@/domains/catalog/pages/profiles/overview/profiles-overview-page";
 import { loadProfilesCatalog } from "@/domains/catalog/server/profiles/profile-loaders";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { buildPageHead } from "@/platform/seo";
 
 export const Route = createFileRoute("/_public/profiles/organizations/")({
   loader: async () => {
-    const catalog = await loadProfilesCatalog({ data: { scope: "organizations" } });
+    const catalog = await loadOrDegrade(() =>
+      loadProfilesCatalog({ data: { scope: "organizations" } }),
+    );
     return { catalog };
   },
   head: () =>

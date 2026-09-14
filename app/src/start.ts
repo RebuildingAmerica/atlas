@@ -1,4 +1,8 @@
 import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/react-start";
+import {
+  atlasApiErrorAdapter,
+  userFacingErrorAdapter,
+} from "@/platform/errors/error-serialization";
 
 /**
  * Registers visitor identity for server-side Atlas API calls before any loader runs.
@@ -27,4 +31,5 @@ export const startInstance = createStart(() => ({
     createCsrfMiddleware({ filter: isServerFunctionRequest }),
     identifyVisitorToAtlasApi,
   ],
+  serializationAdapters: [userFacingErrorAdapter, atlasApiErrorAdapter],
 }));

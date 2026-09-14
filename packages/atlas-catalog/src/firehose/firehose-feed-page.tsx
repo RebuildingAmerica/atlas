@@ -7,6 +7,7 @@ interface FirehoseFeedPageProps {
 }
 
 export { FirehoseFeedView } from "./firehose-feed-page-view";
+export { FirehoseFeedPlaceholder } from "./firehose-feed-page-placeholder";
 
 export function FirehoseFeedPage({ initialSnapshot }: FirehoseFeedPageProps) {
   const live = usePublicFirehoseLive(initialSnapshot);

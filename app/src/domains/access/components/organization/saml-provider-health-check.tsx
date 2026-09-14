@@ -3,6 +3,7 @@ import {
   type AtlasSAMLProviderHealth,
   checkWorkspaceSAMLProviderHealth,
 } from "../../sso.functions";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /**
@@ -41,11 +42,7 @@ export function SamlProviderHealthCheck({ providerId }: { providerId: string }) 
       });
       setResult(checkResult);
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Atlas could not run the SAML health check.",
-      );
+      setError(userFacingErrorMessage(caughtError, "Atlas could not run the SAML health check."));
     } finally {
       setPending(false);
     }

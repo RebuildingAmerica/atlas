@@ -84,7 +84,7 @@ function buildWorkspaceActions(workspace: NextActionsWorkspaceState | undefined)
     actions.push({
       id: "brief",
       title: "Create a brief",
-      body: "Turn the current research into a source-linked memo.",
+      body: "Turn the current research into a memo.",
       cta: "New brief",
       to: "/briefs/new",
     });

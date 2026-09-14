@@ -145,10 +145,12 @@ describe("routes/_workspace actions", () => {
     expect(screen.getByText("Atlas could not switch workspaces right now.")).toBeInTheDocument();
   });
 
-  it("surfaces a workspace-switch Error message verbatim when the mutation rejects", async () => {
+  it("surfaces a workspace-switch error written for the operator verbatim when the mutation rejects", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     const { useMutation } = await import("@tanstack/react-query");
-    const switchMutation = vi.fn().mockRejectedValue(new Error("explicit"));
+    const { UserFacingError } =
+      await import("@rebuildingamerica/atlas-api-client/user-facing-errors");
+    const switchMutation = vi.fn().mockRejectedValue(new UserFacingError("explicit"));
     vi.mocked(useMutation).mockReturnValue({
       mutateAsync: switchMutation,
       isPending: false,

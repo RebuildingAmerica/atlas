@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import {
   checkoutKey,
   describeCheckoutCost,
@@ -13,10 +14,16 @@ vi.mock("@/domains/billing/checkout.functions", () => ({
 }));
 
 describe("readCheckoutErrorMessage", () => {
-  it("shows the message an Error carries", () => {
-    expect(readCheckoutErrorMessage(new Error("Atlas could not reach Stripe."))).toBe(
+  it("shows a message written for the buyer", () => {
+    expect(readCheckoutErrorMessage(new UserFacingError("Atlas could not reach Stripe."))).toBe(
       "Atlas could not reach Stripe.",
     );
+  });
+
+  it("hides an internal error's message behind the retry prompt", () => {
+    expect(
+      readCheckoutErrorMessage(new Error("STRIPE_ATLAS_CATALOG is required for billing.")),
+    ).toBe("Atlas could not start checkout. Try again.");
   });
 
   it("falls back to a retry prompt for an Error with no message", () => {

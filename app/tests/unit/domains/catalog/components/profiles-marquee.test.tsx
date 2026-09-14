@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ProfilesMarquee } from "@/domains/catalog/components/profiles/profiles-marquee";
 import { createEntryFixture } from "../../../../fixtures/catalog/entries";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -54,7 +55,7 @@ describe("ProfilesMarquee", () => {
     render(
       <ProfilesMarquee
         entries={[createEntryFixture()]}
-        error={new Error("Spotlight is unavailable.")}
+        error={new UserFacingError("Spotlight is unavailable.")}
         issueAreaLabels={{}}
       />,
     );
@@ -63,6 +64,20 @@ describe("ProfilesMarquee", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Spotlight is unavailable.")).toBeInTheDocument();
     expect(screen.queryByText("Jane Doe")).not.toBeInTheDocument();
+  });
+
+  it("hides an internal failure's message behind safe copy", () => {
+    render(
+      <ProfilesMarquee
+        entries={[createEntryFixture()]}
+        error={new Error("relation spotlight_view unknown")}
+        issueAreaLabels={{}}
+      />,
+    );
+    expect(
+      screen.getByText("Featured profiles couldn't load. Try again in a moment."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/spotlight_view/)).toBeNull();
   });
 
   it("renders nothing when there is nothing to spotlight", () => {

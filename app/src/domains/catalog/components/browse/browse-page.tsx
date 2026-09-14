@@ -24,28 +24,18 @@ import type {
   SourceType,
 } from "@rebuildingamerica/atlas-api-client";
 import { type BrowsePageContent, DEFAULT_BROWSE_PAGE_CONTENT } from "./browse-page-content";
-import {
-  INITIAL_ENTRIES_ERROR,
-  browseContextLabel,
-  filterLabel,
-  removeValue,
-} from "./browse-page-labels";
+import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
+import { browseContextLabel, filterLabel, removeValue } from "./browse-page-labels";
 import { BrowseEditorialMode, BrowseResultsMode } from "./browse-page-modes";
 export type { BrowsePageContent } from "./browse-page-content";
 
 interface BrowsePageProps {
   initialEntries?: EntryListResponse;
-  initialEntriesLoadFailed?: boolean;
   search: BrowseRouteSearch;
   page?: BrowsePageContent;
 }
 
-export function BrowsePage({
-  initialEntries,
-  initialEntriesLoadFailed = false,
-  search,
-  page,
-}: BrowsePageProps) {
+export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
   const navigate = useNavigate();
   const { data: taxonomy } = useTaxonomy();
   const rawFilters = useMemo(() => buildBrowseSearch(search), [search]);
@@ -95,18 +85,16 @@ export function BrowsePage({
     limit: 20,
     offset: selectedFilters.offset,
   };
+  // Without server-loaded results the browser fetches them, and keeps the
+  // results placeholder up through an outage instead of reporting it.
   const entriesQuery = useEntries(
     entryFilters,
-    initialEntries
-      ? { initialData: initialEntries }
-      : initialEntriesLoadFailed
-        ? { enabled: false, retry: false }
-        : { retry: false },
+    initialEntries ? { initialData: initialEntries } : PUBLIC_QUERY_RETRY_OPTIONS,
   );
 
   const results = entriesQuery.data;
   const entries = results?.data ?? [];
-  const resultsError = initialEntriesLoadFailed ? INITIAL_ENTRIES_ERROR : entriesQuery.error;
+  const resultsError = entriesQuery.error;
   const searchForActivity = useMemo(
     () => ({
       ...selectedFilters,

@@ -1,6 +1,7 @@
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@rebuildingamerica/atlas-ui/ui/card";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 export interface EntryDetailProps {
   entry?: Entry;
@@ -33,11 +34,15 @@ export function EntryDetail({
   issueAreaLabels = {},
 }: EntryDetailProps) {
   if (isLoading) {
-    return <p className="text-sm text-stone-500">Loading source-linked entry details…</p>;
+    return <p className="text-sm text-stone-500">Loading entry details…</p>;
   }
 
   if (error) {
-    return <p className="text-sm text-red-700">{error.message}</p>;
+    return (
+      <p className="text-sm text-red-700">
+        {userFacingErrorMessage(error, "This entry couldn't load. Try again in a moment.")}
+      </p>
+    );
   }
 
   if (!entry) {
@@ -53,7 +58,7 @@ export function EntryDetail({
             {entry.verified ? (
               <Badge variant="success">Verified</Badge>
             ) : (
-              <Badge>Source-linked</Badge>
+              <Badge>Unverified</Badge>
             )}
             <Badge>{entry.source_count} sources</Badge>
           </div>

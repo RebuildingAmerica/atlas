@@ -6,6 +6,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiscountVerificationSection } from "@/domains/billing/verification/discount-verification-section";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const mocks = vi.hoisted(() => ({
   getCurrentDiscountVerificationStatus: vi.fn(),
@@ -133,7 +134,7 @@ describe("DiscountVerificationSection", () => {
   });
 
   it("announces failed verification requests as an alert", async () => {
-    mocks.submitDiscountVerification.mockRejectedValue(new Error("Verification failed"));
+    mocks.submitDiscountVerification.mockRejectedValue(new UserFacingError("Verification failed"));
     renderDiscountVerificationSection();
 
     fireEvent.click(screen.getByRole("button", { name: /Independent Creator or Journalist/i }));
@@ -182,7 +183,9 @@ describe("DiscountVerificationSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Request Verification" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Verification submission failed")).toBeInTheDocument();
+      expect(
+        screen.getByText("Atlas couldn't submit your verification. Try again in a moment."),
+      ).toBeInTheDocument();
     });
   });
   it("shows a rejected applicant their outcome and still lets them reapply", async () => {

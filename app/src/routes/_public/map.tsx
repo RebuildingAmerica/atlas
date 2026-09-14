@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MapPage } from "@/domains/catalog/components/map/map-page";
 import { buildBrowseSearch } from "@rebuildingamerica/atlas-catalog/search-state";
 import { loadMapPoints } from "@/domains/catalog/server/map-points";
-import { isRecoverablePublicLoaderError } from "@/platform/routes/public-loader-errors";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { buildPageHead } from "@/platform/seo";
 import {
   mapSearchSchema,
@@ -21,8 +21,8 @@ export const Route = createFileRoute("/_public/map")({
   loaderDeps: ({ search }: { search: MapRouteSearch }) => ({ search }),
   loader: async ({ deps }: { deps: { search: MapRouteSearch } }) => {
     const filters = buildBrowseSearch(deps.search);
-    try {
-      const initialPoints = await loadMapPoints({
+    const initialPoints = await loadOrDegrade(() =>
+      loadMapPoints({
         data: {
           query: filters.query,
           z: deps.search.z,
@@ -36,26 +36,15 @@ export const Route = createFileRoute("/_public/map")({
           source_types: filters.source_types,
           source_patterns: filters.source_patterns,
         },
-      });
-      return { initialPoints };
-    } catch (error) {
-      if (isRecoverablePublicLoaderError(error)) {
-        return { initialPointsLoadFailed: true };
-      }
-      throw error;
-    }
+      }),
+    );
+    return { initialPoints };
   },
   component: MapRoute,
 });
 
 function MapRoute() {
   const search = Route.useSearch();
-  const { initialPoints, initialPointsLoadFailed } = Route.useLoaderData();
-  return (
-    <MapPage
-      search={search}
-      initialPoints={initialPoints}
-      initialPointsLoadFailed={initialPointsLoadFailed}
-    />
-  );
+  const { initialPoints } = Route.useLoaderData();
+  return <MapPage search={search} initialPoints={initialPoints} />;
 }

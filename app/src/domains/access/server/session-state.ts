@@ -1,4 +1,5 @@
 import "@tanstack/react-start/server-only";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 import { atlasSessionSchema } from "./session-schema";
 import {
@@ -160,7 +161,7 @@ export async function requireAtlasSessionState(): Promise<AtlasSessionPayload> {
 export async function requireReadyAtlasSessionState(): Promise<AtlasSessionPayload> {
   const session = await requireAtlasSessionState();
   if (!session.accountReady) {
-    throw new Error("Complete account setup before creating Atlas resources.");
+    throw new UserFacingError("Complete account setup before creating Atlas resources.");
   }
 
   return session;

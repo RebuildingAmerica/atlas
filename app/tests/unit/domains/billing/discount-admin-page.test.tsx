@@ -6,6 +6,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiscountAdminPage } from "@/domains/billing/pages/workspace/discount-admin-page";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import type { VerificationListResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas-schemas/access/verificationListResponse";
 
 const mocks = vi.hoisted(() => ({
@@ -141,7 +142,7 @@ describe("DiscountAdminPage", () => {
 
   it("surfaces the reason the verification list could not load", async () => {
     mocks.listDiscountVerifications.mockRejectedValue(
-      new Error("Atlas could not reach the review API."),
+      new UserFacingError("Atlas could not reach the review API."),
     );
 
     renderDiscountAdminPage();

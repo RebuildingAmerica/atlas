@@ -27,7 +27,7 @@ import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stat
 import { ReachSection } from "@/domains/catalog/components/profiles/reach-section";
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
-import { useConnections } from "@rebuildingamerica/atlas-catalog/hooks/use-connections";
+import { useProfileConnections } from "@/domains/catalog/hooks/use-profile-entry";
 import { useEntry } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
 import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
@@ -64,7 +64,7 @@ function buildShareUrl(slug: string): string {
 
 export function PersonProfilePage({ entry, initialConnections }: PersonProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
-  const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
+  const connectionsQuery = useProfileConnections(entry.id, initialConnections);
   const sessionQuery = useAtlasSession();
   const session = sessionQuery.data ?? null;
   const isSignedIn = session !== null;
@@ -202,7 +202,7 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           <ConnectionList
             entry={entry}
             network={connectionsQuery.data}
-            isLoading={connectionsQuery.isLoading}
+            isLoading={connectionsQuery.isPending}
           />
         </ProfileSection>
 

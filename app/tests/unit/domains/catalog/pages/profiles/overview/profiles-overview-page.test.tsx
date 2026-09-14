@@ -145,9 +145,7 @@ describe("ProfilesOverviewPage", () => {
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Profiles");
     expect(
-      screen.getByText(
-        "Explore source-linked people and organizations by issue, place, and public record.",
-      ),
+      screen.getByText("Explore people and organizations by issue, place, and public record."),
     ).toBeInTheDocument();
 
     const marquee = sectionFor("Profiles worth opening");
@@ -280,7 +278,7 @@ describe("ProfilesOverviewPage", () => {
     expect(screen.getByRole("heading", { name: "Ada Reyes" })).toBeInTheDocument();
   });
 
-  it("holds the section scaffolding while the catalog is still loading", async () => {
+  it("holds the section scaffolding while the catalog is still loading", () => {
     renderWithProviders(<ProfilesOverviewPage />);
 
     expect(screen.getByRole("heading", { name: "Featured profiles" })).toBeInTheDocument();
@@ -289,42 +287,25 @@ describe("ProfilesOverviewPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "New in Atlas" })).toBeInTheDocument();
     expect(screen.queryByText("No profiles listed yet.")).toBeNull();
-
-    await waitFor(() => {
-      expect(
-        screen.getAllByText("Atlas is temporarily unavailable. Please try again."),
-      ).not.toHaveLength(0);
-    });
   });
 
-  it("keeps a scoped shelf visible while its catalog slice loads", async () => {
+  it("keeps a scoped shelf visible while its catalog slice loads", () => {
     renderWithProviders(<ProfilesOverviewPage scope="people" />);
 
     expect(screen.getByRole("heading", { name: "People worth knowing" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Organizations doing the work" })).toBeNull();
-
-    await waitFor(() => {
-      expect(
-        screen.getAllByText("Atlas is temporarily unavailable. Please try again."),
-      ).not.toHaveLength(0);
-    });
   });
 
-  it("keeps a scoped organization shelf visible while its catalog slice loads", async () => {
+  it("keeps a scoped organization shelf visible while its catalog slice loads", () => {
     renderWithProviders(<ProfilesOverviewPage scope="organizations" />);
 
     expect(
       screen.getByRole("heading", { name: "Organizations doing the work" }),
     ).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(
-        screen.getAllByText("Atlas is temporarily unavailable. Please try again."),
-      ).not.toHaveLength(0);
-    });
   });
 
-  it("says the catalog is unavailable instead of pretending Atlas is empty", async () => {
+  it("keeps the spotlight placeholder and retries quietly while the catalog request fails", async () => {
+    const { requests } = stubFetch({ body: { detail: "Too many requests." }, status: 429 });
     renderWithProviders(<ProfilesOverviewPage />, {
       seed: (queryClient) => {
         queryClient.setQueryData(["taxonomy"], taxonomy());
@@ -335,11 +316,15 @@ describe("ProfilesOverviewPage", () => {
       },
     });
 
-    await waitFor(() =>
-      expect(
-        screen.getByText("Atlas is temporarily unavailable. Please try again."),
-      ).toBeInTheDocument(),
+    await waitFor(
+      () => {
+        expect(requests.filter((request) => request.url.includes("limit=18"))).toHaveLength(2);
+      },
+      { timeout: 3_000 },
     );
+    expect(screen.getByRole("heading", { name: "Featured profiles" })).toBeInTheDocument();
+    expect(screen.queryByText(/too many requests/i)).toBeNull();
+    expect(screen.queryByText(/unavailable|couldn.t load/i)).toBeNull();
     expect(screen.queryByText("No profiles listed yet.")).toBeNull();
     expect(linkedNamesIn(sectionFor("People worth knowing"))).toEqual(["Priya Nair"]);
   });

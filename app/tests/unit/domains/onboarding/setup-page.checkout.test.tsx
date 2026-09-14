@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { SetupPage } from "@/domains/onboarding/pages/setup-page";
 
 const mocks = vi.hoisted(() => ({
@@ -33,10 +34,6 @@ vi.mock("@/domains/access/organizations.functions", () => ({
 vi.mock("@/domains/billing/purchase-onboarding.functions", () => ({
   attachPurchaseWorkspace: mocks.attachPurchaseWorkspace,
   ensurePurchaseOnboarding: mocks.ensurePurchaseOnboarding,
-  // Real implementation: the point of these tests is which messages it
-  // lets through.
-  isCheckoutRefusalMessage: (message: string) =>
-    message === "Atlas is not selling subscriptions right now.",
   loadPurchaseOnboarding: mocks.loadPurchaseOnboarding,
   startPurchaseCheckout: mocks.startPurchaseCheckout,
 }));
@@ -123,7 +120,7 @@ describe("SetupPage", () => {
     // buttons do not gate it. Without surfacing the refusal the buyer sat on
     // a step that never advanced while the rejection went to the console.
     mocks.ensurePurchaseOnboarding.mockRejectedValue(
-      new Error("Atlas is not selling subscriptions right now."),
+      new UserFacingError("Atlas is not selling subscriptions right now."),
     );
     mocks.useAtlasSession.mockReturnValue({
       data: {

@@ -4,7 +4,7 @@
  * /entries/:id → 301 → /profiles/people/:slug or /profiles/organizations/:slug
  *
  * Initiative, campaign, and event entries now redirect to their own
- * source-linked detail pages.
+ * canonical detail pages.
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { api } from "@rebuildingamerica/atlas-api-client";

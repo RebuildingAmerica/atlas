@@ -1,3 +1,4 @@
+import { isNotFound } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadPublicDirectory } from "@/domains/catalog/server/public-directory";
 import type { PublicDirectoryResponse } from "@/domains/catalog/server/public-directory";
@@ -84,11 +85,21 @@ describe("loadPublicDirectory", () => {
   });
 
   it("fails rather than rendering a directory from an error body", async () => {
-    stubFetch({ body: { detail: "no such workspace" }, status: 404 });
+    stubFetch({ body: { detail: "upstream exploded at db-3" }, status: 503 });
 
     await expect(loadPublicDirectory({ data: { orgId: "org_1" } })).rejects.toThrow(
       "Public directory could not be loaded.",
     );
+  });
+
+  it("answers a directory that does not exist with not-found", async () => {
+    stubFetch({ body: { detail: "no such workspace" }, status: 404 });
+
+    const thrown: unknown = await loadPublicDirectory({ data: { orgId: "org_1" } }).catch(
+      (error: unknown) => error,
+    );
+
+    expect(isNotFound(thrown)).toBe(true);
   });
 
   it("refuses an empty workspace id before touching the network", async () => {

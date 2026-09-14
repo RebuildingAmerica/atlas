@@ -97,7 +97,7 @@ export async function loadWorkspaceCoverageTargetDetailData(
 /**
  * Loads the coverage underwriting report for the signed-in workspace.
  *
- * @returns Public impact, data boundary, and source-linked coverage target rows.
+ * @returns Public impact, data boundary, and civic coverage target rows.
  */
 export async function loadWorkspaceCoverageUnderwritingReportData(): Promise<CoverageUnderwritingReport> {
   const orgId = await requireActiveWorkspaceId("Open a workspace before loading coverage targets.");

@@ -6,7 +6,7 @@ import {
   type BrowseRouteSearch,
 } from "@rebuildingamerica/atlas-catalog/search-state";
 import { api } from "@rebuildingamerica/atlas-api-client";
-import { isRecoverablePublicLoaderError } from "@/platform/routes/public-loader-errors";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { buildPageHead } from "@/platform/seo";
 import type {
   EntryFilterParams,
@@ -21,8 +21,8 @@ interface BrowseLoaderDeps {
 }
 
 interface BrowseLoaderData {
-  initialEntries?: EntryListResponse;
-  initialEntriesLoadFailed?: boolean;
+  /** Absent when the API failed, so the page fetches the results in the browser. */
+  initialEntries: EntryListResponse | undefined;
 }
 
 function buildEntryFilters(search: BrowseRouteSearch): EntryFilterParams {
@@ -45,18 +45,9 @@ function buildEntryFilters(search: BrowseRouteSearch): EntryFilterParams {
 export const Route = createFileRoute("/_public/browse")({
   validateSearch: browseSearchSchema,
   loaderDeps: ({ search }): BrowseLoaderDeps => ({ search }),
-  loader: async ({ deps }): Promise<BrowseLoaderData> => {
-    try {
-      const initialEntries = await api.entries.list(buildEntryFilters(deps.search));
-
-      return { initialEntries };
-    } catch (error) {
-      if (isRecoverablePublicLoaderError(error)) {
-        return { initialEntriesLoadFailed: true };
-      }
-      throw error;
-    }
-  },
+  loader: async ({ deps }): Promise<BrowseLoaderData> => ({
+    initialEntries: await loadOrDegrade(() => api.entries.list(buildEntryFilters(deps.search))),
+  }),
   head: () =>
     buildPageHead({
       title: "Browse | Atlas",
@@ -68,13 +59,7 @@ export const Route = createFileRoute("/_public/browse")({
 
 function BrowseRoute() {
   const search = Route.useSearch();
-  const { initialEntries, initialEntriesLoadFailed } = Route.useLoaderData();
+  const { initialEntries } = Route.useLoaderData();
 
-  return (
-    <BrowsePage
-      initialEntries={initialEntries}
-      initialEntriesLoadFailed={initialEntriesLoadFailed}
-      search={search}
-    />
-  );
+  return <BrowsePage initialEntries={initialEntries} search={search} />;
 }

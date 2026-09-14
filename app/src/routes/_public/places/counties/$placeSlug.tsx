@@ -1,15 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PlacePage } from "@/domains/catalog/pages/place-page";
-import { buildPlaceRouteHead, loadPlaceRoute } from "@/domains/catalog/pages/place-route";
+import {
+  buildPlaceRouteHead,
+  loadPlaceRouteOrDegrade,
+  type PlaceRouteOptions,
+} from "@/domains/catalog/pages/place-route";
+import { PlaceRoutePage } from "@/domains/catalog/pages/place-route-page";
+
+const PLACE_ROUTE_OPTIONS: PlaceRouteOptions = { kind: "county" };
 
 export const Route = createFileRoute("/_public/places/counties/$placeSlug")({
-  loader: async ({ params }) => loadPlaceRoute(params, { kind: "county" }),
+  loader: async ({ params }) => loadPlaceRouteOrDegrade(params, PLACE_ROUTE_OPTIONS),
   head: ({ loaderData, params }) =>
     buildPlaceRouteHead(loaderData, `/places/counties/${params.placeSlug}`),
   component: PlaceRoute,
 });
 
 function PlaceRoute() {
-  const data = Route.useLoaderData();
-  return <PlacePage data={data} />;
+  return (
+    <PlaceRoutePage
+      loaderData={Route.useLoaderData()}
+      options={PLACE_ROUTE_OPTIONS}
+      params={Route.useParams()}
+    />
+  );
 }

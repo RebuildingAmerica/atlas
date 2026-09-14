@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import {
   canManageAtlasOrganizationRole,
@@ -44,10 +45,10 @@ function getSessionWorkspace(session: AtlasSessionPayload, workspaceId: string) 
 function requireManagedBillingWorkspace(session: AtlasSessionPayload, workspaceId: string) {
   const workspace = getSessionWorkspace(session, workspaceId);
   if (!workspace) {
-    throw new Error("Atlas could not find that workspace.");
+    throw new UserFacingError("Atlas could not find that workspace.");
   }
   if (!canManageAtlasOrganizationRole(workspace.role)) {
-    throw new Error("You do not have permission to manage billing for this workspace.");
+    throw new UserFacingError("You do not have permission to manage billing for this workspace.");
   }
   return workspace;
 }
@@ -157,22 +158,6 @@ const CHECKOUT_BLOCK_MESSAGES: Record<CheckoutBlockReason, string> = {
 type CheckoutAvailabilityModule = typeof CheckoutAvailabilityExports;
 
 /**
- * Returns true when a message came from the checkout availability guard.
- *
- * Only these strings are safe to render. Everything else reaching the
- * onboarding catch is an internal failure whose text can name environment
- * variables and database state.
- *
- * @param message - The error message to classify.
- */
-export function isCheckoutRefusalMessage(message: string): boolean {
-  return (
-    message === CHECKOUT_UNAVAILABLE_FALLBACK ||
-    Object.values(CHECKOUT_BLOCK_MESSAGES).includes(message)
-  );
-}
-
-/**
  * Loads only the availability module.
  *
  * loadPurchaseServerModules pulls in Better Auth, the Stripe SDK, the webhook
@@ -200,7 +185,7 @@ async function assertCheckoutAvailable(availability: CheckoutAvailabilityModule)
   if (!result.available) {
     // Refusing without a reason still refuses. Gating the throw on the reason
     // let an unavailable result through to Stripe.
-    throw new Error(
+    throw new UserFacingError(
       result.reason ? CHECKOUT_BLOCK_MESSAGES[result.reason] : CHECKOUT_UNAVAILABLE_FALLBACK,
     );
   }
@@ -267,7 +252,7 @@ export const attachPurchaseWorkspace = createServerFn({ method: "POST" })
       userId: session.user.id,
     });
     if (!intent || isTerminalPurchaseStatus(intent.status) || !canAttachWorkspace(intent.status)) {
-      throw new Error("Atlas could not continue that purchase.");
+      throw new UserFacingError("Atlas could not continue that purchase.");
     }
     return purchaseIntents.attachWorkspaceToPurchaseIntent({
       id: data.purchaseId,
@@ -297,13 +282,13 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
     });
 
     if (!intent) {
-      throw new Error("Atlas could not find that purchase.");
+      throw new UserFacingError("Atlas could not find that purchase.");
     }
     if (!canStartCheckout(intent)) {
-      throw new Error("Atlas could not continue that purchase.");
+      throw new UserFacingError("Atlas could not continue that purchase.");
     }
     if (!intent.workspaceId) {
-      throw new Error("Create a workspace before continuing to payment.");
+      throw new UserFacingError("Create a workspace before continuing to payment.");
     }
     requireManagedBillingWorkspace(session, intent.workspaceId);
 
@@ -315,7 +300,7 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
       query: { organizationId: intent.workspaceId },
     });
     if (!fullOrganization) {
-      throw new Error("Atlas could not find that workspace.");
+      throw new UserFacingError("Atlas could not find that workspace.");
     }
     const metadata = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
     const products = getAtlasBillingProducts();

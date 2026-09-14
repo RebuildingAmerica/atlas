@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "@rebuildingamerica/atlas-api-client";
 import type {
@@ -46,13 +46,19 @@ export function mapPointsQueryKey(params: MapPointParams) {
   return ["map-points", roundBounds(bounds), filters] as const;
 }
 
+type MapPointsQueryOptions = UseQueryOptions<MapPointCollection>;
+
 interface UseMapPointsOptions {
   /** Hydrate the cache with a server-seeded payload so the first paint has data. */
   initialData?: MapPointCollection;
   /** Pause fetching (e.g. before the map has reported its first viewport). */
   enabled?: boolean;
-  /** Whether React Query should automatically retry failed viewport reads. */
-  retry?: boolean;
+  /** Whether to refetch when the browser comes back online. */
+  refetchOnReconnect?: MapPointsQueryOptions["refetchOnReconnect"];
+  /** Whether, or for which failures, React Query retries a failed viewport read. */
+  retry?: MapPointsQueryOptions["retry"];
+  /** How long React Query waits before each retry. */
+  retryDelay?: MapPointsQueryOptions["retryDelay"];
 }
 
 /**
@@ -107,6 +113,8 @@ export function useMapPoints(params: MapPointParams | null, options?: UseMapPoin
     staleTime: 1000 * 60 * 5,
     enabled,
     initialData: options?.initialData,
+    refetchOnReconnect: options?.refetchOnReconnect,
     retry: options?.retry ?? false,
+    retryDelay: options?.retryDelay,
   });
 }

@@ -19,17 +19,16 @@ describe("routes/_public/index", () => {
     expect(Route.options.component).toBe(HomePage);
   });
 
-  it("frames the public home route as source-linked local civic intelligence", async () => {
+  it("frames the public home route as local civic intelligence", async () => {
     const { Route } = await import("@/routes/_public/index");
     if (!Route.options.head) throw new Error("Expected head metadata");
 
     const head = Route.options.head({} as never) as PageHead;
 
-    expect(head.meta).toContainEqual({ title: "Atlas | Source-Linked Local Civic Intelligence" });
+    expect(head.meta).toContainEqual({ title: "Atlas | Local Civic Intelligence" });
     expect(head.meta).toContainEqual({
       name: "description",
-      content:
-        "Find source-linked local civic intelligence by person, organization, issue, and place.",
+      content: "Find local civic intelligence by person, organization, issue, and place.",
     });
     expect(head.meta).toEqual(
       expect.arrayContaining([

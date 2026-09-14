@@ -218,11 +218,11 @@ describe("EntryDetail freshness", () => {
     expect(screen.getByText("Undated source")).toBeInTheDocument();
   });
 
-  it("counts no source packets when the record carries no sources array", () => {
+  it("counts no sources when the record carries no sources array", () => {
     render(<EntryDetail entry={createEntryFixture({ sources: undefined })} />);
     // The source-trail card has no packets of its own to count, so its badge
     // pair stays off the page.
-    expect(screen.getByText("Source trail")).toBeInTheDocument();
+    expect(screen.getByText("Sources")).toBeInTheDocument();
     expect(screen.queryByText(/^\d+ source types?$/)).not.toBeInTheDocument();
   });
 });

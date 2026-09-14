@@ -87,10 +87,10 @@ describe("catalog entry behaviors", () => {
 
   it("renders entry detail loading, error, empty, and success states", () => {
     const { rerender } = render(<EntryDetail isLoading />);
-    expect(screen.getByText("Loading source-linked entry details…")).not.toBeNull();
+    expect(screen.getByText("Loading entry details…")).not.toBeNull();
 
     rerender(<EntryDetail error={new Error("No detail")} />);
-    expect(screen.getByText("No detail")).not.toBeNull();
+    expect(screen.getByText("This entry couldn't load. Try again in a moment.")).not.toBeNull();
 
     rerender(<EntryDetail />);
     expect(screen.getByText("Entry not found.")).not.toBeNull();
@@ -98,13 +98,11 @@ describe("catalog entry behaviors", () => {
     rerender(
       <EntryDetail entry={sampleEntry} issueAreaLabels={{ housing_affordability: "Housing" }} />,
     );
-    expect(screen.getByText("Source-backed record")).not.toBeNull();
-    expect(screen.getAllByText("2 source packets").length).toBeGreaterThan(0);
-    expect(screen.getByText("Source trail")).not.toBeNull();
-    expect(screen.getByText("Evidence packets")).not.toBeNull();
-    expect(screen.getByText("1 source packet")).not.toBeNull();
+    expect(screen.getAllByText("2 sources").length).toBeGreaterThan(0);
+    expect(screen.getByText("Sources")).not.toBeNull();
+    expect(screen.getByText("1 source")).not.toBeNull();
     expect(screen.getByText("1 source type")).not.toBeNull();
-    expect(screen.getByText("Quoted evidence")).not.toBeNull();
+    expect(screen.getByText("Quote")).not.toBeNull();
     expect(screen.getAllByText("Coverage story").length).toBeGreaterThan(0);
     expect(screen.getByTestId("private-notes-entry-entry_123")).not.toBeNull();
     expect(screen.getByTestId("private-notes-source-source_123")).not.toBeNull();
@@ -125,7 +123,7 @@ describe("catalog entry behaviors", () => {
       />,
     );
 
-    expect(screen.getAllByText("Source-linked").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Uncorroborated").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Midwest").length).toBeGreaterThan(0);
     expect(screen.getByText("No linked sources yet.")).not.toBeNull();
 
@@ -181,7 +179,7 @@ describe("catalog entry behaviors", () => {
     expect(screen.getByText("What you can use this for")).not.toBeNull();
     expect(screen.getByText("Evaluate Housing Justice KC as a local housing lead.")).not.toBeNull();
     expect(screen.getByText("Why this record is usable")).not.toBeNull();
-    expect(screen.getAllByText("2 source packets").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("2 sources").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Atlas-verified").length).toBeGreaterThan(0);
     expect(screen.getByText("Pivot from this actor")).not.toBeNull();
 

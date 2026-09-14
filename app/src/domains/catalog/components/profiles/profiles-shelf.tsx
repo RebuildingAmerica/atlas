@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { SectionHeading, ShelfCard } from "./profile-showcase-primitives";
 
 interface ProfilesShelfProps {
@@ -31,7 +32,9 @@ export function ProfilesShelf({
     return (
       <section className="space-y-4 pt-7">
         <SectionHeading icon={icon} subtitle={subtitle} title={title} />
-        <p className="type-body-medium text-on-error-container">{error.message}</p>
+        <p className="type-body-medium text-on-error-container">
+          {userFacingErrorMessage(error, "These profiles couldn't load. Try again in a moment.")}
+        </p>
       </section>
     );
   }

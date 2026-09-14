@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import { createInternalAuthHeaders } from "./config";
 
@@ -60,7 +61,7 @@ async function releaseScoutWorkerLeases(
     method: "POST",
   });
   if (!response.ok) {
-    throw new Error("Atlas could not release that Scout worker's active jobs.");
+    throw new UserFacingError("Atlas could not release that Scout worker's active jobs.");
   }
 }
 

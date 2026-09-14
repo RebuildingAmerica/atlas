@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { ProfilesFreshList } from "@/domains/catalog/components/profiles/profiles-fresh-list";
 import { createEntryFixture } from "../../../../fixtures/catalog/entries";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -43,8 +44,21 @@ describe("ProfilesFreshList", () => {
   });
 
   it("shows the failure rather than pretending nothing is new", () => {
-    render(<ProfilesFreshList entries={[]} error={new Error("Could not load new profiles.")} />);
+    render(
+      <ProfilesFreshList
+        entries={[]}
+        error={new UserFacingError("Could not load new profiles.")}
+      />,
+    );
     expect(screen.getByText("Could not load new profiles.")).toBeInTheDocument();
+  });
+
+  it("hides an internal failure's message behind safe copy", () => {
+    render(<ProfilesFreshList entries={[]} error={new Error("relation profile_view unknown")} />);
+    expect(
+      screen.getByText("New profiles couldn't load. Try again in a moment."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/profile_view/)).toBeNull();
   });
 
   it("hides itself when the load finished with nothing to show", () => {

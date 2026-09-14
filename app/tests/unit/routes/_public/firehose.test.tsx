@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import type { PageHead } from "@/platform/seo";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/../tests/helpers/render-with-providers";
 
 const mocks = vi.hoisted(() => ({
   fetchPublicFirehoseSignals: vi.fn(),
@@ -14,14 +15,16 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@rebuildingamerica/atlas-catalog/firehose/firehose-feed-page", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/firehose/firehose-feed-page", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   FirehoseFeedPage: (props: { initialSnapshot: unknown }) => {
     mocks.firehosePageProps(props);
     return <div data-testid="firehose-page" />;
   },
 }));
 
-vi.mock("@rebuildingamerica/atlas-catalog/firehose/public-feed", () => ({
+vi.mock("@rebuildingamerica/atlas-catalog/firehose/public-feed", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   publicFirehoseSearchSchema: {
     parse: vi.fn((input: unknown) => input),
   },
@@ -59,6 +62,19 @@ describe("routes/_public/firehose", () => {
       place: "detroit-mi",
     });
     expect(result).toEqual({ initialSnapshot: snapshot });
+  });
+
+  it("loads no snapshot during an outage so the page renders its placeholder", async () => {
+    mocks.fetchPublicFirehoseSignals.mockRejectedValue(
+      new Error("Public Firehose request failed (429)"),
+    );
+    const routeModule = await import("@/routes/_public/firehose");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    await expect(Route.options.loader?.({ deps: { search: {} } })).resolves.toEqual({
+      initialSnapshot: undefined,
+    });
   });
 
   it("keys the loader on the search so a filter change refetches the snapshot", async () => {
@@ -102,6 +118,7 @@ describe("routes/_public/firehose", () => {
     const router = readRouterMocks();
     const snapshot = { signals: [] };
     router.useLoaderData.mockReturnValue({ initialSnapshot: snapshot });
+    router.useSearch.mockReturnValue({});
 
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected component");
@@ -109,5 +126,53 @@ describe("routes/_public/firehose", () => {
 
     expect(screen.getByTestId("firehose-page")).toBeInTheDocument();
     expect(mocks.firehosePageProps).toHaveBeenCalledWith({ initialSnapshot: snapshot });
+    expect(mocks.fetchPublicFirehoseSignals).not.toHaveBeenCalled();
+  });
+
+  it("shows the header and a feed placeholder, then the feed once the browser fetch lands", async () => {
+    const routeModule = await import("@/routes/_public/firehose");
+    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const router = readRouterMocks();
+    const snapshot = { signals: [] };
+    router.useLoaderData.mockReturnValue({ initialSnapshot: undefined });
+    router.useSearch.mockReturnValue({ place: "detroit-mi" });
+    mocks.fetchPublicFirehoseSignals.mockResolvedValue(snapshot);
+
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected component");
+    renderWithProviders(<Component />);
+
+    expect(screen.getByRole("heading", { level: 1, name: "Firehose" })).toBeInTheDocument();
+    expect(screen.getByText("Loading updates")).toBeInTheDocument();
+    expect(screen.getByRole("feed", { name: "Firehose events" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(screen.getByRole("link", { name: "RSS feed" })).toHaveAttribute(
+      "href",
+      "/firehose.rss?place=detroit-mi",
+    );
+    expect(screen.getByRole("button", { name: "Standard" })).toBeDisabled();
+
+    expect(await screen.findByTestId("firehose-page")).toBeInTheDocument();
+    expect(mocks.fetchPublicFirehoseSignals).toHaveBeenCalledWith({ place: "detroit-mi" });
+    expect(mocks.firehosePageProps).toHaveBeenCalledWith({ initialSnapshot: snapshot });
+  });
+
+  it("points the placeholder's RSS link at the whole feed when nothing is filtered", async () => {
+    const routeModule = await import("@/routes/_public/firehose");
+    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+    const router = readRouterMocks();
+    router.useLoaderData.mockReturnValue({ initialSnapshot: undefined });
+    router.useSearch.mockReturnValue({});
+    mocks.fetchPublicFirehoseSignals.mockReturnValue(new Promise(() => undefined));
+
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected component");
+    renderWithProviders(<Component />);
+
+    expect(screen.getByRole("link", { name: "RSS feed" })).toHaveAttribute("href", "/firehose.rss");
   });
 });

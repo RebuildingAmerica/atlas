@@ -5,15 +5,16 @@
  * Rendering: Server-side with full meta tags and JSON-LD structured data.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { OrgProfilePage } from "@/domains/catalog/pages/profiles/detail/org-profile-page";
+import { ProfileRoutePage } from "@/domains/catalog/pages/profiles/detail/profile-route-page";
 import { loadProfileBySlug } from "@/domains/catalog/server/profiles/profile-loaders";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { buildPageHead } from "@/platform/seo";
 
 export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
   loader: async ({ params }) => {
-    const entry = await loadProfileBySlug({
-      data: { type: "organizations", slug: params.slug },
-    });
+    const entry = await loadOrDegrade(() =>
+      loadProfileBySlug({ data: { type: "organizations", slug: params.slug } }),
+    );
     return { entry };
   },
   head: ({ loaderData }) => {
@@ -33,5 +34,6 @@ export const Route = createFileRoute("/_public/profiles/organizations/$slug")({
 
 function OrgProfileRoute() {
   const { entry } = Route.useLoaderData();
-  return <OrgProfilePage entry={entry} />;
+  const { slug } = Route.useParams();
+  return <ProfileRoutePage scope="organizations" slug={slug} entry={entry} />;
 }

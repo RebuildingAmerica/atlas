@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { callRouteGet } from "@/../tests/helpers/routes-server-handler";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const mocks = vi.hoisted(() => ({
   createAtprotoHarnessProviderCallbackUrl: vi.fn(),
@@ -49,7 +50,7 @@ describe("routes/api/atproto/oauth/harness/authorize", () => {
 
   it("reports why the harness provider could not authorize", async () => {
     mocks.createAtprotoHarnessProviderCallbackUrl.mockImplementation(() => {
-      throw new Error("Harness state is unknown.");
+      throw new UserFacingError("Harness state is unknown.");
     });
     const routeModule = await import("@/routes/api/atproto/oauth/harness/authorize");
 
@@ -60,6 +61,21 @@ describe("routes/api/atproto/oauth/harness/authorize", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Harness state is unknown." });
+  });
+
+  it("hides an internal harness failure's message behind safe copy", async () => {
+    mocks.createAtprotoHarnessProviderCallbackUrl.mockImplementation(() => {
+      throw new Error("state lookup failed: ECONNREFUSED");
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/harness/authorize");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/harness/authorize?state=state_1"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "ATProto provider failed." });
   });
 
   it("falls back to a plain failure message when the cause is not an error", async () => {

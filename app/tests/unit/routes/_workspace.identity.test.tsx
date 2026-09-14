@@ -217,10 +217,12 @@ describe("routes/_workspace identity controls", () => {
   it("surfaces workspace-switch errors", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     const { useMutation } = await import("@tanstack/react-query");
+    const { UserFacingError } =
+      await import("@rebuildingamerica/atlas-api-client/user-facing-errors");
     const switchMutation = vi
       .fn()
       .mockRejectedValueOnce("plain string error")
-      .mockRejectedValueOnce(new Error("explicit"));
+      .mockRejectedValueOnce(new UserFacingError("explicit"));
     vi.mocked(useMutation).mockReturnValue({
       mutateAsync: switchMutation,
       isPending: false,

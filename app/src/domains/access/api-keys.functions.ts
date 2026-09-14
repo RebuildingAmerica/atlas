@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import {
   API_KEY_SCOPES,
@@ -229,7 +230,7 @@ async function createScopedApiKey(
 async function assertCanCreateApiKey(session: AtlasSessionPayload): Promise<void> {
   const resolvedCapabilities = session.workspace.resolvedCapabilities;
   if (!hasSerializedCapability(resolvedCapabilities, "api.keys")) {
-    throw new Error("This workspace cannot create Atlas API keys.");
+    throw new UserFacingError("This workspace cannot create Atlas API keys.");
   }
 
   const maxApiKeys = resolvedCapabilities.limits.max_api_keys;
@@ -247,7 +248,7 @@ async function assertCanCreateApiKey(session: AtlasSessionPayload): Promise<void
   );
 
   if (response.total >= maxApiKeys) {
-    throw new Error("This workspace has reached its Atlas API key limit.");
+    throw new UserFacingError("This workspace has reached its Atlas API key limit.");
   }
 }
 
@@ -300,7 +301,7 @@ export const createApiKey = createServerFn({ method: "POST" })
     const { requireReadyAtlasSessionState } = await loadSessionStateModule();
     const runtime = getAuthRuntimeConfig();
     if (runtime.localMode) {
-      throw new Error("API keys are unavailable while auth is disabled.");
+      throw new UserFacingError("API keys are unavailable while auth is disabled.");
     }
     validateAuthRuntimeConfig(runtime);
 

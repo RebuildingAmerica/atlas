@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 async function loadBillingServerModules() {
   if (import.meta.env.SSR) {
@@ -39,7 +40,7 @@ export const createPortalSession = createServerFn({ method: "POST" }).handler(as
   const activeWorkspace = session.workspace.activeOrganization;
 
   if (!activeWorkspace) {
-    throw new Error("Choose or create a workspace before managing billing.");
+    throw new UserFacingError("Choose or create a workspace before managing billing.");
   }
 
   const auth = await ensureAuthReady();
@@ -54,7 +55,9 @@ export const createPortalSession = createServerFn({ method: "POST" }).handler(as
   const orgMetadata = normalizeAtlasOrganizationMetadata(fullOrganization?.metadata);
 
   if (!orgMetadata.stripeCustomerId) {
-    throw new Error("No billing account found for this workspace. Purchase a product first.");
+    throw new UserFacingError(
+      "No billing account found for this workspace. Purchase a product first.",
+    );
   }
 
   const stripe = getStripeClient();

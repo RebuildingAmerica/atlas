@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { CreateApiKeyMock } from "../../../../helpers/access/api-key-mock";
 import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
+import {
+  createAtlasSessionFixture,
+  createAtlasWorkspace,
+} from "../../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   ensureAtlasSession: vi.fn(),
@@ -213,7 +217,7 @@ describe("api-keys.functions", () => {
     });
 
     expect(response).toMatchObject({
-      error: new Error("API keys are unavailable while auth is disabled."),
+      error: new UserFacingError("API keys are unavailable while auth is disabled."),
     });
   });
 

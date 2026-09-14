@@ -137,18 +137,15 @@ describe("MapPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("shows the error state when the route could not seed initial points", () => {
-    const refetch = vi.fn();
+  it("keeps the cluster placeholders, not an error, while unseeded points are still coming", () => {
     requireMapPageHarness().setState({
       points: [],
-      pointsQuery: { data: undefined, isError: false, refetch },
+      pointsQuery: { data: undefined, isError: false, refetch: vi.fn() },
     });
-    render(<MapPage search={{}} initialPointsLoadFailed />);
+    render(<MapPage search={{}} />);
 
-    expect(screen.getByText(/couldn.t load the map/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(refetch).toHaveBeenCalledOnce();
-    expect(readMapPageHarness().lastInitialPointsLoadFailed()).toBe(true);
+    expect(document.querySelectorAll("[data-skeleton]").length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("map-error-notice")).toBeNull();
   });
 
   it("opens the detail panel as a non-modal dialog when an actor is selected", () => {

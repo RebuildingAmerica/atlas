@@ -1,4 +1,5 @@
 import "@tanstack/react-start/server-only";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 import { getAuthDatabase, getAuthPgPool } from "@/domains/access/server/auth";
 import type { AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
@@ -112,7 +113,7 @@ export async function ensurePurchaseIntent({
     );
     const insertedRow = inserted.rows[0];
     if (!insertedRow) {
-      throw new Error("Atlas could not start purchase onboarding.");
+      throw new UserFacingError("Atlas could not start purchase onboarding.");
     }
     return toRecord(insertedRow);
   }
@@ -294,7 +295,7 @@ async function updatePurchaseIntent({
     );
     const row = result.rows[0];
     if (!row) {
-      throw new Error("Atlas could not find that purchase.");
+      throw new UserFacingError("Atlas could not find that purchase.");
     }
     return toRecord(row);
   }
@@ -316,7 +317,7 @@ async function updatePurchaseIntent({
     )
     .get(id, userId) as PurchaseIntentRow | undefined;
   if (!updated) {
-    throw new Error("Atlas could not find that purchase.");
+    throw new UserFacingError("Atlas could not find that purchase.");
   }
   return toRecord(updated);
 }

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import type { AppNavItem } from "./app-navigation";
+import { AtlasBrandMark } from "./atlas-brand-mark";
 
 interface TopNavChromeProps {
   identitySlot?: ReactNode;
@@ -68,9 +69,7 @@ function TopNavLink({ label, native, to }: AppNavItem) {
 export function AtlasBrandLink() {
   return (
     <Link to="/" className="flex shrink-0 items-center gap-2.5 no-underline">
-      <div className="bg-primary text-on-primary flex h-7 w-7 items-center justify-center rounded-[0.85rem]">
-        <span className="type-label-medium leading-none">A</span>
-      </div>
+      <AtlasBrandMark size="compact" />
       <span className="type-title-medium text-ink-strong">Atlas</span>
     </Link>
   );

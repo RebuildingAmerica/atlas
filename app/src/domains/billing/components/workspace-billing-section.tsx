@@ -5,6 +5,7 @@ import {
   AccountSurface,
 } from "@/domains/access/pages/workspace/components/account/rows";
 import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { createPortalSession } from "../billing.functions";
 import { PRODUCT_LABELS } from "../product-labels";
 
@@ -24,8 +25,7 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
       const result = await createPortalSession();
       window.location.assign(result.url);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not open billing portal.";
-      setPortalError(message);
+      setPortalError(userFacingErrorMessage(error, "Could not open billing portal."));
     } finally {
       setIsLoadingPortal(false);
     }

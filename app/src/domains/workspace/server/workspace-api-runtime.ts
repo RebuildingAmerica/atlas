@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { requireReadyAtlasSessionState } from "@/domains/access/server/session-state";
 import { requestAtlasApi } from "@/domains/discovery/server/api-client";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 export { requestAtlasApi };
 
@@ -14,7 +15,7 @@ export async function requireActiveWorkspaceId(missingWorkspaceMessage: string):
   const session = await requireReadyAtlasSessionState();
   const activeWorkspaceId = session.workspace.activeOrganization?.id;
   if (!activeWorkspaceId) {
-    throw new Error(missingWorkspaceMessage);
+    throw new UserFacingError(missingWorkspaceMessage);
   }
 
   return activeWorkspaceId;

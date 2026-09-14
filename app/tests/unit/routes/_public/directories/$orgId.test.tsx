@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", async () => {
@@ -486,5 +486,88 @@ describe("routes/_public/directories/$orgId", () => {
     render(<Component />);
 
     expect(screen.getByText("Last reviewed 20xx-ab-cd")).toBeInTheDocument();
+  });
+
+  it("loads no directory during an outage so the page renders its frame", async () => {
+    const { loadPublicDirectory } = await import("@/domains/catalog/server/public-directory");
+    vi.mocked(loadPublicDirectory).mockRejectedValue(
+      new Error("Public directory could not be loaded."),
+    );
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const loader = asRouteStub(routeModule.Route).options.loader;
+    if (!loader) throw new Error("Expected loader");
+
+    await expect(loader({ params: { orgId: "tenant-kc" } })).resolves.toEqual({
+      directory: undefined,
+    });
+  });
+
+  it("still answers a missing directory with not-found from the loader", async () => {
+    const { loadPublicDirectory } = await import("@/domains/catalog/server/public-directory");
+    const { mockNotFound } = await import("@/../tests/helpers/router-harness");
+    const missing = mockNotFound();
+    vi.mocked(loadPublicDirectory).mockRejectedValue(missing);
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const loader = asRouteStub(routeModule.Route).options.loader;
+    if (!loader) throw new Error("Expected loader");
+
+    await expect(loader({ params: { orgId: "missing" } })).rejects.toBe(missing);
+  });
+
+  it("shows the directory frame with placeholders, then the listings once the browser fetch lands", async () => {
+    const support =
+      await import("@/../tests/unit/routes/_public/directories/public-directory-test-support");
+    const { loadPublicDirectory } = await import("@/domains/catalog/server/public-directory");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const { renderWithProviders } = await import("@/../tests/helpers/render-with-providers");
+    readRouterMocks().useLoaderData.mockReturnValue({ directory: undefined });
+    readRouterMocks().useParams.mockReturnValue({ orgId: "tenant-kc" });
+    vi.mocked(loadPublicDirectory).mockResolvedValue(support.publicDirectoryFixture());
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    renderWithProviders(<Component />);
+
+    expect(screen.getByText("Public directory")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading this directory");
+    expect(screen.getByLabelText("Search directory")).toBeDisabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Kansas City tenant power directory" }),
+    ).toBeInTheDocument();
+    expect(loadPublicDirectory).toHaveBeenCalledWith({ data: { orgId: "tenant-kc" } });
+  });
+
+  it("renders not-found when the browser fetch learns the directory does not exist", async () => {
+    const { loadPublicDirectory } = await import("@/domains/catalog/server/public-directory");
+    const { readRouterMocks, asRouteStub, isMockNotFound, mockNotFound } =
+      await import("@/../tests/helpers/router-harness");
+    const { renderWithProviders } = await import("@/../tests/helpers/render-with-providers");
+    const { CaptureRenderError } = await import("@/../tests/helpers/capture-render-error");
+    readRouterMocks().useLoaderData.mockReturnValue({ directory: undefined });
+    readRouterMocks().useParams.mockReturnValue({ orgId: "missing" });
+    vi.mocked(loadPublicDirectory).mockRejectedValue(mockNotFound());
+    const onError = vi.fn();
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    renderWithProviders(
+      <CaptureRenderError onError={onError}>
+        <Component />
+      </CaptureRenderError>,
+    );
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalled();
+    });
+    expect(isMockNotFound(onError.mock.calls[0]?.[0])).toBe(true);
+    expect(onError.mock.calls[0]?.[0]).toMatchObject({ routeId: "__root__" });
   });
 });

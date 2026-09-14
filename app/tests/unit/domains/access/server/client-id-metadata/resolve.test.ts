@@ -141,16 +141,19 @@ describe("resolveClientIdMetadataDocument", () => {
     ).rejects.toThrow(/must not contain a fragment/);
   });
 
-  it("wraps fetch errors as fetch_failed", async () => {
+  it("wraps fetch errors as fetch_failed without repeating the socket error", async () => {
     const fakeFetch: typeof fetch = () => Promise.reject(new Error("network down"));
 
-    await expect(
-      resolveClientIdMetadataDocument(
-        VALID_DOCUMENT.client_id,
-        DEFAULT_CIMD_RESOLVER_OPTIONS,
-        fakeFetch,
-      ),
-    ).rejects.toThrow(/network down/);
+    const failure = resolveClientIdMetadataDocument(
+      VALID_DOCUMENT.client_id,
+      DEFAULT_CIMD_RESOLVER_OPTIONS,
+      fakeFetch,
+    );
+
+    await expect(failure).rejects.toThrow(
+      "CIMD fetch failed: Atlas could not reach the client metadata URL.",
+    );
+    await expect(failure).rejects.toMatchObject({ code: "fetch_failed" });
   });
 
   it("wraps non-Error fetch rejections as fetch_failed", async () => {
@@ -164,7 +167,7 @@ describe("resolveClientIdMetadataDocument", () => {
         DEFAULT_CIMD_RESOLVER_OPTIONS,
         fakeFetch,
       ),
-    ).rejects.toThrow(/nope/);
+    ).rejects.toThrow(/could not reach the client metadata URL/);
   });
 
   it("rejects responses with no body stream", async () => {
@@ -261,7 +264,7 @@ describe("resolveClientIdMetadataDocument", () => {
         { ...DEFAULT_CIMD_RESOLVER_OPTIONS, timeoutMs: 5 },
         fakeFetch,
       ),
-    ).rejects.toThrow(/aborted/);
+    ).rejects.toThrow(/could not reach the client metadata URL/);
   });
 
   it("aborts the body stream when its size exceeds the cap", async () => {

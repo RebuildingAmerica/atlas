@@ -6,9 +6,19 @@ vi.mock("@/domains/access/server/api-request-identity", () => ({
   registerApiRequestIdentity: mocks.registerApiRequestIdentity,
 }));
 
+import {
+  atlasApiErrorAdapter,
+  userFacingErrorAdapter,
+} from "@/platform/errors/error-serialization";
 import { isServerFunctionRequest, startInstance } from "@/start";
 
 describe("startInstance", () => {
+  it("keeps visitor-facing and Atlas API errors recognizable after a server function", async () => {
+    const options = await startInstance.getOptions();
+
+    expect(options.serializationAdapters).toEqual([userFacingErrorAdapter, atlasApiErrorAdapter]);
+  });
+
   it("checks CSRF only on server function calls, as the default middleware does", () => {
     expect(isServerFunctionRequest({ handlerType: "serverFn" })).toBe(true);
     expect(isServerFunctionRequest({ handlerType: "router" })).toBe(false);

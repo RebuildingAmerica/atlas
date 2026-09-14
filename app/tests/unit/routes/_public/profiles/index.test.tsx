@@ -3,9 +3,11 @@ import "@testing-library/jest-dom/vitest";
 import { render, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", async () => {
+// The real `isNotFound` stays so the loader's degrade path can tell a missing
+// record from an outage.
+vi.mock("@tanstack/react-router", async (importOriginal) => {
   const harness = await import("@/../tests/helpers/router-harness");
-  return harness.installRouterMocks();
+  return { ...(await importOriginal<object>()), ...harness.installRouterMocks() };
 });
 
 vi.mock("@/domains/catalog/pages/profiles/overview/profiles-overview-page", () => ({
@@ -58,6 +60,21 @@ describe("routes/_public/profiles/index", () => {
     if (!Route.options.head) throw new Error("Expected head");
     const headPayload = Route.options.head({}) as { meta: Record<string, string>[] };
     expect(headPayload.meta[0]).toEqual({ title: "Profiles | Atlas" });
+  });
+
+  it("renders the page without a catalog when the API call fails", async () => {
+    const { loadProfilesCatalog } =
+      await import("@/domains/catalog/server/profiles/profile-loaders");
+    vi.mocked(loadProfilesCatalog).mockRejectedValue(
+      Object.assign(new Error("Too many requests."), { status: 429 }),
+    );
+
+    const routeModule = await import("@/routes/_public/profiles/index");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.loader) throw new Error("Expected loader");
+    await expect(Route.options.loader()).resolves.toEqual({ catalog: undefined });
   });
 
   it("renders ProfilesOverviewPage with the loader catalog", async () => {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { WorkspaceSSOProviderCard } from "./workspace-sso-provider-card";
@@ -99,10 +100,10 @@ export function WorkspaceSSOProviderList({
     } catch (caught) {
       setVerifyError((current) => ({
         ...current,
-        [providerId]:
-          caught instanceof Error
-            ? caught.message
-            : "Atlas could not verify the TXT record.  Confirm the record exists and try again.",
+        [providerId]: userFacingErrorMessage(
+          caught,
+          "Atlas could not verify the TXT record.  Confirm the record exists and try again.",
+        ),
       }));
     }
   }

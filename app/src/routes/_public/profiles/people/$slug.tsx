@@ -5,15 +5,16 @@
  * Rendering: Server-side with full meta tags and JSON-LD structured data.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { PersonProfilePage } from "@/domains/catalog/pages/profiles/detail/person-profile-page";
+import { ProfileRoutePage } from "@/domains/catalog/pages/profiles/detail/profile-route-page";
 import { loadProfileBySlug } from "@/domains/catalog/server/profiles/profile-loaders";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { buildPageHead } from "@/platform/seo";
 
 export const Route = createFileRoute("/_public/profiles/people/$slug")({
   loader: async ({ params }) => {
-    const entry = await loadProfileBySlug({
-      data: { type: "people", slug: params.slug },
-    });
+    const entry = await loadOrDegrade(() =>
+      loadProfileBySlug({ data: { type: "people", slug: params.slug } }),
+    );
     return { entry };
   },
   head: ({ loaderData }) => {
@@ -33,5 +34,6 @@ export const Route = createFileRoute("/_public/profiles/people/$slug")({
 
 function PersonProfileRoute() {
   const { entry } = Route.useLoaderData();
-  return <PersonProfilePage entry={entry} />;
+  const { slug } = Route.useParams();
+  return <ProfileRoutePage scope="people" slug={slug} entry={entry} />;
 }

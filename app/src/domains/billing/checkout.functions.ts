@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { PRICING_CHECKOUT_INTERVALS, type PricingCheckoutInterval } from "./checkout-intervals";
@@ -120,7 +121,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     const activeWorkspace = session.workspace.activeOrganization;
 
     if (!activeWorkspace) {
-      throw new Error("Create a workspace before continuing to payment.");
+      throw new UserFacingError("Create a workspace before continuing to payment.");
     }
 
     const auth = await ensureAuthReady();

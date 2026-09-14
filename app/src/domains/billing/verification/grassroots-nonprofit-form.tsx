@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { GrassrootsNonprofitVerificationData } from "./discount-verification-payload";
 
@@ -53,7 +54,12 @@ export function GrassrootsNonprofitForm({
     }
 
     void onSubmit({ einOrName, budget }).catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : "Submission failed");
+      setError(
+        userFacingErrorMessage(
+          err,
+          "Atlas couldn't submit your verification. Try again in a moment.",
+        ),
+      );
       setErrorField(null);
     });
   }

@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { VerificationForm } from "@/domains/billing/verification/verification-form";
 import type { DiscountSegment } from "@/domains/billing/discount-segments";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 describe("VerificationForm", () => {
   describe("picking the form for a segment", () => {
@@ -126,7 +127,7 @@ describe("VerificationForm", () => {
     });
 
     it("keeps the form up when the submission was rejected", async () => {
-      const onSubmit = vi.fn().mockRejectedValue(new Error("Already verified."));
+      const onSubmit = vi.fn().mockRejectedValue(new UserFacingError("Already verified."));
       render(<VerificationForm segment="student" onSubmit={onSubmit} />);
 
       await userEvent.type(screen.getByLabelText("School email"), "ada@howard.edu");

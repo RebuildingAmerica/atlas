@@ -1,4 +1,5 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import {
   buildGoogleWorkspaceOIDCProviderId,
@@ -211,7 +212,7 @@ export const registerWorkspaceSAMLProvider = createServerFn({ method: "POST" })
     const { runtime: runtimeModule } = await loadWorkspaceSSOServerModules();
     const { getAuthRuntimeConfig, isAllowedSamlIssuer } = runtimeModule;
     if (!isAllowedSamlIssuer(data.issuer)) {
-      throw new Error(
+      throw new UserFacingError(
         "This SAML issuer is not enabled on Atlas. Contact support to add it to the allowlist.",
       );
     }

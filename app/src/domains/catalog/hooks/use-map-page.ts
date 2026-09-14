@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMapPoints } from "@/domains/catalog/hooks/use-map-points";
+import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
 import { flyToPlace } from "@rebuildingamerica/atlas-catalog/map/map-camera";
 import { mapPointParamsFor } from "@rebuildingamerica/atlas-catalog/map/map-filters";
 import { readViewport } from "@rebuildingamerica/atlas-catalog/map/map-readout";
@@ -56,8 +57,6 @@ interface UseMapPageOptions {
   map?: FlyToCamera | null;
   /** The SSR-seeded CONUS points, hydrated as the initial query data. */
   initialPoints?: MapPointCollection;
-  /** Whether the route-level seed failed before the map page mounted. */
-  initialPointsLoadFailed?: boolean;
 }
 
 /**
@@ -74,13 +73,7 @@ interface UseMapPageOptions {
  * @param options The route search, a navigate function, and seeded points.
  * @returns Everything the page renders and the handlers its chrome calls.
  */
-export function useMapPage({
-  search,
-  navigate,
-  map = null,
-  initialPoints,
-  initialPointsLoadFailed = false,
-}: UseMapPageOptions) {
+export function useMapPage({ search, navigate, map = null, initialPoints }: UseMapPageOptions) {
   const filters = useMemo(() => buildBrowseSearch(search), [search]);
   const initialView = useMemo(() => viewFromSearch(search), [search]);
   const initialBounds = useMemo(() => boundsFromSearch(search), [search]);
@@ -129,10 +122,11 @@ export function useMapPage({
     () => (bounds ? mapPointParamsFor(filters, bounds) : null),
     [bounds, filters],
   );
+  // The cluster placeholders stay up while the API is down, so a failed read
+  // retries quietly instead of putting an error card over the map.
   const pointsQuery = useMapPoints(params, {
-    enabled: !initialPointsLoadFailed,
+    ...PUBLIC_QUERY_RETRY_OPTIONS,
     initialData: initialPoints,
-    retry: false,
   });
   const points = pointsQuery.data?.points ?? [];
 

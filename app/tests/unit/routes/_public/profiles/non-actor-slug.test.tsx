@@ -3,9 +3,11 @@ import "@testing-library/jest-dom/vitest";
 import { render, cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", async () => {
+// The real `isNotFound` stays so the loader's degrade path can tell a missing
+// record from an outage.
+vi.mock("@tanstack/react-router", async (importOriginal) => {
   const harness = await import("@/../tests/helpers/router-harness");
-  return harness.installRouterMocks();
+  return { ...(await importOriginal<object>()), ...harness.installRouterMocks() };
 });
 
 vi.mock("@/domains/catalog/components/entries/entry-detail", () => ({
@@ -90,6 +92,7 @@ describe.each([
     router.useLoaderData.mockReturnValue({
       entry: { name: `Source-Linked ${title}` },
     });
+    router.useParams.mockReturnValue({ slug: `${scope}-slug` });
 
     const routeModule = (await import(modulePath)) as { Route: unknown };
     const Route = asRouteStub(routeModule.Route);
@@ -98,5 +101,21 @@ describe.each([
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     expect(screen.getByTestId("entry-detail")).toHaveTextContent(`Source-Linked ${title}`);
+  });
+
+  it("hands the page no entry instead of failing when the API call fails", async () => {
+    const { loadProfileBySlug } = await import("@/domains/catalog/server/profiles/profile-loaders");
+    vi.mocked(loadProfileBySlug).mockRejectedValue(
+      Object.assign(new Error("Too many requests."), { status: 429 }),
+    );
+
+    const routeModule = (await import(modulePath)) as { Route: unknown };
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.loader) throw new Error("Expected loader");
+    await expect(Route.options.loader({ params: { slug: `${scope}-slug` } })).resolves.toEqual({
+      entry: undefined,
+    });
   });
 });

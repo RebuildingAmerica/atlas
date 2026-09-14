@@ -57,6 +57,18 @@ describe("routes/_public/places/$placeSlug", () => {
     expect(result).toBe(placePageFixture);
   });
 
+  it("loads nothing during an outage so the page renders placeholders", async () => {
+    mocks.api.places.getPage.mockRejectedValueOnce(new Error("Too many requests."));
+
+    const routeModule = await import("@/routes/_public/places/$placeSlug");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    await expect(
+      Route.options.loader?.({ params: { placeSlug: "las-vegas-nv" } }),
+    ).resolves.toBeUndefined();
+  });
+
   it("publishes canonical metadata for the public place URL", async () => {
     const routeModule = await import("@/routes/_public/places/$placeSlug");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");

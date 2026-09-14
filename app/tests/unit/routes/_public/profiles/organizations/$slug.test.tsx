@@ -4,9 +4,11 @@ import { render, cleanup } from "@testing-library/react";
 import type { PageHead } from "@/platform/seo";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@tanstack/react-router", async () => {
+// The real `isNotFound` and `notFound` stay so the loader's degrade path can
+// tell a missing record from an outage.
+vi.mock("@tanstack/react-router", async (importOriginal) => {
   const harness = await import("@/../tests/helpers/router-harness");
-  return harness.installRouterMocks();
+  return { ...(await importOriginal<object>()), ...harness.installRouterMocks() };
 });
 
 vi.mock("@/domains/catalog/pages/profiles/detail/org-profile-page", () => ({
@@ -128,6 +130,7 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
     const router = readRouterMocks();
     router.useLoaderData.mockReturnValue({ entry: { name: "Acme" } });
+    router.useParams.mockReturnValue({ slug: "acme" });
 
     const routeModule = await import("@/routes/_public/profiles/organizations/$slug");
     const Route = asRouteStub(routeModule.Route);
@@ -136,5 +139,19 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     const view = render(<Component />);
     expect(view.getByTestId("org-profile").dataset.name).toBe("Acme");
+  });
+
+  it("hands the page no entry instead of failing when the API call fails", async () => {
+    const { loadProfileBySlug } = await import("@/domains/catalog/server/profiles/profile-loaders");
+    vi.mocked(loadProfileBySlug).mockRejectedValue(new TypeError("fetch failed"));
+
+    const routeModule = await import("@/routes/_public/profiles/organizations/$slug");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Route = asRouteStub(routeModule.Route);
+
+    if (!Route.options.loader) throw new Error("Expected loader");
+    await expect(Route.options.loader({ params: { slug: "acme" } })).resolves.toEqual({
+      entry: undefined,
+    });
   });
 });

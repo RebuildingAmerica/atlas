@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen, fireEvent, cleanup, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readManageProfileCall } from "@/../tests/fixtures/routes/manage-profile-call";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const buttonMocks = vi.hoisted(() => ({
   clicks: new Map<string, (() => void) | undefined>(),
@@ -366,7 +367,7 @@ describe("routes/_workspace/manage/$slug", () => {
     const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(claims.useManageProfile).mockReturnValue({
-      mutateAsync: vi.fn().mockRejectedValue(new Error("nope")),
+      mutateAsync: vi.fn().mockRejectedValue(new UserFacingError("nope")),
       isPending: false,
     } as unknown as ReturnType<typeof claims.useManageProfile>);
     vi.mocked(entriesHooks.useEntryBySlug).mockReturnValue({
@@ -395,7 +396,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it.each([
-    [new Error("Identity is already attached."), "Identity is already attached."],
+    [new UserFacingError("Identity is already attached."), "Identity is already attached."],
     ["rejected", "Could not update public identity."],
   ])("surfaces attachment failures without changing the public identity", async (failure, copy) => {
     const entriesHooks = await import("@rebuildingamerica/atlas-catalog/hooks/use-entries");
@@ -441,7 +442,7 @@ describe("routes/_workspace/manage/$slug", () => {
   });
 
   it.each([
-    [new Error("Removal was rejected."), "Removal was rejected."],
+    [new UserFacingError("Removal was rejected."), "Removal was rejected."],
     ["rejected", "Could not remove public identity."],
   ])(
     "surfaces removal failures without disconnecting the account identity",

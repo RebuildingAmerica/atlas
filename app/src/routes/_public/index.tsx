@@ -5,9 +5,8 @@ import { buildPageHead } from "@/platform/seo";
 export const Route = createFileRoute("/_public/")({
   head: () =>
     buildPageHead({
-      title: "Atlas | Source-Linked Local Civic Intelligence",
-      description:
-        "Find source-linked local civic intelligence by person, organization, issue, and place.",
+      title: "Atlas | Local Civic Intelligence",
+      description: "Find local civic intelligence by person, organization, issue, and place.",
       path: "",
     }),
   component: HomePage,

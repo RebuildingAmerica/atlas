@@ -1,5 +1,6 @@
 import { Building2 } from "lucide-react";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import {
   ProfileEntryLink,
   SectionHeading,
@@ -31,7 +32,9 @@ function IssueClusterColumn({
     return (
       <div className="space-y-3">
         <h3 className="type-title-large text-ink-strong">{title}</h3>
-        <p className="type-body-medium text-on-error-container">{error.message}</p>
+        <p className="type-body-medium text-on-error-container">
+          {userFacingErrorMessage(error, "These profiles couldn't load. Try again in a moment.")}
+        </p>
       </div>
     );
   }

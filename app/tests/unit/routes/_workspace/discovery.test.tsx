@@ -39,7 +39,7 @@ describe("routes/_workspace/discovery", () => {
         },
         {
           name: "description",
-          content: "Start source-linked local civic research and export reusable briefs.",
+          content: "Start local civic research and export reusable briefs.",
         },
       ],
     });

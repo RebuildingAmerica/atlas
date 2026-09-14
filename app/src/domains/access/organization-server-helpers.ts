@@ -1,4 +1,5 @@
 import { createServerOnlyFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import type {
   AtlasSessionPayload,
   AtlasWorkspaceMembership,
@@ -23,7 +24,7 @@ export async function assertOrganizationManagementEnabled(): Promise<void> {
   const { getAuthRuntimeConfig } = runtimeModule;
   const authRuntime = getAuthRuntimeConfig();
   if (authRuntime.localMode) {
-    throw new Error("Organization management is unavailable while auth is disabled.");
+    throw new UserFacingError("Organization management is unavailable while auth is disabled.");
   }
 }
 
@@ -53,7 +54,9 @@ export async function loadOrganizationRequestContext() {
 export function requireActiveWorkspace(session: AtlasSessionPayload): AtlasWorkspaceMembership {
   const activeWorkspace = session.workspace.activeOrganization;
   if (!activeWorkspace) {
-    throw new Error("Choose or create a workspace before managing organization settings.");
+    throw new UserFacingError(
+      "Choose or create a workspace before managing organization settings.",
+    );
   }
 
   return activeWorkspace;
@@ -71,11 +74,11 @@ export function requireManagedTeamWorkspace(
   const activeWorkspace = requireActiveWorkspace(session);
 
   if (activeWorkspace.workspaceType !== "team") {
-    throw new Error("Team management is only available inside team workspaces.");
+    throw new UserFacingError("Team management is only available inside team workspaces.");
   }
 
   if (!canManageAtlasOrganizationRole(activeWorkspace.role)) {
-    throw new Error("You do not have permission to manage this workspace.");
+    throw new UserFacingError("You do not have permission to manage this workspace.");
   }
 
   return activeWorkspace;

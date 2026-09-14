@@ -32,6 +32,9 @@ export function navigateSearch(
 export interface UseMapPointsOptionsLike {
   initialData?: MapPointCollection;
   enabled?: boolean;
+  refetchOnReconnect?: boolean;
+  retry?: (failureCount: number, error: unknown) => boolean;
+  retryDelay?: (attempt: number) => number;
 }
 
 /** Records of every `useMapPoints` call so a test can assert the wiring. */

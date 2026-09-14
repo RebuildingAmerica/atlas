@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ProfilesShelf } from "@/domains/catalog/components/profiles/profiles-shelf";
 import { createEntryFixture } from "../../../../fixtures/catalog/entries";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -55,7 +56,7 @@ describe("ProfilesShelf", () => {
     render(
       <ProfilesShelf
         entries={[]}
-        error={new Error("Profiles are unavailable right now.")}
+        error={new UserFacingError("Profiles are unavailable right now.")}
         issueAreaLabels={{}}
         title="People to know"
       />,
@@ -63,6 +64,22 @@ describe("ProfilesShelf", () => {
 
     expect(screen.getByText("Profiles are unavailable right now.")).toBeInTheDocument();
     expect(screen.queryAllByRole("link")).toHaveLength(0);
+  });
+
+  it("hides an internal failure's message behind safe copy", () => {
+    render(
+      <ProfilesShelf
+        entries={[]}
+        error={new Error("relation shelf_view unknown")}
+        issueAreaLabels={{}}
+        title="People to know"
+      />,
+    );
+
+    expect(
+      screen.getByText("These profiles couldn't load. Try again in a moment."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/shelf_view/)).toBeNull();
   });
 
   it("hides itself entirely rather than leaving an empty section behind", () => {

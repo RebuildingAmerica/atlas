@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { callRouteGet } from "@/../tests/helpers/routes-server-handler";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const mocks = vi.hoisted(() => ({
   completeAtprotoAuthorization: vi.fn(),
@@ -132,7 +133,9 @@ describe("routes/api/atproto/oauth/callback", () => {
       throw new Error("Return path is not an Atlas page.");
     });
     mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
-      throw Object.assign(new Error("Handle mismatch."), { returnTo: "https://evil.test/steal" });
+      throw Object.assign(new UserFacingError("Handle mismatch."), {
+        returnTo: "https://evil.test/steal",
+      });
     });
     const routeModule = await import("@/routes/api/atproto/oauth/callback");
 
@@ -147,7 +150,7 @@ describe("routes/api/atproto/oauth/callback", () => {
 
   it("answers with the failure reason when there is nowhere to send the visitor", async () => {
     mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
-      throw new Error("Authorization code was already used.");
+      throw new UserFacingError("Authorization code was already used.");
     });
     const routeModule = await import("@/routes/api/atproto/oauth/callback");
 
@@ -158,6 +161,21 @@ describe("routes/api/atproto/oauth/callback", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Authorization code was already used." });
+  });
+
+  it("hides an internal failure's message when there is nowhere to send the visitor", async () => {
+    mocks.completeAtprotoOAuthCallback.mockImplementation(() => {
+      throw new Error("relation atproto_state does not exist");
+    });
+    const routeModule = await import("@/routes/api/atproto/oauth/callback");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/atproto/oauth/callback?code=c&state=s"),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "ATProto callback failed." });
   });
 
   it("answers generically when the failure was not an error at all", async () => {

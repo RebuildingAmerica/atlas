@@ -70,21 +70,19 @@ export function buildScopeCopy(scope: ProfileBrowseScope): {
   if (scope === "people") {
     return {
       title: "People",
-      description:
-        "Source-linked records for people working across public record, place, and issue.",
+      description: "People working across public record, place, and issue.",
     };
   }
   if (scope === "organizations") {
     return {
       title: "Organizations",
       description:
-        "Source-linked records for organizations grounded in local reporting, public records, and research context.",
+        "Organizations grounded in local reporting, public records, and research context.",
     };
   }
   return {
     title: "Profiles",
-    description:
-      "Explore source-linked people and organizations by issue, place, and public record.",
+    description: "Explore people and organizations by issue, place, and public record.",
   };
 }
 

@@ -55,20 +55,73 @@ function getServerApiBaseUrl(env: ApiClientEnv): string {
   );
 }
 
-function buildAtlasApiErrorMessage(status: number, message: string): string {
-  if (status >= 500) {
-    return "Atlas is temporarily unavailable. Please try again.";
-  }
+/**
+ * The sentence a visitor reads for each class of failed Atlas API response.
+ *
+ * `public-loader-errors.ts` in the app recognizes an outage by the
+ * `unavailable` wording after a server function strips everything but the
+ * message, so change that sentence only together with that check.
+ */
+export const ATLAS_API_ERROR_MESSAGES = {
+  invalid: "Atlas couldn't use those details. Check them and try again.",
+  signIn: "Sign in to Atlas to continue.",
+  forbidden: "You don't have permission to do that in Atlas.",
+  notFound: "Atlas couldn't find that. It may have moved or been removed.",
+  conflict: "That conflicts with a recent change. Refresh the page and try again.",
+  busy: "Atlas is busy right now. Try again in a moment.",
+  unavailable: "Atlas is temporarily unavailable. Please try again.",
+  failed: "Atlas couldn't complete that request. Try again.",
+} as const;
 
-  return message || `Atlas API request failed (${status})`;
+/** One of the sentences in `ATLAS_API_ERROR_MESSAGES`. */
+export type AtlasApiErrorMessage =
+  (typeof ATLAS_API_ERROR_MESSAGES)[keyof typeof ATLAS_API_ERROR_MESSAGES];
+
+/**
+ * Chooses the visitor-safe sentence for an API status.
+ *
+ * The response body never decides the message. A body can be a rate limiter's
+ * JSON, a proxy's HTML page, or an exception name, and every screen that shows
+ * `error.message` would print it.
+ */
+export function atlasApiErrorMessage(status: number): AtlasApiErrorMessage {
+  if (status >= 500) {
+    return ATLAS_API_ERROR_MESSAGES.unavailable;
+  }
+  switch (status) {
+    case 400:
+    case 422:
+      return ATLAS_API_ERROR_MESSAGES.invalid;
+    case 401:
+      return ATLAS_API_ERROR_MESSAGES.signIn;
+    case 403:
+      return ATLAS_API_ERROR_MESSAGES.forbidden;
+    case 404:
+    case 410:
+      return ATLAS_API_ERROR_MESSAGES.notFound;
+    case 409:
+      return ATLAS_API_ERROR_MESSAGES.conflict;
+    case 408:
+    case 425:
+    case 429:
+      return ATLAS_API_ERROR_MESSAGES.busy;
+    default:
+      return ATLAS_API_ERROR_MESSAGES.failed;
+  }
 }
 
+/**
+ * A failed Atlas API response.
+ *
+ * `message` is always safe to show a visitor. `body` holds the raw response
+ * text for logs and for `userFacingApiDetail`, and no screen should render it.
+ */
 export class AtlasApiError extends Error {
   status: number;
   body: string;
 
   constructor(status: number, body: string) {
-    super(buildAtlasApiErrorMessage(status, body));
+    super(atlasApiErrorMessage(status));
     this.name = "AtlasApiError";
     this.status = status;
     this.body = body;

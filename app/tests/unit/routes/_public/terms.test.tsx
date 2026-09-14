@@ -50,8 +50,7 @@ describe("routes/_public/terms", () => {
         { title: "Terms | Atlas" },
         {
           name: "description",
-          content:
-            "Terms for using Atlas public profiles, workspaces, subscriptions, and source-linked data.",
+          content: "Terms for using Atlas public profiles, workspaces, subscriptions, and data.",
         },
         { property: "og:url", content: "https://atlas.rebuildingus.org/terms" },
         { name: "twitter:card", content: "summary_large_image" },

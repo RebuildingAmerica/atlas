@@ -195,7 +195,7 @@ describe("handleCimdRequest", () => {
     );
     await expect(outcome.errorResponse?.json()).resolves.toEqual({
       error: "invalid_client",
-      error_description: "CIMD fetch failed: ECONNREFUSED",
+      error_description: "CIMD fetch failed: Atlas could not reach the client metadata URL.",
     });
   });
 

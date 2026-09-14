@@ -1,4 +1,5 @@
 import "@tanstack/react-start/server-only";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 import { z } from "zod";
 import {
@@ -119,7 +120,7 @@ async function createPersonalWorkspace(
   }
 
   /* v8 ignore start -- the final attempt above always returns or rethrows; this satisfies control-flow analysis */
-  throw new Error("Atlas could not create a personal workspace.");
+  throw new UserFacingError("Atlas could not create a personal workspace.");
   /* v8 ignore stop */
 }
 

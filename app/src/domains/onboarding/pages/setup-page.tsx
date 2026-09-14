@@ -7,10 +7,10 @@ import { createWorkspace } from "@/domains/access/organizations.functions";
 import {
   attachPurchaseWorkspace,
   ensurePurchaseOnboarding,
-  isCheckoutRefusalMessage,
   loadPurchaseOnboarding,
   startPurchaseCheckout,
 } from "@/domains/billing/purchase-onboarding.functions";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { PurchaseStepPanel, PurchaseStepRail, type PurchaseStepId } from "./setup-page-steps";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
@@ -119,13 +119,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         // rejection went to the console while the buyer watched a step that
         // never advanced.
         if (!cancelled) {
-          // Only the guard's own wording is safe to show. Any other failure
-          // here is internal and its message can name environment variables
-          // or database state.
-          const message = error instanceof Error ? error.message : "";
-          setErrorMessage(
-            isCheckoutRefusalMessage(message) ? message : "Atlas could not start that purchase.",
-          );
+          setErrorMessage(userFacingErrorMessage(error, "Atlas could not start that purchase."));
         }
       }
     };

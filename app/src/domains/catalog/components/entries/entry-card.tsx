@@ -149,7 +149,7 @@ function buildMatchReason(
     return `listed in ${location}`;
   }
 
-  return `${humanize(entry.type).toLowerCase()} with source-linked civic activity`;
+  return `${humanize(entry.type).toLowerCase()} in the Atlas directory`;
 }
 
 const PROFILE_ROUTE_BY_TYPE = {

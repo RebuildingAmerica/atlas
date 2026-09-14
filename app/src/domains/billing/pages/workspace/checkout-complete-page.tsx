@@ -146,7 +146,7 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
           <p className="type-body-large text-ink-soft leading-relaxed">
             {isTeam
               ? "Atlas Team is active for this workspace. Connect your identity provider next so the rest of your team can sign in."
-              : "Your support helps us keep Atlas open and source-linked for everyone. Here's what's now available to you."}
+              : "Your support helps us keep Atlas open for everyone. Here's what's now available to you."}
           </p>
         </div>
 

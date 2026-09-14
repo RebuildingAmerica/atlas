@@ -10,6 +10,10 @@ interface PlacePageProps {
   data: PlacePageData;
 }
 
+interface PlaceSectionNavProps {
+  label: string;
+}
+
 interface PlaceSectionProps {
   children: ReactNode;
   id: string;
@@ -29,12 +33,31 @@ interface FactGridProps {
   facts: PlaceFact[];
 }
 
-function PlaceSection({ children, id, title }: PlaceSectionProps) {
+export function PlaceSection({ children, id, title }: PlaceSectionProps) {
   return (
     <section id={id} className="bg-surface-container-low scroll-mt-32 rounded-2xl p-4 sm:p-6">
       <h2 className="type-headline-medium text-ink-strong mb-5 tracking-normal">{title}</h2>
       {children}
     </section>
+  );
+}
+
+export function PlaceSectionNav({ label }: PlaceSectionNavProps) {
+  return (
+    <nav
+      aria-label={label}
+      className="bg-surface-container-high/95 sticky top-16 z-10 mt-4 flex gap-2 overflow-x-auto rounded-2xl p-2 backdrop-blur"
+    >
+      {SECTION_NAV_ITEMS.map((item) => (
+        <a
+          key={item.id}
+          href={`#${item.id}`}
+          className="type-label-large text-ink-soft hover:bg-surface-container-lowest hover:text-ink-strong shrink-0 rounded-full px-3 py-1.5"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -132,20 +155,7 @@ export function PlacePage({ data }: PlacePageProps) {
           <SummaryFactStrip facts={data.summaryFacts} />
         </div>
 
-        <nav
-          aria-label={`${data.identity.name} sections`}
-          className="bg-surface-container-high/95 sticky top-16 z-10 mt-4 flex gap-2 overflow-x-auto rounded-2xl p-2 backdrop-blur"
-        >
-          {SECTION_NAV_ITEMS.map((item) => (
-            <a
-              key={item.id}
-              href={`#${item.id}`}
-              className="type-label-large text-ink-soft hover:bg-surface-container-lowest hover:text-ink-strong shrink-0 rounded-full px-3 py-1.5"
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
+        <PlaceSectionNav label={`${data.identity.name} sections`} />
 
         <div className="mt-4 grid gap-5">
           <PlaceSection id="latest" title="Latest">

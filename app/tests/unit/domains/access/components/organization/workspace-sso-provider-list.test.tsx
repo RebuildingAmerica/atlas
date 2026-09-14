@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup, act, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 const confirmMock = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
@@ -251,7 +252,7 @@ describe("WorkspaceSSOProviderList", () => {
   });
 
   it("renders a verification error when verifyDomain rejects", async () => {
-    const onVerifyDomain = vi.fn().mockRejectedValue(new Error("DNS not propagated"));
+    const onVerifyDomain = vi.fn().mockRejectedValue(new UserFacingError("DNS not propagated"));
     render(<WorkspaceSSOProviderList {...defaultProps} onVerifyDomain={onVerifyDomain} />);
 
     await act(async () => {
@@ -262,6 +263,21 @@ describe("WorkspaceSSOProviderList", () => {
     await waitFor(() => {
       expect(screen.getByText(/DNS not propagated/i)).toBeInTheDocument();
     });
+  });
+
+  it("hides an internal verification failure behind safe copy", async () => {
+    const onVerifyDomain = vi.fn().mockRejectedValue(new Error("queryTxt ETIMEOUT"));
+    render(<WorkspaceSSOProviderList {...defaultProps} onVerifyDomain={onVerifyDomain} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Check now"));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Atlas could not verify the TXT record/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/ETIMEOUT/)).toBeNull();
   });
 
   it("falls back to a generic error when verifyDomain rejects with a non-Error", async () => {

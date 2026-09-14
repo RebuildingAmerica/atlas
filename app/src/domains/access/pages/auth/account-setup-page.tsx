@@ -8,6 +8,10 @@ import { resolvePasskeyName } from "@rebuildingamerica/atlas-access/passkey-name
 import { updatePasskey } from "@/domains/access/passkeys.functions";
 import { getRpLogoutRedirect, sendVerificationEmail } from "@/domains/access/session.functions";
 import { describePasskeyError } from "@rebuildingamerica/atlas-access/auth-errors";
+import {
+  UserFacingError,
+  userFacingErrorMessage,
+} from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { resolveReadyDestination, useRelativeTimestamp } from "./account-setup-helpers";
 import {
   AccountSetupChecklist,
@@ -52,7 +56,7 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
       const result = await getAuthClient().passkey.addPasskey({});
 
       if (result.error) {
-        throw new Error(describePasskeyError(result.error));
+        throw new UserFacingError(describePasskeyError(result.error));
       }
 
       if (result.data) {
@@ -162,9 +166,10 @@ export function AccountSetupPage({ redirectTo }: AccountSetupPageProps) {
   }
 
   const passkeyErrorMessage = addPasskeyMutation.isError
-    ? addPasskeyMutation.error instanceof Error
-      ? addPasskeyMutation.error.message
-      : "Atlas could not add that passkey right now."
+    ? userFacingErrorMessage(
+        addPasskeyMutation.error,
+        "Atlas could not add that passkey right now.",
+      )
     : null;
 
   return (

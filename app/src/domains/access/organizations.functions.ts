@@ -1,4 +1,5 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import {
   atlasWorkspaceTypeSchema,
@@ -151,10 +152,10 @@ export const convertWorkspaceToTeam = createServerFn({ method: "POST" }).handler
   const activeWorkspace = requireActiveWorkspace(session);
 
   if (!canManageAtlasOrganizationRole(activeWorkspace.role)) {
-    throw new Error("You do not have permission to upgrade this workspace.");
+    throw new UserFacingError("You do not have permission to upgrade this workspace.");
   }
   if (activeWorkspace.workspaceType === "team") {
-    throw new Error("This workspace is already a team.");
+    throw new UserFacingError("This workspace is already a team.");
   }
 
   const fullOrganization = await auth.api.getFullOrganization({

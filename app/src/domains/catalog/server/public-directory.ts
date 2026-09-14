@@ -1,3 +1,4 @@
+import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getServerApiBaseUrl } from "@/platform/config/app-config";
@@ -91,6 +92,12 @@ export const loadPublicDirectory = createServerFn({ method: "GET" })
         headers: { Accept: "application/json" },
       },
     );
+
+    // A directory that does not exist is an answer, not an outage: the route
+    // must render not-found for it rather than degrade and retry forever.
+    if (response.status === 404) {
+      notFound({ throw: true });
+    }
 
     if (!response.ok) {
       throw new Error("Public directory could not be loaded.");

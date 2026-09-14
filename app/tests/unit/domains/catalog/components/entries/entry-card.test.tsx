@@ -99,9 +99,7 @@ describe("EntryCard match reason", () => {
       />,
     );
 
-    expect(
-      screen.getByText("Matched because: person with source-linked civic activity"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Matched because: person in the Atlas directory")).toBeInTheDocument();
   });
 });
 

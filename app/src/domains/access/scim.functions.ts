@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
 import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type {
@@ -67,7 +68,7 @@ async function loadWorkspaceSCIMServerModules() {
 export function requireWorkspaceScimAccess(session: AtlasSessionPayload): AtlasWorkspaceMembership {
   const activeWorkspace = requireManagedTeamWorkspace(session);
   if (!hasSerializedCapability(session.workspace.resolvedCapabilities, "auth.scim")) {
-    throw new Error("SCIM setup is available on Atlas Team.");
+    throw new UserFacingError("SCIM setup is available on Atlas Team.");
   }
   return activeWorkspace;
 }

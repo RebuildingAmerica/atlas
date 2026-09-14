@@ -14,6 +14,7 @@ import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 export const Route = createFileRoute("/_workspace/manage/$slug")({
   component: ManageProfileRoute,
@@ -134,7 +135,7 @@ function ManageProfileRoute() {
         setSavedMessage(null);
       }, 3000);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not save changes.");
+      setErrorMessage(userFacingErrorMessage(err, "Could not save changes."));
     }
   }
 
@@ -162,7 +163,7 @@ function ManageProfileRoute() {
       });
       setSavedMessage("Public identity updated.");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not update public identity.");
+      setErrorMessage(userFacingErrorMessage(err, "Could not update public identity."));
     }
   }
 
@@ -179,7 +180,7 @@ function ManageProfileRoute() {
       setSelectedIdentityId("");
       setSavedMessage("Public identity removed.");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not remove public identity.");
+      setErrorMessage(userFacingErrorMessage(err, "Could not remove public identity."));
     }
   }
 

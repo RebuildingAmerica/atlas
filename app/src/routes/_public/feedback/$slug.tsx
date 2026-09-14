@@ -2,9 +2,13 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { CheckCircle2, MessageSquareWarning, Send, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { z } from "zod";
+import { DeferredEntry } from "@/domains/catalog/pages/profiles/detail/deferred-entry";
+import { SkeletonBlock } from "@/domains/catalog/pages/profiles/detail/profile-page-skeleton";
 import { loadEntryBySlugAny } from "@/domains/catalog/server/profiles/profile-loaders";
 import { createEntityFlag } from "@rebuildingamerica/atlas-api-client/generated/atlas";
+import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
+import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { buildPageHead } from "@/platform/seo";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
@@ -43,7 +47,7 @@ const FEEDBACK_OPTIONS: FeedbackOption[] = [
 export const Route = createFileRoute("/_public/feedback/$slug")({
   validateSearch: feedbackSearchSchema,
   loader: async ({ params }) => {
-    const entry = await loadEntryBySlugAny({ data: { slug: params.slug } });
+    const entry = await loadOrDegrade(() => loadEntryBySlugAny({ data: { slug: params.slug } }));
     return { entry };
   },
   head: ({ loaderData }) => {
@@ -51,7 +55,7 @@ export const Route = createFileRoute("/_public/feedback/$slug")({
     if (!entry) return {};
     return buildPageHead({
       title: `Improve ${entry.name} | Atlas`,
-      description: `Submit source-linked corrections or missing context for ${entry.name}.`,
+      description: `Submit corrections or missing context for ${entry.name}.`,
       path: `/feedback/${entry.slug}`,
       noindex: true,
     });
@@ -75,7 +79,59 @@ function getFeedbackOption(kind: FeedbackKind): FeedbackOption {
 }
 
 function FeedbackRoute() {
+  const { slug } = Route.useParams();
   const { entry } = Route.useLoaderData();
+
+  if (entry) {
+    return <FeedbackPage entry={entry} />;
+  }
+
+  return (
+    <DeferredEntry lookup={{ scope: "any", slug }} placeholder={<FeedbackPagePlaceholder />}>
+      {(fetched) => <FeedbackPage entry={fetched} />}
+    </DeferredEntry>
+  );
+}
+
+/**
+ * The review dialog's frame while the browser fetches the entry its loader
+ * could not. The profile's name and the form hold placeholders, because a
+ * correction filed before the entry arrives would have no record to attach to.
+ */
+function FeedbackPagePlaceholder() {
+  return (
+    <PageLayout className="pt-0 pb-12">
+      <div className="bg-ink-strong/10 -mx-4 min-h-[calc(100vh-8rem)] px-4 py-8">
+        <section
+          aria-busy="true"
+          aria-label="Record review"
+          className="border-border-strong bg-surface mx-auto max-w-xl space-y-6 rounded-[1rem] border p-6 shadow-xl"
+          data-testid="feedback-page-placeholder"
+        >
+          <span role="status" className="sr-only">
+            Loading profile
+          </span>
+          <div className="space-y-3">
+            <p className="type-label-small text-ink-muted uppercase">Record review</p>
+            <SkeletonBlock className="h-8 w-2/3 rounded-md" />
+            <p className="type-body-large text-ink-soft">
+              Send a correction, stale detail, or missing context.
+            </p>
+          </div>
+          <SkeletonBlock className="h-40 w-full rounded-lg" />
+          <SkeletonBlock className="h-32 w-full rounded-lg" />
+          <SkeletonBlock className="h-10 w-40 rounded-full" />
+        </section>
+      </div>
+    </PageLayout>
+  );
+}
+
+interface FeedbackPageProps {
+  entry: Entry;
+}
+
+function FeedbackPage({ entry }: FeedbackPageProps) {
   const search = Route.useSearch();
   const [kind, setKind] = useState<FeedbackKind>(search.kind);
   const [note, setNote] = useState("");

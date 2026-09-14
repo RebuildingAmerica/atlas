@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useHydrated } from "@/platform/runtime/use-hydrated";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { loadAdminDashboardSummary } from "./admin-dashboard.functions";
 import { AdminDashboardView } from "./admin-dashboard-view";
 
@@ -14,9 +15,7 @@ export function AdminDashboardPage() {
   });
 
   const errorMessage = dashboardQuery.isError
-    ? dashboardQuery.error instanceof Error
-      ? dashboardQuery.error.message
-      : "Admin status could not load."
+    ? userFacingErrorMessage(dashboardQuery.error, "Admin status could not load.")
     : !dashboardQuery.isPending && !dashboardQuery.data
       ? "Admin status could not load."
       : undefined;

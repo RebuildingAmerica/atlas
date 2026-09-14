@@ -90,14 +90,15 @@ describe("AdminDashboardPage", () => {
   });
 
   it("keeps the admin shell visible when dashboard data fails", async () => {
-    mocks.loadAdminDashboardSummary.mockRejectedValue(new Error("Admin summary unavailable"));
+    mocks.loadAdminDashboardSummary.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
 
     renderAdminDashboardPage();
 
     expect(screen.getByRole("heading", { name: "Admin" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Inspect cloud costs" })).toBeInTheDocument();
-    expect(await screen.findByText("Admin summary unavailable")).toBeInTheDocument();
-    expect(screen.getAllByText("Admin summary unavailable")).toHaveLength(1);
+    expect(await screen.findByText("Admin status could not load.")).toBeInTheDocument();
+    expect(screen.getAllByText("Admin status could not load.")).toHaveLength(1);
+    expect(screen.queryByText("ATLAS_API_REQUEST_FAILED")).toBeNull();
   });
 
   it("renders service health indicators and links to detailed admin work", async () => {

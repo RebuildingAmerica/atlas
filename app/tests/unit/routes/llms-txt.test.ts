@@ -22,7 +22,7 @@ describe("routes/llms.txt", () => {
     expect(body).toContain("https://preview.atlas.example/browse");
     expect(body).toContain("https://preview.atlas.example/map");
     expect(body).toContain("https://preview.atlas.example/sitemap.xml");
-    expect(body).toContain("source-linked public profiles");
+    expect(body).toContain("public profiles");
     expect(body).not.toContain("warming up");
     expect(body).not.toContain("gathering");
   });

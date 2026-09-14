@@ -15,6 +15,7 @@ import { ResumeCheckoutBanner } from "@/domains/billing/components/resume-checko
 import { buildAuthenticatedAppNav } from "@/platform/layout/app-navigation";
 import { WorkspaceLayout } from "@/platform/layout/workspace-layout";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 interface AppBarIdentityMenuProps {
   session: AtlasSessionPayload;
@@ -121,9 +122,9 @@ function AppBarIdentityMenu({ session }: AppBarIdentityMenuProps) {
         queryKey: atlasSessionQueryKey,
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Atlas could not switch workspaces right now.";
-      setErrorMessage(message);
+      setErrorMessage(
+        userFacingErrorMessage(error, "Atlas could not switch workspaces right now."),
+      );
     }
   };
 

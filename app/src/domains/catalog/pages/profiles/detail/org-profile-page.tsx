@@ -16,9 +16,10 @@ import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stat
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
 import { ProfileSection } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { useConnections } from "@rebuildingamerica/atlas-catalog/hooks/use-connections";
+import { useProfileConnections } from "@/domains/catalog/hooks/use-profile-entry";
 import { useEntries } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
 import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
+import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
 import { buildCanonicalUrl } from "@/platform/seo";
 import type { ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-client";
 
@@ -44,7 +45,7 @@ function buildShareUrl(slug: string): string {
 
 export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
-  const connectionsQuery = useConnections(entry.id, { initialData: initialConnections });
+  const connectionsQuery = useProfileConnections(entry.id, initialConnections);
   const sessionQuery = useAtlasSession();
   const session = sessionQuery.data ?? null;
   const isSignedIn = session !== null;
@@ -53,11 +54,14 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
     session !== null &&
     activeWorkspaceId !== null &&
     session.workspace.resolvedCapabilities.capabilities.includes("monitoring.watchlists");
-  const affiliatedPeopleQuery = useEntries({
-    affiliated_org_id: entry.id,
-    entry_types: ["person"],
-    limit: 50,
-  });
+  const affiliatedPeopleQuery = useEntries(
+    {
+      affiliated_org_id: entry.id,
+      entry_types: ["person"],
+      limit: 50,
+    },
+    PUBLIC_QUERY_RETRY_OPTIONS,
+  );
   const affiliatedPeople = affiliatedPeopleQuery.data?.data ?? [];
 
   const issueAreaLabels = Object.fromEntries(
@@ -75,7 +79,12 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
       value: entry.source_count,
       unit: entry.source_count === 1 ? "src" : "srcs",
     },
-    { label: "People tied", value: affiliatedPeople.length },
+    // A count of zero before the lookup answers would tell the visitor nobody
+    // works here, so the tile holds a dash until it does.
+    {
+      label: "People tied",
+      value: affiliatedPeopleQuery.data ? affiliatedPeople.length : "—",
+    },
     { label: "Issue areas", value: entry.issue_areas.length },
     { label: "Last confirmed", value: lastConfirmed },
   ];
@@ -162,7 +171,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
           <ConnectionList
             entry={entry}
             network={connectionsQuery.data}
-            isLoading={connectionsQuery.isLoading}
+            isLoading={connectionsQuery.isPending}
           />
         </ProfileSection>
 

@@ -9,9 +9,15 @@ import {
 
 describe("AccountSetupPage", () => {
   it("renders verification and passkey error states", async () => {
+    // The test bed resets the module registry in its own `beforeEach`, so
+    // this import has to happen after that reset runs (here, inside the
+    // test) to get the same `UserFacingError` class the freshly imported
+    // page module below will check `instanceof` against.
+    const { UserFacingError } =
+      await import("@rebuildingamerica/atlas-api-client/user-facing-errors");
     accountSetupPageMocks.mutateStates.push(
       { error: new Error("Could not send") },
-      { error: new Error("Atlas could not add that passkey."), isError: true },
+      { error: new UserFacingError("Atlas could not add that passkey."), isError: true },
       {},
     );
     accountSetupPageMocks.useAtlasSession.mockReturnValue({

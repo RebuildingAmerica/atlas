@@ -227,7 +227,36 @@ describe("sso.functions health checks", () => {
     expect(response.error).toBeUndefined();
     expect(response.result).toMatchObject({
       entryPointReachable: false,
-      reason: "ECONNREFUSED",
+      reason:
+        "Atlas could not reach the IdP entry point. Check the sign-in URL and that it accepts public traffic.",
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("tells the admin the IdP entry point timed out", async () => {
+    authApi.getSSOProvider.mockResolvedValue({
+      organizationId: "org_team",
+      samlConfig: {
+        certificate: {
+          fingerprintSha256: "AB:CD",
+          notAfter: new Date(Date.now() + 86400000).toISOString(),
+        },
+        entryPoint: "https://accounts.google.com/o/saml2/idp",
+      },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { checkWorkspaceSAMLProviderHealth } = await import("@/domains/access/sso.functions");
+    const response = (await checkWorkspaceSAMLProviderHealth.__executeServer({
+      method: "POST",
+      data: { providerId: "saml_123" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toMatchObject({
+      reason: "The IdP entry point did not respond within 5 seconds.",
     });
     vi.unstubAllGlobals();
   });
@@ -253,7 +282,8 @@ describe("sso.functions health checks", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.result).toMatchObject({
-      reason: "Atlas could not reach the IdP.",
+      reason:
+        "Atlas could not reach the IdP entry point. Check the sign-in URL and that it accepts public traffic.",
     });
     vi.unstubAllGlobals();
   });
