@@ -1,4 +1,4 @@
-"""Tests for turning nonprofit-register rows into discovery candidates."""
+"""Tests for querying the nonprofit register for a run's organizations."""
 
 from __future__ import annotations
 
@@ -12,8 +12,6 @@ from atlas_discovery_engine import (
 from atlas.domains.discovery.pipeline.registry_entries import (
     build_registry_provider,
     collect_registry_organizations,
-    is_registry_corroborated,
-    registry_organizations_to_entries,
 )
 
 
@@ -104,81 +102,6 @@ class TestCollectRegistryOrganizations:
 
         assert found == []
         assert provider.calls == []
-
-
-class TestRegistryOrganizationsToEntries:
-    def test_carries_the_register_page_as_the_entry_source(self) -> None:
-        """A registry candidate cites where it came from, like any entry."""
-        entries = registry_organizations_to_entries(
-            [_org("42")], issue_areas=["housing_affordability"], today_iso="2026-09-12"
-        )
-
-        assert len(entries) == 1
-        entry = entries[0]
-        assert entry["name"] == "Housing Trust"
-        assert entry["type"] == "organization"
-        assert entry["source_urls"] == ["https://example.org/42"]
-        assert entry["source_types"] == ["government_record"]
-        assert entry["issue_areas"] == ["housing_affordability"]
-        assert entry["last_seen"] == "2026-09-12"
-
-    def test_states_what_the_register_actually_asserts(self) -> None:
-        """The context claims a filing, not that the work is any good."""
-        entries = registry_organizations_to_entries(
-            [_org("42")], issue_areas=[], today_iso="2026-09-12"
-        )
-
-        context = entries[0]["extraction_context"]
-        assert "EIN 42" in context
-        assert "Lincoln, NE" in context
-        assert "L21" in context
-
-    def test_omits_details_the_register_did_not_publish(self) -> None:
-        """A filer with no city or classification still yields a clean sentence."""
-        entries = registry_organizations_to_entries(
-            [_org("42", city=None, state=None, category_code=None)],
-            issue_areas=[],
-            today_iso="2026-09-12",
-        )
-
-        context = entries[0]["extraction_context"]
-        assert context == "Registered nonprofit filing IRS Form 990 under EIN 42."
-
-    def test_drops_a_row_with_no_name(self) -> None:
-        """A nameless filer cannot become a catalog record."""
-        entries = registry_organizations_to_entries(
-            [_org("42", name="")], issue_areas=[], today_iso="2026-09-12"
-        )
-
-        assert entries == []
-
-
-class TestIsRegistryCorroborated:
-    def test_a_register_filing_page_corroborates(self) -> None:
-        """The EIN page is the authoritative record the trust gate asks for."""
-        entries = registry_organizations_to_entries(
-            [
-                RegistryOrganization(
-                    name="Housing Trust",
-                    city="Lincoln",
-                    state="NE",
-                    registry_id="470123456",
-                    source_url=f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/470123456",
-                )
-            ],
-            issue_areas=[],
-            today_iso="2026-09-12",
-        )
-
-        assert is_registry_corroborated(entries[0]["source_urls"]) is True
-
-    def test_an_ordinary_web_source_does_not(self) -> None:
-        """A news article about an organization is not a filing."""
-        assert is_registry_corroborated(["https://example.org/about-us"]) is False
-
-    def test_a_record_citing_nothing_does_not(self) -> None:
-        """An entry with no sources has nothing to corroborate it."""
-        assert is_registry_corroborated([]) is False
 
 
 class TestBuildRegistryProvider:

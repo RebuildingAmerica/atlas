@@ -11,18 +11,19 @@ IRS downloads page lists the archives each processing year's returns ship in.
 Those archives honour byte ranges, so ``remote_zip`` pulls a single return out
 of a 100 MB archive without downloading the rest.
 
-A named officer is a real person tied to a real organization by a federal
-filing. That is evidence the person held the role when the return was filed,
-which is why each record cites the exact return it came from.
+This module only locates and reads returns. What a return says about each
+listed name, including whether it is a person at all, lives in
+``filing_returns``, and deciding what Atlas publishes from that is the API's
+resolution stage.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import date
 from html.parser import HTMLParser
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
@@ -31,8 +32,8 @@ from xml.etree.ElementTree import ParseError
 
 import httpx
 from defusedxml import DefusedXmlException
-from defusedxml.ElementTree import fromstring
 
+from atlas_discovery_engine.filing_returns import FilingOfficer, parse_return
 from atlas_discovery_engine.registry import ATLAS_USER_AGENT, ProPublicaRegistryProvider
 from atlas_discovery_engine.remote_zip import (
     RemoteMember,
@@ -43,52 +44,19 @@ from atlas_discovery_engine.remote_zip import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
-    from xml.etree.ElementTree import Element
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
     "IRS_DOWNLOADS_PAGE",
-    "FilingOfficer",
     "FilingOfficerProvider",
     "IrsFilingOfficerProvider",
     "OrganizationFiling",
-    "parse_officers",
 ]
 
 IRS_DOWNLOADS_PAGE = "https://www.irs.gov/charities-non-profits/form-990-series-downloads"
 _IRS_ARCHIVE_HOST = "apps.irs.gov"
-# Form 990 lists officers in Part VII, 990-EZ in Part IV, 990-PF in Part VIII.
-_OFFICER_GROUPS = frozenset(
-    {"Form990PartVIISectionAGrp", "OfficerDirectorTrusteeEmplGrp", "OfficerDirTrstKeyEmplGrp"}
-)
 _FILINGS_TRIED_PER_ORGANIZATION = 2
-# A return lists people who left during the year, and marks them with this flag.
-_FORMER_OFFICER_FLAG = "FormerOfcrDirectorTrusteeInd"
-# Filers also write the departure into the name or title instead, as in
-# "ANNE GRUENWALD RESIGNED" with title "FORMER PRESI". Publishing that row would
-# show a departure note as part of a name and imply the role is current.
-_DEPARTED = re.compile(r"\b(resigned|deceased|former|terminated)\b", re.IGNORECASE)
-# A trust names its corporate trustee in the person-name field, so a return can
-# list "BANK OF AMERICA N A" as an officer. These are legal and banking
-# designators no person's name carries; matching them keeps an institution from
-# being published as a person.
-_INSTITUTION = re.compile(
-    r"\b(bank|trust\s+(company|co)|n\.?\s?a\.?$|fsb|llc|llp|pllc|inc|corp|corporation"
-    r"|company|ltd|foundation|association|fiduciary)\b\.?",
-    re.IGNORECASE,
-)
-
-
-@dataclass(frozen=True)
-class FilingOfficer:
-    """One person a return names as an officer, director or trustee."""
-
-    name: str
-    """The person's name as the filer wrote it."""
-
-    title: str | None
-    """The role the return gives them, when it gives one."""
 
 
 @dataclass(frozen=True)
@@ -104,65 +72,16 @@ class OrganizationFiling:
     officers: tuple[FilingOfficer, ...]
     """Everyone the return names, in filing order."""
 
+    return_type: str | None = None
+    """``990``, ``990EZ`` or ``990PF``, as the return header records it."""
+
+    tax_period_end: date | None = None
+    """The last day of the tax period the return covers."""
+
     @property
     def source_url(self) -> str:
         """Public page for this exact return, cited as the officers' source."""
         return f"{ProPublicaRegistryProvider.ORGANIZATION_URL}/{self.ein}/{self.object_id}/full"
-
-
-def parse_officers(document: bytes) -> list[FilingOfficer]:
-    """Read the named officers out of a Form 990, 990-EZ or 990-PF return.
-
-    A row naming a business rather than a person is skipped, including a bank
-    written into the person-name field as a corporate trustee. So is anyone the
-    return marks as having left, and a person listed twice is kept once.
-
-    Parameters
-    ----------
-    document : bytes
-        The return's XML.
-
-    Returns
-    -------
-    list[FilingOfficer]
-        Officers in the order the return lists them.
-
-    Raises
-    ------
-    xml.etree.ElementTree.ParseError
-        When the return is not well-formed XML.
-    defusedxml.DefusedXmlException
-        When the return tries entity expansion or an external reference.
-    """
-    seen: dict[str, FilingOfficer] = {}
-    for element in fromstring(document).iter():
-        if _local_name(element) not in _OFFICER_GROUPS:
-            continue
-        name = _child_text(element, "PersonNm")
-        title = _child_text(element, "TitleTxt")
-        if name is None or _INSTITUTION.search(name) or _has_left(element, name, title):
-            continue
-        seen.setdefault(name.casefold(), FilingOfficer(name=name, title=title))
-    return list(seen.values())
-
-
-def _has_left(element: Element, name: str, title: str | None) -> bool:
-    """Report whether a row describes someone no longer in the role."""
-    if _child_text(element, _FORMER_OFFICER_FLAG) is not None:
-        return True
-    return bool(_DEPARTED.search(name) or (title and _DEPARTED.search(title)))
-
-
-def _local_name(element: Element) -> str:
-    """Return an element's tag without the IRS e-file namespace."""
-    return element.tag.rpartition("}")[2]
-
-
-def _child_text(element: Element, name: str) -> str | None:
-    """Return a direct child's whitespace-normalized text, or None when blank."""
-    child = element.find(f"{{*}}{name}")
-    text = " ".join((child.text or "").split()) if child is not None else ""
-    return text or None
 
 
 class _LinkCollector(HTMLParser):
@@ -361,13 +280,19 @@ class IrsFilingOfficerProvider(FilingOfficerProvider):
             if member is None:
                 continue
             try:
-                officers = parse_officers(await read_member(client, member))
+                parsed = parse_return(await read_member(client, member))
             except (httpx.HTTPError, RemoteZipError, ParseError, DefusedXmlException) as error:
                 logger.warning(
                     "Filing read failed",
                     extra={"object_id": object_id, "reason": type(error).__name__},
                 )
                 continue
-            if officers:
-                return OrganizationFiling(ein=ein, object_id=object_id, officers=tuple(officers))
+            if parsed.officers:
+                return OrganizationFiling(
+                    ein=ein,
+                    object_id=object_id,
+                    officers=parsed.officers,
+                    return_type=parsed.return_type,
+                    tax_period_end=parsed.tax_period_end,
+                )
         return None

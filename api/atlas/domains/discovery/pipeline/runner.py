@@ -29,6 +29,7 @@ from atlas.domains.discovery.pipeline.query_generator import (
 from atlas.domains.discovery.pipeline.ranker import rank_entries
 from atlas.domains.discovery.pipeline.registry_stage import discover_from_registry
 from atlas.domains.discovery.pipeline.source_fetcher import build_search_provider, fetch_sources
+from atlas.domains.discovery.resolution.persist import persist_resolved_mentions
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.models import DiscoveryRunCRUD, EntryCRUD
 from atlas.platform.config import Settings, get_settings
@@ -230,16 +231,21 @@ async def run_discovery_pipeline(  # noqa: PLR0915
                 entry_dict["source_contexts"] = {source.url: item.extraction_context}
                 entry_dict["last_seen"] = source.published_date or today_iso
                 extracted_entries.append(entry_dict)
-        # The register is keyless, so it still yields candidates when the
-        # search vendor refuses the account. Structured rows need no model
-        # call, so they join at deduplication rather than through extraction.
+        # The register is keyless, so it still yields mentions when the search
+        # vendor refuses the account. Its rows carry EINs and role boxes that
+        # web deduplication would throw away, so they resolve on their own
+        # path, and before web records are compared against stored ones.
+        today = datetime.now(UTC).date()
         registry = await discover_from_registry(
-            state=job.state,
-            issue_areas=job.issue_areas,
-            settings=active_settings,
-            today_iso=_today_iso_date(),
+            state=job.state, issue_areas=job.issue_areas, settings=active_settings, today=today
         )
-        extracted_entries.extend(registry.entries)
+        resolved = await persist_resolved_mentions(
+            conn,
+            organizations=registry.organizations,
+            people=registry.people,
+            issue_areas=job.issue_areas,
+            today=today,
+        )
 
         logger.info(
             "Pipeline step completed",
@@ -285,10 +291,7 @@ async def run_discovery_pipeline(  # noqa: PLR0915
         }
         ranked = rank_entries(deduped.entries, source_counts=source_counts)
         shared_ranked = [_ranked_entry_to_shared(entry) for entry in ranked]
-        shared_sources = [
-            *(_fetched_source_to_page_content(source) for source in fetched_sources),
-            *registry.sources,
-        ]
+        shared_sources = [_fetched_source_to_page_content(source) for source in fetched_sources]
         logger.info(
             "Pipeline step completed",
             extra={
@@ -303,9 +306,9 @@ async def run_discovery_pipeline(  # noqa: PLR0915
             queries_generated=len(queries),
             sources_fetched=len(fetched_sources),
             sources_processed=len(fetched_sources),
-            entries_extracted=len(extracted_entries),
-            entries_after_dedup=len(deduped.entries),
-            entries_confirmed=len(shared_ranked),
+            entries_extracted=len(extracted_entries) + registry.mention_count,
+            entries_after_dedup=len(deduped.entries) + registry.mention_count,
+            entries_confirmed=len(shared_ranked) + len(resolved.entry_ids),
             status=DiscoveryRunStatus.COMPLETED,
         )
         artifacts = _build_discovery_run_artifacts(
@@ -317,12 +320,13 @@ async def run_discovery_pipeline(  # noqa: PLR0915
             ranked_entries=shared_ranked,
             sources=shared_sources,
         )
-        confirmed_entry_ids, _sources_persisted = await persist_discovery_artifacts(
+        web_entry_ids, _sources_persisted = await persist_discovery_artifacts(
             conn,
             run_id=job.run_id,
             artifacts=artifacts,
             dedup_suspects=dedup_suspects,
         )
+        confirmed_entry_ids = [*web_entry_ids, *resolved.entry_ids]
         confirmed_entries_visible = 0
         for entry_id in confirmed_entry_ids:
             entry = await EntryCRUD.get_by_id(conn, entry_id)

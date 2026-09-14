@@ -15,8 +15,6 @@ from atlas_shared import (
 
 from atlas.domains.catalog.geo import geocode_entry
 from atlas.domains.catalog.models.relationships import RelationshipCRUD
-from atlas.domains.discovery.pipeline.registry_entries import is_registry_corroborated
-from atlas.domains.discovery.pipeline.registry_people import is_filing_corroborated
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.models import EntryCRUD, SourceCRUD
@@ -39,6 +37,7 @@ __all__ = [
     "_today_iso_date",
     "_upsert_entry",
     "evaluate_publication",
+    "upsert_page_source",
 ]
 
 
@@ -59,7 +58,6 @@ async def _upsert_entry(
         today_iso = _today_iso_date()
         decision = evaluate_publication(
             kind=str(entry.entry_type),
-            registry_corroborated=_is_corroborated(entry),
             dedup_suspect=dedup_suspect,
             score=score,
         )
@@ -110,8 +108,6 @@ async def _upsert_entry(
                 "geocode_precision": located.precision,
                 "geocode_source": located.source,
             }
-    if _is_corroborated(entry):
-        await ReviewQueueCRUD.release_corroborated(conn, entity_id=str(match.id))
     await EntryCRUD.update(
         conn,
         match.id,
@@ -124,17 +120,6 @@ async def _upsert_entry(
         **coordinate_fields,
     )
     return str(match.id)
-
-
-def _is_corroborated(entry: SharedDeduplicatedEntry) -> bool:
-    """Report whether an authoritative filing backs this record.
-
-    A register page proves an organization filed but names nobody, so a person
-    needs the return that lists them.
-    """
-    if str(entry.entry_type) == "person":
-        return is_filing_corroborated(entry.source_urls)
-    return is_registry_corroborated(entry.source_urls)
 
 
 async def _find_existing_entry(
@@ -215,32 +200,13 @@ async def _persist_sources(
     """Create/link sources for an entry."""
     linked_source_urls: set[str] = set()
     for source_url in sorted(set(entry.source_urls)):
-        source = source_by_url.get(
-            source_url,
-            PageContent(url=source_url, source_type=SourceType.ORG_WEBSITE),
+        source_id = await upsert_page_source(
+            conn,
+            source_by_url.get(
+                source_url,
+                PageContent(url=source_url, source_type=SourceType.ORG_WEBSITE),
+            ),
         )
-        existing = await SourceCRUD.get_by_url(conn, source_url)
-        if existing is None:
-            source_id = await SourceCRUD.create(
-                conn,
-                url=source.url,
-                source_type=str(source.source_type),
-                extraction_method="autodiscovery",
-                title=source.title,
-                publication=source.publication,
-                published_date=_page_published_date(source),
-                raw_content=source.text or None,
-            )
-        else:
-            source_id = existing.id
-            await SourceCRUD.update(
-                conn,
-                source_id,
-                title=source.title or existing.title,
-                publication=source.publication or existing.publication,
-                published_date=_page_published_date(source) or existing.published_date,
-                raw_content=source.text or existing.raw_content,
-            )
         await SourceCRUD.link_to_entry(
             conn,
             entry_id,
@@ -258,6 +224,46 @@ async def _persist_sources(
             )
         linked_source_urls.add(source_url)
     return linked_source_urls
+
+
+async def upsert_page_source(conn: Connection, source: PageContent) -> str:
+    """Store a page as a source, or refresh the stored copy, and return its id.
+
+    Parameters
+    ----------
+    conn : Connection
+        Database connection.
+    source : PageContent
+        The page, as a run read or described it.
+
+    Returns
+    -------
+    str
+        The source's id.
+    """
+    existing = await SourceCRUD.get_by_url(conn, source.url)
+    if existing is None:
+        return str(
+            await SourceCRUD.create(
+                conn,
+                url=source.url,
+                source_type=str(source.source_type),
+                extraction_method="autodiscovery",
+                title=source.title,
+                publication=source.publication,
+                published_date=_page_published_date(source),
+                raw_content=source.text or None,
+            )
+        )
+    await SourceCRUD.update(
+        conn,
+        existing.id,
+        title=source.title or existing.title,
+        publication=source.publication or existing.publication,
+        published_date=_page_published_date(source) or existing.published_date,
+        raw_content=source.text or existing.raw_content,
+    )
+    return str(existing.id)
 
 
 def _parse_date(value: str) -> date:
