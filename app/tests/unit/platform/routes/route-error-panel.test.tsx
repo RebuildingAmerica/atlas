@@ -22,11 +22,17 @@ describe("RouteErrorPanel", () => {
     vi.useRealTimers();
   });
 
-  it("recovers from an outage on its own, backing off between attempts", () => {
-    const rateLimited = Object.assign(new Error("Too many requests."), { status: 429 });
-    render(<RouteErrorPanel error={rateLimited} info={{ componentStack: "" }} reset={vi.fn()} />);
+  it("recovers on its own, backing off between attempts, without showing internals", () => {
+    render(
+      <RouteErrorPanel
+        error={new Error("Too many requests.")}
+        info={{ componentStack: "" }}
+        reset={vi.fn()}
+      />,
+    );
 
-    expect(screen.getByText("Atlas is busy right now")).toBeInTheDocument();
+    expect(screen.getByText("This page didn’t load")).toBeInTheDocument();
+    expect(screen.queryByText(/Too many requests/)).not.toBeInTheDocument();
     expect(screen.getByText("Trying again in 5 seconds.")).toBeInTheDocument();
 
     act(() => {
@@ -45,24 +51,14 @@ describe("RouteErrorPanel", () => {
     expect(screen.getByText(/Give this page another try/)).toBeInTheDocument();
   });
 
-  it("never shows a bug's internals, and retries only when asked", () => {
+  it("retries at once when asked", () => {
     const reset = vi.fn();
     render(
-      <RouteErrorPanel
-        error={new TypeError("x is not a function")}
-        info={{ componentStack: "" }}
-        reset={reset}
-      />,
+      <RouteErrorPanel error={new Error("boom")} info={{ componentStack: "" }} reset={reset} />,
     );
 
-    expect(screen.getByText("This page hit a problem")).toBeInTheDocument();
-    expect(screen.queryByText(/not a function/)).not.toBeInTheDocument();
-    act(() => {
-      vi.advanceTimersByTime(60_000);
-    });
-    expect(readRouterMocks().invalidate).not.toHaveBeenCalled();
-
     fireEvent.click(screen.getByRole("button", { name: /Try again now/ }));
+
     expect(reset).toHaveBeenCalledOnce();
     expect(readRouterMocks().invalidate).toHaveBeenCalledOnce();
   });

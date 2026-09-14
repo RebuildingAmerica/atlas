@@ -3,9 +3,8 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
-import { isRecoverablePublicLoaderError } from "./public-loader-errors";
 
-/** Seconds to wait before each automatic retry of an outage. */
+/** Seconds to wait before each automatic retry. */
 export const ROUTE_RETRY_DELAYS_SECONDS = [5, 15, 45] as const;
 
 /**
@@ -14,15 +13,18 @@ export const ROUTE_RETRY_DELAYS_SECONDS = [5, 15, 45] as const;
  * TanStack Router's own default replaces the page body with "Something went
  * wrong!" and a button that prints the raw error, and it is what visitors saw
  * when the API rate-limited server renders on 2026-09-14. This keeps the
- * surrounding navigation and footer, never shows internals, and, when the
- * failure is an outage rather than a bug, retries on its own so the page
- * recovers without the visitor doing anything.
+ * surrounding navigation and footer, never shows internals, and retries on its
+ * own so a page that failed during an outage recovers without the visitor
+ * doing anything.
+ *
+ * Every failure is retried the same way. A server function's error reaches the
+ * browser serialized, without its status or class, so an outage cannot be told
+ * apart from a bug reliably here, and retrying a bug three times costs nothing.
  */
-export function RouteErrorPanel({ error, reset }: ErrorComponentProps) {
+export function RouteErrorPanel({ reset }: ErrorComponentProps) {
   const router = useRouter();
-  const recoverable = isRecoverablePublicLoaderError(error);
   const [attempt, setAttempt] = useState(0);
-  const delay = recoverable ? ROUTE_RETRY_DELAYS_SECONDS[attempt] : undefined;
+  const delay = ROUTE_RETRY_DELAYS_SECONDS[attempt];
 
   useEffect(() => {
     if (delay === undefined) {
@@ -49,9 +51,7 @@ export function RouteErrorPanel({ error, reset }: ErrorComponentProps) {
       data-testid="route-error-panel"
     >
       <div className="bg-surface-container-high border-border-strong rounded-[1.1rem] border p-6">
-        <p className="type-title-medium text-ink-strong">
-          {recoverable ? "Atlas is busy right now" : "This page hit a problem"}
-        </p>
+        <p className="type-title-medium text-ink-strong">This page didn&rsquo;t load</p>
         <p className="type-body-small text-ink-soft mt-1.5">
           {delay === undefined
             ? "The rest of Atlas still works. Give this page another try."
