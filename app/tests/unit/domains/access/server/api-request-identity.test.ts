@@ -21,7 +21,7 @@ describe("visitorIdentityHeaders", () => {
   it("signs the visitor's address with the internal secret", () => {
     expect(visitorIdentityHeaders(visitorRequest("203.0.113.10"), "secret", 1)).toEqual({
       "X-Atlas-Client-IP": "203.0.113.10",
-      "X-Atlas-Proxy-Secret": "secret",
+      "X-Atlas-Proxy-Secret": "secret", // pragma: allowlist secret - test fixture
     });
   });
 
@@ -47,7 +47,7 @@ describe("registerApiRequestIdentity", () => {
   it("gives each server-side API call the identity of the visitor it serves", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       anonymousRateLimit: { trustedProxyHops: 1 },
-      internalSecret: "secret",
+      internalSecret: "secret", // pragma: allowlist secret - test fixture
     });
     mocks.getRequest.mockReturnValue(visitorRequest("198.51.100.7"));
     registerApiRequestIdentity();
@@ -57,7 +57,7 @@ describe("registerApiRequestIdentity", () => {
     const [, init] = vi.mocked(globalThis.fetch).mock.calls[0] ?? [];
     expect(init?.headers).toMatchObject({
       "X-Atlas-Client-IP": "198.51.100.7",
-      "X-Atlas-Proxy-Secret": "secret",
+      "X-Atlas-Proxy-Secret": "secret", // pragma: allowlist secret - test fixture
     });
   });
 });
