@@ -86,6 +86,22 @@ function getRuntimeAppOrigin(): string {
   }).replace(/\/api$/, "");
 }
 
+/** Returns the headers the app server adds to an Atlas API call it makes for a visitor. */
+export type ServerRequestHeadersProvider = () => Record<string, string>;
+
+let serverRequestHeaders: ServerRequestHeadersProvider | undefined;
+
+/**
+ * Registers how the app server identifies the visitor behind a server-side call.
+ *
+ * A server render calls the API from the app server's own address. Without the
+ * visitor's identity, every visitor shares one anonymous rate-limit bucket at
+ * the API, and once it empties every server-rendered page fails.
+ */
+export function setServerRequestHeadersProvider(provider: ServerRequestHeadersProvider): void {
+  serverRequestHeaders = provider;
+}
+
 export async function atlasFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
   const requestUrl = /^https?:\/\//.test(url)
     ? url
@@ -95,6 +111,7 @@ export async function atlasFetch<T>(url: string, init: RequestInit = {}): Promis
     headers: {
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(typeof window === "undefined" && serverRequestHeaders ? serverRequestHeaders() : {}),
       ...(init.headers ?? {}),
     },
   });

@@ -8,6 +8,7 @@ import {
   logAnonymousRateLimit,
   resolveClientIp,
 } from "./anonymous-rate-limit";
+import { visitorIdentityHeaders } from "./api-request-identity";
 import { loadAtlasSession } from "./session-state";
 import { type AuthRuntimeConfig, getAuthRuntimeConfig } from "./runtime";
 
@@ -125,10 +126,15 @@ export async function proxyAtlasApiRequest(request: Request): Promise<Response> 
   Object.entries(internalHeaders).forEach(([key, value]) => {
     upstreamHeaders.set(key, value);
   });
-  if (runtime.internalSecret && proxyClientIp) {
-    upstreamHeaders.set("X-Atlas-Client-IP", proxyClientIp);
-    upstreamHeaders.set("X-Atlas-Proxy-Secret", runtime.internalSecret);
-  }
+  Object.entries(
+    visitorIdentityHeaders(
+      request,
+      runtime.internalSecret,
+      runtime.anonymousRateLimit.trustedProxyHops,
+    ),
+  ).forEach(([key, value]) => {
+    upstreamHeaders.set(key, value);
+  });
 
   const body =
     request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
