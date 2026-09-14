@@ -26,6 +26,15 @@ describe("isRecoverablePublicLoaderError", () => {
     expect(isRecoverablePublicLoaderError(new Error("HTTPError"))).toBe(true);
   });
 
+  it("treats a rate limit, a timeout and an unreachable API as recoverable", () => {
+    for (const status of [408, 425, 429]) {
+      expect(isRecoverablePublicLoaderError(Object.assign(new Error("Busy"), { status }))).toBe(
+        true,
+      );
+    }
+    expect(isRecoverablePublicLoaderError(new TypeError("fetch failed"))).toBe(true);
+  });
+
   it("lets a client-side status and a plain coding error through to the crash", () => {
     expect(
       isRecoverablePublicLoaderError(Object.assign(new Error("Not found"), { status: 404 })),

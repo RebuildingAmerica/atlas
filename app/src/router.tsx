@@ -4,6 +4,7 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 import type { ReactNode } from "react";
 import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { ToastProvider } from "@rebuildingamerica/atlas-ui/ui/toast";
+import { RouteErrorPanel } from "@/platform/routes/route-error-panel";
 import { routeTree } from "./routeTree.gen";
 
 /**
@@ -49,6 +50,9 @@ export function getRouter() {
     context: {
       queryClient,
     },
+    // A route without its own errorComponent inherits this, not the root's,
+    // so without it a failed loader shows TanStack's bare fallback page.
+    defaultErrorComponent: RouteErrorPanel,
     routeTree,
     scrollRestoration: true,
     Wrap,
