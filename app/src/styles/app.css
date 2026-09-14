@@ -2,7 +2,11 @@
 @import "tailwindcss";
 @import "./app-runtime.css";
 @import "./app-interactions.css";
-@source "../../../packages/entity-widgets/src/**/*.{ts,tsx}";
+/* Tailwind only scans app/ on its own. A class written only inside a workspace
+   package is otherwise never generated: the sign-in frame in atlas-ui lost
+   lg:hidden and lg:w-2/5 and rendered its mobile header beside the desktop
+   layout. Every package is scanned so a component moved there keeps its styles. */
+@source "../../../packages/*/src/**/*.{ts,tsx}";
 /* NOTE: entity-widgets' theme-tokens.css is not yet imported here — its
    components use `bg-ew-*`/`text-ew-*` utilities backed by `--color-ew-*`
    custom properties that only exist in
