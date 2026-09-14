@@ -15,11 +15,16 @@ const identifyVisitorToAtlasApi = createMiddleware().server(async ({ next }) => 
   return next();
 });
 
+/** Limits CSRF checks to server functions, as TanStack Start's default middleware does. */
+export function isServerFunctionRequest(ctx: { handlerType: string }): boolean {
+  return ctx.handlerType === "serverFn";
+}
+
 export const startInstance = createStart(() => ({
   // Declaring request middleware replaces TanStack Start's default list, which
   // holds only CSRF protection for server functions, so it is restated here.
   requestMiddleware: [
-    createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === "serverFn" }),
+    createCsrfMiddleware({ filter: isServerFunctionRequest }),
     identifyVisitorToAtlasApi,
   ],
 }));
