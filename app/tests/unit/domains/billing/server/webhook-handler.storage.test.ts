@@ -280,7 +280,7 @@ describe("handleStripeWebhook", () => {
       );
 
       expect(readWorkspaceProductStripeLinkage(db, "org_pro")).toEqual({
-        status: "active",
+        status: "pending",
         stripe_customer_id: "cus_sub",
         stripe_event_at: "2026-07-01T00:00:00.000Z",
         stripe_subscription_id: "sub_pg",

@@ -8,12 +8,14 @@ import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/cap
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { createPortalSession } from "../billing.functions";
 import { PRODUCT_LABELS } from "../product-labels";
+import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 
 interface WorkspaceBillingSectionProps {
   activeProducts: AtlasProduct[];
+  role: string | null;
 }
 
-export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSectionProps) {
+export function WorkspaceBillingSection({ activeProducts, role }: WorkspaceBillingSectionProps) {
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
 
@@ -32,6 +34,7 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
   }
 
   const hasActiveProducts = activeProducts.length > 0;
+  const canManageBilling = canManageAtlasOrganizationRole(role);
 
   return (
     <div className="space-y-4">
@@ -48,25 +51,27 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
             </AccountSurface>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                void handleManageSubscription();
-              }}
-              disabled={isLoadingPortal}
-              className="type-label-large text-ink-strong hover:bg-surface-container-high focus:ring-border-strong bg-surface-container rounded-full px-4 py-2 font-medium transition-[background-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
-            >
-              {isLoadingPortal ? "Opening..." : "Manage subscription"}
-            </button>
+          {canManageBilling ? (
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleManageSubscription();
+                }}
+                disabled={isLoadingPortal}
+                className="type-label-large text-ink-strong hover:bg-surface-container-high focus:ring-border-strong bg-surface-container rounded-full px-4 py-2 font-medium transition-[background-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
+              >
+                {isLoadingPortal ? "Opening..." : "Manage subscription"}
+              </button>
 
-            <Link
-              to="/pricing"
-              className="type-label-large text-ink-strong hover:bg-surface-container-high focus:ring-border-strong bg-surface-container inline-flex items-center rounded-full px-4 py-2 font-medium no-underline transition-[background-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none"
-            >
-              Upgrade
-            </Link>
-          </div>
+              <Link
+                to="/pricing"
+                className="type-label-large text-ink-strong hover:bg-surface-container-high focus:ring-border-strong bg-surface-container inline-flex items-center rounded-full px-4 py-2 font-medium no-underline transition-[background-color] duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+              >
+                Upgrade
+              </Link>
+            </div>
+          ) : null}
 
           {portalError ? <p className="type-body-medium text-ink-strong">{portalError}</p> : null}
         </div>
@@ -76,12 +81,14 @@ export function WorkspaceBillingSection({ activeProducts }: WorkspaceBillingSect
             label="Plan"
             value="Free"
             action={
-              <Link
-                to="/pricing"
-                className="type-label-large text-ink-strong underline underline-offset-2"
-              >
-                Upgrade
-              </Link>
+              canManageBilling ? (
+                <Link
+                  to="/pricing"
+                  className="type-label-large text-ink-strong underline underline-offset-2"
+                >
+                  Upgrade
+                </Link>
+              ) : undefined
             }
           />
         </AccountSurface>

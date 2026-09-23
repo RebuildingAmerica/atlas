@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
+import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 async function loadBillingServerModules() {
@@ -41,6 +42,12 @@ export const createPortalSession = createServerFn({ method: "POST" }).handler(as
 
   if (!activeWorkspace) {
     throw new UserFacingError("Choose or create a workspace before managing billing.");
+  }
+  const verifiedMembership = session.workspace.memberships.find(
+    (membership) => membership.id === activeWorkspace.id,
+  );
+  if (!verifiedMembership || !canManageAtlasOrganizationRole(verifiedMembership.role)) {
+    throw new UserFacingError("You do not have permission to manage billing for this workspace.");
   }
 
   const auth = await ensureAuthReady();

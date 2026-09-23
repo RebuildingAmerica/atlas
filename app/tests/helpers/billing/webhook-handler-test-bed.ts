@@ -6,6 +6,7 @@ export interface ResearchPassCheckoutEventOptions {
   created: number;
   interval: "once" | "weekly";
   purchaseIntentId?: string;
+  paymentStatus?: Stripe.Checkout.Session.PaymentStatus;
 }
 
 export function buildResearchPassCheckoutCompletedEvent(
@@ -28,6 +29,7 @@ export function buildResearchPassCheckoutCompletedEvent(
           workspace_id: "org_research",
         },
         subscription: null,
+        payment_status: options.paymentStatus ?? "paid",
       },
     },
     livemode: false,
@@ -44,6 +46,11 @@ export interface CheckoutCompletedEventOptions {
   metadata?: Record<string, string>;
   sessionId?: string;
   subscription?: string | { id: string } | null;
+  paymentStatus?: Stripe.Checkout.Session.PaymentStatus;
+  type?:
+    | "checkout.session.completed"
+    | "checkout.session.async_payment_succeeded"
+    | "checkout.session.async_payment_failed";
 }
 
 /**
@@ -67,12 +74,13 @@ export function buildCheckoutCompletedEvent(options: CheckoutCompletedEventOptio
         customer: options.customer ?? null,
         metadata: options.metadata ?? {},
         subscription: options.subscription ?? null,
+        payment_status: options.paymentStatus ?? "paid",
       },
     },
     livemode: false,
     pending_webhooks: 1,
     request: null,
-    type: "checkout.session.completed",
+    type: options.type ?? "checkout.session.completed",
   } as unknown as Stripe.Event;
 }
 

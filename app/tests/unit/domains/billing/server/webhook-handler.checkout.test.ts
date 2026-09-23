@@ -87,6 +87,78 @@ describe("handleStripeWebhook", () => {
   }
 
   describe("checkout.session.completed", () => {
+    it("never grants access or marks an intent paid while payment is unpaid", async () => {
+      await deliverWebhook(
+        buildCheckoutCompletedEvent({
+          created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          paymentStatus: "unpaid",
+        }),
+      );
+
+      const row = db.prepare("SELECT COUNT(*) AS count FROM workspace_products").get() as {
+        count: number;
+      };
+      expect(row.count).toBe(0);
+    });
+
+    it("fulfills a delayed payment only after the async success event", async () => {
+      const event = buildCheckoutCompletedEvent({
+        created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+        metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+        paymentStatus: "unpaid",
+      });
+      await deliverWebhook(event);
+      expect(db.prepare("SELECT COUNT(*) AS count FROM workspace_products").get()).toEqual({
+        count: 0,
+      });
+
+      await deliverWebhook(
+        buildCheckoutCompletedEvent({
+          created: Date.parse("2026-07-01T01:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          paymentStatus: "paid",
+          type: "checkout.session.async_payment_succeeded",
+        }),
+      );
+      expect(readWorkspaceProduct(db, "org_pro").status).toBe("active");
+    });
+
+    it("replaces a pending subscription row when paid Checkout arrives", async () => {
+      await deliverWebhook(
+        buildSubscriptionEvent({
+          created: Date.parse("2026-07-01T01:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          status: "active",
+          subscriptionId: "sub_pro",
+          type: "customer.subscription.created",
+        }),
+      );
+      expect(readWorkspaceProduct(db, "org_pro").status).toBe("pending");
+
+      await deliverWebhook(
+        buildCheckoutCompletedEvent({
+          created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          subscription: "sub_pro",
+        }),
+      );
+      expect(readWorkspaceProduct(db, "org_pro").status).toBe("active");
+    });
+
+    it("does not grant access when a delayed payment fails", async () => {
+      await deliverWebhook(
+        buildCheckoutCompletedEvent({
+          created: Date.parse("2026-07-01T01:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          paymentStatus: "unpaid",
+          type: "checkout.session.async_payment_failed",
+        }),
+      );
+      expect(db.prepare("SELECT COUNT(*) AS count FROM workspace_products").get()).toEqual({
+        count: 0,
+      });
+    });
     it("ignores a session with no workspace or product metadata", async () => {
       const response = await deliverWebhook(
         buildCheckoutCompletedEvent({
@@ -274,7 +346,7 @@ describe("handleStripeWebhook", () => {
       );
 
       expect(readWorkspaceProductStripeLinkage(db, "org_pro")).toMatchObject({
-        status: "active",
+        status: "pending",
         stripe_event_at: "2026-07-10T00:00:00.000Z",
       });
     });

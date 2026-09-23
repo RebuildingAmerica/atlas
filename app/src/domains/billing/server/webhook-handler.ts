@@ -80,7 +80,8 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
            stripe_customer_id = EXCLUDED.stripe_customer_id,
            expires_at = EXCLUDED.expires_at,
            stripe_event_at = EXCLUDED.stripe_event_at
-       WHERE workspace_products.stripe_event_at IS NULL
+       WHERE workspace_products.status = 'pending'
+          OR workspace_products.stripe_event_at IS NULL
           OR workspace_products.stripe_event_at <= EXCLUDED.stripe_event_at`,
       [
         id,
@@ -110,7 +111,8 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
          stripe_customer_id = excluded.stripe_customer_id,
          expires_at = excluded.expires_at,
          stripe_event_at = excluded.stripe_event_at
-     WHERE workspace_products.stripe_event_at IS NULL
+     WHERE workspace_products.status = 'pending'
+        OR workspace_products.stripe_event_at IS NULL
         OR workspace_products.stripe_event_at <= excluded.stripe_event_at`,
   ).run(
     id,
@@ -163,6 +165,7 @@ async function updateWorkspaceProductStatusBySubscription(
       `UPDATE workspace_products
        SET status = $1, stripe_event_at = $2
        WHERE stripe_subscription_id = $3
+         AND (status <> 'pending' OR $1 = 'cancelled')
          AND (stripe_event_at IS NULL OR stripe_event_at <= $2)`,
       [status, eventAt, stripeSubscriptionId],
     );
@@ -178,8 +181,9 @@ async function updateWorkspaceProductStatusBySubscription(
     `UPDATE workspace_products
      SET status = ?, stripe_event_at = ?
      WHERE stripe_subscription_id = ?
+       AND (status <> 'pending' OR ? = 'cancelled')
        AND (stripe_event_at IS NULL OR stripe_event_at <= ?)`,
-  ).run(status, eventAt, stripeSubscriptionId, eventAt);
+  ).run(status, eventAt, stripeSubscriptionId, status, eventAt);
 }
 
 /**
@@ -194,6 +198,11 @@ async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   eventAt: string,
 ): Promise<void> {
+  // Checkout can complete before a delayed payment settles. Entitlement is
+  // granted only after Stripe reports that the payment was actually paid.
+  if (session.payment_status !== "paid") {
+    return;
+  }
   const workspaceId = session.metadata?.workspace_id;
   const product = session.metadata?.product;
 
@@ -294,6 +303,8 @@ async function handleSubscriptionCreated(
   subscription: Stripe.Subscription,
   eventAt: string,
 ): Promise<void> {
+  // A subscription can be created before its first invoice is paid. Keep its
+  // linkage for reconciliation, but Checkout fulfillment owns the first grant.
   const workspaceId = subscription.metadata?.workspace_id;
   const product = subscription.metadata?.product;
 
@@ -309,7 +320,7 @@ async function handleSubscriptionCreated(
   await upsertWorkspaceProduct({
     workspaceId,
     product,
-    status: mapSubscriptionStatus(subscription.status),
+    status: "pending",
     stripeSubscriptionId: subscription.id,
     stripeCustomerId,
     expiresAt: null,
@@ -372,7 +383,11 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
 
   switch (event.type) {
     case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded":
       await handleCheckoutCompleted(event.data.object, eventAt);
+      break;
+    case "checkout.session.async_payment_failed":
+      // The purchase intent remains available for a fresh checkout attempt.
       break;
     case "customer.subscription.created":
       await handleSubscriptionCreated(event.data.object, eventAt);

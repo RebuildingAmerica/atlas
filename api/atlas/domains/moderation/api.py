@@ -38,6 +38,14 @@ class SourceStalenessReviewScanResponse(BaseModel):
     review_item_ids: list[str] = Field(default_factory=list)
 
 
+class FlagReceipt(BaseModel):
+    """Public confirmation that excludes the private report contents."""
+
+    id: str
+    status: str
+    created_at: str
+
+
 async def get_db(
     settings: Settings = Depends(get_settings),
 ) -> AsyncGenerator[aiosqlite.Connection, None]:
@@ -51,7 +59,7 @@ async def get_db(
 
 @router.post(
     "/entity-flags",
-    response_model=FlagResponse,
+    response_model=FlagReceipt,
     status_code=201,
     summary="Create an entity flag",
     description="Submit an anonymous flag for an Atlas entity that looks stale or incorrect.",
@@ -63,7 +71,7 @@ async def create_entity_flag(
     req: EntityFlagCreateRequest,
     response: Response,
     db: aiosqlite.Connection = Depends(get_db),
-) -> FlagResponse:
+) -> FlagReceipt:
     """Create an anonymous entity flag."""
     if await EntryCRUD.get_by_id(db, req.entity_id) is None:
         raise HTTPException(status_code=404, detail="Entity not found")
@@ -71,7 +79,7 @@ async def create_entity_flag(
         db, entity_id=req.entity_id, reason=req.reason, note=req.note
     )
     apply_no_store_headers(response)
-    return FlagResponse.model_validate(flag.__dict__)
+    return FlagReceipt.model_validate(flag.__dict__)
 
 
 @router.get(
@@ -83,14 +91,16 @@ async def create_entity_flag(
     response_description="A paginated collection of entity flags.",
     tags=["flags"],
 )
-async def list_entity_flags(
+async def list_entity_flags(  # noqa: PLR0913 - FastAPI dependency parameters
     response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
     entity_id: str = Query(...),
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntityFlagListResponse:
     """List flags for one entity."""
+    _ = actor
     offset = max(int(cursor), 0) if cursor is not None else 0
     items = [
         FlagResponse.model_validate(flag.__dict__)
@@ -164,7 +174,7 @@ async def dismiss_entity_flag(
 
 @router.post(
     "/source-flags",
-    response_model=FlagResponse,
+    response_model=FlagReceipt,
     status_code=201,
     summary="Create a source flag",
     description="Submit an anonymous flag for an Atlas source record that looks stale or incorrect.",
@@ -176,7 +186,7 @@ async def create_source_flag(
     req: SourceFlagCreateRequest,
     response: Response,
     db: aiosqlite.Connection = Depends(get_db),
-) -> FlagResponse:
+) -> FlagReceipt:
     """Create an anonymous source flag."""
     if await SourceCRUD.get_by_id(db, req.source_id) is None:
         raise HTTPException(status_code=404, detail="Source not found")
@@ -184,7 +194,7 @@ async def create_source_flag(
         db, source_id=req.source_id, reason=req.reason, note=req.note
     )
     apply_no_store_headers(response)
-    return FlagResponse.model_validate(flag.__dict__)
+    return FlagReceipt.model_validate(flag.__dict__)
 
 
 @router.get(
@@ -196,14 +206,16 @@ async def create_source_flag(
     response_description="A paginated collection of source flags.",
     tags=["flags"],
 )
-async def list_source_flags(
+async def list_source_flags(  # noqa: PLR0913 - FastAPI dependency parameters
     response: Response,
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
     source_id: str = Query(...),
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> SourceFlagListResponse:
     """List flags for one source."""
+    _ = actor
     offset = max(int(cursor), 0) if cursor is not None else 0
     items = [
         FlagResponse.model_validate(flag.__dict__)

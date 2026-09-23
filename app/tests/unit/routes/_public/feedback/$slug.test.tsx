@@ -52,9 +52,6 @@ describe("routes/_public/feedback/$slug", () => {
     vi.mocked(createEntityFlag).mockReset();
     vi.mocked(createEntityFlag).mockResolvedValue({
       id: "flag-1",
-      target_type: "entity",
-      target_id: "entry-1",
-      reason: "incorrect",
       status: "open",
       created_at: "2026-06-25T00:00:00Z",
     });
@@ -298,9 +295,6 @@ describe("routes/_public/feedback/$slug", () => {
           settle = () => {
             resolve({
               id: "flag-2",
-              target_type: "entity",
-              target_id: "entry-1",
-              reason: "incorrect",
               status: "open",
               created_at: "2026-06-25T00:00:00Z",
             });

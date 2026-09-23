@@ -75,6 +75,8 @@ async def test_entity_and_source_flags_have_moderation_status_workflows(
 
     entity_flag_id = entity_flag_response.json()["id"]
     source_flag_id = source_flag_response.json()["id"]
+    assert entity_flag_response.json().keys() == {"id", "status", "created_at"}
+    assert source_flag_response.json().keys() == {"id", "status", "created_at"}
     resolve_response = await test_client.post(f"/api/entity-flags/{entity_flag_id}/resolve")
     dismiss_response = await test_client.post(f"/api/source-flags/{source_flag_id}/dismiss")
     entity_flags = await test_client.get(f"/api/entity-flags?entity_id={entity_id}")
@@ -87,6 +89,9 @@ async def test_entity_and_source_flags_have_moderation_status_workflows(
     assert dismiss_response.json()["status"] == "reviewed"
     assert entity_flags.json()["items"][0]["status"] == "resolved"
     assert source_flags.json()["items"][0]["status"] == "reviewed"
+    assert entity_flags.json()["items"][0]["note"] == (
+        "Review before surfacing this profile more widely."
+    )
 
 
 @pytest.mark.asyncio
@@ -149,3 +154,31 @@ async def test_missing_moderation_flags_reject_resolution_attempts(test_client: 
     ]
 
     assert all(response.status_code == HTTPStatus.NOT_FOUND for response in responses)
+
+
+@pytest.mark.asyncio
+async def test_anonymous_callers_cannot_read_private_correction_notes(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    """A public report receipt must not reveal or make its note retrievable."""
+    entity_id = await EntryCRUD.create(
+        test_db,
+        entry_type="person",
+        name="Privacy Report Person",
+        description="A profile with a private correction.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+    response = await test_client.post(
+        "/api/entity-flags",
+        json={"entity_id": entity_id, "reason": "incorrect", "note": "Private contact details"},
+    )
+    assert response.status_code == HTTPStatus.CREATED
+    assert "Private contact details" not in response.text
+
+    test_settings.multi_user = True
+    listing = await test_client.get(f"/api/entity-flags?entity_id={entity_id}")
+    assert listing.status_code == HTTPStatus.UNAUTHORIZED

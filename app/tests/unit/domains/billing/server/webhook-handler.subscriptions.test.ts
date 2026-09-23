@@ -86,7 +86,7 @@ describe("handleStripeWebhook", () => {
   }
 
   describe("customer.subscription.created", () => {
-    it("creates the workspace product row from subscription metadata", async () => {
+    it("records a subscription without granting access before checkout is paid", async () => {
       const response = await deliverWebhook(
         buildSubscriptionEvent({
           created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
@@ -100,7 +100,7 @@ describe("handleStripeWebhook", () => {
 
       expect(response.status).toBe(200);
       expect(readWorkspaceProductStripeLinkage(db, "org_pro")).toEqual({
-        status: "active",
+        status: "pending",
         stripe_customer_id: "cus_sub",
         stripe_event_at: "2026-07-01T00:00:00.000Z",
         stripe_subscription_id: "sub_created",
@@ -171,15 +171,15 @@ describe("handleStripeWebhook", () => {
     });
 
     it.each([
-      ["active", "active"],
-      ["trialing", "active"],
-      ["past_due", "past_due"],
-      ["canceled", "cancelled"],
-      ["unpaid", "cancelled"],
-      ["incomplete", "incomplete"],
-      ["incomplete_expired", "incomplete_expired"],
-      ["paused", "paused"],
-    ])("maps Stripe status %s onto Atlas status %s", async (stripeStatus, atlasStatus) => {
+      ["active", "pending"],
+      ["trialing", "pending"],
+      ["past_due", "pending"],
+      ["canceled", "pending"],
+      ["unpaid", "pending"],
+      ["incomplete", "pending"],
+      ["incomplete_expired", "pending"],
+      ["paused", "pending"],
+    ])("holds a new Stripe status %s pending first payment", async (stripeStatus, atlasStatus) => {
       await deliverWebhook(
         buildSubscriptionEvent({
           created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
@@ -234,6 +234,28 @@ describe("handleStripeWebhook", () => {
       );
 
       expect(readWorkspaceProductStripeLinkage(db, "org_pro")?.status).toBe("active");
+    });
+
+    it("cannot activate a pending initial subscription before paid Checkout", async () => {
+      await deliverWebhook(
+        buildSubscriptionEvent({
+          created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          status: "active",
+          subscriptionId: "sub_pending",
+          type: "customer.subscription.created",
+        }),
+      );
+      await deliverWebhook(
+        buildSubscriptionEvent({
+          created: Date.parse("2026-07-01T01:00:00.000Z") / 1000,
+          status: "past_due",
+          subscriptionId: "sub_pending",
+          type: "customer.subscription.updated",
+        }),
+      );
+
+      expect(readWorkspaceProduct(db, "org_pro").status).toBe("pending");
     });
 
     it("leaves other workspaces' subscriptions untouched", async () => {

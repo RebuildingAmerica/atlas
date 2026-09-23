@@ -3,12 +3,13 @@ import type { AtlasProduct } from "@rebuildingamerica/atlas-access/workspace/cap
 
 interface AccountBillingSectionProps {
   activeProducts: AtlasProduct[];
+  role: string | null;
 }
 
-export function AccountBillingSection({ activeProducts }: AccountBillingSectionProps) {
+export function AccountBillingSection({ activeProducts, role }: AccountBillingSectionProps) {
   return (
     <section id="billing" className="scroll-mt-28">
-      <WorkspaceBillingSection activeProducts={activeProducts} />
+      <WorkspaceBillingSection activeProducts={activeProducts} role={role} />
     </section>
   );
 }

@@ -25,7 +25,7 @@ describe("WorkspaceBillingSection", () => {
 
   describe("on a workspace with no paid products", () => {
     it("shows the free plan and an upgrade route, with no portal button", () => {
-      render(<WorkspaceBillingSection activeProducts={[]} />);
+      render(<WorkspaceBillingSection activeProducts={[]} role="owner" />);
 
       expect(screen.getByText("Free")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Upgrade" })).toHaveAttribute("href", "/pricing");
@@ -35,7 +35,12 @@ describe("WorkspaceBillingSection", () => {
 
   describe("on a workspace with paid products", () => {
     it("names every active product", () => {
-      render(<WorkspaceBillingSection activeProducts={["atlas_pro", "atlas_research_pass"]} />);
+      render(
+        <WorkspaceBillingSection
+          activeProducts={["atlas_pro", "atlas_research_pass"]}
+          role="owner"
+        />,
+      );
 
       expect(screen.getByText("Atlas Pro")).toBeInTheDocument();
       expect(screen.getByText("Atlas Research Pass")).toBeInTheDocument();
@@ -43,7 +48,22 @@ describe("WorkspaceBillingSection", () => {
     });
 
     it("offers both the billing portal and an upgrade route", () => {
-      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
+      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} role="owner" />);
+
+      expect(screen.getByRole("button", { name: "Manage subscription" })).toBeEnabled();
+      expect(screen.getByRole("link", { name: "Upgrade" })).toHaveAttribute("href", "/pricing");
+    });
+
+    it("shows products without billing controls to a member", () => {
+      render(<WorkspaceBillingSection activeProducts={["atlas_team"]} role="member" />);
+
+      expect(screen.getByText("Atlas Team")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Manage subscription" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Upgrade" })).not.toBeInTheDocument();
+    });
+
+    it("offers both controls to an admin", () => {
+      render(<WorkspaceBillingSection activeProducts={["atlas_team"]} role="admin" />);
 
       expect(screen.getByRole("button", { name: "Manage subscription" })).toBeEnabled();
       expect(screen.getByRole("link", { name: "Upgrade" })).toHaveAttribute("href", "/pricing");
@@ -53,7 +73,7 @@ describe("WorkspaceBillingSection", () => {
       const assign = vi.fn();
       vi.stubGlobal("location", { ...window.location, assign });
       mocks.createPortalSession.mockResolvedValue({ url: "https://billing.stripe.test/p/session" });
-      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
+      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} role="owner" />);
 
       await userEvent.click(screen.getByRole("button", { name: "Manage subscription" }));
 
@@ -70,7 +90,7 @@ describe("WorkspaceBillingSection", () => {
         }),
       );
       vi.stubGlobal("location", { ...window.location, assign: vi.fn() });
-      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
+      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} role="owner" />);
 
       await userEvent.click(screen.getByRole("button", { name: "Manage subscription" }));
 
@@ -86,7 +106,7 @@ describe("WorkspaceBillingSection", () => {
       mocks.createPortalSession.mockRejectedValue(
         new UserFacingError("This workspace has no Stripe customer yet."),
       );
-      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
+      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} role="owner" />);
 
       await userEvent.click(screen.getByRole("button", { name: "Manage subscription" }));
 
@@ -98,7 +118,7 @@ describe("WorkspaceBillingSection", () => {
 
     it("falls back to a readable message when the failure is not an Error", async () => {
       mocks.createPortalSession.mockRejectedValue("network down");
-      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
+      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} role="owner" />);
 
       await userEvent.click(screen.getByRole("button", { name: "Manage subscription" }));
 
@@ -112,7 +132,7 @@ describe("WorkspaceBillingSection", () => {
         new UserFacingError("Stripe was unreachable."),
       );
       mocks.createPortalSession.mockResolvedValue({ url: "https://billing.stripe.test/p/session" });
-      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} />);
+      render(<WorkspaceBillingSection activeProducts={["atlas_pro"]} role="owner" />);
 
       await userEvent.click(screen.getByRole("button", { name: "Manage subscription" }));
       expect(await screen.findByText("Stripe was unreachable.")).toBeInTheDocument();

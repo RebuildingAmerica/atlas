@@ -139,6 +139,36 @@ describe("billing.functions", () => {
     expect(response.error).toBeInstanceOf(Error);
     expect((response.error as Error).message).toContain("No billing account");
   });
+  it.each(["member", "viewer"])("rejects a %s before calling Stripe", async (role) => {
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture({ role }));
+
+    const { createPortalSession } = await import("@/domains/billing/billing.functions");
+    const response = (await createPortalSession.__executeServer({
+      method: "POST",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+
+    expect((response.error as Error).message).toContain("permission to manage billing");
+    expect(authApi.getFullOrganization).not.toHaveBeenCalled();
+    expect(portalSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects an active workspace absent from verified memberships", async () => {
+    const session = createAtlasSessionFixture();
+    mocks.requireAtlasSessionState.mockResolvedValue({
+      ...session,
+      workspace: { ...session.workspace, memberships: [] },
+    });
+
+    const { createPortalSession } = await import("@/domains/billing/billing.functions");
+    const response = (await createPortalSession.__executeServer({
+      method: "POST",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+
+    expect(response.error).toBeInstanceOf(Error);
+    expect(portalSessionsCreate).not.toHaveBeenCalled();
+  });
   it("refuses to load the Stripe modules if it is ever bundled into the browser", async () => {
     // import.meta.env.SSR is false in a client bundle; the guard exists so a
     // bad import graph fails loudly instead of shipping Stripe keys to a page.
