@@ -162,18 +162,22 @@ describe("handleStripeWebhook", () => {
       "2026-07-02T00:00:00.000Z",
     );
 
-    const response = await deliverWebhook(
-      buildResearchPassCheckoutCompletedEvent({
-        created,
-        interval: "weekly",
-        purchaseIntentId: "pi_123",
-      }),
-    );
+    await expect(
+      deliverWebhook(
+        buildResearchPassCheckoutCompletedEvent({
+          created,
+          interval: "weekly",
+          purchaseIntentId: "pi_123",
+        }),
+      ),
+    ).rejects.toThrow("does not match the saved purchase");
 
     const row = db.prepare("SELECT status FROM purchase_intents WHERE id = ?").get("pi_123") as
       { status: string } | undefined;
-    expect(response.status).toBe(200);
     expect(row?.status).toBe("checkout_created");
+    expect(db.prepare("SELECT COUNT(*) AS count FROM workspace_products").get()).toEqual({
+      count: 0,
+    });
   });
 
   it("reconciles a paid checkout session when webhook delivery lags", async () => {
