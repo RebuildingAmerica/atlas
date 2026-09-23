@@ -73,16 +73,16 @@ until each offered combination passes. Add only accepted offers.
 
 ## Remaining work in launch order
 
-| Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                       |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Release baseline        | Rebase onto current main, resolve drift, run required CI and hosted checks on the exact candidate, deploy to staging, and exercise rollback.                                                                                                                | Unverified in this branch.                                                   |
-| Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                             |
-| Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | No reviewed cohort or query scorecard recorded.                              |
-| Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.              |
-| Organizer journey       | Normal registration, passkey and recovery on physical devices, pending save, list note, reopened work, brief/export, and pricing clarity.                                                                                                                   | Save failure repaired; complete journey unverified.                          |
-| Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard and failed-invite retention committed; full journey unverified. |
-| Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; provider and live lifecycle proof missing.                           |
-| Operations              | Name a release owner, editorial reviewer, support inbox owner, refund operator, daily correction/review window, and incident escalation. Record a rehearsal, not only a policy.                                                                             | Ownership and rehearsal not evidenced in this checkout.                      |
+| Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                     |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Release baseline        | Rebase onto current main, resolve drift, run required CI and hosted checks on the exact candidate, deploy to staging, and exercise rollback.                                                                                                                | Fetched remote main; branch is current and linear. Hosted checks, staging deploy, and rollback unverified. |
+| Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                           |
+| Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | No reviewed cohort or query scorecard recorded.                                                            |
+| Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.                                            |
+| Organizer journey       | Normal registration, passkey and recovery on physical devices, pending save, list note, reopened work, brief/export, and pricing clarity.                                                                                                                   | Save failure repaired; complete journey unverified.                                                        |
+| Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard and failed-invite retention committed; full journey unverified.                               |
+| Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; provider and live lifecycle proof missing.                                                         |
+| Operations              | Name a release owner, editorial reviewer, support inbox owner, refund operator, daily correction/review window, and incident escalation. Record a rehearsal, not only a policy.                                                                             | Ownership and rehearsal not evidenced in this checkout.                                                    |
 
 The first public release should be a named pilot with reviewed records and
 staffed support. The national catalog can remain browsable with honest coverage
@@ -94,12 +94,17 @@ own acceptance rows.
 ## Validation of this branch
 
 - App TypeScript and lint passed for changed files; targeted tests cover the
-  edited Browse, save, profile evidence, billing, and team paths.
-- A broader app run passed 161 files and 1,330 tests across billing,
+  edited Browse, save, profile evidence, billing, and team paths. The full app
+  unit run passed 592 files and 3,800 tests without a coverage run.
+- A focused app run passed 161 files and 1,330 tests across billing,
   organization controls, and catalog components after aligning one stale webhook
   expectation.
 - Bootstrap passed 146 tests. Focused API moderation and migration tests passed
-  18 cases after a disk-full environment retry.
+  18 cases after a disk-full environment retry. The full API run without
+  coverage passed 2,292 tests with six skips and one `aiosqlite` event-loop
+  teardown warning in a firehose WebSocket test.
+- Remote `origin/main` was fetched; this branch is 16 commits ahead, none
+  behind, and has no merge commits relative to it.
 - No full application coverage-gated test run, hosted end-to-end suite, real
   account/device journey, production deployment, or provider payment test was
   completed here.
