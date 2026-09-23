@@ -180,7 +180,7 @@ export function createOrganizationPageWorkspaceActions(
   async function handleInviteMember(event: OrganizationPageFormSubmitEvent) {
     event.preventDefault();
 
-    await runOrganizationPageMutation({
+    const invitation = await runOrganizationPageMutation({
       action: async () =>
         deps.inviteWorkspaceMemberMutation.mutateAsync({
           data: {
@@ -194,8 +194,10 @@ export function createOrganizationPageWorkspaceActions(
       successMessage: "Invitation sent.",
     });
 
-    deps.forms.setInviteEmail("");
-    deps.forms.setInviteRole("member");
+    if (invitation !== null) {
+      deps.forms.setInviteEmail("");
+      deps.forms.setInviteRole("member");
+    }
   }
 
   async function handleInvitationDecision(

@@ -260,6 +260,27 @@ describe("useOrganizationPageWorkspaceActions behavior", () => {
     expect(feedback.setFlashMessage).toHaveBeenCalledWith("Invitation sent.");
   });
 
+  it("keeps the invitation address and role when sending fails", async () => {
+    mocks.inviteWorkspaceMember.mockRejectedValue(new Error("Could not send invitation"));
+
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: "org_1",
+        feedback,
+        forms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onInviteMember({ preventDefault: vi.fn() });
+    });
+
+    expect(forms.setInviteEmail).not.toHaveBeenCalled();
+    expect(forms.setInviteRole).not.toHaveBeenCalled();
+    expect(feedback.setErrorMessage).toHaveBeenCalledWith("Atlas could not send that invitation.");
+  });
+
   it("changes a workspace member role", async () => {
     mocks.updateWorkspaceMemberRole.mockResolvedValue({ ok: true });
 
