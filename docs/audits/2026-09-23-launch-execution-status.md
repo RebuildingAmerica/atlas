@@ -1,0 +1,108 @@
+# Atlas launch execution status
+
+September 23, 2026 · branch `chore/atlas-launch-audit`
+
+This is the current implementation and acceptance record for the
+[product launch audit](2026-09-23-product-launch-audit.md) and
+[billing audit](2026-09-23-billing-readiness.md). Those documents preserve the
+observed production snapshot and full critique. This file distinguishes changes
+committed in this branch from behavior demonstrated in a deployed release.
+
+## Release decision
+
+**A focused public pilot is conditional. Paid sales and broad national promotion
+remain closed.** The repository now contains fixes for several privacy,
+purchase-isolation, refund, and journey defects. No production deploy, completed
+live payment, genuine signed webhook, or provider-account inspection was
+performed in this worktree. A passing unit test does not satisfy those
+acceptance gates.
+
+The launch promise remains: a person can find relevant people and organizations
+in a named place and issue, inspect evidence, and take a useful next step.
+Paying organizers can keep that work; a team can share it without confusing a
+public profile claim with a workspace or a purchase.
+
+## What this branch changed
+
+| Outcome                                                 | Implementation evidence                                                                                                                              | Acceptance still needed                                                                                                    |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Correction notes stay private                           | `8417b4fd` separates anonymous status from review evidence.                                                                                          | Deploy and submit a synthetic report; prove anonymous readers cannot retrieve its note and an authorized reviewer can.     |
+| A member cannot open team billing                       | `8417b4fd` guards the portal at the server.                                                                                                          | Signed-in member, admin, owner, and cross-workspace checks against the deployed app.                                       |
+| Unapproved offers cannot start a sale                   | `d0fdb5c4` adds an exact production offer allowlist to pricing and Checkout.                                                                         | Inspect the deployed allowlist and checkout flag; verify every visible price and disabled offer.                           |
+| A paid session belongs to its saved purchase            | `4ca37d58` matches workspace, product, interval, and session before fulfillment. `25a2543f` aligns the older isolation test.                         | Test-mode purchase, signed webhook, replay, and returning paid access.                                                     |
+| Delayed and refunded payments do not leave false access | `8417b4fd`, `db9d4a14`, and `9ddfa1d4` gate settlement, attribute refunds, revoke a fully refunded term, and provide a previewable operator command. | Run test-mode async success/failure, cancellation, full refund, retry, and entitlement checks; then inspect live delivery. |
+| Visitors can start with search                          | `1a2832aa` moves mobile Browse search ahead of issue panels; `e615149f` makes home People and Organizations shortcuts use type filters.              | Retest with a populated API on physical mobile and complete ten launch questions.                                          |
+| Organizers keep work through failures                   | `cd950766` preserves list creation and save retries; `ee9d7fbb` preserves a failed team invitation's address and role.                               | Signed-in, real email, passkey, save, invite acceptance, and recovery journeys.                                            |
+| Profile evidence makes narrower claims                  | `03857475` distinguishes source dates from confirmation, removes quote attribution from extracted context, and counts unverified sources honestly.   | Editorial review of claim-to-source links, duplicated publishers, material edits, and representative profiles.             |
+| Operators see a more accurate billing preflight         | `58cc819a` checks presence of the production offer allowlist and updates cutover and restricted-key instructions.                                    | Verify actual values, Stripe account, catalog, Tax, portal, key permissions, signing secret, and delivered events.         |
+
+At 390 × 844 in a local browser, Browse search was measured at y=147.5 after the
+layout change; the audit's live production screenshot measured y=2,056.5. The
+local app had no API configuration and showed loading results, so that
+measurement establishes layout only, not working discovery.
+
+## Why a Stripe key change is insufficient
+
+The historical production probe opened one live Pro monthly Checkout session. It
+did not charge a buyer or establish entitlement, cancellation, or refund.
+`pnpm stripe:verify:prod` currently stops at missing `.env.production` values
+(`ATLAS_PUBLIC_URL`, Stripe key, signing secret, and catalog) and an unlinked
+Vercel project in this worktree. This does **not** prove the deployed production
+values are absent or wrong. It means this checkout cannot certify them.
+
+Before opening any offer, a release owner must produce a redacted record tied to
+the deployed commit with all of the following:
+
+1. The charge-enabled live Stripe account ID, runtime restricted-key operations,
+   catalog object IDs, offered amount/interval/discount combinations, Tax
+   configuration, and customer portal behavior.
+2. The deployed checkout flag and exact offer allowlist; the webhook URL,
+   subscribed events, signing-secret match, authentic delivery, and retry
+   reconciliation.
+3. A complete test-mode purchase through normal signup, return, entitlement,
+   second sign-in, failed/canceled payment, delayed settlement, renewal or pass
+   expiry, team seats, cancellation, and refund with access removal.
+4. One genuine authorized live buyer payment and receipt on the exact release,
+   followed by entitlement and exit-path observation. Do not simulate a live
+   charge or treat Checkout creation as this proof.
+
+Use [Stripe billing setup](../deployment/stripe-billing.md) for the verifier,
+refund preview, and configuration path. Keep
+`ATLAS_BILLING_CHECKOUT_ENABLED=false` and the production offer allowlist empty
+until each offered combination passes. Add only accepted offers.
+
+## Remaining work in launch order
+
+| Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Release baseline        | Rebase onto current main, resolve drift, run required CI and hosted checks on the exact candidate, deploy to staging, and exercise rollback.                                                                                                                | Unverified in this branch.                                                   |
+| Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                             |
+| Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | No reviewed cohort or query scorecard recorded.                              |
+| Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.              |
+| Organizer journey       | Normal registration, passkey and recovery on physical devices, pending save, list note, reopened work, brief/export, and pricing clarity.                                                                                                                   | Save failure repaired; complete journey unverified.                          |
+| Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard and failed-invite retention committed; full journey unverified. |
+| Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; provider and live lifecycle proof missing.                           |
+| Operations              | Name a release owner, editorial reviewer, support inbox owner, refund operator, daily correction/review window, and incident escalation. Record a rehearsal, not only a policy.                                                                             | Ownership and rehearsal not evidenced in this checkout.                      |
+
+The first public release should be a named pilot with reviewed records and
+staffed support. The national catalog can remain browsable with honest coverage
+limits; national promotion waits for task usefulness across the places claimed.
+The paid gate is independent of free browsing. Do not open Team merely because
+individual Pro passes: seats, invites, ownership, and shared billing have their
+own acceptance rows.
+
+## Validation of this branch
+
+- App TypeScript and lint passed for changed files; targeted tests cover the
+  edited Browse, save, profile evidence, billing, and team paths.
+- A broader app run passed 161 files and 1,330 tests across billing,
+  organization controls, and catalog components after aligning one stale webhook
+  expectation.
+- Bootstrap passed 146 tests. Focused API moderation and migration tests passed
+  18 cases after a disk-full environment retry.
+- No full application coverage-gated test run, hosted end-to-end suite, real
+  account/device journey, production deployment, or provider payment test was
+  completed here.
+
+The release decision must be updated from observed outcomes. Source code,
+documentation, and a commit are reviewable progress, not a launch certificate.

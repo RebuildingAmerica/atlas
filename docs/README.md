@@ -80,6 +80,8 @@ complete a task.
   pipeline, app, and SSO narratives
 - [Design specs](./design/README.md) — Point-in-time design decisions and their
   rationale
+- [Launch execution status](./audits/2026-09-23-launch-execution-status.md) —
+  Current product and billing gates against the launch audit
 - [Whitepapers](./whitepapers/README.md) — Publishable position pieces on
   Atlas's model and principles
 
