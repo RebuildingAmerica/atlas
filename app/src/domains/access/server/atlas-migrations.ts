@@ -153,6 +153,16 @@ CREATE TABLE billing_adjustments (
 CREATE INDEX idx_billing_adjustments_purchase ON billing_adjustments(purchase_intent_id);
 `;
 
+const WORKSPACE_PURCHASE_LINK_SQLITE = `
+ALTER TABLE workspace_products ADD COLUMN purchase_intent_id TEXT;
+CREATE INDEX idx_workspace_products_purchase ON workspace_products(purchase_intent_id);
+`;
+
+const WORKSPACE_PURCHASE_LINK_PG = `
+ALTER TABLE workspace_products ADD COLUMN purchase_intent_id TEXT;
+CREATE INDEX idx_workspace_products_purchase ON workspace_products(purchase_intent_id);
+`;
+
 const SCOUT_DEVICES_SQLITE = `
 CREATE TABLE scout_devices (
     id                    TEXT PRIMARY KEY,
@@ -424,6 +434,12 @@ export const ATLAS_MIGRATIONS: AtlasMigration[] = [
     name: "add_billing_settlement_refs",
     sqlite: BILLING_SETTLEMENT_SQLITE,
     pg: BILLING_SETTLEMENT_PG,
+  },
+  {
+    version: 8,
+    name: "link_workspace_product_purchase",
+    sqlite: WORKSPACE_PURCHASE_LINK_SQLITE,
+    pg: WORKSPACE_PURCHASE_LINK_PG,
   },
 ];
 

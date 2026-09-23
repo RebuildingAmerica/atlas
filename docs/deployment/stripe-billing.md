@@ -188,9 +188,13 @@ The script reads `ATLAS_PUBLIC_URL` from `.env`, defaults to
 `<local-origin>/api/stripe/webhook`:
 
 - `checkout.session.completed`
+- `checkout.session.async_payment_succeeded`
+- `checkout.session.async_payment_failed`
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `refund.created`
+- `refund.updated`
 
 ## Staging
 

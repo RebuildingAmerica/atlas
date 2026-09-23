@@ -32,13 +32,13 @@ void describe("Stripe local webhook listener", () => {
       "listen",
       "--skip-verify",
       "--events",
-      "checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted",
+      "checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,refund.created,refund.updated",
       "--forward-to",
       "https://atlas.localhost/api/stripe/webhook",
     ]);
     assert.equal(
       formatStripeListenCommand(args),
-      "stripe listen --skip-verify --events checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted --forward-to https://atlas.localhost/api/stripe/webhook",
+      "stripe listen --skip-verify --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,refund.created,refund.updated --forward-to https://atlas.localhost/api/stripe/webhook",
     );
   });
 });

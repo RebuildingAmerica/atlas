@@ -110,9 +110,13 @@ function billingWebhookSnapshot(
   return {
     enabledEvents: [
       "checkout.session.completed",
+      "checkout.session.async_payment_succeeded",
+      "checkout.session.async_payment_failed",
       "customer.subscription.created",
       "customer.subscription.updated",
       "customer.subscription.deleted",
+      "refund.created",
+      "refund.updated",
     ],
     id: "we_123",
     metadata: { atlas_webhook: "billing" },

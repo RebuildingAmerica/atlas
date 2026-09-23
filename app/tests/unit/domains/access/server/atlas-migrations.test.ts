@@ -118,6 +118,7 @@ describe("atlas-migrations", () => {
     expect(columnType("purchase_intents", "revocation_reason")).toBe("text");
     expect(columnType("billing_adjustments", "stripe_refund_id")).toBe("text");
     expect(columnType("billing_adjustments", "amount")).toBe("integer");
+    expect(columnType("workspace_products", "purchase_intent_id")).toBe("text");
   });
 
   it("seeds Scout as a first-party OAuth device client when Better Auth clients exist", () => {

@@ -142,6 +142,11 @@ describe("handleStripeWebhook", () => {
       );
 
       expect(readWorkspaceProduct(db, "org_pro").status).toBe("active");
+      expect(
+        db
+          .prepare("SELECT purchase_intent_id FROM workspace_products WHERE workspace_id = ?")
+          .get("org_pro"),
+      ).toEqual({ purchase_intent_id: "pi_match" });
       const paidRow = db
         .prepare(
           "SELECT status, stripe_payment_intent_id, stripe_subscription_id, paid_at FROM purchase_intents WHERE id = ?",

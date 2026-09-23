@@ -82,9 +82,13 @@ void describe("Stripe Atlas product catalog", () => {
   void it("registers the webhook events the app webhook handler consumes", () => {
     assert.deepEqual(STRIPE_BILLING_WEBHOOK_EVENTS, [
       "checkout.session.completed",
+      "checkout.session.async_payment_succeeded",
+      "checkout.session.async_payment_failed",
       "customer.subscription.created",
       "customer.subscription.updated",
       "customer.subscription.deleted",
+      "refund.created",
+      "refund.updated",
     ]);
   });
 });

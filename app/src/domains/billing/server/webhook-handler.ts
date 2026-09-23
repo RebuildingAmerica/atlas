@@ -6,6 +6,7 @@ import { mergeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/
 import { ensureAuthReady } from "../../access/server/auth";
 import { getAuthDatabase, getAuthPgPool } from "../../access/server/auth";
 import { markPurchaseIntentPaid, requirePurchaseIntentForCheckout } from "./purchase-intents";
+import { applyStripeRefund } from "./billing-adjustments";
 
 /**
  * Maps a Stripe subscription status string to the Atlas workspace_products
@@ -46,6 +47,7 @@ interface WorkspaceProductUpsert {
   stripeCustomerId: string | null;
   expiresAt: string | null;
   eventAt: string;
+  purchaseIntentId: string | null;
 }
 
 /**
@@ -66,20 +68,22 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
     stripeCustomerId,
     expiresAt,
     eventAt,
+    purchaseIntentId,
   } = params;
   const id = crypto.randomUUID();
 
   const pool = getAuthPgPool();
   if (pool) {
     await pool.query(
-      `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, expires_at, stripe_event_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, expires_at, stripe_event_at, purchase_intent_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (workspace_id, product) DO UPDATE
        SET status = EXCLUDED.status,
            stripe_subscription_id = EXCLUDED.stripe_subscription_id,
            stripe_customer_id = EXCLUDED.stripe_customer_id,
            expires_at = EXCLUDED.expires_at,
-           stripe_event_at = EXCLUDED.stripe_event_at
+           stripe_event_at = EXCLUDED.stripe_event_at,
+           purchase_intent_id = EXCLUDED.purchase_intent_id
        WHERE (EXCLUDED.status <> 'pending' OR workspace_products.status = 'pending')
          AND (workspace_products.status = 'pending'
            OR workspace_products.stripe_event_at IS NULL
@@ -93,6 +97,7 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
         stripeCustomerId,
         expiresAt,
         eventAt,
+        purchaseIntentId,
       ],
     );
     return;
@@ -104,14 +109,15 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
   }
 
   db.prepare(
-    `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, expires_at, stripe_event_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO workspace_products (id, workspace_id, product, status, stripe_subscription_id, stripe_customer_id, expires_at, stripe_event_at, purchase_intent_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (workspace_id, product) DO UPDATE
      SET status = excluded.status,
          stripe_subscription_id = excluded.stripe_subscription_id,
          stripe_customer_id = excluded.stripe_customer_id,
          expires_at = excluded.expires_at,
-         stripe_event_at = excluded.stripe_event_at
+         stripe_event_at = excluded.stripe_event_at,
+         purchase_intent_id = excluded.purchase_intent_id
      WHERE (excluded.status <> 'pending' OR workspace_products.status = 'pending')
        AND (workspace_products.status = 'pending'
          OR workspace_products.stripe_event_at IS NULL
@@ -125,6 +131,7 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
     stripeCustomerId,
     expiresAt,
     eventAt,
+    purchaseIntentId,
   );
 }
 
@@ -167,6 +174,7 @@ async function updateWorkspaceProductStatusBySubscription(
       `UPDATE workspace_products
        SET status = $1, stripe_event_at = $2
        WHERE stripe_subscription_id = $3
+         AND status <> 'refunded'
          AND (status <> 'pending' OR $1 = 'cancelled')
          AND (stripe_event_at IS NULL OR stripe_event_at <= $2)`,
       [status, eventAt, stripeSubscriptionId],
@@ -183,6 +191,7 @@ async function updateWorkspaceProductStatusBySubscription(
     `UPDATE workspace_products
      SET status = ?, stripe_event_at = ?
      WHERE stripe_subscription_id = ?
+       AND status <> 'refunded'
        AND (status <> 'pending' OR ? = 'cancelled')
        AND (stripe_event_at IS NULL OR stripe_event_at <= ?)`,
   ).run(status, eventAt, stripeSubscriptionId, status, eventAt);
@@ -247,6 +256,7 @@ async function handleCheckoutCompleted(
     stripeCustomerId,
     expiresAt,
     eventAt,
+    purchaseIntentId: purchaseIntentId ?? null,
   });
 
   if (purchaseIntentId) {
@@ -344,6 +354,7 @@ async function handleSubscriptionCreated(
     stripeCustomerId,
     expiresAt: null,
     eventAt,
+    purchaseIntentId: subscription.metadata?.purchase_intent_id ?? null,
   });
 }
 
@@ -401,6 +412,10 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
   const eventAt = eventCreatedToIso(event.created);
 
   switch (event.type) {
+    case "refund.created":
+    case "refund.updated":
+      await applyStripeRefund(event.data.object, event.id, eventAt);
+      break;
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
       await handleCheckoutCompleted(event.data.object, eventAt);

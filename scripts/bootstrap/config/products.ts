@@ -192,7 +192,11 @@ export const ATLAS_COUPONS: AtlasCouponDefinition[] = [
 
 export const STRIPE_BILLING_WEBHOOK_EVENTS = [
   "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
+  "refund.created",
+  "refund.updated",
 ] satisfies Stripe.WebhookEndpointCreateParams.EnabledEvent[];

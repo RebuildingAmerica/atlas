@@ -2,6 +2,28 @@ import type Database from "better-sqlite3";
 import type Stripe from "stripe";
 import type { WorkspaceProductStatusRow } from "@/domains/access/server/workspace-products";
 
+/** A succeeded refund event for billing webhook lifecycle tests. */
+export function buildRefundEvent(overrides: Partial<Stripe.Refund> = {}): Stripe.Event {
+  return {
+    id: "evt_refund",
+    type: "refund.updated",
+    created: Date.parse("2026-07-03T00:00:00.000Z") / 1000,
+    data: {
+      object: {
+        id: "re_1",
+        object: "refund",
+        amount: 400,
+        charge: "ch_1",
+        currency: "usd",
+        payment_intent: "pi_stripe_1",
+        status: "succeeded",
+        metadata: {},
+        ...overrides,
+      },
+    },
+  } as Stripe.Event;
+}
+
 export interface ResearchPassCheckoutEventOptions {
   created: number;
   interval: "once" | "weekly";
