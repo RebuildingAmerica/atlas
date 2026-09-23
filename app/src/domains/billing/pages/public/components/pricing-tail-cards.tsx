@@ -6,6 +6,7 @@ import { checkoutKey, type PricingCheckoutInterval } from "../pricing-page-helpe
 interface ResearchPassCardProps {
   pendingCheckoutKey: string | null;
   isCheckoutUnavailable: boolean;
+  allowedOffers: readonly string[];
   onPurchase: (interval: PricingCheckoutInterval) => void;
 }
 
@@ -17,10 +18,13 @@ interface ResearchPassCardProps {
 export function PricingResearchPassCard({
   pendingCheckoutKey,
   isCheckoutUnavailable,
+  allowedOffers,
   onPurchase,
 }: ResearchPassCardProps) {
   const weeklyKey = checkoutKey("atlas_research_pass", "weekly");
   const onceKey = checkoutKey("atlas_research_pass", "once");
+  const weeklyUnavailable = isCheckoutUnavailable || !allowedOffers.includes(weeklyKey);
+  const onceUnavailable = isCheckoutUnavailable || !allowedOffers.includes(onceKey);
   return (
     <div className="mb-10">
       <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
@@ -41,9 +45,9 @@ export function PricingResearchPassCard({
             onClick={() => {
               onPurchase("weekly");
             }}
-            disabled={pendingCheckoutKey === weeklyKey || isCheckoutUnavailable}
+            disabled={pendingCheckoutKey === weeklyKey || weeklyUnavailable}
           >
-            {ctaLabel("Get 7-day pass", pendingCheckoutKey === weeklyKey, isCheckoutUnavailable)}
+            {ctaLabel("Get 7-day pass", pendingCheckoutKey === weeklyKey, weeklyUnavailable)}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$4</p>
           <Button
@@ -51,9 +55,9 @@ export function PricingResearchPassCard({
             onClick={() => {
               onPurchase("once");
             }}
-            disabled={pendingCheckoutKey === onceKey || isCheckoutUnavailable}
+            disabled={pendingCheckoutKey === onceKey || onceUnavailable}
           >
-            {ctaLabel("Get 30-day pass", pendingCheckoutKey === onceKey, isCheckoutUnavailable)}
+            {ctaLabel("Get 30-day pass", pendingCheckoutKey === onceKey, onceUnavailable)}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$9</p>
         </div>

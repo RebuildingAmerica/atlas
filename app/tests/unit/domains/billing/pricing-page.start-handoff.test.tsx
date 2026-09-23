@@ -47,7 +47,19 @@ describe("PricingPage start handoff", () => {
     mocks.useAtlasSession.mockReset();
     resetRouterMocks();
     mocks.loadCheckoutAvailability.mockReset();
-    mocks.loadCheckoutAvailability.mockResolvedValue({ available: true, reason: null });
+    mocks.loadCheckoutAvailability.mockResolvedValue({
+      available: true,
+      reason: null,
+      allowedOffers: [
+        "atlas_pro:monthly",
+        "atlas_pro:yearly",
+        "atlas_pro:four_month",
+        "atlas_team:monthly",
+        "atlas_team:yearly",
+        "atlas_research_pass:weekly",
+        "atlas_research_pass:once",
+      ],
+    });
     mocks.useAtlasSession.mockReturnValue({ data: null });
   });
 
@@ -59,7 +71,7 @@ describe("PricingPage start handoff", () => {
     const user = userEvent.setup();
     render(<PricingPage />);
 
-    await user.click(screen.getByRole("button", { name: "Get Atlas Team" }));
+    await user.click(await screen.findByRole("button", { name: "Get Atlas Team" }));
 
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
@@ -79,7 +91,7 @@ describe("PricingPage start handoff", () => {
     const user = userEvent.setup();
     render(<PricingPage />);
 
-    await user.click(screen.getByRole("button", { name: "Get Atlas Pro" }));
+    await user.click(await screen.findByRole("button", { name: "Get Atlas Pro" }));
 
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
@@ -98,6 +110,30 @@ describe("PricingPage start handoff", () => {
         to: "/onboarding",
         search: { interval: "yearly", product: "atlas_pro" },
       });
+    });
+  });
+
+  it("keeps unapproved offers inert while another offer is available", async () => {
+    mocks.loadCheckoutAvailability.mockResolvedValue({
+      available: true,
+      reason: null,
+      allowedOffers: ["atlas_pro:monthly"],
+    });
+    const user = userEvent.setup();
+    render(<PricingPage intent="atlas_team" interval="monthly" />);
+
+    await screen.findByRole("button", { name: "Get Atlas Pro" });
+    const unavailableButtons = screen.getAllByRole("button", { name: "Temporarily unavailable" });
+    expect(unavailableButtons).toHaveLength(3);
+    for (const button of unavailableButtons) {
+      expect(button).toBeDisabled();
+      await user.click(button);
+    }
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Get Atlas Pro" }));
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
+      to: "/onboarding",
+      search: { interval: "monthly", product: "atlas_pro" },
     });
   });
 
@@ -151,7 +187,7 @@ describe("PricingPage start handoff", () => {
     render(<PricingPage />);
 
     await user.click(screen.getByRole("button", { name: /^Annual/ }));
-    await user.click(screen.getByRole("button", { name: "Get Atlas Team" }));
+    await user.click(await screen.findByRole("button", { name: "Get Atlas Team" }));
 
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
@@ -164,7 +200,7 @@ describe("PricingPage start handoff", () => {
     render(<PricingPage />);
 
     await user.click(screen.getByRole("button", { name: "Student" }));
-    await user.click(screen.getByRole("button", { name: "Get Atlas Pro" }));
+    await user.click(await screen.findByRole("button", { name: "Get Atlas Pro" }));
 
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
@@ -176,7 +212,7 @@ describe("PricingPage start handoff", () => {
     const user = userEvent.setup();
     render(<PricingPage />);
 
-    await user.click(screen.getByRole("button", { name: "Get 7-day pass" }));
+    await user.click(await screen.findByRole("button", { name: "Get 7-day pass" }));
 
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
@@ -188,7 +224,7 @@ describe("PricingPage start handoff", () => {
     const user = userEvent.setup();
     render(<PricingPage />);
 
-    await user.click(screen.getByRole("button", { name: "Get 30-day pass" }));
+    await user.click(await screen.findByRole("button", { name: "Get 30-day pass" }));
 
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
@@ -201,7 +237,7 @@ describe("PricingPage start handoff", () => {
 
     await user.click(screen.getByRole("button", { name: /^Annual/ }));
     await user.click(screen.getByRole("button", { name: "Monthly" }));
-    await user.click(screen.getByRole("button", { name: "Get Atlas Team" }));
+    await user.click(await screen.findByRole("button", { name: "Get Atlas Team" }));
 
     expect(readRouterMocks().navigate).toHaveBeenCalledWith({
       to: "/onboarding",
@@ -213,6 +249,7 @@ describe("PricingPage start handoff", () => {
       mocks.loadCheckoutAvailability.mockResolvedValue({
         available: false,
         reason: "catalog_unavailable",
+        allowedOffers: [],
       });
     });
 

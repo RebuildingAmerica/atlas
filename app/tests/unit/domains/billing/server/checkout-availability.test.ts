@@ -194,6 +194,7 @@ describe("checkout availability", () => {
       await expect(resolveCheckoutAvailability()).resolves.toEqual({
         available: false,
         reason: "disabled",
+        allowedOffers: [],
       });
       expect(fetchStub.requests).toHaveLength(0);
     });
@@ -206,6 +207,7 @@ describe("checkout availability", () => {
       await expect(resolveCheckoutAvailability()).resolves.toEqual({
         available: false,
         reason: "catalog_unavailable",
+        allowedOffers: [],
       });
     });
 
@@ -214,7 +216,7 @@ describe("checkout availability", () => {
       stubFetch({ body: { items: [{ id: "e1" }] } });
       const { resolveCheckoutAvailability } =
         await import("@/domains/billing/server/checkout-availability");
-      await expect(resolveCheckoutAvailability()).resolves.toEqual({
+      await expect(resolveCheckoutAvailability()).resolves.toMatchObject({
         available: true,
         reason: null,
       });

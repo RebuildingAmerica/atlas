@@ -24,6 +24,13 @@ export function PricingPlansGridHarness({
       freeCta={{ label: "Create account", to: "/sign-up" }}
       pendingCheckoutKey={null}
       isCheckoutUnavailable={isCheckoutUnavailable}
+      allowedOffers={[
+        "atlas_pro:monthly",
+        "atlas_pro:yearly",
+        "atlas_pro:four_month",
+        "atlas_team:monthly",
+        "atlas_team:yearly",
+      ]}
       proCheckoutInterval={
         billing === "student" ? "four_month" : billing === "annual" ? "yearly" : "monthly"
       }

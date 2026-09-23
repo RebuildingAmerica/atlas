@@ -146,6 +146,27 @@ describe("handleStripeWebhook", () => {
       expect(readWorkspaceProduct(db, "org_pro").status).toBe("active");
     });
 
+    it("does not regress paid access when subscription creation arrives late", async () => {
+      await deliverWebhook(
+        buildCheckoutCompletedEvent({
+          created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          subscription: "sub_pro",
+        }),
+      );
+      await deliverWebhook(
+        buildSubscriptionEvent({
+          created: Date.parse("2026-07-01T01:00:00.000Z") / 1000,
+          metadata: { product: "atlas_pro", workspace_id: "org_pro" },
+          status: "active",
+          subscriptionId: "sub_pro",
+          type: "customer.subscription.created",
+        }),
+      );
+
+      expect(readWorkspaceProduct(db, "org_pro").status).toBe("active");
+    });
+
     it("does not grant access when a delayed payment fails", async () => {
       await deliverWebhook(
         buildCheckoutCompletedEvent({

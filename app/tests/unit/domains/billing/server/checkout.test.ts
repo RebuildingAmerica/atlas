@@ -23,6 +23,26 @@ describe("createCheckoutSession", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it("refuses an unapproved production offer before calling Stripe", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("ATLAS_BILLING_ALLOWED_OFFERS", "atlas_pro:monthly");
+
+    await expect(
+      createCheckoutSession({
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+        interval: "yearly",
+        priceId: "price_pro_yearly",
+        successUrl: "https://atlas.test/ok",
+        cancelUrl: "https://atlas.test/no",
+        customerEmail: "buyer@atlas.test",
+      }),
+    ).rejects.toThrow("not available for purchase");
+
+    expect(mocks.getStripeClient).not.toHaveBeenCalled();
   });
 
   function sessionParams(): Stripe.Checkout.SessionCreateParams {

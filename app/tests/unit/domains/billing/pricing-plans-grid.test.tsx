@@ -96,6 +96,7 @@ describe("PricingPlansGrid", () => {
       <PricingResearchPassCard
         pendingCheckoutKey={null}
         isCheckoutUnavailable={false}
+        allowedOffers={["atlas_research_pass:weekly", "atlas_research_pass:once"]}
         onPurchase={onPurchase}
       />,
     );

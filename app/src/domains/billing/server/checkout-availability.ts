@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { readBillingFlag } from "./billing-flags";
 import { getServerApiBaseUrl } from "@/platform/config/app-config";
+import { getAllowedBillingOffers } from "./billing-offers";
 
 /**
  * Why a checkout attempt was refused, or `null` when checkout may proceed.
@@ -15,6 +16,7 @@ export type CheckoutBlockReason = "disabled" | "catalog_unavailable";
 export interface CheckoutAvailability {
   available: boolean;
   reason: CheckoutBlockReason | null;
+  allowedOffers: string[];
 }
 
 interface CachedProbe {
@@ -152,10 +154,14 @@ function hasAtLeastOneEntry(payload: unknown): boolean {
  */
 export async function resolveCheckoutAvailability(): Promise<CheckoutAvailability> {
   if (!isCheckoutEnabled()) {
-    return { available: false, reason: "disabled" };
+    return { available: false, reason: "disabled", allowedOffers: [] };
+  }
+  const allowedOffers = getAllowedBillingOffers();
+  if (allowedOffers.length === 0) {
+    return { available: false, reason: "disabled", allowedOffers: [] };
   }
   if (!(await probeCatalogHealth())) {
-    return { available: false, reason: "catalog_unavailable" };
+    return { available: false, reason: "catalog_unavailable", allowedOffers: [] };
   }
-  return { available: true, reason: null };
+  return { available: true, reason: null, allowedOffers };
 }

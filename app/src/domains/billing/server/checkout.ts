@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import type Stripe from "stripe";
 import { readBillingFlag } from "./billing-flags";
 import { getStripeClient } from "./stripe-client";
+import { isBillingOfferAllowed } from "./billing-offers";
 
 /**
  * Parameters required to create a Stripe Checkout Session for an Atlas
@@ -57,12 +58,15 @@ function isAutomaticTaxEnabled(): boolean {
 export async function createCheckoutSession(
   options: CreateCheckoutOptions,
 ): Promise<{ id: string; url: string | null }> {
-  const stripe = getStripeClient();
   const mode: Stripe.Checkout.SessionCreateParams["mode"] =
     options.product === "atlas_research_pass" ? "payment" : "subscription";
   if (options.product === "atlas_research_pass" && !options.interval) {
     throw new Error("Research Pass checkout requires an interval.");
   }
+  if (!isBillingOfferAllowed(options.product, options.interval)) {
+    throw new Error("This billing offer is not available for purchase.");
+  }
+  const stripe = getStripeClient();
 
   const workspaceMetadata = {
     workspace_id: options.workspaceId,

@@ -80,9 +80,10 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
            stripe_customer_id = EXCLUDED.stripe_customer_id,
            expires_at = EXCLUDED.expires_at,
            stripe_event_at = EXCLUDED.stripe_event_at
-       WHERE workspace_products.status = 'pending'
-          OR workspace_products.stripe_event_at IS NULL
-          OR workspace_products.stripe_event_at <= EXCLUDED.stripe_event_at`,
+       WHERE (EXCLUDED.status <> 'pending' OR workspace_products.status = 'pending')
+         AND (workspace_products.status = 'pending'
+           OR workspace_products.stripe_event_at IS NULL
+           OR workspace_products.stripe_event_at <= EXCLUDED.stripe_event_at)`,
       [
         id,
         workspaceId,
@@ -111,9 +112,10 @@ async function upsertWorkspaceProduct(params: WorkspaceProductUpsert): Promise<v
          stripe_customer_id = excluded.stripe_customer_id,
          expires_at = excluded.expires_at,
          stripe_event_at = excluded.stripe_event_at
-     WHERE workspace_products.status = 'pending'
-        OR workspace_products.stripe_event_at IS NULL
-        OR workspace_products.stripe_event_at <= excluded.stripe_event_at`,
+     WHERE (excluded.status <> 'pending' OR workspace_products.status = 'pending')
+       AND (workspace_products.status = 'pending'
+         OR workspace_products.stripe_event_at IS NULL
+         OR workspace_products.stripe_event_at <= excluded.stripe_event_at)`,
   ).run(
     id,
     workspaceId,

@@ -39,6 +39,8 @@ interface PricingPageProps {
   interval?: PricingCheckoutInterval;
 }
 
+const NO_ALLOWED_OFFERS: readonly string[] = [];
+
 /**
  * Public-facing pricing page.
  *
@@ -69,10 +71,9 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   // live and the banner hidden on exactly the deployment where the server
   // functions are going to refuse anyway.
   const isCheckoutUnavailable = availability.data?.available === false || availability.isError;
-  // Auto-resume runs with no user in the loop, so it waits for a confirmed
-  // yes. A deliberate click may proceed while the probe is still in flight
-  // because the server function refuses with a readable message anyway.
+  // Auto-resume and purchase controls wait for confirmed availability.
   const isCheckoutConfirmedOpen = availability.data?.available === true;
+  const allowedOffers = availability.data?.allowedOffers ?? NO_ALLOWED_OFFERS;
 
   // No unavailability guard here: every CTA container takes a required
   // isCheckoutUnavailable prop and disables its buttons, and the server
@@ -88,11 +89,16 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   }
 
   useEffect(() => {
-    if (!intent || !intentInterval || !isCheckoutConfirmedOpen) {
+    if (
+      !intent ||
+      !intentInterval ||
+      !isCheckoutConfirmedOpen ||
+      !allowedOffers.includes(checkoutKey(intent, intentInterval))
+    ) {
       return;
     }
     void navigate({ to: "/onboarding", search: { product: intent, interval: intentInterval } });
-  }, [intent, intentInterval, isCheckoutConfirmedOpen, navigate]);
+  }, [intent, intentInterval, isCheckoutConfirmedOpen, allowedOffers, navigate]);
 
   const activeWorkspace = session.data?.workspace.activeOrganization ?? null;
   const isAuthed = Boolean(session.data);
@@ -144,6 +150,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           freeCta={freeCta}
           pendingCheckoutKey={pendingCheckoutKey}
           isCheckoutUnavailable={isCheckoutUnavailable}
+          allowedOffers={allowedOffers}
           proCheckoutInterval={proCheckoutInterval}
           teamCheckoutInterval={teamCheckoutInterval}
           onBillingChange={setBilling}
@@ -153,6 +160,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
         <PricingResearchPassCard
           pendingCheckoutKey={pendingCheckoutKey}
           isCheckoutUnavailable={isCheckoutUnavailable}
+          allowedOffers={allowedOffers}
           onPurchase={(interval) => {
             void handleCheckout({
               product: "atlas_research_pass",
