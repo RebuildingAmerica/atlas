@@ -107,7 +107,11 @@ function VerificationLine({ entry }: { entry: Entry }) {
   return (
     <span className="type-body-medium text-ink-soft inline-flex items-center gap-1.5">
       <ShieldQuestion className="text-ink-muted h-4 w-4" aria-hidden />
-      Single source
+      {entry.source_count === 0
+        ? "No sources recorded"
+        : entry.source_count === 1
+          ? "Single source"
+          : `${entry.source_count} sources · independence unverified`}
     </span>
   );
 }

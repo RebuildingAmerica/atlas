@@ -71,7 +71,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
   );
 
   const hasPresence = Boolean(entry.website || entry.email || entry.phone || entry.first_seen);
-  const lastConfirmed = shortRelative(entry.latest_source_date ?? entry.last_seen);
+  const latestSource = entry.latest_source_date ? shortRelative(entry.latest_source_date) : "—";
 
   const stats = [
     {
@@ -86,7 +86,7 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
       value: affiliatedPeopleQuery.data ? affiliatedPeople.length : "—",
     },
     { label: "Issue areas", value: entry.issue_areas.length },
-    { label: "Last confirmed", value: lastConfirmed },
+    { label: "Latest source", value: latestSource },
   ];
 
   const profilePath = `/profiles/organizations/${entry.slug}`;

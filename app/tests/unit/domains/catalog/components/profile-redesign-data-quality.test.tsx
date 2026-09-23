@@ -24,9 +24,22 @@ describe("DataQualityBlock", () => {
   });
 
   it("renders an honest 'Single source' for the unverified tier, never 'Source-derived'", () => {
-    render(<DataQualityBlock entry={buildEntry({ trust: trust({ level: "unverified" }) })} />);
+    render(
+      <DataQualityBlock
+        entry={buildEntry({ source_count: 1, trust: trust({ level: "unverified" }) })}
+      />,
+    );
     expect(screen.getByText("Single source")).toBeInTheDocument();
     expect(screen.queryByText("Source-derived")).toBeNull();
+  });
+
+  it("does not call a multiple-source record single-source", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({ source_count: 2, trust: trust({ level: "unverified" }) })}
+      />,
+    );
+    expect(screen.getByText("2 sources · independence unverified")).toBeInTheDocument();
   });
 
   it("shows corroboration breadth for the corroborated tier", () => {

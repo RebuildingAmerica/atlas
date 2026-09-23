@@ -152,9 +152,7 @@ describe("profile evidence accessibility", () => {
 
     expect(screen.getByRole("heading", { name: "Profile at a glance" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Coverage statistics" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Signature quote from coverage" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Source context" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Issue focus" })).toBeInTheDocument();
   });

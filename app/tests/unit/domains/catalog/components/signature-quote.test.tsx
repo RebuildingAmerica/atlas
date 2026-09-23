@@ -6,7 +6,7 @@ import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-
 import { createSourceFixture } from "../../../../fixtures/catalog/entries";
 
 describe("SignatureQuote", () => {
-  it("pulls the first quote-bearing source and credits its publication and month", () => {
+  it("shows source context without attributing a verbatim quote", () => {
     render(
       <SignatureQuote
         sources={[
@@ -21,16 +21,15 @@ describe("SignatureQuote", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("region", { name: "Signature quote from coverage" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Source context" })).toBeInTheDocument();
     expect(screen.getByText("Jane leads the housing fight.")).toBeInTheDocument();
+    expect(screen.queryByRole("blockquote")).not.toBeInTheDocument();
     expect(screen.getByText("Mississippi Today")).toBeInTheDocument();
-    expect(screen.getByText(/Feb 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Published Feb 2026/)).toBeInTheDocument();
     expect(screen.getByText(/Source 02 of 2/)).toBeInTheDocument();
   });
 
-  it("credits Atlas when the source names no publication", () => {
+  it("uses a neutral label when the source names no publication", () => {
     render(
       <SignatureQuote
         sources={[
@@ -42,10 +41,10 @@ describe("SignatureQuote", () => {
       />,
     );
 
-    expect(screen.getByText("Atlas coverage")).toBeInTheDocument();
+    expect(screen.getByText("Source")).toBeInTheDocument();
   });
 
-  it("dates the credit from ingestion when the publisher gave no date", () => {
+  it("does not present ingestion as a publication date", () => {
     render(
       <SignatureQuote
         sources={[
@@ -58,7 +57,7 @@ describe("SignatureQuote", () => {
       />,
     );
 
-    expect(screen.getByText(/May 2026/)).toBeInTheDocument();
+    expect(screen.queryByText(/May 2026/)).not.toBeInTheDocument();
   });
 
   it("stays off the profile when no source carries a quote", () => {

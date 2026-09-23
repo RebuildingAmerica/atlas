@@ -70,7 +70,9 @@ describe("OrgProfilePage", () => {
    * @returns The rendered figure text.
    */
   function statValue(label: string): string {
-    const caption = screen.getByText(label);
+    const caption = within(screen.getByRole("region", { name: "Coverage statistics" })).getByText(
+      label,
+    );
     const value = caption.previousElementSibling?.textContent;
     if (value === undefined || value === null) {
       throw new TypeError(`Expected a figure above the "${label}" stat.`);
@@ -86,7 +88,7 @@ describe("OrgProfilePage", () => {
     expect(statValue("Coverage")).toBe("4srcs");
     expect(statValue("Issue areas")).toBe("1");
     expect(statValue("People tied")).toBe("0");
-    expect(statValue("Last confirmed")).toBe("4w");
+    expect(statValue("Latest source")).toBe("—");
     expect(screen.getByRole("region", { name: "Issue footprint" })).toBeInTheDocument();
   });
 
@@ -104,13 +106,13 @@ describe("OrgProfilePage", () => {
     ["2026-06-10", "3w"],
     ["2026-03-01", "4mo"],
     ["2023-01-01", "3y+"],
-  ])("dates the last confirmation of %s as %s", (latestSourceDate, expected) => {
+  ])("dates the latest source of %s as %s", (latestSourceDate, expected) => {
     renderWithProviders(
       <OrgProfilePage entry={organization({ latest_source_date: latestSourceDate })} />,
       { seed: seedAnonymous },
     );
 
-    expect(statValue("Last confirmed")).toBe(expected);
+    expect(statValue("Latest source")).toBe(expected);
   });
 
   it("shows a dash rather than a fabricated date when the record has no readable one", () => {
@@ -121,7 +123,7 @@ describe("OrgProfilePage", () => {
       { seed: seedAnonymous },
     );
 
-    expect(statValue("Last confirmed")).toBe("—");
+    expect(statValue("Latest source")).toBe("—");
   });
 
   it("names the people tied to the organization", () => {

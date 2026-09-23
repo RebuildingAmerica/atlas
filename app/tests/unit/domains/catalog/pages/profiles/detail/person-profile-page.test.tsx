@@ -58,7 +58,9 @@ describe("PersonProfilePage", () => {
    * @returns The rendered figure text.
    */
   function statValue(label: string): string {
-    const caption = screen.getByText(label);
+    const caption = within(screen.getByRole("region", { name: "Coverage statistics" })).getByText(
+      label,
+    );
     const value = caption.previousElementSibling?.textContent;
     if (value === undefined || value === null) {
       throw new TypeError(`Expected a figure above the "${label}" stat.`);
@@ -110,13 +112,13 @@ describe("PersonProfilePage", () => {
     ["2026-06-10", "3w"],
     ["2026-01-01", "6mo"],
     ["2023-01-01", "3y+"],
-  ])("dates the last confirmation of %s as %s", (latestSourceDate, expected) => {
+  ])("dates the latest source of %s as %s", (latestSourceDate, expected) => {
     renderWithProviders(
       <PersonProfilePage entry={person({ latest_source_date: latestSourceDate })} />,
       { seed: seedAnonymous },
     );
 
-    expect(statValue("Last confirmed")).toBe(expected);
+    expect(statValue("Latest source")).toBe(expected);
   });
 
   it("shows a dash rather than a fabricated date when the record has no readable one", () => {
@@ -125,7 +127,7 @@ describe("PersonProfilePage", () => {
       { seed: seedAnonymous },
     );
 
-    expect(statValue("Last confirmed")).toBe("—");
+    expect(statValue("Latest source")).toBe("—");
   });
 
   it("humanises an issue area the taxonomy has no name for", () => {

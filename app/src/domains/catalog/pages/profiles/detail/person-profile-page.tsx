@@ -88,7 +88,7 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
   const monthsTracked = monthsBetween(entry.first_seen, entry.last_seen);
   const trackedValue = monthsTracked >= 12 ? `${Math.round(monthsTracked / 12)}` : monthsTracked;
   const trackedUnit = monthsTracked >= 12 ? "yr" : "mo";
-  const lastConfirmed = shortRelative(entry.latest_source_date ?? entry.last_seen);
+  const latestSource = entry.latest_source_date ? shortRelative(entry.latest_source_date) : "—";
 
   const stats = [
     {
@@ -98,7 +98,7 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
     },
     { label: "Issue areas", value: focusLabels.length },
     { label: "Tracked since", value: trackedValue, unit: trackedUnit },
-    { label: "Last confirmed", value: lastConfirmed },
+    { label: "Latest source", value: latestSource },
   ];
 
   const profilePath = `/profiles/people/${entry.slug}`;
