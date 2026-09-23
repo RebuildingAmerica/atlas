@@ -273,7 +273,19 @@ void describe("Stripe catalog verifier", () => {
         "missing_hosted_env:STRIPE_API_KEY",
         "missing_hosted_env:STRIPE_WEBHOOK_SECRET",
         "missing_hosted_env:STRIPE_ATLAS_CATALOG",
+        "missing_hosted_env:ATLAS_BILLING_ALLOWED_OFFERS",
       ],
+    );
+  });
+
+  void it("requires a production offer allowlist even when Stripe keys exist", () => {
+    assert.deepEqual(
+      verifyHostedStripeEnvKeys("prod", [
+        { environment: "production", key: "STRIPE_API_KEY" },
+        { environment: "production", key: "STRIPE_WEBHOOK_SECRET" },
+        { environment: "production", key: "STRIPE_ATLAS_CATALOG" },
+      ]).map((finding) => finding.envKey),
+      ["ATLAS_BILLING_ALLOWED_OFFERS"],
     );
   });
 

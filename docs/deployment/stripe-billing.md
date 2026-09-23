@@ -86,33 +86,23 @@ falls back to `false` when it is unset. Set that variable to `true` only after
 
 ## Staging to production cutover
 
-Stripe secrets live at the repository level today, and neither the `staging` nor
-the `production` GitHub environment defines its own. The repository value is
-test mode — `scripts/ci/verify-stripe-runtime-catalog.ts` asserts it with
-`validateStripeApiKeyMode(apiKey, "test")` and that check gates the Stripe
-acceptance job. A production deploy reads the same secret, so without further
-configuration it writes a test-mode key into Vercel production and overwrites
-whatever `pnpm setup:prod` put there.
+The production deploy preserves the Vercel Stripe variables provisioned by
+`pnpm setup:prod`; it checks their presence before enabling checkout. The
+repository's test-mode Stripe secret belongs to CI and is not copied into the
+production runtime. The deploy passes its checkout flag with the deployment,
+while the catalog, key, signing secret, and offer allowlist live in Vercel.
 
-The production deploy now refuses that. It fails when `STRIPE_API_KEY` is not
-`sk_live_` or `rk_live_`, and the staging deploy fails when its key is not test
-mode, so neither environment can quietly run against the wrong ledger.
+The cutover requires these settings; it does not certify the payment lifecycle:
 
-The environment cutover requires these settings; it does not certify the payment
-lifecycle:
-
-1. Add `STRIPE_API_KEY` (live restricted key) and `STRIPE_ATLAS_CATALOG` (live
-   catalog) as secrets on the `production` GitHub environment. Environment
-   secrets take precedence over repository secrets for jobs that target that
-   environment, so this leaves CI and staging on test mode untouched.
-2. Confirm `STRIPE_WEBHOOK_SECRET` is present in Vercel production. The deploy
-   already fails without it.
-3. Set `ATLAS_BILLING_ALLOWED_OFFERS` in the production app runtime to only the
+1. Confirm `STRIPE_API_KEY`, `STRIPE_ATLAS_CATALOG`, and `STRIPE_WEBHOOK_SECRET`
+   are present in Vercel Production after live bootstrap. Confirm their values
+   belong to the same live account and deployed webhook.
+2. Set `ATLAS_BILLING_ALLOWED_OFFERS` in the production app runtime to only the
    offers whose acceptance rows have passed. Confirm the deployed pricing page
    enables exactly those offers.
-4. Set the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable to `true`.
+3. Set the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable to `true`.
 
-Do the fourth only after `https://atlas.rebuildingus.org/browse` returns useful,
+Do the third only after `https://atlas.rebuildingus.org/browse` returns useful,
 reviewed results. The catalog probe enforces that at runtime regardless, but the
 variable is the deliberate decision.
 
@@ -173,7 +163,8 @@ Before running hosted setup:
      Endpoints
 
    A live secret key (`sk_live_...`) is accepted, but restricted keys are the
-   default production path.
+   default production path. Include the runtime and refund permissions listed in
+   the Production section below; Checkout creation alone is insufficient.
 
 Stripe CLI OAuth keys are the default for test-mode local and staging
 operations. Production bootstrap uses a Dashboard-created live restricted key
@@ -299,9 +290,12 @@ Run only the target you just bootstrapped. The verifier checks required env
 keys, product IDs, price amounts and intervals, product-scoped coupons, and
 inactive or missing Stripe objects without printing secrets. For staging and
 production it also checks that Vercel has the three hosted Stripe runtime keys
-for the requested target, that the Stripe billing webhook endpoint exists for
-`ATLAS_PUBLIC_URL`, is enabled for the canonical billing events, and carries the
-Atlas billing webhook metadata.
+for the requested target and, for production, the offer allowlist variable. It
+checks that the Stripe billing webhook endpoint exists for `ATLAS_PUBLIC_URL`,
+is enabled for the canonical billing events, and carries the Atlas billing
+webhook metadata. Env-key presence cannot prove the deployed allowlist value,
+signing-secret match, runtime key permissions, tax setup, or successful payment
+and refund. Record those separately before sales open.
 
 If you want to inspect Vercel's encrypted env metadata directly:
 
@@ -313,6 +307,9 @@ The expected state is:
 
 - `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_ATLAS_CATALOG` are
   present for the target environment.
+- `ATLAS_BILLING_ALLOWED_OFFERS` is present in production and contains only
+  acceptance-tested offers; the deploy's checkout flag matches the release
+  decision.
 - `STRIPE_ATLAS_CATALOG` contains the student four-month Pro price and the
   discount coupon IDs.
 - Every discount coupon applies only to the Atlas Pro Stripe product.

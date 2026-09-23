@@ -103,7 +103,11 @@ export function verifyHostedStripeEnvKeys(
   existingKeys: readonly VercelEnvKey[],
 ): StripeCatalogVerificationIssue[] {
   const environment = target === "prod" ? "production" : "preview";
-  return STRIPE_ENV_KEYS.flatMap((envKey) => {
+  const requiredKeys =
+    target === "prod"
+      ? [...STRIPE_ENV_KEYS, "ATLAS_BILLING_ALLOWED_OFFERS"]
+      : STRIPE_ENV_KEYS;
+  return requiredKeys.flatMap((envKey) => {
     if (hasVercelEnvKey(existingKeys, envKey, environment)) {
       return [];
     }
