@@ -60,10 +60,20 @@ A fourth variable decides whether Atlas sells at all:
 
 ```env
 ATLAS_BILLING_CHECKOUT_ENABLED=false
+ATLAS_BILLING_ALLOWED_OFFERS=
 ```
 
+Both must be set in production. The offer list is a comma-separated set of exact
+product and interval pairs, for example `atlas_pro:monthly`. Supported pairs are
+`atlas_pro:monthly`, `atlas_pro:yearly`, `atlas_pro:four_month`,
+`atlas_team:monthly`, `atlas_team:yearly`, `atlas_research_pass:weekly`, and
+`atlas_research_pass:once`. An absent, duplicate, or unknown offer closes every
+new production sale. Keep an offer out of this list until its own purchase,
+entitlement, cancellation or expiry, and refund checks pass. Removing an offer
+stops new sales without removing an existing customer's access.
+
 Unset means closed, because an operator who has not chosen to sell should not be
-selling. Turning it on is not sufficient on its own. Checkout also probes the
+selling. Turning both on is not sufficient on its own. Checkout also probes the
 catalog API for one real entry before it will create a purchase intent or a
 Stripe Checkout session, so a reachable API with an empty directory keeps the
 funnel shut. A shallow `/health` check would pass in exactly the case that
@@ -88,7 +98,8 @@ The production deploy now refuses that. It fails when `STRIPE_API_KEY` is not
 `sk_live_` or `rk_live_`, and the staging deploy fails when its key is not test
 mode, so neither environment can quietly run against the wrong ledger.
 
-The cutover is therefore three settings, and nothing else:
+The environment cutover requires these settings; it does not certify the payment
+lifecycle:
 
 1. Add `STRIPE_API_KEY` (live restricted key) and `STRIPE_ATLAS_CATALOG` (live
    catalog) as secrets on the `production` GitHub environment. Environment
@@ -96,11 +107,14 @@ The cutover is therefore three settings, and nothing else:
    environment, so this leaves CI and staging on test mode untouched.
 2. Confirm `STRIPE_WEBHOOK_SECRET` is present in Vercel production. The deploy
    already fails without it.
-3. Set the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable to `true`.
+3. Set `ATLAS_BILLING_ALLOWED_OFFERS` in the production app runtime to only the
+   offers whose acceptance rows have passed. Confirm the deployed pricing page
+   enables exactly those offers.
+4. Set the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable to `true`.
 
-Do the third only after `https://atlas.rebuildingus.org/browse` returns results.
-The catalog probe enforces that at runtime regardless, but the variable is the
-deliberate decision.
+Do the fourth only after `https://atlas.rebuildingus.org/browse` returns useful,
+reviewed results. The catalog probe enforces that at runtime regardless, but the
+variable is the deliberate decision.
 
 ## Sales tax
 
@@ -230,11 +244,17 @@ If you do not have the live key yet:
 3. Click **Create restricted key**.
 4. Choose **Powering an integration you built**.
 5. Name the key `Atlas Production Billing`.
-6. Set permissions:
+6. Set permissions for bootstrap and runtime operations:
    - **Read:** Accounts v2, shown by Stripe errors as Basic Business Contact
      Information (`accounts_kyc_basic_read`)
-   - **Write:** Products, Prices, Coupons, Customers, Checkout Sessions, Webhook
-     Endpoints
+   - **Read:** Charges, PaymentIntents, Invoices, Invoice Payments,
+     Subscriptions, Refunds, and Billing Portal configuration.
+   - **Write:** Products, Prices, Coupons, Customers, Checkout Sessions,
+     Subscriptions, Refunds, Billing Portal sessions, and Webhook Endpoints.
+     Confirm the exact permissions available for the installed Stripe API
+     version in the account's restricted-key UI. A key that can create Checkout
+     Sessions but cannot read invoice payments or create refunds is
+     insufficient.
 7. Reveal the key once, copy the `rk_live_...` value, and keep it out of chat
    and committed files.
 8. Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes`.
@@ -302,6 +322,47 @@ The expected state is:
 - Team checkout never attaches student, creator/journalist, nonprofit, or civic
   tech coupons.
 - Research Pass checkout stays a one-time payment and never grants SSO or SCIM.
+
+## Refund and access recovery
+
+Use the repository command for a full refund of a purchase created through
+Atlas's purchase onboarding. It reads the current Stripe charge and local
+purchase before doing anything. The default invocation is a read-only preview:
+
+```bash
+cd app
+pnpm billing:refund --session cs_...
+```
+
+Review the printed account mode, workspace, product, amount, currency, and
+subscription. Match them to the support request and original purchase. Then an
+operator whose email is in `ATLAS_OPERATOR_ALLOWED_EMAILS` can run:
+
+```bash
+pnpm billing:refund --session cs_... --operator operator@example.org --reason "Customer request" --execute
+```
+
+The command refuses an unpaid, mismatched, previously revoked, already or
+partially refunded, or unattributable purchase. For a subscription it cancels
+future billing before issuing the refund. It uses a stable Stripe idempotency
+key for retries. A succeeded refund writes one adjustment and revokes only the
+term linked to the purchase; a pending refund waits for the signed webhook. The
+webhook also reconciles full refunds created outside the command when it can
+attribute them to one paid purchase. Partial refunds are recorded without
+automatically ending access. If a refund cannot be attributed, the webhook fails
+so Stripe retries and the operator can investigate.
+
+The command needs runtime access to the same Stripe account and Atlas auth
+database as the purchase. Keep credentials in the deployment secret store or an
+operator shell; never put them in the command arguments, support ticket, or
+committed env file. Save the redacted preview and result in the support record.
+Check the Stripe refund status, local `billing_adjustments` row, purchase
+`revoked_at`, and the workspace's effective access before closing the request.
+
+The current unit tests exercise these database and provider-call paths, but a
+Stripe test-mode purchase and refund must demonstrate the real Checkout return,
+signed webhook delivery, cancellation, ledger entry, and access removal before
+any offer is enabled in production.
 
 ## What the acceptance suite proves, and what it stopped proving
 

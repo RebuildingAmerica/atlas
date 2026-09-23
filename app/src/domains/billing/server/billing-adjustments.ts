@@ -42,7 +42,7 @@ async function findPurchaseByReference(
   return rows[0];
 }
 
-async function resolveRefundPurchase(paymentIntentId: string): Promise<{
+export async function resolveRefundPurchase(paymentIntentId: string): Promise<{
   purchase: RefundedPurchase;
   currentTerm: boolean;
   cancelSubscriptionId: string | null;

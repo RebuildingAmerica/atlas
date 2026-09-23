@@ -35,6 +35,7 @@
     "test:hosted-identity": "playwright test --config playwright.hosted-identity.config.ts",
     "test:hosted-checkout": "playwright test --config playwright.hosted-checkout.config.ts",
     "test:hosted-smoke": "playwright test --config playwright.hosted.config.ts",
+    "billing:refund": "tsx scripts/billing/refund.ts",
     "test:watch": "vitest --watch",
     "lint": "eslint src tests --max-warnings 0",
     "lint:fix": "eslint src tests --fix",
