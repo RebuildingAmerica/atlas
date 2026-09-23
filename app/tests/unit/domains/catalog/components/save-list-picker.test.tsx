@@ -83,6 +83,37 @@ describe("SaveListPicker", () => {
     claimsMocks.useSavedListMembership.mockReturnValue({ data: ["l1"], isLoading: false });
     const { container } = render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
     expect(container.querySelector("svg.lucide-check")).not.toBeNull();
+    expect(screen.getByRole("button", { name: /Reading/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows a retry when lists fail to load instead of an empty state", () => {
+    const refetch = vi.fn();
+    claimsMocks.useSavedLists.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    });
+    render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
+    expect(screen.getByText("Could not load your lists.")).toBeInTheDocument();
+    expect(screen.queryByText(/don't have any lists/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("blocks list changes when membership could not be checked", () => {
+    claimsMocks.useSavedLists.mockReturnValue({
+      data: [{ id: "l1", name: "Reading", item_count: 1 }],
+      isLoading: false,
+    });
+    claimsMocks.useSavedListMembership.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    });
+    render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /Reading/ })).toBeDisabled();
+    expect(screen.getByText(/Could not check which lists/)).toBeInTheDocument();
   });
 
   it("removes the entry when clicking a list it already belongs to", async () => {
@@ -135,6 +166,22 @@ describe("SaveListPicker", () => {
     });
   });
 
+  it("shows a failed save and leaves the list available for retry", async () => {
+    const addMutate = vi.fn().mockRejectedValue(new Error("network"));
+    claimsMocks.useSavedLists.mockReturnValue({
+      data: [{ id: "l1", name: "Reading", item_count: 0 }],
+      isLoading: false,
+    });
+    claimsMocks.useAddSavedListItem.mockReturnValue({ mutateAsync: addMutate, isPending: false });
+    render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Reading/ }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not update this list. Try again.");
+    expect(screen.getByRole("button", { name: /Reading/ })).toBeEnabled();
+  });
+
   it("calls onClose when clicking outside the picker", () => {
     const onClose = vi.fn();
     render(<SaveListPicker entryId="entry-1" open onClose={onClose} />);
@@ -167,6 +214,7 @@ describe("SaveListPicker", () => {
     render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /Create a new list/i }));
     expect(screen.getByPlaceholderText(/New list name/i)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "List name" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Cancel/i }));
     expect(screen.queryByPlaceholderText(/New list name/i)).not.toBeInTheDocument();
@@ -202,6 +250,38 @@ describe("SaveListPicker", () => {
       listId: "new-list",
       body: { entry_id: "entry-1" },
     });
+  });
+
+  it("retries adding to a newly created list without creating a duplicate", async () => {
+    const createMutate = vi
+      .fn()
+      .mockResolvedValue({ id: "new-list", name: "Heroes", item_count: 0 });
+    const addMutate = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce(undefined);
+    claimsMocks.useCreateSavedList.mockReturnValue({ mutateAsync: createMutate, isPending: false });
+    claimsMocks.useAddSavedListItem.mockReturnValue({ mutateAsync: addMutate, isPending: false });
+    render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Create a new list/i }));
+    fireEvent.change(screen.getByRole("textbox", { name: "List name" }), {
+      target: { value: "Heroes" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Create" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "List created, but this profile was not saved.",
+    );
+    expect(screen.getByRole("textbox", { name: "List name" })).toHaveValue("Heroes");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try saving again" }));
+      await Promise.resolve();
+    });
+    expect(createMutate).toHaveBeenCalledOnce();
+    expect(addMutate).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("treats missing list and membership data as empty", () => {

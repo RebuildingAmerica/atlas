@@ -5,7 +5,7 @@
  * entry, and supports creating a new list inline.
  */
 import { Check, FolderPlus, List as ListIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   useAddSavedListItem,
   useCreateSavedList,
@@ -30,6 +30,9 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
   const removeItem = useRemoveSavedListItem();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
+  const [createdListId, setCreatedListId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const nameInputId = useId();
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -55,20 +58,41 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
   if (!open) return null;
 
   async function toggleMembership(listId: string) {
-    if (memberSet.has(listId)) {
-      await removeItem.mutateAsync({ listId, entryId });
-    } else {
-      await addItem.mutateAsync({ listId, body: { entry_id: entryId } });
+    setActionError(null);
+    try {
+      if (memberSet.has(listId)) {
+        await removeItem.mutateAsync({ listId, entryId });
+      } else {
+        await addItem.mutateAsync({ listId, body: { entry_id: entryId } });
+      }
+    } catch {
+      setActionError("Could not update this list. Try again.");
     }
   }
 
   async function handleCreate() {
     const trimmed = newName.trim();
     if (!trimmed) return;
-    const created = await createList.mutateAsync({ name: trimmed });
-    await addItem.mutateAsync({ listId: created.id, body: { entry_id: entryId } });
-    setNewName("");
-    setShowCreate(false);
+    setActionError(null);
+    let listId = createdListId;
+    if (!listId) {
+      try {
+        const created = await createList.mutateAsync({ name: trimmed });
+        listId = created.id;
+        setCreatedListId(listId);
+      } catch {
+        setActionError("Could not create this list. Try again.");
+        return;
+      }
+    }
+    try {
+      await addItem.mutateAsync({ listId, body: { entry_id: entryId } });
+      setNewName("");
+      setCreatedListId(null);
+      setShowCreate(false);
+    } catch {
+      setActionError("List created, but this profile was not saved. Try again.");
+    }
   }
 
   return (
@@ -82,6 +106,17 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
       <p className="type-label-medium text-ink-muted">Add to a list</p>
       {lists.isLoading ? (
         <p className="type-body-small text-ink-soft">Loading…</p>
+      ) : lists.isError ? (
+        <div className="space-y-2">
+          <p className="type-body-small text-ink-soft">Could not load your lists.</p>
+          <button
+            type="button"
+            onClick={() => void lists.refetch()}
+            className="type-label-medium text-ink-strong underline"
+          >
+            Try again
+          </button>
+        </div>
       ) : (lists.data?.length ?? 0) === 0 && !showCreate ? (
         <p className="type-body-small text-ink-soft">You don&apos;t have any lists yet.</p>
       ) : (
@@ -95,6 +130,13 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
                   onClick={() => {
                     void toggleMembership(list.id);
                   }}
+                  aria-pressed={checked}
+                  disabled={
+                    membership.isLoading ||
+                    membership.isError ||
+                    addItem.isPending ||
+                    removeItem.isPending
+                  }
                   className="hover:bg-surface-container flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors"
                 >
                   <span className="flex min-w-0 items-center gap-2">
@@ -114,15 +156,31 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
           })}
         </ul>
       )}
+      {membership.isError && !lists.isError ? (
+        <p className="type-body-small text-ink-soft">
+          Could not check which lists contain this profile.
+        </p>
+      ) : null}
+      {actionError ? (
+        <p role="alert" className="type-body-small text-ink-soft">
+          {actionError}
+        </p>
+      ) : null}
 
       {showCreate ? (
         <div className="space-y-2">
+          <label htmlFor={nameInputId} className="type-label-small text-ink-muted">
+            List name
+          </label>
           <input
+            id={nameInputId}
             type="text"
             value={newName}
             onChange={(event) => {
               setNewName(event.target.value);
+              setActionError(null);
             }}
+            disabled={createdListId !== null}
             placeholder="New list name"
             className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
             autoFocus
@@ -133,15 +191,17 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
                 void handleCreate();
               }}
               size="sm"
-              disabled={createList.isPending}
+              disabled={createList.isPending || addItem.isPending || !newName.trim()}
             >
-              Create
+              {createdListId ? "Try saving again" : "Create"}
             </Button>
             <button
               type="button"
               onClick={() => {
                 setShowCreate(false);
                 setNewName("");
+                setCreatedListId(null);
+                setActionError(null);
               }}
               className="type-label-medium text-ink-muted hover:text-ink-strong"
             >
