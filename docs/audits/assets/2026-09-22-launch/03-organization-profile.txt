@@ -1,0 +1,411 @@
+Browser tab: 1, Title: "United Community Housing Coalition — Organization | Atlas", URL: "https://atlas.rebuildingus.org/profiles/organizations/united-community-housing-coalition-2e2a".
+0 AXWebArea United Community Housing Coalition — Organization | Atlas, URL: atlas.rebuildingus.org/profiles/organizations/united-community-housing-coalition-2e2a
+	1 container
+		2 container
+			3 container Primary navigation
+				4 link Description: A Atlas, Value: atlas.rebuildingus.org/
+				5 link Description: Browse, Value: atlas.rebuildingus.org/browse
+				6 link Description: Map, Value: atlas.rebuildingus.org/map
+				7 link Description: People, Value: atlas.rebuildingus.org/profiles/people
+				8 link Description: Organizations, Value: atlas.rebuildingus.org/profiles/organizations
+				9 link Description: Pricing, Value: atlas.rebuildingus.org/pricing
+				10 link Description: Firehose, Value: atlas.rebuildingus.org/firehose
+				11 link Description: Docs, Value: atlas.rebuildingus.org/docs
+				12 link Description: API, Value: atlas.rebuildingus.org/docs/api
+				156 search text field (settable) Search Atlas
+				13 link Description: Sign in, Value: atlas.rebuildingus.org/sign-in
+			157 container Profile location
+				158 container Catalog breadcrumb
+					159 link Description: PROFILES, Value: atlas.rebuildingus.org/profiles
+					160 link Description: ORGANIZATIONS, Value: atlas.rebuildingus.org/profiles/organizations
+					161 text DETROIT, MI
+				162 text Tracked since  2026-09
+			163 container United Community Housing Coalition
+				164 heading United Community Housing Coalition, Value: 1, ID: profile-name-b1d0b2c5-d402-4b5b-a2e6-22ecd9e29a0c
+					165 text United Community Housing Coalition
+				166 container
+					167 text Organization  ·  United Community Housing Coalition: Eviction, foreclosure, and homelessness prevention eviction in Detroit. Helping low-income residents stay in their homes and strengthen their communities, through representation, support, and ownership.
+				168 container
+					169 text Based in Detroit, MI  ·  Active locally
+			170 container PROFILE AT A GLANCE
+				171 heading PROFILE AT A GLANCE, Value: 2, ID: profile-answers-b1d0b2c5-d402-4b5b-a2e6-22ecd9e29a0c
+					172 text PROFILE AT A GLANCE
+				173 definition list
+					174 container Who
+						175 text Who
+					176 text Organization
+					177 container What they do
+						178 text What they do
+					179 text United Community Housing Coalition: Eviction, foreclosure, and homelessness prevention eviction in Detroit. Helping low-income residents stay in their homes and strengthen their communities, through representation, support, and ownership.
+					180 container Where
+						181 text Where
+					182 text Detroit, MI
+					183 container Why they matter
+						184 text Why they matter
+					185 text 2 sources · Homelessness And Housing Insecurity · Housing Affordability
+					186 container Sources
+						187 text Sources
+					188 text 2 sources · corroborated · Sep 2026
+			189 container WHY THIS MATTERS
+				190 container Profile summary
+					191 heading WHY THIS MATTERS, Value: 2, ID: profile-context-heading
+						192 text WHY THIS MATTERS
+					193 text United Community Housing Coalition: Eviction, foreclosure, and homelessness prevention eviction in Detroit. Helping low-income residents stay in their homes and strengthen their communities, through representation, support, and ownership.
+				194 container Quick facts
+					195 definition list
+						196 container Issues
+							197 text Issues
+						198 text Homelessness and Housing Insecurity · Housing Affordability
+						199 container Place
+							200 text Place
+						201 text Detroit, MI
+						202 container Contact
+							203 text Contact
+						204 text https://uchcdetroit.org/
+						205 container Last seen
+							206 text Last seen
+						207 text Sep 2026
+				208 container EVIDENCE
+					209 heading EVIDENCE, Value: 3, ID: profile-context-evidence-heading
+						210 text EVIDENCE
+					211 text Related people and groups
+					212 text Connections
+					213 text Issues
+					214 text 2 issue areas
+					215 text Sources
+					216 text 2 sources
+					217 text Contact
+					218 text Available
+					219 link Description: People and groups in Detroit, Value: atlas.rebuildingus.org/browse?cities=Detroit&states=MI
+					220 link Description: Homelessness and Housing Insecurity actors, Value: atlas.rebuildingus.org/browse?issue_areas=homelessness_and_housing_insecurity
+				221 container CORRECTIONS
+					222 heading CORRECTIONS, Value: 3, ID: profile-context-corrections-heading
+						223 text CORRECTIONS
+					224 text Flag stale facts, missing context, or representation issues for review.
+					225 link Description: Add missing context, Value: atlas.rebuildingus.org/feedback/united-community-housing-coalition-2e2a?kind=missing_context
+					226 link Description: Verify representation, Value: atlas.rebuildingus.org/claim/united-community-housing-coalition-2e2a
+			227 container Signature quote from coverage
+				228 heading Signature quote from coverage, Value: 2, ID: signature-quote-heading
+					229 text Signature quote from coverage
+				230 text IRS Form 990 filings for EIN 382142140, registered as "United Community Housing Coalition" in Detroit, MI.
+				231 container
+					232 text PROPUBLICA NONPROFIT EXPLORER  ·  SEP 2026 · SOURCE  01  OF  2
+			233 container Coverage statistics
+				234 heading Coverage statistics, Value: 2, ID: profile-stats-heading
+					235 text Coverage statistics
+				236 container
+					237 text 2 srcs
+				238 text COVERAGE
+				239 text 0
+				240 text PEOPLE TIED
+				241 text 2
+				242 text ISSUE AREAS
+				243 text 2w
+				244 text LAST CONFIRMED
+			245 container Record history
+				246 heading RECORD HISTORY, Value: 2
+					247 text RECORD HISTORY
+				248 text HISTORY
+				249 heading Record history, Value: 2
+					250 text Record history
+				251 content list
+					252 container
+						253 text First listed Sep 2026 Earliest public record date on this profile.
+					254 container
+						255 text Representation updated Sep 2026 Profile details changed.
+					256 container
+						257 text Latest source Sep 2026 ProPublica Nonprofit Explorer
+				258 container
+					259 text AUDIT
+					260 heading Audit trail, Value: 3
+						261 text Audit trail
+					262 link Description: Send a correction, Value: atlas.rebuildingus.org/feedback/united-community-housing-coalition-2e2a
+					263 definition list
+						264 container Correction review
+							265 text Correction review
+						266 text Source-linked corrections and missing context can be sent for review.
+						267 container Verification review
+							268 text Verification review
+						269 text No subject verification recorded.
+						270 container Representation changes
+							271 text Representation changes
+						272 text Profile details changed Sep 2026.
+			273 container RECENT
+				274 heading RECENT, Value: 2, ID: work-recent-b1d0b2c5-d402-4b5b-a2e6-22ecd9e29a0c
+					275 text RECENT
+				276 container
+					277 text 2 sources  in last 90 days  — most recent:  ProPublica Nonprofit Explorer, Sep 2026
+			278 container Issue footprint
+				279 heading ISSUE FOOTPRINT, Value: 2
+					280 text ISSUE FOOTPRINT
+				281 text Housing & Built Environment
+				282 text Homelessness and Housing Insecurity Housing Affordability
+			283 container Presence and contact
+				284 text PRESENCE AND CONTACT
+				285 heading Presence, Value: 2
+					286 text Presence
+				287 text Presence
+				288 link Description: uchcdetroit.org Official website Visit , Value: uchcdetroit.org/
+				289 text First seen
+				290 text Sep 9, 2026
+			291 container Description: Appearances and coverage, ID: appearances
+				292 heading APPEARANCES AND COVERAGE, Value: 2
+					293 text APPEARANCES AND COVERAGE
+				294 heading APPEARANCES & COVERAGE, Value: 2
+					295 text APPEARANCES & COVERAGE
+				296 text 2 Evidence packets 2 source packets 2 source types Government Record  ( 1 ) Org Website  ( 1 )
+				297 container source-cd0f6528-dcbd-4027-927e-8f12de13a5e3
+					298 text Government Record ProPublica Nonprofit Explorer 2w ago
+					299 link Description: United Community Housing Coalition - IRS Form 990 filings, Value: projects.propublica.org/nonprofits/organizations/382142140
+					300 text QUOTED EVIDENCE
+					301 text IRS Form 990 filings for EIN 382142140, registered as "United Community Housing Coalition" in Detroit, MI.
+				302 container source-55da6282-e663-4c1a-a922-7bc7f4fd8e09
+					303 text Org Website 2w ago
+					304 link Description: United Community Housing Coalition | homelessness prevention, Value: uchcdetroit.org/
+			305 container Description: Network — actors related to this profile, ID: connections
+				306 text NETWORK — ACTORS RELATED TO THIS PROFILE
+				307 heading Who else is doing this work, Value: 2
+					308 text Who else is doing this work
+				309 content list
+					310 container
+						311 container Affordable Housing And Investment Group
+							312 text AH
+						313 link Description: Affordable Housing And Investment Group, Value: atlas.rebuildingus.org/profiles/organizations/affordable-housing-and-investment-group-baa0
+						314 text Strong
+						315 content list
+							316 text Shares 1 issue area in MI
+							317 text Both active in Detroit, MI
+					318 container
+						319 container Denson Affordable Housing Initiativ E
+							320 text DA
+						321 link Description: Denson Affordable Housing Initiativ E, Value: atlas.rebuildingus.org/profiles/organizations/denson-affordable-housing-initiativ-e-ba50
+						322 text Strong
+						323 content list
+							324 text Shares 1 issue area in MI
+							325 text Both active in Detroit, MI
+					326 container
+						327 container Detroit Cultivator Community Land Trust - Inc
+							328 text DC
+						329 link Description: Detroit Cultivator Community Land Trust - Inc, Value: atlas.rebuildingus.org/profiles/organizations/detroit-cultivator-community-land-trust-inc-47c3
+						330 text Strong
+						331 content list
+							332 text Shares 1 issue area in MI
+							333 text Both active in Detroit, MI
+					334 container
+						335 container Dream Community Land Trust
+							336 text DC
+						337 link Description: Dream Community Land Trust, Value: atlas.rebuildingus.org/profiles/organizations/dream-community-land-trust-9d11
+						338 text Strong
+						339 content list
+							340 text Shares 1 issue area in MI
+							341 text Both active in Detroit, MI
+					342 container
+						343 container North Corktown Community Land Trust
+							344 text NC
+						345 link Description: North Corktown Community Land Trust, Value: atlas.rebuildingus.org/profiles/organizations/north-corktown-community-land-trust-3885
+						346 text Strong
+						347 content list
+							348 text Shares 1 issue area in MI
+							349 text Both active in Detroit, MI
+					350 container
+						351 container Theres Hope Affordable Housing Training Inc
+							352 text TH
+						353 link Description: Theres Hope Affordable Housing Training Inc, Value: atlas.rebuildingus.org/profiles/organizations/theres-hope-affordable-housing-training-inc-2bb7
+						354 text Strong
+						355 content list
+							356 text Shares 1 issue area in MI
+							357 text Both active in Detroit, MI
+					358 container
+						359 container Affordable Housing Alliance Midland County Non-profit Housing Corp
+							360 text AH
+						361 link Description: Affordable Housing Alliance Midland County Non-profit Housing Corp, Value: atlas.rebuildingus.org/profiles/organizations/affordable-housing-alliance-midland-county-non-profit-housing-corp-9e09
+						362 text Strong
+						363 content list
+							364 text Shares 1 issue area in MI
+					365 container
+						366 container Affordable Housing For All
+							367 text AH
+						368 link Description: Affordable Housing For All, Value: atlas.rebuildingus.org/profiles/organizations/affordable-housing-for-all-020d
+						369 text Strong
+						370 content list
+							371 text Shares 1 issue area in MI
+					372 container
+						373 container Affordable Housing Management Foundation
+							374 text AH
+						375 link Description: Affordable Housing Management Foundation, Value: atlas.rebuildingus.org/profiles/organizations/affordable-housing-management-foundation-9682
+						376 text Strong
+						377 content list
+							378 text Shares 1 issue area in MI
+					379 container
+						380 container Ann Arbor Affordable Housing Corporation
+							381 text AA
+						382 link Description: Ann Arbor Affordable Housing Corporation, Value: atlas.rebuildingus.org/profiles/organizations/ann-arbor-affordable-housing-corporation-141e
+						383 text Strong
+						384 content list
+							385 text Shares 1 issue area in MI
+					386 container
+						387 container Ann Arbor Community Land Trust
+							388 text AA
+						389 link Description: Ann Arbor Community Land Trust, Value: atlas.rebuildingus.org/profiles/organizations/ann-arbor-community-land-trust-5817
+						390 text Strong
+						391 content list
+							392 text Shares 1 issue area in MI
+					393 container
+						394 container Community Homes Land Trust
+							395 text CH
+						396 link Description: Community Homes Land Trust, Value: atlas.rebuildingus.org/profiles/organizations/community-homes-land-trust-ab41
+						397 text Strong
+						398 content list
+							399 text Shares 1 issue area in MI
+					400 container
+						401 container Deng Reng Foundation
+							402 text DR
+						403 link Description: Deng Reng Foundation, Value: atlas.rebuildingus.org/profiles/organizations/deng-reng-foundation-bbef
+						404 text Strong
+						405 content list
+							406 text Shares 1 issue area in MI
+					407 container
+						408 container Detroit Black And Latino Affordable Housing Fund
+							409 text DB
+						410 link Description: Detroit Black And Latino Affordable Housing Fund, Value: atlas.rebuildingus.org/profiles/organizations/detroit-black-and-latino-affordable-housing-fund-c3c4
+						411 text Strong
+						412 content list
+							413 text Shares 1 issue area in MI
+					414 container
+						415 container Dwelling Place Regional Community Land Trust
+							416 text DP
+						417 link Description: Dwelling Place Regional Community Land Trust, Value: atlas.rebuildingus.org/profiles/organizations/dwelling-place-regional-community-land-trust-5244
+						418 text Strong
+						419 content list
+							420 text Shares 1 issue area in MI
+					421 container
+						422 container Eastern Michigan Rental Housing Association
+							423 text EM
+						424 link Description: Eastern Michigan Rental Housing Association, Value: atlas.rebuildingus.org/profiles/organizations/eastern-michigan-rental-housing-association-6bfa
+						425 text Strong
+						426 content list
+							427 text Shares 1 issue area in MI
+					428 container
+						429 container Faith Affordable Housing Inc
+							430 text FA
+						431 link Description: Faith Affordable Housing Inc, Value: atlas.rebuildingus.org/profiles/organizations/faith-affordable-housing-inc-d099
+						432 text Strong
+						433 content list
+							434 text Shares 1 issue area in MI
+					435 container
+						436 container Frankfort Area Community Land Trust
+							437 text FA
+						438 link Description: Frankfort Area Community Land Trust, Value: atlas.rebuildingus.org/profiles/organizations/frankfort-area-community-land-trust-c07e
+						439 text Strong
+						440 content list
+							441 text Shares 1 issue area in MI
+					442 container
+						443 container Global Accountability Affordable Housing & Development
+							444 text GA
+						445 link Description: Global Accountability Affordable Housing & Development, Value: atlas.rebuildingus.org/profiles/organizations/global-accountability-affordable-housing-development-7cd6
+						446 text Strong
+						447 content list
+							448 text Shares 1 issue area in MI
+					449 container
+						450 container Grand Haven Area Community Land Trust
+							451 text GH
+						452 link Description: Grand Haven Area Community Land Trust, Value: atlas.rebuildingus.org/profiles/organizations/grand-haven-area-community-land-trust-4de5
+						453 text Strong
+						454 content list
+							455 text Shares 1 issue area in MI
+				456 container
+					457 text Showing the  20  strongest of  33  connections.
+				458 text Keep exploring:
+				459 link Description: More people in MI, Value: atlas.rebuildingus.org/browse?entry_types=person&states=MI
+				460 link Description: Organizations working on Homelessness And Housing Insecurity, Value: atlas.rebuildingus.org/browse?entry_types=organization&issue_areas=homelessness_and_housing_insecurity
+				461 link Description: Homelessness And Housing Insecurity in another place, Value: atlas.rebuildingus.org/browse?issue_areas=homelessness_and_housing_insecurity
+				462 link Description: All profiles, Value: atlas.rebuildingus.org/profiles
+			463 container Sources and trust
+				464 heading SOURCES AND TRUST, Value: 2
+					465 text SOURCES AND TRUST
+				466 definition list
+					467 container First surfaced
+						468 text First surfaced
+					469 text Sep 2026
+					470 container Last activity
+						471 text Last activity
+					472 container
+						473 text 2w ago 13d ago
+					474 container Sources
+						475 text Sources
+					476 container
+						477 text 2 sources
+					478 container Lead signals
+						479 text Lead signals
+					480 container Lead-quality signals
+						481 text Qualify before outreach Local lead Recent source Diverse sources Reachable
+					482 container Actor specificity
+						483 text Actor specificity
+					484 container
+						485 text 5  of  5  specificity signals
+						486 container Actor specificity signals
+							487 text Specific actor Actor Work Place Issues Sources
+					488 container Profile shape
+						489 text Profile shape
+					490 container
+						491 text 6  of  6  core fields
+						492 container Canonical profile fields
+							493 text Identity Work Place Issues Sources Contact
+					494 container Verification
+						495 heading Verification, Value: 3
+							496 text Verification
+					497 container
+						498 text Single source
+						499 link Description: Represent United Community Housing Coalition? Verify this profile, Value: atlas.rebuildingus.org/claim/united-community-housing-coalition-2e2a
+					500 container Verification evidence
+						501 heading Verification evidence, Value: 3
+							502 text Verification evidence
+					503 container
+						504 text Summary 2 sources · corroborated · Sep 2026 Place 2 sources · corroborated · Sep 2026 Issues 2 sources · corroborated · Sep 2026 Contact 0 sources · unverified · Sep 2026
+				505 container
+					506 heading Corrections, Value: 3
+						507 text Corrections
+					508 text Report representation, freshness, or context issues.
+					509 link Description: Verify or correct representation, Value: atlas.rebuildingus.org/claim/united-community-housing-coalition-2e2a
+					510 link Description: Report stale or incorrect information, Value: atlas.rebuildingus.org/feedback/united-community-housing-coalition-2e2a?kind=incorrect
+					511 link Description: Suggest missing context, Value: atlas.rebuildingus.org/feedback/united-community-housing-coalition-2e2a?kind=missing_context
+			512 container Profile actions
+				513 link Description: Inspect sources, Value: atlas.rebuildingus.org/profiles/organizations/united-community-housing-coalition-2e2a#appearances
+				514 button Share
+				515 link Description: Save, Value: atlas.rebuildingus.org/sign-in?redirect=%2Fprofiles%2Forganizations%2Funited-community-housing-coalition-2e2a
+				516 link Description: Follow updates, Value: atlas.rebuildingus.org/sign-in?redirect=%2Fprofiles%2Forganizations%2Funited-community-housing-coalition-2e2a
+		123 container Site footer
+			124 container
+				125 link Description: Rebuilding America Project, Value: rebuildingus.org/
+				126 text 38°54N 77°02W
+			127 container
+				128 text “Never doubt that a small group of thoughtful, committed citizens can change the world. Indeed, it is the only thing that ever has.” Margaret Mead
+				129 container Footer navigation
+					130 text Product
+					131 content list
+						132 link Description: Search, Value: atlas.rebuildingus.org/browse
+						133 link Description: Map, Value: atlas.rebuildingus.org/map
+						134 link Description: Firehose, Value: atlas.rebuildingus.org/firehose
+						135 link Description: Docs, Value: atlas.rebuildingus.org/docs
+						136 link Description: How it works, Value: atlas.rebuildingus.org/docs/how-it-works
+						137 link Description: Trust & sources, Value: atlas.rebuildingus.org/docs/resources/trust
+						138 link Description: Pricing, Value: atlas.rebuildingus.org/pricing
+					139 text Community
+					140 content list
+						141 link Description: Open source, Value: atlas.rebuildingus.org/docs/resources/open-source
+						142 link Description: GitHub, Value: github.com/RebuildingAmerica/atlas
+						143 link Description: Issues, Value: github.com/RebuildingAmerica/atlas/issues
+						144 link Description: Carbon removal, Value: climate.stripe.com/IbySpr
+					145 text Legal
+					146 content list
+						147 link Description: Privacy, Value: atlas.rebuildingus.org/privacy
+						148 link Description: Terms, Value: atlas.rebuildingus.org/terms
+						149 link Description: Security, Value: atlas.rebuildingus.org/security
+			150 link Description: Atlas, Value: …
+			151 container
+				152 text Public records, organized for civic discovery.
+				153 link Description: Privacy, Value: …
+				154 link Description: Terms, Value: …
+				155 link Description: Security, Value: …
+
+The focused UI element is 0 AXWebArea United Community Housing Coalition — Organization | Atlas, URL: atlas.rebuildingus.org/profiles/organizations/united-community-housing-coalition-2e2a
