@@ -130,6 +130,14 @@ describe("PersonProfilePage", () => {
     expect(statValue("Latest source")).toBe("—");
   });
 
+  it("does not date a source with an invalid publication date", () => {
+    renderWithProviders(
+      <PersonProfilePage entry={person({ latest_source_date: "not-a-date" })} />,
+      { seed: seedAnonymous },
+    );
+    expect(statValue("Latest source")).toBe("—");
+  });
+
   it("humanises an issue area the taxonomy has no name for", () => {
     renderWithProviders(
       <PersonProfilePage entry={person({ issue_areas: ["civic_infrastructure"] })} />,

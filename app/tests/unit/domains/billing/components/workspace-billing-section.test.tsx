@@ -31,6 +31,12 @@ describe("WorkspaceBillingSection", () => {
       expect(screen.getByRole("link", { name: "Upgrade" })).toHaveAttribute("href", "/pricing");
       expect(screen.queryByRole("button", { name: "Manage subscription" })).not.toBeInTheDocument();
     });
+
+    it("does not offer a member a purchase for the workspace", () => {
+      render(<WorkspaceBillingSection activeProducts={[]} role="member" />);
+      expect(screen.getByText("Free")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Upgrade" })).not.toBeInTheDocument();
+    });
   });
 
   describe("on a workspace with paid products", () => {

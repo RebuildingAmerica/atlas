@@ -126,6 +126,14 @@ describe("OrgProfilePage", () => {
     expect(statValue("Latest source")).toBe("—");
   });
 
+  it("does not date a source with an invalid publication date", () => {
+    renderWithProviders(
+      <OrgProfilePage entry={organization({ latest_source_date: "not-a-date" })} />,
+      { seed: seedAnonymous },
+    );
+    expect(statValue("Latest source")).toBe("—");
+  });
+
   it("names the people tied to the organization", () => {
     renderWithProviders(<OrgProfilePage entry={organization()} />, {
       seed: (queryClient) => {

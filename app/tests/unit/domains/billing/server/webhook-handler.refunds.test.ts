@@ -96,6 +96,183 @@ describe("refund webhook convergence", () => {
     );
   }
 
+  function configureInvoiceAttribution(): void {
+    db.prepare(
+      `UPDATE purchase_intents SET product = 'atlas_team', stripe_payment_intent_id = NULL,
+       stripe_subscription_id = 'sub_1' WHERE id = 'purchase_1'`,
+    ).run();
+    mocks.listInvoicePayments.mockResolvedValue({
+      data: [{ invoice: "in_1", status: "paid" }],
+      has_more: false,
+    });
+    mocks.retrieveInvoice.mockResolvedValue({
+      id: "in_1",
+      parent: { type: "subscription_details", subscription_details: { subscription: "sub_1" } },
+    });
+    mocks.retrieveSubscription.mockResolvedValue({
+      id: "sub_1",
+      latest_invoice: "in_1",
+      status: "active",
+    });
+  }
+
+  it("refuses ambiguous paid purchase references", async () => {
+    insertPurchaseIntentRow(db, {
+      id: "purchase_2",
+      status: "paid",
+      stripeCheckoutSessionId: "cs_2",
+      userId: "buyer_2",
+      workspaceId: "org_2",
+      product: "atlas_research_pass",
+      interval: "weekly",
+    });
+    db.prepare("UPDATE purchase_intents SET stripe_payment_intent_id = ? WHERE id = ?").run(
+      "pi_stripe_1",
+      "purchase_2",
+    );
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("one paid purchase");
+  });
+
+  it("refuses a paid purchase without an assigned workspace", async () => {
+    db.prepare("UPDATE purchase_intents SET workspace_id = NULL WHERE id = ?").run("purchase_1");
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("one paid purchase");
+  });
+
+  it("fails explicitly when the auth database is unavailable", async () => {
+    mocks.getAuthDatabase.mockReturnValue(null);
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("Auth database unavailable");
+  });
+
+  it("refuses an ambiguous invoice payment", async () => {
+    configureInvoiceAttribution();
+    mocks.listInvoicePayments.mockResolvedValue({ data: [], has_more: true });
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("one paid invoice");
+  });
+
+  it("refuses a missing invoice in a reported invoice payment", async () => {
+    configureInvoiceAttribution();
+    mocks.listInvoicePayments.mockResolvedValue({ data: [undefined], has_more: false });
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("current invoice");
+  });
+
+  it("accepts expanded invoice, subscription, and latest-invoice references", async () => {
+    configureInvoiceAttribution();
+    mocks.listInvoicePayments.mockResolvedValue({
+      data: [{ invoice: { id: "in_1" } }],
+      has_more: false,
+    });
+    mocks.retrieveInvoice.mockResolvedValue({
+      id: "in_1",
+      parent: { subscription_details: { subscription: { id: "sub_1" } } },
+    });
+    mocks.retrieveSubscription.mockResolvedValue({
+      id: "sub_1",
+      latest_invoice: { id: "in_1" },
+      status: "canceled",
+    });
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    await expect(resolveRefundPurchase("pi_stripe_1")).resolves.toMatchObject({
+      currentTerm: true,
+      cancelSubscriptionId: null,
+      purchase: { id: "purchase_1" },
+    });
+  });
+
+  it("refuses an invoice without a subscription and one without a matching purchase", async () => {
+    configureInvoiceAttribution();
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    mocks.retrieveInvoice.mockResolvedValue({ id: "in_1", parent: null });
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("to a subscription");
+    mocks.retrieveInvoice.mockResolvedValue({
+      id: "in_1",
+      parent: { subscription_details: { subscription: "sub_other" } },
+    });
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("one paid purchase");
+  });
+
+  it("refuses an invoice linked to a different saved purchase", async () => {
+    db.prepare("UPDATE purchase_intents SET stripe_subscription_id = ? WHERE id = ?").run(
+      "sub_direct",
+      "purchase_1",
+    );
+    insertPurchaseIntentRow(db, {
+      id: "purchase_2",
+      status: "paid",
+      stripeCheckoutSessionId: "cs_2",
+      userId: "buyer_2",
+      workspaceId: "org_2",
+      product: "atlas_team",
+      interval: "monthly",
+    });
+    db.prepare("UPDATE purchase_intents SET stripe_subscription_id = ? WHERE id = ?").run(
+      "sub_other",
+      "purchase_2",
+    );
+    mocks.listInvoicePayments.mockResolvedValue({ data: [{ invoice: "in_1" }], has_more: false });
+    mocks.retrieveInvoice.mockResolvedValue({
+      id: "in_1",
+      parent: { subscription_details: { subscription: "sub_other" } },
+    });
+    const { resolveRefundPurchase } = await import("@/domains/billing/server/billing-adjustments");
+    await expect(resolveRefundPurchase("pi_stripe_1")).rejects.toThrow("one paid purchase");
+  });
+
+  it("requires a charge before recording a refund", async () => {
+    const { applyStripeRefund } = await import("@/domains/billing/server/billing-adjustments");
+    const refund = buildRefundEvent().data.object as Stripe.Refund;
+    await expect(
+      applyStripeRefund({ ...refund, charge: null }, "evt_1", "2026-07-03T00:00:00Z"),
+    ).rejects.toThrow("to a charge");
+    expect(db.prepare("SELECT COUNT(*) AS count FROM billing_adjustments").get()).toEqual({
+      count: 0,
+    });
+  });
+
+  it("accepts expanded charge and PaymentIntent references", async () => {
+    mocks.retrieveCharge.mockResolvedValue({
+      id: "ch_1",
+      amount: 400,
+      currency: "usd",
+      payment_intent: { id: "pi_stripe_1" },
+      paid: true,
+    });
+    const { applyStripeRefund } = await import("@/domains/billing/server/billing-adjustments");
+    const refund = buildRefundEvent().data.object as Stripe.Refund;
+    await applyStripeRefund(
+      { ...refund, charge: { id: "ch_1" }, payment_intent: { id: "pi_stripe_1" } } as Stripe.Refund,
+      "evt_1",
+      "2026-07-03T00:00:00Z",
+    );
+    expect(db.prepare("SELECT status FROM workspace_products WHERE id = ?").get("wp_1")).toEqual({
+      status: "refunded",
+    });
+  });
+
+  it("retries if the local database disappears before the adjustment or revocation", async () => {
+    const { applyStripeRefund } = await import("@/domains/billing/server/billing-adjustments");
+    const refund = buildRefundEvent().data.object as Stripe.Refund;
+    mocks.getAuthDatabase.mockReturnValueOnce(db).mockReturnValueOnce(null);
+    await expect(applyStripeRefund(refund, "evt_1", "2026-07-03T00:00:00Z")).rejects.toThrow(
+      "Auth database unavailable",
+    );
+    mocks.getAuthDatabase
+      .mockReset()
+      .mockReturnValueOnce(db)
+      .mockReturnValueOnce(db)
+      .mockReturnValueOnce(null);
+    await expect(applyStripeRefund(refund, "evt_1", "2026-07-03T00:00:00Z")).rejects.toThrow(
+      "Auth database unavailable",
+    );
+    expect(db.prepare("SELECT status FROM workspace_products WHERE id = ?").get("wp_1")).toEqual({
+      status: "active",
+    });
+  });
+
   it("revokes a fully refunded pass and records one adjustment across retries", async () => {
     await deliver(buildRefundEvent());
     await deliver(buildRefundEvent());
@@ -114,6 +291,13 @@ describe("refund webhook convergence", () => {
     expect(
       db.prepare("SELECT stripe_refund_id, kind, amount, currency FROM billing_adjustments").all(),
     ).toEqual([{ stripe_refund_id: "re_1", kind: "full", amount: 400, currency: "usd" }]);
+  });
+
+  it("handles a refund-created event before its update", async () => {
+    await deliver({ ...buildRefundEvent(), type: "refund.created" } as Stripe.Event);
+    expect(db.prepare("SELECT status FROM workspace_products WHERE id = ?").get("wp_1")).toEqual({
+      status: "refunded",
+    });
   });
 
   it("records and revokes the same refund through the production Postgres path", async () => {

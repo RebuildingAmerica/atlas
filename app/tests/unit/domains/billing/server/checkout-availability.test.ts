@@ -186,6 +186,21 @@ describe("checkout availability", () => {
   });
 
   describe("resolveCheckoutAvailability", () => {
+    it("keeps production sales closed when no offer was approved", async () => {
+      vi.stubEnv("VERCEL_ENV", "production");
+      vi.stubEnv("ATLAS_BILLING_CHECKOUT_ENABLED", "true");
+      vi.stubEnv("ATLAS_BILLING_ALLOWED_OFFERS", "");
+      const fetchStub = stubFetch({ body: { items: [{ id: "e1" }] } });
+      const { resolveCheckoutAvailability } =
+        await import("@/domains/billing/server/checkout-availability");
+      await expect(resolveCheckoutAvailability()).resolves.toEqual({
+        available: false,
+        reason: "disabled",
+        allowedOffers: [],
+      });
+      expect(fetchStub.requests).toHaveLength(0);
+    });
+
     it("refuses without probing when an operator has not enabled checkout", async () => {
       vi.stubEnv("ATLAS_BILLING_CHECKOUT_ENABLED", "false");
       const fetchStub = stubFetch({ body: { items: [{ id: "e1" }] } });

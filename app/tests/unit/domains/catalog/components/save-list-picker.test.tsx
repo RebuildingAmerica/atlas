@@ -316,4 +316,20 @@ describe("SaveListPicker", () => {
     });
     expect(createMutate).not.toHaveBeenCalled();
   });
+
+  it("keeps the list name when creation fails", async () => {
+    const createMutate = vi.fn().mockRejectedValue(new Error("network"));
+    claimsMocks.useCreateSavedList.mockReturnValue({ mutateAsync: createMutate, isPending: false });
+    render(<SaveListPicker entryId="entry-1" open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Create a new list/i }));
+    fireEvent.change(screen.getByRole("textbox", { name: "List name" }), {
+      target: { value: "Neighbors" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Create" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not create this list. Try again.");
+    expect(screen.getByRole("textbox", { name: "List name" })).toHaveValue("Neighbors");
+  });
 });

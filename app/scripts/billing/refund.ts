@@ -32,8 +32,8 @@ export function parseRefundArgs(argv: string[]): RefundArgs {
   };
 }
 
-async function main(): Promise<void> {
-  const args = parseRefundArgs(process.argv.slice(2));
+export async function runRefundCli(argv: string[]): Promise<void> {
+  const args = parseRefundArgs(argv);
   if (args.execute) {
     const operator = args.operator?.trim().toLowerCase();
     const allowed = getAuthRuntimeConfig().operatorAllowedEmails;
@@ -77,9 +77,12 @@ async function main(): Promise<void> {
   );
 }
 
+/* v8 ignore start -- the entry-point guard only runs when invoked as a process;
+   runRefundCli covers the command behavior directly. */
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => {
+  runRefundCli(process.argv.slice(2)).catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : "Refund command failed.");
     process.exitCode = 1;
   });
 }
+/* v8 ignore stop */

@@ -194,6 +194,23 @@ describe("handleStripeWebhook", () => {
   });
 
   describe("customer.subscription.updated", () => {
+    it("keeps an unfamiliar Stripe status distinct from active access", async () => {
+      db.prepare(
+        `INSERT INTO workspace_products
+           (id, workspace_id, product, status, stripe_subscription_id, stripe_event_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run("wp_1", "org_pro", "atlas_pro", "active", "sub_live", "2026-07-01T00:00:00.000Z");
+      await deliverWebhook(
+        buildSubscriptionEvent({
+          created: Date.parse("2026-07-05T00:00:00.000Z") / 1000,
+          status: "paused",
+          subscriptionId: "sub_live",
+          type: "customer.subscription.updated",
+        }),
+      );
+      expect(readWorkspaceProductStripeLinkage(db, "org_pro")?.status).toBe("paused");
+    });
+
     it("moves the workspace product to past_due when Stripe reports a failed renewal", async () => {
       db.prepare(
         `INSERT INTO workspace_products

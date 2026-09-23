@@ -33,6 +33,25 @@ describe("purchase intent store", () => {
     db.close();
   });
 
+  it("refuses checkout fulfillment without an existing matching purchase", async () => {
+    const { requirePurchaseIntentForCheckout } =
+      await import("@/domains/billing/server/purchase-intents");
+    const checkout = {
+      id: "missing",
+      interval: "monthly",
+      product: "atlas_pro",
+      stripeCheckoutSessionId: "cs_1",
+      workspaceId: "org_1",
+    };
+    await expect(requirePurchaseIntentForCheckout(checkout)).rejects.toThrow(
+      "does not match the saved purchase",
+    );
+    mocks.getAuthDatabase.mockReturnValue(null);
+    await expect(requirePurchaseIntentForCheckout(checkout)).rejects.toThrow(
+      "Auth database unavailable",
+    );
+  });
+
   it("creates and resumes an active purchase intent for the same user and plan", async () => {
     const { ensurePurchaseIntent } = await import("@/domains/billing/server/purchase-intents");
 

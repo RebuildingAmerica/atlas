@@ -72,7 +72,6 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
 
   async function handleCreate() {
     const trimmed = newName.trim();
-    if (!trimmed) return;
     setActionError(null);
     let listId = createdListId;
     if (!listId) {
