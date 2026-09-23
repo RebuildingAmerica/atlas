@@ -101,6 +101,58 @@ CREATE TABLE purchase_intents (
 CREATE INDEX idx_purchase_intents_user ON purchase_intents(user_id);
 `;
 
+const BILLING_SETTLEMENT_SQLITE = `
+ALTER TABLE purchase_intents ADD COLUMN stripe_payment_intent_id TEXT;
+ALTER TABLE purchase_intents ADD COLUMN stripe_subscription_id TEXT;
+ALTER TABLE purchase_intents ADD COLUMN paid_at TEXT;
+ALTER TABLE purchase_intents ADD COLUMN revoked_at TEXT;
+ALTER TABLE purchase_intents ADD COLUMN revocation_reason TEXT;
+CREATE INDEX idx_purchase_intents_payment ON purchase_intents(stripe_payment_intent_id);
+CREATE INDEX idx_purchase_intents_subscription ON purchase_intents(stripe_subscription_id);
+CREATE INDEX idx_purchase_intents_checkout ON purchase_intents(stripe_checkout_session_id);
+CREATE TABLE billing_adjustments (
+    id                 TEXT PRIMARY KEY,
+    purchase_intent_id TEXT NOT NULL,
+    workspace_id       TEXT NOT NULL,
+    product            TEXT NOT NULL,
+    stripe_refund_id   TEXT NOT NULL UNIQUE,
+    stripe_event_id    TEXT UNIQUE,
+    amount             INTEGER NOT NULL,
+    currency           TEXT NOT NULL,
+    kind               TEXT NOT NULL,
+    actor_id           TEXT,
+    reason             TEXT NOT NULL,
+    created_at         TEXT NOT NULL
+);
+CREATE INDEX idx_billing_adjustments_purchase ON billing_adjustments(purchase_intent_id);
+`;
+
+const BILLING_SETTLEMENT_PG = `
+ALTER TABLE purchase_intents ADD COLUMN stripe_payment_intent_id TEXT;
+ALTER TABLE purchase_intents ADD COLUMN stripe_subscription_id TEXT;
+ALTER TABLE purchase_intents ADD COLUMN paid_at TIMESTAMPTZ;
+ALTER TABLE purchase_intents ADD COLUMN revoked_at TIMESTAMPTZ;
+ALTER TABLE purchase_intents ADD COLUMN revocation_reason TEXT;
+CREATE INDEX idx_purchase_intents_payment ON purchase_intents(stripe_payment_intent_id);
+CREATE INDEX idx_purchase_intents_subscription ON purchase_intents(stripe_subscription_id);
+CREATE INDEX idx_purchase_intents_checkout ON purchase_intents(stripe_checkout_session_id);
+CREATE TABLE billing_adjustments (
+    id                 TEXT PRIMARY KEY,
+    purchase_intent_id TEXT NOT NULL,
+    workspace_id       TEXT NOT NULL,
+    product            TEXT NOT NULL,
+    stripe_refund_id   TEXT NOT NULL UNIQUE,
+    stripe_event_id    TEXT UNIQUE,
+    amount             INTEGER NOT NULL,
+    currency           TEXT NOT NULL,
+    kind               TEXT NOT NULL,
+    actor_id           TEXT,
+    reason             TEXT NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX idx_billing_adjustments_purchase ON billing_adjustments(purchase_intent_id);
+`;
+
 const SCOUT_DEVICES_SQLITE = `
 CREATE TABLE scout_devices (
     id                    TEXT PRIMARY KEY,
@@ -366,6 +418,12 @@ export const ATLAS_MIGRATIONS: AtlasMigration[] = [
     name: "create_purchase_intents",
     sqlite: PURCHASE_INTENTS_SQLITE,
     pg: PURCHASE_INTENTS_PG,
+  },
+  {
+    version: 7,
+    name: "add_billing_settlement_refs",
+    sqlite: BILLING_SETTLEMENT_SQLITE,
+    pg: BILLING_SETTLEMENT_PG,
   },
 ];
 

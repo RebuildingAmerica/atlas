@@ -11,6 +11,7 @@ import {
   readWorkspaceProduct,
   readWorkspaceProductStripeLinkage,
 } from "../../../../helpers/billing/webhook-handler-test-bed";
+import { insertPurchaseIntentRow } from "../../../../helpers/billing/purchase-intent-rows";
 
 const mocks = vi.hoisted(() => ({
   constructEvent: vi.fn(),
@@ -87,6 +88,109 @@ describe("handleStripeWebhook", () => {
   }
 
   describe("checkout.session.completed", () => {
+    it("refuses to grant access when Checkout metadata does not match the saved purchase", async () => {
+      insertPurchaseIntentRow(db, {
+        id: "pi_mismatch",
+        status: "checkout_created",
+        stripeCheckoutSessionId: "cs_checkout",
+        userId: "buyer",
+        workspaceId: "org_other",
+        product: "atlas_pro",
+      });
+
+      await expect(
+        deliverWebhook(
+          buildCheckoutCompletedEvent({
+            created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+            metadata: {
+              interval: "monthly",
+              product: "atlas_pro",
+              purchase_intent_id: "pi_mismatch",
+              workspace_id: "org_pro",
+            },
+          }),
+        ),
+      ).rejects.toThrow("does not match the saved purchase");
+
+      expect(db.prepare("SELECT COUNT(*) AS count FROM workspace_products").get()).toEqual({
+        count: 0,
+      });
+    });
+
+    it("grants access when the saved purchase matches the settled Checkout", async () => {
+      insertPurchaseIntentRow(db, {
+        id: "pi_match",
+        status: "checkout_created",
+        stripeCheckoutSessionId: "cs_checkout",
+        userId: "buyer",
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+      });
+
+      await deliverWebhook(
+        buildCheckoutCompletedEvent({
+          created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+          metadata: {
+            interval: "monthly",
+            product: "atlas_pro",
+            purchase_intent_id: "pi_match",
+            workspace_id: "org_pro",
+          },
+          paymentIntent: "pi_stripe_paid",
+          subscription: "sub_paid",
+        }),
+      );
+
+      expect(readWorkspaceProduct(db, "org_pro").status).toBe("active");
+      const paidRow = db
+        .prepare(
+          "SELECT status, stripe_payment_intent_id, stripe_subscription_id, paid_at FROM purchase_intents WHERE id = ?",
+        )
+        .get("pi_match") as {
+        status: string;
+        stripe_payment_intent_id: string;
+        stripe_subscription_id: string;
+        paid_at: string;
+      };
+      expect(paidRow).toMatchObject({
+        status: "paid",
+        stripe_payment_intent_id: "pi_stripe_paid",
+        stripe_subscription_id: "sub_paid",
+      });
+      expect(typeof paidRow.paid_at).toBe("string");
+    });
+
+    it("does not regrant access when a refunded purchase is replayed", async () => {
+      insertPurchaseIntentRow(db, {
+        id: "pi_refunded",
+        status: "paid",
+        stripeCheckoutSessionId: "cs_checkout",
+        userId: "buyer",
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+      });
+      db.prepare("UPDATE purchase_intents SET revoked_at = ? WHERE id = ?").run(
+        "2026-07-02T00:00:00.000Z",
+        "pi_refunded",
+      );
+
+      const response = await deliverWebhook(
+        buildCheckoutCompletedEvent({
+          created: Date.parse("2026-07-01T00:00:00.000Z") / 1000,
+          metadata: {
+            interval: "monthly",
+            product: "atlas_pro",
+            purchase_intent_id: "pi_refunded",
+            workspace_id: "org_pro",
+          },
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(db.prepare("SELECT COUNT(*) AS count FROM workspace_products").get()).toEqual({
+        count: 0,
+      });
+    });
+
     it("never grants access or marks an intent paid while payment is unpaid", async () => {
       await deliverWebhook(
         buildCheckoutCompletedEvent({

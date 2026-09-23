@@ -12,7 +12,7 @@ const CATALOG_OFFERS = [
 
 const catalogOfferSet = new Set<string>(CATALOG_OFFERS);
 
-function isProductionBillingRuntime(): boolean {
+export function isProductionBillingRuntime(): boolean {
   return (
     process.env.VERCEL_ENV === "production" ||
     (!process.env.VERCEL_ENV && process.env.NODE_ENV === "production")

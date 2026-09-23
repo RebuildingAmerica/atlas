@@ -3,7 +3,7 @@ import "@tanstack/react-start/server-only";
 import type Stripe from "stripe";
 import { readBillingFlag } from "./billing-flags";
 import { getStripeClient } from "./stripe-client";
-import { isBillingOfferAllowed } from "./billing-offers";
+import { isBillingOfferAllowed, isProductionBillingRuntime } from "./billing-offers";
 
 /**
  * Parameters required to create a Stripe Checkout Session for an Atlas
@@ -65,6 +65,9 @@ export async function createCheckoutSession(
   }
   if (!isBillingOfferAllowed(options.product, options.interval)) {
     throw new Error("This billing offer is not available for purchase.");
+  }
+  if (isProductionBillingRuntime() && !options.purchaseIntentId) {
+    throw new Error("Production checkout requires a recorded purchase intent.");
   }
   const stripe = getStripeClient();
 

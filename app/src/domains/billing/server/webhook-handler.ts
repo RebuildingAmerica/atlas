@@ -5,7 +5,7 @@ import { getStripeClient, getStripeWebhookSecret } from "./stripe-client";
 import { mergeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { ensureAuthReady } from "../../access/server/auth";
 import { getAuthDatabase, getAuthPgPool } from "../../access/server/auth";
-import { markPurchaseIntentPaid } from "./purchase-intents";
+import { markPurchaseIntentPaid, requirePurchaseIntentForCheckout } from "./purchase-intents";
 
 /**
  * Maps a Stripe subscription status string to the Atlas workspace_products
@@ -212,12 +212,28 @@ async function handleCheckoutCompleted(
     return;
   }
 
+  const purchaseIntentId = session.metadata?.purchase_intent_id;
+  if (purchaseIntentId) {
+    const canFulfill = await requirePurchaseIntentForCheckout({
+      id: purchaseIntentId,
+      interval: session.metadata?.interval,
+      product,
+      stripeCheckoutSessionId: session.id,
+      workspaceId,
+    });
+    if (!canFulfill) return;
+  }
+
   const stripeCustomerId =
     typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
   const stripeSubscriptionId =
     typeof session.subscription === "string"
       ? session.subscription
       : (session.subscription?.id ?? null);
+  const stripePaymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
   const expiresAt =
     product === "atlas_research_pass"
       ? resolveResearchPassExpiry(session.metadata?.interval, eventAt)
@@ -233,12 +249,13 @@ async function handleCheckoutCompleted(
     eventAt,
   });
 
-  const purchaseIntentId = session.metadata?.purchase_intent_id;
   if (purchaseIntentId) {
     await markPurchaseIntentPaid({
       id: purchaseIntentId,
+      paymentIntentId: stripePaymentIntentId,
       product,
       stripeCheckoutSessionId: session.id,
+      subscriptionId: stripeSubscriptionId,
       workspaceId,
     });
   }

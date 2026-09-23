@@ -45,6 +45,25 @@ describe("createCheckoutSession", () => {
     expect(mocks.getStripeClient).not.toHaveBeenCalled();
   });
 
+  it("refuses production Checkout without a recorded purchase intent", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("ATLAS_BILLING_ALLOWED_OFFERS", "atlas_pro:monthly");
+
+    await expect(
+      createCheckoutSession({
+        workspaceId: "org_pro",
+        product: "atlas_pro",
+        interval: "monthly",
+        priceId: "price_pro_monthly",
+        successUrl: "https://atlas.test/ok",
+        cancelUrl: "https://atlas.test/no",
+        customerEmail: "buyer@atlas.test",
+      }),
+    ).rejects.toThrow("purchase intent");
+
+    expect(mocks.getStripeClient).not.toHaveBeenCalled();
+  });
+
   function sessionParams(): Stripe.Checkout.SessionCreateParams {
     return create.mock.calls[0]?.[0] as Stripe.Checkout.SessionCreateParams;
   }

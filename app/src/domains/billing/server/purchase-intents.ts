@@ -31,6 +31,7 @@ interface PurchaseIntentRow {
   id: string;
   interval: PricingCheckoutInterval;
   product: AtlasSelfServeProduct;
+  revoked_at?: string | null;
   status: PurchaseIntentStatus;
   stripe_checkout_session_id: string | null;
   user_id: string;
@@ -194,6 +195,55 @@ export async function loadPurchaseIntent({
   return row ? toRecord(row) : null;
 }
 
+/** Verifies a settled Stripe session against the purchase Atlas created for it. */
+export async function requirePurchaseIntentForCheckout({
+  id,
+  interval,
+  product,
+  stripeCheckoutSessionId,
+  workspaceId,
+}: {
+  id: string;
+  interval: string | undefined;
+  product: string;
+  stripeCheckoutSessionId: string;
+  workspaceId: string;
+}): Promise<boolean> {
+  const pgPool = getAuthPgPool();
+  let row: PurchaseIntentRow | undefined;
+  if (pgPool) {
+    const result = await pgPool.query<PurchaseIntentRow>(
+      `SELECT id, user_id, workspace_id, product, interval, status, stripe_checkout_session_id, expires_at, revoked_at
+       FROM purchase_intents WHERE id = $1`,
+      [id],
+    );
+    row = result.rows[0];
+  } else {
+    const db = getAuthDatabase();
+    if (!db) throw new Error("Auth database unavailable in current mode");
+    row = db
+      .prepare(
+        `SELECT id, user_id, workspace_id, product, interval, status, stripe_checkout_session_id, expires_at, revoked_at
+         FROM purchase_intents WHERE id = ?`,
+      )
+      .get(id) as PurchaseIntentRow | undefined;
+  }
+
+  if (!row) {
+    throw new Error("Stripe Checkout does not match the saved purchase.");
+  }
+  if (
+    row.workspace_id !== workspaceId ||
+    row.product !== product ||
+    row.interval !== interval ||
+    row.stripe_checkout_session_id !== stripeCheckoutSessionId ||
+    (row.status !== "checkout_created" && row.status !== "paid")
+  ) {
+    throw new Error("Stripe Checkout does not match the saved purchase.");
+  }
+  return !row.revoked_at;
+}
+
 export async function attachWorkspaceToPurchaseIntent({
   id,
   userId,
@@ -230,13 +280,17 @@ export async function markPurchaseCheckoutCreated({
 
 export async function markPurchaseIntentPaid({
   id,
+  paymentIntentId,
   product,
   stripeCheckoutSessionId,
+  subscriptionId,
   workspaceId,
 }: {
   id: string;
+  paymentIntentId?: string | null;
   product: string;
   stripeCheckoutSessionId: string;
+  subscriptionId?: string | null;
   workspaceId: string;
 }): Promise<void> {
   const pgPool = getAuthPgPool();
@@ -244,13 +298,22 @@ export async function markPurchaseIntentPaid({
   if (pgPool) {
     await pgPool.query(
       `UPDATE purchase_intents
-       SET status = 'paid', updated_at = $1
-       WHERE id = $2
-         AND product = $3
-         AND workspace_id = $4
-         AND stripe_checkout_session_id = $5
+       SET status = 'paid', updated_at = $1, paid_at = $1,
+           stripe_payment_intent_id = $2, stripe_subscription_id = $3
+       WHERE id = $4
+         AND product = $5
+         AND workspace_id = $6
+         AND stripe_checkout_session_id = $7
          AND status = 'checkout_created'`,
-      [updatedAt, id, product, workspaceId, stripeCheckoutSessionId],
+      [
+        updatedAt,
+        paymentIntentId ?? null,
+        subscriptionId ?? null,
+        id,
+        product,
+        workspaceId,
+        stripeCheckoutSessionId,
+      ],
     );
     return;
   }
@@ -261,13 +324,23 @@ export async function markPurchaseIntentPaid({
   }
   db.prepare(
     `UPDATE purchase_intents
-     SET status = 'paid', updated_at = ?
+     SET status = 'paid', updated_at = ?, paid_at = ?,
+         stripe_payment_intent_id = ?, stripe_subscription_id = ?
      WHERE id = ?
        AND product = ?
        AND workspace_id = ?
        AND stripe_checkout_session_id = ?
        AND status = 'checkout_created'`,
-  ).run(updatedAt, id, product, workspaceId, stripeCheckoutSessionId);
+  ).run(
+    updatedAt,
+    updatedAt,
+    paymentIntentId ?? null,
+    subscriptionId ?? null,
+    id,
+    product,
+    workspaceId,
+    stripeCheckoutSessionId,
+  );
 }
 
 async function updatePurchaseIntent({

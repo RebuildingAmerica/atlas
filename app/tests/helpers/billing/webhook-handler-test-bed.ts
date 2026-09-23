@@ -7,6 +7,7 @@ export interface ResearchPassCheckoutEventOptions {
   interval: "once" | "weekly";
   purchaseIntentId?: string;
   paymentStatus?: Stripe.Checkout.Session.PaymentStatus;
+  paymentIntent?: string | { id: string } | null;
 }
 
 export function buildResearchPassCheckoutCompletedEvent(
@@ -30,6 +31,7 @@ export function buildResearchPassCheckoutCompletedEvent(
         },
         subscription: null,
         payment_status: options.paymentStatus ?? "paid",
+        payment_intent: options.paymentIntent ?? null,
       },
     },
     livemode: false,
@@ -47,6 +49,7 @@ export interface CheckoutCompletedEventOptions {
   sessionId?: string;
   subscription?: string | { id: string } | null;
   paymentStatus?: Stripe.Checkout.Session.PaymentStatus;
+  paymentIntent?: string | { id: string } | null;
   type?:
     | "checkout.session.completed"
     | "checkout.session.async_payment_succeeded"
@@ -75,6 +78,7 @@ export function buildCheckoutCompletedEvent(options: CheckoutCompletedEventOptio
         metadata: options.metadata ?? {},
         subscription: options.subscription ?? null,
         payment_status: options.paymentStatus ?? "paid",
+        payment_intent: options.paymentIntent ?? null,
       },
     },
     livemode: false,

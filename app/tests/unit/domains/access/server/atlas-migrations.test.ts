@@ -108,6 +108,18 @@ describe("atlas-migrations", () => {
     expect(columnType("purchase_intents", "stripe_checkout_session_id")).toBe("text");
   });
 
+  it("stores payment references and a durable refund adjustment ledger", () => {
+    runAtlasCustomMigrations(db, ATLAS_MIGRATIONS);
+
+    expect(columnType("purchase_intents", "stripe_payment_intent_id")).toBe("text");
+    expect(columnType("purchase_intents", "stripe_subscription_id")).toBe("text");
+    expect(columnType("purchase_intents", "paid_at")).toBe("text");
+    expect(columnType("purchase_intents", "revoked_at")).toBe("text");
+    expect(columnType("purchase_intents", "revocation_reason")).toBe("text");
+    expect(columnType("billing_adjustments", "stripe_refund_id")).toBe("text");
+    expect(columnType("billing_adjustments", "amount")).toBe("integer");
+  });
+
   it("seeds Scout as a first-party OAuth device client when Better Auth clients exist", () => {
     db.exec(`
       CREATE TABLE "oauthClient" (
