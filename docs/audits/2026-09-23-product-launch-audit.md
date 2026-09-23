@@ -30,6 +30,21 @@ Checkout session, which means a key change may not even be necessary. There are
 also concrete billing defects and missing lifecycle evidence. See the
 [billing readiness audit](2026-09-23-billing-readiness.md).
 
+### Launch decision by surface
+
+| Surface                                    | Decision on September 23             | What changes the decision                                                                                                                                         |
+| ------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public discovery, narrow promoted coverage | **Conditional pilot**                | Contain the report-note exposure, define the promoted place/issue slice, review the records returned by the launch queries, and fix the search-first mobile path. |
+| Public national promotion                  | **No-go**                            | Demonstrate useful results beyond record presence, accurate coverage claims, reliable corrections, and sustained editorial capacity.                              |
+| Pro and Research Pass sales                | **No-go pending payment acceptance** | Pass the complete purchase, entitlement, return, cancellation/expiry, failure, and refund matrix for every offer left available.                                  |
+| Team sales                                 | **No-go**                            | Add server-side billing authorization, complete invite/ownership administration, then pass the team seat and payment lifecycle.                                   |
+
+“Launch” in this document means a controlled release to a named initial cohort
+with a truthful coverage promise, staffed support windows, and daily review of
+failed journeys. It does not mean declaring the existing national catalog
+complete. Public browsing and paid sales have separate gates; one can be held
+without falsely treating the other as ready.
+
 ## What this assessment actually verified
 
 | Evidence                            | Scope and limits                                                                                                                                                                                                                                                                                                                                    |
