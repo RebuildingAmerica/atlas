@@ -149,6 +149,7 @@ describe("BrowsePage editorial shelves", () => {
     );
 
     expect(screen.getByText("No people or groups listed.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Browse tools" })).toBeInTheDocument();
   });
 
   it("names the place a reader has narrowed to in the related shelves", () => {

@@ -51,7 +51,7 @@ describe("SignUpPage", () => {
 
   it("renders team-buyer copy when intent is team-sso", () => {
     render(<SignUpPage intent="team-sso" />);
-    expect(screen.getByText("Set up SSO for your team")).toBeInTheDocument();
+    expect(screen.getByText("Start your Atlas Team workspace")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continue with team setup/i })).toBeInTheDocument();
   });
 

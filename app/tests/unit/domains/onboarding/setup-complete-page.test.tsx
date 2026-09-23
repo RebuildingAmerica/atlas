@@ -112,6 +112,10 @@ describe("SetupCompletePage", () => {
       "href",
       "/organization/sso",
     );
+    expect(screen.getByRole("link", { name: "Invite teammates" })).toHaveAttribute(
+      "href",
+      "/organization",
+    );
     expect(screen.getByRole("link", { name: "Open workspace" })).toHaveAttribute(
       "href",
       "/discovery",
@@ -150,14 +154,15 @@ describe("SetupCompletePage", () => {
       await vi.advanceTimersByTimeAsync(31_000);
     });
 
-    expect(screen.getByText("Almost there")).toBeInTheDocument();
+    expect(screen.getByText("Payment status unclear")).toBeInTheDocument();
     expect(
-      screen.getByText("Payment succeeded, but access has not appeared yet. Refresh in a moment."),
+      screen.getByText("If you see a charge, contact us with your receipt before trying again."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Return to payment" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Contact support" })).toHaveAttribute(
       "href",
-      "/onboarding?purchase=pi_team&step=payment",
+      "mailto:hello@rebuildingus.org?subject=Atlas%20payment%20help",
     );
+    expect(screen.queryByRole("link", { name: "Return to payment" })).not.toBeInTheDocument();
     expect(mocks.loadPurchaseOnboarding.mock.calls.length).toBeGreaterThan(1);
   });
 

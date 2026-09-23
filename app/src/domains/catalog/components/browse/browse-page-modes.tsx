@@ -155,21 +155,24 @@ export function BrowseEditorialMode({
 
   if (!hasAnySection) {
     return (
-      <section className="border-border bg-surface-container-lowest max-w-2xl border px-8 py-10">
-        <h2 className="type-title-large text-ink-strong">No people or groups listed.</h2>
-      </section>
+      <>
+        {searchTools}
+        <section className="border-border bg-surface-container-lowest max-w-2xl border px-8 py-10">
+          <h2 className="type-title-large text-ink-strong">No people or groups listed.</h2>
+        </section>
+      </>
     );
   }
 
   return (
     <>
+      {searchTools}
       <PrimitiveFacetSection
         title="Issues"
         items={sections.activeIssues}
         variant="issue"
         onSelectFacet={onSelectFacet}
       />
-      {searchTools}
       {PRIMARY_ENTRY_TYPE_SECTION_ORDER.map((entryType) => (
         <PrimitiveEntrySection
           key={entryType}

@@ -92,7 +92,7 @@ describe("BrowsePage editorial browsing", () => {
       "false",
     );
     expect(
-      issues.compareDocumentPosition(browseTools) & Node.DOCUMENT_POSITION_FOLLOWING,
+      browseTools.compareDocumentPosition(issues) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       issues.compareDocumentPosition(organizations) & Node.DOCUMENT_POSITION_FOLLOWING,

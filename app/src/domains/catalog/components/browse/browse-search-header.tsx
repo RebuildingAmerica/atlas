@@ -68,7 +68,7 @@ export function BrowseSearchHeader({
   const frameClass =
     placement === "results"
       ? "bg-page-bg/90 border-border sticky top-0 z-20 border-y px-4 py-2 backdrop-blur md:px-8"
-      : "px-4 py-0 md:px-0";
+      : "py-0";
   const innerClass =
     placement === "results"
       ? "mx-auto max-w-[76rem]"

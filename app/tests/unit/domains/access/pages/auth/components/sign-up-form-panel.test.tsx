@@ -73,7 +73,7 @@ describe("SignUpFormPanel", () => {
 
     expect(screen.getByText("Join Atlas")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Create account" })).not.toBeNull();
-    expect(screen.getByText(/Setting up SSO for your team/)).not.toBeNull();
+    expect(screen.getByText(/Working with a team/)).not.toBeNull();
   });
 
   it("renders the team-sso copy and CTA when isTeamSso is true", () => {
@@ -89,9 +89,9 @@ describe("SignUpFormPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Set up SSO for your team")).not.toBeNull();
+    expect(screen.getByText("Start your Atlas Team workspace")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Continue with team setup" })).not.toBeNull();
-    expect(screen.queryByText(/Setting up SSO for your team\?/)).toBeNull();
+    expect(screen.queryByText(/Working with a team\?/)).toBeNull();
     expect(screen.getByRole("alert")).toHaveTextContent("Sign-up failed.");
   });
 

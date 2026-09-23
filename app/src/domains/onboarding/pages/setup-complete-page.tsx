@@ -113,8 +113,13 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
         </div>
         <div className="flex flex-wrap gap-3">
           {isTeam ? (
+            <Link to="/organization" className="no-underline">
+              <Button>Invite teammates</Button>
+            </Link>
+          ) : null}
+          {isTeam ? (
             <Link to="/organization/sso" className="no-underline">
-              <Button>Set up SSO</Button>
+              <Button variant="secondary">Set up SSO</Button>
             </Link>
           ) : null}
           <Link to="/discovery" className="no-underline">
@@ -129,11 +134,11 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
     <div className="mx-auto w-full max-w-3xl space-y-4">
       <p className="type-label-medium text-outline">Payment</p>
       <h1 className="type-display-small text-on-surface">
-        {phase === "timeout" ? "Almost there" : "Finishing setup"}
+        {phase === "timeout" ? "Payment status unclear" : "Finishing setup"}
       </h1>
       <p className="type-body-large text-outline">
         {phase === "timeout"
-          ? "Payment succeeded, but access has not appeared yet. Refresh in a moment."
+          ? "If you see a charge, contact us with your receipt before trying again."
           : "Stripe has not confirmed this payment yet."}
       </p>
       {phase === "timeout" ? (
@@ -145,9 +150,12 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
           >
             Refresh
           </Button>
-          <Link to="/onboarding" search={{ purchase, step: "payment" }} className="no-underline">
-            <Button variant="secondary">Return to payment</Button>
-          </Link>
+          <a
+            href="mailto:hello@rebuildingus.org?subject=Atlas%20payment%20help"
+            className="no-underline"
+          >
+            <Button variant="secondary">Contact support</Button>
+          </a>
         </div>
       ) : null}
     </div>

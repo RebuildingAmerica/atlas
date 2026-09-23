@@ -28,9 +28,9 @@ export function SignUpFormPanel({
   onSubmit,
 }: SignUpFormPanelProps) {
   const eyebrow = isTeamSso ? "Atlas Team" : "Create your account";
-  const heading = isTeamSso ? "Set up SSO for your team" : "Join Atlas";
+  const heading = isTeamSso ? "Start your Atlas Team workspace" : "Join Atlas";
   const subhead = isTeamSso
-    ? "Create your account, then choose Atlas Team and configure your identity provider. Free to start; pay only when you confirm the team plan."
+    ? "Create your account and shared workspace, then review the Team plan before payment. Invite teammates when your workspace is ready. SSO is optional."
     : "Enter your email and we'll send you a link to get started. Free to join.";
   const ctaCopy = isPending
     ? "Creating account..."
@@ -83,7 +83,7 @@ export function SignUpFormPanel({
       {!isTeamSso ? (
         <div className="border-outline-variant rounded-2xl border px-4 py-3">
           <p className="type-body-small text-outline">
-            Setting up SSO for your team?{" "}
+            Working with a team?{" "}
             <Link
               to="/sign-up"
               search={{ intent: "team-sso" }}
