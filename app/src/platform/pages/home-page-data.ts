@@ -58,6 +58,14 @@ export function browseUrl(query: string): string {
   return `/browse?query=${encodeURIComponent(query)}&offset=0`;
 }
 
+/** Recently indexed shortcuts use the same structured type filters as Browse. */
+export function browseRecentFilterUrl(filter: string): string {
+  if (filter === "All") return "/browse";
+  if (filter === "People") return browseFilterUrl("entry_types", "person");
+  if (filter === "Organizations") return browseFilterUrl("entry_types", "organization");
+  return browseUrl(filter);
+}
+
 function browseFilterUrl(
   key: "cities" | "entry_types" | "issue_areas" | "regions" | "source_types" | "states",
   value: string,

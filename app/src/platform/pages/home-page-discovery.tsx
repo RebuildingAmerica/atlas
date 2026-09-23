@@ -4,7 +4,7 @@ import {
   ISSUE_CHIPS,
   NUMBER_FORMATTER,
   type HomeFacetTile,
-  browseUrl,
+  browseRecentFilterUrl,
   formatLocation,
   humanizeIssue,
   profileHref,
@@ -78,7 +78,7 @@ export function HomeDiscoverySection({
             {["All", "People", "Organizations", ...ISSUE_CHIPS].map((filter) => (
               <a
                 key={filter}
-                href={filter === "All" ? "/browse" : browseUrl(filter)}
+                href={browseRecentFilterUrl(filter)}
                 className="type-label-small border-border-strong text-ink-soft hover:bg-surface-container border px-3 py-1.5 no-underline transition-colors duration-150"
               >
                 {filter}

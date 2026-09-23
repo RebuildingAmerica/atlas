@@ -51,6 +51,14 @@ describe("HomePage recently indexed", () => {
       "href",
       "/browse",
     );
+    expect(within(recentSection).getByRole("link", { name: "People" })).toHaveAttribute(
+      "href",
+      "/browse?entry_types=person&offset=0",
+    );
+    expect(within(recentSection).getByRole("link", { name: "Organizations" })).toHaveAttribute(
+      "href",
+      "/browse?entry_types=organization&offset=0",
+    );
   });
 
   it("names the place of a record the catalog has no description for", () => {

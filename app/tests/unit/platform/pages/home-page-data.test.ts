@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createEntryFixture } from "@/../tests/fixtures/catalog/entries";
 import { homeFacets } from "./home-page-data-test-support";
 import {
+  browseRecentFilterUrl,
   browseUrl,
   buildHomeIssueTiles,
   buildHomePlaceTiles,
@@ -18,6 +19,16 @@ describe("browseUrl", () => {
     expect(browseUrl("tenant unions & rent")).toBe(
       "/browse?query=tenant%20unions%20%26%20rent&offset=0",
     );
+  });
+});
+
+describe("browseRecentFilterUrl", () => {
+  it("routes People and Organizations to the entry-type filters", () => {
+    expect(browseRecentFilterUrl("People")).toBe("/browse?entry_types=person&offset=0");
+    expect(browseRecentFilterUrl("Organizations")).toBe(
+      "/browse?entry_types=organization&offset=0",
+    );
+    expect(browseRecentFilterUrl("Housing")).toBe("/browse?query=Housing&offset=0");
   });
 });
 
