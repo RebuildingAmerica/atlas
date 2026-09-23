@@ -94,8 +94,9 @@ own acceptance rows.
 ## Validation of this branch
 
 - App TypeScript and lint passed for changed files; targeted tests cover the
-  edited Browse, save, profile evidence, billing, and team paths. The full app
-  unit run passed 592 files and 3,800 tests without a coverage run.
+  edited Browse, save, profile evidence, billing, and team paths. The enforced
+  app coverage run passed 593 files and 3,836 tests with 100% statements,
+  branches, functions, and lines.
 - A focused app run passed 161 files and 1,330 tests across billing,
   organization controls, and catalog components after aligning one stale webhook
   expectation.
@@ -103,11 +104,14 @@ own acceptance rows.
   18 cases after a disk-full environment retry. The full API run without
   coverage passed 2,292 tests with six skips and one `aiosqlite` event-loop
   teardown warning in a firehose WebSocket test.
-- Remote `origin/main` was fetched; this branch is 16 commits ahead, none
-  behind, and has no merge commits relative to it.
-- No full application coverage-gated test run, hosted end-to-end suite, real
-  account/device journey, production deployment, or provider payment test was
-  completed here.
+- The default full API coverage gate was attempted, then interrupted after it
+  reached only 3% in over eight minutes. It had reported no test failure, but
+  this is **not** a coverage pass; the release gate still needs a completed run
+  on the candidate.
+- Remote `origin/main` was fetched; this branch is ahead, none behind, and has
+  no merge commits relative to it.
+- No full API coverage-gated run, hosted end-to-end suite, real account/device
+  journey, production deployment, or provider payment test was completed here.
 
 The release decision must be updated from observed outcomes. Source code,
 documentation, and a commit are reviewable progress, not a launch certificate.
