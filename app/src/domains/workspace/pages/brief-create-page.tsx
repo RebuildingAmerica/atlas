@@ -1,9 +1,17 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, FileText, ShieldCheck } from "lucide-react";
 import type { FormEvent } from "react";
-import { useId, useMemo, useState } from "react";
+import { useId, useState } from "react";
 import { useCreateWorkspaceBrief } from "@/domains/workspace/hooks/use-briefs";
+import { useSavedLists } from "@/domains/catalog/hooks/use-claims";
+import { useDiscoveryRuns } from "@/domains/discovery/hooks/use-discovery";
 import type { AtlasBriefConfidenceState } from "@/domains/workspace/server/briefs";
+import { exportSavedList } from "@rebuildingamerica/atlas-api-client/generated/atlas";
+import type {
+  SavedListExportItemResponse,
+  SavedListExportSource,
+} from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import type { BriefCreateStateFields } from "./brief-create-page-utils";
@@ -20,13 +28,42 @@ import {
 
 type BriefCreateFormState = BriefCreateStateFields;
 
-export function BriefCreatePage() {
+interface BriefCreatePageProps {
+  initialListId?: string;
+}
+
+export function BriefCreatePage({ initialListId = "" }: BriefCreatePageProps) {
   const navigate = useNavigate();
   const createBrief = useCreateWorkspaceBrief();
+  const savedLists = useSavedLists();
+  const discoveryRuns = useDiscoveryRuns();
   const knownGapsId = useId();
   const [formState, setFormState] = useState<BriefCreateFormState>(initialFormState);
   const [error, setError] = useState("");
-  const counts = useMemo(() => evidenceCounts(formState), [formState]);
+  const [selectedListId, setSelectedListId] = useState(initialListId);
+  const [chosenActorIds, setChosenActorIds] = useState<string[] | null>(null);
+  const [chosenSourceIds, setChosenSourceIds] = useState<string[]>([]);
+  const [chosenRunIds, setChosenRunIds] = useState<string[]>([]);
+  const listExport = useQuery({
+    enabled: Boolean(selectedListId),
+    queryKey: ["brief", "list-evidence", selectedListId],
+    queryFn: () => exportSavedList(selectedListId),
+  });
+  const listItems = listExport.data?.items ?? [];
+  const availableItems = listItems.filter((item) => item.entry);
+  const selectedActorIds = chosenActorIds ?? availableItems.map((item) => item.entry_id);
+  const selectedItems = availableItems.filter((item) => selectedActorIds.includes(item.entry_id));
+  const sourceCandidates = uniqueSources(selectedItems);
+  const selectedSources = sourceCandidates.filter((source) => chosenSourceIds.includes(source.id));
+  const draftState = {
+    ...formState,
+    actorTypes: uniqueValues(selectedItems.map((item) => item.entry?.type)).join(", "),
+    linkedDiscoveryRunIds: chosenRunIds.join(", "),
+    linkedEntryIds: selectedActorIds.join(", "),
+    linkedSourceIds: selectedSources.map((source) => source.id).join(", "),
+    sourceTypes: uniqueValues(selectedSources.map((source) => source.type)).join(", "),
+  };
+  const counts = evidenceCounts(draftState);
 
   function updateField<Key extends keyof BriefCreateFormState>(
     key: Key,
@@ -40,9 +77,26 @@ export function BriefCreatePage() {
     event.preventDefault();
     setError("");
 
+    if (!selectedListId || !listExport.data) {
+      setError("Choose a saved list with people or groups to include.");
+      return;
+    }
+    if (selectedActorIds.length === 0) {
+      setError("Choose at least one person or group.");
+      return;
+    }
+    if (selectedSources.length === 0) {
+      setError("Choose at least one source receipt from your saved profiles.");
+      return;
+    }
+    if (selectedSources.some((source) => !source.type)) {
+      setError("A selected source is missing its type. Choose another receipt.");
+      return;
+    }
+
     // Only the form validator's own message is safe to show: it names the
     // field the author still has to fill in.
-    const draft = buildBriefCreateInput(formState);
+    const draft = buildBriefCreateInput(draftState);
     if (draft.input === null) {
       setError(draft.problem);
       return;
@@ -164,65 +218,148 @@ export function BriefCreatePage() {
                   className={fieldClassName()}
                 />
               </label>
-              <label className="block space-y-1">
-                <span className="type-label-small text-ink-muted">Actors</span>
-                <input
-                  required
-                  value={formState.actorTypes}
-                  onChange={(event) => {
-                    updateField("actorTypes", event.target.value);
-                  }}
-                  className={fieldClassName()}
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="type-label-small text-ink-muted">Sources</span>
-                <input
-                  required
-                  value={formState.sourceTypes}
-                  onChange={(event) => {
-                    updateField("sourceTypes", event.target.value);
-                  }}
-                  className={fieldClassName()}
-                />
-              </label>
             </div>
           </section>
 
           <section className="border-outline-variant bg-surface-container-lowest space-y-4 rounded-lg border p-5">
-            <h2 className="type-title-large text-ink-strong">Linked Evidence</h2>
-            <div className="grid gap-3 md:grid-cols-3">
-              <label className="block space-y-1">
-                <span className="type-label-small text-ink-muted">Linked actor IDs</span>
-                <textarea
-                  value={formState.linkedEntryIds}
-                  onChange={(event) => {
-                    updateField("linkedEntryIds", event.target.value);
-                  }}
-                  className={textAreaClassName()}
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="type-label-small text-ink-muted">Source receipt IDs</span>
-                <textarea
-                  value={formState.linkedSourceIds}
-                  onChange={(event) => {
-                    updateField("linkedSourceIds", event.target.value);
-                  }}
-                  className={textAreaClassName()}
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="type-label-small text-ink-muted">Research run IDs</span>
-                <textarea
-                  value={formState.linkedDiscoveryRunIds}
-                  onChange={(event) => {
-                    updateField("linkedDiscoveryRunIds", event.target.value);
-                  }}
-                  className={textAreaClassName()}
-                />
-              </label>
-            </div>
+            <h2 className="type-title-large text-ink-strong">People and sources</h2>
+            <label className="block space-y-1">
+              <span className="type-label-small text-ink-muted">Saved list</span>
+              <select
+                value={selectedListId}
+                onChange={(event) => {
+                  setSelectedListId(event.target.value);
+                  setChosenActorIds(null);
+                  setChosenSourceIds([]);
+                  setError("");
+                }}
+                className={fieldClassName()}
+              >
+                <option value="">Choose a list</option>
+                {(savedLists.data ?? []).map((list) => (
+                  <option key={list.id} value={list.id}>
+                    {list.name} ({list.item_count ?? 0})
+                  </option>
+                ))}
+              </select>
+            </label>
+            {savedLists.isError ? (
+              <p className="type-body-small text-ink-soft">Saved lists could not load.</p>
+            ) : savedLists.data?.length === 0 ? (
+              <p className="type-body-small text-ink-soft">
+                No saved lists yet.{" "}
+                <Link to="/browse" className="underline">
+                  Explore people and groups
+                </Link>
+                .
+              </p>
+            ) : null}
+            {listExport.isError ? (
+              <p className="type-body-small text-ink-soft">
+                This list could not load. Choose it again or try later.
+              </p>
+            ) : listExport.isPending && selectedListId ? (
+              <p className="type-body-small text-ink-soft">Loading saved profiles…</p>
+            ) : null}
+            {listExport.data && listItems.length === 0 ? (
+              <p className="type-body-small text-ink-soft">This list has no saved profiles.</p>
+            ) : null}
+            {listItems.length > 0 && availableItems.length === 0 ? (
+              <p className="type-body-small text-ink-soft">
+                Saved profiles in this list are unavailable.
+              </p>
+            ) : null}
+            {availableItems.length > 0 ? (
+              <fieldset className="space-y-2">
+                <legend className="type-label-medium text-ink-strong">
+                  Include people and groups
+                </legend>
+                {availableItems.map((item) => (
+                  <label
+                    key={item.entry_id}
+                    className="type-body-medium text-ink-strong flex items-start gap-2"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={selectedActorIds.includes(item.entry_id)}
+                      onChange={() => {
+                        setChosenActorIds(toggleSelection(selectedActorIds, item.entry_id));
+                        setError("");
+                      }}
+                    />
+                    {item.entry?.name ?? "Unavailable profile"}
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            {selectedItems.length > 0 ? (
+              <fieldset className="space-y-2">
+                <legend className="type-label-medium text-ink-strong">
+                  Attach source receipts
+                </legend>
+                {sourceCandidates.length > 0 ? (
+                  sourceCandidates.map((source) => (
+                    <div
+                      key={source.id}
+                      className="border-border flex flex-wrap items-start justify-between gap-2 rounded-lg border p-3"
+                    >
+                      <label className="type-body-small text-ink-strong flex min-w-0 items-start gap-2">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={chosenSourceIds.includes(source.id)}
+                          onChange={() => {
+                            setChosenSourceIds((current) => toggleSelection(current, source.id));
+                            setError("");
+                          }}
+                        />
+                        <span className="break-words">
+                          {source.title || source.publication || source.url}
+                        </span>
+                      </label>
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="type-label-small text-accent break-all"
+                      >
+                        Open source
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <p className="type-body-small text-ink-soft">
+                    No source receipts are linked to these profiles.
+                  </p>
+                )}
+              </fieldset>
+            ) : null}
+            <fieldset className="space-y-2">
+              <legend className="type-label-medium text-ink-strong">Earlier research</legend>
+              {(discoveryRuns.data?.items ?? [])
+                .filter((run) => run.status === "completed")
+                .map((run) => (
+                  <label
+                    key={run.id}
+                    className="type-body-small text-ink-strong flex items-start gap-2"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={chosenRunIds.includes(run.id)}
+                      onChange={() => {
+                        setChosenRunIds((current) => toggleSelection(current, run.id));
+                        setError("");
+                      }}
+                    />
+                    {run.location_query} · {run.issue_areas.join(", ")}
+                  </label>
+                ))}
+              {discoveryRuns.isError ? (
+                <p className="type-body-small text-ink-soft">Earlier research could not load.</p>
+              ) : null}
+            </fieldset>
           </section>
         </div>
 
@@ -311,4 +448,33 @@ export function BriefCreatePage() {
       </form>
     </div>
   );
+}
+
+function toggleSelection(current: string[], value: string): string[] {
+  return current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
+}
+
+function uniqueValues(values: (string | null | undefined)[]): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+function uniqueSources(items: SavedListExportItemResponse[]): SavedListExportSource[] {
+  const sources = new Map<string, SavedListExportSource>();
+  for (const item of items) {
+    for (const source of item.sources ?? []) {
+      if (safeSourceUrl(source.url)) {
+        sources.set(source.id, source);
+      }
+    }
+  }
+  return [...sources.values()];
+}
+
+function safeSourceUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }

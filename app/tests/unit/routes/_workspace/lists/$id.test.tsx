@@ -163,6 +163,10 @@ describe("routes/_workspace/lists/$id", () => {
     expect(screen.getByText("Profile unavailable")).toBeInTheDocument();
     expect(screen.getAllByText(/Detroit, MI/).length).toBeGreaterThan(0);
     expect(screen.getByText(/“first”/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Create a brief from this list" })).toHaveAttribute(
+      "href",
+      "/briefs/new?list=list-1",
+    );
 
     const removeButton = screen.getByLabelText("Remove Acme from list");
     fireEvent.click(removeButton);

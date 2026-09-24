@@ -245,6 +245,15 @@ function ListDetailRoute() {
         <p className="type-body-medium text-ink-soft">
           Saved actors grouped with notes and source counts for one research thread.
         </p>
+        {items.length > 0 ? (
+          <Link
+            to="/briefs/new"
+            search={{ list: data.id }}
+            className="type-label-medium text-accent hover:text-accent-ink inline-flex"
+          >
+            Create a brief from this list
+          </Link>
+        ) : null}
       </section>
 
       <WorkflowSections
