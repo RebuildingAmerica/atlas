@@ -174,7 +174,7 @@ describe("EntryDetail freshness", () => {
     expect(screen.queryByText("Stale record")).not.toBeInTheDocument();
   });
 
-  it("falls back to the last-seen date when no source carries one", () => {
+  it("does not call last-seen time the newest source date", () => {
     render(
       <EntryDetail
         entry={createEntryFixture({
@@ -184,7 +184,7 @@ describe("EntryDetail freshness", () => {
       />,
     );
 
-    expect(screen.getByText("Stale record")).toBeInTheDocument();
+    expect(screen.queryByText("Stale record")).not.toBeInTheDocument();
     expect(screen.queryByText(/^Latest source: /)).not.toBeInTheDocument();
   });
 

@@ -20,7 +20,7 @@ from atlas.domains.catalog.schemas.public import (
 )
 from atlas.models import EntryCRUD, FlagCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
-from atlas.platform.dates import date_string
+from atlas.platform.dates import latest_published_source_date
 from atlas.platform.mcp.data import EntityRecordContext, _entity_record
 
 if TYPE_CHECKING:
@@ -71,16 +71,7 @@ async def _hydrate_entry_with_sources(
             issue_area_ids=issue_areas,
             source_types=sorted({source["type"] for source in sources}),
             source_count=len(sources),
-            latest_source_date=(
-                next(
-                    (
-                        date_string(source.get("published_date") or source.get("ingested_at"))
-                        for source in sources
-                        if source.get("published_date") or source.get("ingested_at")
-                    ),
-                    None,
-                )
-            ),
+            latest_source_date=latest_published_source_date(sources),
             flag_summary=flag_summaries.get(entry_id),
         ),
     )

@@ -232,13 +232,13 @@ class ReviewQueueCRUD:
         org_id: str | None = None,
         stale_after_days: int = STALE_SOURCE_REVIEW_DAYS,
     ) -> list[str]:
-        """Enqueue public records whose latest source receipt is stale."""
+        """Enqueue public records with stale or undated source evidence."""
         rows = await ReviewQueueCRUD._public_entry_source_rows(conn, org_id=org_id)
         threshold = datetime.now(UTC).date() - timedelta(days=stale_after_days)
         review_item_ids: list[str] = []
         for row_org_id, entity_id, latest_source_date, source_count in rows:
             latest_date = coerce_date(latest_source_date)
-            if latest_date is None or latest_date > threshold:
+            if latest_date is not None and latest_date > threshold:
                 continue
             if await ReviewQueueCRUD._has_pending_staleness_item(
                 conn, org_id=str(row_org_id), entity_id=str(entity_id)
@@ -252,7 +252,11 @@ class ReviewQueueCRUD:
                 hold_reason=STALE_SOURCE_REVIEW_REASON,
                 score=float(source_count),
                 dedup_suspect=False,
-                dedup_note=f"Latest source date: {latest_date.isoformat()}",
+                dedup_note=(
+                    f"Latest source date: {latest_date.isoformat()}"
+                    if latest_date is not None
+                    else "No dated source"
+                ),
             )
             review_item_ids.append(review_item_id)
         return review_item_ids
@@ -263,7 +267,7 @@ class ReviewQueueCRUD:
         *,
         org_id: str | None,
     ) -> list[tuple[str, str, str | None, int]]:
-        """Return public entries with their latest source receipt date."""
+        """Return public entries with their latest published source date."""
         where_org = "AND ro.org_id = ?" if org_id is not None else ""
         params = (org_id,) if org_id is not None else ()
         cursor = await conn.execute(
@@ -271,7 +275,7 @@ class ReviewQueueCRUD:
             SELECT
                 ro.org_id,
                 e.id,
-                MAX(COALESCE(s.published_date, DATE(s.ingested_at), DATE(s.created_at))),
+                MAX(s.published_date),
                 COUNT(DISTINCT s.id)
             FROM resource_ownership ro
             JOIN entries e ON e.id = ro.resource_id

@@ -64,7 +64,7 @@ class TestOrgEntriesPublicDirectory:
         assert payload["stats"]["record_count"] == 1
         assert payload["stats"]["source_count"] == 1
         assert payload["stats"]["source_backed_record_count"] == 1
-        assert payload["stats"]["last_reviewed_at"] is not None
+        assert payload["stats"]["last_reviewed_at"] is None
         assert payload["publication"] == {
             "visibility": "public",
             "private_notes_exposed": False,
@@ -137,9 +137,8 @@ class TestOrgEntriesPublicDirectory:
         )
 
         assert directory_resp.status_code == STATUS_OK
-        assert (
-            directory_resp.json()["entries"][0]["freshness"]["latest_source_date"] == "2026-08-01"
-        )
+        assert directory_resp.json()["entries"][0]["freshness"]["latest_source_date"] is None
+        assert directory_resp.json()["stats"]["last_reviewed_at"] is None
 
     @pytest.mark.asyncio
     async def test_public_directory_index_lists_source_backed_published_directories(

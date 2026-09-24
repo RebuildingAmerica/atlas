@@ -78,3 +78,15 @@ class TestProjectionShape:
         assert point["geocode_source"] == "gazetteer"
         assert point["source_count"] == _TWO
         assert point["latest_source_date"] == "2026-05-04"
+
+    async def test_undated_map_source_has_no_latest_publication_date(
+        self, test_db: aiosqlite.Connection
+    ) -> None:
+        entry_id = await _place(test_db, name="Undated Map Org")
+        await _link_source(test_db, entry_id, "https://example.org/undated-map-source")
+
+        result = await EntryCRUD.search_map_points(test_db, **_US_BBOX)
+
+        point = next(point for point in result["points"] if point["id"] == entry_id)
+        assert point["source_count"] == 1
+        assert point["latest_source_date"] is None

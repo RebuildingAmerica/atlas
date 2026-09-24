@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
-from atlas.platform.dates import date_string
+from atlas.platform.dates import date_string, latest_published_source_date
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -132,21 +132,8 @@ def _date_prefix(value: object) -> str | None:
 
 
 def _latest_source_date(sources: Sequence[dict[str, Any]]) -> str | None:
-    """Return the newest source date the map can show without loading sources."""
-    dates = [
-        candidate
-        for source in sources
-        if (
-            candidate := (
-                _date_prefix(source.get("published_date"))
-                or _date_prefix(source.get("ingested_at"))
-                or _date_prefix(source.get("created_at"))
-            )
-        )
-    ]
-    if not dates:
-        return None
-    return max(str(value) for value in dates)
+    """Return the newest actual publication date for map source context."""
+    return latest_published_source_date(sources)
 
 
 def _suppressed_source_ids(row: dict[str, Any]) -> set[str]:

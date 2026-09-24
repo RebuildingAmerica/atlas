@@ -47,8 +47,20 @@ describe("ProfileResearchContext", () => {
     expect(screen.getByText("Kansas City, MO")).toBeInTheDocument();
     expect(facts.getByText("Contact")).toBeInTheDocument();
     expect(screen.getByText("hello@housingjusticekc.org")).toBeInTheDocument();
-    expect(screen.getByText("Last seen")).toBeInTheDocument();
+    expect(screen.getByText("Latest dated source")).toBeInTheDocument();
     expect(screen.getByText("Apr 2026")).toBeInTheDocument();
+  });
+
+  it("does not substitute last-seen time when every source is undated", () => {
+    render(
+      <ProfileResearchContext
+        entry={buildEntry({ latest_source_date: undefined, last_seen: new Date().toISOString() })}
+        issueAreaLabels={{}}
+      />,
+    );
+
+    expect(screen.getByText("Latest dated source")).toBeInTheDocument();
+    expect(screen.getByText("No dated source")).toBeInTheDocument();
   });
 
   it("omits contact details when no public contact route exists", () => {

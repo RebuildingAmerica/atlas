@@ -154,7 +154,7 @@ describe("WorkSection", () => {
     expect(screen.getByText(/most recent:/)).toBeInTheDocument();
   });
 
-  it("uses ingested_at when both sources omit published_date", () => {
+  it("does not call recently ingested undated pages recent coverage", () => {
     const today = new Date();
     const a = new Date(today.getTime() - 5 * 86_400_000);
     const b = new Date(today.getTime() - 3 * 86_400_000);
@@ -176,7 +176,8 @@ describe("WorkSection", () => {
       ],
     });
     render(<WorkSection entry={entry} issueAreaLabels={{}} showIssueChips={false} />);
-    expect(screen.getByText(/Second/)).toBeInTheDocument();
+    expect(screen.getByText("No recent coverage on file.")).toBeInTheDocument();
+    expect(screen.queryByText(/source in last 90 days/i)).not.toBeInTheDocument();
   });
 
   it("pluralizes the recent-source count and sorts multiple dated sources", () => {

@@ -103,7 +103,7 @@ describe("ProfileHistory", () => {
     expect(screen.getByText("Undated")).toBeInTheDocument();
   });
 
-  it("dates a source packet from ingestion when the publisher gave no date", () => {
+  it("does not turn ingestion into a source event when the publisher gave no date", () => {
     render(
       <ProfileHistory
         entry={buildEntry({
@@ -119,9 +119,8 @@ describe("ProfileHistory", () => {
       />,
     );
 
-    expect(screen.getByText("Latest source")).toBeInTheDocument();
-    expect(screen.getByText("Hotline expands")).toBeInTheDocument();
-    expect(screen.getByText(/Jun 2026/)).toBeInTheDocument();
+    expect(screen.queryByText("Latest source")).not.toBeInTheDocument();
+    expect(screen.getByText("No dated source updates.")).toBeInTheDocument();
   });
 
   it("falls back to a generic packet label when a source is untitled", () => {

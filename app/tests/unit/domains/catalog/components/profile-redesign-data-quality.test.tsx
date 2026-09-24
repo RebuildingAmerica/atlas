@@ -407,15 +407,18 @@ describe("DataQualityBlock", () => {
     expect(screen.getByText("1 source")).toBeInTheDocument();
   });
 
-  it("falls back to last_seen when latest_source_date is not available", () => {
+  it("does not present last-seen ingestion as dated source activity", () => {
     render(
       <DataQualityBlock
         entry={buildEntry({
           last_seen: new Date().toISOString(),
+          latest_source_date: undefined,
         })}
       />,
     );
-    expect(screen.getAllByText(/today|d ago/).length).toBeGreaterThan(0);
+    expect(screen.getByText("Latest dated source")).toBeInTheDocument();
+    expect(screen.getByText("No dated sources")).toBeInTheDocument();
+    expect(screen.queryByText("Last activity")).not.toBeInTheDocument();
   });
   it("counts a social handle as a way to reach the subject", () => {
     render(

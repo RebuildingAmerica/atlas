@@ -111,8 +111,10 @@ function verificationBadge(entry: Entry): VerificationBadgeInfo {
 }
 
 function recordFreshnessWarning(entry: Entry): string | null {
-  const freshnessSource = entry.latest_source_date ?? entry.last_seen;
-  const freshness = formatFreshness(freshnessSource);
+  if (!entry.latest_source_date) {
+    return null;
+  }
+  const freshness = formatFreshness(entry.latest_source_date);
   if (freshness.status === "fresh") {
     return null;
   }

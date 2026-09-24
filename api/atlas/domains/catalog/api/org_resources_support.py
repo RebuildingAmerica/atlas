@@ -14,7 +14,7 @@ from atlas.domains.catalog.services.directory_domains import (
 )
 from atlas.models import EntryCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
-from atlas.platform.dates import date_string
+from atlas.platform.dates import latest_published_source_date
 from atlas.platform.mcp.data import (
     EntityRecordContext,
     _entity_record,
@@ -53,7 +53,6 @@ __all__ = [
     "_entry_to_source_linked_detail_response",
     "_geography_label",
     "_humanize_identifier",
-    "_latest_source_date",
     "_public_directory_federation",
     "_public_directory_scope",
     "_public_directory_stats",
@@ -168,21 +167,6 @@ def _geography_label(entry: EntityDetailResponse) -> str | None:
     return entry.address.region
 
 
-def _latest_source_date(entry: EntityDetailResponse) -> str | None:
-    """Return the latest visible source or freshness date for one directory entry."""
-    candidates = [
-        entry.freshness.latest_source_date,
-        *(
-            source.freshness.published_date
-            or source.freshness.ingested_at
-            or source.freshness.created_at
-            for source in entry.sources
-        ),
-    ]
-    dates = [candidate[:10] for candidate in candidates if candidate]
-    return max(dates) if dates else None
-
-
 def _public_directory_scope(entries: list[EntityDetailResponse]) -> PublicDirectoryScope:
     """Derive a public scope summary from source-backed directory entries."""
     geography_labels = sorted(
@@ -196,17 +180,12 @@ def _public_directory_scope(entries: list[EntityDetailResponse]) -> PublicDirect
 
 
 def _public_directory_stats(entries: list[EntityDetailResponse]) -> PublicDirectoryStats:
-    """Derive public coverage stats from source-backed directory entries."""
-    last_reviewed_dates = [
-        latest_source_date
-        for entry in entries
-        if (latest_source_date := _latest_source_date(entry)) is not None
-    ]
+    """Derive coverage counts without inventing an editorial review date."""
     return PublicDirectoryStats(
         record_count=len(entries),
         source_count=sum(entry.source_count for entry in entries),
         source_backed_record_count=sum(1 for entry in entries if entry.source_count > 0),
-        last_reviewed_at=max(last_reviewed_dates) if last_reviewed_dates else None,
+        last_reviewed_at=None,
     )
 
 
@@ -271,14 +250,7 @@ async def _entry_to_source_linked_detail_response(
         return None
     issue_areas = await EntryCRUD.get_issue_areas(conn, entry_id)
     source_types = sorted({str(source["type"]) for source in sources})
-    latest_source_date = next(
-        (
-            date_string(source.get("published_date") or source.get("ingested_at"))
-            for source in sources
-            if source.get("published_date") or source.get("ingested_at")
-        ),
-        None,
-    )
+    latest_source_date = latest_published_source_date(sources)
     record = _entity_record(
         entry,
         EntityRecordContext(

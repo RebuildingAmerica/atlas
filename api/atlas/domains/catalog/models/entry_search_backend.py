@@ -133,7 +133,7 @@ async def load_entries_with_metrics(
             e.*,
             COUNT(DISTINCT eia.issue_area) AS issue_count,
             COUNT(DISTINCT es.source_id) AS source_count,
-            MAX(COALESCE(s.published_date, DATE(s.ingested_at), e.last_seen)) AS latest_source_date
+            MAX(s.published_date) AS latest_source_date
         FROM entries e
         LEFT JOIN entry_issue_areas eia ON e.id = eia.entry_id
         LEFT JOIN entry_sources es ON e.id = es.entry_id

@@ -145,7 +145,7 @@ async def test_get_entity_accepts_postgres_source_timestamps(
     test_db: object,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Entity details should render when PostgreSQL returns source timestamps."""
+    """An ingestion timestamp must not stand in for an undated source."""
     entity_id = await EntryCRUD.create(
         test_db,
         entry_type="person",
@@ -177,7 +177,39 @@ async def test_get_entity_accepts_postgres_source_timestamps(
     response = await test_client.get(f"/api/entities/{entity_id}")
 
     assert response.status_code == STATUS_OK
-    assert response.json()["freshness"]["latest_source_date"] == "2026-08-01"
+    assert response.json()["freshness"]["latest_source_date"] is None
+
+
+@pytest.mark.asyncio
+async def test_undated_source_does_not_gain_a_publication_date_in_search(
+    test_client: object,
+    test_db: object,
+) -> None:
+    """A recent crawl is not evidence that an organization's source is recent."""
+    entity_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Undated Civic Homepage",
+        description="Community organizers with an undated website.",
+        city="Seattle",
+        state="WA",
+        geo_specificity="local",
+    )
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.org/undated-civic-homepage",
+        source_type="org_website",
+        extraction_method="manual",
+        title="Undated civic homepage",
+    )
+    await SourceCRUD.link_to_entry(test_db, entity_id, source_id)
+
+    response = await test_client.get("/api/entities?query=Undated%20Civic%20Homepage")
+
+    assert response.status_code == STATUS_OK
+    record = next(item for item in response.json()["items"] if item["id"] == entity_id)
+    assert record["source_count"] == 1
+    assert record["freshness"]["latest_source_date"] is None
 
 
 @pytest.mark.asyncio

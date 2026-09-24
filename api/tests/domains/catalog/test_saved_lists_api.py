@@ -158,10 +158,7 @@ class TestSavedListsAPI:
         export_resp = await test_client.get(f"/api/lists/{list_id}/export")
 
         assert export_resp.status_code == 200
-        assert (
-            export_resp.json()["items"][0]["entry"]["freshness"]["latest_source_date"]
-            == "2026-08-01"
-        )
+        assert export_resp.json()["items"][0]["entry"]["freshness"]["latest_source_date"] is None
 
     @pytest.mark.asyncio
     async def test_export_list_as_csv_preserves_research_rows(

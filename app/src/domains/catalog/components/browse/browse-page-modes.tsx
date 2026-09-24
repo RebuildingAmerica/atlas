@@ -301,7 +301,7 @@ function PrimitiveEntrySection({ entries, title }: { entries: Entry[]; title: st
 
 function EntryBriefCard({ entry }: { entry: Entry }) {
   const location = entryLocation(entry);
-  const latest = dateLabel(entry.latest_source_date ?? entry.updated_at);
+  const latestSource = entry.latest_source_date ? dateLabel(entry.latest_source_date) : null;
 
   return (
     <article className="border-border bg-surface-container-low hover:bg-surface-container border px-5 py-4 transition-colors duration-150">
@@ -320,7 +320,9 @@ function EntryBriefCard({ entry }: { entry: Entry }) {
         </span>
       </div>
       <p className="type-body-medium text-ink-soft mt-3 line-clamp-2">{entry.description}</p>
-      <p className="type-body-small text-ink-muted mt-3">Updated {latest}</p>
+      {latestSource ? (
+        <p className="type-body-small text-ink-muted mt-3">Source dated {latestSource}</p>
+      ) : null}
     </article>
   );
 }

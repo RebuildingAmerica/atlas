@@ -142,15 +142,13 @@ def test_latest_source_date_and_place_fallbacks() -> None:
     assert (
         data_module._latest_source_date(
             [{"published_date": "2026-01-15", "ingested_at": None}],
-            "fallback",
         )
         == "2026-01-15"
     )  # noqa: SLF001
     assert (
         data_module._latest_source_date(
             [{"published_date": None, "ingested_at": "2026-02-20T12:34:56Z"}],
-            "fallback",
         )
-        == "2026-02-20"
+        is None
     )  # noqa: SLF001
-    assert data_module._latest_source_date([], "fallback-date") == "fallback-date"  # noqa: SLF001
+    assert data_module._latest_source_date([]) is None  # noqa: SLF001

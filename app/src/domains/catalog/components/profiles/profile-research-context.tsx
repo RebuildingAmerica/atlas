@@ -99,12 +99,10 @@ function contextItems(entry: Entry, labels: Record<string, string>): ContextItem
   }
 
   items.push({
-    label: "Last seen",
-    value: formatDateTimeOrInput(
-      formatStableDateTime,
-      entry.latest_source_date ?? entry.last_seen,
-      MONTH_YEAR,
-    ),
+    label: "Latest dated source",
+    value: entry.latest_source_date
+      ? formatDateTimeOrInput(formatStableDateTime, entry.latest_source_date, MONTH_YEAR)
+      : "No dated source",
     Icon: CalendarClock,
   });
 

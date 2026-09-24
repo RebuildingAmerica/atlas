@@ -106,15 +106,15 @@ class TestRelationshipIds:
 class TestLatestSourceDate:
     def test_returns_published_date_when_present(self) -> None:
         sources = [{"published_date": "2026-01-15", "ingested_at": None}]
-        assert data_module._latest_source_date(sources, "fallback") == "2026-01-15"  # noqa: SLF001
+        assert data_module._latest_source_date(sources) == "2026-01-15"  # noqa: SLF001
 
-    def test_falls_back_to_ingested_at(self) -> None:
+    def test_does_not_substitute_ingested_at(self) -> None:
         sources = [{"published_date": None, "ingested_at": "2026-02-20T12:34:56Z"}]
-        assert data_module._latest_source_date(sources, "fallback") == "2026-02-20"  # noqa: SLF001
+        assert data_module._latest_source_date(sources) is None  # noqa: SLF001
 
-    def test_returns_fallback_when_nothing(self) -> None:
-        assert data_module._latest_source_date([], "fallback-date") == "fallback-date"  # noqa: SLF001
+    def test_returns_none_when_nothing(self) -> None:
+        assert data_module._latest_source_date([]) is None  # noqa: SLF001
 
     def test_skips_when_neither_field(self) -> None:
         sources = [{"published_date": None, "ingested_at": None}]
-        assert data_module._latest_source_date(sources, "fallback-date") == "fallback-date"  # noqa: SLF001
+        assert data_module._latest_source_date(sources) is None  # noqa: SLF001

@@ -186,11 +186,16 @@ class TestEntityFreshnessFallbackChain:
         assert info.latest_source_date == today.isoformat()
         assert info.staleness_status == "fresh"
 
-    def test_invalid_latest_source_date_falls_back_to_last_seen(self) -> None:
+    def test_invalid_latest_source_date_does_not_use_last_seen_as_evidence(self) -> None:
         entry = replace(_build_entry(), last_seen=datetime.now(UTC).date())
         info = data_module._entity_freshness(entry=entry, latest_source_date="not-a-date")  # noqa: SLF001
         assert info.latest_source_date is None
-        assert info.staleness_status == "fresh"
+        assert info.staleness_status == "unknown"
+
+    def test_recent_ingestion_without_dated_evidence_is_unknown(self) -> None:
+        entry = replace(_build_entry(), last_seen=datetime.now(UTC).date())
+        info = data_module._entity_freshness(entry=entry, latest_source_date=None)  # noqa: SLF001
+        assert info.staleness_status == "unknown"
 
 
 class TestSourceFreshness:
@@ -204,7 +209,7 @@ class TestSourceFreshness:
         )
         assert info.staleness_status == "fresh"
 
-    def test_falls_back_to_ingested(self) -> None:
+    def test_undated_source_does_not_become_fresh_when_ingested(self) -> None:
         info = data_module._source_freshness(  # noqa: SLF001
             {
                 "published_date": None,
@@ -212,9 +217,10 @@ class TestSourceFreshness:
                 "created_at": None,
             }
         )
-        assert info.staleness_status == "fresh"
+        assert info.staleness_status == "unknown"
+        assert info.ingested_at is not None
 
-    def test_falls_back_to_created_at(self) -> None:
+    def test_undated_source_does_not_age_from_record_creation(self) -> None:
         created_at = datetime.now(UTC).date() - timedelta(days=FRESHNESS_DAYS + 5)
         info = data_module._source_freshness(  # noqa: SLF001
             {
@@ -223,7 +229,7 @@ class TestSourceFreshness:
                 "created_at": created_at.isoformat(),
             }
         )
-        assert info.staleness_status == "aging"
+        assert info.staleness_status == "unknown"
 
     def test_marks_old_sources_stale(self) -> None:
         stale_date = datetime.now(UTC).date() - timedelta(days=data_module.AGING_DAYS + 5)

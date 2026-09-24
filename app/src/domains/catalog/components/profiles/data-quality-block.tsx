@@ -309,8 +309,9 @@ function StewardshipBlock({ entry }: { entry: Entry }) {
 }
 
 export function DataQualityBlock({ entry }: DataQualityBlockProps) {
-  const freshnessSource = entry.latest_source_date ?? entry.last_seen;
-  const freshness = formatFreshness(freshnessSource);
+  const sourceFreshness = entry.latest_source_date
+    ? formatFreshness(entry.latest_source_date)
+    : null;
 
   return (
     <div className="space-y-4">
@@ -324,9 +325,15 @@ export function DataQualityBlock({ entry }: DataQualityBlockProps) {
           }
         />
         <Row
-          label="Last activity"
-          value={<FreshnessChip isoDate={freshnessSource} prefix="" />}
-          aside={`${freshness.daysAgo}d ago`}
+          label="Latest dated source"
+          value={
+            entry.latest_source_date ? (
+              <FreshnessChip isoDate={entry.latest_source_date} prefix="" />
+            ) : (
+              <span className="type-body-medium text-ink-muted">No dated sources</span>
+            )
+          }
+          aside={sourceFreshness ? `${sourceFreshness.daysAgo}d ago` : undefined}
         />
         <Row
           label="Sources"

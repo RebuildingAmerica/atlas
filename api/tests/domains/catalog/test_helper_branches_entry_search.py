@@ -62,8 +62,9 @@ def test_latest_source_date_prefers_public_visible_dates() -> None:
         {"ingested_at": "2026-01-03T00:00:00Z"},
         {"created_at": "2026-01-01T00:00:00Z"},
     ]
-    assert entry_search._latest_source_date(sources) == "2026-01-03"
+    assert entry_search._latest_source_date(sources) == "2026-01-02"
     assert entry_search._latest_source_date([]) is None
+    assert entry_search._latest_source_date([{"ingested_at": "2026-01-03"}]) is None
 
 
 def test_latest_source_date_accepts_postgres_source_timestamps() -> None:
@@ -225,8 +226,8 @@ def test_public_directory_title_prefers_scope_then_org_id(scope: object, expecte
     assert org_resources._public_directory_title("local", scope) == expected
 
 
-def test_public_directory_scope_and_stats_use_visible_source_dates() -> None:
-    """Derived directory summaries should use the oldest visible public shape."""
+def test_public_directory_scope_does_not_mistake_sources_for_review() -> None:
+    """A published source date is not evidence of editorial review."""
     entry = SimpleNamespace(
         issue_area_ids=["housing_affordability"],
         type="organization",
@@ -258,4 +259,4 @@ def test_public_directory_scope_and_stats_use_visible_source_dates() -> None:
     assert scope.geography_labels == ["Gary, IN"]
     assert stats.record_count == 1
     assert stats.source_count == 2
-    assert stats.last_reviewed_at == "2026-01-03"
+    assert stats.last_reviewed_at is None

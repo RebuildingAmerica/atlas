@@ -29,7 +29,7 @@ describe("SpotlightCard", () => {
     expect(within(link).getByRole("heading", { level: 2, name: "Jane Doe" })).toBeInTheDocument();
     expect(within(link).getByText("Jackson, MS")).toBeInTheDocument();
     expect(within(link).getByText("7 sources")).toBeInTheDocument();
-    expect(within(link).getByText("Updated Feb 1, 2026")).toBeInTheDocument();
+    expect(within(link).getByText("Source dated Feb 1, 2026")).toBeInTheDocument();
     expect(within(link).getByText("Housing Affordability")).toBeInTheDocument();
     expect(within(link).getByText("Public Health")).toBeInTheDocument();
     expect(within(link).getByText("Labor")).toBeInTheDocument();
@@ -53,6 +53,6 @@ describe("SpotlightCard", () => {
 
   it("leaves out the freshness stamp when nothing dates the record", () => {
     render(<SpotlightCard entry={createEntryFixture()} issueAreaLabels={{}} />);
-    expect(screen.queryByText(/^Updated /)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Source dated /)).not.toBeInTheDocument();
   });
 });

@@ -17,7 +17,12 @@ from atlas.domains.catalog.schemas.public import (
     TrustInfo,
 )
 from atlas.models import EntryCRUD
-from atlas.platform.dates import coerce_date, date_string, row_timestamp_string
+from atlas.platform.dates import (
+    coerce_date,
+    date_string,
+    latest_published_source_date,
+    row_timestamp_string,
+)
 from atlas.schemas import DiscoveryRunResponse
 
 from .data_place_helpers import _format_place
@@ -300,12 +305,9 @@ async def _source_linked_entities_by_id(
     }
 
 
-def _latest_source_date(sources: Sequence[Mapping[str, Any]], fallback: str) -> str:
-    for source in sources:
-        latest = date_string(source.get("published_date")) or date_string(source.get("ingested_at"))
-        if latest:
-            return latest
-    return fallback
+def _latest_source_date(sources: Sequence[Mapping[str, Any]]) -> str | None:
+    """Expose only dates the linked sources actually publish."""
+    return latest_published_source_date(sources)
 
 
 def _entity_freshness(
@@ -316,8 +318,6 @@ def _entity_freshness(
         date_string(entry.last_confirmed_at)
         or (entry.last_verified.isoformat() if entry.last_verified else None)
         or latest_source_date_value
-        or entry.last_seen.isoformat()
-        or entry.updated_at
     )
     status, reason = _staleness(reference, "entity data")
     return FreshnessInfo(
@@ -332,10 +332,7 @@ def _entity_freshness(
 
 
 def _source_freshness(source: Mapping[str, Any]) -> FreshnessInfo:
-    reference = (
-        source.get("published_date") or source.get("ingested_at") or source.get("created_at")
-    )
-    status, reason = _staleness(reference, "source record")
+    status, reason = _staleness(source.get("published_date"), "source record")
     return FreshnessInfo(
         created_at=row_timestamp_string(source.get("created_at")),
         published_date=date_string(source.get("published_date")),

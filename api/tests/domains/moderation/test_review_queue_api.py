@@ -45,9 +45,9 @@ async def _seed_public_org_with_source(
     db_url: str,
     *,
     name: str,
-    published_date: date,
+    published_date: date | None,
 ) -> str:
-    """Create a public organization with one dated source receipt."""
+    """Create a public organization with one source receipt."""
     conn = await get_db_connection(db_url)
     try:
         entity_id = await EntryCRUD.create(
@@ -116,12 +116,17 @@ async def test_source_staleness_scan_enqueues_stale_public_records_once(
         name="Fresh Public Org",
         published_date=today,
     )
+    undated_entity_id = await _seed_public_org_with_source(
+        db_url,
+        name="Undated Public Org",
+        published_date=None,
+    )
 
     response = await test_client.post("/api/review-queue/source-staleness-scan")
     duplicate_response = await test_client.post("/api/review-queue/source-staleness-scan")
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json()["enqueued"] == 1
+    assert response.json()["enqueued"] == 2
     assert duplicate_response.status_code == HTTPStatus.OK
     assert duplicate_response.json()["enqueued"] == 0
 
@@ -131,11 +136,14 @@ async def test_source_staleness_scan_enqueues_stale_public_records_once(
     finally:
         await conn.close()
 
-    assert len(pending) == 1
-    assert pending[0].entity_id == stale_entity_id
-    assert pending[0].org_id == "local"
-    assert pending[0].kind == "source_staleness"
-    assert pending[0].hold_reason == "stale_public_source_review"
+    assert {item.entity_id for item in pending} == {stale_entity_id, undated_entity_id}
+    assert {item.org_id for item in pending} == {"local"}
+    assert {item.kind for item in pending} == {"source_staleness"}
+    assert {item.hold_reason for item in pending} == {"stale_public_source_review"}
+    assert {item.dedup_note for item in pending} == {
+        f"Latest source date: {(today - timedelta(days=400)).isoformat()}",
+        "No dated source",
+    }
 
 
 @pytest.mark.asyncio

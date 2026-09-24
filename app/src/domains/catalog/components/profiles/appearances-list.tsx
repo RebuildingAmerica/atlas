@@ -3,9 +3,8 @@
  *
  * Shows a stacked source-type distribution bar, the lead source rendered
  * expanded (title, publication, freshness, extraction context), and the
- * remaining sources as compact rows with type badge + freshness chip.
+ * remaining sources as compact rows with source dates only when published.
  */
-import { FreshnessChip } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
@@ -45,10 +44,6 @@ function SourceTypeBadge({ type }: { type: SourceType }) {
       {humanize(type)}
     </span>
   );
-}
-
-function sourceFreshnessIso(source: Source): string {
-  return source.published_date ?? source.ingested_at;
 }
 
 function sourceNoteLabel(source: Source): string {
@@ -95,7 +90,6 @@ function CompactSourceRow({ source }: { source: Source }) {
         {source.published_date ? (
           <span className="type-body-small text-ink-muted">{source.published_date}</span>
         ) : null}
-        <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
       </div>
       <a
         href={source.url}
@@ -122,7 +116,6 @@ function ExpandedSource({ source }: { source: Source }) {
         {source.published_date ? (
           <span className="type-body-small text-ink-muted">{source.published_date}</span>
         ) : null}
-        <FreshnessChip isoDate={sourceFreshnessIso(source)} prefix="" className="ml-auto" />
       </div>
       <SourceFreshnessWarning source={source} />
       <a

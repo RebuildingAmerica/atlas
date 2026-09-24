@@ -20,31 +20,27 @@ interface WorkSectionProps {
 function countRecentSources(sources: Source[], windowDays = 90): number {
   const cutoff = Date.now() - windowDays * 86_400_000;
   return sources.filter((source) => {
-    const reference = source.published_date ?? source.ingested_at;
-    const ts = new Date(reference).getTime();
+    const ts = source.published_date ? new Date(source.published_date).getTime() : NaN;
     return Number.isFinite(ts) && ts >= cutoff;
   }).length;
 }
 
 function formatMostRecentSource(sources: Source[]): string | null {
-  const sorted = [...sources].sort((a, b) => {
-    const aDate = a.published_date ?? a.ingested_at;
-    const bDate = b.published_date ?? b.ingested_at;
-    return new Date(bDate).getTime() - new Date(aDate).getTime();
-  });
+  const sorted = sources
+    .flatMap((source) => (source.published_date ? [{ source, date: source.published_date }] : []))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const latest = sorted[0];
   if (!latest) {
     return null;
   }
   // `published_date` is a calendar day, so the strip stays pinned to UTC rather
   // than sliding a source into the previous month for western readers.
-  const date = latest.published_date ?? latest.ingested_at;
-  const dateLabel = formatStableDateTime(date, MONTH_YEAR);
-  if (latest.publication) {
-    return `${latest.publication}, ${dateLabel}`;
+  const dateLabel = formatStableDateTime(latest.date, MONTH_YEAR);
+  if (latest.source.publication) {
+    return `${latest.source.publication}, ${dateLabel}`;
   }
-  if (latest.title) {
-    return `${latest.title}, ${dateLabel}`;
+  if (latest.source.title) {
+    return `${latest.source.title}, ${dateLabel}`;
   }
   return dateLabel;
 }

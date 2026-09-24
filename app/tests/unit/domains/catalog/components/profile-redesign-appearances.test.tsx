@@ -90,6 +90,27 @@ describe("AppearancesList", () => {
     expect(screen.getByText("Undated source")).toBeInTheDocument();
   });
 
+  it("does not show an undated source as fresh because it was just ingested", () => {
+    render(
+      <AppearancesList
+        mode="organization"
+        sources={[
+          buildSource({
+            published_date: undefined,
+            ingested_at: new Date().toISOString(),
+            freshness: {
+              staleness_status: "unknown",
+              staleness_reason: "No publication date is available.",
+            },
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Undated source")).toBeInTheDocument();
+    expect(screen.queryByText("today")).not.toBeInTheDocument();
+  });
+
   it("stays quiet about freshness when the API sends a status but no reason", () => {
     render(
       <AppearancesList

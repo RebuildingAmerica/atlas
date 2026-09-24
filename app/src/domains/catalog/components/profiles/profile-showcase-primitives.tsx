@@ -238,7 +238,7 @@ export function ShelfCard({
         <ProfileMeta entry={entry} issueAreaLabels={issueAreaLabels} />
         <div className="type-body-medium text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>{entry.source_count} sources</span>
-          {freshness ? <span>Updated {freshness}</span> : null}
+          {freshness ? <span>Source dated {freshness}</span> : null}
         </div>
       </article>
     </ProfileEntryLink>

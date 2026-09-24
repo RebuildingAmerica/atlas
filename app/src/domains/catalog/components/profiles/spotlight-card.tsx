@@ -57,7 +57,7 @@ export function SpotlightCard({ entry, issueAreaLabels }: SpotlightCardProps) {
           {freshness ? (
             <>
               <span aria-hidden>·</span>
-              <span>Updated {freshness}</span>
+              <span>Source dated {freshness}</span>
             </>
           ) : null}
         </div>

@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 
 def coerce_date(value: date | datetime | str | None) -> date | None:
@@ -32,6 +36,18 @@ def date_string(value: date | datetime | str | None) -> str | None:
     """Normalize database driver date values to public ISO date strings."""
     normalized = coerce_date(value)
     return normalized.isoformat() if normalized is not None else None
+
+
+def latest_published_source_date(sources: Sequence[Mapping[str, Any]]) -> str | None:
+    """Use publication evidence, never a crawl or record-creation timestamp."""
+    return max(
+        (
+            published
+            for source in sources
+            if (published := date_string(source.get("published_date"))) is not None
+        ),
+        default=None,
+    )
 
 
 def row_timestamp_string(value: date | datetime | str | None) -> str | None:

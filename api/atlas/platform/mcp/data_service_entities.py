@@ -116,7 +116,7 @@ class AtlasDataServiceEntityMixin:
                 source_count=len(sources),
                 source_ids=[str(source["id"]) for source in sources],
                 contact_source_ids=_contact_source_ids(entry, sources),
-                latest_source_date=_latest_source_date(sources, entry.last_seen.isoformat()),
+                latest_source_date=_latest_source_date(sources),
                 flag_summary=entity_flag_summaries.get(entity_id),
                 independent_source_count=independent_source_count,
                 website_grounded=website_grounded,

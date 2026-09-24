@@ -245,13 +245,13 @@ describe("ShelfCard", () => {
     expect(within(link).getByText("Community organizer focused on housing.")).toBeInTheDocument();
     expect(within(link).getByText("JD")).toBeInTheDocument();
     expect(within(link).getByText("3 sources")).toBeInTheDocument();
-    expect(within(link).getByText("Updated Feb 1, 2026")).toBeInTheDocument();
+    expect(within(link).getByText("Source dated Feb 1, 2026")).toBeInTheDocument();
     expect(within(link).getByText("Housing Affordability")).toBeInTheDocument();
   });
 
   it("leaves out the freshness line when no source date is on file", () => {
     render(<ShelfCard entry={createEntryFixture()} issueAreaLabels={{}} />);
-    expect(screen.queryByText(/^Updated /)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Source dated /)).not.toBeInTheDocument();
   });
 });
 

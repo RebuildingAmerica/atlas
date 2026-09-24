@@ -12,7 +12,7 @@ from atlas.domains.catalog.schemas.public import (
 )
 from atlas.models import get_db_connection
 from atlas.platform.config import Settings, get_settings
-from atlas.platform.dates import date_string
+from atlas.platform.dates import latest_published_source_date
 from atlas.platform.mcp.data import (
     EntityRecordContext,
     _entity_record,
@@ -103,14 +103,7 @@ def _entity_to_detail_response(  # noqa: PLR0913
     if suppressed_ids and not include_suppressed:
         sources = [source for source in sources if source["id"] not in suppressed_ids]
     source_types = sorted({source["type"] for source in sources})
-    latest_source_date = next(
-        (
-            date_string(source.get("published_date") or source.get("ingested_at"))
-            for source in sources
-            if source.get("published_date") or source.get("ingested_at")
-        ),
-        None,
-    )
+    latest_source_date = latest_published_source_date(sources)
     return EntityDetailResponse(
         **_entity_to_response(
             entry,

@@ -6,7 +6,12 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from atlas.platform.dates import date_string, require_date, row_timestamp_string
+from atlas.platform.dates import (
+    date_string,
+    latest_published_source_date,
+    require_date,
+    row_timestamp_string,
+)
 
 
 def test_date_string_canonicalizes_database_driver_values() -> None:
@@ -17,6 +22,17 @@ def test_date_string_canonicalizes_database_driver_values() -> None:
     assert date_string(datetime(2026, 1, 14, 12, 30, tzinfo=UTC)) == "2026-01-14"
     assert date_string(None) is None
     assert date_string("not-a-date") is None
+
+
+def test_latest_published_source_date_ignores_crawl_timestamps() -> None:
+    """A source added today must not look newly published without a date."""
+    sources = [
+        {"published_date": date(2024, 5, 1), "ingested_at": "2026-09-23T00:00:00Z"},
+        {"published_date": datetime(2025, 2, 3, 10, 0, tzinfo=UTC)},
+        {"published_date": "not-a-date", "ingested_at": "2026-09-23T00:00:00Z"},
+    ]
+    assert latest_published_source_date(sources) == "2025-02-03"
+    assert latest_published_source_date([{"ingested_at": "2026-09-23T00:00:00Z"}]) is None
 
 
 def test_require_date_rejects_invalid_required_values() -> None:
