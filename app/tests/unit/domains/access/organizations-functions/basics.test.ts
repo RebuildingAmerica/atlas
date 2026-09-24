@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
 import { authApi, mocks, resetOrganizationFunctionMocks } from "./mocks";
+import { fullOrganizationFixture } from "./support";
 
 describe("organizations.functions basics", () => {
   beforeEach(() => {
@@ -8,7 +9,9 @@ describe("organizations.functions basics", () => {
   });
 
   it("gets organization details", async () => {
-    const session = (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture();
+    const session = (
+      await import("../../../../fixtures/access/sessions")
+    ).createAtlasSessionFixture();
     mocks.ensureAtlasSession.mockResolvedValue(session);
 
     authApi.getFullOrganization.mockResolvedValue({
@@ -34,7 +37,9 @@ describe("organizations.functions basics", () => {
   });
 
   it("creates a workspace", async () => {
-    const session = (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture();
+    const session = (
+      await import("../../../../fixtures/access/sessions")
+    ).createAtlasSessionFixture();
     mocks.ensureReadyAtlasSession.mockResolvedValue(session);
     authApi.createOrganization.mockResolvedValue({ id: "new_org", slug: "new-workspace" });
 
@@ -121,6 +126,11 @@ describe("organizations.functions basics", () => {
   });
 
   it("rejects leaving a workspace as owner", async () => {
+    const details = fullOrganizationFixture(1, []);
+    const owner = details.members[0];
+    if (!owner) throw new Error("Expected owner fixture");
+    owner.role = "owner";
+    authApi.getFullOrganization.mockResolvedValue(details);
     mocks.ensureAtlasSession.mockResolvedValue(
       (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture({
         role: "owner",
@@ -135,8 +145,32 @@ describe("organizations.functions basics", () => {
 
     expect(response.error).toBeDefined();
     expect((response.error as Error).message).toContain(
-      "Transfer workspace ownership before leaving",
+      "Make another member an owner before leaving",
     );
+  });
+
+  it("lets an owner leave once another owner remains", async () => {
+    const details = fullOrganizationFixture(2, []);
+    const firstOwner = details.members[0];
+    const secondOwner = details.members[1];
+    if (!firstOwner || !secondOwner) throw new Error("Expected two owner fixtures");
+    firstOwner.role = "owner";
+    secondOwner.role = "owner";
+    authApi.getFullOrganization.mockResolvedValue(details);
+    authApi.leaveOrganization.mockResolvedValue(undefined);
+    mocks.ensureAtlasSession.mockResolvedValue(
+      (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture({
+        role: "owner",
+      }),
+    );
+
+    const { leaveWorkspace } = await import("@/domains/access/organizations.functions");
+    const response = (await leaveWorkspace.__executeServer({
+      method: "POST",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+    expect(response.result).toEqual({ ok: true });
+    expect(authApi.leaveOrganization).toHaveBeenCalledOnce();
   });
 
   it("rejects organization management in local mode", async () => {
@@ -153,7 +187,9 @@ describe("organizations.functions basics", () => {
   });
 
   it("returns organization details as null when no active workspace exists", async () => {
-    const session = (await import("../../../../fixtures/access/sessions")).createAtlasSessionFixture({
+    const session = (
+      await import("../../../../fixtures/access/sessions")
+    ).createAtlasSessionFixture({
       workspace: {
         activeOrganization: null,
         activeProducts: [],

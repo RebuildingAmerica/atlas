@@ -109,6 +109,38 @@ describe("TeamMembersSection", () => {
     expect(defaultProps.onRoleChange).toHaveBeenCalledWith("mem_2", "member");
   });
 
+  it("asks an owner before giving another member ownership", async () => {
+    const onRoleChange = vi.fn();
+    renderRoster({ ...defaultProps, onRoleChange });
+
+    fireEvent.change(screen.getByLabelText(/Role for admin@atlas.test/i), {
+      target: { value: "owner" },
+    });
+    expect(onRoleChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("full control");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onRoleChange).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/Role for admin@atlas.test/i), {
+      target: { value: "owner" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Make owner" }));
+    await waitFor(() => {
+      expect(onRoleChange).toHaveBeenCalledWith("mem_2", "owner");
+    });
+  });
+
+  it("does not offer ownership to an admin", () => {
+    const onRoleChange = vi.fn();
+    renderRoster({ ...defaultProps, currentUserId: "user_2", onRoleChange });
+    expect(screen.getByLabelText(/Role for member@atlas.test/i)).not.toHaveValue("owner");
+    expect(screen.queryByRole("option", { name: "Owner" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Role for member@atlas.test/i), {
+      target: { value: "owner" },
+    });
+    expect(onRoleChange).not.toHaveBeenCalled();
+  });
+
   it("reviews the lost access before removing a member", async () => {
     const onRemove = vi.fn();
     renderRoster({ ...defaultProps, onRemove });
@@ -140,7 +172,16 @@ describe("TeamMembersSection", () => {
     renderRoster();
 
     const select = screen.getByLabelText(/Role for admin@atlas.test/i);
-    fireEvent.change(select, { target: { value: "owner" } });
-    expect(defaultProps.onRoleChange).not.toHaveBeenCalledWith("mem_2", "owner");
+    fireEvent.change(select, { target: { value: "unknown" } });
+    expect(defaultProps.onRoleChange).not.toHaveBeenCalledWith("mem_2", "unknown");
+  });
+
+  it("can promote an accepted member to admin", () => {
+    const onRoleChange = vi.fn();
+    renderRoster({ ...defaultProps, onRoleChange });
+    fireEvent.change(screen.getByLabelText(/Role for member@atlas.test/i), {
+      target: { value: "admin" },
+    });
+    expect(onRoleChange).toHaveBeenCalledWith("mem_3", "admin");
   });
 });

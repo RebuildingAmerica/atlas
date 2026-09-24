@@ -23,13 +23,18 @@ export function WorkspaceMembershipSection({
   organization,
 }: WorkspaceMembershipSectionProps) {
   const currentRole = organization.role;
-  const ownerCannotLeave = currentRole === "owner";
+  const ownerCannotLeave =
+    currentRole === "owner" &&
+    organization.members.filter((member) => member.role === "owner").length < 2;
   const { confirm } = useConfirmDialog();
 
   async function requestLeave() {
     const accepted = await confirm({
       title: `Leave ${organization.name}?`,
-      body: `You will lose access to shared work in ${organization.name}. Your Atlas account will remain, and an owner can invite you back.`,
+      body:
+        currentRole === "owner"
+          ? `You will lose access to shared work in ${organization.name}. Leaving does not cancel its subscription or change its billing contact or payment method. Review billing with the remaining owner first.`
+          : `You will lose access to shared work in ${organization.name}. Your Atlas account will remain, and an owner can invite you back.`,
       confirmLabel: "Leave this workspace",
       destructive: true,
     });
@@ -54,9 +59,9 @@ export function WorkspaceMembershipSection({
 
       {ownerCannotLeave ? (
         <div className="border-outline-variant bg-surface-container-lowest rounded-[1.25rem] border p-4">
-          <p className="type-title-small text-on-surface">Owner leave is blocked</p>
+          <p className="type-title-small text-on-surface">Another owner is needed</p>
           <p className="type-body-medium text-outline mt-2">
-            Transfer ownership before leaving so the workspace always has an admin.
+            Make another member an owner before leaving this workspace.
           </p>
         </div>
       ) : (

@@ -227,14 +227,14 @@ export function createOrganizationPageWorkspaceActions(
     });
   }
 
-  async function handleMemberRoleChange(memberId: string, role: "admin" | "member") {
+  async function handleMemberRoleChange(memberId: string, role: "owner" | "admin" | "member") {
     await runOrganizationPageMutation({
       action: async () =>
         deps.updateWorkspaceMemberRoleMutation.mutateAsync({ data: { memberId, role } }),
       fallbackMessage: "Atlas could not update that member role.",
       feedback: deps.feedback,
       refreshWorkspaceData: deps.refreshWorkspaceData,
-      successMessage: "Member role updated.",
+      successMessage: role === "owner" ? "Member is now an owner." : "Member role updated.",
     });
   }
 

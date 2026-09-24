@@ -303,6 +303,27 @@ describe("useOrganizationPageWorkspaceActions behavior", () => {
     expect(feedback.setFlashMessage).toHaveBeenCalledWith("Member role updated.");
   });
 
+  it("confirms the new owner after a successful handoff", async () => {
+    mocks.updateWorkspaceMemberRole.mockResolvedValue({ ok: true });
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: "org_1",
+        feedback,
+        forms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onUpdateMemberRole("mem_2", "owner");
+    });
+
+    expect(mocks.updateWorkspaceMemberRole).toHaveBeenCalledWith({
+      data: { memberId: "mem_2", role: "owner" },
+    });
+    expect(feedback.setFlashMessage).toHaveBeenCalledWith("Member is now an owner.");
+  });
+
   it("removes a workspace member", async () => {
     mocks.removeWorkspaceMember.mockResolvedValue({ ok: true });
 

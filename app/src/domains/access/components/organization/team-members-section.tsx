@@ -15,7 +15,7 @@ interface TeamMembersSectionProps {
   isRemovePending: boolean;
   members: AtlasOrganizationDetails["members"];
   onRemove: (memberIdOrEmail: string) => void;
-  onRoleChange: (memberId: string, role: "admin" | "member") => void;
+  onRoleChange: (memberId: string, role: "owner" | "admin" | "member") => void;
 }
 
 /**
@@ -31,6 +31,25 @@ export function TeamMembersSection({
 }: TeamMembersSectionProps) {
   const formatDateTime = useDateTimeFormatter();
   const { confirm } = useConfirmDialog();
+  const currentUserIsOwner = members.some(
+    (member) => member.userId === currentUserId && member.role === "owner",
+  );
+
+  async function requestRoleChange(
+    member: AtlasOrganizationDetails["members"][number],
+    role: string,
+  ) {
+    if (role === "owner") {
+      const accepted = await confirm({
+        title: `Make ${member.name} an owner?`,
+        body: `${member.name} will gain full control of this workspace, including billing and member access. You will remain an owner until you leave or change your role.`,
+        confirmLabel: "Make owner",
+      });
+      if (accepted) onRoleChange(member.id, "owner");
+      return;
+    }
+    if (role === "admin" || role === "member") onRoleChange(member.id, role);
+  }
 
   async function requestRemoval(member: AtlasOrganizationDetails["members"][number]) {
     const accepted = await confirm({
@@ -93,14 +112,15 @@ export function TeamMembersSection({
                         size="compact"
                         value={member.role}
                         onChange={(nextRole) => {
-                          if (nextRole === "admin" || nextRole === "member") {
-                            onRoleChange(member.id, nextRole);
-                          }
+                          void requestRoleChange(member, nextRole);
                         }}
-                        options={memberRoleOptions.map((option) => ({
-                          label: option.label,
-                          value: option.value,
-                        }))}
+                        options={[
+                          ...memberRoleOptions.map((option) => ({
+                            label: option.label,
+                            value: option.value,
+                          })),
+                          ...(currentUserIsOwner ? [{ label: "Owner", value: "owner" }] : []),
+                        ]}
                       />
                     ) : (
                       <span className="text-ink-soft inline-flex items-center gap-2">

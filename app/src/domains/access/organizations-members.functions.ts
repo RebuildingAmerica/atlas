@@ -206,12 +206,27 @@ export const updateWorkspaceMemberRole = createServerFn({ method: "POST" })
   .validator(
     z.object({
       memberId: z.string().min(1),
-      role: z.enum(["admin", "member"]),
+      role: z.enum(["owner", "admin", "member"]),
     }),
   )
   .handler(async ({ data }) => {
     const { auth, headers, session } = await loadOrganizationRequestContext();
     const activeWorkspace = requireManagedTeamWorkspace(session);
+
+    if (data.role === "owner") {
+      if (activeWorkspace.role !== "owner") {
+        throw new UserFacingError("Only an owner can make another member an owner.");
+      }
+      const details = organizationDetailsSchema.parse(
+        await auth.api.getFullOrganization({
+          headers,
+          query: { organizationId: activeWorkspace.id },
+        }),
+      );
+      if (!details?.members.some((member) => member.id === data.memberId)) {
+        throw new UserFacingError("That person is not a member of this workspace.");
+      }
+    }
 
     await auth.api.updateMemberRole({
       body: {
@@ -253,7 +268,15 @@ export const leaveWorkspace = createServerFn({ method: "POST" }).handler(async (
   const activeWorkspace = requireManagedTeamWorkspace(session);
 
   if (activeWorkspace.role === "owner") {
-    throw new UserFacingError("Transfer workspace ownership before leaving this team.");
+    const details = organizationDetailsSchema.parse(
+      await auth.api.getFullOrganization({
+        headers,
+        query: { organizationId: activeWorkspace.id },
+      }),
+    );
+    if (!details || details.members.filter((member) => member.role === "owner").length < 2) {
+      throw new UserFacingError("Make another member an owner before leaving this team.");
+    }
   }
 
   await auth.api.leaveOrganization({

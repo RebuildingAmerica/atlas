@@ -147,7 +147,7 @@ export interface OrganizationPageController {
   onSavePrimaryProvider: (providerId: string | null) => Promise<void>;
   onSelectWorkspace: (organizationId: string) => Promise<void>;
   onUpdateInviteRole: (value: string) => void;
-  onUpdateMemberRole: (memberId: string, role: "admin" | "member") => Promise<void>;
+  onUpdateMemberRole: (memberId: string, role: "owner" | "admin" | "member") => Promise<void>;
   onUpdateWorkspaceName: (value: string) => void;
   onUpdateWorkspaceSlug: (value: string) => void;
   onUpdateWorkspaceType: (value: string) => void;

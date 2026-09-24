@@ -14,6 +14,7 @@ describe("WorkspaceMembershipSection", () => {
     slug: "atlas",
     workspaceType: "team",
     role: "member",
+    members: [{ role: "member" }],
     capabilities: { canUseTeamFeatures: true },
   };
 
@@ -64,8 +65,26 @@ describe("WorkspaceMembershipSection", () => {
       organization: ownerOrg as unknown as MembershipOrganization,
     });
 
-    expect(screen.getByText(/Owner leave is blocked/i)).toBeInTheDocument();
+    expect(screen.getByText(/Another owner is needed/i)).toBeInTheDocument();
     expect(screen.queryByText(/Leave workspace/i)).not.toBeInTheDocument();
+  });
+
+  it("lets an owner leave after another owner has accepted ownership", () => {
+    const ownerOrg = {
+      ...organization,
+      role: "owner",
+      members: [{ role: "owner" }, { role: "owner" }],
+    };
+    renderMembership({
+      ...defaultProps,
+      organization: ownerOrg as unknown as MembershipOrganization,
+    });
+
+    expect(screen.getByRole("button", { name: "Leave workspace" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Leave workspace" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "does not cancel its subscription or change its billing contact",
+    );
   });
 
   it("shows leaving state when pending", () => {

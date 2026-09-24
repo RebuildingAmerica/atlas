@@ -210,6 +210,53 @@ describe("organizations.functions members", () => {
     expect(updateMemberRoleCall?.headers).toBeInstanceOf(Headers);
   });
 
+  it("lets only an owner promote an accepted member to owner", async () => {
+    authApi.updateMemberRole.mockResolvedValue(undefined);
+    authApi.getFullOrganization.mockResolvedValue(fullOrganizationFixture(2, []));
+    mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture({ role: "owner" }));
+
+    const { updateWorkspaceMemberRole } = await import("@/domains/access/organizations.functions");
+    const response = (await updateWorkspaceMemberRole.__executeServer({
+      method: "POST",
+      data: { memberId: "mem_1", role: "owner" },
+    })) as ServerFnExecutionResponse;
+
+    expect(response.result).toEqual({ ok: true });
+    expect(authApi.updateMemberRole).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { memberId: "mem_1", organizationId: "org_team", role: "owner" },
+      }),
+    );
+
+    mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture({ role: "admin" }));
+    const rejected = (await updateWorkspaceMemberRole.__executeServer({
+      method: "POST",
+      data: { memberId: "mem_1", role: "owner" },
+    })) as ServerFnExecutionResponse;
+    expect(rejected.error).toBeDefined();
+    expect(authApi.updateMemberRole).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects ownership for someone who has not joined the workspace", async () => {
+    mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture({ role: "owner" }));
+    const { updateWorkspaceMemberRole } = await import("@/domains/access/organizations.functions");
+
+    authApi.getFullOrganization.mockResolvedValue(fullOrganizationFixture(1, []));
+    const absentMember = (await updateWorkspaceMemberRole.__executeServer({
+      method: "POST",
+      data: { memberId: "mem_missing", role: "owner" },
+    })) as ServerFnExecutionResponse;
+    expect((absentMember.error as Error).message).toContain("not a member");
+
+    authApi.getFullOrganization.mockResolvedValue(null);
+    const absentWorkspace = (await updateWorkspaceMemberRole.__executeServer({
+      method: "POST",
+      data: { memberId: "mem_missing", role: "owner" },
+    })) as ServerFnExecutionResponse;
+    expect((absentWorkspace.error as Error).message).toContain("not a member");
+    expect(authApi.updateMemberRole).not.toHaveBeenCalled();
+  });
+
   it("removes a workspace member", async () => {
     authApi.removeMember.mockResolvedValue(undefined);
     mocks.ensureAtlasSession.mockResolvedValue(createAtlasSessionFixture());

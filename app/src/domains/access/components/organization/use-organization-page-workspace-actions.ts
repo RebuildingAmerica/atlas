@@ -41,7 +41,7 @@ export interface OrganizationPageWorkspaceActions {
   onLeaveWorkspace: () => Promise<void>;
   onProfileSave: (event: OrganizationPageFormSubmitEvent) => Promise<void>;
   onSelectWorkspace: (organizationId: string) => Promise<void>;
-  onUpdateMemberRole: (memberId: string, role: "admin" | "member") => Promise<void>;
+  onUpdateMemberRole: (memberId: string, role: "owner" | "admin" | "member") => Promise<void>;
   onRemoveMember: (memberIdOrEmail: string) => Promise<void>;
   onResendInvitation: (email: string, role: "admin" | "member") => Promise<void>;
   onUpgradeToTeam: () => Promise<void>;

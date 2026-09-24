@@ -233,8 +233,8 @@ export function WorkspaceCreationSection({
               <div className="mt-3 space-y-3">
                 <p className="type-body-small text-outline">
                   Atlas will create the workspace under your account and email an admin invitation
-                  to the address below. Once they accept, you can transfer ownership in the members
-                  panel.
+                  to the address below. Once they accept, make them an owner in the members panel.
+                  You can then leave the workspace if you wish.
                 </p>
                 <Input
                   label="Future admin email"
