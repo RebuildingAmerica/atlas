@@ -32,6 +32,15 @@ returned 75 records, only two more than the city query. Broadening to Nevada
 does not currently repair the local transit/housing supply gap. These numbers
 are a point-in-time API observation, not claim-level validation.
 
+Detail responses for all 28 city organizations showed that 27 had one HTTPS
+source labeled `org_website`. Most of those source URLs were shared city or
+county boards directories, not a group's own contact site. Excluding URLs linked
+to more than one profile leaves two possible website reviews:
+[Faith Organizing Alliance](https://www.faithorganizingalliance.org) and
+[NAACP Las Vegas Branch #1111](https://www.naacplasvegas.org/about). These are
+review candidates only. A person must check present ownership, current work, and
+the appropriate public action before either becomes a contact link.
+
 ## Work that changes this decision
 
 1. Use Las Vegas visitor questions as the acquisition brief: who organizes

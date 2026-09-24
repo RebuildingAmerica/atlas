@@ -18,8 +18,12 @@ interface DiscoveryReviewsViewProps {
   offset: number;
   onDecision: (itemId: string, decision: ReviewDecision) => void;
   onPageChange: (offset: number) => void;
+  onPrepareWebsiteReviews?: () => void;
   pageSize: number;
   pendingItemId?: string;
+  prepareError?: string;
+  prepareMessage?: string;
+  preparing?: boolean;
   total: number;
 }
 
@@ -31,8 +35,12 @@ export function DiscoveryReviewsView({
   offset,
   onDecision,
   onPageChange,
+  onPrepareWebsiteReviews,
   pageSize,
   pendingItemId,
+  prepareError,
+  prepareMessage,
+  preparing,
   total,
 }: DiscoveryReviewsViewProps) {
   return (
@@ -43,6 +51,31 @@ export function DiscoveryReviewsView({
         description="Compare proposed facts with the current profile and check the cited sources before publishing."
       />
       <section className="space-y-4" aria-label="Pending discovery reviews">
+        {onPrepareWebsiteReviews ? (
+          <div className="border-border bg-surface-container-lowest flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">
+            <div>
+              <h2 className="type-title-medium text-ink-strong">Las Vegas contact review</h2>
+              <p className="type-body-small text-ink-soft">
+                Check an organization’s linked website before adding it as a public contact action.
+              </p>
+            </div>
+            <Button
+              ariaLabel="Find Las Vegas website candidates"
+              disabled={preparing}
+              onClick={onPrepareWebsiteReviews}
+              size="sm"
+              variant="secondary"
+            >
+              Find Las Vegas website candidates
+            </Button>
+          </div>
+        ) : null}
+        <AdminInlineStatus message={prepareError} />
+        {prepareMessage ? (
+          <p className="type-body-small text-ink-soft" role="status">
+            {prepareMessage}
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="type-title-large text-ink-strong">Waiting for review</h2>
           <span className="type-body-small text-ink-soft">{total} pending</span>

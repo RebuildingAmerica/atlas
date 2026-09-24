@@ -147,6 +147,314 @@ async def test_source_staleness_scan_enqueues_stale_public_records_once(
 
 
 @pytest.mark.asyncio
+async def test_website_scan_stages_las_vegas_official_source_until_review(
+    test_client: httpx.AsyncClient, db_url: str
+) -> None:
+    """An editor must approve a linked site before it becomes a public contact action."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Las Vegas Neighborhood Coalition",
+            description="Neighbors organizing in the Las Vegas valley.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=True,
+        )
+        source_id = await SourceCRUD.create(
+            conn,
+            url="https://lv-neighbors.example/about",
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(conn, entity_id, source_id)
+        await OwnershipCRUD.create_ownership(
+            conn,
+            resource_id=entity_id,
+            resource_type="entry",
+            org_id="local",
+            visibility="public",
+            created_by="test",
+        )
+    finally:
+        await conn.close()
+
+    path = "/api/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV"
+    first = await test_client.post(path)
+    second = await test_client.post(path)
+
+    assert first.status_code == HTTPStatus.OK
+    assert first.json()["enqueued"] == 1
+    assert second.json()["enqueued"] == 0
+    conn = await get_db_connection(db_url)
+    try:
+        pending = await ReviewQueueCRUD.list_pending(conn)
+        before = await EntryCRUD.get_by_id(conn, entity_id)
+    finally:
+        await conn.close()
+    assert before is not None
+    assert before.website is None
+    assert len(pending) == 1
+    assert pending[0].entity_id == entity_id
+    assert pending[0].proposed_changes == {
+        "website": {"before": None, "after": "https://lv-neighbors.example/about"}
+    }
+    assert pending[0].source_urls == ["https://lv-neighbors.example/about"]
+
+    approval = await test_client.post(f"/api/review-queue/{pending[0].id}/approve")
+    assert approval.status_code == HTTPStatus.OK
+    conn = await get_db_connection(db_url)
+    try:
+        after = await EntryCRUD.get_by_id(conn, entity_id)
+    finally:
+        await conn.close()
+    assert after is not None
+    assert after.website == "https://lv-neighbors.example/about"
+
+
+@pytest.mark.asyncio
+async def test_website_scan_does_not_reopen_rejected_contact_candidate(
+    test_client: httpx.AsyncClient, db_url: str
+) -> None:
+    """A reviewer decision should survive later scans of the same source."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Rejected Contact Org",
+            description="An organization whose source is not a public contact.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=True,
+        )
+        source_id = await SourceCRUD.create(
+            conn,
+            url="https://not-contact.example/about",
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(conn, entity_id, source_id)
+        await OwnershipCRUD.create_ownership(
+            conn,
+            resource_id=entity_id,
+            resource_type="entry",
+            org_id="local",
+            visibility="public",
+            created_by="test",
+        )
+    finally:
+        await conn.close()
+
+    path = "/api/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV"
+    first = await test_client.post(path)
+    item_id = first.json()["review_item_ids"][0]
+    rejected = await test_client.post(f"/api/review-queue/{item_id}/reject")
+    repeat = await test_client.post(path)
+
+    assert rejected.status_code == HTTPStatus.OK
+    assert repeat.status_code == HTTPStatus.OK
+    assert repeat.json()["enqueued"] == 0
+
+
+@pytest.mark.asyncio
+async def test_website_scan_skips_ambiguous_and_unsafe_sources(
+    test_client: httpx.AsyncClient, db_url: str
+) -> None:
+    """Do not offer an arbitrary site, stale contact overwrite, or non-site article."""
+    conn = await get_db_connection(db_url)
+    try:
+        cases = [
+            (
+                "Two sites",
+                "Las Vegas",
+                None,
+                ["https://first.example", "https://second.example"],
+                "org_website",
+            ),
+            ("Article only", "Las Vegas", None, ["https://news.example/story"], "news_article"),
+            ("Other city", "Henderson", None, ["https://henderson.example"], "org_website"),
+            (
+                "Already listed",
+                "Las Vegas",
+                "https://listed.example",
+                ["https://listed.example"],
+                "org_website",
+            ),
+            ("Unsafe site", "Las Vegas", None, ["http://unsafe.example"], "org_website"),
+        ]
+        for name, city, website, urls, source_type in cases:
+            entity_id = await EntryCRUD.create(
+                conn,
+                entry_type="organization",
+                name=name,
+                description="A test organization with a public source.",
+                city=city,
+                state="NV",
+                geo_specificity="local",
+                website=website,
+                active=True,
+            )
+            for url in urls:
+                source_id = await SourceCRUD.create(
+                    conn,
+                    url=url,
+                    source_type=source_type,
+                    extraction_method="manual",
+                )
+                await SourceCRUD.link_to_entry(conn, entity_id, source_id)
+            await OwnershipCRUD.create_ownership(
+                conn,
+                resource_id=entity_id,
+                resource_type="entry",
+                org_id="local",
+                visibility="public",
+                created_by="test",
+            )
+    finally:
+        await conn.close()
+
+    response = await test_client.post(
+        "/api/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV"
+    )
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {"enqueued": 0, "review_item_ids": []}
+
+
+@pytest.mark.asyncio
+async def test_website_scan_skips_directory_url_shared_by_multiple_profiles(
+    test_client: httpx.AsyncClient, db_url: str
+) -> None:
+    """A common directory page is evidence, not each group's own website."""
+    conn = await get_db_connection(db_url)
+    try:
+        source_id = await SourceCRUD.create(
+            conn,
+            url="https://city.example/boards",
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        for name in ("Transit Board", "Housing Board"):
+            entity_id = await EntryCRUD.create(
+                conn,
+                entry_type="organization",
+                name=name,
+                description="A city advisory body with a shared directory source.",
+                city="Las Vegas",
+                state="NV",
+                geo_specificity="local",
+                active=True,
+            )
+            await SourceCRUD.link_to_entry(conn, entity_id, source_id)
+            await OwnershipCRUD.create_ownership(
+                conn,
+                resource_id=entity_id,
+                resource_type="entry",
+                org_id="local",
+                visibility="public",
+                created_by="test",
+            )
+    finally:
+        await conn.close()
+
+    response = await test_client.post(
+        "/api/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV"
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["enqueued"] == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("source_change", ["unlink", "share"])
+async def test_website_scan_approval_rechecks_linked_source(
+    test_client: httpx.AsyncClient, db_url: str, source_change: str
+) -> None:
+    """A removed or newly shared source cannot publish a contact URL later."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Source Removed Org",
+            description="A public organization with a removed source.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=True,
+        )
+        source_id = await SourceCRUD.create(
+            conn,
+            url="https://removed.example",
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(conn, entity_id, source_id)
+        await OwnershipCRUD.create_ownership(
+            conn,
+            resource_id=entity_id,
+            resource_type="entry",
+            org_id="local",
+            visibility="public",
+            created_by="test",
+        )
+    finally:
+        await conn.close()
+
+    scan = await test_client.post(
+        "/api/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV"
+    )
+    item_id = scan.json()["review_item_ids"][0]
+    conn = await get_db_connection(db_url)
+    try:
+        if source_change == "unlink":
+            await SourceCRUD.unlink_from_entry(conn, entity_id, source_id)
+        else:
+            other_id = await EntryCRUD.create(
+                conn,
+                entry_type="organization",
+                name="Another Organization",
+                description="Another organization now linked to the same source.",
+                city="Henderson",
+                state="NV",
+                geo_specificity="local",
+                active=True,
+            )
+            await SourceCRUD.link_to_entry(conn, other_id, source_id)
+    finally:
+        await conn.close()
+
+    approval = await test_client.post(f"/api/review-queue/{item_id}/approve")
+    assert approval.status_code == HTTPStatus.CONFLICT
+    conn = await get_db_connection(db_url)
+    try:
+        entry = await EntryCRUD.get_by_id(conn, entity_id)
+        review = await ReviewQueueCRUD.get_by_id(conn, item_id)
+    finally:
+        await conn.close()
+    assert entry is not None
+    assert entry.website is None
+    assert review is not None
+    assert review.status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_website_scan_requires_discovery_write_permission(
+    test_client: httpx.AsyncClient, test_settings: object
+) -> None:
+    test_settings.multi_user = True
+
+    response = await test_client.post(
+        "/api/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV"
+    )
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.asyncio
 async def test_approve_review_item_publishes_entry(
     test_client: httpx.AsyncClient, db_url: str
 ) -> None:

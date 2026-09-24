@@ -103,4 +103,18 @@ describe("discovery review server functions", () => {
     );
     expect(result).toEqual({ id: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e", status: "approved" });
   });
+
+  it("requests review proposals for Las Vegas organization websites", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ enqueued: 2, review_item_ids: ["a", "b"] });
+
+    const { prepareLasVegasWebsiteReviews } =
+      await import("@/domains/admin/discovery-reviews.functions");
+    const result = await prepareLasVegasWebsiteReviews();
+
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      "/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV",
+      { method: "POST" },
+    );
+    expect(result).toEqual({ enqueued: 2 });
+  });
 });

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 from atlas.platform.database import db
 from atlas.platform.dates import coerce_date, row_timestamp_string
@@ -20,6 +21,7 @@ __all__ = [
 ]
 
 PUBLISHED_CHANGE_REASON = "published_profile_change"
+WEBSITE_CANDIDATE_KIND = "website_candidate"
 STAGED_ENTRY_FIELDS = frozenset(
     {"name", "description", "region", "website", "email", "social_media"}
 )
@@ -27,6 +29,22 @@ STAGED_ISSUE_FIELD = "issue_areas"
 _UNAVAILABLE_PROFILE = "Published profile is no longer available"
 _INVALID_PROPOSAL = "Review proposal contains unsupported fields"
 _STALE_PROPOSAL = "Published profile changed after this proposal was staged"
+
+
+def _reviewable_website_url(value: str) -> bool:
+    """Only present a usable HTTPS URL; an editor still checks its ownership."""
+    try:
+        parsed = urlsplit(value)
+        _ = parsed.port
+        return bool(
+            parsed.scheme == "https"
+            and parsed.hostname
+            and not parsed.username
+            and not parsed.password
+            and not parsed.netloc.endswith(":")
+        )
+    except ValueError:
+        return False
 
 
 class ReviewConflictError(Exception):
@@ -194,6 +212,70 @@ class ReviewQueueCRUD:
             proposed_changes=proposed_changes,
             source_urls=source_urls,
         )
+
+    @staticmethod
+    async def enqueue_website_candidates(conn: Any, *, city: str, state: str) -> list[str]:
+        """Stage linked organization-site URLs without publishing contact facts."""
+        cursor = await conn.execute(
+            """
+            SELECT e.id, e.website, s.url
+            FROM entries e
+            JOIN resource_ownership ro ON ro.resource_id = e.id
+            JOIN entry_sources es ON es.entry_id = e.id
+            JOIN sources s ON s.id = es.source_id
+            WHERE ro.resource_type = 'entry'
+              AND ro.visibility = 'public'
+              AND e.active = TRUE
+              AND e.type = 'organization'
+              AND e.city = ?
+              AND e.state = ?
+              AND (e.website IS NULL OR e.website = '')
+              AND s.type = 'org_website'
+              AND (
+                  SELECT COUNT(*) FROM entry_sources linked
+                  WHERE linked.source_id = s.id
+              ) = 1
+            ORDER BY e.id, s.url
+            """,
+            (city, state),
+        )
+        candidates: dict[str, tuple[str | None, set[str]]] = {}
+        for entity_id, website, source_url in await cursor.fetchall():
+            key = str(entity_id)
+            if key not in candidates:
+                candidates[key] = (website, set())
+            candidates[key][1].add(str(source_url))
+
+        review_item_ids: list[str] = []
+        for entity_id, (before, urls) in candidates.items():
+            if len(urls) != 1 or await ReviewQueueCRUD.has_pending_published_change(
+                conn, entity_id=entity_id
+            ):
+                continue
+            url = next(iter(urls))
+            if not _reviewable_website_url(url):
+                continue
+            cursor = await conn.execute(
+                """
+                SELECT 1 FROM review_queue
+                WHERE entity_id = ? AND kind = ? AND status = 'rejected'
+                  AND source_urls = ?
+                LIMIT 1
+                """,
+                (entity_id, WEBSITE_CANDIDATE_KIND, db.encode_json([url])),
+            )
+            if await cursor.fetchone() is not None:
+                continue
+            review_item_ids.append(
+                await ReviewQueueCRUD.stage_published_change(
+                    conn,
+                    entity_id=entity_id,
+                    kind=WEBSITE_CANDIDATE_KIND,
+                    proposed_changes={"website": {"before": before, "after": url}},
+                    source_urls=[url],
+                )
+            )
+        return review_item_ids
 
     @staticmethod
     async def list_pending(
@@ -384,6 +466,24 @@ class ReviewQueueCRUD:
                 if current_issues != change["before"]:
                     raise ReviewConflictError(_STALE_PROPOSAL)
             elif getattr(entry, field) != change["before"]:
+                raise ReviewConflictError(_STALE_PROPOSAL)
+        if item.kind == WEBSITE_CANDIDATE_KIND:
+            if set(changes) != {"website"} or item.source_urls != [changes["website"]["after"]]:
+                raise ReviewConflictError(_INVALID_PROPOSAL)
+            cursor = await conn.execute(
+                """
+                SELECT 1 FROM entry_sources es
+                JOIN sources s ON s.id = es.source_id
+                WHERE es.entry_id = ? AND s.url = ? AND s.type = 'org_website'
+                  AND (
+                      SELECT COUNT(*) FROM entry_sources linked
+                      WHERE linked.source_id = s.id
+                  ) = 1
+                LIMIT 1
+                """,
+                (item.entity_id, item.source_urls[0]),
+            )
+            if await cursor.fetchone() is None:
                 raise ReviewConflictError(_STALE_PROPOSAL)
 
     @staticmethod

@@ -38,6 +38,13 @@ class SourceStalenessReviewScanResponse(BaseModel):
     review_item_ids: list[str] = Field(default_factory=list)
 
 
+class WebsiteCandidateScanResponse(BaseModel):
+    """Website proposals created for editorial review."""
+
+    enqueued: int = Field(..., ge=0)
+    review_item_ids: list[str] = Field(default_factory=list)
+
+
 class FlagReceipt(BaseModel):
     """Public confirmation that excludes the private report contents."""
 
@@ -336,6 +343,30 @@ async def scan_source_staleness_review_queue(
     return SourceStalenessReviewScanResponse(
         enqueued=len(review_item_ids),
         review_item_ids=review_item_ids,
+    )
+
+
+@router.post(
+    "/review-queue/website-candidate-scan",
+    response_model=WebsiteCandidateScanResponse,
+    summary="Prepare organization website candidates for review",
+    description="Stage one linked organization-site source as a website proposal without publishing it.",
+    operation_id="scanWebsiteCandidates",
+    tags=["moderation"],
+)
+async def scan_website_candidates(
+    response: Response,
+    city: str = Query(..., min_length=1),
+    state: str = Query(..., min_length=2, max_length=2),
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> WebsiteCandidateScanResponse:
+    """Queue public organization site URLs for an editor to confirm."""
+    _ = actor
+    review_item_ids = await ReviewQueueCRUD.enqueue_website_candidates(db, city=city, state=state)
+    apply_no_store_headers(response)
+    return WebsiteCandidateScanResponse(
+        enqueued=len(review_item_ids), review_item_ids=review_item_ids
     )
 
 

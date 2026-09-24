@@ -9,12 +9,14 @@ import type { DiscoveryReviewPage } from "@/domains/admin/discovery-reviews.func
 const mocks = vi.hoisted(() => ({
   decideDiscoveryReview: vi.fn(),
   listDiscoveryReviews: vi.fn(),
+  prepareLasVegasWebsiteReviews: vi.fn(),
   useHydrated: vi.fn(() => true),
 }));
 
 vi.mock("@/domains/admin/discovery-reviews.functions", () => ({
   decideDiscoveryReview: mocks.decideDiscoveryReview,
   listDiscoveryReviews: mocks.listDiscoveryReviews,
+  prepareLasVegasWebsiteReviews: mocks.prepareLasVegasWebsiteReviews,
 }));
 
 vi.mock("@/platform/runtime/use-hydrated", () => ({ useHydrated: mocks.useHydrated }));
@@ -52,6 +54,7 @@ afterEach(() => {
   cleanup();
   mocks.decideDiscoveryReview.mockReset();
   mocks.listDiscoveryReviews.mockReset();
+  mocks.prepareLasVegasWebsiteReviews.mockReset();
   mocks.useHydrated.mockReset();
   mocks.useHydrated.mockReturnValue(true);
 });
@@ -80,6 +83,56 @@ describe("DiscoveryReviewsPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Next reviews" }));
     expect(mocks.listDiscoveryReviews).toHaveBeenCalledWith({ data: { offset: 25 } });
+  });
+
+  it("prepares Las Vegas website proposals and refreshes the review queue", async () => {
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.prepareLasVegasWebsiteReviews.mockResolvedValue({ enqueued: 2 });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Find Las Vegas website candidates" }));
+
+    await waitFor(() => {
+      expect(mocks.prepareLasVegasWebsiteReviews).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText("2 website proposals ready for review.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mocks.listDiscoveryReviews).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("states when the website scan finds no new proposals", async () => {
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.prepareLasVegasWebsiteReviews.mockResolvedValue({ enqueued: 0 });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Find Las Vegas website candidates" }));
+
+    expect(await screen.findByText("No new website proposals.")).toBeInTheDocument();
+  });
+
+  it("uses a singular count for one website proposal", async () => {
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.prepareLasVegasWebsiteReviews.mockResolvedValue({ enqueued: 1 });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Find Las Vegas website candidates" }));
+
+    expect(await screen.findByText("1 website proposal ready for review.")).toBeInTheDocument();
+  });
+
+  it("keeps the review queue available when website preparation fails", async () => {
+    mocks.listDiscoveryReviews.mockResolvedValue(page);
+    mocks.prepareLasVegasWebsiteReviews.mockRejectedValue(new Error("API down"));
+    renderPage();
+    expect(await screen.findByText("Civic Group")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Find Las Vegas website candidates" }));
+
+    expect(
+      await screen.findByText("Website candidates could not be prepared."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Civic Group")).toBeInTheDocument();
   });
 
   it("shows a safe load error", async () => {

@@ -536,7 +536,7 @@
         "type": "object"
       },
       "ClaimEvidence": {
-        "description": "Evidence metadata for one visible profile claim.",
+        "description": "Reviewed evidence metadata for one visible profile claim.",
         "properties": {
           "as_of": {
             "anyOf": [
@@ -552,7 +552,7 @@
           },
           "confidence": {
             "default": "unverified",
-            "description": "subject_verified | atlas_verified | corroborated | partial | unverified.",
+            "description": "Claim support: corroborated | partial | unverified. Identity verification is separate.",
             "title": "Confidence",
             "type": "string"
           },
@@ -573,7 +573,7 @@
           },
           "verification_level": {
             "default": "source-derived",
-            "description": "Trust tier: source-derived, atlas-verified, subject-verified.",
+            "description": "Profile identity verification: source-derived, atlas-verified, subject-verified.",
             "title": "Verification Level",
             "type": "string"
           }
@@ -13060,7 +13060,7 @@
         "type": "object"
       },
       "TrustInfo": {
-        "description": "Honest trust signals derived from corroborating evidence.",
+        "description": "Identity verification and separately evaluated source details.",
         "properties": {
           "email_grounded": {
             "anyOf": [
@@ -13083,12 +13083,12 @@
                 "type": "null"
               }
             ],
-            "description": "Distinct registrable source domains backing the entity, when known.",
+            "description": "Reviewed independent publisher count; null when claim support has not been evaluated.",
             "title": "Independent Source Count"
           },
           "level": {
             "default": "unverified",
-            "description": "subject_verified | atlas_verified | corroborated | unverified.",
+            "description": "Profile identity: subject_verified | atlas_verified | unverified.",
             "title": "Level",
             "type": "string"
           },
@@ -13708,6 +13708,30 @@
           "type"
         ],
         "title": "WatchDigestSource",
+        "type": "object"
+      },
+      "WebsiteCandidateScanResponse": {
+        "description": "Website proposals created for editorial review.",
+        "properties": {
+          "enqueued": {
+            "description": "enqueued for this website candidate scan.",
+            "minimum": 0.0,
+            "title": "Enqueued",
+            "type": "integer"
+          },
+          "review_item_ids": {
+            "description": "review item ids for this website candidate scan.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Review Item Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enqueued"
+        ],
+        "title": "WebsiteCandidateScanResponse",
         "type": "object"
       }
     }
@@ -31743,6 +31767,141 @@
           }
         },
         "summary": "Scan public records for stale source review",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/review-queue/website-candidate-scan": {
+      "post": {
+        "description": "Stage one linked organization-site source as a website proposal without publishing it.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "scanWebsiteCandidates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "city",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "City",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": true,
+            "schema": {
+              "maxLength": 2,
+              "minLength": 2,
+              "title": "State",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebsiteCandidateScanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prepare organization website candidates for review",
         "tags": [
           "moderation"
         ]

@@ -4,6 +4,7 @@ import { requestAtlasApi } from "@/domains/discovery/server/api-client";
 import type {
   ReviewQueueItemResponse,
   ReviewQueueListResponse,
+  WebsiteCandidateScanResponse,
 } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 
 export interface DiscoveryReview {
@@ -48,6 +49,16 @@ export const decideDiscoveryReview = createServerFn({ method: "POST" })
     );
     return { id: response.id, status: response.status };
   });
+
+export const prepareLasVegasWebsiteReviews = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const response = await requestAtlasApi<WebsiteCandidateScanResponse>(
+      "/review-queue/website-candidate-scan?city=Las%20Vegas&state=NV",
+      { method: "POST" },
+    );
+    return { enqueued: response.enqueued };
+  },
+);
 
 function toReview(item: ReviewQueueItemResponse): DiscoveryReview {
   return {
