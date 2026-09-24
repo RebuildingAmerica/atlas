@@ -8,7 +8,7 @@ export const MAP_RESULTS_LIST_ID = "map-results-list";
 
 const MAP_RESULTS_PANEL_LABEL = "Civic actors on the map";
 const MAP_RESULTS_PANEL_CLASS =
-  "bg-surface-container-high/95 shadow-soft border-border-strong focus:ring-accent pointer-events-auto absolute right-3 top-20 z-40 max-h-[min(72vh,38rem)] w-[min(26rem,calc(100vw-1.5rem))] overflow-y-auto rounded-[1.1rem] border p-3 backdrop-blur-md focus:ring-2 focus:outline-none sm:right-4 sm:top-24";
+  "bg-surface-container-high/95 shadow-soft border-border-strong focus:ring-accent pointer-events-auto absolute right-3 top-52 z-40 rounded-[1.1rem] border backdrop-blur-md focus:ring-2 focus:outline-none sm:right-4 sm:top-24 sm:max-h-[min(72vh,38rem)] sm:w-[min(26rem,calc(100vw-1.5rem))] sm:overflow-y-auto sm:p-3";
 const MAP_RESULTS_HEADING_CLASS = "type-label-large text-ink-strong px-1";
 const MAP_RESULTS_STATUS_CLASS = "type-body-small text-ink-muted px-1 py-4";
 const LANDSCAPE_LIMIT = 3;
@@ -101,6 +101,9 @@ interface FocusRevealedResultsPanelProps {
   panelRef?: Ref<HTMLElement>;
   /** Extra layout classes for one-off map placements. */
   className?: string;
+  expanded: boolean;
+  onToggle: () => void;
+  resultCount: number | null;
   /** The panel body, usually a status line or the row list. */
   children: ReactNode;
 }
@@ -111,17 +114,40 @@ function FocusRevealedResultsPanel({
   panelRef,
   className,
   children,
+  expanded,
+  onToggle,
+  resultCount,
 }: FocusRevealedResultsPanelProps) {
+  const contentId = `${id}-content`;
   return (
     <section
       id={id}
       ref={panelRef}
       tabIndex={-1}
       aria-label={label}
-      className={cn(MAP_RESULTS_PANEL_CLASS, className)}
+      className={cn(
+        MAP_RESULTS_PANEL_CLASS,
+        expanded
+          ? "max-h-[min(40vh,24rem)] w-[calc(100vw-1.5rem)] overflow-y-auto p-3"
+          : "w-auto p-1",
+        className,
+      )}
     >
-      <h2 className={MAP_RESULTS_HEADING_CLASS}>{label}</h2>
-      {children}
+      <button
+        type="button"
+        aria-controls={contentId}
+        aria-expanded={expanded}
+        aria-label={`${expanded ? "Hide" : "Show"} map results`}
+        className="type-label-medium text-ink-strong rounded-xl px-3 py-2 sm:hidden"
+        onClick={onToggle}
+      >
+        {resultCount === null ? "" : `${resultCount} in view · `}
+        {expanded ? "Hide results" : "Show results"}
+      </button>
+      <div id={contentId} className={expanded ? "block" : "hidden sm:block"}>
+        <h2 className={MAP_RESULTS_HEADING_CLASS}>{label}</h2>
+        {children}
+      </div>
     </section>
   );
 }
@@ -141,6 +167,8 @@ interface MapResultsPanelProps {
   panelRef?: Ref<HTMLElement>;
   /** Extra layout classes for one-off map placements. */
   className?: string;
+  expanded: boolean;
+  onToggle: () => void;
 }
 
 /**
@@ -157,9 +185,19 @@ export function MapResultsPanel({
   label = MAP_RESULTS_PANEL_LABEL,
   panelRef,
   className,
+  expanded,
+  onToggle,
 }: MapResultsPanelProps) {
   return (
-    <FocusRevealedResultsPanel id={id} label={label} panelRef={panelRef} className={className}>
+    <FocusRevealedResultsPanel
+      id={id}
+      label={label}
+      panelRef={panelRef}
+      className={className}
+      expanded={expanded}
+      onToggle={onToggle}
+      resultCount={isLoading ? null : points.length}
+    >
       <LandscapeSummary points={points} />
       {isLoading ? <p className={MAP_RESULTS_STATUS_CLASS}>Loading</p> : null}
       {!isLoading && points.length === 0 ? (

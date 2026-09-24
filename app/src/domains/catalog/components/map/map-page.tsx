@@ -78,6 +78,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   );
   const { data: taxonomy } = useTaxonomy();
   const [mapCamera, setMapCamera] = useState<FlyToCamera | null>(null);
+  const [resultsExpanded, setResultsExpanded] = useState(false);
   const page = useMapPage({
     search,
     navigate,
@@ -133,6 +134,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   useEffect(() => {
     if (selectionFocusKey) {
       detailPanelRef.current?.focus();
+      setResultsExpanded(false);
     }
   }, [selectionFocusKey]);
 
@@ -141,6 +143,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
       <a
         href={`#${MAP_RESULTS_LIST_ID}`}
         onClick={() => {
+          setResultsExpanded(true);
           resultsListRef.current?.focus();
         }}
         className="bg-surface-container-high text-ink-strong sr-only z-50 rounded-lg px-4 py-2 focus:not-sr-only focus:absolute focus:top-3 focus:left-3"
@@ -247,6 +250,10 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
 
       <MapResultsPanel
         panelRef={resultsListRef}
+        expanded={resultsExpanded}
+        onToggle={() => {
+          setResultsExpanded((current) => !current);
+        }}
         points={points}
         isLoading={!hasFetched}
         onFocusActor={page.onSelectActor}

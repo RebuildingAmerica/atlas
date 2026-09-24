@@ -32,6 +32,7 @@ public profile claim with a workspace or a purchase.
 | A paid session belongs to its saved purchase            | `4ca37d58` matches workspace, product, interval, and session before fulfillment. `25a2543f` aligns the older isolation test.                                                                                                                  | Test-mode purchase, signed webhook, replay, and returning paid access.                                                                                   |
 | Delayed and refunded payments do not leave false access | `8417b4fd`, `db9d4a14`, and `9ddfa1d4` gate settlement, attribute refunds, revoke a fully refunded term, and provide a previewable operator command.                                                                                          | Run test-mode async success/failure, cancellation, full refund, retry, and entitlement checks; then inspect live delivery.                               |
 | Visitors can start with search                          | `1a2832aa` moves mobile Browse search ahead of issue panels; `e615149f` makes home People and Organizations shortcuts use type filters.                                                                                                       | Retest with a populated API on physical mobile and complete ten launch questions.                                                                        |
+| Mobile map controls remain usable                       | Results start as a compact trigger below search controls; opening them uses a bounded scroll panel. The keyboard skip link opens results, and map controls remain reachable.                                                                  | Recheck with a populated API on a physical phone, including result selection and screen-reader navigation.                                               |
 | Organizers keep work through failures                   | `cd950766` preserves list creation and save retries; `ee9d7fbb` preserves a failed team invitation's address and role.                                                                                                                        | Signed-in, real email, passkey, save, invite acceptance, and recovery journeys.                                                                          |
 | Profile evidence makes narrower claims                  | `03857475` distinguishes source dates from confirmation, removes quote attribution from extracted context, and counts unverified sources honestly.                                                                                            | Editorial review of claim-to-source links, duplicated publishers, material edits, and representative profiles.                                           |
 | Rediscovery preserves approved profile facts            | Discovery and registry resolution stage published name, description, contact, and new issue tags with before/after values. A held filing leaves the existing public role evidence intact. Approval checks the current baseline.               | Hosted approval, role-reconciliation process, and PostgreSQL migration proof remain open. Candidate URLs are not claim-level source proof.               |
@@ -43,6 +44,11 @@ At 390 × 844 in a local browser, Browse search was measured at y=147.5 after th
 layout change; the audit's live production screenshot measured y=2,056.5. The
 local app had no API configuration and showed loading results, so that
 measurement establishes layout only, not working discovery.
+
+At the same mobile viewport in a local browser, the map's collapsed results
+trigger sits below the search/filter controls instead of covering them. Opening
+it leaves the lower map controls visible. The local API was unavailable, so this
+verifies layout and interaction only, not populated map discovery.
 
 ## Why a Stripe key change is insufficient
 
@@ -105,6 +111,11 @@ own acceptance rows.
   tests. Its frontend run passed 597 files and 3,855 tests with 100% coverage on
   the final tree. App lint, TypeScript, and the production build passed on
   Node 24.
+- After the mobile map adjustment, the frontend run passed 597 files and 3,857
+  tests with 100% statements, branches, functions, and lines. App lint,
+  TypeScript, and production build passed on Node 24. The 390 × 844 local
+  browser check verified the collapsed trigger, opened panel, and unobstructed
+  map controls; it did not verify populated map results.
 - A focused app run passed 161 files and 1,330 tests across billing,
   organization controls, and catalog components after aligning one stale webhook
   expectation.

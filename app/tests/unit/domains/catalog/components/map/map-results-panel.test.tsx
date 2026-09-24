@@ -2,7 +2,7 @@
 
 import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import {
   MAP_RESULTS_LIST_ID,
   MapResultsPanel,
@@ -30,6 +30,8 @@ describe("MapResultsPanel", () => {
         points={[makePoint({ id: "1", lat: 1, lng: 2 })]}
         isLoading={false}
         onFocusActor={vi.fn()}
+        expanded={false}
+        onToggle={vi.fn()}
       />,
     );
 
@@ -40,6 +42,31 @@ describe("MapResultsPanel", () => {
     expect(panel?.getAttribute("aria-label")).toBe("Civic actors on the map");
     expect(panel?.className).not.toContain("sr-only");
     expect(panel?.className).toContain("absolute");
+    expect(panel?.className).toContain("w-auto");
+    expect(screen.getByRole("button", { name: "Show map results" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("opens a bounded result sheet only on request", () => {
+    const onToggle = vi.fn();
+    render(
+      <MapResultsPanel
+        points={[makePoint({ id: "1" })]}
+        isLoading={false}
+        onFocusActor={vi.fn()}
+        expanded
+        onToggle={onToggle}
+      />,
+    );
+
+    const panel = screen.getByRole("region", { name: "Civic actors on the map" });
+    expect(panel.className).toContain("max-h-[min(40vh,24rem)]");
+    const toggle = screen.getByRole("button", { name: "Hide map results" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(toggle);
+    expect(onToggle).toHaveBeenCalledOnce();
   });
 
   it("summarizes the visible civic landscape before the actor rows", () => {
@@ -63,6 +90,8 @@ describe("MapResultsPanel", () => {
         ]}
         isLoading={false}
         onFocusActor={vi.fn()}
+        expanded={false}
+        onToggle={vi.fn()}
       />,
     );
 
@@ -97,6 +126,8 @@ describe("MapResultsPanel", () => {
         ]}
         isLoading={false}
         onFocusActor={vi.fn()}
+        expanded={false}
+        onToggle={vi.fn()}
       />,
     );
 
@@ -105,14 +136,33 @@ describe("MapResultsPanel", () => {
   });
 
   it("shows the loading state before rows arrive", () => {
-    render(<MapResultsPanel points={[]} isLoading onFocusActor={vi.fn()} />);
+    render(
+      <MapResultsPanel
+        points={[]}
+        isLoading
+        onFocusActor={vi.fn()}
+        expanded={false}
+        onToggle={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText("Loading")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show map results" })).not.toHaveTextContent(
+      "0 in view",
+    );
     expect(screen.queryByRole("list")).toBeNull();
   });
 
   it("shows the empty state when the viewport has no rows", () => {
-    render(<MapResultsPanel points={[]} isLoading={false} onFocusActor={vi.fn()} />);
+    render(
+      <MapResultsPanel
+        points={[]}
+        isLoading={false}
+        onFocusActor={vi.fn()}
+        expanded={false}
+        onToggle={vi.fn()}
+      />,
+    );
 
     expect(screen.getByText("No people or groups in this area.")).toBeTruthy();
     expect(screen.queryByRole("list")).toBeNull();
@@ -124,6 +174,8 @@ describe("MapResultsPanel", () => {
         points={[makePoint({ id: "1", name: "Dallas Housing Trust" })]}
         isLoading={false}
         onFocusActor={vi.fn()}
+        expanded={false}
+        onToggle={vi.fn()}
       />,
     );
 

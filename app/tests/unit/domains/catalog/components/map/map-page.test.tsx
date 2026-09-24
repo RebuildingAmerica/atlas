@@ -100,6 +100,28 @@ describe("MapPage", () => {
     expect(resultsList?.getAttribute("tabindex")).toBe("-1");
     expect(resultsList?.className).not.toContain("sr-only");
     expect(resultsList?.className).toContain("absolute");
+    expect(screen.getByRole("button", { name: "Show map results" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("expands mobile results on demand without hiding the map first", () => {
+    requireMapPageHarness().setState({ points: [makePoint({ id: "1", lat: 1, lng: 2 })] });
+    render(<MapPage search={{}} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show map results" }));
+
+    expect(screen.getByRole("button", { name: "Hide map results" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByTestId("surface")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hide map results" }));
+    expect(screen.getByRole("button", { name: "Show map results" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 
   it("shows the result count pill when points are placed", () => {
@@ -251,6 +273,10 @@ describe("MapPage", () => {
 
     fireEvent.click(screen.getByRole("link", { name: /Skip to results list/i }));
     expect(document.activeElement).toBe(document.querySelector("#map-results-list"));
+    expect(screen.getByRole("button", { name: "Hide map results" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 
   it("holds cluster placeholders over the map until the first points arrive", () => {
