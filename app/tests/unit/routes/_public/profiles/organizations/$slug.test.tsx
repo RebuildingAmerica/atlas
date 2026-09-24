@@ -12,8 +12,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 });
 
 vi.mock("@/domains/catalog/pages/profiles/detail/org-profile-page", () => ({
-  OrgProfilePage: ({ entry }: { entry: { name?: string } }) => (
-    <div data-testid="org-profile" data-name={entry.name ?? ""} />
+  OrgProfilePage: ({ entry, resumeSave }: { entry: { name?: string }; resumeSave?: boolean }) => (
+    <div data-testid="org-profile" data-name={entry.name ?? ""} data-resume-save={resumeSave} />
   ),
 }));
 
@@ -24,8 +24,9 @@ vi.mock("@/domains/catalog/server/profiles/profile-loaders", () => ({
 
 describe("routes/_public/profiles/organizations/$slug", () => {
   beforeEach(async () => {
-    const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
+    const { readRouterMocks, resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
+    readRouterMocks().useSearch.mockReturnValue({});
   });
 
   afterEach(() => {
@@ -139,6 +140,23 @@ describe("routes/_public/profiles/organizations/$slug", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     const view = render(<Component />);
     expect(view.getByTestId("org-profile").dataset.name).toBe("Acme");
+    expect(view.getByTestId("org-profile")).toHaveAttribute("data-resume-save", "false");
+  });
+
+  it("carries save intent from the profile URL into the signed-in action", async () => {
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useLoaderData.mockReturnValue({ entry: { name: "Acme" } });
+    readRouterMocks().useParams.mockReturnValue({ slug: "acme" });
+    readRouterMocks().useSearch.mockReturnValue({ action: "save" });
+    const routeModule = await import("@/routes/_public/profiles/organizations/$slug");
+    const Route = asRouteStub(routeModule.Route);
+    const schema = Route.options.validateSearch;
+    if (!schema || typeof schema === "function") throw new Error("Expected search schema");
+    expect(schema.parse({ action: "save" })).toEqual({ action: "save" });
+    const Component = Route.options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    const view = render(<Component />);
+    expect(view.getByTestId("org-profile")).toHaveAttribute("data-resume-save", "true");
   });
 
   it("hands the page no entry instead of failing when the API call fails", async () => {

@@ -8,16 +8,17 @@ import type { Entry, EntrySlugScope } from "@rebuildingamerica/atlas-api-client"
 interface ProfileRoutePageProps {
   scope: EntrySlugScope;
   slug: string;
+  resumeSave?: boolean;
   /** The loader's entry, or `undefined` when the loader's API call failed. */
   entry: Entry | undefined;
 }
 
-function renderProfile(scope: EntrySlugScope, entry: Entry) {
+function renderProfile(scope: EntrySlugScope, entry: Entry, resumeSave: boolean) {
   if (scope === "people") {
-    return <PersonProfilePage entry={entry} />;
+    return <PersonProfilePage entry={entry} resumeSave={resumeSave} />;
   }
   if (scope === "organizations") {
-    return <OrgProfilePage entry={entry} />;
+    return <OrgProfilePage entry={entry} resumeSave={resumeSave} />;
   }
   return <NonActorProfilePage entry={entry} />;
 }
@@ -30,16 +31,21 @@ function renderProfile(scope: EntrySlugScope, entry: Entry) {
  * profile's frame while the browser fetches the entry itself, so an outage
  * delays the profile instead of replacing it with an error.
  */
-export function ProfileRoutePage({ scope, slug, entry }: ProfileRoutePageProps) {
+export function ProfileRoutePage({
+  scope,
+  slug,
+  entry,
+  resumeSave = false,
+}: ProfileRoutePageProps) {
   if (entry) {
-    return renderProfile(scope, entry);
+    return renderProfile(scope, entry, resumeSave);
   }
 
   const layout = scope === "people" || scope === "organizations" ? "actor" : "record";
 
   return (
     <DeferredEntry lookup={{ scope, slug }} placeholder={<ProfilePageSkeleton layout={layout} />}>
-      {(fetched) => renderProfile(scope, fetched)}
+      {(fetched) => renderProfile(scope, fetched, resumeSave)}
     </DeferredEntry>
   );
 }

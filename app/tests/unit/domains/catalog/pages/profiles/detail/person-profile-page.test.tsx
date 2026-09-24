@@ -226,6 +226,24 @@ describe("PersonProfilePage", () => {
     expect(screen.getByRole("button", { name: /watch/i })).toBeInTheDocument();
   });
 
+  it("keeps pending Save behind account setup until the new account is ready", () => {
+    renderWithProviders(<PersonProfilePage entry={person()} resumeSave />, {
+      seed: (queryClient) => {
+        seedAnonymous(queryClient);
+        queryClient.setQueryData(
+          ["auth", "session"],
+          createAtlasSessionFixture({ accountReady: false, hasPasskey: false }),
+        );
+      },
+    });
+
+    expect(screen.getByRole("link", { name: "Finish setup to save" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/setup"),
+    );
+    expect(screen.queryByRole("dialog", { name: /save to list/i })).not.toBeInTheDocument();
+  });
+
   it("withholds workspace watching from a signed-in operator without that capability", () => {
     renderWithProviders(<PersonProfilePage entry={person()} />, {
       seed: (queryClient) => {

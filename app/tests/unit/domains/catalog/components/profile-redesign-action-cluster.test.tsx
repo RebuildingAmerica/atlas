@@ -6,6 +6,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
+import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
 
 const profileFollowMocks = vi.hoisted(() => ({
   useProfileFollow: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => ({
 }));
 
 beforeEach(() => {
+  resetRouterMocks();
   profileFollowMocks.useProfileFollow.mockReturnValue({ data: null, isLoading: false });
   profileFollowMocks.useFollowProfile.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
   profileFollowMocks.useUnfollowProfile.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
@@ -118,6 +120,43 @@ describe("ActionCluster", () => {
     const follow = screen.getByRole("link", { name: /follow/i });
     expect(save).toHaveAttribute("href", expect.stringContaining("/sign-in"));
     expect(follow).toHaveAttribute("href", expect.stringContaining("/sign-in"));
+    expect(
+      new URL(save.getAttribute("href") ?? "", "http://atlas.local").searchParams.get("redirect"),
+    ).toBe("/profiles/people/jane-doe?action=save");
+    expect(
+      new URL(follow.getAttribute("href") ?? "", "http://atlas.local").searchParams.get("redirect"),
+    ).toBe("/profiles/people/jane-doe");
+  });
+
+  it("opens the list picker and focuses Save after an authenticated return", () => {
+    render(<ActionCluster {...baseProps} isSignedIn resumeSave />);
+    expect(screen.getByRole("dialog", { name: /save to list/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^save$/i })).toHaveFocus();
+  });
+
+  it("does not open the private list picker while the visitor is anonymous", () => {
+    render(<ActionCluster {...baseProps} isSignedIn={false} resumeSave />);
+    expect(screen.queryByRole("dialog", { name: /save to list/i })).not.toBeInTheDocument();
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
+  });
+
+  it("continues account setup before opening private actions", () => {
+    render(<ActionCluster {...baseProps} isSignedIn readyForActions={false} resumeSave />);
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
+      to: "/setup",
+      search: { redirect: "/profiles/people/jane-doe?action=save" },
+      replace: true,
+    });
+    const save = screen.getByRole("link", { name: "Finish setup to save" });
+    expect(new URL(save.getAttribute("href") ?? "", "http://atlas.local").pathname).toBe("/setup");
+    expect(
+      new URL(save.getAttribute("href") ?? "", "http://atlas.local").searchParams.get("redirect"),
+    ).toBe("/profiles/people/jane-doe?action=save");
+    expect(screen.getByRole("link", { name: "Finish setup to follow" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/setup"),
+    );
+    expect(screen.queryByRole("dialog", { name: /save to list/i })).not.toBeInTheDocument();
   });
 
   it("renders Save and Follow as buttons when signed in", () => {

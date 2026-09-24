@@ -26,6 +26,7 @@ import type { ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-clie
 interface OrgProfilePageProps {
   entry: Entry;
   initialConnections?: ConnectionNetwork;
+  resumeSave?: boolean;
 }
 
 function shortRelative(iso: string, now: Date = new Date()): string {
@@ -43,15 +44,17 @@ function buildShareUrl(slug: string): string {
   return buildCanonicalUrl(`/profiles/organizations/${slug}`);
 }
 
-export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProps) {
+export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
   const connectionsQuery = useProfileConnections(entry.id, initialConnections);
   const sessionQuery = useAtlasSession();
   const session = sessionQuery.data ?? null;
   const isSignedIn = session !== null;
+  const readyForActions = Boolean(session?.accountReady && session.hasPasskey);
   const activeWorkspaceId = session?.workspace.activeOrganization?.id ?? null;
   const workspaceWatchingEnabled =
     session !== null &&
+    readyForActions &&
     activeWorkspaceId !== null &&
     session.workspace.resolvedCapabilities.capabilities.includes("monitoring.watchlists");
   const affiliatedPeopleQuery = useEntries(
@@ -186,7 +189,9 @@ export function OrgProfilePage({ entry, initialConnections }: OrgProfilePageProp
           shareTitle={entry.name}
           email={entry.email}
           isSignedIn={isSignedIn}
+          readyForActions={readyForActions}
           profilePath={profilePath}
+          resumeSave={resumeSave}
           sourcesHref="#appearances"
           workspaceId={activeWorkspaceId}
           workspaceWatchingEnabled={workspaceWatchingEnabled}

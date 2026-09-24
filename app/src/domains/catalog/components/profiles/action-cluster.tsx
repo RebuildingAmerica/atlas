@@ -7,7 +7,7 @@
  * anonymous visitors get sign-in links with a redirect; signed-in visitors get
  * the real list-picker and follow toggle.
  */
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { copyToClipboard } from "@/lib/clipboard";
 import {
@@ -30,7 +30,9 @@ interface ActionClusterProps {
   shareTitle: string;
   email?: string;
   isSignedIn: boolean;
+  readyForActions?: boolean;
   profilePath: string;
+  resumeSave?: boolean;
   sourcesHref?: string;
   workspaceId?: string | null;
   workspaceWatchingEnabled?: boolean;
@@ -69,14 +71,18 @@ export function ActionCluster({
   shareTitle,
   email,
   isSignedIn,
+  readyForActions = true,
   profilePath,
+  resumeSave = false,
   sourcesHref,
   workspaceId = null,
   workspaceWatchingEnabled = false,
 }: ActionClusterProps) {
+  const navigate = useNavigate();
   const [shareState, setShareState] = useState<ShareState>("idle");
   const [savePickerOpen, setSavePickerOpen] = useState(false);
-  const followQuery = useProfileFollow(entrySlug, isSignedIn);
+  const canUseWorkspace = isSignedIn && readyForActions;
+  const followQuery = useProfileFollow(entrySlug, canUseWorkspace);
   const followMutation = useFollowProfile();
   const unfollowMutation = useUnfollowProfile();
   const workspaceWatchInput = {
@@ -85,7 +91,7 @@ export function ActionCluster({
   };
   const workspaceWatchQuery = useWorkspaceWatchStatus(
     workspaceWatchInput,
-    isSignedIn && workspaceWatchingEnabled,
+    canUseWorkspace && workspaceWatchingEnabled,
     workspaceId,
   );
   const watchWorkspaceMutation = useWatchWorkspaceResource();
@@ -97,6 +103,21 @@ export function ActionCluster({
   // the two seconds would otherwise leave a timer setting state on a gone
   // component.
   const resetTimerRef = useRef<number | null>(null);
+  const saveButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (isSignedIn && !readyForActions && resumeSave) {
+      void navigate({
+        to: "/setup",
+        search: { redirect: `${profilePath}?action=save` },
+        replace: true,
+      });
+      return;
+    }
+    if (canUseWorkspace && resumeSave) {
+      setSavePickerOpen(true);
+      saveButtonRef.current?.focus();
+    }
+  }, [canUseWorkspace, isSignedIn, readyForActions, resumeSave, entryId, navigate, profilePath]);
   useEffect(
     () => () => {
       if (resetTimerRef.current !== null) {
@@ -192,10 +213,11 @@ export function ActionCluster({
         </a>
       ) : null}
 
-      {isSignedIn ? (
+      {canUseWorkspace ? (
         <div className="relative">
           <button
             type="button"
+            ref={saveButtonRef}
             className={GHOST_BUTTON}
             aria-expanded={savePickerOpen}
             aria-controls={SAVE_LIST_PICKER_ID}
@@ -213,12 +235,16 @@ export function ActionCluster({
           />
         </div>
       ) : (
-        <Link to="/sign-in" search={{ redirect: profilePath }} className={GHOST_BUTTON}>
-          Save
+        <Link
+          to={isSignedIn ? "/setup" : "/sign-in"}
+          search={{ redirect: `${profilePath}?action=save` }}
+          className={GHOST_BUTTON}
+        >
+          {isSignedIn ? "Finish setup to save" : "Save"}
         </Link>
       )}
 
-      {isSignedIn && workspaceWatchingEnabled ? (
+      {canUseWorkspace && workspaceWatchingEnabled ? (
         <button
           type="button"
           className={cn(
@@ -233,7 +259,7 @@ export function ActionCluster({
         </button>
       ) : null}
 
-      {isSignedIn ? (
+      {canUseWorkspace ? (
         <button
           type="button"
           className={cn(
@@ -247,8 +273,12 @@ export function ActionCluster({
           {isFollowing ? "Following" : "Follow updates"}
         </button>
       ) : (
-        <Link to="/sign-in" search={{ redirect: profilePath }} className={GHOST_BUTTON}>
-          Follow updates
+        <Link
+          to={isSignedIn ? "/setup" : "/sign-in"}
+          search={{ redirect: profilePath }}
+          className={GHOST_BUTTON}
+        >
+          {isSignedIn ? "Finish setup to follow" : "Follow updates"}
         </Link>
       )}
     </nav>

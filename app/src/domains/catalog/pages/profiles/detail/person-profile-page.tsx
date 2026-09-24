@@ -37,6 +37,7 @@ import type { ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-clie
 interface PersonProfilePageProps {
   entry: Entry;
   initialConnections?: ConnectionNetwork;
+  resumeSave?: boolean;
 }
 
 function monthsBetween(fromIso: string, toIso: string): number {
@@ -62,15 +63,21 @@ function buildShareUrl(slug: string): string {
   return buildCanonicalUrl(`/profiles/people/${slug}`);
 }
 
-export function PersonProfilePage({ entry, initialConnections }: PersonProfilePageProps) {
+export function PersonProfilePage({
+  entry,
+  initialConnections,
+  resumeSave,
+}: PersonProfilePageProps) {
   const taxonomyQuery = useTaxonomy();
   const connectionsQuery = useProfileConnections(entry.id, initialConnections);
   const sessionQuery = useAtlasSession();
   const session = sessionQuery.data ?? null;
   const isSignedIn = session !== null;
+  const readyForActions = Boolean(session?.accountReady && session.hasPasskey);
   const activeWorkspaceId = session?.workspace.activeOrganization?.id ?? null;
   const workspaceWatchingEnabled =
     session !== null &&
+    readyForActions &&
     activeWorkspaceId !== null &&
     session.workspace.resolvedCapabilities.capabilities.includes("monitoring.watchlists");
   const affiliatedOrgQuery = useEntry(entry.affiliated_org_id ?? "", {
@@ -217,7 +224,9 @@ export function PersonProfilePage({ entry, initialConnections }: PersonProfilePa
           shareTitle={entry.name}
           email={entry.email}
           isSignedIn={isSignedIn}
+          readyForActions={readyForActions}
           profilePath={profilePath}
+          resumeSave={resumeSave}
           sourcesHref="#reporting-trail"
           workspaceId={activeWorkspaceId}
           workspaceWatchingEnabled={workspaceWatchingEnabled}
