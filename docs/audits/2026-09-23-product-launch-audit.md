@@ -32,12 +32,12 @@ also concrete billing defects and missing lifecycle evidence. See the
 
 ### Launch decision by surface
 
-| Surface                                    | Decision on September 23             | What changes the decision                                                                                                                                         |
-| ------------------------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public discovery, narrow promoted coverage | **Conditional pilot**                | Contain the report-note exposure, define the promoted place/issue slice, review the records returned by the launch queries, and fix the search-first mobile path. |
-| Public national promotion                  | **No-go**                            | Demonstrate useful results beyond record presence, accurate coverage claims, reliable corrections, and sustained editorial capacity.                              |
-| Pro and Research Pass sales                | **No-go pending payment acceptance** | Pass the complete purchase, entitlement, return, cancellation/expiry, failure, and refund matrix for every offer left available.                                  |
-| Team sales                                 | **No-go**                            | Add server-side billing authorization, complete invite/ownership administration, then pass the team seat and payment lifecycle.                                   |
+| Surface                                    | Decision on September 23             | What changes the decision                                                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Public discovery, narrow promoted coverage | **No-go for Las Vegas today**        | Build a source-reviewed local transit/housing slice with useful official next steps, then prove ten real visitor questions and the mobile journey. [Current coverage gate](2026-09-23-las-vegas-coverage-gate.md). |
+| Public national promotion                  | **No-go**                            | Demonstrate useful results beyond record presence, accurate coverage claims, reliable corrections, and sustained editorial capacity.                                                                               |
+| Pro and Research Pass sales                | **No-go pending payment acceptance** | Pass the complete purchase, entitlement, return, cancellation/expiry, failure, and refund matrix for every offer left available.                                                                                   |
+| Team sales                                 | **No-go**                            | Add server-side billing authorization, complete invite/ownership administration, then pass the team seat and payment lifecycle.                                                                                    |
 
 “Launch” in this document means a controlled release to a named initial cohort
 with a truthful coverage promise, staffed support windows, and daily review of
@@ -355,13 +355,14 @@ Detroit result set illustrates the same problem at task level. **The acquisition
 target should be useful, evidenced profiles per customer question, not rows per
 pipeline run.**
 
-Start with one place and one or two issues where you have credible local access
-and prospective users. Las Vegas and a housing/transit slice are a plausible
-candidate given the existing steward plan and network, not a decision proven by
-market research. Review roughly 50–100 strong profiles as a capacity hypothesis;
-start smaller if that is what the query benchmark needs. Keep wider records
-available with honest limitations, while only promoting coverage that meets the
-usefulness bar.
+Start with Las Vegas and one or two issues where you have credible local access
+and prospective users. The
+[current Las Vegas inventory](2026-09-23-las-vegas-coverage-gate.md) does not
+support promoting transit or housing yet: its 73 city records include no
+public-transit tag and no listed website or email. Review roughly 50–100 strong
+profiles as a capacity hypothesis; start smaller if that is what the query
+benchmark needs. Keep wider records available with honest limitations, while
+only promoting coverage that meets the usefulness bar.
 
 For each publishable profile, review identity, actual current work, relevant
 issue, service geography, source dates, a safe public next step, duplicates, and
