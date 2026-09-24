@@ -109,6 +109,11 @@ The paid gate is independent of free browsing. Do not open Team merely because
 individual Pro passes: seats, invites, ownership, and shared billing have their
 own acceptance rows.
 
+The wrong-account invitation screen now signs out and carries the invitation
+through the next sign-in, with a retry if sign-out fails. This is local behavior
+proof; acceptance after a real emailed invitation and account switch is still
+needed on the deployed release.
+
 Ownership promotion does not change the Stripe customer's email or payment
 method. The outgoing owner sees this before leaving, and a team launch rehearsal
 must verify that the remaining owner can open billing, update its contact and
@@ -116,6 +121,11 @@ payment method where needed, and receive future receipts.
 
 ## Validation of this branch
 
+- After repairing invitation account switching, the app coverage run passed 597
+  files and 3,882 tests with 100% statements, branches, functions, and lines.
+  The invitation page's nine focused tests, app lint, TypeScript, and production
+  build passed on Node 24. A real email and signed-in wrong-account round trip
+  remain open.
 - After enabling owner handoff, the app coverage run passed 597 files and 3,881
   tests with 100% statements, branches, functions, and lines. Five focused
   ownership and membership test files passed 56 cases. App lint, TypeScript, and

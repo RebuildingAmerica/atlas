@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
+import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import {
   acceptWorkspaceInvitation,
   setActiveWorkspace,
 } from "@/domains/access/organizations.functions";
 import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Spinner } from "@rebuildingamerica/atlas-ui/ui/spinner";
 import {
   ACCEPT_INVITATION_OUTCOME,
@@ -73,6 +75,20 @@ export function AcceptInvitationPage({ invitationId }: AcceptInvitationPageProps
   const hasAttemptedRef = useRef(false);
   const [outcome, setOutcome] = useState<AcceptInvitationOutcome | null>(null);
   const [didFail, setDidFail] = useState(false);
+  const [isSwitchPending, setIsSwitchPending] = useState(false);
+  const [switchError, setSwitchError] = useState<string | null>(null);
+
+  async function handleSwitchAccount() {
+    setSwitchError(null);
+    setIsSwitchPending(true);
+    await signOutWithRedirect({
+      redirectTo: buildInvitationSignInPath(invitationId),
+      onError: () => {
+        setSwitchError("Could not sign out. Try again.");
+        setIsSwitchPending(false);
+      },
+    });
+  }
 
   const acceptMutation = useMutation({
     mutationFn: async (session: AtlasSessionPayload): Promise<AcceptInvitationOutcome> => {
@@ -176,12 +192,21 @@ export function AcceptInvitationPage({ invitationId }: AcceptInvitationPageProps
 
   if (outcome?.status === ACCEPT_INVITATION_OUTCOME.WRONG_ACCOUNT) {
     return (
-      <InvitationPanel
-        eyebrow="Workspace invitation"
-        heading="This invitation is for a different email"
-        body="You're signed in with an account that doesn't match this invitation. Sign out and sign back in with the email where you received it."
-        action={{ label: "Go to sign in", to: "/sign-in" }}
-      />
+      <div className="space-y-4">
+        <InvitationPanel
+          eyebrow="Workspace invitation"
+          heading="This invitation is for a different email"
+          body="You're signed in with an account that doesn't match this invitation. Switch to the email where you received it."
+        />
+        <Button disabled={isSwitchPending} onClick={() => void handleSwitchAccount()}>
+          {isSwitchPending ? "Signing out..." : "Switch account"}
+        </Button>
+        {switchError ? (
+          <p className="type-body-small text-error" role="alert">
+            {switchError}
+          </p>
+        ) : null}
+      </div>
     );
   }
 

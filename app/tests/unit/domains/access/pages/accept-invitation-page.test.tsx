@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
   acceptWorkspaceInvitation: vi.fn(),
+  getAuthClient: vi.fn(),
   invalidateQueries: vi.fn(),
   setActiveWorkspace: vi.fn(),
+  signOut: vi.fn(),
   useAtlasSession: vi.fn(),
   useMutation: vi.fn(),
   useQueryClient: vi.fn(),
@@ -25,6 +27,10 @@ vi.mock("@tanstack/react-router", async () => {
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
   atlasSessionQueryKey: ["auth", "session"],
   useAtlasSession: mocks.useAtlasSession,
+}));
+
+vi.mock("@/domains/access/client/auth-client", () => ({
+  getAuthClient: mocks.getAuthClient,
 }));
 
 vi.mock("@/domains/access/organizations.functions", () => ({
@@ -108,6 +114,8 @@ describe("AcceptInvitationPage", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.acceptWorkspaceInvitation.mockReset().mockResolvedValue({ ok: true });
+    mocks.signOut.mockReset().mockResolvedValue({});
+    mocks.getAuthClient.mockReset().mockReturnValue({ signOut: mocks.signOut });
     mocks.invalidateQueries.mockReset().mockResolvedValue(undefined);
     mocks.setActiveWorkspace.mockReset().mockResolvedValue({ ok: true });
     mocks.useAtlasSession.mockReset();
@@ -219,6 +227,38 @@ describe("AcceptInvitationPage", () => {
     });
     expect(mocks.acceptWorkspaceInvitation).not.toHaveBeenCalled();
     expect(mocks.setActiveWorkspace).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch account" }));
+    await waitFor(() => {
+      expect(assignMock).toHaveBeenCalledWith(
+        "/sign-in?invitation=inv_1&redirect=%2Faccept-invitation%2Finv_1",
+      );
+    });
+    expect(mocks.signOut).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the invitation available when switching accounts fails", async () => {
+    installLiveMutation();
+    mocks.signOut.mockRejectedValue(new Error("offline"));
+    mocks.useAtlasSession.mockReturnValue({
+      data: buildSession("operator@atlas.test", [
+        buildInvitation({ email: "someone-else@atlas.test", id: "inv_1" }),
+      ]),
+      isPending: false,
+    });
+    const { AcceptInvitationPage } =
+      await import("@/domains/access/pages/auth/accept-invitation-page");
+
+    render(<AcceptInvitationPage invitationId="inv_1" />);
+    await waitFor(() => {
+      expect(screen.getByText(/different email/i)).not.toBeNull();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Switch account" }));
+    await waitFor(() => {
+      expect(screen.getByText("Could not sign out. Try again.")).not.toBeNull();
+    });
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Switch account" })).not.toBeDisabled();
   });
 
   it("shows generic copy and hides the raw error when acceptance fails", async () => {
