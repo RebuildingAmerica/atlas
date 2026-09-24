@@ -11,7 +11,6 @@ import {
   FreshnessChip,
   formatFreshness,
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
 import { LinkedAtprotoAccount } from "@/domains/catalog/components/profiles/linked-atproto-account";
 import {
   MONTH_YEAR,
@@ -337,12 +336,6 @@ export function DataQualityBlock({ entry }: DataQualityBlockProps) {
             </span>
           }
         />
-        <div className="space-y-1">
-          <dt className="type-label-small text-ink-muted">Lead signals</dt>
-          <dd>
-            <LeadQualitySignals entry={entry} />
-          </dd>
-        </div>
         <ActorSpecificityBlock entry={entry} />
         <ProfileShapeBlock entry={entry} />
         <div className="space-y-1">

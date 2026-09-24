@@ -311,66 +311,68 @@ export function EntryDetail({
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl">
-        <CardHeader className="space-y-3">
-          <div className="space-y-1">
-            <CardTitle>Sources</CardTitle>
-          </div>
-          {sourceSummary.packetCount > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              <Badge>{pluralize(sourceSummary.packetCount, "source")}</Badge>
-              <Badge>{pluralize(sourceSummary.typeCount, "source type")}</Badge>
+      <div id="reporting-trail">
+        <Card className="rounded-3xl">
+          <CardHeader className="space-y-3">
+            <div className="space-y-1">
+              <CardTitle>Sources</CardTitle>
             </div>
-          ) : null}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {entry.sources?.length ? (
-            entry.sources.map((source) => (
-              <article key={source.id} className="border-border rounded-2xl border p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge>{humanize(source.type)}</Badge>
-                  {source.publication ? (
-                    <span className="type-body-medium text-ink-soft font-medium">
-                      {source.publication}
-                    </span>
-                  ) : null}
-                  {source.published_date ? (
-                    <span className="type-body-medium text-on-surface-variant">
-                      {source.published_date}
-                    </span>
-                  ) : null}
-                </div>
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="type-title-large text-link hover:text-link-hover mt-3 block"
-                >
-                  {source.title ?? source.url}
-                </a>
-                {source.extraction_context ? (
-                  <div className="border-border-strong mt-3 border-l-2 pl-3">
-                    <p className="type-label-medium text-on-surface-variant uppercase">Quote</p>
-                    <p className="type-body-medium text-ink-soft mt-1">
-                      {source.extraction_context}
-                    </p>
+            {sourceSummary.packetCount > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                <Badge>{pluralize(sourceSummary.packetCount, "source")}</Badge>
+                <Badge>{pluralize(sourceSummary.typeCount, "source type")}</Badge>
+              </div>
+            ) : null}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {entry.sources?.length ? (
+              entry.sources.map((source) => (
+                <article key={source.id} className="border-border rounded-2xl border p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge>{humanize(source.type)}</Badge>
+                    {source.publication ? (
+                      <span className="type-body-medium text-ink-soft font-medium">
+                        {source.publication}
+                      </span>
+                    ) : null}
+                    {source.published_date ? (
+                      <span className="type-body-medium text-on-surface-variant">
+                        {source.published_date}
+                      </span>
+                    ) : null}
                   </div>
-                ) : null}
-                <SourceFreshnessWarning source={source} />
-                <div className="mt-4">
-                  <PrivateNotesPanel
-                    targetId={source.id}
-                    targetLabel={sourceNoteLabel(source)}
-                    type="source"
-                  />
-                </div>
-              </article>
-            ))
-          ) : (
-            <p className="type-body-medium text-on-surface-variant">No linked sources yet.</p>
-          )}
-        </CardContent>
-      </Card>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="type-title-large text-link hover:text-link-hover mt-3 block"
+                  >
+                    {source.title ?? source.url}
+                  </a>
+                  {source.extraction_context ? (
+                    <div className="border-border-strong mt-3 border-l-2 pl-3">
+                      <p className="type-label-medium text-on-surface-variant uppercase">Quote</p>
+                      <p className="type-body-medium text-ink-soft mt-1">
+                        {source.extraction_context}
+                      </p>
+                    </div>
+                  ) : null}
+                  <SourceFreshnessWarning source={source} />
+                  <div className="mt-4">
+                    <PrivateNotesPanel
+                      targetId={source.id}
+                      targetLabel={sourceNoteLabel(source)}
+                      type="source"
+                    />
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="type-body-medium text-on-surface-variant">No linked sources yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

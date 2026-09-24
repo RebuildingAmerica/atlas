@@ -86,7 +86,7 @@ describe("catalog entry components", () => {
     sources: [sampleSource],
   };
 
-  it("renders entry cards with issue and source badges", () => {
+  it("renders an entry's work preview with one source line", () => {
     render(
       <EntryCard
         entry={sampleEntry}
@@ -101,75 +101,11 @@ describe("catalog entry components", () => {
 
     expect(screen.getByText("Housing Justice KC")).not.toBeNull();
     expect(screen.getByText("Housing")).not.toBeNull();
-    expect(screen.getByText("Source-backed")).not.toBeNull();
-    expect(screen.getByText("2 source packets")).not.toBeNull();
-    expect(screen.getByText("Latest source: 2026-04-11")).not.toBeNull();
-    expect(screen.getByText("Matched because: works on Housing in Kansas City, MO")).not.toBeNull();
-    expect(screen.getByText("2 sources · latest 2026-04-11 · Atlas-verified")).not.toBeNull();
+    expect(screen.queryByText("Source-backed")).toBeNull();
+    expect(screen.queryByText("2 source packets")).toBeNull();
+    expect(screen.getByText("Issue: Housing · Listed in Kansas City, MO")).not.toBeNull();
+    expect(screen.getByText("2 sources · Latest source 2026-04-11")).not.toBeNull();
     expect(screen.getByRole("link", { name: "Inspect sources" })).not.toBeNull();
-  });
-
-  it("surfaces lead-quality signals on browse cards", () => {
-    render(
-      <EntryCard
-        entry={{
-          ...sampleEntry,
-          latest_source_date: new Date().toISOString(),
-          source_types: ["news_article", "report"],
-        }}
-      />,
-    );
-
-    expect(screen.getByText("Local lead")).not.toBeNull();
-    expect(screen.getByText("Recent source")).not.toBeNull();
-    expect(screen.getByText("Diverse sources")).not.toBeNull();
-    expect(screen.getByText("Reachable")).not.toBeNull();
-  });
-
-  it("surfaces partner qualification signals from trust, sources, and contactability", () => {
-    const { rerender } = render(
-      <EntryCard
-        entry={{
-          ...sampleEntry,
-          source_count: 4,
-          trust: { ...sampleEntry.trust, level: "subject_verified" },
-        }}
-      />,
-    );
-
-    expect(screen.getByText("Partner-ready")).not.toBeNull();
-
-    rerender(
-      <EntryCard
-        entry={{
-          ...sampleEntry,
-          source_count: 4,
-          trust: {
-            ...sampleEntry.trust,
-            level: "corroborated",
-            independent_source_count: 3,
-          },
-        }}
-      />,
-    );
-
-    expect(screen.getByText("Strong partner lead")).not.toBeNull();
-
-    rerender(
-      <EntryCard
-        entry={{
-          ...sampleEntry,
-          email: undefined,
-          phone: undefined,
-          social_media: undefined,
-          source_count: 1,
-          trust: { ...sampleEntry.trust, level: "unverified" },
-          website: undefined,
-        }}
-      />,
-    );
-
-    expect(screen.getByText("Qualify before outreach")).not.toBeNull();
   });
 
   it("links a person entry to the people profile route", () => {
@@ -289,16 +225,16 @@ describe("catalog entry components", () => {
     expect(screen.queryByText("Verified by subject")).toBeNull();
   });
 
-  it("shows an 'Atlas-verified' badge for the atlas_verified tier", () => {
+  it("keeps the internal Atlas verification tier off result cards", () => {
     render(
       <EntryCard
         entry={{ ...sampleEntry, trust: { ...sampleEntry.trust, level: "atlas_verified" } }}
       />,
     );
-    expect(screen.getByText("Atlas-verified")).not.toBeNull();
+    expect(screen.queryByText("Atlas-verified")).toBeNull();
   });
 
-  it("shows a 'Corroborated' badge with no count for the corroborated tier", () => {
+  it("keeps corroboration details on the profile rather than the result card", () => {
     render(
       <EntryCard
         entry={{
@@ -307,7 +243,7 @@ describe("catalog entry components", () => {
         }}
       />,
     );
-    expect(screen.getByText("Corroborated")).not.toBeNull();
+    expect(screen.queryByText("Corroborated")).toBeNull();
   });
 
   it("renders no trust badge for the unverified tier, never the legacy 'Verified'", () => {

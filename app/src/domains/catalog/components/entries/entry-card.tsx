@@ -1,7 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LeadQualitySignals } from "@/domains/catalog/components/profiles/lead-quality-signals";
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
-import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Entry, EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
 
@@ -40,12 +38,16 @@ function humanize(value: string): string {
 }
 
 interface EntryBadgeInfo {
-  variant: "success" | "info" | "warning";
+  variant: "success" | "warning";
   label: string;
 }
 
 /** Map verification and trust state to a browse-card badge. */
 function trustBadge(entry: Entry): EntryBadgeInfo | null {
+  if (entry.type !== "person" && entry.type !== "organization") {
+    return null;
+  }
+
   if (entry.claim?.status === "pending") {
     return { variant: "warning", label: "Verification under review" };
   }
@@ -53,37 +55,24 @@ function trustBadge(entry: Entry): EntryBadgeInfo | null {
     return { variant: "success", label: subjectVerifiedLabel(entry.type) };
   }
 
-  const level = entry.trust?.level;
-  switch (level) {
-    case "subject_verified":
-      return { variant: "success", label: subjectVerifiedLabel(entry.type) };
-    case "atlas_verified":
-      return { variant: "success", label: "Atlas-verified" };
-    case "corroborated":
-      return { variant: "info", label: "Corroborated" };
-    default:
-      return null;
-  }
+  return entry.trust?.level === "subject_verified"
+    ? { variant: "success", label: subjectVerifiedLabel(entry.type) }
+    : null;
 }
 
 function subjectVerifiedLabel(type: EntryType): string {
   return type === "organization" ? "Verified representative" : "Verified person";
 }
 
-function trustLabel(entry: Entry): string {
-  const badge = trustBadge(entry);
-  return badge?.label ?? "Source-backed";
-}
-
 function sourceSummary(entry: Entry): string {
   const sourceCount = entry.source_count;
+  if (sourceCount === 0) return "No sources listed";
   const parts = [`${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`];
 
   if (entry.latest_source_date) {
-    parts.push(`latest ${entry.latest_source_date}`);
+    parts.push(`Latest source ${entry.latest_source_date}`);
   }
 
-  parts.push(trustLabel(entry));
   return parts.join(" · ");
 }
 
@@ -124,17 +113,17 @@ function buildMatchReason(
   entry: Entry,
   context: EntryDiscoveryContext | undefined,
   issueAreaLabels: Record<string, string>,
-): string {
+): string | null {
   const issueLabel = matchingIssueLabel(entry, context, issueAreaLabels);
   const location = locationReason(entry);
 
   if (issueLabel) {
-    return `works on ${issueLabel}${location ? ` in ${location}` : ""}`;
+    return `Issue: ${issueLabel}${location ? ` · Listed in ${location}` : ""}`;
   }
 
   const query = context?.query?.trim();
   if (query && entry.name.toLowerCase().includes(query.toLowerCase())) {
-    return `name matches "${query}"`;
+    return `Name matches “${query}”`;
   }
 
   if (
@@ -142,14 +131,14 @@ function buildMatchReason(
       entry.source_types.some((entrySourceType) => entrySourceType === sourceType),
     )
   ) {
-    return "has sources in the selected source type";
+    return "Source type matches";
   }
 
   if (context?.places?.length && location) {
-    return `listed in ${location}`;
+    return `Listed in ${location}`;
   }
 
-  return `${humanize(entry.type).toLowerCase()} in the Atlas directory`;
+  return null;
 }
 
 const PROFILE_ROUTE_BY_TYPE = {
@@ -200,43 +189,25 @@ export function EntryCard({ entry, issueAreaLabels = {}, discoveryContext }: Ent
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="info">{humanize(entry.type)}</Badge>
               {tier ? <Badge variant={tier.variant}>{tier.label}</Badge> : null}
-              <Badge>Source-backed</Badge>
-              <Badge>{pluralize(entry.source_count, "source packet")}</Badge>
             </div>
-            <LeadQualitySignals entry={entry} />
           </div>
-
-          {entry.latest_source_date ? (
-            <p className="type-body-medium text-ink-muted">
-              Latest source: {entry.latest_source_date}
-            </p>
-          ) : null}
         </div>
 
-        <p className="type-body-medium text-ink-soft">{entry.description}</p>
+        <p className="type-body-medium text-ink-soft line-clamp-3 break-words">
+          {entry.description}
+        </p>
 
         <div className="bg-surface-container-low rounded-[1rem] px-3 py-2">
-          <p className="type-body-small text-ink-strong">Matched because: {matchReason}</p>
+          {matchReason ? <p className="type-body-small text-ink-strong">{matchReason}</p> : null}
           <p className="type-body-small text-ink-muted mt-1">{sourceSummary(entry)}</p>
         </div>
 
         {entry.issue_areas.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {entry.issue_areas.slice(0, 4).map((issueArea) => (
+            {entry.issue_areas.slice(0, 2).map((issueArea) => (
               <Badge key={issueArea} variant="warning">
                 {issueAreaLabels[issueArea] ?? humanize(issueArea)}
               </Badge>
-            ))}
-          </div>
-        ) : null}
-
-        {entry.source_types.length > 0 ? (
-          <div className="type-body-medium text-ink-muted flex flex-wrap gap-2">
-            <span className="text-ink-strong font-medium">Mentioned in</span>
-            {entry.source_types.slice(0, 4).map((sourceType) => (
-              <span key={sourceType} className="bg-surface-container rounded-full px-2.5 py-1">
-                {humanize(sourceType)}
-              </span>
             ))}
           </div>
         ) : null}
@@ -256,18 +227,20 @@ export function EntryCard({ entry, issueAreaLabels = {}, discoveryContext }: Ent
           >
             Open profile
           </Link>
-          <a
-            href={`${href}#reporting-trail`}
-            onClick={() => {
-              trackDiscoveryEvent("catalog_sources_inspected", {
-                entry_id: entry.id,
-                entry_type: entry.type,
-              });
-            }}
-            className="type-label-large bg-surface-container text-ink-soft hover:text-ink-strong rounded-full px-3 py-1.5 transition-colors"
-          >
-            Inspect sources
-          </a>
+          {entry.source_count > 0 && entry.slug ? (
+            <a
+              href={`${href}#${entry.type === "organization" ? "appearances" : "reporting-trail"}`}
+              onClick={() => {
+                trackDiscoveryEvent("catalog_sources_inspected", {
+                  entry_id: entry.id,
+                  entry_type: entry.type,
+                });
+              }}
+              className="type-label-large bg-surface-container text-ink-soft hover:text-ink-strong rounded-full px-3 py-1.5 transition-colors"
+            >
+              Inspect sources
+            </a>
+          ) : null}
         </div>
       </div>
     </article>

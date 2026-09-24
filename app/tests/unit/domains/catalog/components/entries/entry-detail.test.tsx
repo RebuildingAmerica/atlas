@@ -161,6 +161,11 @@ describe("EntryDetail verification badge", () => {
 });
 
 describe("EntryDetail freshness", () => {
+  it("gives non-actor profile source links a real destination", () => {
+    render(<EntryDetail entry={createEntryFixture({ type: "initiative" })} />);
+    expect(screen.getByText("Sources").closest("#reporting-trail")).not.toBeNull();
+  });
+
   it("stays quiet about staleness when the newest source is recent", () => {
     render(
       <EntryDetail entry={createEntryFixture({ latest_source_date: new Date().toISOString() })} />,

@@ -13,6 +13,21 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 describe("EntryCard match reason", () => {
+  it("describes a topic match without claiming current work in the listed place", () => {
+    render(
+      <EntryCard
+        discoveryContext={{ issueAreas: ["housing_affordability"] }}
+        entry={createEntryFixture()}
+        issueAreaLabels={{ housing_affordability: "Housing Affordability" }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Issue: Housing Affordability · Listed in Jackson, MS"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/works on Housing Affordability/)).not.toBeInTheDocument();
+  });
+
   it("names the issue and the place a filtered result matched on", () => {
     render(
       <EntryCard
@@ -23,7 +38,7 @@ describe("EntryCard match reason", () => {
     );
 
     expect(
-      screen.getByText("Matched because: works on Housing Affordability in Jackson, MS"),
+      screen.getByText("Issue: Housing Affordability · Listed in Jackson, MS"),
     ).toBeInTheDocument();
   });
 
@@ -36,7 +51,7 @@ describe("EntryCard match reason", () => {
     );
 
     expect(
-      screen.getByText("Matched because: works on Housing Affordability in Jackson, MS"),
+      screen.getByText("Issue: Housing Affordability · Listed in Jackson, MS"),
     ).toBeInTheDocument();
   });
 
@@ -48,7 +63,7 @@ describe("EntryCard match reason", () => {
       />,
     );
 
-    expect(screen.getByText("Matched because: works on Housing Affordability")).toBeInTheDocument();
+    expect(screen.getByText("Issue: Housing Affordability")).toBeInTheDocument();
   });
 
   it("quotes the search text back when the name is what matched", () => {
@@ -59,7 +74,7 @@ describe("EntryCard match reason", () => {
       />,
     );
 
-    expect(screen.getByText('Matched because: name matches "jane"')).toBeInTheDocument();
+    expect(screen.getByText("Name matches “jane”")).toBeInTheDocument();
   });
 
   it("credits the source-type filter when that is the only overlap", () => {
@@ -70,9 +85,7 @@ describe("EntryCard match reason", () => {
       />,
     );
 
-    expect(
-      screen.getByText("Matched because: has sources in the selected source type"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Source type matches")).toBeInTheDocument();
   });
 
   it("credits the place filter when neither issue nor name matched", () => {
@@ -83,7 +96,7 @@ describe("EntryCard match reason", () => {
       />,
     );
 
-    expect(screen.getByText("Matched because: listed in Jackson, MS")).toBeInTheDocument();
+    expect(screen.getByText("Listed in Jackson, MS")).toBeInTheDocument();
   });
 
   it("falls back to describing the record when no filter explains it", () => {
@@ -99,11 +112,34 @@ describe("EntryCard match reason", () => {
       />,
     );
 
-    expect(screen.getByText("Matched because: person in the Atlas directory")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Matched because|person in the Atlas directory/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("3 sources")).toBeInTheDocument();
   });
 });
 
 describe("EntryCard trust badge", () => {
+  it("shows source availability without grading an unreviewed lead", () => {
+    render(
+      <EntryCard
+        entry={createEntryFixture({
+          source_count: 0,
+          trust: {
+            level: "unverified",
+            independent_source_count: null,
+            website_grounded: null,
+            email_grounded: null,
+          },
+        })}
+      />,
+    );
+    expect(screen.getByText("No sources listed")).toBeInTheDocument();
+    expect(screen.queryByText("Source-backed")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Partner-ready|Qualify before outreach/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inspect sources" })).not.toBeInTheDocument();
+  });
+
   it("credits a verified claim on a person as a verified person", () => {
     render(
       <EntryCard
@@ -114,7 +150,7 @@ describe("EntryCard trust badge", () => {
     );
 
     expect(screen.getByText("Verified person")).toBeInTheDocument();
-    expect(screen.getByText(/^3 sources · Verified person$/)).toBeInTheDocument();
+    expect(screen.getByText("3 sources")).toBeInTheDocument();
   });
 
   it("credits a verified claim on an organization as a verified representative", () => {
@@ -130,9 +166,23 @@ describe("EntryCard trust badge", () => {
     expect(screen.getByText("Verified representative")).toBeInTheDocument();
   });
 
+  it("does not call a verified initiative a verified person", () => {
+    render(
+      <EntryCard
+        entry={createEntryFixture({
+          claim: { status: "verified", verification_level: "subject-verified" },
+          type: "initiative",
+        })}
+      />,
+    );
+
+    expect(screen.queryByText("Verified person")).not.toBeInTheDocument();
+  });
+
   it("describes a single-source record in the singular", () => {
     render(<EntryCard entry={createEntryFixture({ source_count: 1 })} />);
-    expect(screen.getByText(/^1 source · Source-backed$/)).toBeInTheDocument();
+    expect(screen.getByText("1 source")).toBeInTheDocument();
+    expect(screen.queryByText("Source-backed")).not.toBeInTheDocument();
   });
 });
 
@@ -199,12 +249,17 @@ describe("EntryCard discovery tracking", () => {
     );
   });
 
-  it("points the source-inspection link at the entry route for a slugless record", () => {
-    render(<EntryCard entry={createEntryFixture({ id: "entry-5", slug: undefined })} />);
+  it("points organization readers at the profile's appearances", () => {
+    render(<EntryCard entry={createEntryFixture({ slug: "civic-team", type: "organization" })} />);
     expect(screen.getByRole("link", { name: "Inspect sources" })).toHaveAttribute(
       "href",
-      "/entries/entry-5#reporting-trail",
+      "/profiles/organizations/civic-team#appearances",
     );
+  });
+
+  it("does not promise a source section when a slugless record redirects to Browse", () => {
+    render(<EntryCard entry={createEntryFixture({ id: "entry-5", slug: undefined })} />);
+    expect(screen.queryByRole("link", { name: "Inspect sources" })).not.toBeInTheDocument();
   });
 
   it("points the source-inspection link at the type's own profile space", () => {

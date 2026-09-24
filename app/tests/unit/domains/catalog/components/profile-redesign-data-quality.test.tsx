@@ -18,6 +18,17 @@ describe("DataQualityBlock", () => {
     ...overrides,
   });
 
+  it("keeps evidence facts without calling a profile partner-ready", () => {
+    render(
+      <DataQualityBlock entry={buildEntry({ source_count: 4, website: "https://example.org" })} />,
+    );
+    expect(screen.getByText("4 sources")).toBeInTheDocument();
+    expect(screen.queryByText("Lead signals")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Partner-ready|Strong partner lead|Qualify before outreach/),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders Atlas-verified for the atlas_verified trust tier", () => {
     render(<DataQualityBlock entry={buildEntry({ trust: trust({ level: "atlas_verified" }) })} />);
     expect(screen.getByText("Atlas-verified")).toBeInTheDocument();
@@ -267,24 +278,6 @@ describe("DataQualityBlock", () => {
     expect(screen.getAllByText("Contact").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/3 sources · corroborated · Apr 2026/)).toHaveLength(3);
     expect(screen.getByText(/1 source · partial · Apr 2026/)).toBeInTheDocument();
-  });
-
-  it("shows lead-quality signals from geography, freshness, source mix, and contact data", () => {
-    render(
-      <DataQualityBlock
-        entry={buildEntry({
-          latest_source_date: new Date().toISOString(),
-          source_types: ["news_article", "report"],
-          website: "https://example.org",
-        })}
-      />,
-    );
-
-    expect(screen.getByText("Lead signals")).toBeInTheDocument();
-    expect(screen.getByText("Local lead")).toBeInTheDocument();
-    expect(screen.getByText("Recent source")).toBeInTheDocument();
-    expect(screen.getByText("Diverse sources")).toBeInTheDocument();
-    expect(screen.getByText("Reachable")).toBeInTheDocument();
   });
 
   it("shows actor-specificity quality for records with a concrete actor, work, place, issues, and sources", () => {
