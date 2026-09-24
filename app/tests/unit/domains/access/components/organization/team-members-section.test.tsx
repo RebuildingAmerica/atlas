@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { TeamMembersSection } from "@/domains/access/components/organization/team-members-section";
+import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import type { AtlasOrganizationMemberRecord } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
 describe("TeamMembersSection", () => {
@@ -45,12 +46,16 @@ describe("TeamMembersSection", () => {
     onRoleChange: vi.fn(),
   };
 
+  function renderRoster(props: Parameters<typeof TeamMembersSection>[0] = defaultProps) {
+    return render(<TeamMembersSection {...props} />, { wrapper: ConfirmDialogProvider });
+  }
+
   afterEach(() => {
     cleanup();
   });
 
   it("renders the member roster", () => {
-    render(<TeamMembersSection {...defaultProps} />);
+    renderRoster();
 
     expect(screen.getByText(/3 members/i)).toBeInTheDocument();
     const roster = screen.getByRole("table", { name: "Workspace members" });
@@ -60,7 +65,7 @@ describe("TeamMembersSection", () => {
   });
 
   it("keeps the role guide out of the roster table", () => {
-    render(<TeamMembersSection {...defaultProps} />);
+    renderRoster();
 
     const roster = screen.getByRole("table", { name: "Workspace members" });
     expect(screen.queryByRole("region", { name: "Role guide" })).not.toBeInTheDocument();
@@ -70,14 +75,16 @@ describe("TeamMembersSection", () => {
   });
 
   it("marks the current user", () => {
-    render(<TeamMembersSection {...defaultProps} currentUserId="user_1" />);
+    renderRoster({ ...defaultProps, currentUserId: "user_1" });
     expect(screen.getByText(/owner · you/i)).toBeInTheDocument();
   });
 
   it("allows admins/owners to edit other non-owner members", () => {
-    const { container } = render(
-      <TeamMembersSection {...defaultProps} canManageOrganization={true} currentUserId="user_1" />,
-    );
+    const { container } = renderRoster({
+      ...defaultProps,
+      canManageOrganization: true,
+      currentUserId: "user_1",
+    });
 
     // Admin user (mem_2) should be editable
     expect(screen.getByLabelText(/Role for admin@atlas.test/i)).toBeInTheDocument();
@@ -87,16 +94,14 @@ describe("TeamMembersSection", () => {
   });
 
   it("prevents editing the owner even for admins", () => {
-    render(
-      <TeamMembersSection {...defaultProps} canManageOrganization={true} currentUserId="user_2" />,
-    );
+    renderRoster({ ...defaultProps, canManageOrganization: true, currentUserId: "user_2" });
 
     // Owner (mem_1) should NOT be editable
     expect(screen.queryByLabelText(/Role for owner@atlas.test/i)).not.toBeInTheDocument();
   });
 
   it("triggers onRoleChange when a role is selected", () => {
-    render(<TeamMembersSection {...defaultProps} />);
+    renderRoster();
 
     fireEvent.change(screen.getByLabelText(/Role for admin@atlas.test/i), {
       target: { value: "member" },
@@ -104,18 +109,26 @@ describe("TeamMembersSection", () => {
     expect(defaultProps.onRoleChange).toHaveBeenCalledWith("mem_2", "member");
   });
 
-  it("triggers onRemove when the remove button is clicked", () => {
-    render(<TeamMembersSection {...defaultProps} />);
+  it("reviews the lost access before removing a member", async () => {
+    const onRemove = vi.fn();
+    renderRoster({ ...defaultProps, onRemove });
 
-    const removeButtons = screen.getAllByText(/Remove/i);
-    const firstRemoveButton = removeButtons[0];
-    if (!firstRemoveButton) throw new Error("Expected at least one remove button");
-    fireEvent.click(firstRemoveButton);
-    expect(defaultProps.onRemove).toHaveBeenCalledWith("mem_2");
+    fireEvent.click(screen.getByRole("button", { name: "Remove Admin User" }));
+    expect(onRemove).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("lose access to this workspace");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onRemove).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Admin User" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove member" }));
+    await waitFor(() => {
+      expect(onRemove).toHaveBeenCalledOnce();
+    });
+    expect(onRemove).toHaveBeenCalledWith("mem_2");
   });
 
   it("disables remove buttons when a removal is pending", () => {
-    render(<TeamMembersSection {...defaultProps} isRemovePending={true} />);
+    renderRoster({ ...defaultProps, isRemovePending: true });
 
     const removeButtons = screen.getAllByRole("button", { name: /Remove/i });
     const firstButton = removeButtons[0];
@@ -124,7 +137,7 @@ describe("TeamMembersSection", () => {
   });
 
   it("ignores role-select changes that fall outside the admin/member union", () => {
-    render(<TeamMembersSection {...defaultProps} />);
+    renderRoster();
 
     const select = screen.getByLabelText(/Role for admin@atlas.test/i);
     fireEvent.change(select, { target: { value: "owner" } });

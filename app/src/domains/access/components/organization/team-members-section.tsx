@@ -2,6 +2,7 @@ import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/w
 import { Shield, Trash2, Users } from "lucide-react";
 import { NUMERIC_DATE, useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import { memberRoleOptions } from "./organization-page-helpers";
 
@@ -29,6 +30,19 @@ export function TeamMembersSection({
   onRoleChange,
 }: TeamMembersSectionProps) {
   const formatDateTime = useDateTimeFormatter();
+  const { confirm } = useConfirmDialog();
+
+  async function requestRemoval(member: AtlasOrganizationDetails["members"][number]) {
+    const accepted = await confirm({
+      title: `Remove ${member.name}?`,
+      body: `${member.name} will lose access to this workspace and its shared work. You can invite them back later.`,
+      confirmLabel: "Remove member",
+      destructive: true,
+    });
+    if (accepted) {
+      onRemove(member.id);
+    }
+  }
 
   return (
     <section className="border-border-strong bg-surface space-y-4 rounded-[1rem] border p-6">
@@ -45,9 +59,9 @@ export function TeamMembersSection({
         </span>
       </div>
 
-      <div className="border-border overflow-x-auto rounded-[0.75rem] border">
-        <table aria-label="Workspace members" className="w-full min-w-[42rem] border-collapse">
-          <thead className="bg-surface-container-lowest">
+      <div className="border-border rounded-[0.75rem] border">
+        <table aria-label="Workspace members" className="w-full border-collapse">
+          <thead className="bg-surface-container-lowest hidden lg:table-header-group">
             <tr className="type-label-small text-ink-muted text-left uppercase">
               <th className="px-4 py-3 font-medium">Member</th>
               <th className="px-4 py-3 font-medium">Role</th>
@@ -62,12 +76,16 @@ export function TeamMembersSection({
               const canEditMember = canManageOrganization && !isCurrentUser && !isOwner;
 
               return (
-                <tr key={member.id} className="align-middle">
-                  <td className="px-4 py-3">
+                <tr
+                  key={member.id}
+                  className="block space-y-3 p-4 align-middle lg:table-row lg:space-y-0 lg:p-0"
+                >
+                  <td className="block lg:table-cell lg:px-4 lg:py-3">
                     <p className="type-title-small text-ink-strong">{member.name}</p>
-                    <p className="type-body-small text-ink-soft">{member.email}</p>
+                    <p className="type-body-small text-ink-soft break-all">{member.email}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="flex items-center justify-between gap-3 lg:table-cell lg:px-4 lg:py-3">
+                    <span className="type-label-small text-ink-muted lg:hidden">Role</span>
                     {canEditMember ? (
                       <Select
                         ariaLabel={`Role for ${member.email}`}
@@ -94,24 +112,35 @@ export function TeamMembersSection({
                       </span>
                     )}
                   </td>
-                  <td className="type-body-small text-ink-soft px-4 py-3">
+                  <td className="type-body-small text-ink-soft flex items-center justify-between gap-3 lg:table-cell lg:px-4 lg:py-3">
+                    <span className="type-label-small text-ink-muted lg:hidden">Joined</span>
                     {formatDateTime(member.createdAt, NUMERIC_DATE)}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td
+                    className={
+                      canEditMember
+                        ? "flex items-center justify-between gap-3 lg:table-cell lg:px-4 lg:py-3 lg:text-right"
+                        : "hidden lg:table-cell lg:px-4 lg:py-3"
+                    }
+                  >
                     {canEditMember ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        ariaLabel={`Remove ${member.name}`}
-                        title={`Remove ${member.name}`}
-                        disabled={isRemovePending}
-                        onClick={() => {
-                          onRemove(member.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                        <span className="sr-only">Remove</span>
-                      </Button>
+                      <>
+                        <span className="type-label-small text-ink-muted lg:hidden">Access</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="min-h-11 min-w-11"
+                          ariaLabel={`Remove ${member.name}`}
+                          title={`Remove ${member.name}`}
+                          disabled={isRemovePending}
+                          onClick={() => {
+                            void requestRemoval(member);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                          <span className="sr-only">Remove</span>
+                        </Button>
+                      </>
                     ) : null}
                   </td>
                 </tr>

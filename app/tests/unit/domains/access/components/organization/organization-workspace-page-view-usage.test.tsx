@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, cleanup } from "@testing-library/react";
+import { fireEvent, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { buildController } from "../../../../../helpers/access/organization-workspace-page-view-test-bed";
+import {
+  buildController,
+  renderWorkspacePageView as render,
+} from "../../../../../helpers/access/organization-workspace-page-view-test-bed";
 import { OrganizationWorkspacePageView } from "@/domains/access/components/organization/organization-workspace-page-view";
 
 afterEach(() => {

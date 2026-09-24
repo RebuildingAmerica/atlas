@@ -1,5 +1,6 @@
 import type { AtlasOrganizationDetails } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { useConfirmDialog } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 
 /**
  * Props for the workspace-membership section.
@@ -23,6 +24,19 @@ export function WorkspaceMembershipSection({
 }: WorkspaceMembershipSectionProps) {
   const currentRole = organization.role;
   const ownerCannotLeave = currentRole === "owner";
+  const { confirm } = useConfirmDialog();
+
+  async function requestLeave() {
+    const accepted = await confirm({
+      title: `Leave ${organization.name}?`,
+      body: `You will lose access to shared work in ${organization.name}. Your Atlas account will remain, and an owner can invite you back.`,
+      confirmLabel: "Leave this workspace",
+      destructive: true,
+    });
+    if (accepted) {
+      onLeave();
+    }
+  }
 
   return (
     <article className="border-outline bg-surface space-y-4 rounded-[1.5rem] border p-6">
@@ -56,7 +70,7 @@ export function WorkspaceMembershipSection({
             variant="secondary"
             disabled={isPending}
             onClick={() => {
-              onLeave();
+              void requestLeave();
             }}
           >
             {isPending ? "Leaving..." : "Leave workspace"}

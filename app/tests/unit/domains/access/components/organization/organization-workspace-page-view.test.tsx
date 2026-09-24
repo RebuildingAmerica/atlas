@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { act, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { buildController } from "../../../../../helpers/access/organization-workspace-page-view-test-bed";
+import {
+  buildController,
+  renderWorkspacePageView as render,
+} from "../../../../../helpers/access/organization-workspace-page-view-test-bed";
 import { OrganizationWorkspacePageView } from "@/domains/access/components/organization/organization-workspace-page-view";
 
 describe("OrganizationWorkspacePageView", () => {
@@ -186,6 +189,10 @@ describe("OrganizationWorkspacePageView", () => {
       fireEvent.click(screen.getByRole("button", { name: /Leave workspace/i }));
       await Promise.resolve();
     });
+    fireEvent.click(screen.getByRole("button", { name: "Leave this workspace" }));
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(onLeaveWorkspace).toHaveBeenCalled();
 
     // Member role change.
@@ -195,6 +202,10 @@ describe("OrganizationWorkspacePageView", () => {
 
     // Member removal.
     fireEvent.click(screen.getByRole("button", { name: "Remove Teammate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove member" }));
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(onRemoveMember).toHaveBeenCalledWith("mem_2");
   });
 

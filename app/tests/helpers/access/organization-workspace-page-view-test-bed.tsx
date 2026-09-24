@@ -1,5 +1,11 @@
 import { vi } from "vitest";
+import { render } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import type { OrganizationPageController } from "@/domains/access/components/organization/organization-page-controller";
+
+export const renderWorkspacePageView = (ui: ReactElement) =>
+  render(ui, { wrapper: ConfirmDialogProvider });
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");

@@ -36,6 +36,7 @@ public profile claim with a workspace or a purchase.
 | Organizers keep work through failures                   | `cd950766` preserves list creation and save retries; `ee9d7fbb` preserves a failed team invitation's address and role.                                                                                                                        | Signed-in, real email, passkey, save, invite acceptance, and recovery journeys.                                                                          |
 | Save intent survives account entry                      | Anonymous Save returns to the same person or organization profile with its list picker open; an incomplete account continues through setup first. The visitor still chooses the destination list before any write.                            | Complete normal magic-link, passkey, setup, and list-save paths on staging in the same browser and across devices.                                       |
 | Organizers can assemble briefs from evidence            | A saved-list link opens brief creation with named profiles, their source receipts, and completed research runs. The form derives record IDs and evidence types from selected items and rejects missing sources before submission.             | Signed-in list-to-brief round trip with a populated API, review of source relevance, and reopened brief/export proof.                                    |
+| Team access changes get a consequence review            | Member removal and workspace departure now show a named confirmation before access changes. The member roster uses stacked rows below desktop width instead of requiring a 42rem-wide table.                                                  | Test owner/admin/member decisions and cancellation on staging; inspect the roster at 390px with real members and verify keyboard and screen-reader use.  |
 | Profile evidence makes narrower claims                  | `03857475` distinguishes source dates from confirmation, removes quote attribution from extracted context, and counts unverified sources honestly.                                                                                            | Editorial review of claim-to-source links, duplicated publishers, material edits, and representative profiles.                                           |
 | Rediscovery preserves approved profile facts            | Discovery and registry resolution stage published name, description, contact, and new issue tags with before/after values. A held filing leaves the existing public role evidence intact. Approval checks the current baseline.               | Hosted approval, role-reconciliation process, and PostgreSQL migration proof remain open. Candidate URLs are not claim-level source proof.               |
 | Operators can inspect discovery proposals               | `ebe61081` adds profile identity and candidate URLs to queue items. This branch's admin review page shows current and proposed facts, links to the profile and sources, and requires an explicit source-check acknowledgment before approval. | Rehearse with a real reviewer and representative source-backed proposals on staging; verify permission boundaries and review throughput.                 |
@@ -51,6 +52,11 @@ At the same mobile viewport in a local browser, the map's collapsed results
 trigger sits below the search/filter controls instead of covering them. Opening
 it leaves the lower map controls visible. The local API was unavailable, so this
 verifies layout and interaction only, not populated map discovery.
+
+The team roster could not be visually accepted in that local runtime. Local
+single-user mode redirected `/organization` to `/discovery`, and the API was
+unavailable. The responsive member-row change needs a populated team workspace
+at a phone viewport before release.
 
 ## Why a Stripe key change is insufficient
 
@@ -91,7 +97,7 @@ until each offered combination passes. Add only accepted offers.
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | No reviewed cohort or query scorecard recorded.                                                            |
 | Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.                                            |
 | Organizer journey       | Normal registration, passkey and recovery on physical devices, pending save, list note, reopened work, brief/export, and pricing clarity.                                                                                                                   | Save intent, save failure, and brief selection repaired; complete journey unverified.                      |
-| Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard and failed-invite retention committed; full journey unverified.                               |
+| Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard, invite retention, and access-change confirmations committed; full journey unverified.        |
 | Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; provider and live lifecycle proof missing.                                                         |
 | Operations              | Name a release owner, editorial reviewer, support inbox owner, refund operator, daily correction/review window, and incident escalation. Record a rehearsal, not only a policy.                                                                             | Ownership and rehearsal not evidenced in this checkout.                                                    |
 
@@ -104,6 +110,12 @@ own acceptance rows.
 
 ## Validation of this branch
 
+- After adding the team-access consequence review and responsive roster, the app
+  coverage run passed 597 files and 3,873 tests with 100% statements, branches,
+  functions, and lines. The five affected test files passed 38 cases; app lint,
+  TypeScript, and the production build passed. The local runtime could not
+  display a populated team workspace, so mobile visual and hosted role
+  acceptance remain open.
 - After carrying pending Save through sign-in and setup, the app coverage run
   passed 597 files and 3,873 tests with 100% statements, branches, functions,
   and lines. App lint and TypeScript passed. The six affected route and profile

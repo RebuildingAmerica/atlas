@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { WorkspaceMembershipSection } from "@/domains/access/components/organization/workspace-membership-section";
+import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 
 describe("WorkspaceMembershipSection", () => {
   type MembershipOrganization = Parameters<typeof WorkspaceMembershipSection>[0]["organization"];
@@ -22,39 +23,53 @@ describe("WorkspaceMembershipSection", () => {
     organization: organization as unknown as MembershipOrganization,
   };
 
+  function renderMembership(
+    props: Parameters<typeof WorkspaceMembershipSection>[0] = defaultProps,
+  ) {
+    return render(<WorkspaceMembershipSection {...props} />, { wrapper: ConfirmDialogProvider });
+  }
+
   afterEach(() => {
     cleanup();
   });
 
   it("renders the membership info", () => {
-    render(<WorkspaceMembershipSection {...defaultProps} />);
+    renderMembership();
     expect(screen.getByText("Atlas")).toBeInTheDocument();
     expect(screen.getByText(/Role: member/i)).toBeInTheDocument();
   });
 
-  it("allows members to leave the workspace", () => {
-    render(<WorkspaceMembershipSection {...defaultProps} />);
+  it("reviews the loss of shared access before leaving", async () => {
+    const onLeave = vi.fn();
+    renderMembership({ ...defaultProps, onLeave });
     expect(screen.getByText(/Leave this workspace/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText(/Leave workspace/i));
-    expect(defaultProps.onLeave).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Leave workspace" }));
+    expect(onLeave).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("lose access to shared work");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onLeave).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leave this workspace" }));
+    await waitFor(() => {
+      expect(onLeave).toHaveBeenCalledOnce();
+    });
   });
 
   it("blocks owners from leaving the workspace", () => {
     const ownerOrg = { ...organization, role: "owner" };
-    render(
-      <WorkspaceMembershipSection
-        {...defaultProps}
-        organization={ownerOrg as unknown as MembershipOrganization}
-      />,
-    );
+    renderMembership({
+      ...defaultProps,
+      organization: ownerOrg as unknown as MembershipOrganization,
+    });
 
     expect(screen.getByText(/Owner leave is blocked/i)).toBeInTheDocument();
     expect(screen.queryByText(/Leave workspace/i)).not.toBeInTheDocument();
   });
 
   it("shows leaving state when pending", () => {
-    render(<WorkspaceMembershipSection {...defaultProps} isPending={true} />);
+    renderMembership({ ...defaultProps, isPending: true });
     expect(screen.getByText(/Leaving.../i)).toBeDisabled();
   });
 });
