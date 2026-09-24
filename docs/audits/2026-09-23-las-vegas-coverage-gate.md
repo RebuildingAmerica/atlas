@@ -41,6 +41,31 @@ to more than one profile leaves two possible website reviews:
 review candidates only. A person must check present ownership, current work, and
 the appropriate public action before either becomes a contact link.
 
+### First acquisition queue, September 23
+
+These are **source leads, not published or claim-reviewed profiles**. A public
+name search against the live `/api/entities` endpoint returned no match for five
+of the six names below; the NAACP branch already has a record and needs its
+housing work and official next step reviewed on that record. The search result
+is a point-in-time catalog check, not proof that no differently named duplicate
+exists. The editor should confirm entity identity and service area before adding
+anything.
+
+| Candidate                           | Public question it could answer                                      | Official source and useful action                                                                                                                                            | Catalog disposition                                                                                               |
+| ----------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Las Vegans for Better Transit       | Who organizes for better transit in the valley?                      | [About](https://lasvegasfortransit.org/about/) describes transit education and organizing; [contact](https://lasvegasfortransit.org/contact/) offers a public message route. | No name match; review as a new organization.                                                                      |
+| Southern Nevada Bicycle Coalition   | Who advocates safer cycling?                                         | [About](https://www.snvbc.org/about-us/) describes local roadway and trail advocacy and links to free membership and contact.                                                | No name match; review as a regional organization, not a transit-rider group.                                      |
+| PedSafe Vegas                       | Who works on pedestrian safety?                                      | [Official site](https://pedsafe.vegas/) describes a UNLV Transportation Research Center program and provides a contact route.                                                | No name match; review program identity and parent organization before deciding whether it merits its own profile. |
+| NAACP Las Vegas Branch #1111        | Who works on fair housing and renter protections?                    | Its [Housing Committee page](https://www.naacplasvegas.org/housing) describes the work and branch contact and participation routes.                                          | Existing branch profile; review a sourced update, not a duplicate.                                                |
+| Legal Aid Center of Southern Nevada | Where can a tenant seek help with an eviction or rights question?    | Its [Tenant Rights page](https://www.lacsn.org/practice-areas/consumer-rights-project/tenant-rights) names an eviction-prevention hotline and legal-help programs.           | No name match; review as a service organization, not an advocacy coalition.                                       |
+| Make the Road Nevada                | Who organizes around housing justice with working-class communities? | Its [official site](https://www.maketheroadnv.org/) describes member-led organizing, housing justice, and a Las Vegas office.                                                | No name match; review statewide reach and a specific local participation route.                                   |
+
+This queue cannot make the transit query pass by itself: only one lead is
+directly a Las Vegas transit advocacy group, and the other mobility leads serve
+different needs. Find more rider-centered organizations or narrow the promoted
+question to the supply actually reviewed. Do not count a transit agency,
+bicycle-safety group, or rural provider as interchangeable transit advocates.
+
 ## Work that changes this decision
 
 1. Use Las Vegas visitor questions as the acquisition brief: who organizes
