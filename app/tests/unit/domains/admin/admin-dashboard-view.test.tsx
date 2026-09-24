@@ -46,6 +46,10 @@ describe("AdminDashboardView", () => {
 
     expect(screen.getByText("Healthy")).toBeInTheDocument();
     expect(screen.getByText("$2.00 of $10.00")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review discovered profiles" })).toHaveAttribute(
+      "href",
+      "/admin/discovery-reviews",
+    );
     expect(
       within(screen.getByRole("link", { name: "Inspect cloud costs" })).getByText("Current"),
     ).toBeInTheDocument();

@@ -312,6 +312,12 @@ export const SCREENSHOT_ROUTES = [
     mode: "session",
   },
   {
+    name: "admin-discovery-reviews",
+    routeId: "/admin/discovery-reviews",
+    path: "/admin/discovery-reviews",
+    mode: "session",
+  },
+  {
     name: "admin-profile-claims",
     routeId: "/admin/profile-claims",
     path: "/admin/profile-claims",
