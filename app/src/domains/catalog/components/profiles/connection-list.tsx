@@ -1,58 +1,15 @@
-/**
- * ConnectionList — the ranked "civic map" on a profile.
- *
- * Replaces the old per-type rails with one strength-ranked list of connected
- * actors. Each row shows how strongly and *why* an actor is connected, and links
- * through so a reader can traverse the network. The true total is shown honestly,
- * never a silent cap.
- */
+/** Show source-backed relationships separately from profiles with shared signals. */
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { cn } from "@/lib/utils";
-import type {
-  ConnectedActor,
-  ConnectionNetwork,
-  ConnectionTier,
-  Entry,
-} from "@rebuildingamerica/atlas-api-client";
+import type { ConnectedActor, ConnectionNetwork, Entry } from "@rebuildingamerica/atlas-api-client";
 
 interface ConnectionListProps {
   entry: Entry;
   network: ConnectionNetwork | undefined;
   isLoading: boolean;
-}
-
-const TIER_LABEL: Record<ConnectionTier, string> = {
-  strong: "Strong",
-  moderate: "Moderate",
-  weak: "Light",
-};
-
-const TIER_BAR: Record<ConnectionTier, string> = {
-  strong: "bg-civic",
-  moderate: "bg-civic/60",
-  weak: "bg-civic/30",
-};
-
-interface StrengthMeterProps {
-  strength: number;
-  tier: ConnectionTier;
-}
-
-function StrengthMeter({ strength, tier }: StrengthMeterProps) {
-  return (
-    <div className="flex shrink-0 items-center gap-2" title={`${TIER_LABEL[tier]} connection`}>
-      <div className="bg-surface-container-high h-1.5 w-16 overflow-hidden rounded-full">
-        <div
-          className={cn("h-full rounded-full", TIER_BAR[tier])}
-          style={{ width: `${strength}%` }}
-        />
-      </div>
-      <span className="type-label-small text-ink-muted w-14">{TIER_LABEL[tier]}</span>
-    </div>
-  );
 }
 
 interface ConnectionRowProps {
@@ -122,7 +79,6 @@ function ConnectionRowBody({ actor }: ConnectionRowProps) {
               {actor.name}
             </span>
           )}
-          <StrengthMeter strength={actor.strength} tier={actor.tier} />
         </div>
         <ul className="flex flex-wrap gap-1.5">
           {actor.reasons.map((reason) => (
@@ -146,6 +102,28 @@ function ConnectionRow({ actor }: ConnectionRowProps) {
     <div className={ROW_CLASS}>
       <ConnectionRowBody actor={actor} />
     </div>
+  );
+}
+
+function hasDocumentedRelationship(actor: ConnectedActor): boolean {
+  return actor.reasons.some(
+    (reason) => reason.kind === "sourced_edge" && Boolean(reason.source_id),
+  );
+}
+
+function ConnectionGroup({ actors, title }: { actors: ConnectedActor[]; title: string }) {
+  if (actors.length === 0) return null;
+  return (
+    <section aria-label={title} className="space-y-2">
+      <h3 className="type-label-medium text-ink-strong font-semibold">{title}</h3>
+      <ol className="space-y-2">
+        {actors.map((actor) => (
+          <li key={actor.id}>
+            <ConnectionRow actor={actor} />
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 
@@ -254,9 +232,7 @@ export function ConnectionList({ entry, network, isLoading }: ConnectionListProp
   if (!network || network.actors.length === 0) {
     return (
       <div className="space-y-3">
-        <p className="type-body-medium text-ink-soft">
-          No connections surfaced yet for this profile.
-        </p>
+        <p className="type-body-medium text-ink-soft">No related profiles listed.</p>
         <BrowseMore entry={entry} />
       </div>
     );
@@ -264,19 +240,16 @@ export function ConnectionList({ entry, network, isLoading }: ConnectionListProp
 
   const { actors, total } = network;
   const remaining = total - actors.length;
+  const documented = actors.filter(hasDocumentedRelationship);
+  const related = actors.filter((actor) => !hasDocumentedRelationship(actor));
 
   return (
-    <div className="space-y-3">
-      <ol className="space-y-2">
-        {actors.map((actor) => (
-          <li key={actor.id}>
-            <ConnectionRow actor={actor} />
-          </li>
-        ))}
-      </ol>
+    <div className="space-y-5">
+      <ConnectionGroup actors={documented} title="Documented relationships" />
+      <ConnectionGroup actors={related} title="Related profiles" />
       {remaining > 0 ? (
         <p className="type-label-small text-ink-muted">
-          Showing the {actors.length} strongest of {total} connections.
+          Showing {actors.length} of {total} related profiles.
         </p>
       ) : null}
       <BrowseMore entry={entry} />

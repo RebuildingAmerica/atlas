@@ -3,7 +3,7 @@
 import "./profile-redesign-test-setup";
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
 import type { ConnectedActor, ConnectionNetwork } from "@rebuildingamerica/atlas-api-client";
@@ -46,7 +46,7 @@ describe("ConnectionList", () => {
     expect(screen.getByText("Marcus Lee")).toBeInTheDocument();
   });
 
-  it("renders ranked rows with the strength tier and reason chips", () => {
+  it("presents shared affiliations as related profiles without a strength claim", () => {
     render(
       <ConnectionList
         entry={buildEntry()}
@@ -56,7 +56,9 @@ describe("ConnectionList", () => {
     );
     expect(screen.getByText("Marcus Lee")).toBeInTheDocument();
     expect(screen.getByText("Their organization")).toBeInTheDocument();
-    expect(screen.getByText("Strong")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Related profiles" })).toBeInTheDocument();
+    expect(screen.queryByText("Strong")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Strong connection")).not.toBeInTheDocument();
   });
 
   it("links source-backed relationship reasons to the matching evidence packet", () => {
@@ -84,6 +86,7 @@ describe("ConnectionList", () => {
       "href",
       "#source-source-1",
     );
+    expect(screen.getByRole("heading", { name: "Documented relationships" })).toBeInTheDocument();
   });
 
   it("shows the semantic relationship type for source-backed connections", () => {
@@ -115,7 +118,7 @@ describe("ConnectionList", () => {
     );
   });
 
-  it("labels the moderate and light tiers", () => {
+  it("does not turn relative similarity scores into relationship claims", () => {
     render(
       <ConnectionList
         entry={buildEntry()}
@@ -126,8 +129,56 @@ describe("ConnectionList", () => {
         isLoading={false}
       />,
     );
-    expect(screen.getByText("Moderate")).toBeInTheDocument();
-    expect(screen.getByText("Light")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Related profiles" })).toBeInTheDocument();
+    expect(screen.queryByText("Moderate")).not.toBeInTheDocument();
+    expect(screen.queryByText("Light")).not.toBeInTheDocument();
+  });
+
+  it("keeps a profile with both documented and similarity reasons in the documented group", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([
+          buildActor({
+            reasons: [
+              { kind: "same_issue_area", label: "Both work on housing", count: null },
+              { kind: "sourced_edge", label: "Coalition roster", count: 1, source_id: "source-2" },
+            ],
+          }),
+          buildActor({
+            id: "b",
+            name: "Similar group",
+            reasons: [{ kind: "same_issue_area", label: "Both work on housing", count: null }],
+          }),
+        ])}
+        isLoading={false}
+      />,
+    );
+    const documented = screen.getByRole("region", { name: "Documented relationships" });
+    const related = screen.getByRole("region", { name: "Related profiles" });
+    expect(within(documented).getByRole("link", { name: "Marcus Lee" })).toBeInTheDocument();
+    expect(within(related).getByText("Similar group")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Coalition roster" })).toHaveAttribute(
+      "href",
+      "#source-source-2",
+    );
+    expect(screen.getAllByText("Both work on housing")).toHaveLength(2);
+  });
+
+  it("requires a source reference before calling an edge documented", () => {
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={buildNetwork([
+          buildActor({ reasons: [{ kind: "sourced_edge", label: "Unlinked claim", count: 1 }] }),
+        ])}
+        isLoading={false}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Related profiles" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Documented relationships" }),
+    ).not.toBeInTheDocument();
   });
 
   it("links person actors to the people route and org actors to the org route", () => {
@@ -163,7 +214,7 @@ describe("ConnectionList", () => {
     expect(screen.queryByRole("link", { name: /Anon Actor/ })).not.toBeInTheDocument();
   });
 
-  it("shows an honest 'strongest of N' note when the total exceeds the page", () => {
+  it("shows an honest result count when the total exceeds the page", () => {
     render(
       <ConnectionList
         entry={buildEntry()}
@@ -171,7 +222,7 @@ describe("ConnectionList", () => {
         isLoading={false}
       />,
     );
-    expect(screen.getByText(/strongest of 25 connections/i)).toBeInTheDocument();
+    expect(screen.getByText("Showing 1 of 25 related profiles.")).toBeInTheDocument();
   });
 
   it("omits the total note when everything is shown", () => {
@@ -182,12 +233,12 @@ describe("ConnectionList", () => {
         isLoading={false}
       />,
     );
-    expect(screen.queryByText(/strongest of/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Showing 1 of/i)).not.toBeInTheDocument();
   });
 
   it("shows an empty state with full browse links when there are no connections", () => {
     render(<ConnectionList entry={buildEntry()} network={buildNetwork([])} isLoading={false} />);
-    expect(screen.getByText(/No connections surfaced yet/i)).toBeInTheDocument();
+    expect(screen.getByText("No related profiles listed.")).toBeInTheDocument();
     expect(screen.getByText(/Keep exploring/i)).toBeInTheDocument();
     expect(screen.getByText("More people in MS")).toBeInTheDocument();
     expect(screen.getByText("Organizations working on Housing Affordability")).toBeInTheDocument();
@@ -201,7 +252,7 @@ describe("ConnectionList", () => {
 
   it("treats undefined network (not loading) as empty", () => {
     render(<ConnectionList entry={buildEntry()} network={undefined} isLoading={false} />);
-    expect(screen.getByText(/No connections surfaced yet/i)).toBeInTheDocument();
+    expect(screen.getByText("No related profiles listed.")).toBeInTheDocument();
   });
 
   it("renders a minimal browse-more list when entry lacks state and issue areas", () => {
