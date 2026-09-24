@@ -5,9 +5,7 @@ test.describe("public visitor journey", () => {
     // 1. Home Page
     await page.goto("/");
     await expect(page).toHaveTitle(/Atlas/);
-    await expect(
-      page.getByRole("heading", { name: "Find the people rebuilding America." }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Know who's working on what." })).toBeVisible();
 
     // 2. Browse Page
     await page.goto("/browse");

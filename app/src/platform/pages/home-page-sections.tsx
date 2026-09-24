@@ -98,37 +98,37 @@ export function HomePageShell({
   const homeStats = [
     {
       stat: formatStatCount(totalEntries),
-      label: "civic actors indexed",
+      label: "public profiles",
       loading: totalEntries === undefined,
     },
     {
       stat: formatStatCount(organizationCount),
-      label: "organizations",
+      label: "organizations listed",
       loading: organizationCount === undefined,
     },
     {
-      stat: stateCount && stateCount >= 50 ? "All 50" : formatStatCount(stateCount),
-      label: stateCount && stateCount >= 50 ? "states covered" : "states represented",
+      stat: formatStatCount(stateCount),
+      label: "states represented",
       loading: stateCount === undefined,
     },
   ];
 
   return (
     <div className="text-ink-strong">
-      <section className="border-border flex min-h-[calc(88svh-5rem)] items-center overflow-hidden border-b px-4 py-16 md:px-8 md:py-20">
+      <section className="border-border flex min-h-[calc(78svh-5rem)] items-center overflow-hidden border-b px-4 py-14 md:px-8 md:py-20">
         <div className="mx-auto w-full max-w-4xl text-center">
           <h1
-            aria-label="Find the people rebuilding America."
+            aria-label="Know who's working on what."
             className="text-ink-strong text-5xl leading-tight text-balance md:text-7xl"
           >
-            Find the people
+            Know who's working
             <br />
-            <em className="font-serif italic">rebuilding America.</em>
+            <em className="font-serif italic">on what.</em>
           </h1>
 
           <p className="type-body-large text-ink-soft mx-auto mt-6 max-w-2xl text-balance">
-            Atlas indexes civic actors: individuals, organizations, and initiatives working on
-            public problems in every corner of the country.
+            Search public profiles by place, issue, or name. Open the sources behind each result
+            before deciding whom to contact.
           </p>
 
           <HomeHeroActions onQueryChange={onQueryChange} query={query} />
@@ -153,22 +153,26 @@ export function HomePageShell({
         </div>
       </section>
 
-      <section className="border-border flex min-h-[100svh] items-center border-b px-4 py-20 md:px-8">
+      <HomeDiscoverySection
+        entries={entries}
+        issueTiles={issueTiles}
+        recentEntriesLoading={recentEntriesLoading}
+        totalEntries={totalEntries}
+      />
+
+      <section className="border-border border-b px-4 py-20 md:px-8">
         <div className="mx-auto grid w-full max-w-[88rem] gap-16 md:grid-cols-[minmax(0,40rem)_minmax(0,44rem)] md:items-center">
           <div>
             <h2 className="max-w-4xl text-3xl leading-tight text-balance md:text-5xl">
-              Good people are doing good work everywhere.{" "}
-              <em className="font-serif italic">Atlas helps you find them.</em>
+              Look beyond <em className="font-serif italic">the name.</em>
             </h2>
             <p className="type-body-large text-ink-soft mt-8 max-w-3xl">
-              In every state, in cities and small towns, there are organizers, advocates, attorneys,
-              researchers, and community leaders working on the problems that matter most. Most of
-              them are invisible to anyone outside their immediate circles.
+              People and groups can work on the same issue in very different ways. Compare their
+              stated work, place, and public sources before choosing a next step.
             </p>
             <p className="type-body-large text-ink-soft mt-5 max-w-3xl">
-              Atlas makes them findable by place, by issue, by name, or by the organizations they
-              belong to. Search, save people you find, and look at who else is active in the same
-              place or on the same problem.
+              A shared issue or place can lead to related profiles. Open a profile to see which
+              connections have a documented source.
             </p>
           </div>
 
@@ -186,7 +190,7 @@ export function HomePageShell({
               <span className="type-label-small text-ink-soft">
                 People · organizations · initiatives · campaigns
               </span>
-              <span className="type-label-small text-accent-deep">All 50 states</span>
+              <span className="type-label-small text-accent-deep">Browse by place</span>
             </div>
           </div>
         </div>
@@ -233,7 +237,7 @@ export function HomePageShell({
 
           <div className="border-border bg-surface-container-lowest border">
             <div className="border-border flex items-center justify-between gap-4 border-b px-8 py-4">
-              <span className="font-serif text-sm">Recently indexed</span>
+              <span className="font-serif text-sm">From the directory</span>
               <span className="type-label-small text-ink-soft">{featuredEntries.length} shown</span>
             </div>
             {featuredEntries.map((entry) => (
@@ -320,13 +324,6 @@ export function HomePageShell({
           </div>
         </div>
       </section>
-
-      <HomeDiscoverySection
-        entries={entries}
-        issueTiles={issueTiles}
-        recentEntriesLoading={recentEntriesLoading}
-        totalEntries={totalEntries}
-      />
     </div>
   );
 }

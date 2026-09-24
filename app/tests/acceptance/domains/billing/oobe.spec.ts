@@ -150,9 +150,7 @@ async function fillAction(locator: Locator, value: string): Promise<void> {
 async function goHome(page: Page, label: string): Promise<void> {
   await chapter(page, `${label}: homepage`, async () => {
     await page.goto("/", { waitUntil: "networkidle" });
-    await expect(
-      page.getByRole("heading", { name: /Find the people rebuilding America/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Know who's working on what/i })).toBeVisible();
   });
 }
 

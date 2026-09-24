@@ -40,17 +40,16 @@ describe("HomePage recently indexed", () => {
     render(<HomePage />);
 
     const recentSection = screen
-      .getByRole("heading", { name: "Recently indexed" })
+      .getByRole("heading", { name: "Explore profiles" })
       .closest("section");
     if (!recentSection) {
       throw new Error("Expected the recently indexed section to render.");
     }
-    expect(within(recentSection).queryByText("No people listed yet.")).not.toBeInTheDocument();
+    expect(within(recentSection).queryByText("No profiles listed yet.")).not.toBeInTheDocument();
     expect(within(recentSection).getByText("0 shown")).toBeInTheDocument();
-    expect(within(recentSection).getByRole("link", { name: /Browse all actors/ })).toHaveAttribute(
-      "href",
-      "/browse",
-    );
+    expect(
+      within(recentSection).getByRole("link", { name: /Browse all profiles/ }),
+    ).toHaveAttribute("href", "/browse");
     expect(within(recentSection).getByRole("link", { name: "People" })).toHaveAttribute(
       "href",
       "/browse?entry_types=person&offset=0",
@@ -80,7 +79,7 @@ describe("HomePage recently indexed", () => {
     render(<HomePage />);
 
     const recentSection = screen
-      .getByRole("heading", { name: "Recently indexed" })
+      .getByRole("heading", { name: "Explore profiles" })
       .closest("section");
     if (!recentSection) {
       throw new Error("Expected the recently indexed section to render.");

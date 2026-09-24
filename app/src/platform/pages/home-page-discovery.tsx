@@ -57,14 +57,14 @@ export function HomeDiscoverySection({
   totalEntries,
 }: HomeDiscoverySectionProps) {
   const browseCount =
-    totalEntries && totalEntries > 0 ? NUMBER_FORMATTER.format(totalEntries) : "actors";
+    totalEntries && totalEntries > 0 ? NUMBER_FORMATTER.format(totalEntries) : "profiles";
 
   return (
     <>
       <section className="border-border border-b px-4 py-16 md:px-8">
         <div className="mx-auto max-w-[88rem]">
           <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
-            <h2 className="font-serif text-2xl">Recently indexed</h2>
+            <h2 className="font-serif text-2xl">Explore profiles</h2>
             <Link
               to="/browse"
               className="type-label-medium text-accent-deep inline-flex items-center gap-1.5 hover:underline"
@@ -97,7 +97,7 @@ export function HomeDiscoverySection({
             </div>
           ) : (
             <p className="type-body-medium text-ink-soft py-12 text-center">
-              No people listed yet.
+              No profiles listed yet.
             </p>
           )}
         </div>

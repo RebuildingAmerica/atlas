@@ -95,7 +95,7 @@ describe("HomePage", () => {
     });
     render(<HomePage />);
     expect(
-      screen.getByRole("heading", { name: "Find the people rebuilding America." }),
+      screen.getByRole("heading", { name: "Know who's working on what." }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Want to save your work\?/)).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Go to your research/ })).not.toBeInTheDocument();
@@ -131,16 +131,19 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     expect(
-      screen.getByRole("heading", { name: "Find the people rebuilding America." }),
+      screen.getByRole("heading", { name: "Know who's working on what." }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Atlas indexes civic actors: individuals, organizations, and initiatives working on public problems in every corner of the country.",
+        "Search public profiles by place, issue, or name. Open the sources behind each result before deciding whom to contact.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("40,247")).toBeInTheDocument();
     expect(screen.getByText("3,000")).toBeInTheDocument();
-    expect(screen.getByText("All 50")).toBeInTheDocument();
+    expect(screen.getByText("50")).toBeInTheDocument();
+    expect(screen.getByText("states represented")).toBeInTheDocument();
+    expect(screen.queryByText(/All 50 states/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/every corner of the country/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Housing" })[0]).toHaveAttribute(
       "href",
       "/browse?query=Housing&offset=0",
@@ -172,17 +175,17 @@ describe("HomePage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows recently indexed rows from the catalog query", () => {
+  it("shows public profiles from the catalog query", () => {
     render(<HomePage />);
 
     expect(mocks.useEntries).toHaveBeenCalledWith({ limit: 16, offset: 0 });
-    expect(screen.getByRole("heading", { name: "Recently indexed" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Explore profiles" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Browse all 40,247/ })).toHaveAttribute(
       "href",
       "/browse",
     );
     const recentSection = screen
-      .getByRole("heading", { name: "Recently indexed" })
+      .getByRole("heading", { name: "Explore profiles" })
       .closest("section");
     if (!recentSection) {
       throw new Error("Expected recent section");
@@ -195,16 +198,19 @@ describe("HomePage", () => {
     expect(within(recentSection).getByText("14 sources")).toBeInTheDocument();
   });
 
-  it("centers the discovery section as a viewport-filling panel", () => {
+  it("shows real profiles before the explanatory sections", () => {
     render(<HomePage />);
 
-    const section = screen
-      .getByRole("heading", {
-        name: "Good people are doing good work everywhere. Atlas helps you find them.",
-      })
+    const recent = screen.getByRole("heading", { name: "Explore profiles" }).closest("section");
+    const explanation = screen
+      .getByRole("heading", { name: "Look beyond the name." })
       .closest("section");
-    expect(section).toHaveClass("min-h-[100svh]");
-    expect(section).toHaveClass("items-center");
+    if (!recent || !explanation) {
+      throw new Error("Expected profile and explanation sections");
+    }
+    expect(
+      recent.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("uses a plain empty state when the recent catalog query has no rows", () => {
@@ -225,7 +231,7 @@ describe("HomePage", () => {
 
     render(<HomePage />);
 
-    expect(screen.getByText("No people listed yet.")).toBeInTheDocument();
+    expect(screen.getByText("No profiles listed yet.")).toBeInTheDocument();
   });
 
   it("invites signed-in visitors to their research base", () => {
