@@ -12,7 +12,6 @@ import {
   resolveStripeMode,
   validateStripeApiKeyMode,
 } from "./env.js";
-import { stripeLiveRestrictedKeySetupSteps } from "./stripe-copy.js";
 import type { StripeBootstrapTarget } from "./env.js";
 import type {
   StripeCatalogSnapshot,
@@ -144,12 +143,26 @@ export function formatStripeVerificationFollowUp(
   }
 
   if (target === "prod") {
-    return [
-      "Production Stripe setup is incomplete.",
-      "Run the guided bootstrap flow: pnpm bootstrap",
-      ...stripeLiveRestrictedKeySetupSteps(),
-      "Verify again: pnpm stripe:verify:prod",
+    const followUp = [
+      "Production Stripe verification is incomplete.",
+      "Inspect the existing live account, catalog, and Vercel Production settings before changing any key or recreating objects.",
     ];
+    if (issues.some((item) => item.code === "missing_env")) {
+      followUp.push(
+        "Local verification inputs are missing; this does not prove deployed values are absent.",
+      );
+    }
+    if (issues.some((item) => item.code === "missing_hosted_env")) {
+      followUp.push(
+        "The deployed candidate is missing a required Vercel Production setting; set only accepted offers after their lifecycle checks pass.",
+      );
+    }
+    if (issues.some((item) => item.code === "vercel_project_unlinked")) {
+      followUp.push(
+        "Link app/ to the existing Atlas Vercel project to inspect hosted metadata.",
+      );
+    }
+    return [...followUp, "Verify again: pnpm stripe:verify:prod"];
   }
 
   if (target === "staging") {

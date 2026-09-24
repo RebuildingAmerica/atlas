@@ -45,7 +45,7 @@ public profile claim with a workspace or a purchase.
 | Rediscovery preserves approved profile facts            | Discovery and registry resolution stage published name, description, contact, and new issue tags with before/after values. A held filing leaves the existing public role evidence intact. Approval checks the current baseline.                                                       | Hosted approval, role-reconciliation process, and PostgreSQL migration proof remain open. Candidate URLs are not claim-level source proof.                       |
 | Operators can inspect discovery proposals               | `ebe61081` adds profile identity and candidate URLs to queue items. This branch's admin review page shows current and proposed facts, links to the profile and sources, and requires an explicit source-check acknowledgment before approval.                                         | Rehearse with a real reviewer and representative source-backed proposals on staging; verify permission boundaries and review throughput.                         |
 | Related profiles no longer imply a strong relationship  | Profile connections group source-referenced edges as documented relationships and shared signals as related profiles; the relative strength meter is removed.                                                                                                                         | Verify source anchors and grouping on the hosted profile journey. The API still exposes relative scores, which are ranking data, not relationship proof.         |
-| Operators see a more accurate billing preflight         | `58cc819a` checks presence of the production offer allowlist and updates cutover and restricted-key instructions.                                                                                                                                                                     | Verify actual values, Stripe account, catalog, Tax, portal, key permissions, signing secret, and delivered events.                                               |
+| Operators see a more accurate billing preflight         | `58cc819a` checks presence of the production offer allowlist and updates cutover and restricted-key instructions. The verifier now distinguishes missing local proof from missing deployed configuration and does not suggest creating a new key as the default remedy.               | Verify actual values, Stripe account, catalog, Tax, portal, key permissions, signing secret, and delivered events.                                               |
 
 At 390 × 844 in a local browser, Browse search was measured at y=147.5 after the
 layout change; the audit's live production screenshot measured y=2,056.5. The
@@ -65,11 +65,16 @@ at a phone viewport before release.
 ## Why a Stripe key change is insufficient
 
 The historical production probe opened one live Pro monthly Checkout session. It
-did not charge a buyer or establish entitlement, cancellation, or refund.
-`pnpm stripe:verify:prod` currently stops at missing `.env.production` values
-(`ATLAS_PUBLIC_URL`, Stripe key, signing secret, and catalog) and an unlinked
-Vercel project in this worktree. This does **not** prove the deployed production
-values are absent or wrong. It means this checkout cannot certify them.
+did not charge a buyer or establish entitlement, cancellation, or refund. `app/`
+is now locally linked to the existing Atlas Vercel project. Read-only Vercel
+Production metadata confirms the Stripe key, signing secret, catalog, and Atlas
+public URL variable names are present; their values were not read. The
+`ATLAS_BILLING_ALLOWED_OFFERS` variable required by this branch's paid release
+gate is absent. The GitHub checkout flag is currently `true`.
+`pnpm stripe:verify:prod` still cannot inspect the live catalog because this
+checkout has no `.env.production` verification inputs. These facts neither prove
+nor disprove the deployed key's validity, webhook delivery, or ability to
+charge.
 
 Before opening any offer, a release owner must produce a redacted record tied to
 the deployed commit with all of the following:
@@ -129,6 +134,11 @@ payment method where needed, and receive future receipts.
 
 ## Validation of this branch
 
+- The production billing verifier's local/hosted distinction passed 147
+  bootstrap tests. Read-only Vercel metadata and the repository checkout flag
+  were checked on September 23; no provider value, payment, or webhook was
+  inspected. The verifier still exits nonzero because local live inputs and the
+  hosted offer allowlist are missing.
 - The bike/bicycle search regression passed its red-green check, then 50 nearby
   catalog, API, map, and PostgreSQL SQL-shape tests passed. Python formatting,
   Ruff, and mypy passed. The deployed Seattle scorecard has not been rerun;

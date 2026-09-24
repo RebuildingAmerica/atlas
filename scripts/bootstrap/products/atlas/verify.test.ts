@@ -19,7 +19,6 @@ import {
   verifyStripeTargetSnapshot,
 } from "./verify-catalog.js";
 import { formatStripeVerificationFollowUp } from "./verify.js";
-import { stripeLiveRestrictedKeySetupSteps } from "./stripe-copy.js";
 
 function completeEnv(): Map<string, string> {
   const stripeIds = new Map<string, string>();
@@ -289,7 +288,7 @@ void describe("Stripe catalog verifier", () => {
     );
   });
 
-  void it("explains how to finish missing production Stripe setup", () => {
+  void it("does not mistake missing local proof for missing live setup", () => {
     const followUp = formatStripeVerificationFollowUp("prod", [
       {
         code: "missing_env",
@@ -304,9 +303,26 @@ void describe("Stripe catalog verifier", () => {
     ]);
 
     assert.deepEqual(followUp, [
-      "Production Stripe setup is incomplete.",
-      "Run the guided bootstrap flow: pnpm bootstrap",
-      ...stripeLiveRestrictedKeySetupSteps(),
+      "Production Stripe verification is incomplete.",
+      "Inspect the existing live account, catalog, and Vercel Production settings before changing any key or recreating objects.",
+      "Local verification inputs are missing; this does not prove deployed values are absent.",
+      "Verify again: pnpm stripe:verify:prod",
+    ]);
+  });
+
+  void it("identifies an absent hosted allowlist without recommending a new key", () => {
+    const followUp = formatStripeVerificationFollowUp("prod", [
+      {
+        code: "missing_hosted_env",
+        envKey: "ATLAS_BILLING_ALLOWED_OFFERS",
+        message: "Vercel production is missing ATLAS_BILLING_ALLOWED_OFFERS.",
+      },
+    ]);
+
+    assert.deepEqual(followUp, [
+      "Production Stripe verification is incomplete.",
+      "Inspect the existing live account, catalog, and Vercel Production settings before changing any key or recreating objects.",
+      "The deployed candidate is missing a required Vercel Production setting; set only accepted offers after their lifecycle checks pass.",
       "Verify again: pnpm stripe:verify:prod",
     ]);
   });
