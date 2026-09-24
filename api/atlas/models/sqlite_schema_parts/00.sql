@@ -266,7 +266,8 @@ CREATE TABLE IF NOT EXISTS review_queue (
     dedup_note TEXT,
     created_at DATETIME NOT NULL,
     reviewed_at DATETIME,
-    reviewed_by TEXT
+    reviewed_by TEXT,
+    proposed_changes TEXT
 );
 
 -- Resource ownership (organization attribution and visibility)

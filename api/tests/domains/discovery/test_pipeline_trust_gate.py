@@ -232,7 +232,7 @@ class TestTrustGateUpsert:
         assert suspect.dedup_note == "similar_name_same_city"
 
     @pytest.mark.asyncio
-    async def test_already_active_match_is_not_unpublished(self, test_db: object) -> None:
+    async def test_published_match_keeps_approved_facts_until_review(self, test_db: object) -> None:
         from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 
         runner_module = _load_runner_module()
@@ -256,7 +256,98 @@ class TestTrustGateUpsert:
         assert entity_id == existing_id
         assert stored is not None
         assert stored.active is True
-        assert pending == []
+        assert stored.description == "Already published."
+        assert len(pending) == 1
+        assert pending[0].hold_reason == "published_profile_change"
+        assert pending[0].proposed_changes == {
+            "description": {
+                "before": "Already published.",
+                "after": "Live Org works on local issues.",
+            },
+            "issue_areas": {"before": [], "after": ["housing_affordability"]},
+        }
+
+        assert await runner_module._upsert_entry(test_db, entry) == existing_id  # noqa: SLF001
+        assert len(await ReviewQueueCRUD.list_pending(test_db)) == 1
+
+    @pytest.mark.asyncio
+    async def test_published_contact_changes_are_staged_together(self, test_db: object) -> None:
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+        existing_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Contact Org",
+            description="Current work.",
+            city="KC",
+            state="MO",
+            geo_specificity="local",
+            website="https://old.example",
+            email="old@example.org",
+            social_media={"bluesky": "old.handle"},
+        )
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Contact Org", city="KC", state="MO"
+        )
+        entry.description = "Current work."
+        entry.website = "https://new.example"
+        entry.email = "new@example.org"
+        entry.social_media = {"bluesky": "new.handle"}
+
+        await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, existing_id)
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert stored is not None
+        assert stored.website == "https://old.example"
+        assert stored.email == "old@example.org"
+        assert stored.social_media == {"bluesky": "old.handle"}
+        assert len(pending) == 1
+        assert set(pending[0].proposed_changes or {}) == {
+            "website",
+            "email",
+            "social_media",
+            "issue_areas",
+        }
+
+    @pytest.mark.asyncio
+    async def test_new_issue_tag_waits_for_review_on_published_profile(
+        self, test_db: object
+    ) -> None:
+        from atlas.domains.discovery.pipeline.runner_storage_persistence import _persist_issue_areas
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        runner_module = _load_runner_module()
+        existing_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Issue Org",
+            description="Issue Org works on local issues.",
+            city="KC",
+            state="MO",
+            geo_specificity="local",
+            active=True,
+        )
+        entry = _make_deduped_entry(
+            entry_type="organization", name="Issue Org", city="KC", state="MO"
+        )
+        await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+        await _persist_issue_areas(test_db, existing_id, entry.issue_areas)
+        cursor = await test_db.execute(
+            "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ?", (existing_id,)
+        )
+        assert await cursor.fetchall() == []
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert len(pending) == 1
+        assert pending[0].proposed_changes == {
+            "issue_areas": {"before": [], "after": ["housing_affordability"]}
+        }
+        await ReviewQueueCRUD.approve(test_db, pending[0].id, reviewed_by="curator@atlas")
+        cursor = await test_db.execute(
+            "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ?", (existing_id,)
+        )
+        assert [row[0] for row in await cursor.fetchall()] == ["housing_affordability"]
 
 
 class TestDiscoveryGeocoding:

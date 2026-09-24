@@ -1,17 +1,34 @@
-"""Pre-publication review queue.
+"""Discovery review queue.
 
 Extends the moderation domain from reactive entity/source flags into a
-proactive queue of discovered records held back from the public directory.
+proactive queue of publication holds and proposed edits to public profiles.
 """
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from atlas.platform.database import db
 from atlas.platform.dates import coerce_date, row_timestamp_string
 
-__all__ = ["RESOLVABLE_HOLD_REASONS", "ReviewQueueCRUD", "ReviewQueueItemModel"]
+__all__ = [
+    "RESOLVABLE_HOLD_REASONS",
+    "ReviewConflictError",
+    "ReviewQueueCRUD",
+    "ReviewQueueItemModel",
+]
+
+PUBLISHED_CHANGE_REASON = "published_profile_change"
+STAGED_ENTRY_FIELDS = frozenset({"description", "region", "website", "email", "social_media"})
+STAGED_ISSUE_FIELD = "issue_areas"
+_UNAVAILABLE_PROFILE = "Published profile is no longer available"
+_INVALID_PROPOSAL = "Review proposal contains unsupported fields"
+_STALE_PROPOSAL = "Published profile changed after this proposal was staged"
+
+
+class ReviewConflictError(Exception):
+    """The published fact changed after its proposed replacement was staged."""
+
 
 STALE_SOURCE_REVIEW_DAYS = 365
 STALE_SOURCE_REVIEW_KIND = "source_staleness"
@@ -31,7 +48,7 @@ RESOLVABLE_HOLD_REASONS = frozenset(
 
 @dataclass
 class ReviewQueueItemModel:
-    """A discovered record held for human review before publication."""
+    """A publication hold or proposed public-profile change for review."""
 
     id: str
     org_id: str | None
@@ -45,6 +62,7 @@ class ReviewQueueItemModel:
     created_at: str
     reviewed_at: str | None
     reviewed_by: str | None
+    proposed_changes: dict[str, dict[str, Any]] | None = None
 
 
 def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
@@ -61,12 +79,15 @@ def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
         created_at=row_timestamp_string(row[9]) or "",
         reviewed_at=row_timestamp_string(row[10]),
         reviewed_by=row[11],
+        proposed_changes=(
+            cast("dict[str, dict[str, Any]]", db.decode_json(row[12])) if row[12] else None
+        ),
     )
 
 
 _SELECT_COLUMNS = (
     "id, org_id, entity_id, kind, status, hold_reason, score, dedup_suspect, "
-    "dedup_note, created_at, reviewed_at, reviewed_by"
+    "dedup_note, created_at, reviewed_at, reviewed_by, proposed_changes"
 )
 
 
@@ -84,6 +105,7 @@ class ReviewQueueCRUD:
         score: float | None,
         dedup_suspect: bool,
         dedup_note: str | None,
+        proposed_changes: dict[str, dict[str, Any]] | None = None,
     ) -> str:
         """Insert a held record and return its id."""
         item_id = db.generate_uuid()
@@ -92,8 +114,8 @@ class ReviewQueueCRUD:
             """
             INSERT INTO review_queue (
                 id, org_id, entity_id, kind, status, hold_reason, score,
-                dedup_suspect, dedup_note, created_at
-            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+                dedup_suspect, dedup_note, created_at, proposed_changes
+            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
             """,
             (
                 item_id,
@@ -105,10 +127,42 @@ class ReviewQueueCRUD:
                 dedup_suspect,
                 dedup_note,
                 created_at,
+                db.encode_json(proposed_changes) if proposed_changes else None,
             ),
         )
         await conn.commit()
         return item_id
+
+    @staticmethod
+    async def stage_published_change(
+        conn: Any,
+        *,
+        entity_id: str,
+        kind: str,
+        proposed_changes: dict[str, dict[str, Any]],
+    ) -> str:
+        """Keep one reviewable proposal per published entry until a person decides."""
+        cursor = await conn.execute(
+            """
+            SELECT id FROM review_queue
+            WHERE entity_id = ? AND status = 'pending' AND hold_reason = ?
+            LIMIT 1
+            """,
+            (entity_id, PUBLISHED_CHANGE_REASON),
+        )
+        existing = await cursor.fetchone()
+        if existing is not None:
+            return str(existing[0])
+        return await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind=kind,
+            hold_reason=PUBLISHED_CHANGE_REASON,
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+            proposed_changes=proposed_changes,
+        )
 
     @staticmethod
     async def list_pending(
@@ -234,11 +288,123 @@ class ReviewQueueCRUD:
     async def approve(conn: Any, item_id: str, *, reviewed_by: str) -> None:
         """Approve a held record: publish its entry and close the item."""
         item = await ReviewQueueCRUD.get_by_id(conn, item_id)
+        if item is not None and item.status != "pending":
+            return
         if item is None or item.entity_id is None:
+            await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
+            return
+        if item.proposed_changes is not None:
+            await ReviewQueueCRUD._apply_published_change(conn, item)
             await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
             return
         await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (item.entity_id,))
         await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
+
+    @staticmethod
+    async def _apply_published_change(conn: Any, item: ReviewQueueItemModel) -> None:
+        """Apply only reviewed fields whose published baseline is still current."""
+        assert item.entity_id is not None
+        from atlas.domains.catalog.models.entry import EntryCRUD
+
+        entry = await EntryCRUD.get_by_id(conn, item.entity_id)
+        if entry is None or not entry.active:
+            raise ReviewConflictError(_UNAVAILABLE_PROFILE)
+        changes = item.proposed_changes or {}
+        await ReviewQueueCRUD._validate_published_change(conn, item, entry, changes)
+        await ReviewQueueCRUD._write_staged_entry_fields(conn, item.entity_id, changes)
+        await ReviewQueueCRUD._write_staged_issues(conn, item.entity_id, changes)
+
+    @staticmethod
+    async def _validate_published_change(
+        conn: Any,
+        item: ReviewQueueItemModel,
+        entry: Any,
+        changes: dict[str, dict[str, Any]],
+    ) -> None:
+        """Refuse unsupported or stale proposals before changing any public fact."""
+        if (
+            item.hold_reason != PUBLISHED_CHANGE_REASON
+            or not changes
+            or set(changes) - (STAGED_ENTRY_FIELDS | {STAGED_ISSUE_FIELD})
+        ):
+            raise ReviewConflictError(_INVALID_PROPOSAL)
+        for field, change in changes.items():
+            if set(change) != {"before", "after"}:
+                raise ReviewConflictError(_INVALID_PROPOSAL)
+            if field == STAGED_ISSUE_FIELD:
+                before_issues = change["before"]
+                after_issues = change["after"]
+                if (
+                    not isinstance(before_issues, list)
+                    or not isinstance(after_issues, list)
+                    or not all(isinstance(value, str) for value in [*before_issues, *after_issues])
+                    or not set(before_issues) <= set(after_issues)
+                ):
+                    raise ReviewConflictError(_INVALID_PROPOSAL)
+                cursor = await conn.execute(
+                    "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ?",
+                    (item.entity_id,),
+                )
+                current_issues = sorted(str(row[0]) for row in await cursor.fetchall())
+                if current_issues != change["before"]:
+                    raise ReviewConflictError(_STALE_PROPOSAL)
+            elif getattr(entry, field) != change["before"]:
+                raise ReviewConflictError(_STALE_PROPOSAL)
+
+    @staticmethod
+    async def _write_staged_entry_fields(
+        conn: Any, entity_id: str, changes: dict[str, dict[str, Any]]
+    ) -> None:
+        """Update approved text and contact facts with a baseline guard."""
+        updates: dict[str, Any] = {}
+        conditions: list[str] = []
+        condition_values: list[Any] = []
+        for field, change in changes.items():
+            if field == STAGED_ISSUE_FIELD:
+                continue
+            before = change["before"]
+            after = change["after"]
+            if field == "social_media":
+                before = db.encode_json(before) if before is not None else None
+                after = db.encode_json(after) if after is not None else None
+            updates[field] = after
+            if before is None:
+                conditions.append(f"{field} IS NULL")
+            else:
+                conditions.append(f"{field} = ?")
+                condition_values.append(before)
+        if updates:
+            assignments = ", ".join(f"{field} = ?" for field in updates)
+            predicate = " AND ".join(conditions)
+            cursor = await conn.execute(
+                f"""UPDATE entries SET {assignments}, updated_at = ?
+                    WHERE id = ? AND active = TRUE AND {predicate}""",
+                (*updates.values(), db.now_iso(), entity_id, *condition_values),
+            )
+            if cursor.rowcount != 1:
+                raise ReviewConflictError(_STALE_PROPOSAL)
+
+    @staticmethod
+    async def _write_staged_issues(
+        conn: Any, entity_id: str, changes: dict[str, dict[str, Any]]
+    ) -> None:
+        """Add reviewed issue tags after their baseline has been checked."""
+        issue_change = changes.get(STAGED_ISSUE_FIELD)
+        if issue_change is not None:
+            if len(changes) == 1:
+                cursor = await conn.execute(
+                    "UPDATE entries SET updated_at = ? WHERE id = ? AND active = TRUE",
+                    (db.now_iso(), entity_id),
+                )
+                if cursor.rowcount != 1:
+                    raise ReviewConflictError(_STALE_PROPOSAL)
+            before_issues = set(issue_change["before"])
+            for issue_area in sorted(set(issue_change["after"]) - before_issues):
+                await conn.execute(
+                    """INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
+                    VALUES (?, ?, ?) ON CONFLICT(entry_id, issue_area) DO NOTHING""",
+                    (entity_id, issue_area, db.now_iso()),
+                )
 
     @staticmethod
     async def release_resolved(conn: Any, *, entity_id: str) -> bool:

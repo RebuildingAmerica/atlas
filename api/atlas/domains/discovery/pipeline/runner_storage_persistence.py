@@ -108,14 +108,42 @@ async def _upsert_entry(
                 "geocode_precision": located.precision,
                 "geocode_source": located.source,
             }
+    material_fields: dict[str, Any] = {
+        "description": entry.description,
+        "region": entry.region,
+        "website": entry.website or match.website,
+        "email": entry.email or match.email,
+        "social_media": entry.social_media or match.social_media,
+    }
+    if match.active:
+        proposed_changes = {
+            field: {"before": getattr(match, field), "after": value}
+            for field, value in material_fields.items()
+            if getattr(match, field) != value
+        }
+        cursor = await conn.execute(
+            "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ?",
+            (match.id,),
+        )
+        current_issues = sorted(str(row[0]) for row in await cursor.fetchall())
+        proposed_issues = sorted(set(current_issues) | set(entry.issue_areas))
+        if proposed_issues != current_issues:
+            proposed_changes["issue_areas"] = {
+                "before": current_issues,
+                "after": proposed_issues,
+            }
+        if proposed_changes:
+            await ReviewQueueCRUD.stage_published_change(
+                conn,
+                entity_id=str(match.id),
+                kind=match.type,
+                proposed_changes=proposed_changes,
+            )
+    else:
+        coordinate_fields.update(material_fields)
     await EntryCRUD.update(
         conn,
         match.id,
-        description=entry.description,
-        region=entry.region,
-        website=entry.website or match.website,
-        email=entry.email or match.email,
-        social_media=entry.social_media or match.social_media,
         last_seen=entry.last_seen or _parse_date(today_iso),
         **coordinate_fields,
     )
@@ -178,6 +206,16 @@ def _dedup_suspect_lookup(
 
 async def _persist_issue_areas(conn: Connection, entry_id: str, issue_areas: list[str]) -> None:
     """Ensure issue area links exist for an entry."""
+    cursor = await conn.execute(
+        """
+        SELECT 1 FROM review_queue
+        WHERE entity_id = ? AND status = 'pending' AND hold_reason = 'published_profile_change'
+        LIMIT 1
+        """,
+        (entry_id,),
+    )
+    if await cursor.fetchone() is not None:
+        return
     for issue_area in sorted(set(issue_areas)):
         await conn.execute(
             """

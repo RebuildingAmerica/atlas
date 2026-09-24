@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class ReviewQueueItemResponse(BaseModel):
-    """A discovered record held for human review before publication."""
+    """A publication hold or proposed public-profile change for review."""
 
     id: str
     org_id: str | None = None
@@ -20,6 +22,7 @@ class ReviewQueueItemResponse(BaseModel):
     created_at: str
     reviewed_at: str | None = None
     reviewed_by: str | None = None
+    proposed_changes: dict[str, dict[str, Any]] | None = None
 
 
 class ReviewQueueListResponse(BaseModel):

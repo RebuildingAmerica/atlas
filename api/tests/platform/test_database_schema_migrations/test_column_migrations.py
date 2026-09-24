@@ -10,8 +10,22 @@ from atlas.models.database import (
     _ensure_discovery_run_columns,
     _ensure_entry_columns,
     _ensure_org_annotation_columns,
+    _ensure_review_queue_columns,
 )
 from tests.support.schema_introspection import table_columns
+
+
+@pytest.mark.asyncio
+async def test_existing_review_queue_gains_proposal_column_idempotently() -> None:
+    """A deployed queue can stage changes after an additive SQLite migration."""
+    conn = await aiosqlite.connect(":memory:")
+    try:
+        await conn.execute("CREATE TABLE review_queue (id TEXT PRIMARY KEY, status TEXT NOT NULL)")
+        await _ensure_review_queue_columns(conn)
+        await _ensure_review_queue_columns(conn)
+        assert {"org_id", "proposed_changes"} <= await table_columns(conn, "review_queue")
+    finally:
+        await conn.close()
 
 
 class TestEnsureEntryColumns:

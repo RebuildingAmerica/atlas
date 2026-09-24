@@ -12033,7 +12033,7 @@
         "type": "object"
       },
       "ReviewQueueItemResponse": {
-        "description": "A discovered record held for human review before publication.",
+        "description": "A publication hold or proposed public-profile change for review.",
         "properties": {
           "created_at": {
             "description": "created at for this review queue item.",
@@ -12095,6 +12095,22 @@
             ],
             "description": "org id for this review queue item.",
             "title": "Org Id"
+          },
+          "proposed_changes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "proposed changes for this review queue item.",
+            "title": "Proposed Changes"
           },
           "reviewed_at": {
             "anyOf": [
@@ -31423,7 +31439,7 @@
     },
     "/api/review-queue": {
       "get": {
-        "description": "List discovered records held back from the public directory for review.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "description": "List publication holds and proposed edits to public profiles.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
         "operationId": "listReviewQueue",
         "parameters": [
           {
@@ -31552,7 +31568,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "List held discovery records",
+        "summary": "List pending discovery reviews",
         "tags": [
           "moderation"
         ]
@@ -31690,7 +31706,7 @@
     },
     "/api/review-queue/{item_id}/approve": {
       "post": {
-        "description": "Publish a held record to the public directory and close its review item.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "description": "Publish a held record or apply a proposed public-profile change.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
         "operationId": "approveReviewQueueItem",
         "parameters": [
           {
@@ -31805,7 +31821,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Approve a held discovery record",
+        "summary": "Approve a discovery review item",
         "tags": [
           "moderation"
         ]
@@ -31813,7 +31829,7 @@
     },
     "/api/review-queue/{item_id}/reject": {
       "post": {
-        "description": "Leave a held record out of the public directory and close its review item.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "description": "Leave a held record unpublished or keep the current public-profile facts.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
         "operationId": "rejectReviewQueueItem",
         "parameters": [
           {
@@ -31928,7 +31944,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Reject a held discovery record",
+        "summary": "Reject a discovery review item",
         "tags": [
           "moderation"
         ]

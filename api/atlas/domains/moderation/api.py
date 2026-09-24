@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
-from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+from atlas.domains.moderation.review_queue import ReviewConflictError, ReviewQueueCRUD
 from atlas.models import EntryCRUD, FlagCRUD, SourceCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
@@ -290,8 +290,8 @@ async def dismiss_source_flag(
 @router.get(
     "/review-queue",
     response_model=ReviewQueueListResponse,
-    summary="List held discovery records",
-    description="List discovered records held back from the public directory for review.",
+    summary="List pending discovery reviews",
+    description="List publication holds and proposed edits to public profiles.",
     operation_id="listReviewQueue",
     response_description="A collection of pending review-queue items.",
     tags=["moderation"],
@@ -342,8 +342,8 @@ async def scan_source_staleness_review_queue(
 @router.post(
     "/review-queue/{item_id}/approve",
     response_model=ReviewQueueItemResponse,
-    summary="Approve a held discovery record",
-    description="Publish a held record to the public directory and close its review item.",
+    summary="Approve a discovery review item",
+    description="Publish a held record or apply a proposed public-profile change.",
     operation_id="approveReviewQueueItem",
     response_description="The approved review-queue item.",
     tags=["moderation"],
@@ -357,7 +357,10 @@ async def approve_review_queue_item(
     """Approve a held record and publish its entry."""
     if await ReviewQueueCRUD.get_by_id(db, item_id) is None:
         raise HTTPException(status_code=404, detail="Review item not found")
-    await ReviewQueueCRUD.approve(db, item_id, reviewed_by=actor.email)
+    try:
+        await ReviewQueueCRUD.approve(db, item_id, reviewed_by=actor.email)
+    except ReviewConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     item = await ReviewQueueCRUD.get_by_id(db, item_id)
     assert item is not None, "review item existed moments ago"
     apply_no_store_headers(response)
@@ -367,8 +370,8 @@ async def approve_review_queue_item(
 @router.post(
     "/review-queue/{item_id}/reject",
     response_model=ReviewQueueItemResponse,
-    summary="Reject a held discovery record",
-    description="Leave a held record out of the public directory and close its review item.",
+    summary="Reject a discovery review item",
+    description="Leave a held record unpublished or keep the current public-profile facts.",
     operation_id="rejectReviewQueueItem",
     response_description="The rejected review-queue item.",
     tags=["moderation"],

@@ -189,11 +189,13 @@ CREATE TABLE IF NOT EXISTS review_queue (
     dedup_note TEXT,
     created_at TIMESTAMPTZ NOT NULL,
     reviewed_at TIMESTAMPTZ,
-    reviewed_by TEXT
+    reviewed_by TEXT,
+    proposed_changes TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
 CREATE INDEX IF NOT EXISTS idx_review_queue_entity_id ON review_queue(entity_id);
 ALTER TABLE review_queue ADD COLUMN IF NOT EXISTS org_id TEXT;
+ALTER TABLE review_queue ADD COLUMN IF NOT EXISTS proposed_changes TEXT;
 CREATE INDEX IF NOT EXISTS idx_review_queue_org_status ON review_queue(org_id, status);
 
 -- Resource ownership (organization attribution and visibility)

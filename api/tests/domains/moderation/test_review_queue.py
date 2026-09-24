@@ -9,7 +9,7 @@ import pytest
 
 from atlas.domains.catalog.schemas.public_review import ReviewQueueItemResponse
 from atlas.domains.catalog.models.entry import EntryCRUD
-from atlas.domains.moderation.review_queue import ReviewQueueCRUD, _row_to_item
+from atlas.domains.moderation.review_queue import ReviewConflictError, ReviewQueueCRUD, _row_to_item
 from atlas.models.database import get_db_connection
 from atlas.platform.dates import coerce_date
 
@@ -50,6 +50,7 @@ async def test_review_queue_table_exists(db_url: str) -> None:
         "created_at",
         "reviewed_at",
         "reviewed_by",
+        "proposed_changes",
     }
 
 
@@ -119,6 +120,7 @@ def test_row_to_item_accepts_postgres_timestamp_values_for_api_response() -> Non
             False,
             None,
             datetime(2026, 7, 12, 2, 41, tzinfo=UTC),
+            None,
             None,
             None,
         )
@@ -193,6 +195,122 @@ async def test_approve_marks_entry_active_and_item_approved(db_url: str) -> None
     assert entry is not None
     assert entry.active is True
     assert pending == []
+
+
+@pytest.mark.asyncio
+async def test_approve_applies_staged_public_change_and_reject_preserves_old_fact(
+    db_url: str,
+) -> None:
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Reviewed Org",
+            description="Original description.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+            active=True,
+            website="https://old.example",
+            email="old@example.org",
+            social_media={"bluesky": "old.handle"},
+        )
+        proposal = {
+            "description": {"before": "Original description.", "after": "New description."},
+            "region": {"before": None, "after": "Kansas City metro"},
+            "website": {"before": "https://old.example", "after": "https://new.example"},
+            "email": {"before": "old@example.org", "after": "new@example.org"},
+            "social_media": {
+                "before": {"bluesky": "old.handle"},
+                "after": {"bluesky": "new.handle"},
+            },
+            "issue_areas": {"before": [], "after": ["housing_affordability"]},
+        }
+        rejected_id = await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            hold_reason="published_profile_change",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+            proposed_changes=proposal,
+        )
+        await ReviewQueueCRUD.reject(conn, rejected_id, reviewed_by="curator@atlas")
+        after_reject = await EntryCRUD.get_by_id(conn, entity_id)
+        assert after_reject is not None
+        assert after_reject.description == "Original description."
+
+        approved_id = await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            hold_reason="published_profile_change",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+            proposed_changes=proposal,
+        )
+        await ReviewQueueCRUD.approve(conn, approved_id, reviewed_by="curator@atlas")
+        after_approve = await EntryCRUD.get_by_id(conn, entity_id)
+        approved = await ReviewQueueCRUD.get_by_id(conn, approved_id)
+        cursor = await conn.execute(
+            "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ?", (entity_id,)
+        )
+        approved_issues = [row[0] for row in await cursor.fetchall()]
+    finally:
+        await conn.close()
+
+    assert after_approve is not None
+    assert after_approve.description == "New description."
+    assert after_approve.region == "Kansas City metro"
+    assert after_approve.website == "https://new.example"
+    assert after_approve.email == "new@example.org"
+    assert after_approve.social_media == {"bluesky": "new.handle"}
+    assert approved is not None
+    assert approved.status == "approved"
+    assert approved.proposed_changes == proposal
+    assert approved_issues == ["housing_affordability"]
+
+
+@pytest.mark.asyncio
+async def test_approval_refuses_stale_proposal_without_closing_review(db_url: str) -> None:
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Changing Org",
+            description="Original.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+            active=True,
+        )
+        proposal = {"description": {"before": "Original.", "after": "Proposed."}}
+        item_id = await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            hold_reason="published_profile_change",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+            proposed_changes=proposal,
+        )
+        await EntryCRUD.update(conn, entity_id, description="Curator edited this.")
+        with pytest.raises(ReviewConflictError):
+            await ReviewQueueCRUD.approve(conn, item_id, reviewed_by="curator@atlas")
+        stored = await EntryCRUD.get_by_id(conn, entity_id)
+        review = await ReviewQueueCRUD.get_by_id(conn, item_id)
+    finally:
+        await conn.close()
+
+    assert stored is not None
+    assert stored.description == "Curator edited this."
+    assert review is not None
+    assert review.status == "pending"
 
 
 @pytest.mark.asyncio

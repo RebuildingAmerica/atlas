@@ -50,6 +50,7 @@ class TestRunnerHelpersExistingEntry:
             city="Kansas City",
             state="MO",
             geo_specificity="local",
+            active=False,
         )
 
         async def fake_fetch_sources(
@@ -112,10 +113,10 @@ class TestRunnerHelpersExistingEntry:
             ),
         )
 
-        results = await EntryCRUD.search_public(test_db, states=["MO"])
-        assert results["total"] == 1
-        assert results["entries"][0]["entry"].id == existing_entry_id
-        assert results["entries"][0]["entry"].description == "Updated description from new source."
+        stored = await EntryCRUD.get_by_id(test_db, existing_entry_id)
+        assert stored is not None
+        assert stored.active is False
+        assert stored.description == "Updated description from new source."
 
     @pytest.mark.asyncio
     async def test_run_discovery_pipeline_consolidates_repeated_domain_mentions(
@@ -221,10 +222,16 @@ class TestRunnerHelpersExistingEntry:
         results = await EntryCRUD.search_public(test_db, states=["MO"])
         assert results["total"] == 1
         assert results["entries"][0]["entry"].id == existing_entry_id
-        assert results["entries"][0]["entry"].description == (
+        assert results["entries"][0]["entry"].description == "Known tenant clinic."
+        assert results["entries"][0]["source_count"] == STRENGTHENED_SOURCE_COUNT
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        pending = await ReviewQueueCRUD.list_pending(test_db)
+        assert [item.hold_reason for item in pending] == ["published_profile_change"]
+        assert pending[0].proposed_changes is not None
+        assert pending[0].proposed_changes["description"]["after"] == (
             "Tenant Clinic KC supports renters facing displacement."
         )
-        assert results["entries"][0]["source_count"] == STRENGTHENED_SOURCE_COUNT
 
     @pytest.mark.asyncio
     async def test_find_existing_entry_returns_none_when_resolved_type_mismatches(

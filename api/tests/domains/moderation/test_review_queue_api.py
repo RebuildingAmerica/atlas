@@ -157,6 +157,51 @@ async def test_approve_review_item_publishes_entry(
 
 
 @pytest.mark.asyncio
+async def test_stale_public_change_returns_conflict_and_preserves_review(
+    test_client: httpx.AsyncClient, db_url: str
+) -> None:
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Edited Org",
+            description="Original.",
+            city="Kansas City",
+            state="MO",
+            geo_specificity="local",
+            active=True,
+        )
+        item_id = await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            hold_reason="published_profile_change",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+            proposed_changes={"description": {"before": "Original.", "after": "Proposed."}},
+        )
+        await EntryCRUD.update(conn, entity_id, description="Curator update.")
+    finally:
+        await conn.close()
+
+    listed = await test_client.get("/api/review-queue")
+    response = await test_client.post(f"/api/review-queue/{item_id}/approve")
+
+    assert listed.status_code == HTTPStatus.OK
+    assert listed.json()["items"][0]["proposed_changes"]["description"]["after"] == "Proposed."
+    assert response.status_code == HTTPStatus.CONFLICT
+    conn = await get_db_connection(db_url)
+    try:
+        item = await ReviewQueueCRUD.get_by_id(conn, item_id)
+    finally:
+        await conn.close()
+    assert item is not None
+    assert item.status == "pending"
+
+
+@pytest.mark.asyncio
 async def test_reject_review_item_keeps_entry_inactive(
     test_client: httpx.AsyncClient, db_url: str
 ) -> None:

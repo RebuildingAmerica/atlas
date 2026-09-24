@@ -38,4 +38,5 @@ def test_public_review_queue_item_serializes_nullable_review_fields() -> None:
         "created_at": "2026-07-10T12:00:00Z",
         "reviewed_at": None,
         "reviewed_by": None,
+        "proposed_changes": None,
     }
