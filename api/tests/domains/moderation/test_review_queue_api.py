@@ -96,6 +96,8 @@ async def test_list_review_queue_returns_pending_items(
     assert body["total"] == 1
     assert body["items"][0]["id"] == item_id
     assert body["items"][0]["hold_reason"] == "uncorroborated_web_only"
+    assert body["items"][0]["entity_name"] == "Pending Org"
+    assert body["items"][0]["entity_type"] == "organization"
 
 
 @pytest.mark.asyncio
@@ -181,6 +183,7 @@ async def test_stale_public_change_returns_conflict_and_preserves_review(
             dedup_suspect=False,
             dedup_note=None,
             proposed_changes={"description": {"before": "Original.", "after": "Proposed."}},
+            source_urls=["https://example.org/new-work"],
         )
         await EntryCRUD.update(conn, entity_id, description="Curator update.")
     finally:
@@ -191,6 +194,7 @@ async def test_stale_public_change_returns_conflict_and_preserves_review(
 
     assert listed.status_code == HTTPStatus.OK
     assert listed.json()["items"][0]["proposed_changes"]["description"]["after"] == "Proposed."
+    assert listed.json()["items"][0]["source_urls"] == ["https://example.org/new-work"]
     assert response.status_code == HTTPStatus.CONFLICT
     conn = await get_db_connection(db_url)
     try:

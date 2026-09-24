@@ -51,6 +51,7 @@ async def test_review_queue_table_exists(db_url: str) -> None:
         "reviewed_at",
         "reviewed_by",
         "proposed_changes",
+        "source_urls",
     }
 
 
@@ -76,6 +77,7 @@ async def test_enqueue_and_list_pending(db_url: str) -> None:
             score=0.42,
             dedup_suspect=False,
             dedup_note=None,
+            source_urls=["https://example.org/about"],
         )
         pending = await ReviewQueueCRUD.list_pending(conn)
     finally:
@@ -85,6 +87,9 @@ async def test_enqueue_and_list_pending(db_url: str) -> None:
     assert [item.entity_id for item in pending] == [entity_id]
     assert pending[0].org_id == "org-a"
     assert pending[0].status == "pending"
+    assert pending[0].entity_name == "Jane Organizer"
+    assert pending[0].entity_type == "person"
+    assert pending[0].source_urls == ["https://example.org/about"]
 
 
 @pytest.mark.asyncio
@@ -120,6 +125,10 @@ def test_row_to_item_accepts_postgres_timestamp_values_for_api_response() -> Non
             False,
             None,
             datetime(2026, 7, 12, 2, 41, tzinfo=UTC),
+            None,
+            None,
+            None,
+            None,
             None,
             None,
             None,

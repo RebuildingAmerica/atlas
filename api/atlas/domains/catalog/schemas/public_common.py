@@ -147,6 +147,10 @@ class ReviewQueueItemResponse(BaseModel):
     reviewed_at: str | None = None
     reviewed_by: str | None = None
     proposed_changes: dict[str, dict[str, Any]] | None = None
+    source_urls: list[str] = Field(default_factory=list)
+    entity_name: str | None = None
+    entity_slug: str | None = None
+    entity_type: str | None = None
 
 
 class ReviewQueueListResponse(BaseModel):

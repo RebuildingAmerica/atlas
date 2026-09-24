@@ -5,6 +5,7 @@ proactive queue of publication holds and proposed edits to public profiles.
 """
 
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
@@ -65,6 +66,10 @@ class ReviewQueueItemModel:
     reviewed_at: str | None
     reviewed_by: str | None
     proposed_changes: dict[str, dict[str, Any]] | None = None
+    source_urls: list[str] = dataclass_field(default_factory=list)
+    entity_name: str | None = None
+    entity_slug: str | None = None
+    entity_type: str | None = None
 
 
 def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
@@ -84,12 +89,19 @@ def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
         proposed_changes=(
             cast("dict[str, dict[str, Any]]", db.decode_json(row[12])) if row[12] else None
         ),
+        source_urls=cast("list[str]", db.decode_json(row[13])) if row[13] else [],
+        entity_name=row[14],
+        entity_slug=row[15],
+        entity_type=row[16],
     )
 
 
 _SELECT_COLUMNS = (
     "id, org_id, entity_id, kind, status, hold_reason, score, dedup_suspect, "
-    "dedup_note, created_at, reviewed_at, reviewed_by, proposed_changes"
+    "dedup_note, created_at, reviewed_at, reviewed_by, proposed_changes, source_urls, "
+    "(SELECT name FROM entries WHERE entries.id = review_queue.entity_id), "
+    "(SELECT slug FROM entries WHERE entries.id = review_queue.entity_id), "
+    "(SELECT type FROM entries WHERE entries.id = review_queue.entity_id)"
 )
 
 
@@ -121,6 +133,7 @@ class ReviewQueueCRUD:
         dedup_suspect: bool,
         dedup_note: str | None,
         proposed_changes: dict[str, dict[str, Any]] | None = None,
+        source_urls: list[str] | None = None,
     ) -> str:
         """Insert a held record and return its id."""
         item_id = db.generate_uuid()
@@ -129,8 +142,8 @@ class ReviewQueueCRUD:
             """
             INSERT INTO review_queue (
                 id, org_id, entity_id, kind, status, hold_reason, score,
-                dedup_suspect, dedup_note, created_at, proposed_changes
-            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
+                dedup_suspect, dedup_note, created_at, proposed_changes, source_urls
+            ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 item_id,
@@ -143,6 +156,7 @@ class ReviewQueueCRUD:
                 dedup_note,
                 created_at,
                 db.encode_json(proposed_changes) if proposed_changes else None,
+                db.encode_json(sorted(set(source_urls))) if source_urls else None,
             ),
         )
         await conn.commit()
@@ -155,6 +169,7 @@ class ReviewQueueCRUD:
         entity_id: str,
         kind: str,
         proposed_changes: dict[str, dict[str, Any]],
+        source_urls: list[str] | None = None,
     ) -> str:
         """Keep one reviewable proposal per published entry until a person decides."""
         cursor = await conn.execute(
@@ -177,6 +192,7 @@ class ReviewQueueCRUD:
             dedup_suspect=False,
             dedup_note=None,
             proposed_changes=proposed_changes,
+            source_urls=source_urls,
         )
 
     @staticmethod
@@ -473,7 +489,12 @@ class ReviewQueueCRUD:
 
     @staticmethod
     async def hold_for_resolution(
-        conn: Any, *, entity_id: str, kind: str, hold_reason: str
+        conn: Any,
+        *,
+        entity_id: str,
+        kind: str,
+        hold_reason: str,
+        source_urls: list[str] | None = None,
     ) -> None:
         """Queue a resolution hold for review once per entity and reason.
 
@@ -506,6 +527,7 @@ class ReviewQueueCRUD:
             score=None,
             dedup_suspect=False,
             dedup_note=None,
+            source_urls=source_urls,
         )
 
     @staticmethod

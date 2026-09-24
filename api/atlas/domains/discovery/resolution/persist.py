@@ -126,7 +126,9 @@ async def _store_organization(
     fields = _NewEntry(
         "organization", mention.name, mention.context, mention.city, mention.state, mention.website
     )
-    entry_id = await _store_entry(conn, existing, fields, PUBLISH, issue_areas, today, summary)
+    entry_id = await _store_entry(
+        conn, existing, fields, PUBLISH, issue_areas, mention.source.url, today, summary
+    )
     await RelationshipCRUD.upsert_identity_key(
         conn,
         entry_id=entry_id,
@@ -160,7 +162,9 @@ async def _store_person(  # noqa: PLR0913
     fields = _NewEntry(
         "person", mention.display_name, mention.context, organization.city, organization.state, None
     )
-    entry_id = await _store_entry(conn, match.entry, fields, decision, issue_areas, today, summary)
+    entry_id = await _store_entry(
+        conn, match.entry, fields, decision, issue_areas, mention.source.url, today, summary
+    )
     await SourceCRUD.link_to_entry(conn, entry_id, source_id, extraction_context=mention.context)
     await _persist_issue_areas(conn, entry_id, list(issue_areas))
     if (
@@ -196,6 +200,7 @@ async def _store_entry(  # noqa: PLR0913
     fields: _NewEntry,
     decision: GateDecision,
     issue_areas: Sequence[str],
+    source_url: str,
     today: date,
     summary: ResolutionSummary,
 ) -> str:
@@ -255,20 +260,22 @@ async def _store_entry(  # noqa: PLR0913
                     entity_id=entry_id,
                     kind=fields.entry_type,
                     proposed_changes=proposed_changes,
+                    source_urls=[source_url],
                 )
             await EntryCRUD.update(conn, entry_id, last_seen=today)
         else:
             await EntryCRUD.update(conn, entry_id, **resolved_fields, last_seen=today)
     summary.entry_ids.append(entry_id)
-    await _apply_decision(conn, entry_id, fields.entry_type, decision, summary)
+    await _apply_decision(conn, entry_id, fields.entry_type, decision, source_url, summary)
     return entry_id
 
 
-async def _apply_decision(
+async def _apply_decision(  # noqa: PLR0913
     conn: Connection,
     entry_id: str,
     kind: str,
     decision: GateDecision,
+    source_url: str,
     summary: ResolutionSummary,
 ) -> None:
     """Publish an entry or queue its hold, without overruling a curator.
@@ -282,6 +289,10 @@ async def _apply_decision(
             summary.published += 1
         return
     await ReviewQueueCRUD.hold_for_resolution(
-        conn, entity_id=entry_id, kind=kind, hold_reason=decision.hold_reason
+        conn,
+        entity_id=entry_id,
+        kind=kind,
+        hold_reason=decision.hold_reason,
+        source_urls=[source_url],
     )
     summary.held[decision.hold_reason] = summary.held.get(decision.hold_reason, 0) + 1

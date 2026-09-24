@@ -12069,6 +12069,42 @@
             "description": "entity id for this review queue item.",
             "title": "Entity Id"
           },
+          "entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity name for this review queue item.",
+            "title": "Entity Name"
+          },
+          "entity_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity slug for this review queue item.",
+            "title": "Entity Slug"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity type for this review queue item.",
+            "title": "Entity Type"
+          },
           "hold_reason": {
             "description": "hold reason for this review queue item.",
             "title": "Hold Reason",
@@ -12147,6 +12183,14 @@
             ],
             "description": "score for this review queue item.",
             "title": "Score"
+          },
+          "source_urls": {
+            "description": "source urls for this review queue item.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Urls",
+            "type": "array"
           },
           "status": {
             "description": "status for this review queue item.",

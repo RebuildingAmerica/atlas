@@ -116,6 +116,7 @@ class TestTrustGateUpsert:
         assert stored.active is False
         pending = await ReviewQueueCRUD.list_pending(test_db)
         assert [item.hold_reason for item in pending] == ["person_requires_review"]
+        assert pending[0].source_urls == cited.source_urls
 
     @pytest.mark.asyncio
     async def test_publish_decision_creates_active_entry_without_queueing(

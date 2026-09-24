@@ -267,7 +267,8 @@ CREATE TABLE IF NOT EXISTS review_queue (
     created_at DATETIME NOT NULL,
     reviewed_at DATETIME,
     reviewed_by TEXT,
-    proposed_changes TEXT
+    proposed_changes TEXT,
+    source_urls TEXT
 );
 
 -- Resource ownership (organization attribution and visibility)

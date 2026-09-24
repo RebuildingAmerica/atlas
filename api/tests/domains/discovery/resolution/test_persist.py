@@ -283,6 +283,7 @@ async def test_a_hold_on_a_public_person_queues_review_without_unpublishing(
         "before": before.description,
         "after": later.context,
     }
+    assert pending[0].source_urls == [later.source.url]
     [after_edge] = await RelationshipCRUD.list_edges_for_entry(test_db, person_id)
     assert after_edge.evidence_label == before_edge.evidence_label
 

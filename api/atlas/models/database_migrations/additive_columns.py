@@ -115,6 +115,8 @@ async def _ensure_review_queue_columns(conn: Any) -> None:
         await conn.execute("ALTER TABLE review_queue ADD COLUMN org_id TEXT")
     if "proposed_changes" not in existing_columns:
         await conn.execute("ALTER TABLE review_queue ADD COLUMN proposed_changes TEXT")
+    if "source_urls" not in existing_columns:
+        await conn.execute("ALTER TABLE review_queue ADD COLUMN source_urls TEXT")
 
     await conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_review_queue_org_status ON review_queue(org_id, status)"

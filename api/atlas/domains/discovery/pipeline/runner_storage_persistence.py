@@ -94,6 +94,7 @@ async def _upsert_entry(
                 score=score,
                 dedup_suspect=dedup_suspect,
                 dedup_note=dedup_note,
+                source_urls=entry.source_urls,
             )
         return entity_id
 
@@ -138,6 +139,7 @@ async def _upsert_entry(
                 entity_id=str(match.id),
                 kind=match.type,
                 proposed_changes=proposed_changes,
+                source_urls=entry.source_urls,
             )
     else:
         coordinate_fields.update(material_fields)

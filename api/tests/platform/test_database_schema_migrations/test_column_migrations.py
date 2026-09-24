@@ -23,7 +23,9 @@ async def test_existing_review_queue_gains_proposal_column_idempotently() -> Non
         await conn.execute("CREATE TABLE review_queue (id TEXT PRIMARY KEY, status TEXT NOT NULL)")
         await _ensure_review_queue_columns(conn)
         await _ensure_review_queue_columns(conn)
-        assert {"org_id", "proposed_changes"} <= await table_columns(conn, "review_queue")
+        assert {"org_id", "proposed_changes", "source_urls"} <= await table_columns(
+            conn, "review_queue"
+        )
     finally:
         await conn.close()
 
