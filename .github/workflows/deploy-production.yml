@@ -54,6 +54,31 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+
+      - name: Verify hosted production billing settings before deployment
+        env:
+          ATLAS_BILLING_CHECKOUT_ENABLED: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}" != "true" ]; then
+            echo "Production checkout is closed; paid settings are not required for this deploy."
+            exit 0
+          fi
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::error title=Billing preflight cannot inspect Vercel::Checkout is enabled but the Vercel project link or access token is missing."
+            exit 1
+          fi
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          pnpm exec vercel env list production --token "$VERCEL_TOKEN" --format json \
+            | node scripts/deploy/verify-production-stripe-env.mjs
+
       - uses: ./.github/actions/deploy-atlas-api
         id: deploy-api
         with:
@@ -77,10 +102,6 @@ jobs:
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
           scheduler-job-name: atlas-discovery-scheduled
           openstatus-api-key: ${{ secrets.OPENSTATUS_API_KEY }}
-
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
 
       - name: Generate PDS invite broker secret
         id: pds-invite-broker
@@ -199,26 +220,6 @@ jobs:
           add_vercel_env NITRO_PRESET "vercel"
           add_vercel_env ATLAS_BILLING_AUTOMATIC_TAX "${ATLAS_BILLING_AUTOMATIC_TAX:-true}"
 
-          # `pnpm setup:prod` owns the Stripe config: it validates the key
-          # mode, provisions the catalog and webhook, and writes all three
-          # values into Vercel. The repository secret is test mode for the CI
-          # verifier, so this deploy checks presence and leaves them alone.
-          missing_stripe=""
-          hosted_env="$(pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color 2>/dev/null || true)"
-          for key in STRIPE_API_KEY STRIPE_ATLAS_CATALOG STRIPE_WEBHOOK_SECRET; do
-            if ! printf '%s' "$hosted_env" | grep -q "^[[:space:]]*${key}[[:space:]]"; then
-              missing_stripe="$missing_stripe $key"
-            fi
-          done
-
-          if [ -n "$missing_stripe" ]; then
-            if [ "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}" = "true" ]; then
-              echo "::error title=Stripe is not provisioned::Checkout is enabled but Vercel production is missing:$missing_stripe. Run 'STRIPE_API_KEY=rk_live_... pnpm bootstrap --product atlas --target prod --live' and re-run this deploy."
-              exit 1
-            fi
-            echo "::warning title=Stripe is not provisioned::Vercel production is missing:$missing_stripe. Harmless while checkout is closed."
-          fi
-
           add_vercel_env ATLAS_BILLING_CHECKOUT_ENABLED "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}"
 
           deployment_output="$(pnpm exec vercel "${vercel_args[@]}")"
@@ -269,9 +270,8 @@ jobs:
         run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
 
   hosted-checkout:
-    # The only gate that proves production can take money. Everything else
-    # verifies the funnel against Stripe test mode, and the deploy above checks
-    # only that STRIPE_API_KEY exists in Vercel, never what kind of key it is.
+    # This proves that the deployed funnel opens a live Stripe Checkout session.
+    # It stops before payment and cannot certify charge, entitlement, or exit.
     needs:
       - hosted-smoke
     runs-on: ubuntu-latest

@@ -21,3 +21,18 @@ test("production Stripe acceptance validates catalog before minting an ephemeral
   );
   assert.match(verifier, /requireWebhookSecret: false/);
 });
+
+test("production billing preflight runs before API and PDS deployment", async () => {
+  const production = await source(".github/workflows/deploy-production.yml");
+  const preflight = production.indexOf(
+    "Verify hosted production billing settings before deployment",
+  );
+  const apiDeploy = production.indexOf("./.github/actions/deploy-atlas-api");
+  const pdsDeploy = production.indexOf("./.github/actions/deploy-atlas-pds");
+
+  assert.ok(preflight > 0);
+  assert.ok(preflight < apiDeploy);
+  assert.ok(preflight < pdsDeploy);
+  assert.match(production, /vercel env list production --token/);
+  assert.match(production, /node scripts\/deploy\/verify-production-stripe-env\.mjs/);
+});

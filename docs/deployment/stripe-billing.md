@@ -87,7 +87,10 @@ falls back to `false` when it is unset. Set that variable to `true` only after
 ## Staging to production cutover
 
 The production deploy preserves the Vercel Stripe variables provisioned by
-`pnpm setup:prod`; it checks their presence before enabling checkout. The
+`pnpm setup:prod`; when checkout is enabled, it checks that the key, catalog,
+webhook secret, and offer allowlist are named in Vercel Production **before**
+deploying the API or PDS. A missing setting stops the release without a partial
+deployment. This is a presence check, not validation of values or payment. The
 repository's test-mode Stripe secret belongs to CI and is not copied into the
 production runtime. The deploy passes its checkout flag with the deployment,
 while the catalog, key, signing secret, and offer allowlist live in Vercel.
