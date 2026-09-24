@@ -106,6 +106,43 @@ async def test_running_again_resolves_to_the_same_records(test_db: object) -> No
 
 
 @pytest.mark.asyncio
+async def test_existing_public_registry_profile_stages_new_issue_tag(test_db: object) -> None:
+    organization = _organization()
+    first = await _persist(test_db, [organization], [])
+    org_id = first.entry_ids[0]
+
+    await persist_resolved_mentions(
+        test_db,  # type: ignore[arg-type]
+        organizations=[organization],
+        people=[],
+        issue_areas=["housing_affordability"],
+        today=TODAY,
+    )
+
+    cursor = await test_db.execute(
+        "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ? ORDER BY issue_area", (org_id,)
+    )
+    assert [row[0] for row in await cursor.fetchall()] == ["food_security"]
+    pending = await ReviewQueueCRUD.list_pending(test_db)
+    assert len(pending) == 1
+    assert pending[0].proposed_changes == {
+        "issue_areas": {
+            "before": ["food_security"],
+            "after": ["food_security", "housing_affordability"],
+        }
+    }
+
+    await ReviewQueueCRUD.approve(test_db, pending[0].id, reviewed_by="curator@atlas")
+    cursor = await test_db.execute(
+        "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ? ORDER BY issue_area", (org_id,)
+    )
+    assert [row[0] for row in await cursor.fetchall()] == [
+        "food_security",
+        "housing_affordability",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_an_organization_found_on_the_web_first_gains_its_ein_and_publishes(
     test_db: object,
 ) -> None:
@@ -224,6 +261,9 @@ async def test_a_hold_on_a_public_person_queues_review_without_unpublishing(
 ) -> None:
     organization = _organization()
     published = await _persist(test_db, [organization], [_person(organization)])
+    before = await EntryCRUD.get_by_id(test_db, published.entry_ids[1])
+    assert before is not None
+    [before_edge] = await RelationshipCRUD.list_edges_for_entry(test_db, published.entry_ids[1])
 
     later = _person(organization, title="Former Chair")
     await _persist(test_db, [organization], [later])
@@ -232,8 +272,19 @@ async def test_a_hold_on_a_public_person_queues_review_without_unpublishing(
     stored = await EntryCRUD.get_by_id(test_db, person_id)
     assert stored is not None
     assert stored.active is True
-    assert stored.description == later.context
-    assert await _pending(test_db) == [(person_id, "no_current_role")]
+    assert stored.description == before.description
+    assert await _pending(test_db) == [
+        (person_id, "published_profile_change"),
+        (person_id, "no_current_role"),
+    ]
+    pending = await ReviewQueueCRUD.list_pending(test_db)
+    assert pending[0].proposed_changes is not None
+    assert pending[0].proposed_changes["description"] == {
+        "before": before.description,
+        "after": later.context,
+    }
+    [after_edge] = await RelationshipCRUD.list_edges_for_entry(test_db, person_id)
+    assert after_edge.evidence_label == before_edge.evidence_label
 
 
 @pytest.mark.asyncio

@@ -206,15 +206,7 @@ def _dedup_suspect_lookup(
 
 async def _persist_issue_areas(conn: Connection, entry_id: str, issue_areas: list[str]) -> None:
     """Ensure issue area links exist for an entry."""
-    cursor = await conn.execute(
-        """
-        SELECT 1 FROM review_queue
-        WHERE entity_id = ? AND status = 'pending' AND hold_reason = 'published_profile_change'
-        LIMIT 1
-        """,
-        (entry_id,),
-    )
-    if await cursor.fetchone() is not None:
+    if await ReviewQueueCRUD.has_pending_published_change(conn, entity_id=entry_id):
         return
     for issue_area in sorted(set(issue_areas)):
         await conn.execute(

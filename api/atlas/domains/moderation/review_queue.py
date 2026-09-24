@@ -19,7 +19,9 @@ __all__ = [
 ]
 
 PUBLISHED_CHANGE_REASON = "published_profile_change"
-STAGED_ENTRY_FIELDS = frozenset({"description", "region", "website", "email", "social_media"})
+STAGED_ENTRY_FIELDS = frozenset(
+    {"name", "description", "region", "website", "email", "social_media"}
+)
 STAGED_ISSUE_FIELD = "issue_areas"
 _UNAVAILABLE_PROFILE = "Published profile is no longer available"
 _INVALID_PROPOSAL = "Review proposal contains unsupported fields"
@@ -92,7 +94,20 @@ _SELECT_COLUMNS = (
 
 
 class ReviewQueueCRUD:
-    """CRUD for the pre-publication review queue."""
+    """CRUD for publication holds and proposed changes."""
+
+    @staticmethod
+    async def has_pending_published_change(conn: Any, *, entity_id: str) -> bool:
+        """Whether an entry has a public-fact proposal awaiting review."""
+        cursor = await conn.execute(
+            """
+            SELECT 1 FROM review_queue
+            WHERE entity_id = ? AND status = 'pending' AND hold_reason = ?
+            LIMIT 1
+            """,
+            (entity_id, PUBLISHED_CHANGE_REASON),
+        )
+        return await cursor.fetchone() is not None
 
     @staticmethod
     async def enqueue(  # noqa: PLR0913
