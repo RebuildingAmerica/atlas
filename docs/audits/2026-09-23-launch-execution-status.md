@@ -137,6 +137,16 @@ actions. A synthetic 390-pixel local browser check showed the action strip in
 the first viewport; editorial review is still needed for the underlying work
 descriptions and source relevance.
 
+Contact actions now require linked-source support for the listed website or
+email. Unreviewed or unsupported values remain visible as text with an explicit
+status; phone numbers remain text because the public record has no phone-support
+signal. Invalid website addresses cannot become outbound links. The profile,
+entry detail, and map call the Atlas trust tier an identity review, not a review
+of every profile claim. Record-history dates now describe listing and record
+updates without implying that a source or representation was verified on that
+date. This limits the claims made to visitors; it does not replace editorial
+review of individual contact routes.
+
 Ownership promotion does not change the Stripe customer's email or payment
 method. The outgoing owner sees this before leaving, and a team launch rehearsal
 must verify that the remaining owner can open billing, update its contact and
@@ -159,6 +169,11 @@ payment method where needed, and receive future receipts.
   passed. A seeded local mobile and desktop browser check showed the action
   strip immediately after the hero. Seed records are synthetic, so this is
   layout evidence rather than live profile or data acceptance.
+- The profile contact and identity-label correction passed 594 frontend test
+  files and 3,872 tests with 100% statements, branches, functions, and lines.
+  Contact and map assertions were exercised red-green. ESLint, TypeScript, and
+  the Node 24 production build passed. Live contact ownership, human review
+  history, and deployed profile behavior remain unverified.
 - The bike/bicycle search regression passed its red-green check, then 50 nearby
   catalog, API, map, and PostgreSQL SQL-shape tests passed. Python formatting,
   Ruff, and mypy passed. The deployed Seattle scorecard has not been rerun;

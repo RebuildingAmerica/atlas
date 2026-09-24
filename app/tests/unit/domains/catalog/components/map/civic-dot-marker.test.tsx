@@ -100,6 +100,19 @@ describe("CivicDotMarker", () => {
     expect(container.querySelector("circle")?.getAttribute("stroke")).toBe(CIVIC_NAVY);
   });
 
+  it("names an Atlas-reviewed map point as identity-reviewed for assistive technology", () => {
+    render(
+      <CivicDotMarker
+        point={makePoint({ id: "v", name: "River Keepers", trust_level: "atlas_verified" })}
+        selected={false}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /River Keepers.*identity reviewed by Atlas/i }),
+    ).toBeInTheDocument();
+  });
+
   it("draws no ring for an unverified actor (silence is honest)", () => {
     const { container } = render(
       <CivicDotMarker

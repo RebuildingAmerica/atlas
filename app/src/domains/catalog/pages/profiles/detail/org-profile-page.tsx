@@ -105,6 +105,7 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
           shareUrl={buildShareUrl(entry.slug)}
           shareTitle={entry.name}
           email={entry.email}
+          emailGrounded={entry.trust.email_grounded}
           website={entry.website}
           websiteGrounded={entry.trust.website_grounded}
           isSignedIn={isSignedIn}

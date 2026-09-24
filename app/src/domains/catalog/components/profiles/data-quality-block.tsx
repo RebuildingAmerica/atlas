@@ -84,7 +84,7 @@ function VerificationLine({ entry }: { entry: Entry }) {
     return (
       <span className="type-body-medium text-ink-strong inline-flex items-center gap-1.5">
         <CheckCircle2 className="text-civic h-4 w-4" aria-hidden />
-        Atlas-verified
+        Identity reviewed by Atlas
       </span>
     );
   }

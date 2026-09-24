@@ -29,7 +29,7 @@ describe("MapDetailPanel — actor view", () => {
     const heading = screen.getByRole("heading", { name: "Dallas Tenants United" });
     expect(heading).toBeTruthy();
     expect(screen.getByRole("dialog").getAttribute("aria-labelledby")).toBe(heading.id);
-    expect(screen.getByText("Atlas-verified")).toBeTruthy();
+    expect(screen.getByText("Identity reviewed by Atlas")).toBeTruthy();
     const profileLink = screen.getByRole("link", { name: /View full profile/ });
     expect(profileLink.getAttribute("href")).toBe("/profiles/organizations/dallas-tenants-united");
   });

@@ -168,9 +168,35 @@ describe("ActionCluster", () => {
   });
 
   it("renders a mailto link when email is supplied", () => {
-    render(<ActionCluster {...baseProps} email="jane@example.org" isSignedIn={false} />);
+    render(
+      <ActionCluster {...baseProps} email="jane@example.org" emailGrounded isSignedIn={false} />,
+    );
     const link = screen.getByRole("link", { name: /contact/i });
     expect(link).toHaveAttribute("href", "mailto:jane@example.org");
+  });
+
+  it("does not offer Contact when the email has no supporting source", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        email="jane@example.org"
+        emailGrounded={false}
+        isSignedIn={false}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Contact" })).toBeNull();
+  });
+
+  it("does not offer Contact before email support is reviewed", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        email="jane@example.org"
+        emailGrounded={null}
+        isSignedIn={false}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Contact" })).toBeNull();
   });
 
   it("hides the Contact link when no email is supplied", () => {
@@ -550,8 +576,10 @@ describe("ActionCluster", () => {
     expect(screen.queryByRole("link", { name: /^contact$/i })).not.toBeInTheDocument();
   });
 
-  it("offers a mailto link when the profile lists an email", () => {
-    render(<ActionCluster {...baseProps} email="hello@example.org" isSignedIn={false} />);
+  it("offers a mailto link when the profile's email has a linked source", () => {
+    render(
+      <ActionCluster {...baseProps} email="hello@example.org" emailGrounded isSignedIn={false} />,
+    );
     expect(screen.getByRole("link", { name: /^contact$/i })).toHaveAttribute(
       "href",
       "mailto:hello@example.org",

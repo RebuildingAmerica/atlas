@@ -20,9 +20,9 @@ describe("MapTrustLine", () => {
     expect(screen.queryByText("Verified by subject")).toBeNull();
   });
 
-  it("reads as Atlas-verified for an atlas-verified actor", () => {
+  it("labels atlas verification as identity review", () => {
     render(<MapTrustLine actorType="organization" trustLevel="atlas_verified" />);
-    expect(screen.getByText("Atlas-verified")).toBeTruthy();
+    expect(screen.getByText("Identity reviewed by Atlas")).toBeTruthy();
   });
 
   it("reads as corroborated for a corroborated actor", () => {

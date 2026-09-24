@@ -42,11 +42,12 @@ describe("ProfileHistory", () => {
 
     expect(screen.getByText("Record history")).toBeInTheDocument();
     expect(screen.getByText("First listed")).toBeInTheDocument();
+    expect(screen.getByText("Date this profile was first listed.")).toBeInTheDocument();
     expect(screen.getByText(/Jan 2024/)).toBeInTheDocument();
     expect(screen.getByText("Latest source")).toBeInTheDocument();
     expect(screen.getByText(/Mississippi Today/)).toBeInTheDocument();
     expect(screen.getByText("Subject verified")).toBeInTheDocument();
-    expect(screen.getByText("Representation updated")).toBeInTheDocument();
+    expect(screen.getByText("Record updated")).toBeInTheDocument();
   });
 
   it("shows an audit trail for corrections, verification, and representation changes", () => {
@@ -75,8 +76,8 @@ describe("ProfileHistory", () => {
     );
     expect(screen.getByText("Verification review")).toBeInTheDocument();
     expect(screen.getByText("Representation verification under review.")).toBeInTheDocument();
-    expect(screen.getByText("Representation changes")).toBeInTheDocument();
-    expect(screen.getByText("Profile details changed Apr 2026.")).toBeInTheDocument();
+    expect(screen.getByText("Record changes")).toBeInTheDocument();
+    expect(screen.getByText("Record updated Apr 2026.")).toBeInTheDocument();
   });
 
   it("uses an honest history state when dated source and verification evidence is absent", () => {
@@ -150,9 +151,9 @@ describe("ProfileHistory", () => {
       />,
     );
 
-    expect(screen.getByText("Atlas-verified")).toBeInTheDocument();
-    expect(screen.getByText("Profile facts reviewed against public evidence.")).toBeInTheDocument();
-    expect(screen.getByText("Public evidence reviewed Mar 2026.")).toBeInTheDocument();
+    expect(screen.getByText("Identity reviewed by Atlas")).toBeInTheDocument();
+    expect(screen.getByText("Actor identity reviewed using public evidence.")).toBeInTheDocument();
+    expect(screen.getByText("Identity review recorded Mar 2026.")).toBeInTheDocument();
   });
 
   it("reports no changes when the record has not moved since it was listed", () => {
@@ -165,8 +166,8 @@ describe("ProfileHistory", () => {
       />,
     );
 
-    expect(screen.queryByText("Representation updated")).not.toBeInTheDocument();
-    expect(screen.getByText("No profile detail changes since listing.")).toBeInTheDocument();
+    expect(screen.queryByText("Record updated")).not.toBeInTheDocument();
+    expect(screen.getByText("No later record update noted.")).toBeInTheDocument();
   });
 
   it("credits a subject verification that carries no date of its own", () => {

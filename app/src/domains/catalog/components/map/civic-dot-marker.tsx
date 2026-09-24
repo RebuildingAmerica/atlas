@@ -33,7 +33,7 @@ function describePoint(point: MapPoint): string {
 /** Short, human trust phrases for the marker's accessible name. */
 const TRUST_DESCRIPTIONS: Record<MapPoint["trust_level"], string> = {
   subject_verified: "verified by subject",
-  atlas_verified: "Atlas-verified",
+  atlas_verified: "identity reviewed by Atlas",
   corroborated: "corroborated",
   unverified: "unverified",
 };

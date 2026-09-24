@@ -67,7 +67,7 @@ function buildHistoryEvents(entry: Entry): HistoryEvent[] {
       id: "first-listed",
       label: "First listed",
       date: entry.first_seen,
-      description: "Earliest public record date on this profile.",
+      description: "Date this profile was first listed.",
       tone: "neutral",
     },
   ];
@@ -95,19 +95,19 @@ function buildHistoryEvents(entry: Entry): HistoryEvent[] {
   } else if (entry.trust.level === "atlas_verified" && entry.last_verified) {
     events.push({
       id: "atlas-verified",
-      label: "Atlas-verified",
+      label: "Identity reviewed by Atlas",
       date: entry.last_verified,
-      description: "Profile facts reviewed against public evidence.",
+      description: "Actor identity reviewed using public evidence.",
       tone: "verified",
     });
   }
 
   if (entry.updated_at && entry.updated_at !== entry.created_at) {
     events.push({
-      id: "representation-updated",
-      label: "Representation updated",
+      id: "record-updated",
+      label: "Record updated",
       date: entry.updated_at,
-      description: "Profile details changed.",
+      description: "Record changed.",
       tone: "updated",
     });
   }
@@ -129,16 +129,16 @@ function verificationAuditDescription(entry: Entry): string {
     return "Representation verification no longer active.";
   }
   if (entry.trust.level === "atlas_verified" && entry.last_verified) {
-    return `Public evidence reviewed ${formatHistoryDate(entry.last_verified)}.`;
+    return `Identity review recorded ${formatHistoryDate(entry.last_verified)}.`;
   }
   return "No subject verification recorded.";
 }
 
-function representationAuditDescription(entry: Entry): string {
+function recordAuditDescription(entry: Entry): string {
   if (entry.updated_at && entry.updated_at !== entry.created_at) {
-    return `Profile details changed ${formatHistoryDate(entry.updated_at)}.`;
+    return `Record updated ${formatHistoryDate(entry.updated_at)}.`;
   }
-  return "No profile detail changes since listing.";
+  return "No later record update noted.";
 }
 
 function buildAuditItems(entry: Entry): AuditItem[] {
@@ -154,9 +154,9 @@ function buildAuditItems(entry: Entry): AuditItem[] {
       description: verificationAuditDescription(entry),
     },
     {
-      id: "representation-changes",
-      label: "Representation changes",
-      description: representationAuditDescription(entry),
+      id: "record-changes",
+      label: "Record changes",
+      description: recordAuditDescription(entry),
     },
   ];
 }

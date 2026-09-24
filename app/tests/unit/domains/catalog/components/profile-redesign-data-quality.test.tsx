@@ -29,9 +29,9 @@ describe("DataQualityBlock", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders Atlas-verified for the atlas_verified trust tier", () => {
+  it("limits the atlas_verified trust tier to an identity review claim", () => {
     render(<DataQualityBlock entry={buildEntry({ trust: trust({ level: "atlas_verified" }) })} />);
-    expect(screen.getByText("Atlas-verified")).toBeInTheDocument();
+    expect(screen.getByText("Identity reviewed by Atlas")).toBeInTheDocument();
   });
 
   it("renders an honest 'Single source' for the unverified tier, never 'Source-derived'", () => {

@@ -163,10 +163,19 @@ describe("ReachSection", () => {
     expect(screen.getByText("https://atlas.test")).toBeInTheDocument();
   });
 
+  it("opens a source-backed website as a safe external link", () => {
+    render(<ReachSection website="https://atlas.test/path" websiteGrounded />);
+    const link = screen.getByRole("link", { name: "https://atlas.test/path" });
+    expect(link).toHaveAttribute("href", "https://atlas.test/path");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
   it("renders phone when provided", () => {
     render(<ReachSection phone="555-1234" />);
     expect(screen.getByText("555-1234")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "555-1234" })).toHaveAttribute("href", "tel:555-1234");
+    expect(screen.queryByRole("link", { name: "555-1234" })).toBeNull();
+    expect(screen.getByText("Source support not reviewed")).toBeInTheDocument();
   });
 
   it("renders all contact fields together", () => {
@@ -189,6 +198,13 @@ describe("ReachSection", () => {
     expect(screen.getByText("https://x.com")).toBeInTheDocument();
     expect(screen.getByText("Not confirmed by a source")).toBeInTheDocument();
   });
+
+  it("does not link a malformed website even if a source mentions it", () => {
+    render(<ReachSection website="javascript:alert(1)" websiteGrounded />);
+    expect(screen.queryByRole("link", { name: /javascript/ })).toBeNull();
+    expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
+    expect(screen.getByText("Invalid website address")).toBeInTheDocument();
+  });
 });
 
 describe("PresenceSection", () => {
@@ -204,14 +220,15 @@ describe("PresenceSection", () => {
 
   it("renders long contact values as links", () => {
     render(
-      <PresenceSection email="contact@sunvalley-workercenter.example.org" phone="602-555-0144" />,
+      <PresenceSection
+        email="contact@sunvalley-workercenter.example.org"
+        emailGrounded
+        phone="602-555-0144"
+      />,
     );
     expect(
       screen.getByRole("link", { name: "contact@sunvalley-workercenter.example.org" }),
     ).toHaveAttribute("href", "mailto:contact@sunvalley-workercenter.example.org");
-    expect(screen.getByRole("link", { name: "602-555-0144" })).toHaveAttribute(
-      "href",
-      "tel:602-555-0144",
-    );
+    expect(screen.queryByRole("link", { name: "602-555-0144" })).toBeNull();
   });
 });

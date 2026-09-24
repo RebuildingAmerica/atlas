@@ -1,6 +1,6 @@
 import { Globe, Mail, Phone } from "lucide-react";
 import type { ReactNode } from "react";
-import { ContactValue } from "@/domains/catalog/components/profiles/contact-value";
+import { ContactValue, UngroundedNote } from "@/domains/catalog/components/profiles/contact-value";
 
 interface ReachSectionProps {
   email?: string;
@@ -65,12 +65,10 @@ export function ReachSection({
             icon={<Phone className="text-ink-muted h-4 w-4" />}
             label="Phone"
             value={
-              <a
-                href={`tel:${phone}`}
-                className="text-accent focus-visible:ring-civic rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                {phone}
-              </a>
+              <>
+                <span className="text-ink-strong break-words">{phone}</span>
+                <UngroundedNote />
+              </>
             }
           />
         ) : null}

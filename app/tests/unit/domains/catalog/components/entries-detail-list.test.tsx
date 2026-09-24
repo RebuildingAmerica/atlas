@@ -179,7 +179,7 @@ describe("catalog entry detail, filters, and list", () => {
     expect(screen.getByText("Evaluate Housing Justice KC as a local housing lead.")).not.toBeNull();
     expect(screen.getByText("Why this record is usable")).not.toBeNull();
     expect(screen.getAllByText("2 sources").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Atlas-verified").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Identity reviewed by Atlas").length).toBeGreaterThan(0);
     expect(screen.getByText("Pivot from this actor")).not.toBeNull();
 
     const placeLink = screen.getByRole("link", { name: "People and groups in Kansas City" });

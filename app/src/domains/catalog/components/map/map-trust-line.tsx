@@ -31,7 +31,7 @@ const TRUST_PRESENTATION: Record<TrustLevel, TrustPresentation> = {
   atlas_verified: {
     Icon: CheckCircle2,
     iconClass: "text-civic",
-    label: "Atlas-verified",
+    label: "Identity reviewed by Atlas",
     toneClass: "text-ink-strong",
   },
   corroborated: {

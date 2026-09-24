@@ -21,6 +21,7 @@ import {
   useWorkspaceWatchStatus,
 } from "@/domains/workspace/hooks/use-workspace-watches";
 import { SaveListPicker } from "@/domains/catalog/components/profiles/save-list-picker";
+import { safeWebsiteHref } from "@/domains/catalog/components/profiles/website-url";
 import { cn } from "@/lib/utils";
 
 interface ActionClusterProps {
@@ -29,6 +30,7 @@ interface ActionClusterProps {
   shareUrl: string;
   shareTitle: string;
   email?: string;
+  emailGrounded?: boolean | null;
   website?: string;
   websiteGrounded?: boolean | null;
   isSignedIn: boolean;
@@ -66,22 +68,13 @@ const GHOST_BUTTON =
   FOCUS_RING;
 const SAVE_LIST_PICKER_ID = "profile-save-list-picker";
 
-function linkedWebsite(website: string | undefined, grounded: boolean | null | undefined) {
-  if (!website || grounded !== true) return null;
-  try {
-    const url = new URL(website);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
 export function ActionCluster({
   entryId,
   entrySlug,
   shareUrl,
   shareTitle,
   email,
+  emailGrounded,
   website,
   websiteGrounded,
   isSignedIn,
@@ -205,7 +198,7 @@ export function ActionCluster({
     workspaceWatchQuery.isLoading ||
     watchWorkspaceMutation.isPending ||
     unwatchWorkspaceMutation.isPending;
-  const websiteHref = linkedWebsite(website, websiteGrounded);
+  const websiteHref = website && websiteGrounded === true ? safeWebsiteHref(website) : null;
 
   return (
     <nav
@@ -228,7 +221,7 @@ export function ActionCluster({
         {shareLabel}
       </button>
 
-      {email ? (
+      {email && emailGrounded === true ? (
         <a href={`mailto:${email}`} className={GHOST_BUTTON}>
           Contact
         </a>

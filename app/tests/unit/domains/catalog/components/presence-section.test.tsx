@@ -16,9 +16,12 @@ describe("PresenceSection", () => {
   });
 
   it("renders the website hero card and strips the leading www", () => {
-    render(<PresenceSection website="https://www.example.org/path" />);
+    render(<PresenceSection website="https://www.example.org/path" websiteGrounded />);
     expect(screen.getByText("example.org")).toBeInTheDocument();
-    expect(screen.getByText(/Official website/i)).toBeInTheDocument();
+    expect(screen.getByText("Listed website")).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /example\.org/ });
+    expect(link).toHaveAttribute("href", "https://www.example.org/path");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("returns the raw value when the website is not a parseable URL", () => {
@@ -27,15 +30,16 @@ describe("PresenceSection", () => {
   });
 
   it("renders the email contact cell with a mailto link", () => {
-    render(<PresenceSection email="hello@example.org" />);
+    render(<PresenceSection email="hello@example.org" emailGrounded />);
     const link = screen.getByRole("link", { name: /hello@example.org/ });
     expect(link).toHaveAttribute("href", "mailto:hello@example.org");
   });
 
-  it("renders the phone contact cell with a tel link", () => {
+  it("shows a listed phone without presenting an unreviewed number as a call action", () => {
     render(<PresenceSection phone="555-0100" />);
-    const link = screen.getByRole("link", { name: /555-0100/ });
-    expect(link).toHaveAttribute("href", "tel:555-0100");
+    expect(screen.getByText("555-0100")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /555-0100/ })).toBeNull();
+    expect(screen.getByText("Source support not reviewed")).toBeInTheDocument();
   });
 
   it("renders the formatted first-seen date", () => {
@@ -59,7 +63,22 @@ describe("PresenceSection", () => {
     render(<PresenceSection website="https://example.org" websiteGrounded={false} />);
     expect(screen.queryByRole("link", { name: /example\.org/ })).toBeNull();
     expect(screen.getByText("example.org")).toBeInTheDocument();
+    expect(screen.getByText("Listed website")).toBeInTheDocument();
     expect(screen.getByText("Not confirmed by a source")).toBeInTheDocument();
+  });
+
+  it("keeps an unreviewed website visible without presenting it as an official link", () => {
+    render(<PresenceSection website="https://example.org" websiteGrounded={null} />);
+    expect(screen.queryByRole("link", { name: /example\.org/ })).toBeNull();
+    expect(screen.getByText("Listed website")).toBeInTheDocument();
+    expect(screen.getByText("Source support not reviewed")).toBeInTheDocument();
+  });
+
+  it("does not turn a malformed source-backed website into a link", () => {
+    render(<PresenceSection website="javascript:alert(1)" websiteGrounded />);
+    expect(screen.queryByRole("link", { name: /javascript/ })).toBeNull();
+    expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
+    expect(screen.getByText("Invalid website address")).toBeInTheDocument();
   });
 
   it("renders an ungrounded email as plain text with an unconfirmed caption", () => {
@@ -67,5 +86,11 @@ describe("PresenceSection", () => {
     expect(screen.queryByRole("link", { name: /hello@example\.org/ })).toBeNull();
     expect(screen.getByText("hello@example.org")).toBeInTheDocument();
     expect(screen.getByText("Not confirmed by a source")).toBeInTheDocument();
+  });
+
+  it("does not link an email whose source support has not been reviewed", () => {
+    render(<PresenceSection email="hello@example.org" emailGrounded={null} />);
+    expect(screen.queryByRole("link", { name: /hello@example\.org/ })).toBeNull();
+    expect(screen.getByText("Source support not reviewed")).toBeInTheDocument();
   });
 });

@@ -102,7 +102,7 @@ function verificationBadge(entry: Entry): VerificationBadgeInfo {
     };
   }
   if (entry.trust.level === "atlas_verified" || entry.verified) {
-    return { variant: "success", label: "Atlas-verified" };
+    return { variant: "success", label: "Identity reviewed by Atlas" };
   }
   if (entry.trust.level === "corroborated") {
     return { variant: "info", label: "Corroborated" };

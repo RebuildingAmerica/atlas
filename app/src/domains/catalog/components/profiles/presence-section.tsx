@@ -1,6 +1,7 @@
 import { ArrowRight, Calendar, Globe, Mail, Phone } from "lucide-react";
 import type { ReactNode } from "react";
 import { ContactValue, UngroundedNote } from "@/domains/catalog/components/profiles/contact-value";
+import { safeWebsiteHref } from "@/domains/catalog/components/profiles/website-url";
 import {
   MEDIUM_DATE,
   formatDateTimeOrInput,
@@ -24,7 +25,8 @@ interface ContactCellProps {
 
 function extractDomain(url: string): string {
   try {
-    return new URL(url).hostname.replace("www.", "");
+    const hostname = new URL(url).hostname;
+    return hostname ? hostname.replace("www.", "") : url;
   } catch {
     return url;
   }
@@ -54,28 +56,33 @@ export function PresenceSection({
 }: PresenceSectionProps) {
   const hasAny = website || email || phone || firstSeen;
   if (!hasAny) return null;
+  const websiteHref = website ? safeWebsiteHref(website) : null;
 
   return (
     <div className="space-y-3">
       <p className="type-label-medium text-ink-muted">Presence</p>
 
       {website ? (
-        websiteGrounded === false ? (
+        websiteGrounded !== true || !websiteHref ? (
           <div className="bg-surface-container-lowest flex items-center gap-3 rounded-2xl p-4">
             <div className="bg-ink-strong flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
               <Globe className="h-4 w-4 text-white" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="type-title-small text-ink-strong">{extractDomain(website)}</p>
-              <p className="type-body-small text-ink-muted">Official website</p>
-              <UngroundedNote />
+              <p className="type-body-small text-ink-muted">Listed website</p>
+              {websiteGrounded === true ? (
+                <p className="type-label-small text-ink-muted">Invalid website address</p>
+              ) : (
+                <UngroundedNote grounded={websiteGrounded} />
+              )}
             </div>
           </div>
         ) : (
           <a
-            href={website}
+            href={websiteHref}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="bg-surface-container-lowest hover:bg-surface-container-low focus-visible:ring-civic flex items-center gap-3 rounded-2xl p-4 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <div className="bg-ink-strong flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
@@ -83,7 +90,7 @@ export function PresenceSection({
             </div>
             <div className="min-w-0 flex-1">
               <p className="type-title-small text-ink-strong">{extractDomain(website)}</p>
-              <p className="type-body-small text-ink-muted">Official website</p>
+              <p className="type-body-small text-ink-muted">Listed website</p>
             </div>
             <span className="type-label-medium bg-surface-container text-ink-soft shrink-0 rounded-full px-3 py-1">
               Visit <ArrowRight className="ml-0.5 inline h-3 w-3" />
@@ -108,12 +115,10 @@ export function PresenceSection({
               icon={<Phone className="text-ink-muted h-4 w-4" />}
               label="Phone"
               value={
-                <a
-                  href={`tel:${phone}`}
-                  className="text-accent focus-visible:ring-civic rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                >
-                  {phone}
-                </a>
+                <>
+                  <span className="text-ink-strong break-words">{phone}</span>
+                  <UngroundedNote />
+                </>
               }
             />
           ) : null}
