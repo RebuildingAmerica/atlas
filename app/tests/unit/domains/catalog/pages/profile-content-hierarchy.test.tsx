@@ -108,8 +108,8 @@ afterEach(() => {
   actionClusterCaptures.shareUrls.length = 0;
 });
 
-describe("actor profile answer-card placement", () => {
-  it("renders the profile answers panel on organization profiles", async () => {
+describe("actor profile content hierarchy", () => {
+  it("shows organization actions and source context without repeated summaries", async () => {
     const { OrgProfilePage } =
       await import("@/domains/catalog/pages/profiles/detail/org-profile-page");
 
@@ -123,24 +123,28 @@ describe("actor profile answer-card placement", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Profile at a glance" })).toBeInTheDocument();
-    expect(screen.getByText("Profile at a glance")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Why this matters" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Profile at a glance" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Why this matters" })).toBeNull();
+    expect(screen.getByTestId("action-cluster")).toBeInTheDocument();
+    expect(screen.getByTestId("signature-quote")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();
-    expect(screen.getByText("Organization")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Housing Justice KC" }),
+    ).toBeInTheDocument();
   });
 
-  it("renders the profile answers panel on person profiles", async () => {
+  it("shows person actions and source context without repeated summaries", async () => {
     const { PersonProfilePage } =
       await import("@/domains/catalog/pages/profiles/detail/person-profile-page");
 
     render(<PersonProfilePage entry={buildEntry({ sources: [buildSource()] })} />);
 
-    expect(screen.getByRole("region", { name: "Profile at a glance" })).toBeInTheDocument();
-    expect(screen.getByText("Profile at a glance")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Why this matters" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Profile at a glance" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Why this matters" })).toBeNull();
+    expect(screen.getByTestId("action-cluster")).toBeInTheDocument();
+    expect(screen.getByTestId("signature-quote")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();
-    expect(screen.getByText("Person")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });
 
   it("gives repeated profile sections quiet scan headers", async () => {

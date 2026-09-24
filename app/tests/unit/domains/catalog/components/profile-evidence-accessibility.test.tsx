@@ -5,9 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
-import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
 import { ProfileSection } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
-import { ProfileAnswerCard } from "@/domains/catalog/components/profiles/profile-answer-card";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
@@ -116,19 +114,6 @@ describe("profile evidence accessibility", () => {
     expect(screen.getByRole("heading", { name: "Claim support" })).toBeInTheDocument();
   });
 
-  it("exposes profile context evidence and correction groups with visible headings", () => {
-    render(
-      <ProfileResearchContext
-        entry={buildEntry({ source_count: 3 })}
-        issueAreaLabels={{ housing_affordability: "Housing affordability" }}
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "Why this matters" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Evidence" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Corrections" })).toBeInTheDocument();
-  });
-
   it("exposes profile trust summary panels in the heading outline", () => {
     const entry = buildEntry({
       id: "entry-1",
@@ -143,14 +128,12 @@ describe("profile evidence accessibility", () => {
 
     render(
       <>
-        <ProfileAnswerCard entry={entry} issueAreaLabels={{}} />
         <ProfileStats items={[{ label: "Sources", value: "4" }]} />
         <SignatureQuote sources={entry.sources ?? []} />
         <WorkSection entry={entry} issueAreaLabels={{}} />
       </>,
     );
 
-    expect(screen.getByRole("heading", { name: "Profile at a glance" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Coverage statistics" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Source context" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Recent" })).toBeInTheDocument();

@@ -180,9 +180,9 @@ describe("OrgProfilePage", () => {
 
     const contact = screen.getByRole("region", { name: "Presence and contact" });
     const actions = screen.getByRole("navigation", { name: "Profile actions" });
-    const explanation = screen.getByRole("region", { name: "Profile at a glance" });
+    const explanation = screen.getByRole("heading", { name: "Source context" });
     expect(
-      Boolean(contact.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING),
+      Boolean(actions.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
     expect(
       Boolean(actions.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING),

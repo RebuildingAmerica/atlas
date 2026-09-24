@@ -29,6 +29,8 @@ interface ActionClusterProps {
   shareUrl: string;
   shareTitle: string;
   email?: string;
+  website?: string;
+  websiteGrounded?: boolean | null;
   isSignedIn: boolean;
   readyForActions?: boolean;
   profilePath: string;
@@ -64,12 +66,24 @@ const GHOST_BUTTON =
   FOCUS_RING;
 const SAVE_LIST_PICKER_ID = "profile-save-list-picker";
 
+function linkedWebsite(website: string | undefined, grounded: boolean | null | undefined) {
+  if (!website || grounded !== true) return null;
+  try {
+    const url = new URL(website);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ActionCluster({
   entryId,
   entrySlug,
   shareUrl,
   shareTitle,
   email,
+  website,
+  websiteGrounded,
   isSignedIn,
   readyForActions = true,
   profilePath,
@@ -191,14 +205,21 @@ export function ActionCluster({
     workspaceWatchQuery.isLoading ||
     watchWorkspaceMutation.isPending ||
     unwatchWorkspaceMutation.isPending;
+  const websiteHref = linkedWebsite(website, websiteGrounded);
 
   return (
     <nav
       aria-label="Profile actions"
       className="border-border-taupe bg-surface-container flex flex-wrap items-center gap-2.5 border px-6 py-5 sm:px-8"
     >
+      {websiteHref ? (
+        <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={SOLID_BUTTON}>
+          Visit website
+        </a>
+      ) : null}
+
       {sourcesHref ? (
-        <a href={sourcesHref} className={SOLID_BUTTON}>
+        <a href={sourcesHref} className={websiteHref ? GHOST_BUTTON : SOLID_BUTTON}>
           Inspect sources
         </a>
       ) : null}

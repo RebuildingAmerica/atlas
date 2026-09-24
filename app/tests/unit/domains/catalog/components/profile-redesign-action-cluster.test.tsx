@@ -3,7 +3,7 @@
 import "./profile-redesign-test-setup";
 
 import "@testing-library/jest-dom/vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
 import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-harness";
@@ -96,6 +96,70 @@ describe("ActionCluster", () => {
       "href",
       "#reporting-trail",
     );
+  });
+
+  it("puts a linked website before secondary profile actions", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        website="https://civic.example.org/"
+        websiteGrounded
+        isSignedIn={false}
+      />,
+    );
+    const actions = within(screen.getByRole("navigation", { name: "Profile actions" }));
+    const firstLink = actions.getAllByRole("link")[0];
+    expect(firstLink).toHaveAccessibleName("Visit website");
+    expect(firstLink).toHaveAttribute("href", "https://civic.example.org/");
+    expect(firstLink).toHaveAttribute("target", "_blank");
+    expect(actions.getByRole("link", { name: "Inspect sources" })).toHaveAttribute(
+      "href",
+      "#reporting-trail",
+    );
+  });
+
+  it("does not promote an ungrounded website as a primary action", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        website="https://unlinked.example.org/"
+        websiteGrounded={false}
+        isSignedIn={false}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Visit website" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Inspect sources" })).toBeInTheDocument();
+  });
+
+  it("does not promote a website when its source status is unknown", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        website="https://unlinked.example.org/"
+        websiteGrounded={null}
+        isSignedIn={false}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Visit website" })).toBeNull();
+  });
+
+  it("does not promote non-web URLs even when marked grounded", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        website="javascript:alert(1)"
+        websiteGrounded
+        isSignedIn={false}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Visit website" })).toBeNull();
+  });
+
+  it("does not promote malformed URLs even when marked grounded", () => {
+    render(
+      <ActionCluster {...baseProps} website="not a website" websiteGrounded isSignedIn={false} />,
+    );
+    expect(screen.queryByRole("link", { name: "Visit website" })).toBeNull();
   });
 
   it("renders the Share button always", () => {

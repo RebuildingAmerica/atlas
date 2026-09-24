@@ -43,7 +43,7 @@ describe("ProfileHero", () => {
     expect(container.querySelector(".border-l-civic")).not.toBeNull();
   });
 
-  it("calls an organization what it is and describes its reach", () => {
+  it("calls an organization what it is without claiming current activity from geography", () => {
     render(
       <ProfileHero
         entry={createEntryFixture({
@@ -56,16 +56,19 @@ describe("ProfileHero", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Prairie Coop" })).toBeInTheDocument();
     expect(screen.getByText(/^Organization/)).toBeInTheDocument();
-    expect(screen.getByText(/Active nationally/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Prairie Coop" })).toHaveTextContent(
+      "Listed in Jackson, MS",
+    );
+    expect(screen.queryByText(/Active nationally/)).toBeNull();
   });
 
-  it("describes statewide, regional and local organizations distinctly", () => {
+  it("does not turn statewide, regional or local categories into activity claims", () => {
     const statewide = render(
       <ProfileHero
         entry={createEntryFixture({ geo_specificity: "statewide", type: "organization" })}
       />,
     );
-    expect(screen.getByText(/Active statewide/)).toBeInTheDocument();
+    expect(screen.queryByText(/Active statewide/)).toBeNull();
     statewide.unmount();
 
     const regional = render(
@@ -73,7 +76,7 @@ describe("ProfileHero", () => {
         entry={createEntryFixture({ geo_specificity: "regional", type: "organization" })}
       />,
     );
-    expect(screen.getByText(/Active regionally/)).toBeInTheDocument();
+    expect(screen.queryByText(/Active regionally/)).toBeNull();
     regional.unmount();
 
     render(
@@ -81,7 +84,7 @@ describe("ProfileHero", () => {
         entry={createEntryFixture({ geo_specificity: "local", type: "organization" })}
       />,
     );
-    expect(screen.getByText(/Active locally/)).toBeInTheDocument();
+    expect(screen.queryByText(/Active locally/)).toBeNull();
   });
 
   it("adds the affiliation to a person's subtitle without a reach claim", () => {

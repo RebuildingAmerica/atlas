@@ -18,11 +18,9 @@ import {
   ProfileSection,
 } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
-import { ProfileAnswerCard } from "@/domains/catalog/components/profiles/profile-answer-card";
 import { ProfileHero } from "@/domains/catalog/components/profiles/profile-hero";
 import { ProfileHistory } from "@/domains/catalog/components/profiles/profile-history";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
-import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
 import { ReachSection } from "@/domains/catalog/components/profiles/reach-section";
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
@@ -127,6 +125,23 @@ export function PersonProfilePage({
           }
         />
 
+        <ActionCluster
+          entryId={entry.id}
+          entrySlug={entry.slug}
+          shareUrl={buildShareUrl(entry.slug)}
+          shareTitle={entry.name}
+          email={entry.email}
+          website={entry.website}
+          websiteGrounded={entry.trust.website_grounded}
+          isSignedIn={isSignedIn}
+          readyForActions={readyForActions}
+          profilePath={profilePath}
+          resumeSave={resumeSave}
+          sourcesHref="#reporting-trail"
+          workspaceId={activeWorkspaceId}
+          workspaceWatchingEnabled={workspaceWatchingEnabled}
+        />
+
         {hasReach ? (
           <ProfileSection
             label="Contact details"
@@ -143,25 +158,6 @@ export function PersonProfilePage({
             />
           </ProfileSection>
         ) : null}
-
-        <ActionCluster
-          entryId={entry.id}
-          entrySlug={entry.slug}
-          shareUrl={buildShareUrl(entry.slug)}
-          shareTitle={entry.name}
-          email={entry.email}
-          isSignedIn={isSignedIn}
-          readyForActions={readyForActions}
-          profilePath={profilePath}
-          resumeSave={resumeSave}
-          sourcesHref="#reporting-trail"
-          workspaceId={activeWorkspaceId}
-          workspaceWatchingEnabled={workspaceWatchingEnabled}
-        />
-
-        <ProfileAnswerCard entry={entry} issueAreaLabels={issueAreaLabels} />
-
-        <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
 
         <SignatureQuote sources={entry.sources ?? []} description={entry.description} />
 

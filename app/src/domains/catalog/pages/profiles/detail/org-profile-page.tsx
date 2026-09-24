@@ -7,11 +7,9 @@ import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-qua
 import { IssueFootprint } from "@/domains/catalog/components/profiles/issue-footprint";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
 import { PresenceSection } from "@/domains/catalog/components/profiles/presence-section";
-import { ProfileAnswerCard } from "@/domains/catalog/components/profiles/profile-answer-card";
 import { ProfileHero } from "@/domains/catalog/components/profiles/profile-hero";
 import { ProfileHistory } from "@/domains/catalog/components/profiles/profile-history";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
-import { ProfileResearchContext } from "@/domains/catalog/components/profiles/profile-research-context";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
 import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
 import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
@@ -101,6 +99,23 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
       <div className="mx-auto max-w-[60rem] space-y-3 px-4 py-6 sm:px-6">
         <ProfileHero entry={entry} />
 
+        <ActionCluster
+          entryId={entry.id}
+          entrySlug={entry.slug}
+          shareUrl={buildShareUrl(entry.slug)}
+          shareTitle={entry.name}
+          email={entry.email}
+          website={entry.website}
+          websiteGrounded={entry.trust.website_grounded}
+          isSignedIn={isSignedIn}
+          readyForActions={readyForActions}
+          profilePath={profilePath}
+          resumeSave={resumeSave}
+          sourcesHref="#appearances"
+          workspaceId={activeWorkspaceId}
+          workspaceWatchingEnabled={workspaceWatchingEnabled}
+        />
+
         {hasPresence ? (
           <ProfileSection
             label="Presence and contact"
@@ -118,25 +133,6 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
             />
           </ProfileSection>
         ) : null}
-
-        <ActionCluster
-          entryId={entry.id}
-          entrySlug={entry.slug}
-          shareUrl={buildShareUrl(entry.slug)}
-          shareTitle={entry.name}
-          email={entry.email}
-          isSignedIn={isSignedIn}
-          readyForActions={readyForActions}
-          profilePath={profilePath}
-          resumeSave={resumeSave}
-          sourcesHref="#appearances"
-          workspaceId={activeWorkspaceId}
-          workspaceWatchingEnabled={workspaceWatchingEnabled}
-        />
-
-        <ProfileAnswerCard entry={entry} issueAreaLabels={issueAreaLabels} />
-
-        <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
 
         <SignatureQuote sources={entry.sources ?? []} description={entry.description} />
 

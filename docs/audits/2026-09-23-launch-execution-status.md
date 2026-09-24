@@ -124,10 +124,18 @@ through the next sign-in, with a retry if sign-out fails. This is local behavior
 proof; acceptance after a real emailed invitation and account switch is still
 needed on the deployed release.
 
-Person and organization profiles now put published contact routes and the
-Save/source actions directly after identity, ahead of the longer explanation and
-evidence sections. This changes the first task a visitor can take; the repeated
-summary content lower on the page still needs an editorial pass.
+Person and organization profiles now put source inspection, confirmed website
+visits, and Save directly after identity, ahead of contact details and longer
+evidence sections. A website becomes the primary action only when a linked
+source supports it; otherwise source inspection remains first. The hero says
+where a record is listed without inferring current activity from its geography.
+The repeated “At a glance” and “Why this matters” panels have been removed from
+both actor pages. Those panels restated the hero's description, place, contact,
+and source count, and inferred impact from issue tags. A visitor now reaches
+unique source context or the record's evidence directly after the primary
+actions. A synthetic 390-pixel local browser check showed the action strip in
+the first viewport; editorial review is still needed for the underlying work
+descriptions and source relevance.
 
 Ownership promotion does not change the Stripe customer's email or payment
 method. The outgoing owner sees this before leaving, and a team launch rehearsal
@@ -146,6 +154,11 @@ payment method where needed, and receive future receipts.
   absent `ATLAS_BILLING_ALLOWED_OFFERS` setting. It runs before API and PDS
   deployment when checkout is enabled; no provider values were read, and no
   production workflow was launched.
+- The profile hierarchy change passed 594 frontend test files and 3,864 tests
+  with 100% statements, branches, functions, and lines. ESLint and TypeScript
+  passed. A seeded local mobile and desktop browser check showed the action
+  strip immediately after the hero. Seed records are synthetic, so this is
+  layout evidence rather than live profile or data acceptance.
 - The bike/bicycle search regression passed its red-green check, then 50 nearby
   catalog, API, map, and PostgreSQL SQL-shape tests passed. Python formatting,
   Ruff, and mypy passed. The deployed Seattle scorecard has not been rerun;

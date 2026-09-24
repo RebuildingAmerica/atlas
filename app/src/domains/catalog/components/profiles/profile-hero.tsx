@@ -17,21 +17,9 @@ interface ProfileHeroProps {
   affiliation?: { name: string; href: string };
 }
 
-function describeActiveStatus(entry: Entry): string {
-  if (entry.geo_specificity === "national") return "Active nationally";
-  if (entry.geo_specificity === "statewide") return "Active statewide";
-  if (entry.geo_specificity === "regional") return "Active regionally";
-  return "Active locally";
-}
-
 export function ProfileHero({ entry, affiliation }: ProfileHeroProps) {
   const avatarType = entry.type === "organization" ? "organization" : "person";
   const showAvatar = Boolean(entry.photo_url);
-  const subtitleParts: string[] = [];
-  if (affiliation) subtitleParts.push(affiliation.name);
-  if (entry.type === "organization" && entry.geo_specificity) {
-    subtitleParts.push(describeActiveStatus(entry));
-  }
 
   return (
     <div className="border-border-taupe overflow-hidden border">
@@ -75,9 +63,9 @@ export function ProfileHero({ entry, affiliation }: ProfileHeroProps) {
               ) : null}
             </p>
             <p className="text-ink-soft text-sm font-medium">
-              Based in{" "}
+              Listed in{" "}
               <strong className="text-ink-strong font-bold">{formatProfileLocation(entry)}</strong>
-              {subtitleParts.length > 0 ? <> &middot; {subtitleParts.join(" · ")}</> : null}
+              {affiliation ? <> &middot; {affiliation.name}</> : null}
             </p>
           </div>
         </div>
