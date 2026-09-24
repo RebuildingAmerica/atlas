@@ -172,6 +172,23 @@ describe("OrgProfilePage", () => {
     expect(screen.getByRole("region", { name: "Presence and contact" })).toBeInTheDocument();
   });
 
+  it("puts public contact and save ahead of detailed profile evidence", () => {
+    renderWithProviders(
+      <OrgProfilePage entry={organization({ website: "https://beacon.test" })} />,
+      { seed: seedAnonymous },
+    );
+
+    const contact = screen.getByRole("region", { name: "Presence and contact" });
+    const actions = screen.getByRole("navigation", { name: "Profile actions" });
+    const explanation = screen.getByRole("region", { name: "Profile at a glance" });
+    expect(
+      Boolean(contact.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+    expect(
+      Boolean(actions.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+
   it("omits the presence section for a record with nothing public to show", () => {
     renderWithProviders(<OrgProfilePage entry={organization({ first_seen: "" })} />, {
       seed: seedAnonymous,

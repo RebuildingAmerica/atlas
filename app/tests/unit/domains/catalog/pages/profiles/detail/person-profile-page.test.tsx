@@ -165,6 +165,22 @@ describe("PersonProfilePage", () => {
     expect(screen.getByRole("region", { name: "Contact details" })).toBeInTheDocument();
   });
 
+  it("puts public contact and save ahead of detailed profile evidence", () => {
+    renderWithProviders(<PersonProfilePage entry={person({ website: "https://ada.test" })} />, {
+      seed: seedAnonymous,
+    });
+
+    const contact = screen.getByRole("region", { name: "Contact details" });
+    const actions = screen.getByRole("navigation", { name: "Profile actions" });
+    const explanation = screen.getByRole("region", { name: "Profile at a glance" });
+    expect(
+      Boolean(contact.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+    expect(
+      Boolean(actions.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+  });
+
   it("links a person to the organization they work for", () => {
     renderWithProviders(<PersonProfilePage entry={person({ affiliated_org_id: "entry-org" })} />, {
       seed: (queryClient) => {

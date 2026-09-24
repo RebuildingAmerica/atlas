@@ -101,6 +101,39 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
       <div className="mx-auto max-w-[60rem] space-y-3 px-4 py-6 sm:px-6">
         <ProfileHero entry={entry} />
 
+        {hasPresence ? (
+          <ProfileSection
+            label="Presence and contact"
+            sectionId="presence-contact"
+            title="Presence"
+            Icon={Contact}
+          >
+            <PresenceSection
+              website={entry.website}
+              email={entry.email}
+              phone={entry.phone}
+              firstSeen={entry.first_seen}
+              websiteGrounded={entry.trust.website_grounded}
+              emailGrounded={entry.trust.email_grounded}
+            />
+          </ProfileSection>
+        ) : null}
+
+        <ActionCluster
+          entryId={entry.id}
+          entrySlug={entry.slug}
+          shareUrl={buildShareUrl(entry.slug)}
+          shareTitle={entry.name}
+          email={entry.email}
+          isSignedIn={isSignedIn}
+          readyForActions={readyForActions}
+          profilePath={profilePath}
+          resumeSave={resumeSave}
+          sourcesHref="#appearances"
+          workspaceId={activeWorkspaceId}
+          workspaceWatchingEnabled={workspaceWatchingEnabled}
+        />
+
         <ProfileAnswerCard entry={entry} issueAreaLabels={issueAreaLabels} />
 
         <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
@@ -136,24 +169,6 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
           </ProfileSection>
         ) : null}
 
-        {hasPresence ? (
-          <ProfileSection
-            label="Presence and contact"
-            sectionId="presence-contact"
-            title="Presence"
-            Icon={Contact}
-          >
-            <PresenceSection
-              website={entry.website}
-              email={entry.email}
-              phone={entry.phone}
-              firstSeen={entry.first_seen}
-              websiteGrounded={entry.trust.website_grounded}
-              emailGrounded={entry.trust.email_grounded}
-            />
-          </ProfileSection>
-        ) : null}
-
         <ProfileSection
           label="Appearances and coverage"
           sectionId="appearances"
@@ -181,21 +196,6 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
         <ProfileSection label="Sources and trust" sectionId="sources-and-trust" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
         </ProfileSection>
-
-        <ActionCluster
-          entryId={entry.id}
-          entrySlug={entry.slug}
-          shareUrl={buildShareUrl(entry.slug)}
-          shareTitle={entry.name}
-          email={entry.email}
-          isSignedIn={isSignedIn}
-          readyForActions={readyForActions}
-          profilePath={profilePath}
-          resumeSave={resumeSave}
-          sourcesHref="#appearances"
-          workspaceId={activeWorkspaceId}
-          workspaceWatchingEnabled={workspaceWatchingEnabled}
-        />
       </div>
     </div>
   );

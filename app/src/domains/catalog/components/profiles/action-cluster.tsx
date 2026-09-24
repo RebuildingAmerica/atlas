@@ -1,5 +1,5 @@
 /**
- * ActionCluster — bottom-of-page action strip for profile pages.
+ * ActionCluster — primary action strip near the top of profile pages.
  *
  * Square buttons on a warm surface-container band so the strip reads as part of
  * the profile card stack rather than detached chrome. Sources / Share /

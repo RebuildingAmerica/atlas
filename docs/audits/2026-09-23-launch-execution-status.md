@@ -114,6 +114,11 @@ through the next sign-in, with a retry if sign-out fails. This is local behavior
 proof; acceptance after a real emailed invitation and account switch is still
 needed on the deployed release.
 
+Person and organization profiles now put published contact routes and the
+Save/source actions directly after identity, ahead of the longer explanation and
+evidence sections. This changes the first task a visitor can take; the repeated
+summary content lower on the page still needs an editorial pass.
+
 Ownership promotion does not change the Stripe customer's email or payment
 method. The outgoing owner sees this before leaving, and a team launch rehearsal
 must verify that the remaining owner can open billing, update its contact and
@@ -121,6 +126,12 @@ payment method where needed, and receive future receipts.
 
 ## Validation of this branch
 
+- After moving profile contact and actions above detailed evidence, the app
+  coverage run passed 597 files and 3,884 tests with 100% statements, branches,
+  functions, and lines. The two affected profile-page test files passed 45
+  cases; app lint, TypeScript, and the production build passed on Node 24.
+  Layout and source-opening still need phone and keyboard acceptance on a
+  populated deployed profile.
 - After repairing invitation account switching, the app coverage run passed 597
   files and 3,882 tests with 100% statements, branches, functions, and lines.
   The invitation page's nine focused tests, app lint, TypeScript, and production

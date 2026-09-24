@@ -127,6 +127,38 @@ export function PersonProfilePage({
           }
         />
 
+        {hasReach ? (
+          <ProfileSection
+            label="Contact details"
+            sectionId="contact-details"
+            title="Reach"
+            Icon={Mail}
+          >
+            <ReachSection
+              email={entry.email}
+              website={entry.website}
+              phone={entry.phone}
+              emailGrounded={entry.trust.email_grounded}
+              websiteGrounded={entry.trust.website_grounded}
+            />
+          </ProfileSection>
+        ) : null}
+
+        <ActionCluster
+          entryId={entry.id}
+          entrySlug={entry.slug}
+          shareUrl={buildShareUrl(entry.slug)}
+          shareTitle={entry.name}
+          email={entry.email}
+          isSignedIn={isSignedIn}
+          readyForActions={readyForActions}
+          profilePath={profilePath}
+          resumeSave={resumeSave}
+          sourcesHref="#reporting-trail"
+          workspaceId={activeWorkspaceId}
+          workspaceWatchingEnabled={workspaceWatchingEnabled}
+        />
+
         <ProfileAnswerCard entry={entry} issueAreaLabels={issueAreaLabels} />
 
         <ProfileResearchContext entry={entry} issueAreaLabels={issueAreaLabels} />
@@ -172,23 +204,6 @@ export function PersonProfilePage({
           </ProfileSection>
         ) : null}
 
-        {hasReach ? (
-          <ProfileSection
-            label="Contact details"
-            sectionId="contact-details"
-            title="Reach"
-            Icon={Mail}
-          >
-            <ReachSection
-              email={entry.email}
-              website={entry.website}
-              phone={entry.phone}
-              emailGrounded={entry.trust.email_grounded}
-              websiteGrounded={entry.trust.website_grounded}
-            />
-          </ProfileSection>
-        ) : null}
-
         <ProfileSection
           label="Reporting trail"
           sectionId="reporting-trail"
@@ -216,21 +231,6 @@ export function PersonProfilePage({
         <ProfileSection label="Sources and trust" sectionId="sources-and-trust" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
         </ProfileSection>
-
-        <ActionCluster
-          entryId={entry.id}
-          entrySlug={entry.slug}
-          shareUrl={buildShareUrl(entry.slug)}
-          shareTitle={entry.name}
-          email={entry.email}
-          isSignedIn={isSignedIn}
-          readyForActions={readyForActions}
-          profilePath={profilePath}
-          resumeSave={resumeSave}
-          sourcesHref="#reporting-trail"
-          workspaceId={activeWorkspaceId}
-          workspaceWatchingEnabled={workspaceWatchingEnabled}
-        />
       </div>
     </div>
   );
