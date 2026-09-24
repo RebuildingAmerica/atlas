@@ -362,3 +362,64 @@ async def test_searching_a_state_code_finds_that_state(test_db: object) -> None:
     found = {item["entry"].id for item in result["entries"]}
     assert utah in found
     assert ohio not in found
+
+
+@pytest.mark.asyncio
+async def test_bike_and_bicycle_wording_find_the_same_relevant_actors(test_db: object) -> None:
+    """A visitor should not need to guess whether a group says bike or bicycle."""
+    conn = test_db
+    bicycle_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Cascade Bicycle Club",
+        description="Provides bicycle safety education and advocates for safer routes.",
+        city="Seattle",
+        state="WA",
+        geo_specificity="local",
+    )
+    bike_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Seattle Bike Network",
+        description="Promotes bike safety through street design.",
+        city="Seattle",
+        state="WA",
+        geo_specificity="local",
+    )
+    unrelated_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Bicycle Arts Club",
+        description="Runs arts events for people who ride.",
+        city="Seattle",
+        state="WA",
+        geo_specificity="local",
+    )
+    elsewhere_id = await EntryCRUD.create(
+        conn,
+        entry_type="organization",
+        name="Portland Bicycle Safety Council",
+        description="Provides bicycle safety education.",
+        city="Portland",
+        state="OR",
+        geo_specificity="local",
+    )
+
+    for query in ("bike", "bicycle"):
+        result = await EntryCRUD.search_public(conn, query=query, cities=["Seattle"], states=["WA"])
+        found = {item["entry"].id for item in result["entries"]}
+        assert {bicycle_id, bike_id, unrelated_id} <= found
+        assert elsewhere_id not in found
+
+    focused = await EntryCRUD.search_public(
+        conn, query="bike safety", cities=["Seattle"], states=["WA"]
+    )
+    assert {item["entry"].id for item in focused["entries"]} == {bicycle_id, bike_id}
+
+    punctuated = await EntryCRUD.search_public(
+        conn, query="bike-safety", cities=["Seattle"], states=["WA"]
+    )
+    assert {item["entry"].id for item in punctuated["entries"]} == {bicycle_id, bike_id}
+
+    symbols_only = await EntryCRUD.search_public(conn, query="!!!")
+    assert symbols_only["total"] == 0

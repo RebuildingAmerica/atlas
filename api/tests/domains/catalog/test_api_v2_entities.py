@@ -47,6 +47,54 @@ async def test_entity_and_place_filters_accept_comma_delimited_query_values(
 
 
 @pytest.mark.asyncio
+async def test_entity_search_finds_bicycle_group_for_bike_question(
+    test_client: object,
+    test_db: object,
+) -> None:
+    """A public bike search should find a bicycle-named group in the selected place."""
+    seattle_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Cascade Bicycle Club",
+        description="Provides bicycle safety education in Seattle.",
+        city="Seattle",
+        state="WA",
+        geo_specificity="local",
+    )
+    await test_db.execute(
+        "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) "
+        "VALUES (?, ?, CURRENT_TIMESTAMP)",
+        (seattle_id, "transportation_and_mobility"),
+    )
+    await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Seattle Bike Events",
+        description="Hosts bicycle rides in Seattle.",
+        city="Seattle",
+        state="WA",
+        geo_specificity="local",
+    )
+    await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Portland Bicycle Club",
+        description="Provides bicycle safety education in Portland.",
+        city="Portland",
+        state="OR",
+        geo_specificity="local",
+    )
+
+    for query in ("bike", "bike-safety"):
+        response = await test_client.get(
+            "/api/entities?"
+            f"query={query}&city=Seattle&state=WA&issue_area=transportation_and_mobility"
+        )
+        assert response.status_code == STATUS_OK
+        assert {item["id"] for item in response.json()["items"]} == {seattle_id}
+
+
+@pytest.mark.asyncio
 async def test_get_place_issue_signals_returns_issue_summary(
     test_client: object,
     test_db: object,

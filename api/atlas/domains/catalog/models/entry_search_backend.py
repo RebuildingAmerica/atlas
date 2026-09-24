@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 from atlas.domains.catalog.models.entry_model import _hydrate_atproto_identities, _row_to_entry
@@ -19,6 +20,25 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
     import aiosqlite
+
+
+_BICYCLE_WORD = re.compile(r"\b(?:bikes?|bicycles?|bicycling|biking)\b", re.IGNORECASE)
+_BICYCLE_VARIANTS = ("bike", "bikes", "bicycle", "bicycles", "bicycling", "biking")
+_SEARCH_TERMS = re.compile(r"[^\W_]+", re.UNICODE)
+
+
+def _text_query_variants(query: str) -> tuple[str, ...]:
+    """Match ordinary bicycle wording without dropping the visitor's other terms."""
+    if not _BICYCLE_WORD.search(query):
+        return (query,)
+    return tuple(
+        dict.fromkeys((query, *(_BICYCLE_WORD.sub(word, query) for word in _BICYCLE_VARIANTS)))
+    )
+
+
+def _sqlite_fts_query(query: str) -> str:
+    """Treat visitor punctuation as separators, not full-text query syntax."""
+    return " ".join(f'"{term}"' for term in _SEARCH_TERMS.findall(query))
 
 
 async def search_public_ids(  # noqa: PLR0913
@@ -55,27 +75,37 @@ async def search_public_ids(  # noqa: PLR0913
     if query:
         # Both text indexes cover name and description only, so place matches
         # separately.
+        if not _SEARCH_TERMS.search(query):
+            return []
+        text_variants = _text_query_variants(query)
         if getattr(conn, "backend", None) == "postgres":
-            query_sql += """
+            search_values = text_variants
+            text_matches = " OR ".join(
+                "e.search_vector @@ plainto_tsquery('english', ?)" for _ in text_variants
+            )
+            query_sql += f"""
                 AND (
-                    e.search_vector @@ plainto_tsquery('english', ?)
+                    ({text_matches})
                     OR LOWER(e.city) LIKE ?
                     OR LOWER(e.state) = LOWER(?)
                 )
             """
         else:
-            query_sql += """
+            search_values = tuple(_sqlite_fts_query(variant) for variant in text_variants)
+            text_matches = " OR ".join(
+                "e.rowid IN (SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?)"
+                for _ in text_variants
+            )
+            query_sql += f"""
                 AND (
-                    e.rowid IN (
-                        SELECT rowid FROM entries_fts WHERE entries_fts MATCH ?
-                    )
+                    ({text_matches})
                     OR LOWER(e.city) LIKE ?
                     OR LOWER(e.state) = LOWER(?)
                 )
             """
         # psycopg reads a literal % in the statement as a placeholder, so the
         # wildcard goes in the parameter.
-        params.extend([query, f"{query.lower()}%", query])
+        params.extend([*search_values, f"{query.lower()}%", query])
     place_clause = _entry_place_clause(
         states=states,
         cities=cities,

@@ -347,3 +347,11 @@ async def test_search_public_ids_postgres_branch_emits_tsquery_sql() -> None:
     for sql, parameters in conn.executed:
         assert "%" not in sql, sql
         assert "anything%" in tuple(parameters)
+
+    await EntryCRUD._search_public_ids(conn, query="bike safety")  # noqa: SLF001
+    sql, parameters = conn.executed[-1]
+    assert " OR " in sql
+    assert "bike safety" in tuple(parameters)
+    assert "bicycle safety" in tuple(parameters)
+    assert "biking safety" in tuple(parameters)
+    assert "safety" not in tuple(parameters)
