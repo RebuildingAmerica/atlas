@@ -207,7 +207,6 @@ async def _hydrate_atproto_identities(conn: Any, entries: list[EntryModel]) -> l
     return entries
 
 
-_MIN_CORROBORATING_SOURCES = 2
 _ACTOR_QUALITY_TOTAL = 5
 _PARTIAL_ACTOR_MIN_SCORE = 3
 
@@ -265,8 +264,8 @@ def actor_quality(
     }
 
 
-def trust_tier(*, verified: bool, claim_status: str | None, independent_source_count: int) -> str:
-    """Resolve the honest, never-overclaiming trust tier for an actor.
+def trust_tier(*, verified: bool, claim_status: str | None) -> str:
+    """Resolve identity verification without treating source count as proof.
 
     The single source of truth for Atlas trust tiers, shared by the public record
     builder and the map projection so a dot's ring can never claim more than the
@@ -279,42 +278,21 @@ def trust_tier(*, verified: bool, claim_status: str | None, independent_source_c
     claim_status : str | None
         The subject-claim lifecycle state; ``"verified"`` means the subject owns
         and confirmed the profile.
-    independent_source_count : int
-        Distinct registrable source domains backing the actor.
-
     Returns
     -------
     str
-        ``subject_verified``, ``atlas_verified``, ``corroborated``, or
-        ``unverified``.
+        ``subject_verified``, ``atlas_verified``, or ``unverified``.
     """
     if claim_status == "verified":
         return "subject_verified"
     if verified:
         return "atlas_verified"
-    if independent_source_count >= _MIN_CORROBORATING_SOURCES:
-        return "corroborated"
     return "unverified"
 
 
-def _map_trust_level(
-    *, verified: bool, claim_status: str | None, sources: list[dict[str, Any]]
-) -> str:
-    """Compute a map point's trust level from its linked sources.
-
-    Reuses the canonical registrable-domain parser so the corroboration count
-    matches the rest of the app exactly. Imported lazily to avoid a circular
-    import with the MCP data layer.
-    """
-    from atlas.platform.mcp.data import _registrable_domain
-
-    domains = {
-        domain
-        for source in sources
-        if (domain := _registrable_domain(source.get("url"))) is not None
-    }
+def _map_trust_level(*, verified: bool, claim_status: str | None) -> str:
+    """Keep a map point's identity trust tier aligned with its public profile."""
     return trust_tier(
         verified=verified,
         claim_status=claim_status,
-        independent_source_count=len(domains),
     )

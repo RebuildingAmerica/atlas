@@ -35,7 +35,6 @@ from .data_record_helpers import (
     _entity_freshness,
     _entity_record,
     _entity_type_label,
-    _format_answer_date,
     _format_answer_evidence,
     _humanize_identifier,
     _latest_source_date,
@@ -52,7 +51,6 @@ from .data_service_entities import AtlasDataServiceEntityMixin
 from .data_service_places import AtlasDataServicePlaceMixin
 from .data_service_search import _EXHAUSTIVE_SCAN_PAGE_SIZE, AtlasDataServiceSearchMixin
 from .data_trust_helpers import (
-    _claim_confidence,
     _claim_evidence_set,
     _contact_claim_confidence,
     _contact_claim_source_count,
@@ -86,7 +84,6 @@ __all__ = [
     "EntityRecordContext",
     "PlaceQueryFilter",
     "_append_source_place_clauses",
-    "_claim_confidence",
     "_claim_evidence_set",
     "_clean_string",
     "_contact_claim_confidence",
@@ -98,7 +95,6 @@ __all__ = [
     "_entity_not_found",
     "_entity_record",
     "_entity_type_label",
-    "_format_answer_date",
     "_format_answer_evidence",
     "_format_place",
     "_host_grounded",

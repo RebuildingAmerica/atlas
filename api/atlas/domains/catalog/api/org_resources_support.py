@@ -147,9 +147,7 @@ def _public_directory_federation(
     entries: list[EntityDetailResponse],
 ) -> PublicDirectoryFederation:
     """Build the federation summary for a public workspace directory."""
-    source_backed_count = sum(
-        1 for entry in entries if entry.claim_evidence.summary.source_count > 0
-    )
+    source_backed_count = sum(1 for entry in entries if entry.source_count > 0)
     return PublicDirectoryFederation(
         shared_record_count=len(entries),
         source_backed_record_count=source_backed_count,

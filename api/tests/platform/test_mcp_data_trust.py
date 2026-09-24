@@ -14,7 +14,6 @@ from atlas.platform.mcp import data as data_module
 
 from tests.platform.mcp_data_support import (
     EXPECTED_DISTINCT_DOMAINS,
-    EXPECTED_THREE_SOURCES,
     EXPECTED_TWO_CONTACT_SOURCES,
     _build_entry,
 )
@@ -25,24 +24,24 @@ class TestTrustLevel:
 
     def test_subject_verified_outranks_everything(self) -> None:
         entry = _build_entry(claim_status="verified", verified=True)
-        level = data_module._trust_level(entry=entry, independent_source_count=5)  # noqa: SLF001
+        level = data_module._trust_level(entry=entry)  # noqa: SLF001
         assert level == "subject_verified"
 
     def test_atlas_verified_when_verified_flag_set(self) -> None:
         entry = _build_entry(verified=True)
-        assert data_module._trust_level(entry=entry, independent_source_count=1) == "atlas_verified"  # noqa: SLF001
+        assert data_module._trust_level(entry=entry) == "atlas_verified"  # noqa: SLF001
 
-    def test_corroborated_with_two_independent_sources(self) -> None:
+    def test_two_source_hosts_do_not_verify_profile_claims(self) -> None:
         entry = _build_entry()
-        assert data_module._trust_level(entry=entry, independent_source_count=2) == "corroborated"  # noqa: SLF001
+        assert data_module._trust_level(entry=entry) == "unverified"  # noqa: SLF001
 
     def test_unverified_with_single_source(self) -> None:
         entry = _build_entry()
-        assert data_module._trust_level(entry=entry, independent_source_count=1) == "unverified"  # noqa: SLF001
+        assert data_module._trust_level(entry=entry) == "unverified"  # noqa: SLF001
 
     def test_unverified_when_independent_count_unknown(self) -> None:
         entry = _build_entry()
-        assert data_module._trust_level(entry=entry, independent_source_count=None) == "unverified"  # noqa: SLF001
+        assert data_module._trust_level(entry=entry) == "unverified"  # noqa: SLF001
 
 
 class TestTrustInputsFromSources:
@@ -121,7 +120,7 @@ class TestEntityRecordTrustBlock:
         )
         assert record["trust"] == {
             "level": "unverified",
-            "independent_source_count": 1,
+            "independent_source_count": None,
             "website_grounded": False,
             "email_grounded": True,
         }
@@ -220,23 +219,23 @@ class TestEntityRecordClaimEvidence:
         )
 
         assert record["claim_evidence"]["summary"] == {
-            "source_count": 3,
-            "source_ids": ["source-1", "source-2", "source-3"],
-            "confidence": "corroborated",
-            "as_of": "2026-04-15",
+            "source_count": 0,
+            "source_ids": [],
+            "confidence": "unverified",
+            "as_of": None,
             "verification_level": "source-derived",
         }
-        assert record["claim_evidence"]["place"]["source_count"] == EXPECTED_THREE_SOURCES
-        assert record["claim_evidence"]["issues"]["source_count"] == EXPECTED_THREE_SOURCES
+        assert record["claim_evidence"]["place"]["source_count"] == 0
+        assert record["claim_evidence"]["issues"]["source_count"] == 0
         assert record["claim_evidence"]["contact"] == {
             "source_count": 1,
             "source_ids": ["source-1"],
             "confidence": "partial",
-            "as_of": "2026-04-15",
+            "as_of": None,
             "verification_level": "source-derived",
         }
 
-    def test_claim_evidence_marks_subject_verified_claims(self) -> None:
+    def test_subject_identity_verification_does_not_verify_profile_claims(self) -> None:
         entry = _build_entry(claim_status="verified", claimed_by_user_id="user-1")
         record = data_module._entity_record(  # noqa: SLF001
             entry,
@@ -249,8 +248,9 @@ class TestEntityRecordClaimEvidence:
             ),
         )
 
-        assert record["claim_evidence"]["summary"]["confidence"] == "subject_verified"
+        assert record["claim_evidence"]["summary"]["confidence"] == "unverified"
         assert record["claim_evidence"]["summary"]["verification_level"] == "subject-verified"
+        assert record["trust"]["level"] == "subject_verified"
 
     def test_claim_evidence_marks_single_source_claims_unverified(self) -> None:
         entry = _build_entry()
@@ -285,7 +285,8 @@ class TestEntityRecordClaimEvidence:
             ),
         )
 
-        assert record["claim_evidence"]["summary"]["as_of"] == "2026-01-14"
+        assert record["claim_evidence"]["summary"]["as_of"] is None
+        assert record["freshness"]["latest_source_date"] == "2026-01-14"
         assert record["freshness"]["created_at"] == "2026-01-01T12:00:00+00:00"
         assert record["freshness"]["updated_at"] == "2026-01-15T12:00:00+00:00"
 
@@ -302,7 +303,8 @@ class TestEntityRecordClaimEvidence:
             ),
         )
 
-        assert record["claim_evidence"]["summary"]["as_of"] == "2026-01-14"
+        assert record["claim_evidence"]["summary"]["as_of"] is None
+        assert record["freshness"]["latest_source_date"] == "2026-01-14"
 
     def test_claim_evidence_marks_fully_grounded_contact(self) -> None:
         entry = replace(
@@ -326,7 +328,7 @@ class TestEntityRecordClaimEvidence:
 
         assert record["claim_evidence"]["contact"]["source_count"] == EXPECTED_TWO_CONTACT_SOURCES
         assert record["claim_evidence"]["contact"]["source_ids"] == ["source-1", "source-2"]
-        assert record["claim_evidence"]["contact"]["confidence"] == "atlas_verified"
+        assert record["claim_evidence"]["contact"]["confidence"] == "partial"
 
     def test_claim_evidence_marks_ungrounded_contact_unverified(self) -> None:
         entry = replace(_build_entry(), website="https://helper.example")
@@ -344,6 +346,23 @@ class TestEntityRecordClaimEvidence:
         )
 
         assert record["claim_evidence"]["contact"]["source_count"] == 0
+        assert record["claim_evidence"]["contact"]["confidence"] == "unverified"
+
+    def test_grounded_contact_needs_a_linked_receipt_before_claiming_evidence(self) -> None:
+        entry = replace(_build_entry(), website="https://helper.example")
+        record = data_module._entity_record(  # noqa: SLF001
+            entry,
+            data_module.EntityRecordContext(
+                issue_area_ids=[],
+                source_types=["official_website"],
+                source_count=1,
+                latest_source_date=None,
+                website_grounded=True,
+            ),
+        )
+
+        assert record["claim_evidence"]["contact"]["source_count"] == 0
+        assert record["claim_evidence"]["contact"]["source_ids"] == []
         assert record["claim_evidence"]["contact"]["confidence"] == "unverified"
 
     def test_claim_evidence_marks_missing_contact_unverified(self) -> None:
@@ -388,5 +407,5 @@ class TestEntityRecordProfileAnswers:
             "what_they_do": "Organizes tenant legal clinics.",
             "where": "Kansas City, MO",
             "why_they_matter": "4 sources · Housing Affordability",
-            "how_atlas_knows": "4 sources · corroborated · Apr 2026",
+            "how_atlas_knows": "4 linked sources · claim support not reviewed",
         }

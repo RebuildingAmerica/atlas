@@ -27,14 +27,16 @@ class TestTrustLevel:
 
         assert result["points"][0]["trust_level"] == "atlas_verified"
 
-    async def test_two_source_domains_are_corroborated(self, test_db: aiosqlite.Connection) -> None:
-        entry_id = await _place(test_db, name="Corroborated Org")
+    async def test_two_source_domains_do_not_corroborate_profile_claims(
+        self, test_db: aiosqlite.Connection
+    ) -> None:
+        entry_id = await _place(test_db, name="Two-source Org")
         await _link_source(test_db, entry_id, "https://one.example.com/a")
         await _link_source(test_db, entry_id, "https://two.example.org/b")
 
         result = await EntryCRUD.search_map_points(test_db, **_US_BBOX, limit=2000)
 
-        assert result["points"][0]["trust_level"] == "corroborated"
+        assert result["points"][0]["trust_level"] == "unverified"
 
     async def test_single_source_domain_is_unverified(self, test_db: aiosqlite.Connection) -> None:
         entry_id = await _place(test_db, name="Thin Org")

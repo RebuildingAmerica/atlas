@@ -7,11 +7,9 @@ from urllib.parse import urlparse
 
 from atlas.domains.catalog.models.entry import EntryModel, trust_tier
 from atlas.domains.catalog.schemas.public import ClaimEvidence, ClaimEvidenceSet
-from atlas.platform.dates import date_string
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-    from datetime import date, datetime
 
     from .data_record_helpers import EntityRecordContext
 
@@ -72,73 +70,35 @@ def _contact_source_ids(entry: EntryModel, sources: Sequence[Mapping[str, Any]])
     return source_ids
 
 
-def _trust_level(*, entry: EntryModel, independent_source_count: int | None) -> str:
+def _trust_level(*, entry: EntryModel) -> str:
     """Honest trust tier; never overclaims for thinly-sourced auto entries."""
     return trust_tier(
         verified=entry.verified,
         claim_status=entry.claim_status,
-        independent_source_count=independent_source_count or 0,
     )
 
 
-def _claim_confidence(
-    *,
-    entry: EntryModel,
-    independent_source_count: int | None,
-    source_count: int,
-) -> str:
-    """Return a confidence label for source-backed visible profile claims."""
-    level = _trust_level(entry=entry, independent_source_count=independent_source_count)
-    if level in {"subject_verified", "atlas_verified", "corroborated"}:
-        return level
-    return "unverified" if source_count <= 1 else "corroborated"
+def _contact_claim_source_count(context: EntityRecordContext) -> int:
+    """Count receipts explicitly linked to the visible contact details."""
+    return len(context.contact_source_ids)
 
 
-def _contact_claim_source_count(entry: EntryModel, context: EntityRecordContext) -> int:
-    """Count visible contact channels backed by linked-source evidence."""
-    count = 0
-    if entry.website and context.website_grounded:
-        count += 1
-    if entry.email and context.email_grounded:
-        count += 1
-    return count
-
-
-def _contact_claim_confidence(entry: EntryModel, context: EntityRecordContext) -> str:
-    """Return a conservative confidence label for visible contact fields."""
-    visible_channels = int(bool(entry.website)) + int(bool(entry.email)) + int(bool(entry.phone))
-    if visible_channels == 0:
-        return "unverified"
-
-    grounded_channels = _contact_claim_source_count(entry, context)
-    if grounded_channels == visible_channels:
-        return _claim_confidence(
-            entry=entry,
-            independent_source_count=context.independent_source_count,
-            source_count=max(grounded_channels, context.source_count),
-        )
-    if grounded_channels > 0:
-        return "partial"
-    return "unverified"
+def _contact_claim_confidence(context: EntityRecordContext) -> str:
+    """A linked contact source is partial support, not verified contact ownership."""
+    return "partial" if _contact_claim_source_count(context) > 0 else "unverified"
 
 
 def _claim_evidence_set(
     *,
-    entry: EntryModel,
     context: EntityRecordContext,
     verification_level: str,
 ) -> ClaimEvidenceSet:
     """Build evidence metadata for the visible facts on a profile."""
-    as_of = _claim_as_of(context.latest_source_date)
     base = ClaimEvidence(
-        source_count=context.source_count,
-        source_ids=context.source_ids,
-        confidence=_claim_confidence(
-            entry=entry,
-            independent_source_count=context.independent_source_count,
-            source_count=context.source_count,
-        ),
-        as_of=as_of,
+        source_count=0,
+        source_ids=[],
+        confidence="unverified",
+        as_of=None,
         verification_level=verification_level,
     )
     return ClaimEvidenceSet(
@@ -146,22 +106,13 @@ def _claim_evidence_set(
         place=base,
         issues=base,
         contact=ClaimEvidence(
-            source_count=(
-                len(context.contact_source_ids)
-                if context.contact_source_ids
-                else _contact_claim_source_count(entry, context)
-            ),
+            source_count=_contact_claim_source_count(context),
             source_ids=context.contact_source_ids,
-            confidence=_contact_claim_confidence(entry, context),
-            as_of=as_of,
+            confidence=_contact_claim_confidence(context),
+            as_of=None,
             verification_level=verification_level,
         ),
     )
-
-
-def _claim_as_of(value: date | datetime | str | None) -> str | None:
-    """Normalize latest-source values for public evidence metadata."""
-    return date_string(value)
 
 
 __all__ = [name for name in globals() if not name.startswith("__")]

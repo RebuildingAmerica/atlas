@@ -272,7 +272,6 @@ class EntrySearchMixin:
                     "trust_level": _map_trust_level(
                         verified=bool(row["verified"]),
                         claim_status=row.get("claim_status"),
-                        sources=sources,
                     ),
                 }
             )

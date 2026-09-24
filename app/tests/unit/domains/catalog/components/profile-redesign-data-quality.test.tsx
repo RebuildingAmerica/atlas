@@ -271,13 +271,55 @@ describe("DataQualityBlock", () => {
       />,
     );
 
-    expect(screen.getByText("Verification evidence")).toBeInTheDocument();
+    expect(screen.getByText("Claim support")).toBeInTheDocument();
     expect(screen.getByText("Summary")).toBeInTheDocument();
     expect(screen.getAllByText("Place").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Issues").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Contact").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/3 sources · corroborated · Apr 2026/)).toHaveLength(3);
     expect(screen.getByText(/1 source · partial · Apr 2026/)).toBeInTheDocument();
+  });
+
+  it("does not imply an unlinked claim is supported by profile sources", () => {
+    render(
+      <DataQualityBlock
+        entry={buildEntry({
+          source_count: 3,
+          claim_evidence: {
+            summary: {
+              source_count: 0,
+              source_ids: [],
+              confidence: "unverified",
+              as_of: null,
+              verification_level: "source-derived",
+            },
+            place: {
+              source_count: 0,
+              source_ids: [],
+              confidence: "unverified",
+              as_of: null,
+              verification_level: "source-derived",
+            },
+            issues: {
+              source_count: 0,
+              source_ids: [],
+              confidence: "unverified",
+              as_of: null,
+              verification_level: "source-derived",
+            },
+            contact: {
+              source_count: 0,
+              source_ids: [],
+              confidence: "unverified",
+              as_of: null,
+              verification_level: "source-derived",
+            },
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getAllByText("No sources linked to this claim")).toHaveLength(4);
   });
 
   it("shows actor-specificity quality for records with a concrete actor, work, place, issues, and sources", () => {

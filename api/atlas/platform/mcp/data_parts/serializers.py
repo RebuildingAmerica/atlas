@@ -46,7 +46,6 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
     else:
         verification_level = "source-derived"
     claim_evidence = _claim_evidence_set(
-        entry=entry,
         context=context,
         verification_level=verification_level,
     )
@@ -97,7 +96,6 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
         profile_answers=_profile_answers(
             entry=entry,
             context=context,
-            claim_evidence=claim_evidence,
         ),
         actor_quality=actor_quality(
             entry,
@@ -105,10 +103,8 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             source_count=context.source_count,
         ),
         trust=TrustInfo(
-            level=_trust_level(
-                entry=entry, independent_source_count=context.independent_source_count
-            ),
-            independent_source_count=context.independent_source_count,
+            level=_trust_level(entry=entry),
+            independent_source_count=None,
             website_grounded=context.website_grounded,
             email_grounded=context.email_grounded,
         ),

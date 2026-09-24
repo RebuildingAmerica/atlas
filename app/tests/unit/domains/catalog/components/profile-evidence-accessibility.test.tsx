@@ -113,7 +113,7 @@ describe("profile evidence accessibility", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Verification" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Verification evidence" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claim support" })).toBeInTheDocument();
   });
 
   it("exposes profile context evidence and correction groups with visible headings", () => {

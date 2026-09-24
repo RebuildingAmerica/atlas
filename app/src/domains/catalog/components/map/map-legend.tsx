@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { ChevronDown, Info } from "lucide-react";
-import { CIVIC_NAVY, darken } from "@rebuildingamerica/atlas-catalog/map/marker-style";
+import { CIVIC_NAVY } from "@rebuildingamerica/atlas-catalog/map/marker-style";
 import { FALLBACK_ISSUE_COLOR } from "@rebuildingamerica/atlas-catalog/map/issue-colors";
 
 /** One trust tier's swatch and the honest sentence describing it. */
 interface TrustRow {
   /** A short, accessible name for the swatch. */
-  swatch: "verified" | "corroborated" | "unverified";
+  swatch: "verified" | "unverified";
   description: string;
 }
 
 /** The trust tiers in the same never-overclaiming order the dot rings use. */
 const TRUST_ROWS: TrustRow[] = [
   { swatch: "verified", description: "Verified by Atlas or the subject" },
-  { swatch: "corroborated", description: "Corroborated across sources" },
   { swatch: "unverified", description: "Unverified, shown quietly" },
 ];
 
@@ -24,18 +23,6 @@ function TrustSwatch({ swatch }: { swatch: TrustRow["swatch"] }) {
       <span
         className="block h-3 w-3 rounded-full"
         style={{ backgroundColor: FALLBACK_ISSUE_COLOR, boxShadow: `0 0 0 1.5px ${CIVIC_NAVY}` }}
-        aria-hidden
-      />
-    );
-  }
-  if (swatch === "corroborated") {
-    return (
-      <span
-        className="block h-3 w-3 rounded-full"
-        style={{
-          backgroundColor: FALLBACK_ISSUE_COLOR,
-          boxShadow: `0 0 0 1.5px ${darken(FALLBACK_ISSUE_COLOR, 0.35)}`,
-        }}
         aria-hidden
       />
     );

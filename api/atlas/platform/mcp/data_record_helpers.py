@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 from atlas.domains.catalog.models.entry import EntryModel, actor_quality
 from atlas.domains.catalog.schemas.public import (
-    ClaimEvidence,
-    ClaimEvidenceSet,
     EntityResponse,
     FlagSummary,
     FreshnessInfo,
@@ -85,29 +83,18 @@ def _entity_type_label(entry: EntryModel) -> str:
     return _humanize_identifier(entry.type)
 
 
-def _format_answer_date(iso: str | None) -> str | None:
-    if not iso:
-        return None
-    parsed = datetime.fromisoformat(iso)
-    return parsed.strftime("%b %Y")
-
-
-def _format_answer_evidence(evidence: ClaimEvidence) -> str:
-    source_label = (
-        f"{evidence.source_count} {'source' if evidence.source_count == 1 else 'sources'}"
-    )
-    return " · ".join(
-        part
-        for part in [source_label, evidence.confidence, _format_answer_date(evidence.as_of)]
-        if part
-    )
+def _format_answer_evidence(source_count: int) -> str:
+    """Name linked receipts without implying they support every visible claim."""
+    if source_count == 0:
+        return "No linked sources · claim support not reviewed"
+    label = "source" if source_count == 1 else "sources"
+    return f"{source_count} linked {label} · claim support not reviewed"
 
 
 def _profile_answers(
     *,
     entry: EntryModel,
     context: EntityRecordContext,
-    claim_evidence: ClaimEvidenceSet,
 ) -> ProfileAnswers:
     """Build the scan-friendly actor summary used by app and agent clients."""
     issue_labels = [_humanize_identifier(slug) for slug in context.issue_area_ids]
@@ -120,7 +107,7 @@ def _profile_answers(
         what_they_do=entry.description or ", ".join(issue_labels) or "Public civic actor",
         where=_format_place(entry.city, entry.state, entry.region) or "Location not specified",
         why_they_matter=" · ".join(why_parts),
-        how_atlas_knows=_format_answer_evidence(claim_evidence.summary),
+        how_atlas_knows=_format_answer_evidence(context.source_count),
     )
 
 
@@ -132,7 +119,6 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
     else:
         verification_level = "source-derived"
     claim_evidence = _claim_evidence_set(
-        entry=entry,
         context=context,
         verification_level=verification_level,
     )
@@ -183,7 +169,6 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
         profile_answers=_profile_answers(
             entry=entry,
             context=context,
-            claim_evidence=claim_evidence,
         ),
         actor_quality=actor_quality(
             entry,
@@ -191,10 +176,8 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             source_count=context.source_count,
         ),
         trust=TrustInfo(
-            level=_trust_level(
-                entry=entry, independent_source_count=context.independent_source_count
-            ),
-            independent_source_count=context.independent_source_count,
+            level=_trust_level(entry=entry),
+            independent_source_count=None,
             website_grounded=context.website_grounded,
             email_grounded=context.email_grounded,
         ),

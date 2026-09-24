@@ -94,7 +94,8 @@ class TestOrgEntriesPublicDirectory:
         entry = payload["entries"][0]
         assert entry["id"] == entry_id
         assert entry["sources"][0]["id"] == source_id
-        assert entry["claim_evidence"]["summary"]["source_count"] == 1
+        assert entry["source_count"] == 1
+        assert entry["claim_evidence"]["summary"]["source_count"] == 0
 
     @pytest.mark.asyncio
     async def test_public_directory_accepts_postgres_source_timestamps(

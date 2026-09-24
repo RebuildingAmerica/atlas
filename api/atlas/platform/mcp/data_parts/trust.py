@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence  # noqa: TC003
-from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from atlas.domains.catalog.models.entry import trust_tier
 from atlas.domains.catalog.schemas.public import ClaimEvidence, ClaimEvidenceSet, ProfileAnswers
-from atlas.platform.dates import date_string
 from atlas.platform.mcp.data_parts.context import EntityRecordContext  # noqa: TC001
 from atlas.platform.mcp.data_parts.place_utils import _format_place
 
@@ -73,73 +71,35 @@ def _contact_source_ids(entry: EntryModel, sources: Sequence[Mapping[str, Any]])
     return source_ids
 
 
-def _trust_level(*, entry: EntryModel, independent_source_count: int | None) -> str:
+def _trust_level(*, entry: EntryModel) -> str:
     """Honest trust tier; never overclaims for thinly-sourced auto entries."""
     return trust_tier(
         verified=entry.verified,
         claim_status=entry.claim_status,
-        independent_source_count=independent_source_count or 0,
     )
 
 
-def _claim_confidence(
-    *,
-    entry: EntryModel,
-    independent_source_count: int | None,
-    source_count: int,
-) -> str:
-    """Return a confidence label for source-backed visible profile claims."""
-    level = _trust_level(entry=entry, independent_source_count=independent_source_count)
-    if level in {"subject_verified", "atlas_verified", "corroborated"}:
-        return level
-    return "unverified" if source_count <= 1 else "corroborated"
+def _contact_claim_source_count(context: EntityRecordContext) -> int:
+    """Count receipts explicitly linked to the visible contact details."""
+    return len(context.contact_source_ids)
 
 
-def _contact_claim_source_count(entry: EntryModel, context: EntityRecordContext) -> int:
-    """Count visible contact channels backed by linked-source evidence."""
-    count = 0
-    if entry.website and context.website_grounded:
-        count += 1
-    if entry.email and context.email_grounded:
-        count += 1
-    return count
-
-
-def _contact_claim_confidence(entry: EntryModel, context: EntityRecordContext) -> str:
-    """Return a conservative confidence label for visible contact fields."""
-    visible_channels = int(bool(entry.website)) + int(bool(entry.email)) + int(bool(entry.phone))
-    if visible_channels == 0:
-        return "unverified"
-
-    grounded_channels = _contact_claim_source_count(entry, context)
-    if grounded_channels == visible_channels:
-        return _claim_confidence(
-            entry=entry,
-            independent_source_count=context.independent_source_count,
-            source_count=max(grounded_channels, context.source_count),
-        )
-    if grounded_channels > 0:
-        return "partial"
-    return "unverified"
+def _contact_claim_confidence(context: EntityRecordContext) -> str:
+    """A linked contact source is partial support, not verified contact ownership."""
+    return "partial" if _contact_claim_source_count(context) > 0 else "unverified"
 
 
 def _claim_evidence_set(
     *,
-    entry: EntryModel,
     context: EntityRecordContext,
     verification_level: str,
 ) -> ClaimEvidenceSet:
     """Build evidence metadata for the visible facts on a profile."""
-    as_of = _claim_as_of(context.latest_source_date)
     base = ClaimEvidence(
-        source_count=context.source_count,
-        source_ids=context.source_ids,
-        confidence=_claim_confidence(
-            entry=entry,
-            independent_source_count=context.independent_source_count,
-            source_count=context.source_count,
-        ),
-        as_of=as_of,
+        source_count=0,
+        source_ids=[],
+        confidence="unverified",
+        as_of=None,
         verification_level=verification_level,
     )
     return ClaimEvidenceSet(
@@ -147,22 +107,13 @@ def _claim_evidence_set(
         place=base,
         issues=base,
         contact=ClaimEvidence(
-            source_count=(
-                len(context.contact_source_ids)
-                if context.contact_source_ids
-                else _contact_claim_source_count(entry, context)
-            ),
+            source_count=_contact_claim_source_count(context),
             source_ids=context.contact_source_ids,
-            confidence=_contact_claim_confidence(entry, context),
-            as_of=as_of,
+            confidence=_contact_claim_confidence(context),
+            as_of=None,
             verification_level=verification_level,
         ),
     )
-
-
-def _claim_as_of(value: date | datetime | str | None) -> str | None:
-    """Normalize latest-source values for public evidence metadata."""
-    return date_string(value)
 
 
 def _humanize_identifier(value: str) -> str:
@@ -178,29 +129,18 @@ def _entity_type_label(entry: EntryModel) -> str:
     return _humanize_identifier(entry.type)
 
 
-def _format_answer_date(iso: str | None) -> str | None:
-    if not iso:
-        return None
-    parsed = datetime.fromisoformat(iso)
-    return parsed.strftime("%b %Y")
-
-
-def _format_answer_evidence(evidence: ClaimEvidence) -> str:
-    source_label = (
-        f"{evidence.source_count} {'source' if evidence.source_count == 1 else 'sources'}"
-    )
-    return " · ".join(
-        part
-        for part in [source_label, evidence.confidence, _format_answer_date(evidence.as_of)]
-        if part
-    )
+def _format_answer_evidence(source_count: int) -> str:
+    """Name linked receipts without implying they support every visible claim."""
+    if source_count == 0:
+        return "No linked sources · claim support not reviewed"
+    label = "source" if source_count == 1 else "sources"
+    return f"{source_count} linked {label} · claim support not reviewed"
 
 
 def _profile_answers(
     *,
     entry: EntryModel,
     context: EntityRecordContext,
-    claim_evidence: ClaimEvidenceSet,
 ) -> ProfileAnswers:
     """Build the scan-friendly actor summary used by app and agent clients."""
     issue_labels = [_humanize_identifier(slug) for slug in context.issue_area_ids]
@@ -213,5 +153,5 @@ def _profile_answers(
         what_they_do=entry.description or ", ".join(issue_labels) or "Public civic actor",
         where=_format_place(entry.city, entry.state, entry.region) or "Location not specified",
         why_they_matter=" · ".join(why_parts),
-        how_atlas_knows=_format_answer_evidence(claim_evidence.summary),
+        how_atlas_knows=_format_answer_evidence(context.source_count),
     )

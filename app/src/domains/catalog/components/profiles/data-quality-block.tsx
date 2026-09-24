@@ -116,6 +116,9 @@ function VerificationLine({ entry }: { entry: Entry }) {
 }
 
 function formatClaimEvidence(evidence: ClaimEvidenceInfo): string {
+  if (evidence.source_count === 0) {
+    return "No sources linked to this claim";
+  }
   const sourceLabel = `${evidence.source_count} ${evidence.source_count === 1 ? "source" : "sources"}`;
   const dateLabel = formatDateTimeOrNull(formatStableDateTime, evidence.as_of, MONTH_YEAR);
   return [sourceLabel, evidence.confidence, dateLabel].filter(Boolean).join(" · ");
@@ -135,7 +138,7 @@ function ClaimEvidenceBlock({ entry }: { entry: Entry }) {
   return (
     <div className="space-y-2">
       <dt>
-        <h3 className="type-label-small text-ink-muted">Verification evidence</h3>
+        <h3 className="type-label-small text-ink-muted">Claim support</h3>
       </dt>
       <dd className="grid gap-2">
         {rows.map(([label, item]) => (

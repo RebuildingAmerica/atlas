@@ -269,18 +269,18 @@ class ClaimStatusInfo(BaseModel):
 
 
 class ClaimEvidence(BaseModel):
-    """Evidence metadata for one visible profile claim."""
+    """Reviewed evidence metadata for one visible profile claim."""
 
     source_count: int = Field(0, ge=0)
     source_ids: list[str] = Field(default_factory=list)
     confidence: str = Field(
         "unverified",
-        description="subject_verified | atlas_verified | corroborated | partial | unverified.",
+        description="Claim support: corroborated | partial | unverified. Identity verification is separate.",
     )
     as_of: str | None = Field(None, description="Most recent date supporting this claim.")
     verification_level: str = Field(
         "source-derived",
-        description="Trust tier: source-derived, atlas-verified, subject-verified.",
+        description="Profile identity verification: source-derived, atlas-verified, subject-verified.",
     )
 
 
@@ -304,15 +304,15 @@ class ProfileAnswers(BaseModel):
 
 
 class TrustInfo(BaseModel):
-    """Honest trust signals derived from corroborating evidence."""
+    """Identity verification and separately evaluated source details."""
 
     level: str = Field(
         "unverified",
-        description="subject_verified | atlas_verified | corroborated | unverified.",
+        description="Profile identity: subject_verified | atlas_verified | unverified.",
     )
     independent_source_count: int | None = Field(
         None,
-        description="Distinct registrable source domains backing the entity, when known.",
+        description="Reviewed independent publisher count; null when claim support has not been evaluated.",
     )
     website_grounded: bool | None = Field(
         None,

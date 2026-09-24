@@ -31,7 +31,7 @@ describe("MapLegend", () => {
   it("names the trust tiers honestly, including the quiet unverified dot", () => {
     render(<MapLegend />);
     fireEvent.click(screen.getByRole("button", { name: /legend/i }));
-    expect(screen.getByText("Corroborated across sources")).toBeTruthy();
+    expect(screen.queryByText("Corroborated across sources")).toBeNull();
     expect(screen.getByText("Unverified, shown quietly")).toBeTruthy();
     expect(screen.getByText("City or state location, approximate")).toBeTruthy();
   });
