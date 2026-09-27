@@ -316,6 +316,7 @@ class TestTrustGateUpsert:
     async def test_new_issue_tag_waits_for_review_on_published_profile(
         self, test_db: object
     ) -> None:
+        from atlas.domains.catalog.models.source import SourceCRUD
         from atlas.domains.discovery.pipeline.runner_storage_persistence import _persist_issue_areas
         from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 
@@ -333,7 +334,16 @@ class TestTrustGateUpsert:
         entry = _make_deduped_entry(
             entry_type="organization", name="Issue Org", city="KC", state="MO"
         )
+        source_url = "https://example.org/housing-work"
+        entry.source_urls = [source_url]
         await runner_module._upsert_entry(test_db, entry)  # noqa: SLF001
+        source_id = await SourceCRUD.create(
+            test_db,
+            url=source_url,
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(test_db, existing_id, source_id)
         await _persist_issue_areas(test_db, existing_id, entry.issue_areas)
         cursor = await test_db.execute(
             "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ?", (existing_id,)

@@ -9,6 +9,7 @@ import pytest
 
 from atlas.domains.catalog.schemas.public_review import ReviewQueueItemResponse
 from atlas.domains.catalog.models.entry import EntryCRUD
+from atlas.domains.catalog.models.source import SourceCRUD
 from atlas.domains.moderation.review_queue import ReviewConflictError, ReviewQueueCRUD, _row_to_item
 from atlas.models.database import get_db_connection
 from atlas.platform.dates import coerce_date
@@ -225,6 +226,14 @@ async def test_approve_applies_staged_public_change_and_reject_preserves_old_fac
             email="old@example.org",
             social_media={"bluesky": "old.handle"},
         )
+        source_url = "https://example.org/new-work"
+        source_id = await SourceCRUD.create(
+            conn,
+            url=source_url,
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(conn, entity_id, source_id)
         proposal = {
             "description": {"before": "Original description.", "after": "New description."},
             "region": {"before": None, "after": "Kansas City metro"},
@@ -260,6 +269,7 @@ async def test_approve_applies_staged_public_change_and_reject_preserves_old_fac
             dedup_suspect=False,
             dedup_note=None,
             proposed_changes=proposal,
+            source_urls=[source_url],
         )
         await ReviewQueueCRUD.approve(conn, approved_id, reviewed_by="curator@atlas")
         after_approve = await EntryCRUD.get_by_id(conn, entity_id)

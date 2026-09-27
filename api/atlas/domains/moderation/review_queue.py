@@ -42,6 +42,7 @@ STAGED_ISSUE_FIELD = "issue_areas"
 _UNAVAILABLE_PROFILE = "Published profile is no longer available"
 _INVALID_PROPOSAL = "Review proposal contains unsupported fields"
 _STALE_PROPOSAL = "Published profile changed after this proposal was staged"
+_MISSING_CANDIDATE_SOURCE = "Candidate source is no longer linked to this profile"
 
 
 def _reviewable_website_url(value: str) -> bool:
@@ -470,6 +471,7 @@ class ReviewQueueCRUD:
             )
             if await cursor.fetchone() is None:
                 raise ReviewConflictError(_STALE_PROPOSAL)
+        await ReviewQueueCRUD._validate_linked_candidate_source(conn, item)
         for field, change in changes.items():
             if set(change) != {"before", "after"}:
                 raise ReviewConflictError(_INVALID_PROPOSAL)
@@ -510,6 +512,19 @@ class ReviewQueueCRUD:
             )
             if await cursor.fetchone() is None:
                 raise ReviewConflictError(_STALE_PROPOSAL)
+
+    @staticmethod
+    async def _validate_linked_candidate_source(conn: Any, item: ReviewQueueItemModel) -> None:
+        """Keep proposed public facts tied to a source still on the profile."""
+        cursor = await conn.execute(
+            """SELECT s.url FROM entry_sources es
+               JOIN sources s ON s.id = es.source_id
+               WHERE es.entry_id = ?""",
+            (item.entity_id,),
+        )
+        linked_urls = {str(row[0]) for row in await cursor.fetchall()}
+        if not linked_urls.intersection(item.source_urls):
+            raise ReviewConflictError(_MISSING_CANDIDATE_SOURCE)
 
     @staticmethod
     async def _write_staged_entry_fields(

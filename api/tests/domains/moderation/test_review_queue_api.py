@@ -522,6 +522,59 @@ async def test_stale_public_change_returns_conflict_and_preserves_review(
 
 
 @pytest.mark.asyncio
+async def test_public_change_approval_refuses_removed_candidate_source(
+    test_client: httpx.AsyncClient, db_url: str
+) -> None:
+    """A reviewer cannot publish a proposed fact after its cited source is unlinked."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Transit Riders",
+            description="Original description.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=True,
+        )
+        source_url = "https://example.org/current-work"
+        source_id = await SourceCRUD.create(
+            conn,
+            url=source_url,
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(conn, entity_id, source_id)
+        item_id = await ReviewQueueCRUD.stage_published_change(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            proposed_changes={
+                "description": {"before": "Original description.", "after": "New claim."}
+            },
+            source_urls=[source_url],
+        )
+        await SourceCRUD.unlink_from_entry(conn, entity_id, source_id)
+    finally:
+        await conn.close()
+
+    response = await test_client.post(f"/api/review-queue/{item_id}/approve")
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    conn = await get_db_connection(db_url)
+    try:
+        entry = await EntryCRUD.get_by_id(conn, entity_id)
+        review = await ReviewQueueCRUD.get_by_id(conn, item_id)
+    finally:
+        await conn.close()
+    assert entry is not None
+    assert entry.description == "Original description."
+    assert review is not None
+    assert review.status == "pending"
+
+
+@pytest.mark.asyncio
 async def test_reject_review_item_keeps_entry_inactive(
     test_client: httpx.AsyncClient, db_url: str
 ) -> None:
