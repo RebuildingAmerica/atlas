@@ -1,6 +1,39 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("public visitor journey", () => {
+  test("keeps discovery primary while secondary pages stay reachable on desktop and phone", async ({
+    page,
+  }) => {
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/");
+
+      const nav = page.getByRole("navigation", { name: "Primary navigation" });
+      const navOverflow = await nav.evaluate(
+        (element) => element.scrollWidth - element.clientWidth,
+      );
+      expect(navOverflow).toBeLessThanOrEqual(1);
+      const explore = nav.getByRole("link", { name: "Explore" });
+      if (width === 1280) {
+        await expect(explore).toBeVisible();
+      } else {
+        await expect(explore).toBeHidden();
+      }
+      await expect(nav.getByRole("link", { name: "Firehose" })).toHaveCount(0);
+
+      const more = nav.getByRole("button", { name: "More navigation" });
+      await expect(more).toBeVisible();
+      await more.click();
+
+      const menu = page.getByRole("navigation", { name: "Public navigation menu" });
+      await expect(menu.getByRole("link", { name: "Explore" })).toBeVisible();
+      await expect(menu.getByRole("link", { name: "Firehose" })).toBeVisible();
+      await expect(menu.getByRole("link", { name: "Docs" })).toBeVisible();
+      await menu.getByRole("link", { name: "Map" }).click();
+      await expect(page).toHaveURL(/\/map$/);
+    }
+  });
+
   test("should navigate through all public pages", async ({ page }) => {
     // 1. Home Page
     await page.goto("/");

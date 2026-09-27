@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { UserRound } from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
 import { useHydrated } from "@/platform/runtime/use-hydrated";
-import type { AppNavItem } from "./app-navigation";
+import { shouldShowOrganizationNav, type AppNavItem } from "./app-navigation";
 import {
   AtlasBrandLink,
   AtlasMenuGlyph,
@@ -55,8 +55,13 @@ interface PublicSessionChipProps {
   thumbnailUrl?: string;
 }
 
-const PUBLIC_NAV_ITEMS: AppNavItem[] = [
-  { label: "Browse", to: "/browse" },
+const PUBLIC_EXPLORE_NAV_ITEM: AppNavItem = { label: "Explore", to: "/browse" };
+const PUBLIC_SAVED_NAV_ITEM: AppNavItem = { label: "Saved", to: "/lists" };
+const PUBLIC_ORGANIZATION_NAV_ITEM: AppNavItem = {
+  label: "Your organization",
+  to: "/organization",
+};
+const PUBLIC_SECONDARY_NAV_ITEMS: AppNavItem[] = [
   { label: "Map", to: "/map" },
   { label: "People", to: "/profiles/people" },
   { label: "Organizations", to: "/profiles/organizations" },
@@ -99,12 +104,20 @@ function PublicTopNavShell({
         ? PUBLIC_WORKBENCH_NAV_ITEM
         : PUBLIC_SESSION_NAV_ITEM;
   const sessionThumbnailUrl = signedIn ? (session.user.image ?? undefined) : undefined;
+  const primaryItems = [
+    PUBLIC_EXPLORE_NAV_ITEM,
+    ...(!hideSessionLinks && (signedIn || localMode) ? [PUBLIC_SAVED_NAV_ITEM] : []),
+    ...(signedIn && session && shouldShowOrganizationNav(session)
+      ? [PUBLIC_ORGANIZATION_NAV_ITEM]
+      : []),
+  ];
+  const menuItems = [...primaryItems, ...PUBLIC_SECONDARY_NAV_ITEMS];
 
   return (
     <PublicTopNavChrome
       frame={signedIn || localMode || hideSessionLinks ? "app" : "showcase"}
-      menuItems={PUBLIC_NAV_ITEMS}
-      primaryItems={PUBLIC_NAV_ITEMS}
+      menuItems={menuItems}
+      primaryItems={primaryItems}
       showSearch={showSearch}
       sessionItem={sessionItem}
       sessionThumbnailUrl={sessionThumbnailUrl}
@@ -119,8 +132,8 @@ const PublicTopNavChrome = withTopNavChrome<PublicTopNavChromeProps>(
   ) => ({
     brandSlot: <AtlasBrandLink />,
     frame,
-    leadingSlot: <PublicNavigationMenu items={menuItems} open={menuOpen} toggleMenu={toggleMenu} />,
     primarySlot: <PublicPrimaryNav items={primaryItems} />,
+    menuSlot: <PublicNavigationMenu items={menuItems} open={menuOpen} toggleMenu={toggleMenu} />,
     sessionSlot: (
       <PublicSessionArea
         showSearch={showSearch}
@@ -133,17 +146,18 @@ const PublicTopNavChrome = withTopNavChrome<PublicTopNavChromeProps>(
 
 function PublicNavigationMenu({ items, open, toggleMenu }: PublicNavigationMenuProps) {
   return (
-    <div className="visible relative flex max-w-12 shrink-0 translate-y-0 overflow-visible opacity-100 transition-[max-width,opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none md:pointer-events-none md:invisible md:max-w-0 md:-translate-y-1 md:opacity-0">
+    <div className="relative flex shrink-0">
       <button
         type="button"
         aria-controls="public-navigation-menu"
         aria-expanded={open}
-        aria-label="Open public navigation menu"
-        className="border-border bg-surface-container-lowest text-ink-strong hover:bg-surface-container focus-visible:ring-civic flex h-10 w-10 items-center justify-center rounded-full border transition-colors duration-150 outline-none focus-visible:ring-2 motion-reduce:transition-none"
+        aria-label="More navigation"
+        className="border-border bg-surface-container-lowest text-ink-strong hover:bg-surface-container focus-visible:ring-civic flex h-10 items-center justify-center gap-2 rounded-full border px-3 transition-colors duration-150 outline-none focus-visible:ring-2 motion-reduce:transition-none"
         data-menu-state={open ? "open" : "closed"}
         onClick={toggleMenu}
       >
         <AtlasMenuGlyph open={open} testIdPrefix="public-menu-icon" />
+        <span className="hidden sm:inline">More</span>
       </button>
       {open ? <PublicMenuPanel items={items} /> : null}
     </div>
@@ -226,7 +240,7 @@ function PublicMenuPanel({ items }: { items: AppNavItem[] }) {
   return (
     <div
       id="public-navigation-menu"
-      className="border-border bg-surface-container-lowest absolute top-12 left-0 z-50 grid w-56 gap-1 rounded-lg border p-2 shadow-lg"
+      className="border-border bg-surface-container-lowest absolute top-12 right-0 z-50 grid w-56 gap-1 rounded-lg border p-2 shadow-lg"
     >
       <nav aria-label="Public navigation menu" className="grid gap-1">
         {items.map((item) => (

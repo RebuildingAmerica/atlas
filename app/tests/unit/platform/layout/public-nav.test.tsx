@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PublicTopNav } from "@/platform/layout/public-nav";
+import { PublicTopNav, PublicTopNavSafe } from "@/platform/layout/public-nav";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -27,27 +27,14 @@ describe("PublicTopNav", () => {
     render(<PublicTopNav localMode={false} />);
 
     expect(screen.getByRole("searchbox", { name: "Search Atlas" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Browse" })).toHaveAttribute("data-link-to", "/browse");
-    expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("data-link-to", "/map");
-    expect(screen.getByRole("link", { name: "People" })).toHaveAttribute(
+    const primaryNavigation = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(within(primaryNavigation).getByRole("link", { name: "Explore" })).toHaveAttribute(
       "data-link-to",
-      "/profiles/people",
+      "/browse",
     );
-    expect(screen.getByRole("link", { name: "Organizations" })).toHaveAttribute(
-      "data-link-to",
-      "/profiles/organizations",
-    );
-    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
-      "data-link-to",
-      "/pricing",
-    );
-    expect(screen.getByRole("link", { name: "Firehose" })).toHaveAttribute(
-      "data-link-to",
-      "/firehose",
-    );
-    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
-    expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
-    expect(screen.getByRole("button", { name: "Open public navigation menu" })).toBeInTheDocument();
+    expect(within(primaryNavigation).queryByRole("link", { name: "Firehose" })).toBeNull();
+    expect(within(primaryNavigation).queryByRole("link", { name: "Docs" })).toBeNull();
+    expect(screen.getByRole("button", { name: "More navigation" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "data-link-to",
       "/sign-in",
@@ -59,12 +46,31 @@ describe("PublicTopNav", () => {
     expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open public navigation menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "More navigation" }));
     const menu = screen.getByRole("navigation", { name: "Public navigation menu" });
-    expect(within(menu).getByRole("link", { name: "Browse" })).toHaveAttribute(
+    expect(within(menu).getByRole("link", { name: "Explore" })).toHaveAttribute(
       "data-link-to",
       "/browse",
     );
+    expect(within(menu).getByRole("link", { name: "Map" })).toHaveAttribute("data-link-to", "/map");
+    expect(within(menu).getByRole("link", { name: "People" })).toHaveAttribute(
+      "data-link-to",
+      "/profiles/people",
+    );
+    expect(within(menu).getByRole("link", { name: "Organizations" })).toHaveAttribute(
+      "data-link-to",
+      "/profiles/organizations",
+    );
+    expect(within(menu).getByRole("link", { name: "Pricing" })).toHaveAttribute(
+      "data-link-to",
+      "/pricing",
+    );
+    expect(within(menu).getByRole("link", { name: "Firehose" })).toHaveAttribute(
+      "data-link-to",
+      "/firehose",
+    );
+    expect(within(menu).getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(within(menu).getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
   });
 
   it("lets the home page own search instead of duplicating it in chrome", async () => {
@@ -81,7 +87,17 @@ describe("PublicTopNav", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("puts the public menu control first and exposes its animated open state", async () => {
+  it("keeps account-specific saved work out of the safe error-page header", () => {
+    render(<PublicTopNavSafe />);
+
+    expect(screen.getByRole("link", { name: "Explore" })).toHaveAttribute(
+      "data-link-to",
+      "/browse",
+    );
+    expect(screen.queryByRole("link", { name: "Saved" })).not.toBeInTheDocument();
+  });
+
+  it("keeps secondary destinations in an operable More menu after the brand", async () => {
     const { useAtlasSession } = await import("@/domains/access");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
@@ -92,14 +108,14 @@ describe("PublicTopNav", () => {
     const primaryNavigation = screen.getByRole("navigation", { name: "Primary navigation" });
     const brandLink = primaryNavigation.querySelector('[data-link-to="/"]');
     const menuButton = within(primaryNavigation).getByRole("button", {
-      name: "Open public navigation menu",
+      name: "More navigation",
     });
 
     expect(brandLink).toBeInTheDocument();
     if (brandLink == null) {
       throw new Error("Expected the Atlas brand link to render in primary navigation.");
     }
-    expect(menuButton.compareDocumentPosition(brandLink)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(brandLink.compareDocumentPosition(menuButton)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(menuButton).toHaveAttribute("data-menu-state", "closed");
     expect(within(menuButton).getByTestId("public-menu-icon-top")).toHaveAttribute(
       "data-icon-state",
@@ -156,18 +172,25 @@ describe("PublicTopNav", () => {
       "data-link-to",
       "/home",
     );
+    expect(screen.getByRole("link", { name: "Explore" })).toHaveAttribute(
+      "data-link-to",
+      "/browse",
+    );
+    expect(screen.getByRole("link", { name: "Saved" })).toHaveAttribute("data-link-to", "/lists");
+    expect(screen.queryByRole("link", { name: "Your organization" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Home" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Research" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Coverage" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Lists" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
+    fireEvent.click(screen.getByRole("button", { name: "More navigation" }));
+    const menu = screen.getByRole("navigation", { name: "Public navigation menu" });
+    expect(within(menu).getByRole("link", { name: "Pricing" })).toHaveAttribute(
       "data-link-to",
       "/pricing",
     );
-    expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
+    expect(within(menu).getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   });
 
@@ -186,20 +209,67 @@ describe("PublicTopNav", () => {
       "data-link-to",
       "/home",
     );
+    expect(screen.getByRole("link", { name: "Explore" })).toHaveAttribute(
+      "data-link-to",
+      "/browse",
+    );
+    expect(screen.getByRole("link", { name: "Saved" })).toHaveAttribute("data-link-to", "/lists");
     expect(screen.queryByRole("link", { name: "Home" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Research" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Coverage" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Lists" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Watching" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
-    expect(screen.getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
     expect(screen.queryByRole("link", { name: "Account" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
+    fireEvent.click(screen.getByRole("button", { name: "More navigation" }));
+    const menu = screen.getByRole("navigation", { name: "Public navigation menu" });
+    expect(within(menu).getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(within(menu).getByRole("link", { name: "API" })).toHaveAttribute("href", "/docs/api");
+    expect(within(menu).getByRole("link", { name: "Pricing" })).toHaveAttribute(
       "data-link-to",
       "/pricing",
     );
     expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
+  });
+
+  it("gives a team member direct access to saved work and their organization", async () => {
+    const { useAtlasSession } = await import("@/domains/access");
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: {
+        isLocal: false,
+        user: {
+          email: "member@example.com",
+          emailVerified: true,
+          id: "user_3",
+          image: null,
+          name: "Member",
+        },
+        workspace: {
+          activeOrganization: { id: "org_3", name: "Transit Team", workspaceType: "team" },
+          memberships: [{ id: "org_3", name: "Transit Team" }],
+          onboarding: { needsWorkspace: false, hasPendingInvitations: false },
+          capabilities: { canSwitchOrganizations: false },
+        },
+      },
+    } as unknown as ReturnType<typeof useAtlasSession>);
+
+    render(<PublicTopNav localMode={false} />);
+
+    expect(screen.getByRole("link", { name: "Saved" })).toHaveAttribute("data-link-to", "/lists");
+    expect(screen.getByRole("link", { name: "Your organization" })).toHaveAttribute(
+      "data-link-to",
+      "/organization",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "More navigation" }));
+    const menu = screen.getByRole("navigation", { name: "Public navigation menu" });
+    expect(within(menu).getByRole("link", { name: "Saved" })).toHaveAttribute(
+      "data-link-to",
+      "/lists",
+    );
+    expect(within(menu).getByRole("link", { name: "Your organization" })).toHaveAttribute(
+      "data-link-to",
+      "/organization",
+    );
   });
 
   it("falls back to the person glyph when a signed-in visitor has no avatar", async () => {
