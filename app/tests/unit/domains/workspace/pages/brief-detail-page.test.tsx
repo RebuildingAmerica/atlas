@@ -320,7 +320,7 @@ describe("BriefDetailPage", () => {
         },
       });
     });
-    expect(screen.getByText("Saved 1 actor to Coalition outreach.")).toBeInTheDocument();
+    expect(await screen.findByText("Saved 1 actor to Coalition outreach.")).toBeInTheDocument();
   });
 
   it("updates editable brief memo fields without dropping evidence context", async () => {
