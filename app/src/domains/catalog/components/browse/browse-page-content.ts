@@ -11,7 +11,8 @@ export interface BrowsePageContent {
   };
   lockedEntryTypes?: EntryType[];
   resultLabelPlural?: string;
-  resultsHeading?: string;
+  resultsHeading: string;
+  searchLabel?: string;
   searchPlaceholder?: string;
   showEntryTypeFilter?: boolean;
   scopeTabs?: {

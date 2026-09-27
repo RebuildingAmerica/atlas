@@ -6,9 +6,48 @@ import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BrowsePage } from "@/domains/catalog/components/browse/browse-page";
-import { getNavigateCalls } from "./browse-page-test-setup";
+import { getNavigateCalls, mocks } from "./browse-page-test-setup";
 
 describe("BrowsePage navigation", () => {
+  it("shows a paginated people directory with search and place filters but no removable type", () => {
+    render(
+      <BrowsePage
+        search={{ view: "list" }}
+        page={{
+          description: "Find people by name, issue, or place.",
+          eyebrow: "Directory",
+          title: "People",
+          lockedEntryTypes: ["person"],
+          resultLabelPlural: "people",
+          resultsHeading: "People",
+          searchLabel: "Search people by name, issue, or place",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "People", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Search results" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "People", level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Search people by name, issue, or place" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Find people by name, issue, or place.")).toBeInTheDocument();
+    expect(mocks.useEntries).toHaveBeenCalledWith(
+      expect.objectContaining({ entry_types: ["person"], limit: 20 }),
+      expect.anything(),
+    );
+    expect(screen.queryByRole("button", { name: "Remove People" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Filter/ }));
+    expect(screen.queryByRole("button", { name: /^Types/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(
+      getNavigateCalls().some(
+        (call) => typeof call.search === "function" && call.search({}).offset === 20,
+      ),
+    ).toBe(true);
+  });
+
   it("renders editorial browse controls and issues navigate updates for browse interactions", () => {
     render(
       <BrowsePage

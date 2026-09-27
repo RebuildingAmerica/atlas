@@ -220,10 +220,12 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
       "cities",
       "regions",
       "issue_areas",
-      "entry_types",
       "source_types",
       "source_patterns",
     ];
+    if (!pageContent.lockedEntryTypes?.length) {
+      filterKeys.push("entry_types");
+    }
     filterKeys.forEach((key) => {
       selectedFilters[key].forEach((value) => {
         chips.push({
@@ -240,7 +242,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
     });
 
     return chips;
-  }, [issueAreaLabels, selectedFilters, updateSearch]);
+  }, [issueAreaLabels, pageContent.lockedEntryTypes, selectedFilters, updateSearch]);
 
   const discoveryContext = useMemo(
     () => ({
@@ -271,9 +273,13 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
   const activeCounts = {
     issues: selectedFilters.issue_areas.length,
     sources: selectedFilters.source_types.length,
-    types: selectedFilters.entry_types.length,
+    types: pageContent.lockedEntryTypes?.length ? 0 : selectedFilters.entry_types.length,
   };
-  const shouldShowResults = hasActiveSearch || Boolean(resultsError) || entriesQuery.isLoading;
+  const shouldShowResults =
+    Boolean(pageContent.lockedEntryTypes?.length) ||
+    hasActiveSearch ||
+    Boolean(resultsError) ||
+    entriesQuery.isLoading;
 
   const mapSearch: BrowseRouteSearch = {
     ...search,
@@ -296,11 +302,14 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
       mapSearch={mapSearch}
       placement={shouldShowResults ? "results" : "editorial"}
       quickIssueAreas={quickIssueAreas}
+      searchLabel={pageContent.searchLabel}
       searchPlaceholder={pageContent.searchPlaceholder}
       selectedEntryTypes={selectedFilters.entry_types}
       selectedIssueAreas={selectedFilters.issue_areas}
       selectedSourceTypes={selectedFilters.source_types}
-      showEntryTypeFilter={Boolean(pageContent.showEntryTypeFilter)}
+      showEntryTypeFilter={
+        Boolean(pageContent.showEntryTypeFilter) && !pageContent.lockedEntryTypes?.length
+      }
       onResetBrowse={resetBrowse}
       onSearch={runSearch}
       onToggleFilter={handleToggleFilter}
@@ -312,6 +321,9 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
       <section className="px-4 pt-4 pb-2 md:px-8">
         <div className="mx-auto w-full max-w-[76rem]">
           <h1 className="text-3xl leading-tight text-balance md:text-4xl">{browseTitle}</h1>
+          {page ? (
+            <p className="type-body-medium text-ink-muted mt-2">{pageContent.description}</p>
+          ) : null}
         </div>
       </section>
 
@@ -330,6 +342,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
             relatedSections={editorialSections}
             indexContextLabel={indexContextLabel}
             resultLabelPlural={pageContent.resultLabelPlural}
+            resultsHeading={pageContent.resultsHeading}
             discoveryContext={discoveryContext}
             onPageChange={(offset) => {
               updateSearch({ offset });

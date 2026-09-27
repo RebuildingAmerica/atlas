@@ -32,6 +32,7 @@ interface BrowseSearchHeaderProps {
   intentChips: BrowseIntentChip[];
   mapSearch: BrowseRouteSearch;
   placement?: "editorial" | "results";
+  searchLabel?: string;
   searchPlaceholder?: string;
   selectedEntryTypes: string[];
   selectedIssueAreas: string[];
@@ -54,6 +55,7 @@ export function BrowseSearchHeader({
   mapSearch,
   placement = "results",
   quickIssueAreas,
+  searchLabel,
   searchPlaceholder,
   selectedEntryTypes,
   selectedIssueAreas,
@@ -82,6 +84,7 @@ export function BrowseSearchHeader({
             key={initialQuery}
             initialQuery={initialQuery}
             onSearch={onSearch}
+            label={searchLabel}
             placeholder={searchPlaceholder}
           />
 

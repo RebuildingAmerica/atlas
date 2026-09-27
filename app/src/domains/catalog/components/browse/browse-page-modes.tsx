@@ -37,6 +37,7 @@ interface BrowseResultsModeProps {
   pagination: EntryListResponse["pagination"] | undefined;
   relatedSections: ReturnType<typeof buildBrowseEditorialSections>;
   resultLabelPlural: string | undefined;
+  resultsHeading: string;
   onPageChange: (offset: number) => void;
   onSelectFacet: (key: BrowseFilterKey, value: string) => void;
 }
@@ -53,6 +54,7 @@ export function BrowseResultsMode({
   pagination,
   relatedSections,
   resultLabelPlural,
+  resultsHeading,
   onPageChange,
   onSelectFacet,
 }: BrowseResultsModeProps) {
@@ -64,7 +66,7 @@ export function BrowseResultsMode({
     <>
       <section aria-label="Search results" className="max-w-4xl">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <h2 className="type-headline-small text-ink-strong">People and groups</h2>
+          <h2 className="type-headline-small text-ink-strong">{resultsHeading}</h2>
           {pagination ? (
             <p className="type-body-medium text-ink-muted">{resultLabel(pagination.total)}</p>
           ) : null}

@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 
 interface BrowseSearchBoxProps {
   initialQuery: string;
+  label?: string;
   onSearch: (query: string) => void;
   placeholder?: string;
 }
@@ -13,6 +14,7 @@ interface BrowseSearchBoxProps {
  */
 export function BrowseSearchBox({
   initialQuery,
+  label = "Search people and groups by issue, place, or name",
   onSearch,
   placeholder = "Try housing in Detroit",
 }: BrowseSearchBoxProps) {
@@ -34,7 +36,7 @@ export function BrowseSearchBox({
       }}
     >
       <label htmlFor={inputId} className="sr-only">
-        Search people and groups by issue, place, or name
+        {label}
       </label>
       <Search className="text-ink-muted ml-4 h-4 w-4 shrink-0" />
       <input
