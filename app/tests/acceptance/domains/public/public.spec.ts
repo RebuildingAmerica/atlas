@@ -22,6 +22,7 @@ test.describe("public visitor journey", () => {
     await expect(page.getByRole("heading", { name: /Atlas is free to use/ })).toBeVisible();
     await expect(page.getByText(/Free/i).first()).toBeVisible();
     await expect(page.getByText(/Pro/i).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Get Atlas Pro" })).toBeEnabled();
 
     // 4. Request Discount Page
     await page.goto("/request-discount");

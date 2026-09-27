@@ -164,6 +164,10 @@ export default defineConfig({
         // The acceptance run has to be able to buy. The e2e API seeds
         // profiles before it boots, so the catalog probe finds entries.
         ATLAS_BILLING_CHECKOUT_ENABLED: "true",
+        // The built server uses production billing guards, which require an
+        // explicit offer allowlist even when the test process is local.
+        ATLAS_BILLING_ALLOWED_OFFERS:
+          "atlas_pro:monthly,atlas_pro:yearly,atlas_pro:four_month,atlas_team:monthly,atlas_team:yearly,atlas_research_pass:weekly,atlas_research_pass:once",
         NODE_ENV: "development",
         PORT: appPort,
         ATLAS_AUTH_DB_PATH: authDbPath,
