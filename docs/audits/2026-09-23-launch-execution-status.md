@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-4`
+Updated September 27, 2026 · production release `v2026.09.27-5`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,10 +16,12 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed inventory is recorded here. The repository contains
 fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-4` deployed those changes, but it did not demonstrate a
+Release `v2026.09.27-5` deployed those changes, but it did not demonstrate a
 completed live payment, genuine signed webhook delivery, provider-account
-configuration, or a useful reviewed Las Vegas discovery slice. Passing
-deployment checks does not satisfy those acceptance gates.
+configuration, or a useful reviewed Las Vegas discovery slice. A subsequent
+read-only Production billing inventory confirmed that the required offer
+allowlist is absent. Passing deployment checks does not satisfy those acceptance
+gates.
 
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
@@ -28,8 +30,8 @@ public profile claim with a workspace or a purchase.
 
 ## Verified September 27 production baseline
 
-[Release run 36311496613](https://github.com/RebuildingAmerica/atlas/actions/runs/36311496613)
-deployed commit `2709f56184d3f8aa45169a5dcf18287abe52a8a0` to the API, PDS, and
+[Release run 36314118742](https://github.com/RebuildingAmerica/atlas/actions/runs/36314118742)
+deployed commit `e7b517622faa6d2c2ebe86f22d893ff8a47a3924` to the API, PDS, and
 Vercel app and promoted the production domains. Full CI passed on that tag,
 including browser and Stripe **test-mode** acceptance. Hosted smoke reported 9
 passes and 1 skip; the signed-in ATProto identity journey passed once. These
@@ -45,6 +47,17 @@ attempts exceeded the job timeout; pull-request and scheduled CI retain their
 coverage configuration. Restore a reliable coverage gate before treating a later
 release as fully verified.
 
+The read-only
+[Production billing inventory run 36316296989](https://github.com/RebuildingAmerica/atlas/actions/runs/36316296989)
+completed against this release and intentionally exited nonzero for **NO-GO**.
+Vercel Production metadata confirms `STRIPE_API_KEY`, `STRIPE_ATLAS_CATALOG`,
+and `STRIPE_WEBHOOK_SECRET` are configured by name, while
+`ATLAS_BILLING_ALLOWED_OFFERS` is absent. Vercel does not expose sensitive
+variable values to this CLI job, so the deployed key's validity and mode,
+charge-enabled account, catalog and webhook objects, Tax, portal, signed
+delivery, runtime write permissions, and payment lifecycle remain unverified.
+The inventory did not change settings or move money.
+
 The release did not run a rollback drill, physical-mobile or assistive-tech
 journey, editorial review of Las Vegas records, private-correction rehearsal, or
 team billing-role matrix against the hosted app. Those remain separate gates.
@@ -55,7 +68,7 @@ team billing-role matrix against the hosted app. Those remain separate gates.
 | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Correction notes stay private                            | `8417b4fd` separates anonymous status from review evidence.                                                                                                                                                                                                                                                                                                                                               | Deploy and submit a synthetic report; prove anonymous readers cannot retrieve its note and an authorized reviewer can.                                                                |
 | A member cannot open team billing                        | `8417b4fd` guards the portal at the server.                                                                                                                                                                                                                                                                                                                                                               | Signed-in member, admin, owner, and cross-workspace checks against the deployed app.                                                                                                  |
-| Unapproved offers cannot start a sale                    | `d0fdb5c4` adds an exact production offer allowlist to pricing and Checkout.                                                                                                                                                                                                                                                                                                                              | Inspect the deployed allowlist and checkout flag; verify every visible price and disabled offer.                                                                                      |
+| Unapproved offers cannot start a sale                    | `d0fdb5c4` adds an exact production offer allowlist to pricing and Checkout. The September 27 Production inventory found the allowlist absent and checkout disabled.                                                                                                                                                                                                                                      | Set and verify only accepted offers after the full paid-journey proof; check every visible price and disabled offer.                                                                  |
 | A paid session belongs to its saved purchase             | `4ca37d58` matches workspace, product, interval, and session before fulfillment. `25a2543f` aligns the older isolation test.                                                                                                                                                                                                                                                                              | Test-mode purchase, signed webhook, replay, and returning paid access.                                                                                                                |
 | Delayed and refunded payments do not leave false access  | `8417b4fd`, `db9d4a14`, and `9ddfa1d4` gate settlement, attribute refunds, revoke a fully refunded term, and provide a previewable operator command.                                                                                                                                                                                                                                                      | Run test-mode async success/failure, cancellation, full refund, retry, and entitlement checks; then inspect live delivery.                                                            |
 | Visitors can start with search                           | `1a2832aa` moves mobile Browse search ahead of issue panels; `e615149f` makes home People and Organizations shortcuts use type filters.                                                                                                                                                                                                                                                                   | Retest with a populated API on physical mobile and complete ten launch questions.                                                                                                     |
@@ -99,11 +112,12 @@ did not charge a buyer or establish entitlement, cancellation, or refund. `app/`
 is now locally linked to the existing Atlas Vercel project. Read-only Vercel
 Production metadata confirms the Stripe key, signing secret, catalog, and Atlas
 public URL variable names are present; their values were not read. The
-`ATLAS_BILLING_ALLOWED_OFFERS` variable required by this branch's paid release
-gate was absent at the September 23 inspection. The September 27 production
-workflow recorded the GitHub checkout flag as `false`; it did not inspect the
-live offer allowlist or Stripe object values. `pnpm stripe:verify:prod` still
-cannot inspect the live catalog because this checkout has no `.env.production`
+`ATLAS_BILLING_ALLOWED_OFFERS` variable required by the paid release gate was
+absent in the September 27 Production inventory. The September 27 deployment
+workflow recorded the GitHub checkout flag as `false`; the billing inventory
+separately confirmed that the flag was closed. Sensitive Stripe values could not
+be read through the inventory CLI job. `pnpm stripe:verify:prod` still cannot
+inspect the live catalog because this checkout has no `.env.production`
 verification inputs. These facts neither prove nor disprove the deployed key's
 validity, webhook delivery, or ability to charge.
 
@@ -132,13 +146,13 @@ until each offered combination passes. Add only accepted offers.
 
 | Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-4` passed CI, production deployment, hosted smoke, and hosted identity. Python coverage was omitted from this release test job; a rollback drill remains unverified.                                                                                                                               |
+| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-5` passed CI, production deployment, hosted smoke, and hosted identity. Python coverage was omitted from this release test job; a rollback drill remains unverified.                                                                                                                               |
 | Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                                                                                                                                                                                                                                |
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | [Las Vegas](2026-09-23-las-vegas-coverage-gate.md) is the home-market gate. Current city records have zero public-transit entries and no listed website or email across transit/housing candidates. Acquire and review useful local supply before promoting a pilot. Seattle remains comparative evidence only. |
 | Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.                                                                                                                                                                                                                                                 |
 | Organizer journey       | Normal registration, passkey and recovery on physical devices, pending save, list note, reopened work, brief/export, and pricing clarity.                                                                                                                   | Save intent, save failure, and brief selection repaired; complete journey unverified.                                                                                                                                                                                                                           |
 | Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard, invite retention, access-change confirmations, and owner handoff implemented locally; full journey unverified.                                                                                                                                                                                    |
-| Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; provider and live lifecycle proof missing.                                                                                                                                                                                                                                                              |
+| Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; Production offer allowlist is absent, checkout is disabled, and sensitive provider values and live lifecycle remain unverified.                                                                                                                                                                         |
 | Operations              | Name a release owner, editorial reviewer, support inbox owner, refund operator, daily correction/review window, and incident escalation. Record a rehearsal, not only a policy.                                                                             | Ownership and rehearsal not evidenced in this checkout.                                                                                                                                                                                                                                                         |
 
 The first public release should be a named pilot with reviewed records and
