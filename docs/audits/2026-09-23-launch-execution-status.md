@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-12`
+Updated September 27, 2026 · production release `v2026.09.27-14`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,7 +16,7 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed inventory is recorded here. The repository contains
 fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-12` deployed those changes, but it did not demonstrate a
+Release `v2026.09.27-14` deployed those changes, but it did not demonstrate a
 completed live payment, genuine signed webhook delivery, provider-account
 configuration, or a useful reviewed Las Vegas discovery slice. The read-only
 Production billing inventory for this release found the required offer allowlist
@@ -227,7 +227,47 @@ have been editorially reviewed, or that a payment can settle and deliver access.
 The browser policy in this environment denied a direct visual visit to the
 public profile, so no direct production visual acceptance is claimed.
 
-## Current production release `v2026.09.27-12`
+## Current production release `v2026.09.27-14`
+
+Commit `39f505493b600d64fbef87ba81d6cf6d4f35694b` keeps a visitor's place,
+filters, map camera, and selected public profile while moving between the map
+and list. The map exposes List view from both the unselected view and the
+selected-result panel. The list highlights a selected result on its current page
+or pins that public profile above the page when pagination would hide it; the
+visitor can clear that selection and return to the map. This removes a handoff
+dead end, but it does not establish that Las Vegas has useful reviewed profiles
+to discover.
+
+The local app suite passed 3,888 tests with 100% statement, branch, function,
+and line coverage. Four affected map browser tests passed locally, and the
+normal pre-push quality gate passed all 33 tasks.
+[Staging run 36343759463](https://github.com/RebuildingAmerica/atlas/actions/runs/36343759463)
+passed CI, browser acceptance, and hosted smoke on attempt 2. Its first hosted
+public-page check timed out; the retry passed. The app-only staging workflow did
+not redeploy the API or PDS.
+
+[Production run 36344298946](https://github.com/RebuildingAmerica/atlas/actions/runs/36344298946)
+passed full release CI. Its first deploy attempt failed because the newly built
+API container did not become ready on port 8000. The deploy service account
+could not read Cloud Run logs (`PERMISSION_DENIED` for log views), so the
+immediate startup cause is unknown. A failed-job retry of the same tagged commit
+successfully deployed the API, PDS, and Vercel app, promoted the domains, and
+passed hosted smoke, signed-in identity, and checkout checks. The successful
+retry shows the revision started; it does not explain the first failure. The
+hosted checkout job did not exercise a live payment because checkout is closed.
+
+The read-only
+[production billing inventory for v14](https://github.com/RebuildingAmerica/atlas/actions/runs/36346018704)
+returned **NO-GO** on this exact tag. The checkout flag is closed and
+`ATLAS_BILLING_ALLOWED_OFFERS` is absent in Vercel Production. Stripe key,
+catalog, and webhook secret are present by name, but this job could not read
+their sensitive values or verify account capability, catalog contents, signed
+delivery, Tax, portal, runtime permissions, settlement, entitlement, cancel, and
+refund. The inventory changed no settings and moved no money. A populated mobile
+visitor journey, editorially reviewed Las Vegas inventory, and rollback drill
+also remain unverified.
+
+## Prior production release `v2026.09.27-12`
 
 Commit `7038c3348aef66d957286d692df82292c8c7f59b` replaces the repeating
 showcase on the public People and Organizations index pages with searchable,
@@ -345,10 +385,10 @@ until each offered combination passes. Add only accepted offers.
 
 | Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-12` passed production CI, deployment, hosted smoke, and hosted identity. Live checkout was skipped and a rollback drill remains unverified.                                                                                                                                                        |
+| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-14` passed production CI, deployment on retry, hosted smoke, and hosted identity. The first API revision failed to start; Cloud Run logs were unavailable to CI. Live checkout was skipped and a rollback drill remains unverified.                                                                |
 | Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                                                                                                                                                                                                                                |
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | [Las Vegas](2026-09-23-las-vegas-coverage-gate.md) is the home-market gate. Current city records have zero public-transit entries and no listed website or email across transit/housing candidates. Acquire and review useful local supply before promoting a pilot. Seattle remains comparative evidence only. |
-| Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search placement, source-first profiles, and searchable People/Organizations directories are deployed; phone-based search-to-action and correction outcomes remain unverified.                                                                                                                                  |
+| Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search placement, source-first profiles, searchable People/Organizations directories, and map-to-list selection handoff are deployed; phone-based search-to-action and correction outcomes remain unverified.                                                                                                   |
 | Organizer journey       | Normal registration, passkey and recovery on physical devices, pending save, list note, reopened work, brief/export, and pricing clarity.                                                                                                                   | Save intent, save failure, and brief selection repaired; complete journey unverified.                                                                                                                                                                                                                           |
 | Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard, invite retention, access-change confirmations, and owner handoff implemented locally; full journey unverified.                                                                                                                                                                                    |
 | Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; Production offer allowlist is absent, checkout is disabled, and sensitive provider values and live lifecycle remain unverified.                                                                                                                                                                         |
