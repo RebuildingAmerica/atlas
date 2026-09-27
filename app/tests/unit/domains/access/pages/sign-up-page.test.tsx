@@ -6,6 +6,7 @@ import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-har
 
 const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
+  loadCheckoutAvailability: vi.fn(),
   requestMagicLink: vi.fn(),
   useAtlasSession: vi.fn(),
   useQuery: vi.fn(),
@@ -30,6 +31,10 @@ vi.mock("@/domains/access/session.functions", () => ({
   requestMagicLink: mocks.requestMagicLink,
 }));
 
+vi.mock("@/domains/billing/purchase-onboarding.functions", () => ({
+  loadCheckoutAvailability: mocks.loadCheckoutAvailability,
+}));
+
 import { SignUpPage } from "@/domains/access/pages/auth/sign-up-page";
 
 describe("SignUpPage", () => {
@@ -37,6 +42,7 @@ describe("SignUpPage", () => {
     mocks.invalidateQueries.mockReset();
     resetRouterMocks();
     mocks.requestMagicLink.mockReset();
+    mocks.loadCheckoutAvailability.mockReset();
     mocks.useAtlasSession.mockReturnValue({ data: null });
     mocks.useQuery.mockReturnValue({
       data: { available: true, allowedOffers: ["atlas_team:monthly"] },
@@ -63,6 +69,21 @@ describe("SignUpPage", () => {
     render(<SignUpPage intent="team-sso" />);
     expect(screen.getByText("Start your Atlas Team workspace")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continue with team setup/i })).toBeInTheDocument();
+  });
+
+  it("loads checkout availability for Team sign-up", async () => {
+    mocks.loadCheckoutAvailability.mockResolvedValue({
+      available: true,
+      allowedOffers: ["atlas_team:monthly"],
+    });
+
+    render(<SignUpPage intent="team-sso" />);
+
+    const queryOptions = mocks.useQuery.mock.calls[0]?.[0] as
+      { enabled: boolean; queryFn: () => Promise<unknown> } | undefined;
+    expect(queryOptions?.enabled).toBe(true);
+    await queryOptions?.queryFn();
+    expect(mocks.loadCheckoutAvailability).toHaveBeenCalledOnce();
   });
 
   it("does not collect an email for Team when checkout is closed", () => {
