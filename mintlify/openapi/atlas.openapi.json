@@ -1013,6 +1013,101 @@
         "title": "ContactInfo",
         "type": "object"
       },
+      "CorrectionInboxItemResponse": {
+        "description": "Private profile report with the profile identity an editor needs.",
+        "properties": {
+          "created_at": {
+            "description": "created at for this correction inbox item.",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_id": {
+            "description": "entity id for this correction inbox item.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_name": {
+            "description": "entity name for this correction inbox item.",
+            "title": "Entity Name",
+            "type": "string"
+          },
+          "entity_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity slug for this correction inbox item.",
+            "title": "Entity Slug"
+          },
+          "entity_type": {
+            "description": "entity type for this correction inbox item.",
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "description": "id for this correction inbox item.",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "note for this correction inbox item.",
+            "title": "Note"
+          },
+          "reason": {
+            "description": "reason for this correction inbox item.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "entity_id",
+          "entity_name",
+          "entity_slug",
+          "entity_type",
+          "reason",
+          "note",
+          "created_at"
+        ],
+        "title": "CorrectionInboxItemResponse",
+        "type": "object"
+      },
+      "CorrectionInboxResponse": {
+        "description": "Paginated open reports; never exposed to anonymous callers.",
+        "properties": {
+          "items": {
+            "description": "items for this correction inbox.",
+            "items": {
+              "$ref": "#/components/schemas/CorrectionInboxItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "description": "total for this correction inbox.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CorrectionInboxResponse",
+        "type": "object"
+      },
       "CoverageCount": {
         "description": "Issue coverage count.",
         "properties": {
@@ -18864,6 +18959,143 @@
           }
         },
         "summary": "Create an entity flag",
+        "tags": [
+          "flags"
+        ]
+      }
+    },
+    "/api/entity-flags/inbox": {
+      "get": {
+        "description": "Give an editor a private, oldest-first queue of reports requiring action.\n\nUse this flag operation to report or review possible corrections. A flag is a review signal; keep the original source context available until a moderator resolves it.",
+        "operationId": "listCorrectionInbox",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorrectionInboxResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List open profile corrections for editors",
         "tags": [
           "flags"
         ]
