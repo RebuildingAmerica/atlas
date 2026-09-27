@@ -114,14 +114,14 @@ async function authorizeOneHostedAtprotoSignIn(page: Page, origin: string): Prom
   await page.route(
     `${origin}/api/atproto/sign-in/start?*`,
     async (route) => {
-      const response = await route.fetch({
+      // Let the browser follow the server's redirect. Fulfilling an intercepted
+      // navigation with a fetched 302 can leave its next request pending.
+      await route.continue({
         headers: {
           ...route.request().headers(),
           "x-atlas-hosted-e2e-secret": requiredEnv("ATLAS_HOSTED_E2E_SECRET"),
         },
-        maxRedirects: 0,
       });
-      await route.fulfill({ response });
     },
     { times: 1 },
   );
