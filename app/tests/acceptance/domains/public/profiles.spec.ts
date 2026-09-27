@@ -72,7 +72,7 @@ test.describe("public profile routes", () => {
     await expect(page.getByText(/Reporting trail/i).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /who else is doing this work/i })).toBeVisible();
     await expect(page.getByText(/first surfaced/i)).toBeVisible();
-    await expect(page.getByText(/Lead signals/i).first()).toBeVisible();
+    await expect(page.getByText("Profile shape")).toBeVisible();
 
     // Action cluster anchored at the bottom of the stack
     expect(
@@ -99,7 +99,7 @@ test.describe("public profile routes", () => {
     await expect(page.getByText(/Issue footprint/i).first()).toBeVisible();
     await expect(page.getByText(/Appearances and coverage/i).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /who else is doing this work/i })).toBeVisible();
-    await expect(page.getByText(/Lead signals/i).first()).toBeVisible();
+    await expect(page.getByText("Profile shape")).toBeVisible();
 
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
     await expect(page.getByText("Hide Error")).toHaveCount(0);
