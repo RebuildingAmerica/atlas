@@ -54,24 +54,22 @@ uvicorn atlas.main:app --host 0.0.0.0 --port 8000
 
 ## Testing
 
-Run the test suite:
+From the repository root, run the full API test suite with its required 100%
+statement and branch coverage:
 
 ```bash
-pytest
+pnpm --filter @rebuildingamerica/atlas-api test
 ```
 
-Run with coverage:
+The package test command preloads `probablepeople` before coverage starts in
+each Python worker. Its generated name-ratio table otherwise makes Python 3.12
+coverage startup take minutes per worker. The preload does not exclude Atlas
+code from coverage.
+
+For a quick focused test while developing, run from `api/`:
 
 ```bash
-pytest --cov=atlas --cov-report=html
-```
-
-Run specific tests:
-
-```bash
-pytest tests/test_taxonomy.py
-pytest tests/test_database.py -v
-pytest tests/test_api.py -k test_create_entry
+uv run pytest --no-cov -q tests/domains/moderation/test_review_queue_conflicts.py
 ```
 
 ## Code Quality
@@ -94,10 +92,10 @@ Format code:
 ruff format .
 ```
 
-Run all checks:
+Run all repository checks from the repository root:
 
 ```bash
-ruff check . && mypy atlas && pytest
+pnpm quality
 ```
 
 ## Project Structure
