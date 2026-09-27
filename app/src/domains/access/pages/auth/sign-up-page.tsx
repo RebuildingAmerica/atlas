@@ -1,4 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 
 import { useEffect, useState } from "react";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
@@ -12,6 +13,7 @@ import {
 import { buildSignInCallbackURL } from "./sign-in-page-helpers";
 import { SignUpFormPanel } from "./components/sign-up-form-panel";
 import { SignUpSentPanel } from "./components/sign-up-sent-panel";
+import { loadCheckoutAvailability } from "@/domains/billing/purchase-onboarding.functions";
 
 /**
  * Recognised intent the sign-up route accepts via the `intent` search param.
@@ -38,7 +40,8 @@ const CROSS_DEVICE_POLL_INTERVAL_MS = 3000;
 
 const SIGN_UP_ERROR_LABELS = buildAuthErrorLabels("sign-up");
 
-const TEAM_SSO_REDIRECT = "/onboarding?product=atlas_team&interval=monthly";
+const TEAM_SSO_REDIRECT = (interval: "monthly" | "yearly") =>
+  `/onboarding?product=atlas_team&interval=${interval}`;
 
 function isPurchaseStartRedirect(redirect: string): boolean {
   return redirect === "/onboarding" || redirect.startsWith("/onboarding?");
@@ -77,7 +80,25 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
   const session = useAtlasSession();
 
   const isTeamSso = intent === "team-sso";
-  const effectiveRedirect = redirectTo ?? (isTeamSso ? TEAM_SSO_REDIRECT : undefined);
+  const checkoutAvailability = useQuery({
+    queryKey: ["billing", "checkout-availability"],
+    queryFn: () => loadCheckoutAvailability(),
+    enabled: isTeamSso,
+    staleTime: 30_000,
+    retry: false,
+  });
+  const teamOffers = checkoutAvailability.data?.allowedOffers ?? [];
+  const teamInterval = teamOffers.includes("atlas_team:monthly")
+    ? "monthly"
+    : teamOffers.includes("atlas_team:yearly")
+      ? "yearly"
+      : null;
+  const isTeamAvailable =
+    !checkoutAvailability.isError &&
+    checkoutAvailability.data?.available === true &&
+    teamInterval !== null;
+  const effectiveRedirect =
+    redirectTo ?? (isTeamSso && teamInterval ? TEAM_SSO_REDIRECT(teamInterval) : undefined);
   const callbackURL = buildSignInCallbackURL(undefined, effectiveRedirect);
 
   const [email, setEmail] = useState("");
@@ -213,6 +234,44 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
           setResendStatus(null);
         }}
       />
+    );
+  }
+
+  if (isTeamSso && !isTeamAvailable) {
+    if (checkoutAvailability.isPending && !checkoutAvailability.isError) {
+      return (
+        <div className="space-y-3" role="status">
+          <p className="type-label-medium text-outline">Atlas Team</p>
+          <h1 className="type-display-small text-on-surface">Checking Team plan availability</h1>
+          <p className="type-body-large text-outline">
+            One moment while we check the current plans.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <p className="type-label-medium text-outline">Atlas Team</p>
+          <h1 className="type-display-small text-on-surface">Atlas Team sign-up is unavailable</h1>
+          <p className="type-body-large text-outline">
+            New Team purchases are unavailable right now. You can still browse Atlas or create a
+            free account, and check the plans again later.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <Link to="/sign-up" className="type-label-medium text-accent hover:underline">
+            Create a free account &rarr;
+          </Link>
+          <Link to="/pricing" className="type-label-medium text-accent hover:underline">
+            Compare plans &rarr;
+          </Link>
+          <Link to="/browse" className="type-label-medium text-accent hover:underline">
+            Browse Atlas &rarr;
+          </Link>
+        </div>
+      </div>
     );
   }
 

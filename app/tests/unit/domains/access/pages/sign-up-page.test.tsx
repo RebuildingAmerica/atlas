@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
   requestMagicLink: vi.fn(),
   useAtlasSession: vi.fn(),
+  useQuery: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", async () => {
@@ -17,6 +18,7 @@ vi.mock("@tanstack/react-router", async () => {
 
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
+  useQuery: mocks.useQuery,
 }));
 
 vi.mock("@/domains/access/client/use-atlas-session", () => ({
@@ -36,6 +38,11 @@ describe("SignUpPage", () => {
     resetRouterMocks();
     mocks.requestMagicLink.mockReset();
     mocks.useAtlasSession.mockReturnValue({ data: null });
+    mocks.useQuery.mockReturnValue({
+      data: { available: true, allowedOffers: ["atlas_team:monthly"] },
+      isError: false,
+      isPending: false,
+    });
   });
 
   afterEach(() => {
@@ -43,16 +50,102 @@ describe("SignUpPage", () => {
     vi.useRealTimers();
   });
 
-  it("renders generic copy and a team-sso CTA when no intent is set", () => {
+  it("sends generic sign-ups to Team pricing before a paid signup", () => {
     render(<SignUpPage />);
     expect(screen.getByText("Join Atlas")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Start the team plan/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Compare Team plans/i })).toHaveAttribute(
+      "href",
+      "/pricing",
+    );
   });
 
   it("renders team-buyer copy when intent is team-sso", () => {
     render(<SignUpPage intent="team-sso" />);
     expect(screen.getByText("Start your Atlas Team workspace")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continue with team setup/i })).toBeInTheDocument();
+  });
+
+  it("does not collect an email for Team when checkout is closed", () => {
+    mocks.useQuery.mockReturnValue({
+      data: { available: false, allowedOffers: [], reason: "disabled" },
+      isError: false,
+      isPending: false,
+    });
+
+    render(<SignUpPage intent="team-sso" />);
+
+    expect(
+      screen.getByRole("heading", { name: "Atlas Team sign-up is unavailable" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Create a free account/i })).toHaveAttribute(
+      "href",
+      "/sign-up",
+    );
+    expect(screen.getByRole("link", { name: /Compare plans/i })).toHaveAttribute(
+      "href",
+      "/pricing",
+    );
+    expect(screen.getByRole("link", { name: /Browse Atlas/i })).toHaveAttribute("href", "/browse");
+    expect(mocks.requestMagicLink).not.toHaveBeenCalled();
+  });
+
+  it("does not collect an email when checkout is open but Team is not offered", () => {
+    mocks.useQuery.mockReturnValue({
+      data: { available: true, allowedOffers: ["atlas_pro:monthly"], reason: null },
+      isError: false,
+      isPending: false,
+    });
+
+    render(<SignUpPage intent="team-sso" />);
+
+    expect(
+      screen.getByRole("heading", { name: "Atlas Team sign-up is unavailable" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Email/i)).not.toBeInTheDocument();
+  });
+
+  it("waits for confirmed availability before showing the Team form", () => {
+    mocks.useQuery.mockReturnValue({ data: undefined, isError: false, isPending: true });
+
+    render(<SignUpPage intent="team-sso" />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Checking Team plan availability");
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+  });
+
+  it("blocks the Team form if the availability check fails", () => {
+    mocks.useQuery.mockReturnValue({ data: undefined, isError: true, isPending: false });
+
+    render(<SignUpPage intent="team-sso" />);
+
+    expect(
+      screen.getByRole("heading", { name: "Atlas Team sign-up is unavailable" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
+  });
+
+  it("uses the yearly purchase path when it is the only available Team offer", async () => {
+    mocks.useQuery.mockReturnValue({
+      data: { available: true, allowedOffers: ["atlas_team:yearly"], reason: null },
+      isError: false,
+      isPending: false,
+    });
+    mocks.requestMagicLink.mockResolvedValue({ ok: true, captureMailboxUrl: null });
+    render(<SignUpPage intent="team-sso" />);
+
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "team@example.com" } });
+    const form = screen.getByRole("button", { name: "Continue with team setup" }).closest("form");
+    if (!form) throw new Error("expected sign-up form");
+    await act(async () => {
+      fireEvent.submit(form);
+      await Promise.resolve();
+    });
+
+    const magicLinkArgs = mocks.requestMagicLink.mock.calls[0]?.[0] as
+      { data: { callbackURL: string } } | undefined;
+    const callbackURL = magicLinkArgs?.data.callbackURL;
+    expect(callbackURL).toBe("/onboarding?product=atlas_team&interval=yearly");
   });
 
   it("gives an existing account the same answer as a new one", async () => {

@@ -84,12 +84,8 @@ export function SignUpFormPanel({
         <div className="border-outline-variant rounded-2xl border px-4 py-3">
           <p className="type-body-small text-outline">
             Working with a team?{" "}
-            <Link
-              to="/sign-up"
-              search={{ intent: "team-sso" }}
-              className="text-accent type-label-small hover:underline"
-            >
-              Start the team plan &rarr;
+            <Link to="/pricing" className="text-accent type-label-small hover:underline">
+              Compare Team plans &rarr;
             </Link>
           </p>
         </div>
