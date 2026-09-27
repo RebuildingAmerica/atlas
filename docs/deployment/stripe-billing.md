@@ -315,15 +315,18 @@ deployed tag before deciding whether any live offer can open:
 gh workflow run billing-readiness.yml --ref main -f release_tag=vYYYY.MM.DD-N
 ```
 
-The job runs against the existing Vercel Production variables in memory, then
-queries Stripe for the charge-enabled account, canonical
-products/prices/coupons, webhook endpoint configuration, Tax settings, and
-default customer-portal controls. Its GitHub job summary is deliberately
-redacted: it shows check outcomes and only the final four characters of the
-account ID. The job fails while checkout is closed or any required proof is
-failed or unverified. A failed run is therefore an honest **no-go** result, not
-automatically a broken script. It never changes Stripe, Vercel, or the checkout
-flag.
+The job first checks Vercel Production setting **names** without reading values.
+It then tries to pass readable values in memory to a read-only Stripe inventory
+of the charge-enabled account, canonical products/prices/coupons, webhook
+endpoint metadata, Tax settings, and default customer portal. Vercel
+[sensitive variables](https://vercel.com/docs/environment-variables/manage-across-environments)
+are non-readable once created; when the CLI cannot supply one, the report says
+**configured by name, runtime value unverified**, not absent. Its GitHub job
+summary is redacted: it shows check outcomes and, only when the account lookup
+succeeds, the final four characters of the account ID. The job fails while
+checkout is closed or any required proof is failed or unverified. A failed run
+is therefore an honest **no-go** result, not automatically a broken script. It
+never changes Stripe, Vercel, or the checkout flag.
 
 This inventory still cannot prove that the deployed signing secret matches a
 delivered webhook, that the runtime key has write/refund permissions, that Tax

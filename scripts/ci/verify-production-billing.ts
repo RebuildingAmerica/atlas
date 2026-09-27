@@ -43,6 +43,20 @@ function runtimeEnv(): Map<string, string> {
   );
 }
 
+function configuredByName(key: string): boolean {
+  return process.env[`ATLAS_VERCEL_${key}_PRESENT`] === "true";
+}
+
+export function assessUnreadableRuntimeKey(configured: boolean): Check {
+  return {
+    name: "Runtime key",
+    status: configured ? "unverified" : "fail",
+    detail: configured
+      ? "Configured by name, but the sensitive value is not readable in this CLI job. This does not prove the deployed key is absent or invalid."
+      : "STRIPE_API_KEY is not configured for Vercel Production.",
+  };
+}
+
 function providerFailure(error: unknown): string {
   // Stripe's message can contain customer or object identifiers. Never print it.
   const status =
@@ -120,6 +134,47 @@ export function renderReport(
   return `${lines.join("\n")}\n`;
 }
 
+function appendManualProof(checks: Check[]): Check[] {
+  checks.push(
+    {
+      name: "Signed webhook delivery",
+      status: "unverified",
+      detail:
+        "Endpoint metadata cannot prove signing-secret match or delivered events.",
+    },
+    {
+      name: "Live purchase lifecycle",
+      status: "unverified",
+      detail:
+        "Requires a genuine buyer payment, returning access, cancellation or expiry, and refund observation.",
+    },
+    {
+      name: "Runtime write permissions",
+      status: "unverified",
+      detail:
+        "Read-only inspection cannot prove Checkout, portal-session, seat-change, or refund permissions.",
+    },
+  );
+  return checks;
+}
+
+function appendUnreadableRuntimeChecks(checks: Check[]): Check[] {
+  for (const name of [
+    "Charge-enabled account",
+    "Catalog and webhook configuration",
+    "Stripe Tax settings",
+    "Default customer portal",
+  ]) {
+    checks.push({
+      name,
+      status: "unverified",
+      detail:
+        "The runtime key was not readable in this CLI job; inspect inside an authorized runtime.",
+    });
+  }
+  return appendManualProof(checks);
+}
+
 async function inspect(): Promise<Check[]> {
   const env = runtimeEnv();
   const checks: Check[] = [
@@ -128,14 +183,24 @@ async function inspect(): Promise<Check[]> {
       env.get("ATLAS_BILLING_ALLOWED_OFFERS"),
     ),
   ];
+  const readableOffers = env.get("ATLAS_BILLING_ALLOWED_OFFERS");
+  checks.push({
+    name: "Offer allowlist setting",
+    status: readableOffers
+      ? "pass"
+      : configuredByName("ATLAS_BILLING_ALLOWED_OFFERS")
+        ? "unverified"
+        : "fail",
+    detail: readableOffers
+      ? "A Production value is readable; only accepted offers may be enabled."
+      : configuredByName("ATLAS_BILLING_ALLOWED_OFFERS")
+        ? "Configured by name, but its sensitive value is not readable in this CLI job."
+        : "ATLAS_BILLING_ALLOWED_OFFERS is not configured for Vercel Production.",
+  });
   const apiKey = env.get("STRIPE_API_KEY");
   if (!apiKey) {
-    checks.push({
-      name: "Runtime key",
-      status: "fail",
-      detail: "STRIPE_API_KEY is absent.",
-    });
-    return checks;
+    checks.push(assessUnreadableRuntimeKey(configuredByName("STRIPE_API_KEY")));
+    return appendUnreadableRuntimeChecks(checks);
   }
   try {
     validateStripeApiKeyMode(apiKey, "live");
@@ -150,7 +215,7 @@ async function inspect(): Promise<Check[]> {
       status: "fail",
       detail: "The configured key is not live-mode.",
     });
-    return checks;
+    return appendUnreadableRuntimeChecks(checks);
   }
 
   const stripe = new Stripe(apiKey, { apiVersion: "2026-06-24.dahlia" });
@@ -174,11 +239,16 @@ async function inspect(): Promise<Check[]> {
     !env.get("STRIPE_WEBHOOK_SECRET") ||
     !env.get("ATLAS_PUBLIC_URL")
   ) {
+    const catalogNamesPresent = [
+      "STRIPE_ATLAS_CATALOG",
+      "STRIPE_WEBHOOK_SECRET",
+    ].every(configuredByName);
     checks.push({
       name: "Catalog and webhook configuration",
-      status: "fail",
-      detail:
-        "A required catalog, webhook-secret, or public-origin setting is absent.",
+      status: catalogNamesPresent ? "unverified" : "fail",
+      detail: catalogNamesPresent
+        ? "Catalog and webhook secret are configured by name, but values are not readable here."
+        : "A required Production catalog or webhook-secret setting is not configured by name.",
     });
   } else {
     try {
@@ -257,27 +327,7 @@ async function inspect(): Promise<Check[]> {
     });
   }
 
-  checks.push(
-    {
-      name: "Signed webhook delivery",
-      status: "unverified",
-      detail:
-        "Endpoint metadata cannot prove signing-secret match or delivered events.",
-    },
-    {
-      name: "Live purchase lifecycle",
-      status: "unverified",
-      detail:
-        "Requires a genuine buyer payment, returning access, cancellation or expiry, and refund observation.",
-    },
-    {
-      name: "Runtime write permissions",
-      status: "unverified",
-      detail:
-        "Read-only inspection cannot prove Checkout, portal-session, seat-change, or refund permissions.",
-    },
-  );
-  return checks;
+  return appendManualProof(checks);
 }
 
 async function main(): Promise<void> {

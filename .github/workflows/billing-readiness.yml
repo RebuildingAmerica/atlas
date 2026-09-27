@@ -37,12 +37,11 @@ jobs:
           release_sha="$(git rev-parse --verify "refs/tags/${ATLAS_RELEASE_TAG}^{commit}")"
           echo "ATLAS_ASSESSED_RELEASE_TAG=$ATLAS_RELEASE_TAG" >> "$GITHUB_ENV"
           echo "ATLAS_ASSESSED_RELEASE_SHA=$release_sha" >> "$GITHUB_ENV"
-      - name: Inspect deployed Vercel and Stripe configuration without writing secrets to disk
+      - name: Inspect Production setting names without reading values
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          ATLAS_PRODUCTION_CHECKOUT_FLAG: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
         run: |
           set -euo pipefail
           if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
@@ -51,5 +50,14 @@ jobs:
           fi
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          pnpm exec vercel env list production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" --format json \
+            | pnpm exec tsx scripts/ci/read-vercel-billing-presence.ts
+      - name: Inspect readable Production values and Stripe configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          ATLAS_PRODUCTION_CHECKOUT_FLAG: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
+        run: |
+          set -euo pipefail
           pnpm exec vercel env run -e production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" -- \
             pnpm exec tsx scripts/ci/verify-production-billing.ts
