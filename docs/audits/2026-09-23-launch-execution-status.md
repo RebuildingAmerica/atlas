@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-15`
+Updated September 27, 2026 · production release `v2026.09.27-17`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,12 +16,13 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed inventory is recorded here. The repository contains
 fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-15` deployed those changes, but it did not demonstrate a
-completed live payment, genuine signed webhook delivery, provider-account
-configuration, or a useful reviewed Las Vegas discovery slice. The read-only
-Production billing inventory for this release found the required offer allowlist
-absent; checkout is still disabled. Passing deployment checks does not satisfy
-those acceptance gates.
+Release `v2026.09.27-17` deployed those changes and added a protected runtime
+Stripe inventory. On this exact release, the live key, charge-enabled account,
+Tax status, and catalog identifiers passed read-only checks. The customer portal
+and webhook endpoint metadata failed. The offer allowlist is absent and checkout
+is disabled. No completed live payment, signed webhook delivery, or useful
+reviewed Las Vegas discovery slice has been demonstrated. Passing deployment
+checks does not satisfy those acceptance gates.
 
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
@@ -227,7 +228,52 @@ have been editorially reviewed, or that a payment can settle and deliver access.
 The browser policy in this environment denied a direct visual visit to the
 public profile, so no direct production visual acceptance is claimed.
 
-## Current production release `v2026.09.27-15`
+## Current production release `v2026.09.27-17`
+
+Commit `1c2766a4` adds a secret-protected, read-only billing inventory inside
+the deployed app. It reports only fixed pass/fail/unverified statuses for key
+mode, charge capability, Tax, default portal controls, active catalog objects,
+and webhook endpoint metadata. The manual billing-readiness workflow rejects a
+report from a different release SHA and keeps the paid gate closed if any check
+fails or is unverified. Commit `30c0a90a` marks synthetic test credentials and
+SHAs for the repository's secret scanner; it does not change product behavior.
+
+The first tag, `v2026.09.27-16`, did not deploy. Its CI failed the secret scan
+on those synthetic fixtures and browser acceptance because its local API server
+did not start; the run was cancelled before deployment. The v17 local browser
+suite passed all 29 tests, and
+[staging run 36351200466](https://github.com/RebuildingAmerica/atlas/actions/runs/36351200466)
+passed CI and hosted smoke on commit `30c0a90a22447171dcce677991487d1647fc08c1`.
+
+[Production run 36351307425](https://github.com/RebuildingAmerica/atlas/actions/runs/36351307425)
+passed full CI, deployed the API, PDS, and Vercel app, promoted production
+domains, and passed hosted smoke and signed-in identity. The hosted checkout job
+succeeded, but its live Stripe-session step was **skipped** because checkout is
+disabled. This release did not submit a live payment.
+
+The protected inventory in
+[billing run 36352514090](https://github.com/RebuildingAmerica/atlas/actions/runs/36352514090)
+returned the exact deployed v17 revision. Its read-only checks reported:
+
+| Deployed Stripe check              | Result   |
+| ---------------------------------- | -------- |
+| Live runtime key                   | Pass     |
+| Charge-enabled account             | Pass     |
+| Stripe Tax active in live mode     | Pass     |
+| Active catalog objects and IDs     | Pass     |
+| Default customer portal controls   | **Fail** |
+| Required webhook endpoint metadata | **Fail** |
+
+The same run confirmed that `ATLAS_BILLING_ALLOWED_OFFERS` is absent in Vercel
+Production and checkout remains closed, so its overall decision is **NO-GO**.
+The fixed statuses do not reveal which portal control or webhook endpoint
+setting failed. An operator must inspect those settings in the same live Stripe
+account and correct the mismatch, then rerun this inventory. This check does not
+verify catalog amounts and terms, webhook signing-secret match or delivery,
+write/refund permissions, a settled charge, entitlement, cancellation, or
+refund. No money was moved by the inventory.
+
+## Prior production release `v2026.09.27-15`
 
 Commit `6c46de4a6f135fcd3e7742b2acd1bb8317810315` makes Explore the primary
 public destination. Signed-in visitors get direct access to Saved work, and
@@ -394,10 +440,13 @@ public URL variable names are present; their values were not read. The
 absent in the September 27 Production inventory. The September 27 deployment
 workflow recorded the GitHub checkout flag as `false`; the billing inventory
 separately confirmed that the flag was closed. Sensitive Stripe values could not
-be read through the inventory CLI job. `pnpm stripe:verify:prod` still cannot
-inspect the live catalog because this checkout has no `.env.production`
-verification inputs. These facts neither prove nor disprove the deployed key's
-validity, webhook delivery, or ability to charge.
+be read through the CLI job, but the v17 protected app-runtime inventory did
+verify a live runtime key, charge-enabled account, active Tax, and active
+catalog identifiers. It failed the default portal and webhook endpoint metadata
+checks. `pnpm stripe:verify:prod` still cannot inspect the live catalog amounts
+from this checkout because it has no `.env.production` verification inputs.
+These facts do not prove webhook delivery or ability to complete and refund a
+charge.
 
 Before opening any offer, a release owner must produce a redacted record tied to
 the deployed commit with all of the following:
@@ -424,13 +473,13 @@ until each offered combination passes. Add only accepted offers.
 
 | Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-15` passed production CI, deployment, hosted smoke, and hosted identity on its first attempt. Live checkout was skipped and a rollback drill remains unverified.                                                                                                                                   |
+| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-17` passed production CI, deployment, hosted smoke, and identity. The live checkout step was skipped because sales are closed; a rollback drill remains unverified.                                                                                                                                |
 | Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                                                                                                                                                                                                                                |
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | [Las Vegas](2026-09-23-las-vegas-coverage-gate.md) is the home-market gate. Current city records have zero public-transit entries and no listed website or email across transit/housing candidates. Acquire and review useful local supply before promoting a pilot. Seattle remains comparative evidence only. |
 | Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search placement, source-first profiles, searchable People/Organizations directories, map-to-list selection handoff, and task-focused public navigation are deployed; phone-based search-to-action and correction outcomes remain unverified.                                                                   |
 | Organizer journey       | Normal registration, passkey and recovery on physical devices, pending save, list note, reopened work, brief/export, and pricing clarity.                                                                                                                   | Save intent, save failure, and brief selection repaired; complete journey unverified.                                                                                                                                                                                                                           |
 | Team journey            | Workspace creation, invitation send/accept/wrong-account/expiry, roles, shared work, ownership departure, seat totals, and billing authorization.                                                                                                           | Portal guard, invite retention, access-change confirmations, and owner handoff implemented locally; full journey unverified.                                                                                                                                                                                    |
-| Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; Production offer allowlist is absent, checkout is disabled, and sensitive provider values and live lifecycle remain unverified.                                                                                                                                                                         |
+| Paid journey            | Provider inventory and the full matrix above, per enabled offer.                                                                                                                                                                                            | Closed; the offer allowlist is absent and checkout disabled. The v17 runtime key, charge capability, Tax, and catalog ID checks passed; portal and webhook metadata failed. Amounts, terms, signed delivery, runtime write permissions, and live lifecycle remain unverified.                                   |
 | Operations              | Name a release owner, editorial reviewer, support inbox owner, refund operator, daily correction/review window, and incident escalation. Record a rehearsal, not only a policy.                                                                             | Ownership and rehearsal not evidenced in this checkout.                                                                                                                                                                                                                                                         |
 
 The first public release should be a named pilot with reviewed records and
