@@ -25,6 +25,7 @@ interface EntryListProps {
     to: "/browse" | "/discovery" | "/profiles";
   };
   emptyRecoveryActions?: EmptyRecoveryAction[];
+  selectedId?: string;
 }
 
 const ENTRY_LIST_ERROR_MESSAGE = "Results could not load. Try again in a moment.";
@@ -60,6 +61,7 @@ export function EntryList({
   discoveryContext,
   emptyAction = { label: "Browse profiles", to: "/profiles" },
   emptyRecoveryActions = [],
+  selectedId,
 }: EntryListProps) {
   if (isLoading) {
     return (
@@ -135,6 +137,7 @@ export function EntryList({
           entry={entry}
           issueAreaLabels={issueAreaLabels}
           discoveryContext={discoveryContext}
+          isMapSelection={entry.id === selectedId}
         />
       ))}
     </div>

@@ -185,6 +185,51 @@ describe("MapPage", () => {
     expect(requireMapPageHarness().handlers.onClosePanel).toHaveBeenCalledOnce();
   });
 
+  it("carries the selected actor, filters, and camera from map to list", () => {
+    const point = makePoint({ id: "las-vegas-actor", name: "Las Vegas Housing Group" });
+    requireMapPageHarness().setState({
+      points: [point],
+      selection: { kind: "actor", point, anchor: { lng: -115.14, lat: 36.17 } },
+    });
+    render(
+      <MapPage
+        search={{
+          query: "housing",
+          states: "NV",
+          issue_areas: "housing_affordability",
+          lng: -115.14,
+          lat: 36.17,
+          z: 9,
+        }}
+      />,
+    );
+
+    const url = new URL(
+      screen.getByRole("link", { name: "List view" }).getAttribute("href") ?? "",
+      "https://atlas.test",
+    );
+    expect(url.pathname).toBe("/browse");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      query: "housing",
+      states: "NV",
+      issue_areas: "housing_affordability",
+      selected: "las-vegas-actor",
+      lng: "-115.14",
+      lat: "36.17",
+      z: "9",
+      view: "list",
+    });
+  });
+
+  it("keeps a shared actor in the list link before its map point loads", () => {
+    requireMapPageHarness().setState({ points: [], selection: null });
+    render(<MapPage search={{ selected: "vegas-actor", states: "NV" }} />);
+    const href = screen.getByRole("link", { name: "List view" }).getAttribute("href") ?? "";
+    const url = new URL(href, "https://atlas.test");
+    expect(url.searchParams.get("selected")).toBe("vegas-actor");
+    expect(url.searchParams.get("states")).toBe("NV");
+  });
+
   it("closes the panel and returns focus on Escape", () => {
     const point = makePoint({ id: "1", name: "Dallas Housing Trust" });
     requireMapPageHarness().setState({

@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 import { BrowseSearchHeader } from "@/domains/catalog/components/browse/browse-search-header";
+import { SelectedMapResult } from "@/domains/catalog/components/browse/selected-map-result";
 import { buildBrowseEditorialSections } from "@/domains/catalog/components/browse/browse-editorial-sections";
 import type { BrowseIntentChip } from "@/domains/catalog/components/browse/browse-intent-chips";
 import { useEntries } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
@@ -135,6 +136,10 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
         resetScroll: false,
         search: (previous) => ({
           ...previous,
+          selected: undefined,
+          z: undefined,
+          lat: undefined,
+          lng: undefined,
           ...next,
         }),
       });
@@ -278,6 +283,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
   const shouldShowResults =
     Boolean(pageContent.lockedEntryTypes?.length) ||
     hasActiveSearch ||
+    Boolean(search.selected) ||
     Boolean(resultsError) ||
     entriesQuery.isLoading;
 
@@ -331,24 +337,37 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
 
       <main className="mx-auto w-full max-w-[76rem] space-y-12 px-4 py-4 md:px-8 md:py-6">
         {shouldShowResults ? (
-          <BrowseResultsMode
-            entries={entries}
-            emptyAction={pageContent.emptyAction}
-            emptyRecoveryActions={emptyRecoveryActions}
-            error={resultsError}
-            issueAreaLabels={issueAreaLabels}
-            isLoading={entriesQuery.isLoading}
-            pagination={results?.pagination}
-            relatedSections={editorialSections}
-            indexContextLabel={indexContextLabel}
-            resultLabelPlural={pageContent.resultLabelPlural}
-            resultsHeading={pageContent.resultsHeading}
-            discoveryContext={discoveryContext}
-            onPageChange={(offset) => {
-              updateSearch({ offset });
-            }}
-            onSelectFacet={handleToggleFilter}
-          />
+          <>
+            {search.selected ? (
+              <SelectedMapResult
+                selectedId={search.selected}
+                entries={entries}
+                issueAreaLabels={issueAreaLabels}
+                onClear={() => {
+                  updateSearch({ selected: undefined });
+                }}
+              />
+            ) : null}
+            <BrowseResultsMode
+              entries={entries}
+              emptyAction={pageContent.emptyAction}
+              emptyRecoveryActions={emptyRecoveryActions}
+              error={resultsError}
+              issueAreaLabels={issueAreaLabels}
+              isLoading={entriesQuery.isLoading}
+              pagination={results?.pagination}
+              relatedSections={editorialSections}
+              indexContextLabel={indexContextLabel}
+              resultLabelPlural={pageContent.resultLabelPlural}
+              resultsHeading={pageContent.resultsHeading}
+              selectedId={search.selected}
+              discoveryContext={discoveryContext}
+              onPageChange={(offset) => {
+                updateSearch({ offset });
+              }}
+              onSelectFacet={handleToggleFilter}
+            />
+          </>
         ) : (
           <BrowseEditorialMode
             sections={editorialSections}

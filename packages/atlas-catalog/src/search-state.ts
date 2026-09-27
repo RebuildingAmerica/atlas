@@ -15,19 +15,18 @@ export const browseSearchSchema = z.object({
   source_types: z.string().optional(),
   source_patterns: z.string().optional(),
   offset: z.coerce.number().min(0).optional().catch(0),
-});
-
-export type BrowseRouteSearch = z.infer<typeof browseSearchSchema>;
-
-/**
- * The map route's search: every browse filter, plus the viewport (`z/lat/lng`)
- * so a shared `/map` link restores both the filters and the camera position.
- */
-export const mapSearchSchema = browseSearchSchema.extend({
+  /** A public actor carried from the map into the list and back. */
+  selected: z.string().optional(),
+  /** Keep the map camera through a round trip to the list. */
   z: z.coerce.number().optional(),
   lat: z.coerce.number().optional(),
   lng: z.coerce.number().optional(),
 });
+
+export type BrowseRouteSearch = z.infer<typeof browseSearchSchema>;
+
+/** Both views accept the same URL state so filters, selection, and camera survive switching. */
+export const mapSearchSchema = browseSearchSchema;
 
 export type MapRouteSearch = z.infer<typeof mapSearchSchema>;
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMapPoints } from "@/domains/catalog/hooks/use-map-points";
 import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
 import { flyToPlace } from "@rebuildingamerica/atlas-catalog/map/map-camera";
@@ -34,6 +34,7 @@ const CITY_FLY_ZOOM = 10;
 
 /** The zoom the camera settles at after flying to a searched state. */
 const STATE_FLY_ZOOM = 6;
+const NO_POINTS: MapPoint[] = [];
 
 /** The minimal navigate surface the page drives to update the URL search. */
 export type MapNavigate = (options: {
@@ -128,11 +129,32 @@ export function useMapPage({ search, navigate, map = null, initialPoints }: UseM
     ...PUBLIC_QUERY_RETRY_OPTIONS,
     initialData: initialPoints,
   });
-  const points = pointsQuery.data?.points ?? [];
+  const points = pointsQuery.data?.points ?? NO_POINTS;
+
+  useEffect(() => {
+    if (!search.selected) {
+      setSelection((current) => (current?.kind === "actor" ? null : current));
+      return;
+    }
+    const point = points.find((candidate) => candidate.id === search.selected);
+    if (!point) {
+      return;
+    }
+    setSelection((current) =>
+      current?.kind === "actor" && current.point.id === point.id
+        ? current
+        : selectActor(point, { lng: point.lng, lat: point.lat }),
+    );
+  }, [points, search.selected]);
 
   const onToggleFilter = useCallback(
     (key: BrowseFilterKey, value: string) => {
-      updateSearch({ [key]: serializeList(toggleValue(filters[key], value)), offset: 0 });
+      setSelection(null);
+      updateSearch({
+        [key]: serializeList(toggleValue(filters[key], value)),
+        offset: 0,
+        selected: undefined,
+      });
     },
     [filters, updateSearch],
   );
@@ -141,10 +163,12 @@ export function useMapPage({ search, navigate, map = null, initialPoints }: UseM
     (place: PlaceMatch) => {
       const zoomTo = place.kind === "city" ? CITY_FLY_ZOOM : STATE_FLY_ZOOM;
       flyToPlace(map ?? null, place.anchor, zoomTo);
+      setSelection(null);
       updateSearch({
         states: place.stateCode,
         cities: place.cityKey,
         offset: 0,
+        selected: undefined,
       });
     },
     [map, updateSearch],
@@ -155,34 +179,46 @@ export function useMapPage({ search, navigate, map = null, initialPoints }: UseM
       const anchor: SelectionAnchor = { lng: point.lng, lat: point.lat };
       flyToPlace(map ?? null, anchor, CITY_FLY_ZOOM);
       setSelection(selectActor(point, anchor));
+      updateSearch({ selected: point.id });
     },
-    [map],
+    [map, updateSearch],
   );
 
-  const onSelectPoint = useCallback((point: MapPoint, anchor: SelectionAnchor) => {
-    setSelection(selectActor(point, anchor));
-  }, []);
+  const onSelectPoint = useCallback(
+    (point: MapPoint, anchor: SelectionAnchor) => {
+      setSelection(selectActor(point, anchor));
+      updateSearch({ selected: point.id });
+    },
+    [updateSearch],
+  );
 
   const onSelectCluster = useCallback(
     (members: MapPoint[], anchor: SelectionAnchor, clusterId: number) => {
       setSelection(selectCluster(members, anchor, clusterId));
+      updateSearch({ selected: undefined });
     },
-    [],
+    [updateSearch],
   );
 
-  const onSelectMember = useCallback((point: MapPoint) => {
-    setSelection(selectActor(point, { lng: point.lng, lat: point.lat }));
-  }, []);
+  const onSelectMember = useCallback(
+    (point: MapPoint) => {
+      setSelection(selectActor(point, { lng: point.lng, lat: point.lat }));
+      updateSearch({ selected: point.id });
+    },
+    [updateSearch],
+  );
 
   const onClosePanel = useCallback(() => {
     setSelection(null);
-  }, []);
+    updateSearch({ selected: undefined });
+  }, [updateSearch]);
 
   const onZoomOut = useCallback(() => {
     flyToPlace(map ?? null, CONUS_VIEW.center, CONUS_VIEW.zoom);
   }, [map]);
 
   const onClearFilters = useCallback(() => {
+    setSelection(null);
     navigate({ to: ".", resetScroll: false, search: { view: "map" } });
   }, [navigate]);
 

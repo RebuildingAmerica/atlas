@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { List } from "lucide-react";
 import { MapCommandBar } from "@/domains/catalog/components/map/map-command-bar";
 import { MapDetailPanel } from "@/domains/catalog/components/map/map-detail-panel";
 import { MapLegend } from "@/domains/catalog/components/map/map-legend";
@@ -27,7 +28,10 @@ import {
 import { announceViewport, sparsityPill } from "@rebuildingamerica/atlas-catalog/map/map-summary";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
 import type { FlyToCamera } from "@rebuildingamerica/atlas-catalog/map/map-camera";
-import type { MapRouteSearch } from "@rebuildingamerica/atlas-catalog/search-state";
+import type {
+  BrowseRouteSearch,
+  MapRouteSearch,
+} from "@rebuildingamerica/atlas-catalog/search-state";
 import type { MapPointCollection } from "@rebuildingamerica/atlas-api-client";
 
 const MAP_NOTICE_POSITION_CLASS = "absolute top-24 right-3 sm:top-24 sm:right-4";
@@ -125,6 +129,17 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
     types: filters.entry_types.length,
     sources: filters.source_types.length,
   };
+  const listSearch: BrowseRouteSearch = {
+    ...search,
+    view: "list",
+    offset: 0,
+    selected:
+      selection?.kind === "cluster"
+        ? undefined
+        : selection?.kind === "actor"
+          ? selection.point.id
+          : search.selected,
+  };
 
   const closePanel = () => {
     page.onClosePanel();
@@ -183,7 +198,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
           reveal.chromeRevealed ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
+        <div className="absolute top-3 left-3 flex flex-col items-start gap-2 sm:top-4 sm:left-4">
           <MapCommandBar
             points={points}
             quickIssueAreas={quickIssueAreas}
@@ -196,6 +211,16 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
             onSelectActor={page.onSelectActor}
             onToggleFilter={page.onToggleFilter}
           />
+          {!selection ? (
+            <Link
+              to="/browse"
+              search={listSearch}
+              className="type-label-medium border-border-strong bg-surface-container-high/92 text-ink-strong hover:bg-surface-container-highest pointer-events-auto inline-flex min-h-10 items-center gap-2 rounded-full border px-4 no-underline shadow-sm backdrop-blur-md"
+            >
+              <List className="h-4 w-4" aria-hidden />
+              List view
+            </Link>
+          ) : null}
         </div>
 
         {pill ? (
@@ -240,6 +265,7 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
             <MapDetailPanel
               panelRef={detailPanelRef}
               selection={selection}
+              listSearch={listSearch}
               reducedMotion={reducedMotion}
               onClose={closePanel}
               onSelectMember={page.onSelectMember}

@@ -34,6 +34,62 @@ async function stubBasemap(page: Page): Promise<() => number> {
 }
 
 test.describe("public map", () => {
+  test("keeps a selected map actor visible after switching to the list", async ({ page }) => {
+    await stubBasemap(page);
+    const response = await page.request.get(
+      "http://localhost:38000/api/entities/map?min_lng=-125&min_lat=24&max_lng=-66.5&max_lat=49.5",
+    );
+    expect(response.ok()).toBe(true);
+    const data = (await response.json()) as {
+      points: { id: string; lat: number; lng: number; name: string }[];
+    };
+    const actor = data.points[0];
+    expect(actor).toBeDefined();
+    if (!actor) {
+      return;
+    }
+
+    await page.goto(
+      `/map?selected=${encodeURIComponent(actor.id)}&lng=${actor.lng}&lat=${actor.lat}&z=8`,
+    );
+    const panel = page.getByRole("dialog", { name: actor.name });
+    await expect(panel).toBeVisible();
+    await panel.getByRole("link", { name: "List view" }).click();
+
+    await expect(page).toHaveURL(/\/browse\?/);
+    expect(new URL(page.url()).searchParams.get("selected")).toBe(actor.id);
+    await expect(page.getByRole("region", { name: "Selected on map" })).toContainText(actor.name);
+    await expect(page.locator("#selected-map-result")).toHaveCount(1);
+  });
+
+  test("switches between map and list without losing a Las Vegas search or camera", async ({
+    page,
+  }) => {
+    await stubBasemap(page);
+    await page.goto("/map?states=NV&issue_areas=housing_affordability&lng=-115.14&lat=36.17&z=9");
+
+    await page.getByRole("link", { name: "List view" }).click();
+    await expect(page).toHaveURL(/\/browse\?/);
+    const listUrl = new URL(page.url());
+    expect(listUrl.searchParams.get("states")).toBe("NV");
+    expect(listUrl.searchParams.get("issue_areas")).toBe("housing_affordability");
+    expect(listUrl.searchParams.get("lng")).toBe("-115.14");
+    expect(listUrl.searchParams.get("lat")).toBe("36.17");
+    expect(listUrl.searchParams.get("z")).toBe("9");
+
+    await page
+      .getByRole("region", { name: "Browse tools" })
+      .getByRole("link", { name: "Map" })
+      .click();
+    await expect(page).toHaveURL(/\/map\?/);
+    const mapUrl = new URL(page.url());
+    expect(mapUrl.searchParams.get("states")).toBe("NV");
+    expect(mapUrl.searchParams.get("issue_areas")).toBe("housing_affordability");
+    expect(mapUrl.searchParams.get("lng")).toBe("-115.14");
+    expect(mapUrl.searchParams.get("lat")).toBe("36.17");
+    expect(mapUrl.searchParams.get("z")).toBe("9");
+  });
+
   test("keeps the map viewport-bound and anchors filter menus to their triggers", async ({
     page,
   }) => {

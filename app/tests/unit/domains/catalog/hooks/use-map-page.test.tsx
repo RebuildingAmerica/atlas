@@ -11,10 +11,13 @@ import {
   installMapPageMocks,
   lastNavigateSearch,
   moveEvent,
+  navigateSearch,
   readMapPageMocks,
   requireMapPageMocks,
+  setMapPointsResult,
 } from "../../../../helpers/catalog/use-map-page-harness";
 import type { PlaceMatch } from "@/domains/catalog/map/map-place-search";
+import type { MapRouteSearch } from "@rebuildingamerica/atlas-catalog/search-state";
 
 vi.mock("@/domains/catalog/hooks/use-map-points", async () => {
   const { mapPageMapPointsMock } = await import("../../../../helpers/catalog/use-map-page-harness");
@@ -212,6 +215,55 @@ describe("useMapPage", () => {
       result.current.onClosePanel();
     });
     expect(result.current.selection).toBeNull();
+    expect(lastNavigateSearch(requireMapPageMocks().navigate)?.selected).toBeUndefined();
+  });
+
+  it("restores a selected actor from a shared URL and clears it when filters change", () => {
+    const point = makePoint({ id: "vegas-actor", name: "Las Vegas Housing Group" });
+    setMapPointsResult({ data: { points: [point], total: 1, capped: false } });
+    const { result, rerender } = renderHook(() =>
+      useMapPage({
+        search: { selected: point.id, states: "NV" },
+        navigate: requireMapPageMocks().navigate,
+      }),
+    );
+
+    expect(result.current.selection).toMatchObject({ kind: "actor", point });
+    setMapPointsResult({ data: { points: [{ ...point }], total: 1, capped: false } });
+    rerender();
+    expect(result.current.selection).toMatchObject({ kind: "actor", point });
+    act(() => {
+      result.current.onToggleFilter("issue_areas", "housing_affordability");
+    });
+    expect(result.current.selection).toBeNull();
+    expect(lastNavigateSearch(requireMapPageMocks().navigate)?.selected).toBeUndefined();
+  });
+
+  it("closes the selected actor when browser history removes it from the URL", () => {
+    const point = makePoint({ id: "vegas-actor" });
+    setMapPointsResult({ data: { points: [point], total: 1, capped: false } });
+    let search: MapRouteSearch = { selected: point.id };
+    const { result, rerender } = renderHook(() =>
+      useMapPage({ search, navigate: requireMapPageMocks().navigate }),
+    );
+    expect(result.current.selection?.kind).toBe("actor");
+
+    search = { selected: undefined };
+    rerender();
+    expect(result.current.selection).toBeNull();
+  });
+
+  it("leaves the panel closed when a shared actor is outside the loaded viewport", () => {
+    setMapPointsResult({
+      data: { points: [makePoint({ id: "another-actor" })], total: 1, capped: false },
+    });
+    const { result } = renderHook(() =>
+      useMapPage({
+        search: { selected: "vegas-actor" },
+        navigate: requireMapPageMocks().navigate,
+      }),
+    );
+    expect(result.current.selection).toBeNull();
   });
 
   it("opens a cluster's crowd and steps into one of its members", () => {
@@ -300,8 +352,10 @@ describe("useMapPage", () => {
       result.current.onZoomOut();
     });
     expect(result.current.selection?.kind).toBe("actor");
-    expect(lastNavigateSearch(requireMapPageMocks().navigate)).toMatchObject({
+    const navigation = requireMapPageMocks().navigate;
+    expect(navigateSearch(navigation.mock.calls.at(-2)?.[0])).toMatchObject({
       cities: "Dallas, TX",
     });
+    expect(lastNavigateSearch(navigation)).toMatchObject({ selected: "1" });
   });
 });

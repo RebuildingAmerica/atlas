@@ -16,6 +16,7 @@ interface EntryCardProps {
   /** Optional slug-to-label mapping for issue area display names. */
   issueAreaLabels?: Record<string, string>;
   discoveryContext?: EntryDiscoveryContext;
+  isMapSelection?: boolean;
 }
 
 /** Format an entry's location for display (city, state > region > state). */
@@ -155,13 +156,21 @@ const PROFILE_ROUTE_BY_TYPE = {
  * Links to the canonical profile URL when a slug exists, falling back
  * to the legacy `/entries/:id` route for slugless records.
  */
-export function EntryCard({ entry, issueAreaLabels = {}, discoveryContext }: EntryCardProps) {
+export function EntryCard({
+  entry,
+  issueAreaLabels = {},
+  discoveryContext,
+  isMapSelection = false,
+}: EntryCardProps) {
   const tier = trustBadge(entry);
   const profileRoute = PROFILE_ROUTE_BY_TYPE[entry.type];
   const href = profileHref(entry);
   const matchReason = buildMatchReason(entry, discoveryContext, issueAreaLabels);
   return (
-    <article className="bg-surface-container-lowest rounded-[1.3rem] px-4 py-4">
+    <article
+      id={isMapSelection ? "selected-map-result" : undefined}
+      className={`bg-surface-container-lowest rounded-[1.3rem] px-4 py-4 ${isMapSelection ? "ring-accent ring-2" : ""}`}
+    >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">

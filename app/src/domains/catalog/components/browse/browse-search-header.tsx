@@ -105,7 +105,7 @@ export function BrowseSearchHeader({
             </button>
             <Link
               to="/map"
-              search={mapSearch}
+              search={{ ...mapSearch, view: "map", offset: 0 }}
               className="type-label-medium border-border-strong bg-surface-container-lowest text-ink-soft hover:bg-surface-container inline-flex min-h-10 items-center gap-2 border px-3 no-underline transition-colors duration-150"
             >
               <Map className="h-4 w-4" aria-hidden />

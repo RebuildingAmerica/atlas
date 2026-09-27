@@ -1,6 +1,6 @@
 import type { Ref } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Network, X } from "lucide-react";
+import { ArrowRight, List, Network, X } from "lucide-react";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
@@ -15,6 +15,7 @@ import {
   isActorSelection,
 } from "@rebuildingamerica/atlas-catalog/map/map-selection";
 import type { EntryType, MapPoint } from "@rebuildingamerica/atlas-api-client";
+import type { BrowseRouteSearch } from "@rebuildingamerica/atlas-catalog/search-state";
 
 /** Human-readable type labels for the panel's type badge and avatar shape. */
 const TYPE_LABEL: Record<EntryType, string> = {
@@ -113,6 +114,8 @@ interface MapDetailPanelProps {
   panelRef?: Ref<HTMLDivElement>;
   /** What the panel is currently showing — one actor or a cluster's crowd. */
   selection: MapSelection;
+  /** A list URL carrying the current filters, camera, and selected actor. */
+  listSearch?: BrowseRouteSearch;
   /** Dismiss the panel and return focus to the map. */
   onClose: () => void;
   /** Open one member's own detail from a cluster list. */
@@ -294,6 +297,7 @@ function ClusterView({
 export function MapDetailPanel({
   panelRef,
   selection,
+  listSearch,
   onClose,
   onSelectMember,
   reducedMotion = false,
@@ -313,7 +317,17 @@ export function MapDetailPanel({
           : "focus:ring-accent focus:ring-2 focus:outline-none motion-safe:animate-[map-panel-in_240ms_ease-out]"
       }
     >
-      <div className="flex items-center justify-end p-2">
+      <div className="flex items-center justify-between p-2">
+        {listSearch ? (
+          <Link
+            to="/browse"
+            search={listSearch}
+            className="type-label-medium text-ink-strong hover:bg-surface-container-high inline-flex min-h-10 items-center gap-2 rounded-full px-3 no-underline"
+          >
+            <List className="h-4 w-4" aria-hidden />
+            List view
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={onClose}

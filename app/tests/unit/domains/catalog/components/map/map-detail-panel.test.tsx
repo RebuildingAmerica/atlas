@@ -18,6 +18,25 @@ vi.mock("@tanstack/react-router", async () => {
 afterEach(cleanup);
 
 describe("MapDetailPanel — actor view", () => {
+  it("keeps the selected actor reachable from the mobile detail panel", () => {
+    render(
+      <MapDetailPanel
+        selection={selectActor(PANEL_ORG_ACTOR, { lng: -96.8, lat: 32.78 })}
+        listSearch={{ selected: PANEL_ORG_ACTOR.id, states: "TX", view: "list" }}
+        onClose={vi.fn()}
+        onSelectMember={vi.fn()}
+      />,
+    );
+
+    const href = screen.getByRole("link", { name: "List view" }).getAttribute("href") ?? "";
+    const url = new URL(href, "https://atlas.test");
+    expect(url.pathname).toBe("/browse");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      selected: PANEL_ORG_ACTOR.id,
+      states: "TX",
+    });
+  });
+
   it("renders the actor's name, trust, and a deep link to the full profile", () => {
     render(
       <MapDetailPanel

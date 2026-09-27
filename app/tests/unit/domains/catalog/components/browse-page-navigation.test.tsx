@@ -9,6 +9,44 @@ import { BrowsePage } from "@/domains/catalog/components/browse/browse-page";
 import { getNavigateCalls, mocks } from "./browse-page-test-setup";
 
 describe("BrowsePage navigation", () => {
+  it("keeps a map selection and camera when returning to map", () => {
+    render(
+      <BrowsePage
+        search={{
+          selected: "entry_123",
+          states: "NV",
+          issue_areas: "housing_affordability",
+          lng: -115.14,
+          lat: 36.17,
+          z: 9,
+          view: "list",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Selected on map" })).toBeInTheDocument();
+    const url = new URL(
+      screen.getByRole("link", { name: "Map" }).getAttribute("href") ?? "",
+      "https://atlas.test",
+    );
+    expect(url.pathname).toBe("/map");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      selected: "entry_123",
+      states: "NV",
+      issue_areas: "housing_affordability",
+      lng: "-115.14",
+      lat: "36.17",
+      z: "9",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    const update = getNavigateCalls().at(-1)?.search;
+    expect(typeof update).toBe("function");
+    if (typeof update === "function") {
+      expect(update({ selected: "entry_123", z: 9 }).selected).toBeUndefined();
+    }
+  });
+
   it("shows a paginated people directory with search and place filters but no removable type", () => {
     render(
       <BrowsePage

@@ -8,6 +8,7 @@ import { readRouterMocks, resetRouterMocks } from "@/../tests/helpers/router-har
 
 const hookMocks = vi.hoisted(() => ({
   useEntries: vi.fn(),
+  useEntry: vi.fn(),
   useTaxonomy: vi.fn(),
 }));
 
@@ -19,6 +20,7 @@ const hookMocks = vi.hoisted(() => ({
 const mocks = {
   navigate: readRouterMocks().navigate,
   useEntries: hookMocks.useEntries,
+  useEntry: hookMocks.useEntry,
   useTaxonomy: hookMocks.useTaxonomy,
 };
 
@@ -30,6 +32,8 @@ export interface BrowseSearchUpdate {
   query?: string;
   states?: string;
   view?: string;
+  selected?: string;
+  z?: number;
 }
 
 export interface NavigateOptions {
@@ -103,6 +107,7 @@ vi.mock("@/domains/catalog/components/entries/entry-list", () => ({
 
 vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-entries", () => ({
   useEntries: hookMocks.useEntries,
+  useEntry: hookMocks.useEntry,
 }));
 
 vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
@@ -112,6 +117,8 @@ vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
 beforeEach(() => {
   resetRouterMocks();
   mocks.useEntries.mockReset();
+  mocks.useEntry.mockReset();
+  mocks.useEntry.mockReturnValue({ data: undefined, isError: false });
   mocks.useTaxonomy.mockReset();
   mocks.useTaxonomy.mockReturnValue({
     data: {

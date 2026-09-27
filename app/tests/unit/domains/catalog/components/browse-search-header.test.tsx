@@ -88,6 +88,13 @@ describe("BrowseSearchHeader", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute("href", "/map?query=tenants");
+    const href = screen.getByRole("link", { name: "Map" }).getAttribute("href") ?? "";
+    const url = new URL(href, "https://atlas.test");
+    expect(url.pathname).toBe("/map");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      query: "tenants",
+      view: "map",
+      offset: "0",
+    });
   });
 });

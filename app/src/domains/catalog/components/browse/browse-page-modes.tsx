@@ -38,6 +38,7 @@ interface BrowseResultsModeProps {
   relatedSections: ReturnType<typeof buildBrowseEditorialSections>;
   resultLabelPlural: string | undefined;
   resultsHeading: string;
+  selectedId?: string;
   onPageChange: (offset: number) => void;
   onSelectFacet: (key: BrowseFilterKey, value: string) => void;
 }
@@ -55,6 +56,7 @@ export function BrowseResultsMode({
   relatedSections,
   resultLabelPlural,
   resultsHeading,
+  selectedId,
   onPageChange,
   onSelectFacet,
 }: BrowseResultsModeProps) {
@@ -81,6 +83,7 @@ export function BrowseResultsMode({
           hasActiveSearch
           resultLabelPlural={resultLabelPlural}
           discoveryContext={discoveryContext}
+          selectedId={selectedId}
           emptyAction={emptyAction}
           emptyRecoveryActions={emptyRecoveryActions}
         />
