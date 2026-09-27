@@ -72,6 +72,7 @@ import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/
 import { Route as WorkspaceAdminProfileClaimsRouteImport } from './routes/_workspace/admin/profile-claims'
 import { Route as WorkspaceAdminDiscoveryReviewsRouteImport } from './routes/_workspace/admin/discovery-reviews'
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
+import { Route as WorkspaceAdminCorrectionsRouteImport } from './routes/_workspace/admin/corrections'
 import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
@@ -431,6 +432,12 @@ const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
   path: '/admin/discounts',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceAdminCorrectionsRoute =
+  WorkspaceAdminCorrectionsRouteImport.update({
+    id: '/admin/corrections',
+    path: '/admin/corrections',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
 const WorkspaceAdminCloudCostsRoute =
   WorkspaceAdminCloudCostsRouteImport.update({
     id: '/admin/cloud-costs',
@@ -701,6 +708,7 @@ export interface FileRoutesByFullPath {
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
+  '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
@@ -795,6 +803,7 @@ export interface FileRoutesByTo {
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
+  '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
@@ -899,6 +908,7 @@ export interface FileRoutesById {
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_workspace/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
+  '/_workspace/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/_workspace/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/_workspace/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
@@ -1000,6 +1010,7 @@ export interface FileRouteTypes {
     | '/profiles/organizations'
     | '/profiles/people'
     | '/admin/cloud-costs'
+    | '/admin/corrections'
     | '/admin/discounts'
     | '/admin/discovery-reviews'
     | '/admin/profile-claims'
@@ -1094,6 +1105,7 @@ export interface FileRouteTypes {
     | '/feedback/$slug'
     | '/places/$placeSlug'
     | '/admin/cloud-costs'
+    | '/admin/corrections'
     | '/admin/discounts'
     | '/admin/discovery-reviews'
     | '/admin/profile-claims'
@@ -1197,6 +1209,7 @@ export interface FileRouteTypes {
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_workspace/admin/cloud-costs'
+    | '/_workspace/admin/corrections'
     | '/_workspace/admin/discounts'
     | '/_workspace/admin/discovery-reviews'
     | '/_workspace/admin/profile-claims'
@@ -1723,6 +1736,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceAdminDiscountsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/admin/corrections': {
+      id: '/_workspace/admin/corrections'
+      path: '/admin/corrections'
+      fullPath: '/admin/corrections'
+      preLoaderRoute: typeof WorkspaceAdminCorrectionsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/admin/cloud-costs': {
       id: '/_workspace/admin/cloud-costs'
       path: '/admin/cloud-costs'
@@ -2212,6 +2232,7 @@ interface WorkspaceRouteChildren {
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
   WorkspaceWatchingRoute: typeof WorkspaceWatchingRoute
   WorkspaceAdminCloudCostsRoute: typeof WorkspaceAdminCloudCostsRoute
+  WorkspaceAdminCorrectionsRoute: typeof WorkspaceAdminCorrectionsRoute
   WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
   WorkspaceAdminDiscoveryReviewsRoute: typeof WorkspaceAdminDiscoveryReviewsRoute
   WorkspaceAdminProfileClaimsRoute: typeof WorkspaceAdminProfileClaimsRoute
@@ -2231,6 +2252,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
   WorkspaceWatchingRoute: WorkspaceWatchingRoute,
   WorkspaceAdminCloudCostsRoute: WorkspaceAdminCloudCostsRoute,
+  WorkspaceAdminCorrectionsRoute: WorkspaceAdminCorrectionsRoute,
   WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
   WorkspaceAdminDiscoveryReviewsRoute: WorkspaceAdminDiscoveryReviewsRoute,
   WorkspaceAdminProfileClaimsRoute: WorkspaceAdminProfileClaimsRoute,

@@ -50,6 +50,10 @@ describe("AdminDashboardView", () => {
       "href",
       "/admin/discovery-reviews",
     );
+    expect(screen.getByRole("link", { name: "Review profile corrections" })).toHaveAttribute(
+      "href",
+      "/admin/corrections",
+    );
     expect(
       within(screen.getByRole("link", { name: "Inspect cloud costs" })).getByText("Current"),
     ).toBeInTheDocument();

@@ -534,6 +534,15 @@ The paid gate is independent of free browsing. Do not open Team merely because
 individual Pro passes: seats, invites, ownership, and shared billing have their
 own acceptance rows.
 
+The current branch adds a profile-correction inbox at `/admin/corrections`. It
+lists open visitor reports with the affected profile, reason, and private note,
+oldest first; resolve and dismiss actions update the open queue. The API rejects
+anonymous and non-operator reads, requires the configured operator email
+allowlist for moderation decisions, and sends `no-store` headers. This has local
+test coverage, but it has not been deployed or rehearsed with a real report and
+assigned editor. The inbox does not itself edit a profile or cover source-level
+flags. Those operating steps remain part of the private corrections gate.
+
 The wrong-account invitation screen now signs out and carries the invitation
 through the next sign-in, with a retry if sign-out fails. This is local behavior
 proof; acceptance after a real emailed invitation and account switch is still

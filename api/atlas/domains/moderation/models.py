@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from atlas.platform.database import db
 
-__all__ = ["FlagCRUD", "FlagModel"]
+__all__ = ["CorrectionInboxItem", "FlagCRUD", "FlagModel"]
 
 
 @dataclass
@@ -23,6 +23,20 @@ class FlagModel:
     reason: str
     note: str | None
     status: str
+    created_at: str
+
+
+@dataclass
+class CorrectionInboxItem:
+    """A private profile report with enough context for an editor to act."""
+
+    id: str
+    entity_id: str
+    entity_name: str
+    entity_slug: str | None
+    entity_type: str
+    reason: str
+    note: str | None
     created_at: str
 
 
@@ -131,6 +145,32 @@ class FlagCRUD:
         )
         rows = await cursor.fetchall()
         return [FlagCRUD._entity_flag_from_row(row) for row in rows]
+
+    @staticmethod
+    async def list_open_corrections(
+        conn: aiosqlite.Connection, *, limit: int = 25, offset: int = 0
+    ) -> list[CorrectionInboxItem]:
+        """List oldest open profile reports for the authorized editor inbox."""
+        cursor = await conn.execute(
+            """
+            SELECT f.id, f.entity_id, e.name, e.slug, e.type, f.reason, f.note, f.created_at
+            FROM entity_flags f
+            JOIN entries e ON e.id = f.entity_id
+            WHERE f.status = 'open'
+            ORDER BY f.created_at ASC, f.id ASC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        return [CorrectionInboxItem(*row) for row in await cursor.fetchall()]
+
+    @staticmethod
+    async def count_open_corrections(conn: aiosqlite.Connection) -> int:
+        """Count actionable profile reports without exposing their notes."""
+        cursor = await conn.execute("SELECT COUNT(*) FROM entity_flags WHERE status = 'open'")
+        row = await cursor.fetchone()
+        assert row is not None, "COUNT(*) always returns one row"
+        return int(row[0])
 
     @staticmethod
     async def get_entity_flag(conn: aiosqlite.Connection, flag_id: str) -> FlagModel | None:

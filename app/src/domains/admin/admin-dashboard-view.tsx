@@ -49,7 +49,13 @@ export function AdminDashboardView({
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <AdminActionLink
+          href="/admin/corrections"
+          label="Review profile corrections"
+          detail="Read private visitor reports, correct public facts, and close resolved concerns."
+          tone="warn"
+        />
         <AdminActionLink
           href="/admin/discovery-reviews"
           label="Review discovered profiles"

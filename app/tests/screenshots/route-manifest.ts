@@ -332,6 +332,9 @@ export const SCREENSHOT_ROUTES = [
  * for the same URL; the index child is the one that renders.
  */
 export const EXCLUDED_ROUTES = {
+  "/admin/corrections": {
+    reason: "Private reporter notes and contact details must not enter screenshot artifacts.",
+  },
   "/dashboard": { reason: "Pure redirect to /home." },
   "/entries/$entryId": { reason: "Pure redirect to the canonical profile URL." },
   "/docs": { reason: "Redirect to the external Mintlify docs site." },

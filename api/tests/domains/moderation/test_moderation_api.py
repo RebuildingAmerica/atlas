@@ -7,7 +7,10 @@ from datetime import date
 from http import HTTPStatus
 
 import pytest
+from fastapi import HTTPException
 
+from atlas.domains.access.principals import AuthenticatedActor
+from atlas.domains.moderation.api import require_moderation_editor
 from atlas.models import EntryCRUD, SourceCRUD
 
 
@@ -182,3 +185,164 @@ async def test_anonymous_callers_cannot_read_private_correction_notes(
     test_settings.multi_user = True
     listing = await test_client.get(f"/api/entity-flags?entity_id={entity_id}")
     assert listing.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_profile_correction_inbox_lists_open_reports_with_profile_context(
+    test_client: object,
+    test_db: object,
+) -> None:
+    """Editors can find private reports without knowing each profile ID in advance."""
+    first_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="First Las Vegas Group",
+        description="A group with a public profile correction.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+    second_id = await EntryCRUD.create(
+        test_db,
+        entry_type="person",
+        name="Second Las Vegas Organizer",
+        description="A person with a missing context report.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+    first = await test_client.post(
+        "/api/entity-flags",
+        json={"entity_id": first_id, "reason": "incorrect", "note": "Private correction one"},
+    )
+    second = await test_client.post(
+        "/api/entity-flags",
+        json={"entity_id": second_id, "reason": "missing_context", "note": "Private note two"},
+    )
+
+    inbox = await test_client.get("/api/entity-flags/inbox?limit=1&offset=0")
+    assert inbox.status_code == HTTPStatus.OK
+    assert inbox.headers["cache-control"] == "no-store"
+    assert inbox.json()["total"] == 2
+    first_entry = await EntryCRUD.get_by_id(test_db, first_id)
+    assert first_entry is not None
+    assert inbox.json()["items"][0] == {
+        "id": first.json()["id"],
+        "entity_id": first_id,
+        "entity_name": "First Las Vegas Group",
+        "entity_slug": first_entry.slug,
+        "entity_type": "organization",
+        "reason": "incorrect",
+        "note": "Private correction one",
+        "created_at": first.json()["created_at"],
+    }
+
+    next_page = await test_client.get("/api/entity-flags/inbox?limit=1&offset=1")
+    assert [item["id"] for item in next_page.json()["items"]] == [second.json()["id"]]
+    await test_client.post(f"/api/entity-flags/{first.json()['id']}/resolve")
+    remaining = await test_client.get("/api/entity-flags/inbox")
+    assert [item["id"] for item in remaining.json()["items"]] == [second.json()["id"]]
+
+
+@pytest.mark.asyncio
+async def test_anonymous_callers_cannot_list_profile_correction_inbox(
+    test_client: object,
+    test_settings: object,
+) -> None:
+    """The editor inbox never becomes a public way to enumerate private notes."""
+    test_settings.multi_user = True
+    response = await test_client.get("/api/entity-flags/inbox")
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_only_allowlisted_editors_can_read_or_close_private_reports(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    """A normal signed-in user cannot use internal app auth to read notes or close reports."""
+    entity_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Reported Group",
+        description="A group with a private visitor correction.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+    receipt = await test_client.post(
+        "/api/entity-flags",
+        json={"entity_id": entity_id, "reason": "incorrect", "note": "Private report"},
+    )
+    report_id = receipt.json()["id"]
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.test/reported-source",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Reported source",
+    )
+    source_receipt = await test_client.post(
+        "/api/source-flags",
+        json={"source_id": source_id, "reason": "outdated_source", "note": "Private source note"},
+    )
+    source_report_id = source_receipt.json()["id"]
+    test_settings.multi_user = True
+    test_settings.auth_internal_secret = "internal-test-secret"
+    test_settings.operator_allowed_emails = ["editor@rebuildingus.org"]
+    ordinary_headers = {
+        "X-Atlas-Actor-Email": "visitor@example.org",
+        "X-Atlas-Actor-Id": "ordinary-user",
+        "X-Atlas-Internal-Secret": "internal-test-secret",
+    }
+    editor_headers = {
+        "X-Atlas-Actor-Email": "EDITOR@rebuildingus.org",
+        "X-Atlas-Actor-Id": "editor-user",
+        "X-Atlas-Internal-Secret": "internal-test-secret",
+    }
+
+    for path in (
+        "/api/entity-flags/inbox",
+        f"/api/entity-flags?entity_id={entity_id}",
+        f"/api/source-flags?source_id={source_id}",
+        "/api/review-queue",
+    ):
+        denied = await test_client.get(path, headers=ordinary_headers)
+        assert denied.status_code == HTTPStatus.FORBIDDEN
+    denied_decision = await test_client.post(
+        f"/api/entity-flags/{report_id}/resolve", headers=ordinary_headers
+    )
+    assert denied_decision.status_code == HTTPStatus.FORBIDDEN
+    denied_source_decision = await test_client.post(
+        f"/api/source-flags/{source_report_id}/dismiss", headers=ordinary_headers
+    )
+    assert denied_source_decision.status_code == HTTPStatus.FORBIDDEN
+    denied_review_decision = await test_client.post(
+        "/api/review-queue/nonexistent/approve", headers=ordinary_headers
+    )
+    assert denied_review_decision.status_code == HTTPStatus.FORBIDDEN
+
+    inbox = await test_client.get("/api/entity-flags/inbox", headers=editor_headers)
+    assert inbox.status_code == HTTPStatus.OK
+    assert inbox.json()["items"][0]["note"] == "Private report"
+    resolved = await test_client.post(
+        f"/api/entity-flags/{report_id}/resolve", headers=editor_headers
+    )
+    assert resolved.status_code == HTTPStatus.OK
+    assert resolved.json()["status"] == "resolved"
+
+
+@pytest.mark.asyncio
+async def test_discovery_api_key_cannot_become_a_moderation_editor(test_settings: object) -> None:
+    """A scoped customer credential cannot read reporter notes even with an allowed email."""
+    test_settings.operator_allowed_emails = [" ", "editor@rebuildingus.org"]
+    actor = AuthenticatedActor(
+        user_id="customer-key-user",
+        email="editor@rebuildingus.org",
+        auth_type="api_key",
+        permissions={"discovery": ["write"]},
+    )
+    with pytest.raises(HTTPException) as exc:
+        await require_moderation_editor(actor=actor, settings=test_settings)
+    assert exc.value.status_code == HTTPStatus.FORBIDDEN
