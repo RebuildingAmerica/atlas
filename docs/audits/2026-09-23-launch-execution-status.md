@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-5`
+Updated September 27, 2026 · production release `v2026.09.27-6`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,12 +16,12 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed inventory is recorded here. The repository contains
 fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-5` deployed those changes, but it did not demonstrate a
+Release `v2026.09.27-6` deployed those changes, but it did not demonstrate a
 completed live payment, genuine signed webhook delivery, provider-account
-configuration, or a useful reviewed Las Vegas discovery slice. A subsequent
-read-only Production billing inventory confirmed that the required offer
-allowlist is absent. Passing deployment checks does not satisfy those acceptance
-gates.
+configuration, or a useful reviewed Las Vegas discovery slice. The earlier
+read-only Production billing inventory found the required offer allowlist
+absent; this release still has checkout disabled. Passing deployment checks does
+not satisfy those acceptance gates.
 
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
@@ -30,29 +30,38 @@ public profile claim with a workspace or a purchase.
 
 ## Verified September 27 production baseline
 
-[Release run 36314118742](https://github.com/RebuildingAmerica/atlas/actions/runs/36314118742)
-deployed commit `e7b517622faa6d2c2ebe86f22d893ff8a47a3924` to the API, PDS, and
-Vercel app and promoted the production domains. Full CI passed on that tag,
-including browser and Stripe **test-mode** acceptance. Hosted smoke reported 9
-passes and 1 skip; the signed-in ATProto identity journey passed once. These
-checks establish release and limited hosted behavior, not task success for
-public visitors, organizers, or team admins.
+[Release run 36319794580](https://github.com/RebuildingAmerica/atlas/actions/runs/36319794580)
+deployed commit `3905eee9fc42e3b52face96deb7152242adf1884` to the API, PDS, and
+Vercel app and promoted the production domains. Full release CI passed,
+including browser and Stripe **test-mode** acceptance. Hosted smoke and the
+signed-in ATProto identity journey passed. These checks establish release and
+limited hosted behavior, not task success for public visitors, organizers, or
+team admins.
+
+The same commit passed a manually dispatched
+[staging deployment and hosted checks](https://github.com/RebuildingAmerica/atlas/actions/runs/36318956086)
+on attempt 2. The first hosted identity attempt timed out after reaching the
+test provider's authorization URL without a callback; the retry completed the
+journey. This is a test reliability concern to investigate, not evidence that
+the first attempt passed.
 
 The deploy log records `ATLAS_BILLING_CHECKOUT_ENABLED=false`. The hosted job's
 live Stripe-session step was skipped by that flag. Paid sales therefore remain
 closed, and this release supplies no evidence of a live charge, fulfillment,
-renewal, cancellation, or refund. The production test job ran the full API suite
-without Python coverage instrumentation after two coverage-enabled release
-attempts exceeded the job timeout; pull-request and scheduled CI retain their
-coverage configuration. Restore a reliable coverage gate before treating a later
-release as fully verified.
+renewal, cancellation, or refund. Production CI ran the full API suite without
+Python coverage instrumentation. The coverage-enabled staging suite had stalled
+beyond 30 minutes on the prior attempt; the staging release profile now also
+omits coverage, although the manual staging run did not rerun the test job.
+Pull-request and scheduled CI retain their coverage configuration, but no recent
+successful coverage run is recorded here. Restore a reliable coverage gate
+before treating a later release as fully verified.
 
 The read-only
 [Production billing inventory run 36316296989](https://github.com/RebuildingAmerica/atlas/actions/runs/36316296989)
-completed against this release and intentionally exited nonzero for **NO-GO**.
-Vercel Production metadata confirms `STRIPE_API_KEY`, `STRIPE_ATLAS_CATALOG`,
-and `STRIPE_WEBHOOK_SECRET` are configured by name, while
-`ATLAS_BILLING_ALLOWED_OFFERS` is absent. Vercel does not expose sensitive
+completed against the prior release and intentionally exited nonzero for
+**NO-GO**. Vercel Production metadata confirms `STRIPE_API_KEY`,
+`STRIPE_ATLAS_CATALOG`, and `STRIPE_WEBHOOK_SECRET` are configured by name,
+while `ATLAS_BILLING_ALLOWED_OFFERS` is absent. Vercel does not expose sensitive
 variable values to this CLI job, so the deployed key's validity and mode,
 charge-enabled account, catalog and webhook objects, Tax, portal, signed
 delivery, runtime write permissions, and payment lifecycle remain unverified.
@@ -62,14 +71,14 @@ The release did not run a rollback drill, physical-mobile or assistive-tech
 journey, editorial review of Las Vegas records, private-correction rehearsal, or
 team billing-role matrix against the hosted app. Those remain separate gates.
 
-After this release, the catalog API was changed locally so generic entity
-creation defaults to private workspace visibility. Public release requires the
-separate source-checked workspace publish action. Generic edits and deletion now
-require a matching ownership row; an organization cannot rewrite or remove a
-legacy public record just because that record has no owner. These protections
-need deployment and a hosted authorization check. They do not review the
-relevance of linked sources or govern every later edit to a published owned
-record; those editorial controls remain open.
+This release includes a catalog API change so generic entity creation defaults
+to private workspace visibility. Public release requires the separate
+source-checked workspace publish action. Generic edits and deletion now require
+a matching ownership row; an organization cannot rewrite or remove a legacy
+public record just because that record has no owner. These protections have
+local endpoint regression tests but still need a hosted authorization check.
+They do not review the relevance of linked sources or govern every later edit to
+a published owned record; those editorial controls remain open.
 
 ## Implemented outcomes
 
@@ -81,7 +90,7 @@ record; those editorial controls remain open.
 | A paid session belongs to its saved purchase             | `4ca37d58` matches workspace, product, interval, and session before fulfillment. `25a2543f` aligns the older isolation test.                                                                                                                                                                                                                                                                              | Test-mode purchase, signed webhook, replay, and returning paid access.                                                                                                                |
 | Delayed and refunded payments do not leave false access  | `8417b4fd`, `db9d4a14`, and `9ddfa1d4` gate settlement, attribute refunds, revoke a fully refunded term, and provide a previewable operator command.                                                                                                                                                                                                                                                      | Run test-mode async success/failure, cancellation, full refund, retry, and entitlement checks; then inspect live delivery.                                                            |
 | Visitors can start with search                           | `1a2832aa` moves mobile Browse search ahead of issue panels; `e615149f` makes home People and Organizations shortcuts use type filters.                                                                                                                                                                                                                                                                   | Retest with a populated API on physical mobile and complete ten launch questions.                                                                                                     |
-| Bike and bicycle searches reach the same actors          | Public entity and map search now match common bike/bicycle wording in either direction while retaining other search words and place/issue filters. Punctuation is treated as ordinary word separation instead of causing an SQLite query error.                                                                                                                                                           | Deploy the candidate and run Las Vegas visitor questions with reviewed real records. Search wording cannot repair missing local supply.                                               |
+| Bike and bicycle searches reach the same actors          | Public entity and map search now match common bike/bicycle wording in either direction while retaining other search words and place/issue filters. Punctuation is treated as ordinary word separation instead of causing an SQLite query error.                                                                                                                                                           | Run Las Vegas visitor questions with reviewed real records on the deployed release. Search wording cannot repair missing local supply.                                                |
 | Browse cards make narrower, usable claims                | Cards show the entry type, at most two issue tags, source count/date, and a factual reason for a matching filter. Unsupported lead grades and duplicate source badges are gone. Source links now target real profile sections and disappear when no usable source destination exists.                                                                                                                     | Review representative populated cards on a phone, including long descriptions, missing sources, and records without slugs.                                                            |
 | Mobile map controls remain usable                        | Results start as a compact trigger below search controls; opening them uses a bounded scroll panel. The keyboard skip link opens results, and map controls remain reachable.                                                                                                                                                                                                                              | Recheck with a populated API on a physical phone, including result selection and screen-reader navigation.                                                                            |
 | Organizers keep work through failures                    | `cd950766` preserves list creation and save retries; `ee9d7fbb` preserves a failed team invitation's address and role.                                                                                                                                                                                                                                                                                    | Signed-in, real email, passkey, save, invite acceptance, and recovery journeys.                                                                                                       |
@@ -155,7 +164,7 @@ until each offered combination passes. Add only accepted offers.
 
 | Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-5` passed CI, production deployment, hosted smoke, and hosted identity. Python coverage was omitted from this release test job; a rollback drill remains unverified.                                                                                                                               |
+| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-6` passed full production CI, deployment, hosted smoke, and hosted identity. Python coverage was omitted from this release test job; a rollback drill remains unverified.                                                                                                                          |
 | Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                                                                                                                                                                                                                                |
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | [Las Vegas](2026-09-23-las-vegas-coverage-gate.md) is the home-market gate. Current city records have zero public-transit entries and no listed website or email across transit/housing candidates. Acquire and review useful local supply before promoting a pilot. Seattle remains comparative evidence only. |
 | Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.                                                                                                                                                                                                                                                 |
