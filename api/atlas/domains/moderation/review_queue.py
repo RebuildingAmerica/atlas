@@ -15,6 +15,7 @@ from atlas.platform.dates import coerce_date, row_timestamp_string
 
 __all__ = [
     "RESOLVABLE_HOLD_REASONS",
+    "STAGED_ENTRY_FIELDS",
     "ReviewConflictError",
     "ReviewQueueCRUD",
     "ReviewQueueItemModel",
@@ -23,7 +24,19 @@ __all__ = [
 PUBLISHED_CHANGE_REASON = "published_profile_change"
 WEBSITE_CANDIDATE_KIND = "website_candidate"
 STAGED_ENTRY_FIELDS = frozenset(
-    {"name", "description", "region", "website", "email", "social_media"}
+    {
+        "name",
+        "description",
+        "city",
+        "state",
+        "region",
+        "geo_specificity",
+        "full_address",
+        "website",
+        "email",
+        "phone",
+        "social_media",
+    }
 )
 STAGED_ISSUE_FIELD = "issue_areas"
 _UNAVAILABLE_PROFILE = "Published profile is no longer available"
@@ -181,13 +194,14 @@ class ReviewQueueCRUD:
         return item_id
 
     @staticmethod
-    async def stage_published_change(
+    async def stage_published_change(  # noqa: PLR0913 - review provenance is explicit
         conn: Any,
         *,
         entity_id: str,
         kind: str,
         proposed_changes: dict[str, dict[str, Any]],
         source_urls: list[str] | None = None,
+        org_id: str | None = None,
     ) -> str:
         """Keep one reviewable proposal per published entry until a person decides."""
         cursor = await conn.execute(
@@ -203,6 +217,7 @@ class ReviewQueueCRUD:
             return str(existing[0])
         return await ReviewQueueCRUD.enqueue(
             conn,
+            org_id=org_id,
             entity_id=entity_id,
             kind=kind,
             hold_reason=PUBLISHED_CHANGE_REASON,
@@ -430,6 +445,7 @@ class ReviewQueueCRUD:
         await ReviewQueueCRUD._validate_published_change(conn, item, entry, changes)
         await ReviewQueueCRUD._write_staged_entry_fields(conn, item.entity_id, changes)
         await ReviewQueueCRUD._write_staged_issues(conn, item.entity_id, changes)
+        await ReviewQueueCRUD._refresh_staged_location(conn, item.entity_id, entry, changes)
 
     @staticmethod
     async def _validate_published_change(
@@ -445,6 +461,15 @@ class ReviewQueueCRUD:
             or set(changes) - (STAGED_ENTRY_FIELDS | {STAGED_ISSUE_FIELD})
         ):
             raise ReviewConflictError(_INVALID_PROPOSAL)
+        if item.org_id is not None:
+            cursor = await conn.execute(
+                """SELECT 1 FROM resource_ownership
+                   WHERE resource_id = ? AND resource_type = 'entry'
+                     AND org_id = ? AND visibility = 'public' LIMIT 1""",
+                (item.entity_id, item.org_id),
+            )
+            if await cursor.fetchone() is None:
+                raise ReviewConflictError(_STALE_PROPOSAL)
         for field, change in changes.items():
             if set(change) != {"before", "after"}:
                 raise ReviewConflictError(_INVALID_PROPOSAL)
@@ -540,6 +565,39 @@ class ReviewQueueCRUD:
                     VALUES (?, ?, ?) ON CONFLICT(entry_id, issue_area) DO NOTHING""",
                     (entity_id, issue_area, db.now_iso()),
                 )
+
+    @staticmethod
+    async def _refresh_staged_location(
+        conn: Any,
+        entity_id: str,
+        entry: Any,
+        changes: dict[str, dict[str, Any]],
+    ) -> None:
+        """Replace stale map coordinates when reviewed place facts change."""
+        if not {"city", "state", "full_address"} & changes.keys():
+            return
+        from atlas.domains.catalog.geo import geocode_entry
+
+        def approved_value(field: str) -> Any:
+            return changes[field]["after"] if field in changes else getattr(entry, field)
+
+        located = await geocode_entry(
+            approved_value("city"),
+            approved_value("state"),
+            approved_value("full_address"),
+            allow_remote=False,
+        )
+        await conn.execute(
+            """UPDATE entries SET latitude = ?, longitude = ?,
+               geocode_precision = ?, geocode_source = ? WHERE id = ?""",
+            (
+                located.latitude if located else None,
+                located.longitude if located else None,
+                located.precision if located else None,
+                located.source if located else None,
+                entity_id,
+            ),
+        )
 
     @staticmethod
     async def release_resolved(conn: Any, *, entity_id: str) -> bool:

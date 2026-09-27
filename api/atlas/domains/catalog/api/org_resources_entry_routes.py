@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import JSONResponse
 
 from atlas.domains.access.capabilities import require_capability
 from atlas.domains.access.dependencies import require_org_actor
@@ -16,6 +17,7 @@ from atlas.models import EntryCRUD
 from atlas.platform.http.cache import apply_no_store_headers
 from atlas.schemas import EntityCreateRequest, EntityDetailResponse, EntityUpdateRequest
 
+from .entries_review import StagedEntityUpdateResponse, prepare_owned_entry_update
 from .org_resources_models import HeldPublishResponse, PublishEntryResponse
 from .org_resources_support import (
     _entry_to_detail_response,
@@ -171,8 +173,9 @@ async def get_org_entry(
 @router.put(
     "/{entry_id}",
     response_model=EntityDetailResponse,
-    summary="Update a private entry",
+    summary="Update a workspace entry",
     operation_id="updateOrgEntry",
+    responses={202: {"model": StagedEntityUpdateResponse}},
     tags=["org-entries"],
 )
 async def update_org_entry(  # noqa: PLR0913
@@ -182,8 +185,8 @@ async def update_org_entry(  # noqa: PLR0913
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor),
     db: aiosqlite.Connection = Depends(get_db),
-) -> EntityDetailResponse:
-    """Update a private entry owned by the org."""
+) -> EntityDetailResponse | JSONResponse:
+    """Update a private entry or propose public fact changes for review."""
     _verify_org_access(actor, org_id)
 
     ownership = await OwnershipCRUD.get_ownership(db, entry_id, "entry")
@@ -194,14 +197,12 @@ async def update_org_entry(  # noqa: PLR0913
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
 
-    update_dict = {
-        field: value
-        for field, value in req.model_dump(exclude_unset=True).items()
-        if value is not None
-    }
+    prepared = await prepare_owned_entry_update(db, entry=entry, ownership=ownership, request=req)
+    if isinstance(prepared, JSONResponse):
+        return prepared
 
-    if update_dict:
-        await EntryCRUD.update(db, entry_id, **update_dict)
+    if prepared:
+        await EntryCRUD.update(db, entry_id, **prepared)
 
     updated_entry = await EntryCRUD.get_by_id(db, entry_id)
     assert updated_entry is not None, "entry existed under this org_id moments ago"
@@ -295,6 +296,12 @@ async def delete_org_entry(
     ownership = await OwnershipCRUD.get_ownership(db, entry_id, "entry")
     if ownership is None or ownership.org_id != org_id:
         raise HTTPException(status_code=404, detail="Entry not found")
+
+    if ownership.visibility == "public":
+        raise HTTPException(
+            status_code=409,
+            detail="Published entries require editorial removal; no public record was deleted.",
+        )
 
     await EntryCRUD.delete(db, entry_id)
     await OwnershipCRUD.delete_ownership(db, entry_id, "entry")

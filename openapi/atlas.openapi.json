@@ -12996,6 +12996,40 @@
         "title": "SourceType",
         "type": "string"
       },
+      "StagedEntityUpdateResponse": {
+        "description": "An owner's proposed change, which has not changed the public profile.",
+        "properties": {
+          "entity_id": {
+            "description": "entity id for this staged entity.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "message": {
+            "default": "Proposed public profile changes are awaiting editorial review. The published profile is unchanged.",
+            "description": "message for this staged entity.",
+            "title": "Message",
+            "type": "string"
+          },
+          "review_item_id": {
+            "description": "review item id for this staged entity.",
+            "title": "Review Item Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "pending_review",
+            "default": "pending_review",
+            "description": "status for this staged entity.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id",
+          "review_item_id"
+        ],
+        "title": "StagedEntityUpdateResponse",
+        "type": "object"
+      },
       "SyncedEntryLink": {
         "description": "Developer-visible receipt for one entry persisted from a run sync.",
         "properties": {
@@ -18394,7 +18428,7 @@
         ]
       },
       "patch": {
-        "description": "Apply a partial update to an Atlas entity.\n\nUse this entity operation to find or manage source-backed civic actors. Preserve entity ids, source ids, place context, and issue filters whenever you export or reuse results.",
+        "description": "Update a private entity or submit public fact changes for editorial review.\n\nUse this entity operation to find or manage source-backed civic actors. Preserve entity ids, source ids, place context, and issue filters whenever you export or reuse results.",
         "operationId": "updateEntity",
         "parameters": [
           {
@@ -18507,6 +18541,16 @@
               }
             },
             "description": "The updated Atlas entity."
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StagedEntityUpdateResponse"
+                }
+              }
+            },
+            "description": "Accepted"
           },
           "422": {
             "content": {
@@ -27315,7 +27359,7 @@
         ]
       },
       "put": {
-        "description": "Update a private entry owned by the org.\n\nUse this workspace-entry operation to manage private records or publish reviewed records into a public workspace directory. Do not treat private notes as public evidence.",
+        "description": "Update a private entry or propose public fact changes for review.\n\nUse this workspace-entry operation to manage private records or publish reviewed records into a public workspace directory. Do not treat private notes as public evidence.",
         "operationId": "updateOrgEntry",
         "parameters": [
           {
@@ -27438,6 +27482,16 @@
             },
             "description": "Successful Response"
           },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StagedEntityUpdateResponse"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
           "422": {
             "content": {
               "application/json": {
@@ -27449,7 +27503,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update a private entry",
+        "summary": "Update a workspace entry",
         "tags": [
           "org-entries"
         ]

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import Depends, HTTPException, Response
+from fastapi.responses import JSONResponse
 
 from atlas.domains.access.dependencies import require_org_actor_permission
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
@@ -14,6 +15,7 @@ from atlas.platform.http.cache import apply_no_store_headers
 from atlas.schemas import EntityCreateRequest, EntityDetailResponse, EntityUpdateRequest
 
 from .entries import router
+from .entries_review import StagedEntityUpdateResponse, prepare_owned_entry_update
 from .entries_support import _entity_to_detail_response, get_db
 
 if TYPE_CHECKING:
@@ -115,9 +117,10 @@ async def create_entity(
     "/{entity_id}",
     response_model=EntityDetailResponse,
     summary="Update an entity",
-    description="Apply a partial update to an Atlas entity.",
+    description="Update a private entity or submit public fact changes for editorial review.",
     operation_id="updateEntity",
     response_description="The updated Atlas entity.",
+    responses={202: {"model": StagedEntityUpdateResponse}},
     tags=["entities"],
 )
 async def update_entity(
@@ -126,8 +129,8 @@ async def update_entity(
     response: Response,
     actor: AuthenticatedActor = Depends(require_org_actor_permission("entities", "write")),
     db: aiosqlite.Connection = Depends(get_db),
-) -> EntityDetailResponse:
-    """Update an entity (partial update)."""
+) -> EntityDetailResponse | JSONResponse:
+    """Update a private entry immediately, or stage public facts for review."""
     entry = await EntryCRUD.get_by_id(db, entity_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entity not found")
@@ -138,14 +141,12 @@ async def update_entity(
             status_code=403, detail="Only the owning organization can modify this entity"
         )
 
-    update_dict = {
-        field: value
-        for field, value in req.model_dump(exclude_unset=True).items()
-        if value is not None
-    }
+    prepared = await prepare_owned_entry_update(db, entry=entry, ownership=ownership, request=req)
+    if isinstance(prepared, JSONResponse):
+        return prepared
 
-    if update_dict:
-        await EntryCRUD.update(db, entity_id, **update_dict)
+    if prepared:
+        await EntryCRUD.update(db, entity_id, **prepared)
 
     updated_entry, sources = await EntryCRUD.get_with_sources(db, entity_id)
     if not updated_entry:
@@ -188,6 +189,12 @@ async def delete_entity(
     if ownership is None or ownership.org_id != actor.org_id:
         raise HTTPException(
             status_code=403, detail="Only the owning organization can delete this entity"
+        )
+
+    if ownership.visibility == "public":
+        raise HTTPException(
+            status_code=409,
+            detail="Published entries require editorial removal; no public record was deleted.",
         )
 
     await EntryCRUD.delete(db, entity_id)
