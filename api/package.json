@@ -6,7 +6,7 @@
     "setup": "uv sync --extra dev",
     "typecheck": "uv run mypy atlas",
     "lint": "uv run ruff check atlas",
-    "test": "uv run --extra dev pytest -n auto --dist loadfile tests"
+    "test": "PYTHONPATH=../scripts/ci/api-test-bootstrap${PYTHONPATH:+:$PYTHONPATH} uv run --extra dev pytest -n auto --dist loadfile tests"
   },
   "devDependencies": {
     "portless": "catalog:"

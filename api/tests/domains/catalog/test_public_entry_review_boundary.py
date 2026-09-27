@@ -5,8 +5,11 @@ from __future__ import annotations
 from http import HTTPStatus
 
 import pytest
+from fastapi import HTTPException
 
+from atlas.domains.catalog.api.entries_review import prepare_owned_entry_update
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
+from atlas.domains.catalog.schemas.entry import EntityUpdateRequest
 from atlas.domains.moderation.review_queue import ReviewConflictError, ReviewQueueCRUD
 from atlas.models import EntryCRUD, SourceCRUD
 
@@ -184,6 +187,28 @@ async def test_owner_cannot_set_editorial_verification_or_publication_state(
     assert entry is not None
     assert entry.verified is False
     assert entry.active is True
+
+
+@pytest.mark.asyncio
+async def test_unpublished_owned_profile_cannot_stage_a_public_change(test_db: object) -> None:
+    """A prior public ownership row cannot reopen an unpublished profile."""
+    entry_id, _ = await _published_entry(test_db)
+    await EntryCRUD.update(test_db, entry_id, active=False)
+    entry = await EntryCRUD.get_by_id(test_db, entry_id)
+    ownership = await OwnershipCRUD.get_ownership(test_db, entry_id, "entry")
+    assert entry is not None
+    assert ownership is not None
+
+    with pytest.raises(HTTPException, match="not currently published") as error:
+        await prepare_owned_entry_update(
+            test_db,
+            entry=entry,
+            ownership=ownership,
+            request=EntityUpdateRequest(description="New claim."),
+        )
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert await ReviewQueueCRUD.list_pending(test_db) == []
 
 
 @pytest.mark.asyncio

@@ -57,6 +57,41 @@ class TestTrustGateUpsert:
     """The upsert path must hold risky discoveries instead of publishing them."""
 
     @pytest.mark.asyncio
+    async def test_identical_rediscovery_does_not_queue_a_public_change(
+        self, test_db: object
+    ) -> None:
+        """Seeing the same facts again must not create editorial busywork."""
+        from atlas_shared import DeduplicatedEntry
+
+        from atlas.domains.discovery.pipeline.runner_storage_persistence import _upsert_entry
+        from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+
+        entry_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Stable Las Vegas Organization",
+            description="Organizes local residents.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=True,
+        )
+        rediscovered = DeduplicatedEntry(
+            name="Stable Las Vegas Organization",
+            entry_type="organization",
+            description="Organizes local residents.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+        )
+
+        assert await _upsert_entry(test_db, rediscovered) == entry_id
+        assert await ReviewQueueCRUD.list_pending(test_db) == []
+        stored = await EntryCRUD.get_by_id(test_db, entry_id)
+        assert stored is not None
+        assert stored.description == "Organizes local residents."
+
+    @pytest.mark.asyncio
     async def test_discovered_person_is_held_not_published(self, test_db: object) -> None:
         from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 

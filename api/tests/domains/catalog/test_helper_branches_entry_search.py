@@ -83,6 +83,11 @@ def test_date_prefix_rejects_non_string_values(value: object) -> None:
     assert entry_search._date_prefix(value) is None
 
 
+def test_date_prefix_accepts_a_real_publication_date() -> None:
+    """A dated source should retain its date in map context."""
+    assert entry_search._date_prefix(datetime(2026, 9, 27, 12, 30, tzinfo=UTC)) == "2026-09-27"
+
+
 def test_suppressed_source_ids_and_public_map_sources_filter_rows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
