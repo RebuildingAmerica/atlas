@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-7`
+Updated September 27, 2026 · production release `v2026.09.27-8`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,13 +16,12 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed inventory is recorded here. The repository contains
 fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-7` deployed those changes, but it did not demonstrate a
+Release `v2026.09.27-8` deployed those changes, but it did not demonstrate a
 completed live payment, genuine signed webhook delivery, provider-account
 configuration, or a useful reviewed Las Vegas discovery slice. The earlier
 read-only Production billing inventory found the required offer allowlist
 absent; this release still has checkout disabled. Passing deployment checks does
-not satisfy those acceptance gates. Its hosted identity check failed twice at
-the final sign-in redirect, so that release is not fully verified.
+not satisfy those acceptance gates.
 
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
@@ -81,7 +80,7 @@ local endpoint regression tests but still need a hosted authorization check.
 They do not review the relevance of linked sources or govern every later edit to
 a published owned record; those editorial controls remain open.
 
-## Current production release `v2026.09.27-7`
+## Prior production release `v2026.09.27-7`
 
 [Staging run 36322397000](https://github.com/RebuildingAmerica/atlas/actions/runs/36322397000)
 passed change-scoped CI, deployed the API, and passed hosted smoke for commit
@@ -108,6 +107,28 @@ ownership again at approval, and refreshes map coordinates after an approved
 place change. The API suite passed 2,326 tests with six skips locally, and the
 release CI test job passed. A hosted owner-to-reviewer approval journey and a
 reviewable public-removal request are still needed.
+
+## Current production release `v2026.09.27-8`
+
+The
+[staging run 36324925366](https://github.com/RebuildingAmerica/atlas/actions/runs/36324925366)
+passed CI, hosted smoke, and the complete signed-in ATProto identity journey for
+commit `3ea07697c6089160f91c3c62096ca2421116c2d0`. The
+[production run 36325612236](https://github.com/RebuildingAmerica/atlas/actions/runs/36325612236)
+passed full release CI, deployed the API, PDS, and Vercel app, promoted the
+production domains, and passed hosted smoke and the same identity journey. The
+v7 identity failure was caused by the hosted test intercepting the sign-in
+navigation and fulfilling it with a fetched `302`; headless Chromium left the
+provider request pending. Continuing the original request lets the browser
+follow the server redirect and keeps the test credential off later redirect
+requests. A direct browser reproduction and the staging and production journeys
+verified the fix.
+
+Production checkout remains closed. The hosted checkout job succeeded, but its
+live Stripe-session step was skipped by the flag. The release did not prove a
+charge, entitlement, cancellation, or refund; the paid-launch gate remains
+closed. No hosted owner-to-reviewer approval, Las Vegas coverage slice, rollback
+drill, or physical-device journey has been recorded for this release.
 
 ## Implemented outcomes
 
@@ -193,7 +214,7 @@ until each offered combination passes. Add only accepted offers.
 
 | Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-7` passed full production CI, deployment, and hosted smoke. Hosted identity failed twice at the final sign-in redirect; live checkout was skipped, Python coverage was omitted, and a rollback drill remains unverified.                                                                           |
+| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-8` passed full production CI, deployment, hosted smoke, and hosted identity. Live checkout was skipped, Python coverage was omitted, and a rollback drill remains unverified.                                                                                                                      |
 | Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                                                                                                                                                                                                                                |
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | [Las Vegas](2026-09-23-las-vegas-coverage-gate.md) is the home-market gate. Current city records have zero public-transit entries and no listed website or email across transit/housing candidates. Acquire and review useful local supply before promoting a pilot. Seattle remains comparative evidence only. |
 | Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.                                                                                                                                                                                                                                                 |
