@@ -306,6 +306,31 @@ If you want to inspect Vercel's encrypted env metadata directly:
 vercel env ls --scope rebuilding-america-project --cwd app
 ```
 
+### Read-only production inventory
+
+Run the manual **Production Billing Readiness** workflow against the latest
+deployed tag before deciding whether any live offer can open:
+
+```bash
+gh workflow run billing-readiness.yml --ref main -f release_tag=vYYYY.MM.DD-N
+```
+
+The job runs against the existing Vercel Production variables in memory, then
+queries Stripe for the charge-enabled account, canonical
+products/prices/coupons, webhook endpoint configuration, Tax settings, and
+default customer-portal controls. Its GitHub job summary is deliberately
+redacted: it shows check outcomes and only the final four characters of the
+account ID. The job fails while checkout is closed or any required proof is
+failed or unverified. A failed run is therefore an honest **no-go** result, not
+automatically a broken script. It never changes Stripe, Vercel, or the checkout
+flag.
+
+This inventory still cannot prove that the deployed signing secret matches a
+delivered webhook, that the runtime key has write/refund permissions, that Tax
+registrations fit the intended sales, or that a buyer received and later lost
+paid access correctly. Record those separate acceptance results against the same
+release before opening an offer.
+
 The expected state is:
 
 - `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_ATLAS_CATALOG` are
