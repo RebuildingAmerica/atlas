@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
@@ -113,19 +113,29 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
     <PageLayout className="py-10 lg:py-16">
       <section className="mx-auto w-full max-w-3xl">
         <div className="mb-8 sm:mb-10">
-          <p className="type-label-medium text-ink-muted mb-3 tracking-wider uppercase">
-            How Atlas is funded
-          </p>
+          <p className="type-label-medium text-ink-muted mb-3 tracking-wider uppercase">Plans</p>
           <h1 className="type-display-small text-ink-strong mb-4 leading-tight">
             Atlas is free to use. <br />
-            Here's how we keep it that way.
+            Find the people behind the work.
           </h1>
-          <p className="type-body-large text-ink-soft mb-4 leading-relaxed">
-            The costs of running Atlas — the pipeline, the infrastructure, the research tools — are
-            covered by researchers, journalists, and organizations using it in paid work. If Atlas
-            supports funded work for you or your organization, that use should help keep the public
-            directory free for everyone.
+          <p className="type-body-large text-ink-soft mb-6 leading-relaxed">
+            Browse source-linked profiles without an account. Create a free account to save
+            shortlists and run research. Paid plans add more research capacity and a shared team
+            workspace.
           </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link
+              to={isAuthed ? "/discovery" : "/browse"}
+              className="type-label-large bg-accent text-accent-ink hover:bg-accent-deep inline-flex items-center justify-center rounded-full px-6 py-3 no-underline transition-colors duration-150"
+            >
+              {isAuthed ? "Open your workspace" : "Browse profiles"} &rarr;
+            </Link>
+            {!isAuthed && (
+              <Link to="/sign-up" className="type-label-medium text-accent-deep hover:underline">
+                Create a free account &rarr;
+              </Link>
+            )}
+          </div>
         </div>
 
         {isCheckoutUnavailable && (
@@ -138,11 +148,14 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
               Paid plans are temporarily unavailable
             </div>
             <p className="type-body-medium mt-2">
-              We have paused checkout while we finish work on the public directory. Browsing and
-              search stay free, and nothing on this page will charge you today.
+              New purchases are unavailable right now. Browsing and free accounts remain open.
             </p>
           </div>
         )}
+
+        <p className="type-body-small text-ink-muted mb-6">
+          Paid subscriptions help keep the public directory free.
+        </p>
 
         <PricingPlansGrid
           activeWorkspaceName={activeWorkspace?.name ?? null}
