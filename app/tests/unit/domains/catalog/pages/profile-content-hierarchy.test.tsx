@@ -87,14 +87,6 @@ vi.mock("@/domains/catalog/components/profiles/profile-stats", () => ({
   ProfileStats: () => <div data-testid="profile-stats" />,
 }));
 
-vi.mock("@/domains/catalog/components/profiles/signature-quote", () => ({
-  SignatureQuote: () => <div data-testid="signature-quote" />,
-}));
-
-vi.mock("@/domains/catalog/components/profiles/work-section", () => ({
-  WorkSection: () => <div data-testid="work-section" />,
-}));
-
 vi.mock("@/domains/catalog/components/profiles/actor-avatar", () => ({
   ActorAvatar: () => <div data-testid="actor-avatar" />,
 }));
@@ -126,8 +118,13 @@ describe("actor profile content hierarchy", () => {
     expect(screen.queryByRole("region", { name: "Profile at a glance" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Why this matters" })).toBeNull();
     expect(screen.getByTestId("action-cluster")).toBeInTheDocument();
-    expect(screen.getByTestId("signature-quote")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();
+    expect(screen.getByTestId("appearances-list")).toBeInTheDocument();
+    expect(screen.getByTestId("profile-stats")).toBeInTheDocument();
+    const sources = screen.getByRole("region", { name: "Sources for this profile" });
+    const history = screen.getByRole("region", { name: "Record history" });
+    expect(
+      Boolean(sources.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
     expect(
       screen.getByRole("heading", { level: 1, name: "Housing Justice KC" }),
     ).toBeInTheDocument();
@@ -142,8 +139,12 @@ describe("actor profile content hierarchy", () => {
     expect(screen.queryByRole("region", { name: "Profile at a glance" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Why this matters" })).toBeNull();
     expect(screen.getByTestId("action-cluster")).toBeInTheDocument();
-    expect(screen.getByTestId("signature-quote")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Record history" })).toBeInTheDocument();
+    expect(screen.getByTestId("appearances-list")).toBeInTheDocument();
+    const sources = screen.getByRole("region", { name: "Sources for this profile" });
+    const history = screen.getByRole("region", { name: "Record history" });
+    expect(
+      Boolean(sources.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });
 

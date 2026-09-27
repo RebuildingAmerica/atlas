@@ -9,7 +9,7 @@ import { AppearancesList } from "@/domains/catalog/components/profiles/appearanc
 import { createSourceFixture as buildSource } from "../../../../fixtures/catalog/entries";
 
 describe("AppearancesList", () => {
-  it("summarizes sources as evidence packets with quoted extraction context", () => {
+  it("summarizes sources without presenting extraction context as a direct quote", () => {
     render(
       <AppearancesList
         mode="organization"
@@ -23,10 +23,9 @@ describe("AppearancesList", () => {
       />,
     );
 
-    expect(screen.getByText("Evidence packets")).toBeInTheDocument();
-    expect(screen.getByText("1 source packet")).toBeInTheDocument();
-    expect(screen.getByText("1 source type")).toBeInTheDocument();
-    expect(screen.getByText("Quoted evidence")).toBeInTheDocument();
+    expect(screen.getByText("1 linked source · 1 source type")).toBeInTheDocument();
+    expect(screen.getByText("Source context")).toBeInTheDocument();
+    expect(screen.queryByText("Quoted evidence")).toBeNull();
     expect(screen.getByTestId("private-notes-source-source-1")).toBeInTheDocument();
   });
 
@@ -142,9 +141,7 @@ describe("AppearancesList", () => {
       />,
     );
 
-    expect(screen.getByText("Appearances & mentions")).toBeInTheDocument();
-    expect(screen.getByText("2 source packets")).toBeInTheDocument();
-    expect(screen.getByText("2 source types")).toBeInTheDocument();
+    expect(screen.getByText("2 linked sources · 2 source types")).toBeInTheDocument();
     // The lead packet is the only one that gets the full expanded treatment.
     expect(screen.getByRole("link", { name: "Newest coverage" })).toHaveClass("type-title-medium");
     expect(screen.getByRole("link", { name: "Older coverage" })).toHaveClass("type-body-medium");
@@ -180,7 +177,6 @@ describe("AppearancesList", () => {
 
   it("says plainly when a profile has no linked sources", () => {
     render(<AppearancesList mode="person" sources={[]} />);
-    expect(screen.getByText("Appearances & mentions")).toBeInTheDocument();
     expect(screen.getByText("No linked sources yet.")).toBeInTheDocument();
   });
   it("shows a lone bare packet by its URL with nothing it does not know", () => {
@@ -203,7 +199,7 @@ describe("AppearancesList", () => {
       "href",
       "https://example.com/bare",
     );
-    expect(screen.queryByText("Quoted evidence")).not.toBeInTheDocument();
+    expect(screen.queryByText("Source context")).not.toBeInTheDocument();
     expect(screen.queryByText("Mississippi Today")).not.toBeInTheDocument();
   });
 
@@ -230,5 +226,30 @@ describe("AppearancesList", () => {
 
     expect(screen.getByRole("link", { name: "Newer ingest" })).toHaveClass("type-title-medium");
     expect(screen.getByRole("link", { name: "Older ingest" })).toHaveClass("type-body-medium");
+  });
+
+  it("leads with a published source before an undated source ingested later", () => {
+    render(
+      <AppearancesList
+        mode="organization"
+        sources={[
+          buildSource({
+            id: "published",
+            title: "Published report",
+            published_date: "2025-06-01",
+            ingested_at: "2025-06-02T00:00:00Z",
+          }),
+          buildSource({
+            id: "undated",
+            title: "Undated page",
+            published_date: undefined,
+            ingested_at: "2026-06-01T00:00:00Z",
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Published report" })).toHaveClass("type-title-medium");
+    expect(screen.getByRole("link", { name: "Undated page" })).toHaveClass("type-body-medium");
   });
 });

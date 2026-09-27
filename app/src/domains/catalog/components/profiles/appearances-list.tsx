@@ -1,13 +1,12 @@
 /**
  * AppearancesList — sources panel for the profile Evidence section.
  *
- * Shows a stacked source-type distribution bar, the lead source rendered
- * expanded (title, publication, freshness, extraction context), and the
- * remaining sources as compact rows with source dates only when published.
+ * Shows the lead source expanded (title, publication, freshness, extraction
+ * context) and the remaining sources as compact rows. Source dates appear only
+ * when published, never from Atlas ingestion time.
  */
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";
-import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Source, SourceType } from "@rebuildingamerica/atlas-api-client";
 
 type AppearancesMode = "person" | "organization";
@@ -132,55 +131,12 @@ function ExpandedSource({ source }: { source: Source }) {
           style={{ backgroundColor: "var(--color-surface-container-lowest)" }}
         >
           <p className="type-label-small text-ink-muted mb-1 tracking-widest uppercase">
-            Quoted evidence
+            Source context
           </p>
           <p className="type-body-medium text-ink-soft">{source.extraction_context}</p>
         </div>
       ) : null}
       <PrivateNotesPanel targetId={source.id} targetLabel={sourceNoteLabel(source)} type="source" />
-    </div>
-  );
-}
-
-interface CoverageBarProps {
-  sources: Source[];
-}
-
-function CoverageBar({ sources }: CoverageBarProps) {
-  const typeCounts = new Map<SourceType, number>();
-  for (const source of sources) {
-    typeCounts.set(source.type, (typeCounts.get(source.type) ?? 0) + 1);
-  }
-  const total = sources.length;
-  const segments = Array.from(typeCounts.entries());
-
-  return (
-    <div className="space-y-2">
-      <div className="flex h-1.5 overflow-hidden rounded-full">
-        {segments.map(([type, count]) => (
-          <div
-            key={type}
-            className="h-full"
-            style={{
-              width: `${(count / total) * 100}%`,
-              backgroundColor: getSourceTypeColor(type),
-            }}
-          />
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-3">
-        {segments.map(([type, count]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: getSourceTypeColor(type) }}
-            />
-            <span className="type-label-small text-ink-muted">
-              {humanize(type)} ({count})
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -192,9 +148,12 @@ interface LeadSourceSplit {
 
 function pickLeadSource(sources: Source[]): LeadSourceSplit | null {
   const [lead, ...rest] = [...sources].sort((a, b) => {
-    const aDate = a.published_date ?? a.ingested_at;
-    const bDate = b.published_date ?? b.ingested_at;
-    return new Date(bDate).getTime() - new Date(aDate).getTime();
+    const aDate = a.published_date ? new Date(a.published_date).getTime() : 0;
+    const bDate = b.published_date ? new Date(b.published_date).getTime() : 0;
+    if (aDate !== bDate) return bDate - aDate;
+    // Ingestion only orders equally dated or undated rows; it never makes an
+    // undated source look more recently published than a dated one.
+    return new Date(b.ingested_at).getTime() - new Date(a.ingested_at).getTime();
   });
   if (!lead) {
     return null;
@@ -202,40 +161,20 @@ function pickLeadSource(sources: Source[]): LeadSourceSplit | null {
   return { lead, rest };
 }
 
-export function AppearancesList({ sources, mode }: AppearancesListProps) {
-  const sectionTitle = mode === "person" ? "Appearances & mentions" : "Appearances & coverage";
+export function AppearancesList({ sources }: AppearancesListProps) {
   const picked = pickLeadSource(sources);
 
   if (!picked) {
-    return (
-      <div className="space-y-3">
-        <h2 className="type-label-small text-ink-muted tracking-widest uppercase">
-          {sectionTitle}
-        </h2>
-        <p className="type-body-medium text-ink-muted">No linked sources yet.</p>
-      </div>
-    );
+    return <p className="type-body-medium text-ink-muted">No linked sources yet.</p>;
   }
 
   const sourceTypeCount = new Set(sources.map((source) => source.type)).size;
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h2 className="type-label-small text-ink-muted tracking-widest uppercase">
-            {sectionTitle}
-          </h2>
-          <Badge>{sources.length}</Badge>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="type-body-medium text-ink-soft">Evidence packets</span>
-          <Badge>{pluralize(sources.length, "source packet")}</Badge>
-          <Badge>{pluralize(sourceTypeCount, "source type")}</Badge>
-        </div>
-      </div>
-
-      <CoverageBar sources={sources} />
+      <p className="type-body-small text-ink-muted">
+        {pluralize(sources.length, "linked source")} · {pluralize(sourceTypeCount, "source type")}
+      </p>
 
       <div className="space-y-3 pt-1">
         <ExpandedSource source={picked.lead} />

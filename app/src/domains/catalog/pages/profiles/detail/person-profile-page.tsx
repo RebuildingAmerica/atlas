@@ -7,12 +7,14 @@ import {
   Network,
   Newspaper,
   ShieldCheck,
+  Tags,
 } from "lucide-react";
 import { useAtlasSession } from "@/domains/access";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
 import { DataQualityBlock } from "@/domains/catalog/components/profiles/data-quality-block";
+import { IssueFootprint } from "@/domains/catalog/components/profiles/issue-footprint";
 import {
   formatProfileLocation,
   ProfileSection,
@@ -23,8 +25,6 @@ import { ProfileHistory } from "@/domains/catalog/components/profiles/profile-hi
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
 import { ReachSection } from "@/domains/catalog/components/profiles/reach-section";
-import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
-import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
 import { useProfileConnections } from "@/domains/catalog/hooks/use-profile-entry";
 import { useEntry } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
 import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
@@ -138,7 +138,7 @@ export function PersonProfilePage({
           readyForActions={readyForActions}
           profilePath={profilePath}
           resumeSave={resumeSave}
-          sourcesHref="#reporting-trail"
+          sourcesHref={entry.sources?.length ? "#reporting-trail" : undefined}
           workspaceId={activeWorkspaceId}
           workspaceWatchingEnabled={workspaceWatchingEnabled}
         />
@@ -160,15 +160,15 @@ export function PersonProfilePage({
           </ProfileSection>
         ) : null}
 
-        <SignatureQuote sources={entry.sources ?? []} description={entry.description} />
-
-        <ProfileStats items={stats} />
-
-        <ProfileSection label="Record history" sectionId="record-history" Icon={History}>
-          <ProfileHistory entry={entry} />
-        </ProfileSection>
-
-        <WorkSection entry={entry} issueAreaLabels={issueAreaLabels} />
+        {entry.issue_areas.length > 0 ? (
+          <ProfileSection label="Issue focus" sectionId="issue-focus" Icon={Tags}>
+            <IssueFootprint
+              issueAreas={entry.issue_areas}
+              issueAreaLabels={issueAreaLabels}
+              showLabel={false}
+            />
+          </ProfileSection>
+        ) : null}
 
         {affiliatedOrgQuery.data ? (
           <ProfileSection
@@ -202,7 +202,7 @@ export function PersonProfilePage({
         ) : null}
 
         <ProfileSection
-          label="Reporting trail"
+          label="Sources for this profile"
           sectionId="reporting-trail"
           Icon={Newspaper}
           htmlId="reporting-trail"
@@ -225,8 +225,14 @@ export function PersonProfilePage({
           />
         </ProfileSection>
 
+        <ProfileStats items={stats} />
+
         <ProfileSection label="Sources and trust" sectionId="sources-and-trust" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
+        </ProfileSection>
+
+        <ProfileSection label="Record history" sectionId="record-history" Icon={History}>
+          <ProfileHistory entry={entry} />
         </ProfileSection>
       </div>
     </div>

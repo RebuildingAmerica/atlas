@@ -53,7 +53,7 @@ describe("profile evidence accessibility", () => {
       "href",
       "https://example.org/lead",
     );
-    expect(screen.getByRole("heading", { name: "Appearances & coverage" })).toBeInTheDocument();
+    expect(screen.getByText("2 linked sources · 1 source type")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Supporting source" })).toHaveAttribute(
       "href",
       "https://example.org/supporting",

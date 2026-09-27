@@ -85,7 +85,9 @@ describe("SetupPage", () => {
     const nameInput = await screen.findByLabelText(/Workspace name/);
     expect(screen.queryByLabelText(/Workspace slug/)).not.toBeInTheDocument();
     fireEvent.change(nameInput, { target: { value: "Rebuilding Las Vegas!" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+    const continueButton = screen.getByRole("button", { name: "Continue to payment" });
+    await waitFor(() => expect(continueButton).toBeEnabled());
+    fireEvent.click(continueButton);
 
     await waitFor(() => {
       expect(mocks.createWorkspace).toHaveBeenCalledWith({
@@ -158,6 +160,7 @@ describe("SetupPage", () => {
     render(<SetupPage product="atlas_pro" interval="monthly" />);
 
     const useWorkspaceButton = await screen.findByRole("button", { name: "Use My Workspace" });
+    await waitFor(() => expect(useWorkspaceButton).toBeEnabled());
     fireEvent.click(useWorkspaceButton);
 
     await waitFor(() => {

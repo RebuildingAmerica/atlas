@@ -180,12 +180,16 @@ describe("OrgProfilePage", () => {
 
     const contact = screen.getByRole("region", { name: "Presence and contact" });
     const actions = screen.getByRole("navigation", { name: "Profile actions" });
-    const explanation = screen.getByRole("heading", { name: "Source context" });
+    const sources = screen.getByRole("region", { name: "Sources for this profile" });
+    const history = screen.getByRole("region", { name: "Record history" });
     expect(
       Boolean(actions.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
     expect(
-      Boolean(actions.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING),
+      Boolean(contact.compareDocumentPosition(sources) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+    expect(
+      Boolean(sources.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
   });
 
@@ -202,7 +206,8 @@ describe("OrgProfilePage", () => {
       seed: seedAnonymous,
     });
 
-    expect(screen.getByRole("region", { name: "Appearances and coverage" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Sources for this profile" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inspect sources" })).toBeNull();
   });
 
   it("holds a dash, not a zero, while the affiliated-people lookup is still in flight", () => {

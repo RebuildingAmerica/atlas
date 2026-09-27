@@ -151,6 +151,14 @@ describe("PersonProfilePage", () => {
     expect(screen.getAllByText("Civic Infrastructure")[0]).toBeInTheDocument();
   });
 
+  it("omits issue focus when no issue has been reviewed for the person", () => {
+    renderWithProviders(<PersonProfilePage entry={person({ issue_areas: [] })} />, {
+      seed: seedAnonymous,
+    });
+
+    expect(screen.queryByRole("region", { name: "Issue focus" })).toBeNull();
+  });
+
   it("hides the reach section for a person with no published contact route", () => {
     renderWithProviders(<PersonProfilePage entry={person()} />, { seed: seedAnonymous });
 
@@ -172,12 +180,16 @@ describe("PersonProfilePage", () => {
 
     const contact = screen.getByRole("region", { name: "Contact details" });
     const actions = screen.getByRole("navigation", { name: "Profile actions" });
-    const explanation = screen.getByRole("heading", { name: "Source context" });
+    const sources = screen.getByRole("region", { name: "Sources for this profile" });
+    const history = screen.getByRole("region", { name: "Record history" });
     expect(
       Boolean(actions.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
     expect(
-      Boolean(actions.compareDocumentPosition(explanation) & Node.DOCUMENT_POSITION_FOLLOWING),
+      Boolean(contact.compareDocumentPosition(sources) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ).toBe(true);
+    expect(
+      Boolean(sources.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING),
     ).toBe(true);
   });
 
@@ -218,7 +230,8 @@ describe("PersonProfilePage", () => {
       seed: seedAnonymous,
     });
 
-    expect(screen.getByRole("region", { name: "Reporting trail" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Sources for this profile" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inspect sources" })).toBeNull();
   });
 
   it("offers workspace watching to a signed-in operator whose plan includes it", () => {

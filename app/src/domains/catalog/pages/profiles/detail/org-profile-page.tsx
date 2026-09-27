@@ -11,8 +11,6 @@ import { ProfileHero } from "@/domains/catalog/components/profiles/profile-hero"
 import { ProfileHistory } from "@/domains/catalog/components/profiles/profile-history";
 import { ProfileJsonLd } from "@/domains/catalog/components/profiles/profile-head";
 import { ProfileStats } from "@/domains/catalog/components/profiles/profile-stats";
-import { SignatureQuote } from "@/domains/catalog/components/profiles/signature-quote";
-import { WorkSection } from "@/domains/catalog/components/profiles/work-section";
 import { ProfileSection } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { useProfileConnections } from "@/domains/catalog/hooks/use-profile-entry";
 import { useEntries } from "@rebuildingamerica/atlas-catalog/hooks/use-entries";
@@ -71,7 +69,7 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
       .map((issue) => [issue.slug, issue.name]),
   );
 
-  const hasPresence = Boolean(entry.website || entry.email || entry.phone || entry.first_seen);
+  const hasPresence = Boolean(entry.website || entry.email || entry.phone);
   const latestSource = entry.latest_source_date ? shortRelative(entry.latest_source_date) : "—";
 
   const stats = [
@@ -112,7 +110,7 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
           readyForActions={readyForActions}
           profilePath={profilePath}
           resumeSave={resumeSave}
-          sourcesHref="#appearances"
+          sourcesHref={entry.sources?.length ? "#appearances" : undefined}
           workspaceId={activeWorkspaceId}
           workspaceWatchingEnabled={workspaceWatchingEnabled}
         />
@@ -128,22 +126,11 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
               website={entry.website}
               email={entry.email}
               phone={entry.phone}
-              firstSeen={entry.first_seen}
               websiteGrounded={entry.trust.website_grounded}
               emailGrounded={entry.trust.email_grounded}
             />
           </ProfileSection>
         ) : null}
-
-        <SignatureQuote sources={entry.sources ?? []} description={entry.description} />
-
-        <ProfileStats items={stats} />
-
-        <ProfileSection label="Record history" sectionId="record-history" Icon={History}>
-          <ProfileHistory entry={entry} />
-        </ProfileSection>
-
-        <WorkSection entry={entry} issueAreaLabels={issueAreaLabels} showIssueChips={false} />
 
         {entry.issue_areas.length > 0 ? (
           <ProfileSection label="Issue footprint" sectionId="issue-footprint" Icon={Tags}>
@@ -155,6 +142,15 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
           </ProfileSection>
         ) : null}
 
+        <ProfileSection
+          label="Sources for this profile"
+          sectionId="appearances"
+          Icon={Newspaper}
+          htmlId="appearances"
+        >
+          <AppearancesList sources={entry.sources ?? []} mode="organization" />
+        </ProfileSection>
+
         {affiliatedPeople.length > 0 ? (
           <ProfileSection
             label="People tied to this organization"
@@ -165,15 +161,6 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
             <AvatarRow people={affiliatedPeople} showHeader={false} />
           </ProfileSection>
         ) : null}
-
-        <ProfileSection
-          label="Appearances and coverage"
-          sectionId="appearances"
-          Icon={Newspaper}
-          htmlId="appearances"
-        >
-          <AppearancesList sources={entry.sources ?? []} mode="organization" />
-        </ProfileSection>
 
         <ProfileSection
           label="Network — actors related to this profile"
@@ -190,8 +177,14 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
           />
         </ProfileSection>
 
+        <ProfileStats items={stats} />
+
         <ProfileSection label="Sources and trust" sectionId="sources-and-trust" Icon={ShieldCheck}>
           <DataQualityBlock entry={entry} />
+        </ProfileSection>
+
+        <ProfileSection label="Record history" sectionId="record-history" Icon={History}>
+          <ProfileHistory entry={entry} />
         </ProfileSection>
       </div>
     </div>
