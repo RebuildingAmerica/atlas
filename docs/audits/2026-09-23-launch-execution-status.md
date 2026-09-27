@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-9`
+Updated September 27, 2026 · production release `v2026.09.27-10`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,12 +16,12 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed inventory is recorded here. The repository contains
 fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-9` deployed those changes, but it did not demonstrate a
+Release `v2026.09.27-10` deployed those changes, but it did not demonstrate a
 completed live payment, genuine signed webhook delivery, provider-account
-configuration, or a useful reviewed Las Vegas discovery slice. The earlier
-read-only Production billing inventory for this release found the required offer
-allowlist absent; checkout is still disabled. Passing deployment checks does not
-satisfy those acceptance gates.
+configuration, or a useful reviewed Las Vegas discovery slice. The read-only
+Production billing inventory for this release found the required offer allowlist
+absent; checkout is still disabled. Passing deployment checks does not satisfy
+those acceptance gates.
 
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
@@ -130,7 +130,7 @@ charge, entitlement, cancellation, or refund; the paid-launch gate remains
 closed. No hosted owner-to-reviewer approval, Las Vegas coverage slice, rollback
 drill, or physical-device journey has been recorded for this release.
 
-## Current production release `v2026.09.27-9`
+## Prior production release `v2026.09.27-9`
 
 Commit `dbb81144d660b7b5d6fea7e69f2681ddaeb033e7` prevents a reviewer from
 approving a staged public-profile change after its candidate source URL has been
@@ -159,6 +159,39 @@ absent in Vercel Production. The Stripe key, catalog, and webhook secret are
 configured by name, but sensitive values were unreadable in that inspection. The
 live account, catalog, webhook delivery, Tax, portal, permissions, and purchase,
 entitlement, cancellation, and refund lifecycle remain unverified. This
+inventory changed no settings and moved no money.
+
+## Current production release `v2026.09.27-10`
+
+Commit `615e0f03617384d6df71f03c08919dc452eb824a` restores Python statement and
+branch coverage to staging and production release CI. The API test command
+preloads `probablepeople` before coverage starts in each worker; its generated
+name-ratio table had made coverage-instrumented startup take minutes per worker.
+Regression tests now exercise malformed and stale review proposals, approval
+races, unpublished owned profiles, and unchanged rediscovery. Locally, the full
+repository quality command and normal pre-push gate passed; the API suite passed
+2,341 tests with six skips at 100% coverage.
+
+The
+[staging run](https://github.com/RebuildingAmerica/atlas/actions/runs/36332872273)
+and
+[production run](https://github.com/RebuildingAmerica/atlas/actions/runs/36333668878)
+passed on that exact commit. Both PostgreSQL-backed API jobs passed 2,347 tests
+at 100% statement and branch coverage, alongside browser acceptance, contract,
+secrets, and other required release checks. Staging deployed the API and passed
+hosted smoke. Production deployed the API, PDS, and Vercel app, promoted the
+domains, and passed hosted smoke and signed-in identity. The public app returned
+HTTP 200 and the API health endpoint returned `{"status":"ok"}` after release.
+No rollback drill or hosted owner-to-reviewer approval is recorded.
+
+The hosted checkout job succeeded, but **its live Stripe-session step was
+skipped** because checkout is disabled. The read-only
+[billing inventory for v10](https://github.com/RebuildingAmerica/atlas/actions/runs/36334753045)
+returned **NO-GO**: Production checkout is closed and
+`ATLAS_BILLING_ALLOWED_OFFERS` is absent. The Stripe key, catalog, and webhook
+secret are configured by name, but their sensitive values were unreadable in
+that inspection. Charge-enabled account, catalog, webhook delivery, Tax, portal,
+runtime permissions, and the payment and refund lifecycle remain unverified. The
 inventory changed no settings and moved no money.
 
 ## Implemented outcomes
@@ -245,7 +278,7 @@ until each offered combination passes. Add only accepted offers.
 
 | Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-9` passed production release CI, deployment, hosted smoke, and hosted identity. Live checkout was skipped, Python coverage was omitted, and a rollback drill remains unverified.                                                                                                                   |
+| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-10` passed production CI with 100% Python coverage, deployment, hosted smoke, and hosted identity. Live checkout was skipped and a rollback drill remains unverified.                                                                                                                              |
 | Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                                                                                                                                                                                                                                |
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | [Las Vegas](2026-09-23-las-vegas-coverage-gate.md) is the home-market gate. Current city records have zero public-transit entries and no listed website or email across transit/housing candidates. Acquire and review useful local supply before promoting a pilot. Seattle remains comparative evidence only. |
 | Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.                                                                                                                                                                                                                                                 |
