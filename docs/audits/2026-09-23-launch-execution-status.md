@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-8`
+Updated September 27, 2026 · production release `v2026.09.27-9`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,12 +16,12 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed inventory is recorded here. The repository contains
 fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-8` deployed those changes, but it did not demonstrate a
+Release `v2026.09.27-9` deployed those changes, but it did not demonstrate a
 completed live payment, genuine signed webhook delivery, provider-account
 configuration, or a useful reviewed Las Vegas discovery slice. The earlier
-read-only Production billing inventory found the required offer allowlist
-absent; this release still has checkout disabled. Passing deployment checks does
-not satisfy those acceptance gates.
+read-only Production billing inventory for this release found the required offer
+allowlist absent; checkout is still disabled. Passing deployment checks does not
+satisfy those acceptance gates.
 
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
@@ -108,7 +108,7 @@ place change. The API suite passed 2,326 tests with six skips locally, and the
 release CI test job passed. A hosted owner-to-reviewer approval journey and a
 reviewable public-removal request are still needed.
 
-## Current production release `v2026.09.27-8`
+## Prior production release `v2026.09.27-8`
 
 The
 [staging run 36324925366](https://github.com/RebuildingAmerica/atlas/actions/runs/36324925366)
@@ -129,6 +129,37 @@ live Stripe-session step was skipped by the flag. The release did not prove a
 charge, entitlement, cancellation, or refund; the paid-launch gate remains
 closed. No hosted owner-to-reviewer approval, Las Vegas coverage slice, rollback
 drill, or physical-device journey has been recorded for this release.
+
+## Current production release `v2026.09.27-9`
+
+Commit `dbb81144d660b7b5d6fea7e69f2681ddaeb033e7` prevents a reviewer from
+approving a staged public-profile change after its candidate source URL has been
+removed from that profile. The API returns a conflict, leaves the public fact
+unchanged, and keeps the proposal pending for review. The new regression test
+reproduced an incorrect approval before the fix. Locally, the full API suite
+passed 2,327 tests with six skips without coverage; Ruff and mypy passed. The
+coverage-enabled local quality gate stalled during Atlas import, so the push
+bypassed that local hook. This is an unresolved validation limit, not a passing
+coverage result.
+
+The
+[staging run](https://github.com/RebuildingAmerica/atlas/actions/runs/36329579250)
+and
+[production run](https://github.com/RebuildingAmerica/atlas/actions/runs/36330214791)
+passed release CI and hosted smoke and identity checks on that exact commit.
+Production deployed the API, PDS, and Vercel app and promoted the domains.
+Release CI omitted Python coverage. The hosted checkout job passed its enabled
+checks, but the live Stripe-session step was **skipped** because checkout is
+disabled. No hosted reviewer approval or live payment lifecycle was proven.
+
+The read-only
+[billing inventory for this exact release](https://github.com/RebuildingAmerica/atlas/actions/runs/36331147811)
+returned **NO-GO**: checkout is closed and `ATLAS_BILLING_ALLOWED_OFFERS` is
+absent in Vercel Production. The Stripe key, catalog, and webhook secret are
+configured by name, but sensitive values were unreadable in that inspection. The
+live account, catalog, webhook delivery, Tax, portal, permissions, and purchase,
+entitlement, cancellation, and refund lifecycle remain unverified. This
+inventory changed no settings and moved no money.
 
 ## Implemented outcomes
 
@@ -214,7 +245,7 @@ until each offered combination passes. Add only accepted offers.
 
 | Gate                    | Deliverable and observable pass condition                                                                                                                                                                                                                   | Status                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-8` passed full production CI, deployment, hosted smoke, and hosted identity. Live checkout was skipped, Python coverage was omitted, and a rollback drill remains unverified.                                                                                                                      |
+| Release baseline        | Run required CI and hosted checks on the exact candidate, deploy, and exercise rollback.                                                                                                                                                                    | `v2026.09.27-9` passed production release CI, deployment, hosted smoke, and hosted identity. Live checkout was skipped, Python coverage was omitted, and a rollback drill remains unverified.                                                                                                                   |
 | Private corrections     | Synthetic reporter and moderator journey on staging, with response ownership and urgent escalation.                                                                                                                                                         | Code committed; runtime and staffing unverified.                                                                                                                                                                                                                                                                |
 | Reviewed coverage slice | Name one geography and one or two issues; choose ten real visitor questions; review each returned profile for identity, current work, geography, sources, and safe next step. At least three useful results for each promoted query, or narrow the promise. | [Las Vegas](2026-09-23-las-vegas-coverage-gate.md) is the home-market gate. Current city records have zero public-transit entries and no listed website or email across transit/housing candidates. Acquire and review useful local supply before promoting a pilot. Seattle remains comparative evidence only. |
 | Public journey          | Mobile browse, result choice, profile evidence, source opening, correction, empty/error states, keyboard and screen-reader essentials on the exact build.                                                                                                   | Search position checked locally; end-to-end outcome unverified.                                                                                                                                                                                                                                                 |
