@@ -25,6 +25,13 @@ checkout is disabled. No completed live payment, signed webhook delivery, or
 useful reviewed Las Vegas discovery slice has been demonstrated. Passing
 deployment checks does not satisfy those acceptance gates.
 
+The
+[September 27 Las Vegas editorial packet](2026-09-27-las-vegas-editorial-packet.md)
+identifies candidate organizations, official next steps, and ten visitor
+questions. It has not been published into Atlas, checked against a fresh
+production catalog for duplicates, or exercised as a visitor journey. The Las
+Vegas pilot gate remains closed.
+
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a

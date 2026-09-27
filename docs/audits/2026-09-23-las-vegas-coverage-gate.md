@@ -66,6 +66,11 @@ different needs. Find more rider-centered organizations or narrow the promoted
 question to the supply actually reviewed. Do not count a transit agency,
 bicycle-safety group, or rural provider as interchangeable transit advocates.
 
+The [September 27 editorial packet](2026-09-27-las-vegas-editorial-packet.md)
+adds source-backed candidate summaries, official participation routes, and ten
+visitor questions. It is research for editorial review, not a newer published
+inventory or a passed pilot gate.
+
 ## Work that changes this decision
 
 1. Use Las Vegas visitor questions as the acquisition brief: who organizes
