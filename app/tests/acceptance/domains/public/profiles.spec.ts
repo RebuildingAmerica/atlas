@@ -40,7 +40,7 @@ async function expectProfileSsrHtml(
 }
 
 test.describe("public profile routes", () => {
-  test("renders the redesigned person profile with hero, work, evidence, and network sections", async ({
+  test("renders the person profile with identity, sources, and network sections", async ({
     page,
   }) => {
     await page.goto("/profiles");
@@ -68,13 +68,24 @@ test.describe("public profile routes", () => {
     // Old "What Atlas has surfaced" copy must not appear
     await expect(page.getByText("What Atlas has surfaced")).toHaveCount(0);
 
-    // Stacked panels still render their identifying labels
-    await expect(page.getByText(/Reporting trail/i).first()).toBeVisible();
+    // A visitor can reach an actual source before record history.
+    const sources = page.getByRole("region", { name: "Sources for this profile" });
+    await expect(sources).toBeVisible();
+    await expect(sources.locator('a[href^="http"]').first()).toBeVisible();
+    expect(
+      await sources.evaluate((element) => {
+        const history = document.querySelector('[data-profile-section="record-history"]');
+        return (
+          history !== null &&
+          Boolean(element.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING)
+        );
+      }),
+    ).toBe(true);
     await expect(page.getByRole("heading", { name: /who else is doing this work/i })).toBeVisible();
     await expect(page.getByText(/first surfaced/i)).toBeVisible();
     await expect(page.getByText("Profile shape")).toBeVisible();
 
-    // Action cluster anchored at the bottom of the stack
+    // Actions stay available near the profile introduction.
     expect(
       (await page.getByRole("link", { name: /^save$/i }).count()) +
         (await page.getByRole("button", { name: /^save$/i }).count()),
@@ -84,7 +95,7 @@ test.describe("public profile routes", () => {
     await expect(page.getByText("Hide Error")).toHaveCount(0);
   });
 
-  test("renders the redesigned organization profile with portal, footprint, and evidence sections", async ({
+  test("renders the organization profile with contact, footprint, and sources", async ({
     page,
   }) => {
     await page.goto("/profiles/organizations/eastside-housing-network");
@@ -95,9 +106,11 @@ test.describe("public profile routes", () => {
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "ORGANIZATIONS", exact: true })).toBeVisible();
 
-    // Stacked panels still render their identifying labels
+    // Work and openable evidence come before administrative history.
     await expect(page.getByText(/Issue footprint/i).first()).toBeVisible();
-    await expect(page.getByText(/Appearances and coverage/i).first()).toBeVisible();
+    const sources = page.getByRole("region", { name: "Sources for this profile" });
+    await expect(sources).toBeVisible();
+    await expect(sources.locator('a[href^="http"]').first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /who else is doing this work/i })).toBeVisible();
     await expect(page.getByText("Profile shape")).toBeVisible();
 
