@@ -7,6 +7,8 @@ import type { StripeAtlasCatalog } from "../products";
 export interface RuntimeBillingCheck {
   name: string;
   status: "pass" | "fail" | "unverified";
+  /** Fixed diagnostic codes only. Never include Stripe values or provider error text. */
+  reasonCodes?: string[];
 }
 
 const REQUIRED_WEBHOOK_EVENTS = [
@@ -19,6 +21,14 @@ const REQUIRED_WEBHOOK_EVENTS = [
   "refund.created",
   "refund.updated",
 ] as const;
+
+function diagnosticCheck(
+  name: string,
+  status: RuntimeBillingCheck["status"],
+  reasonCodes: string[],
+): RuntimeBillingCheck {
+  return reasonCodes.length > 0 ? { name, status, reasonCodes } : { name, status };
+}
 
 function parentForPrice(
   key: keyof StripeAtlasCatalog["prices"],
@@ -79,27 +89,43 @@ async function inspectWebhook(
   env: NodeJS.ProcessEnv,
 ): Promise<RuntimeBillingCheck> {
   const secret = env.STRIPE_WEBHOOK_SECRET?.trim() ?? "";
-  let endpointUrl: string;
+  const reasonCodes: string[] = [];
+  let endpointUrl: string | undefined;
   try {
     endpointUrl = new URL("/api/stripe/webhook", env.ATLAS_PUBLIC_URL).toString();
   } catch {
-    return { name: "Webhook endpoint metadata", status: "fail" };
+    reasonCodes.push("webhook_public_url_invalid");
   }
   if (!secret.startsWith("whsec_")) {
-    return { name: "Webhook endpoint metadata", status: "fail" };
+    reasonCodes.push("webhook_signing_secret_missing");
+  }
+  if (reasonCodes.length > 0) {
+    return diagnosticCheck("Webhook endpoint metadata", "fail", reasonCodes);
   }
   try {
     const result = await stripe.webhookEndpoints.list({ limit: 100 });
     const endpoint = result.data.find((item) => item.url === endpointUrl);
-    if (!endpoint && result.has_more) {
-      return { name: "Webhook endpoint metadata", status: "unverified" };
+    if (!endpoint) {
+      return diagnosticCheck("Webhook endpoint metadata", result.has_more ? "unverified" : "fail", [
+        result.has_more ? "webhook_list_incomplete" : "webhook_missing",
+      ]);
     }
-    const ready =
-      endpoint?.status === "enabled" &&
-      REQUIRED_WEBHOOK_EVENTS.every((event) => endpoint.enabled_events.includes(event));
-    return { name: "Webhook endpoint metadata", status: ready ? "pass" : "fail" };
+    if (endpoint.status !== "enabled") reasonCodes.push("webhook_disabled");
+    if (endpoint.metadata?.atlas_webhook !== "billing") {
+      reasonCodes.push("webhook_metadata_missing");
+    }
+    for (const event of REQUIRED_WEBHOOK_EVENTS) {
+      if (!endpoint.enabled_events.includes(event)) {
+        reasonCodes.push(`webhook_event_missing:${event}`);
+      }
+    }
+    return diagnosticCheck(
+      "Webhook endpoint metadata",
+      reasonCodes.length === 0 ? "pass" : "fail",
+      reasonCodes,
+    );
   } catch {
-    return { name: "Webhook endpoint metadata", status: "unverified" };
+    return diagnosticCheck("Webhook endpoint metadata", "unverified", ["webhook_unreadable"]);
   }
 }
 
@@ -144,18 +170,34 @@ export async function inspectRuntimeBilling(
 
   const portal = results[2];
   const configuration = portal.status === "fulfilled" ? portal.value.data[0] : undefined;
-  const portalReady = Boolean(
-    configuration?.active &&
-    configuration.livemode &&
-    configuration.features.invoice_history.enabled &&
-    configuration.features.payment_method_update.enabled &&
-    configuration.features.subscription_cancel.enabled &&
-    configuration.features.subscription_cancel.mode === "at_period_end",
+  const portalReasons: string[] = [];
+  if (portal.status === "rejected") {
+    portalReasons.push("portal_unreadable");
+  } else if (!configuration) {
+    portalReasons.push("portal_default_missing");
+  } else {
+    if (!configuration.active) portalReasons.push("portal_inactive");
+    if (!configuration.livemode) portalReasons.push("portal_not_live");
+    if (!configuration.features.invoice_history.enabled) {
+      portalReasons.push("portal_invoice_history_disabled");
+    }
+    if (!configuration.features.payment_method_update.enabled) {
+      portalReasons.push("portal_payment_update_disabled");
+    }
+    if (!configuration.features.subscription_cancel.enabled) {
+      portalReasons.push("portal_cancellation_disabled");
+    }
+    if (configuration.features.subscription_cancel.mode !== "at_period_end") {
+      portalReasons.push("portal_cancellation_mode_wrong");
+    }
+  }
+  checks.push(
+    diagnosticCheck(
+      "Customer portal",
+      portal.status === "rejected" ? "unverified" : portalReasons.length === 0 ? "pass" : "fail",
+      portalReasons,
+    ),
   );
-  checks.push({
-    name: "Customer portal",
-    status: portal.status === "rejected" ? "unverified" : portalReady ? "pass" : "fail",
-  });
 
   const [catalog, webhook] = await Promise.all([
     inspectCatalog(stripe, env.STRIPE_ATLAS_CATALOG),

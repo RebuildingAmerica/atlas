@@ -10,6 +10,40 @@ const CHECK_NAMES = [
   "Webhook endpoint metadata",
 ];
 const STATUSES = new Set(["pass", "fail", "unverified"]);
+const PORTAL_REASONS = new Set([
+  "portal_unreadable",
+  "portal_default_missing",
+  "portal_inactive",
+  "portal_not_live",
+  "portal_invoice_history_disabled",
+  "portal_payment_update_disabled",
+  "portal_cancellation_disabled",
+  "portal_cancellation_mode_wrong",
+]);
+const WEBHOOK_EVENTS = [
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "refund.created",
+  "refund.updated",
+];
+const WEBHOOK_REASONS = new Set([
+  "webhook_public_url_invalid",
+  "webhook_signing_secret_missing",
+  "webhook_list_incomplete",
+  "webhook_missing",
+  "webhook_disabled",
+  "webhook_metadata_missing",
+  "webhook_unreadable",
+  ...WEBHOOK_EVENTS.map((event) => `webhook_event_missing:${event}`),
+]);
+const REASONS_BY_CHECK = new Map([
+  ["Customer portal", PORTAL_REASONS],
+  ["Webhook endpoint metadata", WEBHOOK_REASONS],
+]);
 
 export function runtimeInventoryPasses(payload, expectedRevision) {
   return (
@@ -32,23 +66,33 @@ export function renderRuntimeBillingReport(payload, expectedRevision) {
   const lines = [
     "## Deployed Stripe runtime inventory",
     "",
-    "| Check | Status |",
-    "| --- | --- |",
+    "| Check | Status | Fixed diagnostic codes |",
+    "| --- | --- | --- |",
   ];
   if (
     !/^[a-f0-9]{40}$/i.test(expectedRevision) ||
     typeof payload?.revision !== "string" ||
     payload.revision.toLowerCase() !== expectedRevision.toLowerCase()
   ) {
-    lines.push("| Revision mismatch | unverified |");
+    lines.push("| Revision mismatch | unverified | — |");
   } else {
     for (const name of CHECK_NAMES) {
       const matches = Array.isArray(payload.checks)
         ? payload.checks.filter((item) => item?.name === name)
         : [];
       const check = matches.length === 1 ? matches[0] : undefined;
+      const status = STATUSES.has(check?.status) ? check.status : "unverified";
+      const allowedReasons = REASONS_BY_CHECK.get(name);
+      const reasons =
+        status !== "pass" && Array.isArray(check?.reasonCodes) && allowedReasons
+          ? [
+              ...new Set(
+                check.reasonCodes.filter((code) => allowedReasons.has(code)),
+              ),
+            ]
+          : [];
       lines.push(
-        `| ${name} | ${STATUSES.has(check?.status) ? check.status : "unverified"} |`,
+        `| ${name} | ${status} | ${reasons.length > 0 ? reasons.join(", ") : "—"} |`,
       );
     }
   }

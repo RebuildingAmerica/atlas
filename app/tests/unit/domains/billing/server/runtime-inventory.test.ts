@@ -32,6 +32,7 @@ describe("read-only billing inventory in the deployed runtime", () => {
                 {
                   active: true,
                   livemode: true,
+                  is_default: true,
                   features: {
                     invoice_history: { enabled: true },
                     payment_method_update: { enabled: true },
@@ -85,6 +86,7 @@ describe("read-only billing inventory in the deployed runtime", () => {
                   "refund.created",
                   "refund.updated",
                 ],
+                metadata: { atlas_webhook: "billing" },
               },
             ],
           }),
@@ -118,7 +120,96 @@ describe("read-only billing inventory in the deployed runtime", () => {
     );
 
     expect(checks).toContainEqual({ name: "Charge-enabled account", status: "fail" });
-    expect(checks).toContainEqual({ name: "Customer portal", status: "fail" });
+    expect(checks).toContainEqual({
+      name: "Customer portal",
+      status: "fail",
+      reasonCodes: ["portal_cancellation_disabled"],
+    });
+  });
+
+  test("reports every failed portal control and webhook setting without provider values", async () => {
+    const stripe = provider();
+    stripe.billingPortal.configurations.list = (() =>
+      Promise.resolve({
+        data: [
+          {
+            active: false,
+            livemode: false,
+            features: {
+              invoice_history: { enabled: false },
+              payment_method_update: { enabled: false },
+              subscription_cancel: { enabled: false, mode: "immediately" },
+            },
+          },
+        ],
+      })) as typeof stripe.billingPortal.configurations.list;
+    stripe.webhookEndpoints.list = (() =>
+      Promise.resolve({
+        data: [
+          {
+            url: "https://atlas.example.test/api/stripe/webhook",
+            status: "disabled",
+            enabled_events: ["checkout.session.completed"],
+            metadata: {},
+          },
+        ],
+      })) as typeof stripe.webhookEndpoints.list;
+
+    const checks = await inspectRuntimeBilling(stripe, runtime);
+
+    expect(checks).toContainEqual({
+      name: "Customer portal",
+      status: "fail",
+      reasonCodes: [
+        "portal_inactive",
+        "portal_not_live",
+        "portal_invoice_history_disabled",
+        "portal_payment_update_disabled",
+        "portal_cancellation_disabled",
+        "portal_cancellation_mode_wrong",
+      ],
+    });
+    expect(checks).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "fail",
+      reasonCodes: [
+        "webhook_disabled",
+        "webhook_metadata_missing",
+        "webhook_event_missing:checkout.session.async_payment_succeeded",
+        "webhook_event_missing:checkout.session.async_payment_failed",
+        "webhook_event_missing:customer.subscription.created",
+        "webhook_event_missing:customer.subscription.updated",
+        "webhook_event_missing:customer.subscription.deleted",
+        "webhook_event_missing:refund.created",
+        "webhook_event_missing:refund.updated",
+      ],
+    });
+    expect(JSON.stringify(checks)).not.toContain("https://atlas.example.test");
+    expect(JSON.stringify(checks)).not.toContain("whsec_example_credential");
+  });
+
+  test("identifies missing default portal and billing webhook separately", async () => {
+    const stripe = provider();
+    stripe.billingPortal.configurations.list = (() =>
+      Promise.resolve({ data: [] })) as unknown as typeof stripe.billingPortal.configurations.list;
+    stripe.webhookEndpoints.list = (() =>
+      Promise.resolve({
+        data: [],
+        has_more: false,
+      })) as unknown as typeof stripe.webhookEndpoints.list;
+
+    const checks = await inspectRuntimeBilling(stripe, runtime);
+
+    expect(checks).toContainEqual({
+      name: "Customer portal",
+      status: "fail",
+      reasonCodes: ["portal_default_missing"],
+    });
+    expect(checks).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "fail",
+      reasonCodes: ["webhook_missing"],
+    });
   });
 
   test("does not mistake an unreadable provider capability for a pass", async () => {
@@ -172,23 +263,39 @@ describe("read-only billing inventory in the deployed runtime", () => {
       ...runtime,
       ATLAS_PUBLIC_URL: undefined,
     });
-    expect(noUrl).toContainEqual({ name: "Webhook endpoint metadata", status: "fail" });
+    expect(noUrl).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "fail",
+      reasonCodes: ["webhook_public_url_invalid"],
+    });
 
     const noSecret = await inspectRuntimeBilling(provider(), {
       ...runtime,
       STRIPE_WEBHOOK_SECRET: undefined,
     });
-    expect(noSecret).toContainEqual({ name: "Webhook endpoint metadata", status: "fail" });
+    expect(noSecret).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "fail",
+      reasonCodes: ["webhook_signing_secret_missing"],
+    });
 
     const stripe = provider();
     stripe.webhookEndpoints.list = () => Promise.resolve({ data: [], has_more: true }) as never;
     const paginated = await inspectRuntimeBilling(stripe, runtime);
-    expect(paginated).toContainEqual({ name: "Webhook endpoint metadata", status: "unverified" });
+    expect(paginated).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "unverified",
+      reasonCodes: ["webhook_list_incomplete"],
+    });
 
     stripe.webhookEndpoints.list = (() =>
       Promise.reject(new Error("private webhook failure"))) as typeof stripe.webhookEndpoints.list;
     const unreadable = await inspectRuntimeBilling(stripe, runtime);
-    expect(unreadable).toContainEqual({ name: "Webhook endpoint metadata", status: "unverified" });
+    expect(unreadable).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "unverified",
+      reasonCodes: ["webhook_unreadable"],
+    });
     expect(JSON.stringify(unreadable)).not.toContain("private webhook failure");
   });
 
@@ -204,7 +311,11 @@ describe("read-only billing inventory in the deployed runtime", () => {
       )) as typeof stripe.billingPortal.configurations.list;
     const unreadable = await inspectRuntimeBilling(stripe, runtime);
     expect(unreadable).toContainEqual({ name: "Stripe Tax", status: "unverified" });
-    expect(unreadable).toContainEqual({ name: "Customer portal", status: "unverified" });
+    expect(unreadable).toContainEqual({
+      name: "Customer portal",
+      status: "unverified",
+      reasonCodes: ["portal_unreadable"],
+    });
   });
 
   test("rejects prices from another product and a disabled webhook", async () => {
@@ -214,6 +325,10 @@ describe("read-only billing inventory in the deployed runtime", () => {
     );
 
     expect(checks).toContainEqual({ name: "Catalog IDs", status: "fail" });
-    expect(checks).toContainEqual({ name: "Webhook endpoint metadata", status: "fail" });
+    expect(checks).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "fail",
+      reasonCodes: ["webhook_disabled"],
+    });
   });
 });

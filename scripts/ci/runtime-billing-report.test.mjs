@@ -57,6 +57,40 @@ test("does not echo unexpected provider text or secrets from a response", () => 
   assert.doesNotMatch(report, /rk_live_secret/);
 });
 
+test("prints only allowlisted portal and webhook reasons from the exact release", () => {
+  const report = renderRuntimeBillingReport(
+    {
+      revision: sha,
+      checks: [
+        {
+          name: "Customer portal",
+          status: "fail",
+          reasonCodes: ["portal_cancellation_disabled", "rk_live_secret"],
+        },
+        {
+          name: "Webhook endpoint metadata",
+          status: "fail",
+          reasonCodes: [
+            "webhook_event_missing:refund.updated",
+            "webhook_event_missing:rk_live_secret",
+          ],
+        },
+      ],
+    },
+    sha,
+  );
+
+  assert.match(
+    report,
+    /Customer portal \| fail \| portal_cancellation_disabled/,
+  );
+  assert.match(
+    report,
+    /Webhook endpoint metadata \| fail \| webhook_event_missing:refund.updated/,
+  );
+  assert.doesNotMatch(report, /rk_live_secret/);
+});
+
 test("leaves the billing gate closed until every runtime capability passes", () => {
   const checks = [
     "Runtime key",

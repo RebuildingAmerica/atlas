@@ -320,11 +320,13 @@ It also calls a protected read-only inventory inside the deployed app, where the
 runtime Stripe key is available. That check requires the deployed revision to
 match the requested release tag and reports key mode, charge capability, whether
 catalog IDs resolve to active objects in the same account, required webhook
-endpoint metadata, Tax status, and default customer-portal controls. Only fixed
-check names and pass/fail/unverified values leave the app; no key, catalog ID,
-provider error, or signing secret is returned. The job then tries to pass
-readable values in memory to the fuller Stripe inventory of amounts, terms,
-coupons, and endpoint metadata. Vercel
+endpoint metadata, Tax status, and default customer-portal controls. Fixed
+diagnostic codes identify failed portal controls and webhook settings, including
+each missing required event. The CI renderer accepts only an explicit allowlist
+of those codes; no key, catalog ID, endpoint URL, provider error, or signing
+secret is returned. The job then tries to pass readable values in memory to the
+fuller Stripe inventory of amounts, terms, coupons, and endpoint metadata.
+Vercel
 [sensitive variables](https://vercel.com/docs/environment-variables/manage-across-environments)
 are non-readable once created; when the CLI cannot supply one, the report says
 **configured by name, runtime value unverified**, not absent. Its GitHub job
@@ -341,18 +343,19 @@ permissions, that Tax registrations fit the intended sales, or that a buyer
 received and later lost paid access correctly. Record those separate acceptance
 results against the same release before opening an offer.
 
-For a failed **Customer portal** row, inspect the default live-mode billing
-portal configuration in the same account as the runtime key. The inventory
-requires it to be active, with invoice history, payment-method update, and
-subscription cancellation enabled; cancellation must take effect at the end of
-the current period. For a failed **Webhook endpoint metadata** row, inspect the
-enabled endpoint at `<ATLAS_PUBLIC_URL>/api/stripe/webhook` in that account and
-compare its subscribed events with the eight events in the Local development
-section. The inventory also requires a configured `whsec_` signing secret, but
-cannot establish that it belongs to this endpoint. Inspect existing live objects
-before provisioning replacements, correct the mismatch, and rerun the same
-release's billing-readiness workflow. A passing metadata row still needs an
-authentic signed delivery and retry rehearsal.
+For a failed **Customer portal** row, use the diagnostic codes to inspect the
+default live-mode billing portal configuration in the same account as the
+runtime key. The inventory requires it to be active, with invoice history,
+payment-method update, and subscription cancellation enabled; cancellation must
+take effect at the end of the current period. For a failed **Webhook endpoint
+metadata** row, use the diagnostic codes to inspect the enabled endpoint at
+`<ATLAS_PUBLIC_URL>/api/stripe/webhook` in that account and compare its
+subscribed events with the eight events in the Local development section. The
+inventory also requires a configured `whsec_` signing secret, but cannot
+establish that it belongs to this endpoint. Inspect existing live objects before
+provisioning replacements, correct the mismatch, and rerun the same release's
+billing-readiness workflow. A passing metadata row still needs an authentic
+signed delivery and retry rehearsal.
 
 The expected state is:
 
