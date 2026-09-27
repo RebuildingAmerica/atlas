@@ -2,8 +2,8 @@
   "observed_at": "2026-09-23 UTC",
   "method": "Read-only public API pagination: 15 pages, limit=100, cursors 0 through 1400. 1403 unique IDs. No authenticated provider state or mutations inspected.",
   "api": "https://atlas-api.rebuildingus.org/api/entities",
-  "current_main": "58e0e10a12c89f5d5a4dbd6a82e3ccecc783ba1a",
-  "local_checkout": "7b804be5358f416643aab8c2b3272582babb7316",
+  "current_main": "58e0e10a",
+  "local_checkout": "7b804be5",
   "counts": {
     "total": 1403,
     "organizations": 1355,
