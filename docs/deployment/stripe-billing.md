@@ -316,9 +316,15 @@ gh workflow run billing-readiness.yml --ref main -f release_tag=vYYYY.MM.DD-N
 ```
 
 The job first checks Vercel Production setting **names** without reading values.
-It then tries to pass readable values in memory to a read-only Stripe inventory
-of the charge-enabled account, canonical products/prices/coupons, webhook
-endpoint metadata, Tax settings, and default customer portal. Vercel
+It also calls a protected read-only inventory inside the deployed app, where the
+runtime Stripe key is available. That check requires the deployed revision to
+match the requested release tag and reports key mode, charge capability, whether
+catalog IDs resolve to active objects in the same account, required webhook
+endpoint metadata, Tax status, and default customer-portal controls. Only fixed
+check names and pass/fail/unverified values leave the app; no key, catalog ID,
+provider error, or signing secret is returned. The job then tries to pass
+readable values in memory to the fuller Stripe inventory of amounts, terms,
+coupons, and endpoint metadata. Vercel
 [sensitive variables](https://vercel.com/docs/environment-variables/manage-across-environments)
 are non-readable once created; when the CLI cannot supply one, the report says
 **configured by name, runtime value unverified**, not absent. Its GitHub job
@@ -329,10 +335,11 @@ is therefore an honest **no-go** result, not automatically a broken script. It
 never changes Stripe, Vercel, or the checkout flag.
 
 This inventory still cannot prove that the deployed signing secret matches a
-delivered webhook, that the runtime key has write/refund permissions, that Tax
-registrations fit the intended sales, or that a buyer received and later lost
-paid access correctly. Record those separate acceptance results against the same
-release before opening an offer.
+delivered webhook, that every catalog amount matches the offer when sensitive
+values remain unreadable in CI, that the runtime key has write/refund
+permissions, that Tax registrations fit the intended sales, or that a buyer
+received and later lost paid access correctly. Record those separate acceptance
+results against the same release before opening an offer.
 
 The expected state is:
 

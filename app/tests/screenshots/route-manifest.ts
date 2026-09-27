@@ -379,6 +379,7 @@ export const EXCLUDED_ROUTES = {
   "/api/atproto/oauth/start": { reason: "API route, not a page." },
   "/api/atproto/sign-in/start": { reason: "API route, not a page." },
   "/api/e2e/hosted/identity": { reason: "E2E seed route, not a page." },
+  "/api/e2e/hosted/billing-inventory": { reason: "Protected billing inventory route, not a page." },
   "/api/e2e/workspace/member": { reason: "E2E seed route, not a page." },
 } as const satisfies Partial<Record<AtlasRoutePath, ExcludedRoute>>;
 

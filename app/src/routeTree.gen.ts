@@ -89,6 +89,7 @@ import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/
 import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations/index'
 import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
 import { Route as ApiE2eHostedIdentityRouteImport } from './routes/api/e2e/hosted/identity'
+import { Route as ApiE2eHostedBillingInventoryRouteImport } from './routes/api/e2e/hosted/billing-inventory'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/sign-in/start'
 import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
@@ -522,6 +523,12 @@ const ApiE2eHostedIdentityRoute = ApiE2eHostedIdentityRouteImport.update({
   path: '/api/e2e/hosted/identity',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiE2eHostedBillingInventoryRoute =
+  ApiE2eHostedBillingInventoryRouteImport.update({
+    id: '/api/e2e/hosted/billing-inventory',
+    path: '/api/e2e/hosted/billing-inventory',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   id: '/api/auth/internal/api-key',
   path: '/api/auth/internal/api-key',
@@ -730,6 +737,7 @@ export interface FileRoutesByFullPath {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
@@ -823,6 +831,7 @@ export interface FileRoutesByTo {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsIndexRoute
@@ -926,6 +935,7 @@ export interface FileRoutesById {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/_public/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
@@ -1026,6 +1036,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
     | '/profiles/organizations/'
@@ -1119,6 +1130,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
     | '/profiles/organizations'
@@ -1221,6 +1233,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
     | '/_public/profiles/organizations/'
@@ -1260,6 +1273,7 @@ export interface RootRouteChildren {
   ApiAtprotoOauthStartRoute: typeof ApiAtprotoOauthStartRoute
   ApiAtprotoSignInStartRoute: typeof ApiAtprotoSignInStartRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
+  ApiE2eHostedBillingInventoryRoute: typeof ApiE2eHostedBillingInventoryRoute
   ApiE2eHostedIdentityRoute: typeof ApiE2eHostedIdentityRoute
   ApiE2eWorkspaceMemberRoute: typeof ApiE2eWorkspaceMemberRoute
   ApiAtprotoOauthHarnessAuthorizeRoute: typeof ApiAtprotoOauthHarnessAuthorizeRoute
@@ -1828,6 +1842,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiE2eHostedIdentityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/e2e/hosted/billing-inventory': {
+      id: '/api/e2e/hosted/billing-inventory'
+      path: '/api/e2e/hosted/billing-inventory'
+      fullPath: '/api/e2e/hosted/billing-inventory'
+      preLoaderRoute: typeof ApiE2eHostedBillingInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/internal/api-key': {
       id: '/api/auth/internal/api-key'
       path: '/api/auth/internal/api-key'
@@ -2267,6 +2288,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAtprotoOauthStartRoute: ApiAtprotoOauthStartRoute,
   ApiAtprotoSignInStartRoute: ApiAtprotoSignInStartRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
+  ApiE2eHostedBillingInventoryRoute: ApiE2eHostedBillingInventoryRoute,
   ApiE2eHostedIdentityRoute: ApiE2eHostedIdentityRoute,
   ApiE2eWorkspaceMemberRoute: ApiE2eWorkspaceMemberRoute,
   ApiAtprotoOauthHarnessAuthorizeRoute: ApiAtprotoOauthHarnessAuthorizeRoute,

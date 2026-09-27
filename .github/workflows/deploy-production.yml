@@ -214,6 +214,7 @@ jobs:
           add_vercel_env ATLAS_PDS_INVITE_BROKER_URL "$atlas_pds_invite_broker_url"
           add_vercel_env ATLAS_PDS_PUBLIC_URL "$atlas_pds_public_url"
           add_vercel_env ATLAS_PUBLIC_URL "$atlas_public_origin"
+          add_vercel_env ATLAS_RELEASE_SHA "$GITHUB_SHA"
           add_vercel_env ATLAS_SERVER_API_PROXY_TARGET "$atlas_api_origin"
           add_vercel_env DATABASE_BACKEND "postgres"
           add_vercel_env DATABASE_URL "$DATABASE_URL"

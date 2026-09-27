@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -25,6 +28,9 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
         with:
           python: "false"
+      - name: Mint Vercel Trusted Source OIDC token
+        id: vercel-oidc
+        uses: ./.github/actions/vercel-trusted-oidc
       - name: Resolve the production release under review
         env:
           ATLAS_RELEASE_TAG: ${{ inputs.release_tag }}
@@ -52,6 +58,15 @@ jobs:
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
           pnpm exec vercel env list production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" --format json \
             | pnpm exec tsx scripts/ci/read-vercel-billing-presence.ts
+      - name: Inspect Stripe capabilities inside the deployed app
+        id: runtime-inventory
+        continue-on-error: true
+        env:
+          ATLAS_HOSTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
+          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
+          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
+        run: node scripts/ci/runtime-billing-report.mjs
       - name: Inspect readable Production values and Stripe configuration
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -62,3 +77,12 @@ jobs:
           set -euo pipefail
           pnpm exec vercel env run -e production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" -- \
             pnpm exec tsx scripts/ci/verify-production-billing.ts
+      - name: Require deployed runtime inventory
+        if: always()
+        env:
+          ATLAS_RUNTIME_INVENTORY_OUTCOME: ${{ steps.runtime-inventory.outcome }}
+        run: |
+          if [ "$ATLAS_RUNTIME_INVENTORY_OUTCOME" != "success" ]; then
+            echo "::error title=Billing runtime inventory unverified::The exact deployed release did not return a protected Stripe capability inventory."
+            exit 1
+          fi
