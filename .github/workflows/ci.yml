@@ -140,8 +140,9 @@ jobs:
       RUN_APP_TESTS: ${{ needs.changes.outputs.app_tests }}
       TURBO_AFFECTED_FLAG: ${{ needs.changes.outputs.use_affected == 'true' && '--affected' || '' }}
       # Python coverage instrumentation makes the full release suite exceed this job's
-      # timeout. Pull requests and the scheduled CI run still enforce coverage.
-      PYTEST_ADDOPTS: ${{ inputs.profile == 'production' && '--no-cov' || '' }}
+      # timeout. Release lanes run the full suite without coverage; pull requests
+      # and the scheduled CI run retain the coverage gate.
+      PYTEST_ADDOPTS: ${{ (inputs.profile == 'staging' || inputs.profile == 'production') && '--no-cov' || '' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       # App tests reach //#openapi through @rebuildingamerica/atlas-api-client,
