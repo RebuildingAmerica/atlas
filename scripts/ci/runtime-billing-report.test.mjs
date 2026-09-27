@@ -5,7 +5,7 @@ import {
   runtimeInventoryPasses,
 } from "./runtime-billing-report.mjs";
 
-const sha = "0123456789abcdef0123456789abcdef01234567";
+const sha = "0123456789abcdef0123456789abcdef01234567"; // pragma: allowlist secret
 
 test("accepts only checks from the exact deployed revision", () => {
   const report = renderRuntimeBillingReport(

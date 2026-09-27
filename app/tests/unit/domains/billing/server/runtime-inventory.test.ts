@@ -93,9 +93,9 @@ describe("read-only billing inventory in the deployed runtime", () => {
   }
 
   const runtime = {
-    STRIPE_API_KEY: "rk_live_example_credential",
+    STRIPE_API_KEY: "rk_live_example_credential", // pragma: allowlist secret
     STRIPE_ATLAS_CATALOG: createStripeAtlasCatalogFixture(),
-    STRIPE_WEBHOOK_SECRET: "whsec_example_credential",
+    STRIPE_WEBHOOK_SECRET: "whsec_example_credential", // pragma: allowlist secret
     ATLAS_PUBLIC_URL: "https://atlas.example.test",
   };
 
@@ -133,7 +133,7 @@ describe("read-only billing inventory in the deployed runtime", () => {
 
   test("rejects a test-mode or missing runtime key before provider inspection", async () => {
     expect(
-      await inspectRuntimeBilling(provider(), { ...runtime, STRIPE_API_KEY: "sk_test_only" }),
+      await inspectRuntimeBilling(provider(), { ...runtime, STRIPE_API_KEY: "sk_test_only" }), // pragma: allowlist secret
     ).toEqual([{ name: "Runtime key", status: "fail" }]);
     expect(
       await inspectRuntimeBilling(provider(), { ...runtime, STRIPE_API_KEY: undefined }),
