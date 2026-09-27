@@ -33,6 +33,13 @@ class TestEntityEndpoints:
         assert data["address"]["full_address"] == "123 Main St, Kansas City, MO 64106"
         assert data["issue_area_ids"] == ["housing_affordability"]
 
+        public_detail = await test_client.get(f"/api/entities/{data['id']}")
+        public_list = await test_client.get("/api/entities?query=Test%20Org")
+        private_detail = await test_client.get(f"/api/orgs/local/entries/{data['id']}")
+        assert public_detail.status_code == HTTPStatus.NOT_FOUND
+        assert all(item["id"] != data["id"] for item in public_list.json()["items"])
+        assert private_detail.status_code == HTTPStatus.OK
+
     @pytest.mark.asyncio
     async def test_create_entity_invalid_issue_area(self, test_client: object) -> None:
         response = await test_client.post(
@@ -186,6 +193,14 @@ class TestEntityEndpoints:
             state="TS",
             geo_specificity="local",
         )
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id=entity_id,
+            resource_type="entry",
+            org_id="local",
+            visibility="private",
+            created_by="local-user",
+        )
 
         response = await test_client.patch(
             f"/api/entities/{entity_id}",
@@ -205,9 +220,57 @@ class TestEntityEndpoints:
             state="TS",
             geo_specificity="local",
         )
+        await OwnershipCRUD.create_ownership(
+            test_db,
+            resource_id=entity_id,
+            resource_type="entry",
+            org_id="local",
+            visibility="private",
+            created_by="local-user",
+        )
 
         response = await test_client.delete(f"/api/entities/{entity_id}")
         assert response.status_code == HTTPStatus.NO_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_update_entity_rejects_unowned_public_record(
+        self, test_client: object, test_db: object
+    ) -> None:
+        entity_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Unowned Public Record",
+            description="Legacy public catalog record.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+        )
+
+        response = await test_client.patch(
+            f"/api/entities/{entity_id}", json={"name": "Unreviewed Rewrite"}
+        )
+        entry = await EntryCRUD.get_by_id(test_db, entity_id)
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        assert entry is not None
+        assert entry.name == "Unowned Public Record"
+
+    @pytest.mark.asyncio
+    async def test_delete_entity_rejects_unowned_public_record(
+        self, test_client: object, test_db: object
+    ) -> None:
+        entity_id = await EntryCRUD.create(
+            test_db,
+            entry_type="organization",
+            name="Unowned Public Record",
+            description="Legacy public catalog record.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+        )
+
+        response = await test_client.delete(f"/api/entities/{entity_id}")
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        assert await EntryCRUD.get_by_id(test_db, entity_id) is not None
 
     @pytest.mark.asyncio
     async def test_update_entity_rejects_non_owner_org(

@@ -17826,7 +17826,7 @@
         ]
       },
       "post": {
-        "description": "Create a new Atlas entity using the canonical nested address and contact request shape.\n\nUse this entity operation to find or manage source-backed civic actors. Preserve entity ids, source ids, place context, and issue filters whenever you export or reuse results.",
+        "description": "Create a private workspace entity using the canonical nested address and contact request shape. Publish separately after adding a source.\n\nUse this entity operation to find or manage source-backed civic actors. Preserve entity ids, source ids, place context, and issue filters whenever you export or reuse results.",
         "operationId": "createEntity",
         "parameters": [
           {

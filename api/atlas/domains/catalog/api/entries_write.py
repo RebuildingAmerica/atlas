@@ -27,7 +27,10 @@ if TYPE_CHECKING:
     response_model=EntityDetailResponse,
     status_code=201,
     summary="Create an entity",
-    description="Create a new Atlas entity using the canonical nested address and contact request shape.",
+    description=(
+        "Create a private workspace entity using the canonical nested address and contact "
+        "request shape. Publish separately after adding a source."
+    ),
     operation_id="createEntity",
     response_description="The newly created Atlas entity.",
     tags=["entities"],
@@ -38,7 +41,7 @@ async def create_entity(
     actor: AuthenticatedActor = Depends(require_org_actor_permission("entities", "write")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EntityDetailResponse:
-    """Create a new entry.
+    """Create a private workspace entry.
 
     Validates issue areas against the taxonomy.
     """
@@ -90,7 +93,7 @@ async def create_entity(
         resource_id=entity_id,
         resource_type="entry",
         org_id=actor.org_id,
-        visibility="public",
+        visibility="private",
         created_by=actor.user_id,
     )
 
@@ -130,7 +133,7 @@ async def update_entity(
         raise HTTPException(status_code=404, detail="Entity not found")
 
     ownership = await OwnershipCRUD.get_ownership(db, entity_id, "entry")
-    if ownership is not None and ownership.org_id != actor.org_id:
+    if ownership is None or ownership.org_id != actor.org_id:
         raise HTTPException(
             status_code=403, detail="Only the owning organization can modify this entity"
         )
@@ -182,7 +185,7 @@ async def delete_entity(
         raise HTTPException(status_code=404, detail="Entity not found")
 
     ownership = await OwnershipCRUD.get_ownership(db, entity_id, "entry")
-    if ownership is not None and ownership.org_id != actor.org_id:
+    if ownership is None or ownership.org_id != actor.org_id:
         raise HTTPException(
             status_code=403, detail="Only the owning organization can delete this entity"
         )

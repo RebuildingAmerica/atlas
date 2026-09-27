@@ -97,6 +97,14 @@ The source trail is part of the result.
 Public read flows can use unauthenticated requests. Creating or updating actors
 requires an authenticated workflow and should preserve source evidence.
 
+`POST /api/entities` creates an entry in the caller's **private workspace**. It
+does not add that entry to public search or make its public detail URL available.
+The workspace can read it at `/api/orgs/{org_id}/entries/{entry_id}`. Add a
+relevant source, then use the workspace's explicit publish route; publication is
+held when no source is linked. General entity update and delete requests require
+an ownership record for the caller's workspace, so they cannot change legacy
+public catalog records that have no owner.
+
 Use workspace APIs when a team needs private review state, briefs, lists, Scout
 sync receipts, or publication decisions. Read
 [Workspace visibility](/api/guides/workspace) before importing records

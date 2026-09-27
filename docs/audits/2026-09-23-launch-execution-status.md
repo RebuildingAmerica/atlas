@@ -62,6 +62,15 @@ The release did not run a rollback drill, physical-mobile or assistive-tech
 journey, editorial review of Las Vegas records, private-correction rehearsal, or
 team billing-role matrix against the hosted app. Those remain separate gates.
 
+After this release, the catalog API was changed locally so generic entity
+creation defaults to private workspace visibility. Public release requires the
+separate source-checked workspace publish action. Generic edits and deletion now
+require a matching ownership row; an organization cannot rewrite or remove a
+legacy public record just because that record has no owner. These protections
+need deployment and a hosted authorization check. They do not review the
+relevance of linked sources or govern every later edit to a published owned
+record; those editorial controls remain open.
+
 ## Implemented outcomes
 
 | Outcome                                                  | Implementation evidence                                                                                                                                                                                                                                                                                                                                                                                   | Acceptance still needed                                                                                                                                                               |

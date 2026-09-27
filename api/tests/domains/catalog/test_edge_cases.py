@@ -10,6 +10,7 @@ import pytest
 
 from atlas.domains.catalog.api import public as public_api
 from atlas.domains.catalog.api import taxonomy as taxonomy_api
+from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.catalog.schemas.entry import EntityCreateRequest
 from atlas.models import EntryCRUD
 
@@ -147,6 +148,14 @@ async def test_entity_routes_cover_validation_missing_and_failure_edges(
         state="MO",
         geo_specificity="local",
     )
+    await OwnershipCRUD.create_ownership(
+        test_db,
+        resource_id=entity_id,
+        resource_type="entry",
+        org_id="local",
+        visibility="private",
+        created_by="local-user",
+    )
 
     noop_update = await test_client.patch(f"/api/entities/{entity_id}", json={})
     assert noop_update.status_code == 200  # noqa: PLR2004
@@ -205,6 +214,14 @@ async def test_update_entity_returns_500_when_refetching_the_entity_fails(
         city="Kansas City",
         state="MO",
         geo_specificity="local",
+    )
+    await OwnershipCRUD.create_ownership(
+        test_db,
+        resource_id=entity_id,
+        resource_type="entry",
+        org_id="local",
+        visibility="private",
+        created_by="local-user",
     )
 
     async def missing_updated_entity(_db: object, _entry_id: str) -> tuple[None, list[object]]:
