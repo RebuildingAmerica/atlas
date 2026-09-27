@@ -2,7 +2,6 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "envMode": "strict",
-  "globalEnv": ["PYTEST_ADDOPTS"],
   "globalDependencies": [
     "pnpm-workspace.yaml",
     "package.json",

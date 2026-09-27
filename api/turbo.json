@@ -49,7 +49,8 @@
       "env": [
         "ATLAS_MANAGED",
         "ATLAS_MULTI_USER",
-        "ATLAS_TEST_POSTGRES_URL"
+        "ATLAS_TEST_POSTGRES_URL",
+        "PYTEST_ADDOPTS"
       ],
       "outputs": [],
       "inputs": [
