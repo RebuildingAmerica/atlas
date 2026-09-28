@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 28, 2026 · production release `v2026.09.28-2`
+Updated September 28, 2026 · production release `v2026.09.28-3`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,9 +16,10 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed public inventory is recorded here. The repository
 contains fixes for several privacy, purchase-isolation, refund, and journey
-defects. Release `v2026.09.28-2` also deploys visible saved-list output failures
-and stops forwarding Vercel protection credentials to the Atlas API. The last
-recorded
+defects. Release `v2026.09.28-3` makes source flags visible beside profile
+reports in the staff correction inbox. Release `v2026.09.28-2` deployed visible
+saved-list output failures and stopped forwarding Vercel protection credentials
+to the Atlas API. The last recorded
 [protected runtime Stripe inventory, on v22](https://github.com/RebuildingAmerica/atlas/actions/runs/36375819749)
 passed its live key, charge-enabled account, Tax status, and catalog
 identifiers; the Atlas portal configuration, four webhook subscriptions, and
@@ -39,6 +40,37 @@ The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
+
+## Current production release `v2026.09.28-3`
+
+Commit `ce544152` adds source reports to the existing private, oldest-first
+correction inbox. Editors can see the source identity and reporter note, open a
+safe source URL, and resolve or dismiss the report through its source-flag
+workflow. Anonymous and ordinary authenticated callers are denied the inbox by
+the API; private responses have `no-store` headers. A local browser journey
+submitted a synthetic source report to the real local API, showed it in the
+signed-in editor inbox, resolved it, and saw it disappear from the open queue.
+This is a tested workflow change, not a production staff rehearsal.
+
+[Staging run 36432923067](https://github.com/RebuildingAmerica/atlas/actions/runs/36432923067)
+passed CI, browser acceptance, API deployment, and hosted public smoke on that
+commit; hosted identity was skipped. The
+[production release run](https://github.com/RebuildingAmerica/atlas/actions/runs/36434875727)
+passed full CI, deployed the API, PDS, and Vercel app, promoted the production
+domains, and passed hosted public smoke and identity. The hosted Checkout job's
+live-session step was **skipped** because new sales are closed. A direct public
+production API check returned `{"status":"ok"}` from `/health` and found
+`listModerationInbox` at `/api/correction-inbox` in the deployed OpenAPI
+contract. No production editor submitted or resolved a report through this
+release, and no private reporter note was read during verification. The
+correction operating gate remains **NO-GO** until an authorized editor completes
+the hosted report-to-review-to-disposition journey with an assigned response
+owner.
+
+The Las Vegas candidates and NAACP correction remain unpublished. The ten
+visitor questions, organizer production journey, live Stripe purchase, and
+refund-to-revocation path remain unproven. This release does not change those
+GO/NO-GO decisions.
 
 ## Organizer output and staging recovery
 
