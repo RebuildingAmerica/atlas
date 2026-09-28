@@ -1,6 +1,10 @@
 # Atlas launch execution status
 
-Updated September 28, 2026 · production release `v2026.09.28-3`
+Updated September 28, 2026 · production release `v2026.09.28-4`
+
+The Las Vegas pilot's gate-by-gate evidence now lives in the
+[pilot evidence board](2026-09-29-las-vegas-pilot-evidence.md). Read this file
+for history through `v2026.09.28-4`; read the evidence board for current state.
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
