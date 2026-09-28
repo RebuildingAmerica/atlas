@@ -1,12 +1,12 @@
 # Atlas launch execution status
 
-Updated September 27, 2026 · production release `v2026.09.27-19`
+Updated September 28, 2026 · production release `v2026.09.27-21`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
 [billing audit](2026-09-23-billing-readiness.md). Those documents preserve the
 observed September 23 production snapshot and full critique. This file
-distinguishes implemented behavior from what the September 27 release actually
+distinguishes implemented behavior from what the current release actually
 demonstrated.
 
 ## Release decision
@@ -14,13 +14,13 @@ demonstrated.
 **A Las Vegas public pilot, paid sales, and broad national promotion remain
 closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
-snapshot; no later reviewed inventory is recorded here. The repository contains
-fixes for several privacy, purchase-isolation, refund, and journey defects.
-Release `v2026.09.27-19` deployed those changes and a protected runtime Stripe
-inventory with fixed failure reasons. On this exact release, the live key,
-charge-enabled account, Tax status, and catalog identifiers passed read-only
-checks. No default customer portal configuration exists; the billing webhook
-lacks async-payment and refund events. The offer allowlist is absent and
+snapshot; no later reviewed public inventory is recorded here. The repository
+contains fixes for several privacy, purchase-isolation, refund, and journey
+defects. Release `v2026.09.27-21` deployed those changes and a protected runtime
+Stripe inventory with fixed failure reasons. On this exact release, the live
+key, charge-enabled account, Tax status, and catalog identifiers passed
+read-only checks. No Atlas customer portal configuration exists; the billing
+webhook lacks async-payment and refund events. The offer allowlist is absent and
 checkout is disabled. No completed live payment, signed webhook delivery, or
 useful reviewed Las Vegas discovery slice has been demonstrated. Passing
 deployment checks does not satisfy those acceptance gates.
@@ -37,6 +37,25 @@ The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
+
+## Current production release `v2026.09.27-21`
+
+[Release run 36370886771](https://github.com/RebuildingAmerica/atlas/actions/runs/36370886771)
+passed full CI, deployed commit `3139be61b687d04467284cd6923fabc7295c7b17`, and
+passed hosted public smoke, signed-in identity, and enabled checkout checks. The
+checkout job did not make a purchase because the sale flag is `false`. This
+release includes the source-note review card and guarded editorial intake, but
+there is still no hosted editor journey or published reviewed Las Vegas slice.
+The prior v20 release stopped at secret scanning and did not deploy.
+
+The exact-release
+[read-only billing inventory](https://github.com/RebuildingAmerica/atlas/actions/runs/36372295127)
+returned **NO-GO**. The deployed runtime passed key, charge-enabled account,
+Tax, and catalog-ID checks. Portal configuration is missing; the webhook is
+missing the two async-payment and two refund events; the offer allowlist is
+absent. The [dated acceptance matrix](2026-09-28-billing-readiness-v21.md)
+classifies every purchase and exit journey. Commit `b4ee7eed` fixes cumulative
+partial-refund revocation in source and is not part of v21.
 
 ## Staged Las Vegas editorial intake
 
@@ -315,7 +334,7 @@ have been editorially reviewed, or that a payment can settle and deliver access.
 The browser policy in this environment denied a direct visual visit to the
 public profile, so no direct production visual acceptance is claimed.
 
-## Current production release `v2026.09.27-19`
+## Prior production release `v2026.09.27-19`
 
 Commit `09164e05` adds fixed, redacted reason codes to the protected Stripe
 runtime inventory. It distinguishes missing portal controls and required webhook
