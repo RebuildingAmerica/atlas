@@ -1,13 +1,14 @@
 name: Error Alerting
 
-# Creates the Cloud Monitoring alert on ERROR-severity API logs and the email
-# channel it notifies. Dispatch by hand; re-running reconciles.
+# Creates the Cloud Monitoring alerts on ERROR-severity API logs and on new
+# visitor reports, and the email channel they notify. Dispatch by hand;
+# re-running reconciles.
 
 on:
   workflow_dispatch:
     inputs:
       alert_email:
-        description: Address to notify when the API logs an error.
+        description: Address to notify when the API logs an error or a visitor reports a record.
         required: true
         type: string
 
@@ -63,7 +64,7 @@ jobs:
             exit 1
           fi
 
-      - name: Provision the error alert
+      - name: Provision the error and visitor-report alerts
         env:
           ALERT_EMAIL: ${{ inputs.alert_email }}
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -99,9 +100,24 @@ jobs:
             echo "Reusing notification channel $channel"
           fi
 
+          upsert_policy() {
+            local display_name="$1" policy="$2" existing
+            existing="$(api GET "$base/alertPolicies" \
+              | jq -r --arg name "$display_name" \
+                  '(.alertPolicies // [])
+                   | map(select(.displayName == $name))
+                   | (.[0].name // "")')"
+            if [ -n "$existing" ]; then
+              api PATCH "https://monitoring.googleapis.com/v3/$existing" -d "$policy" > /dev/null
+              echo "Updated $existing"
+            else
+              api POST "$base/alertPolicies" -d "$policy" | jq -r '"Created " + .name'
+            fi
+          }
+
           # Cloud Run lifts "severity" out of the JSON that
           # atlas.platform.observability writes.
-          policy="$(jq -n \
+          upsert_policy "Atlas API errors" "$(jq -n \
             --arg service "$SERVICE_NAME" \
             --arg channel "$channel" \
             '{
@@ -125,14 +141,29 @@ jobs:
               notificationChannels: [$channel]
             }')"
 
-          existing="$(api GET "$base/alertPolicies" \
-            | jq -r '(.alertPolicies // [])
-                     | map(select(.displayName == "Atlas API errors"))
-                     | (.[0].name // "")')"
-
-          if [ -n "$existing" ]; then
-            api PATCH "https://monitoring.googleapis.com/v3/$existing" -d "$policy" > /dev/null
-            echo "Updated $existing"
-          else
-            api POST "$base/alertPolicies" -d "$policy" | jq -r '"Created " + .name'
-          fi
+          # Atlas has one operator, so every visitor report has to reach them
+          # without anyone watching the inbox. The event carries only the
+          # report's reference and kind, never what the visitor wrote.
+          upsert_policy "Atlas visitor reports" "$(jq -n \
+            --arg service "$SERVICE_NAME" \
+            --arg channel "$channel" \
+            '{
+              displayName: "Atlas visitor reports",
+              documentation: {
+                content: "A visitor reported a profile or source. Review it in the correction inbox: https://atlas.rebuildingus.org/admin/corrections",
+                mimeType: "text/markdown"
+              },
+              conditions: [{
+                displayName: ("Visitor report received by " + $service),
+                conditionMatchedLog: {
+                  filter: ("resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"" + $service + "\" AND jsonPayload.event=\"correction_report_received\"")
+                }
+              }],
+              alertStrategy: {
+                notificationRateLimit: {period: "300s"},
+                autoClose: "1800s"
+              },
+              combiner: "OR",
+              enabled: true,
+              notificationChannels: [$channel]
+            }')"
