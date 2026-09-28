@@ -20,6 +20,7 @@ interface EntityListResponse {
 }
 
 const PROFILE_COLLECTIONS = { organization: "organizations", person: "people" } as const;
+const PROFILE_LOOKUP_TIMEOUT_MS = 20_000;
 
 /**
  * Returns the profile page path of the first published entity of a type.
@@ -34,7 +35,10 @@ export async function firstProfilePath(
 ): Promise<string> {
   const response = await fetch(
     absoluteHostedUrl(origin, `/api/entities?entry_types=${entityType}&limit=1`),
-    hostedPublicRequestInit({ headers: { Accept: "application/json" } }),
+    hostedPublicRequestInit({
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(PROFILE_LOOKUP_TIMEOUT_MS),
+    }),
   );
   if (!response.ok) {
     throw new Error(`Listing ${entityType} entities returned ${response.status}.`);
