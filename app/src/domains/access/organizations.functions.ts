@@ -233,7 +233,7 @@ export const checkWorkspaceSlugAvailability = createServerFn({ method: "POST" })
 /**
  * Creates a new Atlas workspace and activates it for the current operator.
  *
- * When `delegatedAdminEmail` is supplied, Atlas sends an admin invitation to
+ * When `delegatedAdminEmail` is supplied, Atlas attempts an admin invitation to
  * that address after the workspace is created so an integrator can stand up
  * the workspace on behalf of a customer who will manage it day-to-day.  The
  * creator stays as owner since Better Auth does not support owner transfer
@@ -289,10 +289,11 @@ export const createWorkspace = createServerFn({ method: "POST" })
       // Stripe may be unreachable in local dev or during outages.
     }
 
-    // Delegated handoff: send an admin invite so the eventual workspace
+    // Delegated handoff: create an admin invite so the eventual workspace
     // operator can finish onboarding without the integrator's session.
     // Failures are non-fatal — the integrator still owns the workspace and
-    // can resend the invite from the members panel.
+    // can retry the invite from the Invitations section.
+    let delegatedAdminInvitationCreated = false;
     if (data.delegatedAdminEmail && data.workspaceType === "team") {
       try {
         await auth.api.createInvitation({
@@ -303,12 +304,14 @@ export const createWorkspace = createServerFn({ method: "POST" })
           },
           headers,
         });
+        delegatedAdminInvitationCreated = true;
       } catch {
-        // Invite delivery may fail in local dev; surface via the members panel.
+        // Keep the new workspace, but tell the creator to retry the invitation.
       }
     }
 
     return {
+      delegatedAdminInvitationCreated,
       id: createdOrganization.id,
       slug: createdOrganization.slug,
     };

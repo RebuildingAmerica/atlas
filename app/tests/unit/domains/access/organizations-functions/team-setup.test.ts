@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
+import {
+  createAtlasSessionFixture,
+  createAtlasWorkspace,
+} from "../../../../fixtures/access/sessions";
 import { authApi, mocks, resetOrganizationFunctionMocks } from "./mocks";
 
 describe("organizations.functions team setup", () => {
@@ -26,7 +29,11 @@ describe("organizations.functions team setup", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
-    expect(response.result).toEqual({ id: "new_org", slug: "new-workspace" });
+    expect(response.result).toEqual({
+      delegatedAdminInvitationCreated: true,
+      id: "new_org",
+      slug: "new-workspace",
+    });
     expect(mocks.ensureStripeCustomerForWorkspace).toHaveBeenCalledWith(
       "new_org",
       "operator@atlas.test",
@@ -64,7 +71,11 @@ describe("organizations.functions team setup", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
-    expect(response.result).toEqual({ id: "new_org", slug: "new-workspace" });
+    expect(response.result).toEqual({
+      delegatedAdminInvitationCreated: false,
+      id: "new_org",
+      slug: "new-workspace",
+    });
   });
 
   it("creates a workspace even when delegated invitation delivery fails", async () => {
@@ -84,6 +95,11 @@ describe("organizations.functions team setup", () => {
     })) as ServerFnExecutionResponse;
 
     expect(response.error).toBeUndefined();
+    expect(response.result).toEqual({
+      delegatedAdminInvitationCreated: false,
+      id: "new_org",
+      slug: "new-workspace",
+    });
   });
 
   it("syncs Team seats for the joined workspace after accepting an invitation", async () => {

@@ -24,7 +24,7 @@ export async function runOrganizationPageMutation<T>(params: {
   fallbackMessage: string;
   feedback: OrganizationPageMutationFeedback;
   refreshWorkspaceData: () => Promise<void>;
-  successMessage: string;
+  successMessage: string | ((result: T) => string);
 }): Promise<T | null> {
   params.feedback.setErrorMessage(null);
   params.feedback.setFlashMessage(null);
@@ -37,12 +37,16 @@ export async function runOrganizationPageMutation<T>(params: {
     return null;
   }
 
+  const successMessage =
+    typeof params.successMessage === "function"
+      ? params.successMessage(mutationResult)
+      : params.successMessage;
   try {
     await params.refreshWorkspaceData();
-    params.feedback.setFlashMessage(params.successMessage);
+    params.feedback.setFlashMessage(successMessage);
   } catch {
     params.feedback.setFlashMessage(
-      `${params.successMessage} Atlas could not refresh this page. Reload to see the latest changes.`,
+      `${successMessage} Atlas could not refresh this page. Reload to see the latest changes.`,
     );
   }
 

@@ -49,7 +49,11 @@ describe("organizations.functions basics", () => {
       data: { name: "New Workspace", slug: "new-workspace", workspaceType: "team" },
     })) as ServerFnExecutionResponse;
 
-    expect(response.result).toEqual({ id: "new_org", slug: "new-workspace" });
+    expect(response.result).toEqual({
+      delegatedAdminInvitationCreated: false,
+      id: "new_org",
+      slug: "new-workspace",
+    });
   });
 
   it("sets the active workspace", async () => {

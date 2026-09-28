@@ -235,7 +235,10 @@ describe("useOrganizationPageWorkspaceActions", () => {
   });
 
   it("includes domain and delegated email when creating a team workspace", async () => {
-    mocks.createWorkspace.mockResolvedValue({ id: "org_team" });
+    mocks.createWorkspace.mockResolvedValue({
+      id: "org_team",
+      delegatedAdminInvitationCreated: true,
+    });
     const teamForms: OrganizationPageForms = {
       ...forms,
       workspaceDomain: "atlas.test",
@@ -266,7 +269,37 @@ describe("useOrganizationPageWorkspaceActions", () => {
       },
     });
     expect(feedback.setFlashMessage).toHaveBeenCalledWith(
-      "Workspace created. Admin invite sent to your handoff contact.",
+      "Workspace created. Admin invitation created for your handoff contact.",
+    );
+  });
+
+  it("tells the creator to resend an admin invitation when workspace creation succeeds without it", async () => {
+    mocks.createWorkspace.mockResolvedValue({
+      id: "org_team",
+      delegatedAdminInvitationCreated: false,
+    });
+    const teamForms: OrganizationPageForms = {
+      ...forms,
+      workspaceDelegatedEmail: "owner@atlas.test",
+      workspaceType: "team",
+    };
+
+    const { result } = renderHook(() =>
+      useOrganizationPageWorkspaceActions({
+        activeWorkspaceId: null,
+        feedback,
+        forms: teamForms,
+        refreshWorkspaceData,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onCreateWorkspace({ preventDefault: vi.fn() });
+    });
+
+    expect(teamForms.setWorkspaceName).toHaveBeenCalledWith("");
+    expect(feedback.setFlashMessage).toHaveBeenCalledWith(
+      "Workspace created. Admin invitation was not created. Invite them from the Invitations section.",
     );
   });
 

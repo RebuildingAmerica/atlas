@@ -20,9 +20,9 @@ import type { OrganizationPageForms } from "./use-organization-page-forms";
 import type { OrganizationPageMutationFeedback } from "./organization-page-mutation-helpers";
 import { runOrganizationPageMutation } from "./organization-page-mutation-helpers";
 
-interface WorkspaceMutationLike<TArgs extends readonly unknown[] = []> {
+interface WorkspaceMutationLike<TArgs extends readonly unknown[] = [], TResult = unknown> {
   isPending: boolean;
-  mutateAsync: (...args: TArgs) => Promise<unknown>;
+  mutateAsync: (...args: TArgs) => Promise<TResult>;
 }
 
 export interface OrganizationPageWorkspaceActionDependencies {
@@ -31,7 +31,10 @@ export interface OrganizationPageWorkspaceActionDependencies {
   forms: OrganizationPageForms;
   refreshWorkspaceData: () => Promise<void>;
   navigate: (options: NavigateOptions) => Promise<void>;
-  createWorkspaceMutation: WorkspaceMutationLike<Parameters<typeof createWorkspace>>;
+  createWorkspaceMutation: WorkspaceMutationLike<
+    Parameters<typeof createWorkspace>,
+    Awaited<ReturnType<typeof createWorkspace>>
+  >;
   convertWorkspaceToTeamMutation: WorkspaceMutationLike;
   setActiveWorkspaceMutation: WorkspaceMutationLike<Parameters<typeof setActiveWorkspace>>;
   updateWorkspaceProfileMutation: WorkspaceMutationLike<Parameters<typeof updateWorkspaceProfile>>;
@@ -105,10 +108,12 @@ export function createOrganizationPageWorkspaceActions(
       fallbackMessage: "Atlas could not create that workspace.",
       feedback: deps.feedback,
       refreshWorkspaceData: deps.refreshWorkspaceData,
-      successMessage:
-        isTeam && trimmedDelegatedEmail
-          ? "Workspace created. Admin invite sent to your handoff contact."
-          : "Workspace created.",
+      successMessage: (created) => {
+        if (!isTeam || !trimmedDelegatedEmail) return "Workspace created.";
+        return created.delegatedAdminInvitationCreated
+          ? "Workspace created. Admin invitation created for your handoff contact."
+          : "Workspace created. Admin invitation was not created. Invite them from the Invitations section.";
+      },
     });
   }
 
