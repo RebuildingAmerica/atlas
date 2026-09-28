@@ -100,11 +100,13 @@ function toReview(
   item: ReviewQueueItemResponse & { source_evidence?: { context: string; url: string }[] },
 ): DiscoveryReview {
   return {
-    changes: Object.entries(item.proposed_changes ?? {}).map(([field, values]) => ({
-      after: displayValue(values.after),
-      before: displayValue(values.before),
-      field,
-    })),
+    changes: Object.entries(item.proposed_changes ?? {})
+      .filter(([field]) => field !== "source_evidence")
+      .map(([field, values]) => ({
+        after: displayValue(values.after),
+        before: displayValue(values.before),
+        field,
+      })),
     entityCity: item.entity_city ?? null,
     entityDescription: item.entity_description ?? null,
     entityName: item.entity_name || "Unnamed profile",

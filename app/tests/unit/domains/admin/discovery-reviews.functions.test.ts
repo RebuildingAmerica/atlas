@@ -30,7 +30,7 @@ describe("discovery review server functions", () => {
           entity_issue_areas: ["public_transit"],
           entity_slug: "civic-group",
           entity_type: "organization",
-          hold_reason: "published_profile_change",
+          hold_reason: "editorial_candidate",
           source_urls: ["https://example.org/about"],
           source_evidence: [
             {
@@ -45,6 +45,15 @@ describe("discovery review server functions", () => {
             verified: { before: false, after: true },
             count: { before: 0, after: 1 },
             metadata: { before: { key: "value" }, after: { key: "next" } },
+            source_evidence: {
+              before: null,
+              after: [
+                {
+                  url: "https://example.org/about",
+                  context: "The About page describes local transit advocacy.",
+                },
+              ],
+            },
           },
         },
       ],
@@ -76,6 +85,9 @@ describe("discovery review server functions", () => {
       before: '{"key":"value"}',
       after: '{"key":"next"}',
     });
+    expect(result.items[0]?.changes.some((change) => change.field === "source_evidence")).toBe(
+      false,
+    );
   });
 
   it("keeps legacy queue items identifiable without inventing sources or changes", async () => {
