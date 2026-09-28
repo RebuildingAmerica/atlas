@@ -20,6 +20,28 @@ describe("protected deployed billing inventory", () => {
     });
   }
 
+  test("reports the offers this deployment will actually sell", async () => {
+    const stripe = {
+      accounts: { retrieveCurrent: () => Promise.resolve({ charges_enabled: true }) },
+      tax: { settings: { retrieve: () => Promise.resolve({ livemode: true, status: "active" }) } },
+      billingPortal: { configurations: { list: () => Promise.resolve({ data: [] }) } },
+      products: { retrieve: () => Promise.reject(new Error("not used by this test")) },
+      prices: { retrieve: () => Promise.reject(new Error("not used by this test")) },
+      coupons: { retrieve: () => Promise.reject(new Error("not used by this test")) },
+      webhookEndpoints: { list: () => Promise.resolve({ data: [] }) },
+    } as unknown as Stripe;
+
+    const response = await handleRuntimeBillingInventoryRequest(
+      request("inventory-test-secret"),
+      { ...env, ATLAS_BILLING_ALLOWED_OFFERS: "atlas_pro:monthly,atlas_research_pass:weekly" },
+      () => stripe,
+    );
+
+    expect(await response.json()).toMatchObject({
+      allowedOffers: ["atlas_pro:monthly", "atlas_research_pass:weekly"],
+    });
+  });
+
   test("refuses an unauthenticated request before touching Stripe", async () => {
     const getClient = vi.fn(() => {
       throw new Error("must not run");
@@ -62,6 +84,7 @@ describe("protected deployed billing inventory", () => {
         { name: "Webhook endpoint metadata", status: "fail" },
       ],
     });
+    expect(JSON.parse(body)).toMatchObject({ allowedOffers: [] });
     expect(body).not.toContain("rk_live_example_credential");
     expect(body).not.toContain("inventory-test-secret");
   });

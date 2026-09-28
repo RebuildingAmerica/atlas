@@ -12,20 +12,17 @@ const CATALOG_OFFERS = [
 
 const catalogOfferSet = new Set<string>(CATALOG_OFFERS);
 
-export function isProductionBillingRuntime(): boolean {
-  return (
-    process.env.VERCEL_ENV === "production" ||
-    (!process.env.VERCEL_ENV && process.env.NODE_ENV === "production")
-  );
+export function isProductionBillingRuntime(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.VERCEL_ENV === "production" || (!env.VERCEL_ENV && env.NODE_ENV === "production");
 }
 
 /** The exact new-sale combinations supported by the current catalog. */
-export function getAllowedBillingOffers(): string[] {
-  if (!isProductionBillingRuntime()) {
+export function getAllowedBillingOffers(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (!isProductionBillingRuntime(env)) {
     return [...CATALOG_OFFERS];
   }
 
-  const raw = process.env.ATLAS_BILLING_ALLOWED_OFFERS?.trim();
+  const raw = env.ATLAS_BILLING_ALLOWED_OFFERS?.trim();
   if (!raw) return [];
   const offers = raw.split(",").map((offer) => offer.trim());
   if (

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { selectHostedCheckoutOffer, type HostedCheckoutOffer } from "./hosted-checkout-offer";
 
 /**
  * Proves the deployed funnel opens a Stripe session in the mode the deployment
@@ -54,6 +55,22 @@ async function postHostedHelper(
   return body ? (JSON.parse(body) as unknown) : null;
 }
 
+interface BillingInventory {
+  allowedOffers: string[];
+}
+
+/** Asks the deployment which offers it sells, so the proof opens one of them. */
+async function readDeployedOffer(request: APIRequestContext): Promise<HostedCheckoutOffer> {
+  const response = await request.post("/api/e2e/hosted/billing-inventory", {
+    headers: helperHeaders(),
+  });
+  const body = await response.text();
+  expect(response.status(), body).toBe(200);
+  const inventory = JSON.parse(body) as BillingInventory;
+  expect(Array.isArray(inventory.allowedOffers), body).toBe(true);
+  return selectHostedCheckoutOffer(inventory.allowedOffers);
+}
+
 async function signInHostedOwner(page: Page): Promise<HostedRun> {
   const run = (await postHostedHelper(page.request, {
     action: "prepare",
@@ -79,9 +96,14 @@ test("the deployed funnel opens a Stripe checkout session in the expected mode",
 }) => {
   test.setTimeout(3 * 60_000);
 
+  const offer = await readDeployedOffer(page.request);
+  test.info().annotations.push({
+    type: "offer",
+    description: `${offer.product}:${offer.interval}`,
+  });
   const run = await signInHostedOwner(page);
 
-  await page.goto("/onboarding?product=atlas_pro&interval=monthly", {
+  await page.goto(`/onboarding?product=${offer.product}&interval=${offer.interval}`, {
     waitUntil: "domcontentloaded",
   });
 

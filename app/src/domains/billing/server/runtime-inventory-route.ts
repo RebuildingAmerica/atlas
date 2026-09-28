@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import type Stripe from "stripe";
 import { assertHostedE2EAuthorized } from "@/domains/access/server/hosted-e2e";
+import { getAllowedBillingOffers } from "./billing-offers";
 import { getStripeClient } from "./stripe-client";
 import { inspectRuntimeBilling } from "./runtime-inventory";
 
@@ -20,8 +21,10 @@ export async function handleRuntimeBillingInventoryRequest(
     const revision = /^[a-f0-9]{40}$/i.test(candidateRevision)
       ? candidateRevision.toLowerCase()
       : "unknown";
+    // The pricing page already shows these offers, so reporting them leaks
+    // nothing; the hosted checkout proof uses them to pick an offer to open.
     return Response.json(
-      { revision, checks },
+      { revision, checks, allowedOffers: getAllowedBillingOffers(env) },
       {
         headers: { "Cache-Control": "no-store" },
       },
