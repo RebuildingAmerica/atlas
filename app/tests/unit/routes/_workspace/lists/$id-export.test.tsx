@@ -32,9 +32,13 @@ describe("routes/_workspace/lists/$id export cases", () => {
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const access = await import("@/domains/access");
-    vi.mocked(access.useAtlasSession).mockReturnValue({ data: null } as unknown as ReturnType<
-      typeof access.useAtlasSession
-    >);
+    vi.mocked(access.useAtlasSession).mockReturnValue({
+      data: {
+        workspace: {
+          resolvedCapabilities: { capabilities: ["workspace.notes", "workspace.export"] },
+        },
+      },
+    } as unknown as ReturnType<typeof access.useAtlasSession>);
     vi.mocked(claims.useAddSavedListItem).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,

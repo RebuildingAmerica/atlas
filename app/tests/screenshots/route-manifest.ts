@@ -191,14 +191,14 @@ export const SCREENSHOT_ROUTES = [
   // ------------------------------------------------------------- workspace
   { name: "home-workspace", routeId: "/home", path: "/home", mode: "local" },
   { name: "discovery", routeId: "/discovery", path: "/discovery", mode: "local" },
-  { name: "coverage", routeId: "/coverage", path: "/coverage", mode: "local" },
+  { name: "coverage", routeId: "/coverage/", path: "/coverage", mode: "local" },
   {
     name: "coverage-detail",
     routeId: "/coverage/$targetId",
     discovery: { fromPath: "/coverage", linkHrefPattern: "^/coverage/[^/]+$" },
     mode: "local",
   },
-  { name: "briefs", routeId: "/briefs", path: "/briefs", mode: "local" },
+  { name: "briefs", routeId: "/briefs/", path: "/briefs", mode: "local" },
   { name: "briefs-new", routeId: "/briefs/new", path: "/briefs/new", mode: "local" },
   {
     name: "brief-detail",
@@ -206,7 +206,7 @@ export const SCREENSHOT_ROUTES = [
     discovery: { fromPath: "/briefs", linkHrefPattern: "^/briefs/(?!new$)[^/]+$" },
     mode: "local",
   },
-  { name: "lists", routeId: "/lists", path: "/lists", mode: "local" },
+  { name: "lists", routeId: "/lists/", path: "/lists", mode: "local" },
   {
     name: "list-detail",
     routeId: "/lists/$id",

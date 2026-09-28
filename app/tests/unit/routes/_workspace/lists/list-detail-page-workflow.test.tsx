@@ -19,6 +19,7 @@ describe("routes/_workspace/lists workflow sections", () => {
 
     render(
       <WorkflowSections
+        canExport={true}
         completedFollowUps={[]}
         crmPacketText="{}"
         evidencePack="Tenant power map evidence pack"

@@ -3,6 +3,7 @@ import { NonprofitSystemsBridgePanel } from "@/domains/workspace/components/nonp
 import type { ResearchThreadSummary } from "./list-detail-page-utils";
 
 interface WorkflowSectionsProps {
+  canExport: boolean;
   completedFollowUps: string[];
   evidencePack: string;
   crmPacketText: string;
@@ -26,6 +27,7 @@ interface WorkflowSectionsProps {
 }
 
 export function WorkflowSections({
+  canExport,
   completedFollowUps,
   evidencePack,
   crmPacketText,
@@ -89,40 +91,42 @@ export function WorkflowSections({
         </pre>
       </section>
 
-      <section className="bg-surface-container space-y-3 rounded-[1rem] p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="type-label-medium text-ink-muted">Spreadsheet export</p>
-            <h2 className="type-title-large text-ink-strong">CSV research rows</h2>
+      {canExport ? (
+        <section className="bg-surface-container space-y-3 rounded-[1rem] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="type-label-medium text-ink-muted">Spreadsheet export</p>
+              <h2 className="type-title-large text-ink-strong">CSV research rows</h2>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onCopySpreadsheetExport}
+                className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
+              >
+                Copy CSV
+              </button>
+              <button
+                type="button"
+                onClick={onDownloadSpreadsheetExport}
+                className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
+              >
+                Download CSV
+              </button>
+              <button
+                type="button"
+                onClick={onDownloadSavedListExport}
+                className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
+              >
+                Download JSON
+              </button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onCopySpreadsheetExport}
-              className="type-label-small bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
-            >
-              Copy CSV
-            </button>
-            <button
-              type="button"
-              onClick={onDownloadSpreadsheetExport}
-              className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
-            >
-              Download CSV
-            </button>
-            <button
-              type="button"
-              onClick={onDownloadSavedListExport}
-              className="type-label-small border-outline-variant text-ink-strong hover:bg-surface-container-low rounded-full border px-3 py-1.5 transition-colors"
-            >
-              Download JSON
-            </button>
-          </div>
-        </div>
-        <pre className="type-body-small bg-surface-container-lowest text-ink-soft overflow-x-auto rounded-lg p-3 whitespace-pre-wrap">
-          {""}
-        </pre>
-      </section>
+          <pre className="type-body-small bg-surface-container-lowest text-ink-soft overflow-x-auto rounded-lg p-3 whitespace-pre-wrap">
+            {""}
+          </pre>
+        </section>
+      ) : null}
 
       <NewsroomHandoffPanel
         actorCount={researchThread.actorCount}
@@ -133,7 +137,7 @@ export function WorkflowSections({
         onCopyPacket={onCopyNewsroomPacket}
       />
 
-      {isTeamWorkspace ? (
+      {isTeamWorkspace && canExport ? (
         <div className="space-y-4">
           <NonprofitSystemsBridgePanel
             actorCount={researchThread.actorCount}

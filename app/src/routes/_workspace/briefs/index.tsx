@@ -3,7 +3,7 @@ import { warmRouteQueries } from "@/platform/runtime/route-queries";
 import { workspaceBriefsQueryOptions } from "@/domains/workspace/hooks/use-briefs";
 import { BriefListPage } from "@/domains/workspace/pages/brief-list-page";
 
-export const Route = createFileRoute("/_workspace/briefs")({
+export const Route = createFileRoute("/_workspace/briefs/")({
   loader: ({ context }) =>
     warmRouteQueries(context.queryClient.ensureQueryData(workspaceBriefsQueryOptions())),
   head: () => ({

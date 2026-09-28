@@ -11,7 +11,7 @@ import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
-export const Route = createFileRoute("/_workspace/lists")({
+export const Route = createFileRoute("/_workspace/lists/")({
   component: ListsRoute,
 });
 

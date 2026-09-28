@@ -89,6 +89,7 @@ function SavedListItemNoteEditor({
 }
 
 interface SavedListItemsSectionProps {
+  canWriteNotes: boolean;
   dataId: string;
   editingEntryId: string | null;
   items: SavedListThreadItem[];
@@ -103,6 +104,7 @@ interface SavedListItemsSectionProps {
 }
 
 export function SavedListItemsSection({
+  canWriteNotes,
   dataId,
   editingEntryId,
   items,
@@ -175,23 +177,25 @@ export function SavedListItemsSection({
               {item.note ? (
                 <p className="type-body-small text-ink-soft italic">“{item.note}”</p>
               ) : null}
-              <SavedListItemNoteEditor
-                actorName={actor?.name ?? "actor"}
-                entryId={item.entry_id}
-                isEditing={editingEntryId === item.entry_id}
-                isPending={saveItemPending}
-                note={item.note ?? null}
-                noteDraft={noteDraft}
-                showError={noteErrorEntryId === item.entry_id}
-                onCancel={onCancelNoteEdit}
-                onDraftChange={onDraftChange}
-                onEdit={() => {
-                  onBeginNoteEdit(item.entry_id, item.note);
-                }}
-                onSave={() => {
-                  onSaveNote(dataId, item.entry_id);
-                }}
-              />
+              {canWriteNotes ? (
+                <SavedListItemNoteEditor
+                  actorName={actor?.name ?? "actor"}
+                  entryId={item.entry_id}
+                  isEditing={editingEntryId === item.entry_id}
+                  isPending={saveItemPending}
+                  note={item.note ?? null}
+                  noteDraft={noteDraft}
+                  showError={noteErrorEntryId === item.entry_id}
+                  onCancel={onCancelNoteEdit}
+                  onDraftChange={onDraftChange}
+                  onEdit={() => {
+                    onBeginNoteEdit(item.entry_id, item.note);
+                  }}
+                  onSave={() => {
+                    onSaveNote(dataId, item.entry_id);
+                  }}
+                />
+              ) : null}
             </div>
             <button
               type="button"

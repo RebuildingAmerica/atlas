@@ -32,9 +32,13 @@ describe("routes/_workspace/lists/$id", () => {
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const access = await import("@/domains/access");
-    vi.mocked(access.useAtlasSession).mockReturnValue({ data: null } as unknown as ReturnType<
-      typeof access.useAtlasSession
-    >);
+    vi.mocked(access.useAtlasSession).mockReturnValue({
+      data: {
+        workspace: {
+          resolvedCapabilities: { capabilities: ["workspace.notes", "workspace.export"] },
+        },
+      },
+    } as unknown as ReturnType<typeof access.useAtlasSession>);
     vi.mocked(claims.useAddSavedListItem).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
       isPending: false,
@@ -101,6 +105,70 @@ describe("routes/_workspace/lists/$id", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     expect(screen.getByText("No people or groups yet.")).toBeInTheDocument();
+  });
+
+  it("lets a free researcher reuse a saved lead without offering paid actions that will fail", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const access = await import("@/domains/access");
+    vi.mocked(access.useAtlasSession).mockReturnValue({
+      data: { workspace: { resolvedCapabilities: { capabilities: [] } } },
+    } as unknown as ReturnType<typeof access.useAtlasSession>);
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        name: "Local leads",
+        item_count: 1,
+        items: [
+          {
+            entry_id: "entry-1",
+            entry: {
+              name: "Local transit group",
+              type: "organization",
+              slug: "local-transit-group",
+              source_count: 1,
+            },
+            note: null,
+          },
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByRole("link", { name: "Local transit group" })).toBeInTheDocument();
+    expect(screen.getByText("Your saved list stays available on Free.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy evidence pack" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Add note for/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Download CSV" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Create a brief from this list" })).toBeNull();
+  });
+
+  it("does not label a workspace Free before its session resolves", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const access = await import("@/domains/access");
+    vi.mocked(access.useAtlasSession).mockReturnValue({ data: null } as unknown as ReturnType<
+      typeof access.useAtlasSession
+    >);
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: { id: "list-1", name: "Local leads", item_count: 0, items: [] },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByRole("heading", { name: "Local leads" })).toBeInTheDocument();
+    expect(screen.queryByText("Your saved list stays available on Free.")).toBeNull();
   });
 
   it("renders actors with mixed metadata and removes them via the trash button", async () => {

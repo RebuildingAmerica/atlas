@@ -111,6 +111,9 @@ function ListDetailRoute() {
   const data = list.data;
   const items = data.items ?? [];
   const activeOrganization = session.data?.workspace.activeOrganization;
+  const capabilities = session.data?.workspace.resolvedCapabilities.capabilities ?? [];
+  const canWriteNotes = capabilities.includes("workspace.notes");
+  const canExport = capabilities.includes("workspace.export");
   const isTeamWorkspace = activeOrganization?.workspaceType === "team";
   const workspaceName = isTeamWorkspace ? activeOrganization.name : "You";
   const workspaceBadge = isTeamWorkspace ? "Team research workspace" : "Research thread";
@@ -245,7 +248,19 @@ function ListDetailRoute() {
         <p className="type-body-medium text-ink-soft">
           Saved actors grouped with notes and source counts for one research thread.
         </p>
-        {items.length > 0 ? (
+        {session.data && !canWriteNotes && !canExport ? (
+          <div className="type-body-small text-ink-soft space-y-1">
+            <p>Your saved list stays available on Free.</p>
+            <p>
+              Atlas Pro adds notes, CSV/JSON downloads, and briefs.{" "}
+              <Link to="/pricing" className="text-accent hover:text-accent-ink underline">
+                Compare plans
+              </Link>
+              .
+            </p>
+          </div>
+        ) : null}
+        {items.length > 0 && canExport ? (
           <Link
             to="/briefs/new"
             search={{ list: data.id }}
@@ -257,6 +272,7 @@ function ListDetailRoute() {
       </section>
 
       <WorkflowSections
+        canExport={canExport}
         completedFollowUps={completedFollowUps}
         evidencePack={evidencePack}
         crmPacketText={crmPacketText}
@@ -296,6 +312,7 @@ function ListDetailRoute() {
       />
 
       <SavedListItemsSection
+        canWriteNotes={canWriteNotes}
         dataId={data.id}
         editingEntryId={editingEntryId}
         items={items}
