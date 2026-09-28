@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 28, 2026 · production release `v2026.09.27-21`
+Updated September 28, 2026 · production release `v2026.09.27-22`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,14 +16,14 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed public inventory is recorded here. The repository
 contains fixes for several privacy, purchase-isolation, refund, and journey
-defects. Release `v2026.09.27-21` deployed those changes and a protected runtime
-Stripe inventory with fixed failure reasons. On this exact release, the live
-key, charge-enabled account, Tax status, and catalog identifiers passed
-read-only checks. No Atlas customer portal configuration exists; the billing
-webhook lacks async-payment and refund events. The offer allowlist is absent and
-checkout is disabled. No completed live payment, signed webhook delivery, or
-useful reviewed Las Vegas discovery slice has been demonstrated. Passing
-deployment checks does not satisfy those acceptance gates.
+defects. Release `v2026.09.27-22` deployed the cumulative-refund correction and
+mobile map-count simplification. The latest protected runtime Stripe inventory
+was on v21: its live key, charge-enabled account, Tax status, and catalog
+identifiers passed; the Atlas portal configuration, four webhook subscriptions,
+and offer allowlist were missing. No v22 billing inventory or completed live
+payment, signed webhook delivery, or useful reviewed Las Vegas discovery slice
+has been demonstrated. Checkout remains disabled. Passing deployment checks does
+not satisfy those acceptance gates.
 
 The
 [September 27 Las Vegas editorial packet](2026-09-27-las-vegas-editorial-packet.md)
@@ -38,15 +38,34 @@ in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
 
-## Current production release `v2026.09.27-21`
+## Current production release `v2026.09.27-22`
+
+[Release run 36373868581](https://github.com/RebuildingAmerica/atlas/actions/runs/36373868581)
+passed full CI, deployed commit `baa1d909845b9c02691664879b5784da88cd37bb`, and
+passed hosted public smoke and signed-in identity checks. The hosted checkout
+job completed, but its live-session step was skipped because new sales are
+closed. This release includes the cumulative-full-refund entitlement fix, the
+mobile map-count correction, and bounded hosted public-page checks. The refund
+correction has a passing unit regression, but an actual refunded customer and
+signed provider event have not been demonstrated on this release. The most
+recent read-only billing inventory remains the v21 assessment below.
+
+Commit `aed7acb2` follows this production tag on `main`. It replaces indefinite
+loading on the profiles overview with a visible retry and avoids unused catalog
+requests on scoped pages. Local app tests passed 601 files and 3,941 tests at
+100% coverage; the repository pre-push gate passed 33 of 33 tasks. It is **not
+part of v22** and is not recorded as production behavior.
+
+## Prior production release `v2026.09.27-21`
 
 [Release run 36370886771](https://github.com/RebuildingAmerica/atlas/actions/runs/36370886771)
 passed full CI, deployed commit `3139be61b687d04467284cd6923fabc7295c7b17`, and
-passed hosted public smoke, signed-in identity, and enabled checkout checks. The
-checkout job did not make a purchase because the sale flag is `false`. This
-release includes the source-note review card and guarded editorial intake, but
-there is still no hosted editor journey or published reviewed Las Vegas slice.
-The prior v20 release stopped at secret scanning and did not deploy.
+passed hosted public smoke and signed-in identity checks. The hosted checkout
+job completed, but its live-session step was skipped because the sale flag is
+`false`. This release includes the source-note review card and guarded editorial
+intake, but there is still no hosted editor journey or published reviewed Las
+Vegas slice. The prior v20 release stopped at secret scanning and did not
+deploy.
 
 The exact-release
 [read-only billing inventory](https://github.com/RebuildingAmerica/atlas/actions/runs/36372295127)
@@ -55,7 +74,8 @@ Tax, and catalog-ID checks. Portal configuration is missing; the webhook is
 missing the two async-payment and two refund events; the offer allowlist is
 absent. The [dated acceptance matrix](2026-09-28-billing-readiness-v21.md)
 classifies every purchase and exit journey. Commit `b4ee7eed` fixes cumulative
-partial-refund revocation in source and is not part of v21.
+partial-refund revocation in source and is not part of v21; it was deployed in
+v22.
 
 ## Staged Las Vegas editorial intake
 
