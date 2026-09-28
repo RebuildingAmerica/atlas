@@ -199,7 +199,8 @@ export async function applyStripeRefund(
   const { purchase, currentTerm, cancelSubscriptionId } =
     await resolveRefundPurchase(paymentIntentId);
   const kind = refund.amount === charge.amount ? "full" : "partial";
-  if (kind === "full" && cancelSubscriptionId) {
+  const fullyRefunded = kind === "full" || charge.refunded;
+  if (fullyRefunded && cancelSubscriptionId) {
     await getStripeClient().subscriptions.cancel(
       cancelSubscriptionId,
       { invoice_now: false, prorate: false },
@@ -207,5 +208,5 @@ export async function applyStripeRefund(
     );
   }
   await writeAdjustment({ purchase, refund, eventId, eventAt, kind });
-  if (kind === "full" && currentTerm) await revokePurchase(purchase, eventAt);
+  if (fullyRefunded && currentTerm) await revokePurchase(purchase, eventAt);
 }

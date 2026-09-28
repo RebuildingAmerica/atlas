@@ -323,6 +323,54 @@ describe("refund webhook convergence", () => {
     expect(db.prepare("SELECT kind FROM billing_adjustments").get()).toEqual({ kind: "partial" });
   });
 
+  it("revokes a term when separate partial refunds together return the full charge", async () => {
+    mocks.retrieveCharge
+      .mockResolvedValueOnce({
+        id: "ch_1",
+        amount: 400,
+        amount_refunded: 100,
+        currency: "usd",
+        payment_intent: "pi_stripe_1",
+        paid: true,
+        refunded: false,
+      })
+      .mockResolvedValueOnce({
+        id: "ch_1",
+        amount: 400,
+        amount_refunded: 400,
+        currency: "usd",
+        payment_intent: "pi_stripe_1",
+        paid: true,
+        refunded: true,
+      });
+
+    await deliver(buildRefundEvent({ id: "re_first", amount: 100 }));
+    expect(db.prepare("SELECT status FROM workspace_products WHERE id = ?").get("wp_1")).toEqual({
+      status: "active",
+    });
+
+    await deliver({
+      ...buildRefundEvent({ id: "re_second", amount: 300 }),
+      id: "evt_refund_second",
+      created: Date.parse("2026-07-04T00:00:00.000Z") / 1000,
+    });
+
+    expect(db.prepare("SELECT status FROM workspace_products WHERE id = ?").get("wp_1")).toEqual({
+      status: "refunded",
+    });
+    expect(
+      db.prepare("SELECT revocation_reason FROM purchase_intents WHERE id = ?").get("purchase_1"),
+    ).toEqual({ revocation_reason: "full_refund" });
+    expect(
+      db
+        .prepare("SELECT stripe_refund_id, kind, amount FROM billing_adjustments ORDER BY amount")
+        .all(),
+    ).toEqual([
+      { stripe_refund_id: "re_first", kind: "partial", amount: 100 },
+      { stripe_refund_id: "re_second", kind: "partial", amount: 300 },
+    ]);
+  });
+
   it("does not act on a refund that has not succeeded", async () => {
     await deliver(buildRefundEvent({ status: "pending" }));
     expect(db.prepare("SELECT COUNT(*) AS count FROM billing_adjustments").get()).toEqual({
