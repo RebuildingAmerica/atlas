@@ -30,6 +30,7 @@ interface EntryListProps {
 }
 
 const ENTRY_LIST_ERROR_MESSAGE = "Results could not load. Try again in a moment.";
+const SOURCE_SUBMISSION_HREF = "mailto:hello@rebuildingus.org?subject=Atlas%20source%20submission";
 
 function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): string {
   if (resultLabelPlural === "people and groups") {
@@ -41,7 +42,7 @@ function emptyHeading(resultLabelPlural: string, hasActiveSearch: boolean): stri
 
 function emptyDescription(hasActiveSearch: boolean): string {
   if (hasActiveSearch) {
-    return "Try fewer filters, a broader place, or another issue.";
+    return "Atlas only lists people and groups it can trace to public sources, and its coverage is still growing. Try fewer filters, a broader place, or another issue.";
   }
 
   return "Start with a place, issue, person, or group.";
@@ -114,7 +115,7 @@ export function EntryList({
               </button>
             ))}
             <a
-              href="mailto:hello@rebuildingus.org?subject=Atlas%20source%20submission"
+              href={SOURCE_SUBMISSION_HREF}
               className="type-label-large bg-ink-strong text-surface hover:bg-ink rounded-full px-3 py-1.5 transition-colors"
             >
               Submit a source
@@ -147,6 +148,18 @@ export function EntryList({
           isMapSelection={entry.id === selectedId}
         />
       ))}
+      {hasActiveSearch && typeof total === "number" && entries.length >= total ? (
+        <p className="type-body-small text-ink-muted px-1">
+          That&apos;s every match Atlas has so far. Coverage is still growing — submit a source if
+          someone is missing.{" "}
+          <a
+            href={SOURCE_SUBMISSION_HREF}
+            className="text-ink-strong font-medium underline-offset-2 hover:underline"
+          >
+            Submit a source
+          </a>
+        </p>
+      ) : null}
     </div>
   );
 }

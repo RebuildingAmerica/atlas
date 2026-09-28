@@ -33,7 +33,33 @@ describe("EntryList empty state", () => {
     render(<EntryList entries={[]} hasActiveSearch resultLabelPlural="organizations" />);
     expect(screen.getByText("No matching organizations.")).toBeInTheDocument();
     expect(
-      screen.getByText("Try fewer filters, a broader place, or another issue."),
+      screen.getByText(
+        "Atlas only lists people and groups it can trace to public sources, and its coverage is still growing. Try fewer filters, a broader place, or another issue.",
+      ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("EntryList coverage note", () => {
+  const endOfResults =
+    "That's every match Atlas has so far. Coverage is still growing — submit a source if someone is missing.";
+
+  it("says plainly when a search has shown every match Atlas has", () => {
+    render(<EntryList entries={[createEntryFixture()]} total={1} hasActiveSearch />);
+    expect(screen.getByText(endOfResults)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Submit a source" })).toHaveAttribute(
+      "href",
+      "mailto:hello@rebuildingus.org?subject=Atlas%20source%20submission",
+    );
+  });
+
+  it("stays quiet while more pages of matches exist", () => {
+    render(<EntryList entries={[createEntryFixture()]} total={40} hasActiveSearch />);
+    expect(screen.queryByText(endOfResults)).not.toBeInTheDocument();
+  });
+
+  it("stays quiet when nobody has searched yet", () => {
+    render(<EntryList entries={[createEntryFixture()]} total={1} />);
+    expect(screen.queryByText(endOfResults)).not.toBeInTheDocument();
   });
 });
