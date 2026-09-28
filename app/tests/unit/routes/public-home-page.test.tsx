@@ -147,6 +147,11 @@ describe("HomePage", () => {
         "Coverage varies by place and issue. A listing does not mean every local question has a useful answer.",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Check the public record." })).toBeInTheDocument();
+    expect(screen.getByText("Places with listed records")).toBeInTheDocument();
+    expect(screen.getByText("Public source types")).toBeInTheDocument();
+    expect(screen.queryByText("Places with activity")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Who leads, who staffs, who collaborates/)).not.toBeInTheDocument();
     expect(screen.queryByText(/All 50 states/)).not.toBeInTheDocument();
     expect(screen.queryByText(/every corner of the country/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Housing" })[0]).toHaveAttribute(

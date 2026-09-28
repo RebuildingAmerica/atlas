@@ -226,16 +226,17 @@ export function HomePageShell({
         <div className="mx-auto grid w-full max-w-[88rem] gap-16 md:grid-cols-[minmax(0,28rem)_minmax(0,56rem)]">
           <div>
             <h2 className="font-serif text-3xl leading-snug text-balance md:text-4xl">
-              Map the field.
+              Check the public record.
             </h2>
             <p className="type-body-large text-ink-soft mt-6">
-              Atlas is not a flat directory. It treats civic work as a field: people belong to
-              organizations, organizations join coalitions, coalitions work across places, and gaps
-              matter as much as what is already well documented.
+              Atlas lists people and groups with their stated work, place, and public sources. Some
+              relationships are documented; sharing an issue or place alone does not establish an
+              affiliation.
             </p>
             <p className="type-body-large text-ink-soft mt-5">
-              Use it to understand structure. Who leads, who staffs, who collaborates, where
-              coverage is strong, and where the public record still needs work.
+              Follow the evidence before relying on a role, collaboration, or current activity. A
+              profile can point you toward an official next step and show where the public record
+              still needs work.
             </p>
           </div>
 
@@ -272,9 +273,9 @@ export function HomePageShell({
             <h2 className="text-3xl leading-snug text-balance md:text-4xl">Prepare for action.</h2>
             <p className="type-body-large text-ink-soft mt-6">
               When your team is entering a new city, planning a campaign, preparing a story, or
-              looking for partners, Atlas helps turn a broad question into a usable short list. You
-              get the people to know, the groups around them, and the gaps to check before anyone
-              makes a call.
+              looking for partners, Atlas helps turn a broad question into a source-linked short
+              list. Check each person's current role and each group's official contact route before
+              outreach; a listing is a starting point, not a recommendation.
             </p>
             <FacetTileGrid tiles={placeTiles.slice(0, 4)} className="mt-10" />
           </div>
@@ -283,7 +284,7 @@ export function HomePageShell({
             <div className="border-border flex items-center justify-between gap-4 border-b px-8 py-4">
               <p className="flex items-center gap-2 font-serif text-sm">
                 <MapPinned className="text-accent-deep h-4 w-4" aria-hidden="true" />
-                Places with activity
+                Places with listed records
               </p>
               <span className="type-label-small text-ink-soft">{placeTiles.length} shown</span>
             </div>
@@ -317,7 +318,7 @@ export function HomePageShell({
 
           <div className="border-border bg-surface-container-lowest border">
             <div className="border-border flex flex-col gap-4 border-b px-8 py-4 lg:flex-row lg:items-center lg:justify-between">
-              <p className="font-serif text-sm">Source-backed records</p>
+              <p className="font-serif text-sm">Public source types</p>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="type-label-small text-ink-soft">
                   {sourceTiles.length} source types shown
