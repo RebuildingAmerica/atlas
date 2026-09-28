@@ -138,7 +138,7 @@ function FeedbackPage({ entry }: FeedbackPageProps) {
   const [contactEmail, setContactEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
 
   const profilePath = `/profiles/${entry.type === "organization" ? "organizations" : "people"}/${entry.slug}`;
   const selectedOption = getFeedbackOption(kind);
@@ -150,14 +150,14 @@ function FeedbackPage({ entry }: FeedbackPageProps) {
 
     setIsSubmitting(true);
     setErrorMessage(null);
-    setSubmitted(false);
+    setReceiptId(null);
     try {
-      await createEntityFlag({
+      const receipt = await createEntityFlag({
         entity_id: entry.id,
         reason: selectedOption.reason,
         note: buildFeedbackNote(trimmedNote, contactEmail),
       });
-      setSubmitted(true);
+      setReceiptId(receipt.id);
       setNote("");
       setContactEmail("");
     } catch (err) {
@@ -233,6 +233,9 @@ function FeedbackPage({ entry }: FeedbackPageProps) {
                 required
               />
             </label>
+            <p className="type-body-small text-ink-soft">
+              Your report and optional contact email go to Atlas reviewers, not the public profile.
+            </p>
 
             <label className="grid gap-2">
               <span className="type-label-medium text-ink-strong">Contact email, optional</span>
@@ -252,14 +255,22 @@ function FeedbackPage({ entry }: FeedbackPageProps) {
                 <Send className="mr-2 inline h-4 w-4" aria-hidden />
                 {isSubmitting ? "Submitting..." : "Submit for review"}
               </Button>
-              {submitted ? (
-                <span
-                  role="status"
-                  className="type-label-medium text-on-success-container inline-flex items-center gap-1.5"
-                >
-                  <CheckCircle2 className="h-4 w-4" aria-hidden />
-                  Received for review.
-                </span>
+              {receiptId ? (
+                <div role="status" className="type-body-small text-on-success-container space-y-1">
+                  <p className="type-label-medium flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4" aria-hidden />
+                    Received for review.
+                  </p>
+                  <p>
+                    Reference: <code className="break-all">{receiptId}</code>
+                  </p>
+                  <a
+                    href={`mailto:hello@rebuildingus.org?subject=${encodeURIComponent(`Atlas report ${receiptId}`)}`}
+                    className="font-medium underline-offset-2 hover:underline"
+                  >
+                    Email Atlas about this report
+                  </a>
+                </div>
               ) : null}
               {errorMessage ? (
                 <span

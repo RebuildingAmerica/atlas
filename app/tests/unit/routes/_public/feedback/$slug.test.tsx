@@ -141,6 +141,11 @@ describe("routes/_public/feedback/$slug", () => {
       note: "The listed phone number is no longer active.\n\nContact: tips@example.org",
     });
     expect(screen.getByRole("status")).toHaveTextContent("Received for review.");
+    expect(screen.getByRole("status")).toHaveTextContent("Reference: flag-1");
+    expect(screen.getByRole("link", { name: "Email Atlas about this report" })).toHaveAttribute(
+      "href",
+      "mailto:hello@rebuildingus.org?subject=Atlas%20report%20flag-1",
+    );
   });
 
   it("publishes no metadata when the entry could not be loaded", async () => {
