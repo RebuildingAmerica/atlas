@@ -148,7 +148,12 @@ function ReviewCard({
   pending: boolean;
 }) {
   const sources = item.sourceUrls.map(safeSourceUrl).filter(isPresent);
-  const sourceEvidence = new Map(item.sourceEvidence?.map(({ url, context }) => [url, context]));
+  const sourceEvidence = new Map(
+    item.sourceEvidence?.flatMap(({ url, context }) => {
+      const safeUrl = safeSourceUrl(url);
+      return safeUrl ? [[safeUrl, context] as const] : [];
+    }),
+  );
   const changes = item.changes;
   const profileUrl = changes.length > 0 ? publicProfileUrl(item) : null;
   const name = item.entityName;

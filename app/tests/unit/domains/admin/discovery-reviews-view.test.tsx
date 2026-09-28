@@ -111,6 +111,27 @@ describe("DiscoveryReviewsView", () => {
     ).toHaveTextContent("The About page describes public education and transit advocacy.");
   });
 
+  it("keeps a homepage evidence note beside its normalized link", () => {
+    renderQueue([
+      review({
+        sourceUrls: ["https://example.org"],
+        sourceEvidence: [
+          {
+            url: "https://example.org",
+            context: "The homepage explains the group's current work.",
+          },
+        ],
+      }),
+    ]);
+
+    const sources = screen.getByRole("region", { name: "Candidate sources for Civic Group" });
+    expect(within(sources).getByRole("link", { name: "https://example.org/" })).toHaveAttribute(
+      "href",
+      "https://example.org/",
+    );
+    expect(sources).toHaveTextContent("The homepage explains the group's current work.");
+  });
+
   it("shows missing place plainly and does not link an unsafe claimed next step", () => {
     renderQueue([
       review({
