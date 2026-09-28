@@ -22,6 +22,8 @@ SCHEMA_PARTS = Path(__file__).resolve().parents[2] / "atlas" / "models" / "schem
 # the additive lists in atlas.models.database_migrations; Postgres needs a
 # matching ALTER because its schema is declarative.
 LATE_ADDED_COLUMNS: dict[str, set[str]] = {
+    "entity_flags": {"reviewed_at", "reviewed_by"},
+    "source_flags": {"reviewed_at", "reviewed_by"},
     "discovery_jobs": {
         "idempotency_key",
         "next_attempt_at",

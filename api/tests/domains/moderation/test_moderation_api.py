@@ -444,3 +444,141 @@ async def test_discovery_api_key_cannot_become_a_moderation_editor(test_settings
     with pytest.raises(HTTPException) as exc:
         await require_moderation_editor(actor=actor, settings=test_settings)
     assert exc.value.status_code == HTTPStatus.FORBIDDEN
+
+
+async def _reportable_profile(test_db: object) -> str:
+    return await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Reported Org",
+        description="Organization used for report status tests.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+
+
+@pytest.mark.asyncio
+async def test_report_status_never_reveals_what_the_reporter_wrote(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    """A reporter can see what happened to their report, never its contents."""
+    from tests.support.staff_auth import enable_staff_auth
+
+    entity_id = await _reportable_profile(test_db)
+    receipt = await test_client.post(
+        "/api/entity-flags",
+        json={
+            "entity_id": entity_id,
+            "reason": "incorrect",
+            "note": "Private detail\n\nContact: visitor@atlas.test",
+        },
+    )
+    assert receipt.status_code == HTTPStatus.CREATED
+    report_id = receipt.json()["id"]
+    headers = enable_staff_auth(test_settings)
+
+    waiting = await test_client.get(f"/api/entity-flags/{report_id}/status")
+
+    assert waiting.status_code == HTTPStatus.OK, waiting.text
+    assert waiting.headers["cache-control"] == "no-store"
+    assert set(waiting.json()) == {"id", "status", "created_at", "reviewed_at"}
+    assert waiting.json()["status"] == "open"
+    assert waiting.json()["reviewed_at"] is None
+    assert "Private detail" not in waiting.text
+    assert "visitor@atlas.test" not in waiting.text
+
+    resolved = await test_client.post(
+        f"/api/entity-flags/{report_id}/resolve", headers=headers.staff
+    )
+    assert resolved.status_code == HTTPStatus.OK, resolved.text
+
+    after = await test_client.get(f"/api/entity-flags/{report_id}/status")
+    assert after.json()["status"] == "resolved"
+    assert after.json()["reviewed_at"]
+    assert "editor@rebuildingus.org" not in after.text
+
+
+@pytest.mark.asyncio
+async def test_unknown_report_status_is_not_found(test_client: object) -> None:
+    response = await test_client.get("/api/entity-flags/no-such-report/status")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.asyncio
+async def test_flag_decisions_record_reviewer_and_time(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    """Every closed report says which editor closed it and when."""
+    from atlas.models import FlagCRUD
+    from tests.support.staff_auth import enable_staff_auth
+
+    entity_id = await _reportable_profile(test_db)
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.test/reported-source",
+        source_type="news_article",
+        extraction_method="manual",
+    )
+    entity_flag = await FlagCRUD.create_entity_flag(
+        test_db, entity_id=entity_id, reason="incorrect", note="Wrong city."
+    )
+    source_flag = await FlagCRUD.create_source_flag(
+        test_db, source_id=source_id, reason="broken_link", note="Dead link."
+    )
+    headers = enable_staff_auth(test_settings)
+
+    resolved = await test_client.post(
+        f"/api/entity-flags/{entity_flag.id}/resolve", headers=headers.staff
+    )
+    dismissed = await test_client.post(
+        f"/api/source-flags/{source_flag.id}/dismiss", headers=headers.staff
+    )
+
+    assert resolved.status_code == HTTPStatus.OK, resolved.text
+    assert dismissed.status_code == HTTPStatus.OK, dismissed.text
+    for body in (resolved.json(), dismissed.json()):
+        assert body["reviewed_by"] == "editor@rebuildingus.org"
+        assert body["reviewed_at"]
+
+
+@pytest.mark.asyncio
+async def test_new_reports_emit_an_alert_event_without_their_contents(
+    test_client: object,
+    test_db: object,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The operator is alerted to each new report; the alert carries no report text."""
+    entity_id = await _reportable_profile(test_db)
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.test/alert-source",
+        source_type="news_article",
+        extraction_method="manual",
+    )
+
+    with caplog.at_level("WARNING", logger="atlas.domains.moderation.api"):
+        entity = await test_client.post(
+            "/api/entity-flags",
+            json={"entity_id": entity_id, "reason": "incorrect", "note": "secret-note"},
+        )
+        source = await test_client.post(
+            "/api/source-flags",
+            json={"source_id": source_id, "reason": "broken_link", "note": "secret-note"},
+        )
+
+    events = [
+        r for r in caplog.records if getattr(r, "event", None) == "correction_report_received"
+    ]
+    assert [(r.kind, r.flag_id) for r in events] == [
+        ("entity", entity.json()["id"]),
+        ("source", source.json()["id"]),
+    ]
+    assert all("secret-note" not in r.getMessage() for r in events)
+    assert all(not hasattr(r, "note") for r in events)

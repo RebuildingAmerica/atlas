@@ -88,6 +88,8 @@ class FlagResponse(BaseModel):
     note: str | None = None
     status: str
     created_at: str
+    reviewed_at: str | None = None
+    reviewed_by: str | None = None
 
 
 class EntityFlagCreateRequest(BaseModel):

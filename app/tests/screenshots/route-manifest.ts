@@ -336,6 +336,7 @@ export const EXCLUDED_ROUTES = {
     reason: "Private reporter notes and contact details must not enter screenshot artifacts.",
   },
   "/dashboard": { reason: "Pure redirect to /home." },
+  "/reports/$reportId": { reason: "Needs a report reference created at runtime." },
   "/entries/$entryId": { reason: "Pure redirect to the canonical profile URL." },
   "/docs": { reason: "Redirect to the external Mintlify docs site." },
   "/docs/$": { reason: "Redirect to the external Mintlify docs site." },

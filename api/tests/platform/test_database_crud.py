@@ -373,3 +373,25 @@ class TestEnsureEntryColumns:
         db_url = f"sqlite:///{tmp_db_path}"
         await init_db(db_url)
         await init_db(db_url)
+
+
+class TestEnsureFlagColumns:
+    """Older SQLite report tables gain the reviewer audit columns."""
+
+    @pytest.mark.asyncio
+    async def test_adds_reviewer_columns_to_legacy_report_tables(self, tmp_db_path: str) -> None:
+        from atlas.models.database_migrations import _ensure_flag_columns
+
+        db_url = f"sqlite:///{tmp_db_path}"
+        conn = await get_db_connection(db_url)
+        try:
+            await conn.execute("CREATE TABLE entity_flags (id TEXT PRIMARY KEY, note TEXT)")
+            await conn.commit()
+            await _ensure_flag_columns(conn)
+            await _ensure_flag_columns(conn)
+            await conn.commit()
+            columns = await table_columns(conn, "entity_flags")
+        finally:
+            await conn.close()
+
+        assert {"reviewed_at", "reviewed_by"} <= set(columns)

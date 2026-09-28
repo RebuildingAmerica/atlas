@@ -23,3 +23,19 @@ test("a visitor can report a profile error and keep a follow-up reference", asyn
   await expect(page.getByRole("heading", { name: "Maya Thompson" })).toBeVisible();
   await expect(page.getByText("The public description needs a current source.")).toHaveCount(0);
 });
+
+test("a reporter can check a report's status without seeing what they wrote", async ({ page }) => {
+  await page.goto("/feedback/maya-thompson", { waitUntil: "networkidle" });
+  await page
+    .getByRole("textbox", { name: "What should be reviewed?" })
+    .fill("Private detail only an editor should read.");
+  await page.getByRole("textbox", { name: "Contact email, optional" }).fill("visitor@atlas.test");
+  await page.getByRole("button", { name: "Submit for review" }).click();
+
+  await page.getByRole("link", { name: "Check this report's status" }).click();
+
+  await expect(page.getByRole("heading", { name: "Report status" })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Waiting for an editor.");
+  await expect(page.getByText("Private detail only an editor should read.")).toHaveCount(0);
+  await expect(page.getByText("visitor@atlas.test")).toHaveCount(0);
+});

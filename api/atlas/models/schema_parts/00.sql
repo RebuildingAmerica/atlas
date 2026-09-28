@@ -164,8 +164,12 @@ CREATE TABLE IF NOT EXISTS entity_flags (
     reason TEXT NOT NULL,
     note TEXT,
     status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'reviewed', 'resolved')),
-    created_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMPTZ NOT NULL,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by TEXT
 );
+ALTER TABLE entity_flags ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE entity_flags ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
 
 -- Source flags (anonymous public flagging)
 CREATE TABLE IF NOT EXISTS source_flags (
@@ -174,8 +178,12 @@ CREATE TABLE IF NOT EXISTS source_flags (
     reason TEXT NOT NULL,
     note TEXT,
     status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'reviewed', 'resolved')),
-    created_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMPTZ NOT NULL,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by TEXT
 );
+ALTER TABLE source_flags ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE source_flags ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
 
 -- Review queue (pre-publication staging for discovered records)
 CREATE TABLE IF NOT EXISTS review_queue (

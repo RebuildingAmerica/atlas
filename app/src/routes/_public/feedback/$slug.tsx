@@ -264,6 +264,13 @@ function FeedbackPage({ entry }: FeedbackPageProps) {
                   <p>
                     Reference: <code className="break-all">{receiptId}</code>
                   </p>
+                  <Link
+                    to="/reports/$reportId"
+                    params={{ reportId: receiptId }}
+                    className="block font-medium underline-offset-2 hover:underline"
+                  >
+                    Check this report&apos;s status
+                  </Link>
                   <a
                     href={`mailto:hello@rebuildingus.org?subject=${encodeURIComponent(`Atlas report ${receiptId}`)}`}
                     className="font-medium underline-offset-2 hover:underline"

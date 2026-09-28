@@ -20,6 +20,7 @@ from .database_migrations import (
     _ensure_discovery_job_columns,
     _ensure_discovery_run_columns,
     _ensure_entry_columns,
+    _ensure_flag_columns,
     _ensure_org_annotation_columns,
     _ensure_org_coverage_target_columns,
     _ensure_place_context_columns,
@@ -292,6 +293,7 @@ async def _init_sqlite(database_url: str) -> None:
         await _ensure_discovery_run_columns(conn)
         await _ensure_discovery_job_columns(conn)
         await _ensure_review_queue_columns(conn)
+        await _ensure_flag_columns(conn)
         await _ensure_saved_list_columns(conn)
         await _ensure_org_annotation_columns(conn)
         await _ensure_org_coverage_target_columns(conn)

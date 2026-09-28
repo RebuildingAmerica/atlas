@@ -243,6 +243,8 @@ CREATE TABLE IF NOT EXISTS entity_flags (
     note TEXT,
     status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'reviewed', 'resolved')),
     created_at DATETIME NOT NULL,
+    reviewed_at DATETIME,
+    reviewed_by TEXT,
     FOREIGN KEY (entity_id) REFERENCES entries(id) ON DELETE CASCADE
 );
 
@@ -254,6 +256,8 @@ CREATE TABLE IF NOT EXISTS source_flags (
     note TEXT,
     status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'reviewed', 'resolved')),
     created_at DATETIME NOT NULL,
+    reviewed_at DATETIME,
+    reviewed_by TEXT,
     FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
 );
 

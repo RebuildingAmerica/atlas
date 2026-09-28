@@ -74,6 +74,7 @@ import { Route as WorkspaceAdminDiscoveryReviewsRouteImport } from './routes/_wo
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
 import { Route as WorkspaceAdminCorrectionsRouteImport } from './routes/_workspace/admin/corrections'
 import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
+import { Route as PublicReportsReportIdRouteImport } from './routes/_public/reports/$reportId'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
 import { Route as PublicPlacesPlaceSlugRouteImport } from './routes/_public/places/$placeSlug'
@@ -444,6 +445,11 @@ const WorkspaceAdminCloudCostsRoute =
     path: '/admin/cloud-costs',
     getParentRoute: () => WorkspaceRoute,
   } as any)
+const PublicReportsReportIdRoute = PublicReportsReportIdRouteImport.update({
+  id: '/reports/$reportId',
+  path: '/reports/$reportId',
+  getParentRoute: () => PublicRoute,
+} as any)
 const PublicProfilesPeopleRoute = PublicProfilesPeopleRouteImport.update({
   id: '/profiles/people',
   path: '/profiles/people',
@@ -704,6 +710,7 @@ export interface FileRoutesByFullPath {
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
+  '/reports/$reportId': typeof PublicReportsReportIdRoute
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -799,6 +806,7 @@ export interface FileRoutesByTo {
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
+  '/reports/$reportId': typeof PublicReportsReportIdRoute
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -904,6 +912,7 @@ export interface FileRoutesById {
   '/_public/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
+  '/_public/reports/$reportId': typeof PublicReportsReportIdRoute
   '/_workspace/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/_workspace/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -1006,6 +1015,7 @@ export interface FileRouteTypes {
     | '/places/$placeSlug'
     | '/profiles/organizations'
     | '/profiles/people'
+    | '/reports/$reportId'
     | '/admin/cloud-costs'
     | '/admin/corrections'
     | '/admin/discounts'
@@ -1101,6 +1111,7 @@ export interface FileRouteTypes {
     | '/entries/$entryId'
     | '/feedback/$slug'
     | '/places/$placeSlug'
+    | '/reports/$reportId'
     | '/admin/cloud-costs'
     | '/admin/corrections'
     | '/admin/discounts'
@@ -1205,6 +1216,7 @@ export interface FileRouteTypes {
     | '/_public/places/$placeSlug'
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
+    | '/_public/reports/$reportId'
     | '/_workspace/admin/cloud-costs'
     | '/_workspace/admin/corrections'
     | '/_workspace/admin/discounts'
@@ -1750,6 +1762,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceAdminCloudCostsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_public/reports/$reportId': {
+      id: '/_public/reports/$reportId'
+      path: '/reports/$reportId'
+      fullPath: '/reports/$reportId'
+      preLoaderRoute: typeof PublicReportsReportIdRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_public/profiles/people': {
       id: '/_public/profiles/people'
       path: '/profiles/people'
@@ -2119,6 +2138,7 @@ interface PublicRouteChildren {
   PublicPlacesPlaceSlugRoute: typeof PublicPlacesPlaceSlugRoute
   PublicProfilesOrganizationsRoute: typeof PublicProfilesOrganizationsRouteWithChildren
   PublicProfilesPeopleRoute: typeof PublicProfilesPeopleRouteWithChildren
+  PublicReportsReportIdRoute: typeof PublicReportsReportIdRoute
   PublicProfilesIndexRoute: typeof PublicProfilesIndexRoute
   PublicPlacesBoroughsPlaceSlugRoute: typeof PublicPlacesBoroughsPlaceSlugRoute
   PublicPlacesCitiesPlaceSlugRoute: typeof PublicPlacesCitiesPlaceSlugRoute
@@ -2151,6 +2171,7 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicProfilesOrganizationsRoute:
     PublicProfilesOrganizationsRouteWithChildren,
   PublicProfilesPeopleRoute: PublicProfilesPeopleRouteWithChildren,
+  PublicReportsReportIdRoute: PublicReportsReportIdRoute,
   PublicProfilesIndexRoute: PublicProfilesIndexRoute,
   PublicPlacesBoroughsPlaceSlugRoute: PublicPlacesBoroughsPlaceSlugRoute,
   PublicPlacesCitiesPlaceSlugRoute: PublicPlacesCitiesPlaceSlugRoute,

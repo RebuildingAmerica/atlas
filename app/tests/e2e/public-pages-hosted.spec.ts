@@ -36,4 +36,23 @@ test.describe("hosted public pages", () => {
       });
     }
   });
+
+  // Visitor reports can carry contact details, so no anonymous caller may read
+  // the editor inbox through either the app's proxy or the API directly.
+  test("keep the private correction inbox away from anonymous callers", async () => {
+    const appOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
+    const apiOrigin = requiredHostedOrigin("ATLAS_HOSTED_API_URL");
+    const timeout = { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) };
+    // Vercel access credentials go only to the app, never to the API.
+    const requests: [string, RequestInit][] = [
+      [appOrigin, hostedPublicRequestInit(timeout)],
+      [apiOrigin, timeout],
+    ];
+    for (const [origin, init] of requests) {
+      await test.step(origin, async () => {
+        const response = await fetch(absoluteHostedUrl(origin, "/api/correction-inbox"), init);
+        expect(response.status, origin).toBe(401);
+      });
+    }
+  });
 });

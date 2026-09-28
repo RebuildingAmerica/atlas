@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING, Literal
 
@@ -38,6 +39,10 @@ router = APIRouter()
 
 __all__ = ["router"]
 
+logger = logging.getLogger(__name__)
+
+CORRECTION_REPORT_EVENT = "correction_report_received"
+
 
 class SourceStalenessReviewScanResponse(BaseModel):
     """Review items created by a stale-source scan."""
@@ -59,6 +64,23 @@ class FlagReceipt(BaseModel):
     id: str
     status: str
     created_at: str
+
+
+class FlagStatusReceipt(BaseModel):
+    """What an anonymous reporter may learn about their own report."""
+
+    id: str
+    status: Literal["open", "reviewed", "resolved"]
+    created_at: str
+    reviewed_at: str | None
+
+
+def _log_new_report(flag_id: str, *, kind: Literal["entity", "source"]) -> None:
+    """Emit the event the operator's alert watches for; never the report's text."""
+    logger.warning(
+        "Visitor report received",
+        extra={"event": CORRECTION_REPORT_EVENT, "flag_id": flag_id, "kind": kind},
+    )
 
 
 class CorrectionInboxItemResponse(BaseModel):
@@ -144,8 +166,36 @@ async def create_entity_flag(
     flag = await FlagCRUD.create_entity_flag(
         db, entity_id=req.entity_id, reason=req.reason, note=req.note
     )
+    _log_new_report(flag.id, kind="entity")
     apply_no_store_headers(response)
     return FlagReceipt.model_validate(flag.__dict__)
+
+
+@router.get(
+    "/entity-flags/{flag_id}/status",
+    response_model=FlagStatusReceipt,
+    summary="Check a profile report's review status",
+    description=(
+        "Whether an Atlas editor has reviewed an anonymous profile report. "
+        "Never returns what the reporter wrote or who reviewed it."
+    ),
+    operation_id="getEntityFlagStatus",
+    response_description="The report's review status.",
+    tags=["flags"],
+)
+async def get_entity_flag_status(
+    flag_id: str,
+    response: Response,
+    db: aiosqlite.Connection = Depends(get_db),
+) -> FlagStatusReceipt:
+    """Let a reporter follow their report using the reference on their receipt."""
+    flag = await FlagCRUD.get_entity_flag_status(db, flag_id)
+    if flag is None:
+        raise HTTPException(
+            status_code=404, detail="Report not found", headers={"Cache-Control": "no-store"}
+        )
+    apply_no_store_headers(response)
+    return FlagStatusReceipt.model_validate(flag.__dict__)
 
 
 @router.get(
@@ -235,11 +285,14 @@ async def _update_entity_flag_status(
     flag_id: str,
     *,
     status: str,
+    actor: AuthenticatedActor,
 ) -> FlagResponse:
-    """Update one entity flag status or raise a 404."""
+    """Record an editor's decision on one entity flag or raise a 404."""
     if await FlagCRUD.get_entity_flag(db, flag_id) is None:
         raise HTTPException(status_code=404, detail="Entity flag not found")
-    flag = await FlagCRUD.update_entity_flag_status(db, flag_id, status=status)
+    flag = await FlagCRUD.update_entity_flag_status(
+        db, flag_id, status=status, reviewed_by=actor.email.strip().lower()
+    )
     assert flag is not None, "entity flag existed moments before status update"
     return FlagResponse.model_validate(flag.__dict__)
 
@@ -260,8 +313,7 @@ async def resolve_entity_flag(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one entity flag resolved."""
-    _ = actor
-    flag = await _update_entity_flag_status(db, flag_id, status="resolved")
+    flag = await _update_entity_flag_status(db, flag_id, status="resolved", actor=actor)
     apply_no_store_headers(response)
     return flag
 
@@ -282,8 +334,7 @@ async def dismiss_entity_flag(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one entity flag dismissed."""
-    _ = actor
-    flag = await _update_entity_flag_status(db, flag_id, status="reviewed")
+    flag = await _update_entity_flag_status(db, flag_id, status="reviewed", actor=actor)
     apply_no_store_headers(response)
     return flag
 
@@ -309,6 +360,7 @@ async def create_source_flag(
     flag = await FlagCRUD.create_source_flag(
         db, source_id=req.source_id, reason=req.reason, note=req.note
     )
+    _log_new_report(flag.id, kind="source")
     apply_no_store_headers(response)
     return FlagReceipt.model_validate(flag.__dict__)
 
@@ -350,11 +402,14 @@ async def _update_source_flag_status(
     flag_id: str,
     *,
     status: str,
+    actor: AuthenticatedActor,
 ) -> FlagResponse:
-    """Update one source flag status or raise a 404."""
+    """Record an editor's decision on one source flag or raise a 404."""
     if await FlagCRUD.get_source_flag(db, flag_id) is None:
         raise HTTPException(status_code=404, detail="Source flag not found")
-    flag = await FlagCRUD.update_source_flag_status(db, flag_id, status=status)
+    flag = await FlagCRUD.update_source_flag_status(
+        db, flag_id, status=status, reviewed_by=actor.email.strip().lower()
+    )
     assert flag is not None, "source flag existed moments before status update"
     return FlagResponse.model_validate(flag.__dict__)
 
@@ -375,8 +430,7 @@ async def resolve_source_flag(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one source flag resolved."""
-    _ = actor
-    flag = await _update_source_flag_status(db, flag_id, status="resolved")
+    flag = await _update_source_flag_status(db, flag_id, status="resolved", actor=actor)
     apply_no_store_headers(response)
     return flag
 
@@ -397,8 +451,7 @@ async def dismiss_source_flag(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one source flag dismissed."""
-    _ = actor
-    flag = await _update_source_flag_status(db, flag_id, status="reviewed")
+    flag = await _update_source_flag_status(db, flag_id, status="reviewed", actor=actor)
     apply_no_store_headers(response)
     return flag
 

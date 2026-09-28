@@ -9,8 +9,15 @@ if TYPE_CHECKING:
     import aiosqlite
 
 from atlas.platform.database import db
+from atlas.platform.dates import row_timestamp_string
 
-__all__ = ["CorrectionInboxItem", "FlagCRUD", "FlagModel", "ModerationInboxItem"]
+__all__ = [
+    "CorrectionInboxItem",
+    "FlagCRUD",
+    "FlagModel",
+    "FlagStatusModel",
+    "ModerationInboxItem",
+]
 
 
 @dataclass
@@ -24,6 +31,18 @@ class FlagModel:
     note: str | None
     status: str
     created_at: str
+    reviewed_at: str | None = None
+    reviewed_by: str | None = None
+
+
+@dataclass
+class FlagStatusModel:
+    """The only facts about a report that its anonymous submitter may see."""
+
+    id: str
+    status: str
+    created_at: str
+    reviewed_at: str | None
 
 
 @dataclass
@@ -71,6 +90,8 @@ class FlagCRUD:
             note=str(row[3]) if row[3] is not None else None,
             status=str(row[4]),
             created_at=str(row[5]),
+            reviewed_at=row_timestamp_string(row[6]),
+            reviewed_by=str(row[7]) if row[7] is not None else None,
         )
 
     @staticmethod
@@ -84,6 +105,8 @@ class FlagCRUD:
             note=str(row[3]) if row[3] is not None else None,
             status=str(row[4]),
             created_at=str(row[5]),
+            reviewed_at=row_timestamp_string(row[6]),
+            reviewed_by=str(row[7]) if row[7] is not None else None,
         )
 
     @staticmethod
@@ -152,7 +175,7 @@ class FlagCRUD:
     ) -> list[FlagModel]:
         cursor = await conn.execute(
             """
-            SELECT id, entity_id, reason, note, status, created_at
+            SELECT id, entity_id, reason, note, status, created_at, reviewed_at, reviewed_by
             FROM entity_flags
             WHERE entity_id = ?
             ORDER BY created_at DESC
@@ -258,11 +281,43 @@ class FlagCRUD:
         return int(row[0])
 
     @staticmethod
+    async def get_entity_flag_status(
+        conn: aiosqlite.Connection, flag_id: str
+    ) -> FlagStatusModel | None:
+        """Return what a reporter may learn about their own profile report.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        flag_id : str
+            The report reference shown on the reporter's receipt.
+
+        Returns
+        -------
+        FlagStatusModel | None
+            Status and dates only; the note and reviewer are never read here.
+        """
+        cursor = await conn.execute(
+            "SELECT id, status, created_at, reviewed_at FROM entity_flags WHERE id = ?",
+            (flag_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        return FlagStatusModel(
+            id=str(row[0]),
+            status=str(row[1]),
+            created_at=str(row_timestamp_string(row[2])),
+            reviewed_at=row_timestamp_string(row[3]),
+        )
+
+    @staticmethod
     async def get_entity_flag(conn: aiosqlite.Connection, flag_id: str) -> FlagModel | None:
         """Return one entity flag by id."""
         cursor = await conn.execute(
             """
-            SELECT id, entity_id, reason, note, status, created_at
+            SELECT id, entity_id, reason, note, status, created_at, reviewed_at, reviewed_by
             FROM entity_flags
             WHERE id = ?
             """,
@@ -277,11 +332,12 @@ class FlagCRUD:
         flag_id: str,
         *,
         status: str,
+        reviewed_by: str,
     ) -> FlagModel | None:
-        """Update one entity flag workflow status."""
+        """Record an editor's decision on one entity flag."""
         await conn.execute(
-            "UPDATE entity_flags SET status = ? WHERE id = ?",
-            (status, flag_id),
+            "UPDATE entity_flags SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?",
+            (status, reviewed_by, db.now_iso(), flag_id),
         )
         await conn.commit()
         return await FlagCRUD.get_entity_flag(conn, flag_id)
@@ -310,7 +366,7 @@ class FlagCRUD:
     ) -> list[FlagModel]:
         cursor = await conn.execute(
             """
-            SELECT id, source_id, reason, note, status, created_at
+            SELECT id, source_id, reason, note, status, created_at, reviewed_at, reviewed_by
             FROM source_flags
             WHERE source_id = ?
             ORDER BY created_at DESC
@@ -326,7 +382,7 @@ class FlagCRUD:
         """Return one source flag by id."""
         cursor = await conn.execute(
             """
-            SELECT id, source_id, reason, note, status, created_at
+            SELECT id, source_id, reason, note, status, created_at, reviewed_at, reviewed_by
             FROM source_flags
             WHERE id = ?
             """,
@@ -341,11 +397,12 @@ class FlagCRUD:
         flag_id: str,
         *,
         status: str,
+        reviewed_by: str,
     ) -> FlagModel | None:
-        """Update one source flag workflow status."""
+        """Record an editor's decision on one source flag."""
         await conn.execute(
-            "UPDATE source_flags SET status = ? WHERE id = ?",
-            (status, flag_id),
+            "UPDATE source_flags SET status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?",
+            (status, reviewed_by, db.now_iso(), flag_id),
         )
         await conn.commit()
         return await FlagCRUD.get_source_flag(conn, flag_id)

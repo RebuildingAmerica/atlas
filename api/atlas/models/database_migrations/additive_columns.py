@@ -133,6 +133,20 @@ async def _ensure_review_queue_columns(conn: Any) -> None:
     )
 
 
+async def _ensure_flag_columns(conn: Any) -> None:
+    """Record which editor closed each visitor report, and when, on older SQLite databases."""
+    for table in ("entity_flags", "source_flags"):
+        cursor = await conn.execute(f"PRAGMA table_info({table})")
+        rows = await cursor.fetchall()
+        if not rows:
+            continue
+        existing_columns = {row[1] for row in rows}
+        if "reviewed_at" not in existing_columns:
+            await conn.execute(f"ALTER TABLE {table} ADD COLUMN reviewed_at DATETIME")
+        if "reviewed_by" not in existing_columns:
+            await conn.execute(f"ALTER TABLE {table} ADD COLUMN reviewed_by TEXT")
+
+
 async def _ensure_org_annotation_columns(conn: Any) -> None:
     """Apply SQLite migrations for typed private notes on entries and sources."""
     cursor = await conn.execute("PRAGMA table_info(org_annotations)")

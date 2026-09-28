@@ -142,6 +142,10 @@ describe("routes/_public/feedback/$slug", () => {
     });
     expect(screen.getByRole("status")).toHaveTextContent("Received for review.");
     expect(screen.getByRole("status")).toHaveTextContent("Reference: flag-1");
+    expect(screen.getByRole("link", { name: "Check this report's status" })).toHaveAttribute(
+      "href",
+      "/reports/flag-1",
+    );
     expect(screen.getByRole("link", { name: "Email Atlas about this report" })).toHaveAttribute(
       "href",
       "mailto:hello@rebuildingus.org?subject=Atlas%20report%20flag-1",

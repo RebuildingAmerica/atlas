@@ -7556,6 +7556,30 @@
             "title": "Reason",
             "type": "string"
           },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "reviewed at for this flag.",
+            "title": "Reviewed At"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "reviewed by for this flag.",
+            "title": "Reviewed By"
+          },
           "status": {
             "description": "status for this flag.",
             "title": "Status",
@@ -7581,6 +7605,51 @@
           "created_at"
         ],
         "title": "FlagResponse",
+        "type": "object"
+      },
+      "FlagStatusReceipt": {
+        "description": "What an anonymous reporter may learn about their own report.",
+        "properties": {
+          "created_at": {
+            "description": "created at for this flag status receipt.",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "description": "id for this flag status receipt.",
+            "title": "Id",
+            "type": "string"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "reviewed at for this flag status receipt.",
+            "title": "Reviewed At"
+          },
+          "status": {
+            "description": "status for this flag status receipt.",
+            "enum": [
+              "open",
+              "reviewed",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "created_at",
+          "reviewed_at"
+        ],
+        "title": "FlagStatusReceipt",
         "type": "object"
       },
       "FlagSummary": {
@@ -19900,6 +19969,49 @@
           }
         },
         "summary": "Resolve an entity flag",
+        "tags": [
+          "flags"
+        ]
+      }
+    },
+    "/api/entity-flags/{flag_id}/status": {
+      "get": {
+        "description": "Whether an Atlas editor has reviewed an anonymous profile report. Never returns what the reporter wrote or who reviewed it.\n\nUse this flag operation to report or review possible corrections. A flag is a review signal; keep the original source context available until a moderator resolves it.",
+        "operationId": "getEntityFlagStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "flag_id",
+            "required": true,
+            "schema": {
+              "title": "Flag Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlagStatusReceipt"
+                }
+              }
+            },
+            "description": "The report's review status."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check a profile report's review status",
         "tags": [
           "flags"
         ]
