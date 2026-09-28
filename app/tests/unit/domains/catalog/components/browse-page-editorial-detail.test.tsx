@@ -10,7 +10,7 @@ import { BrowsePage } from "@/domains/catalog/components/browse/browse-page";
 import { getNavigateCalls, mocks } from "./browse-page-test-setup";
 
 describe("BrowsePage editorial shelves", () => {
-  it("counts a lone actor and its single linked source in the singular", () => {
+  it("shows the full issue count without claiming the preview actor is active", () => {
     mocks.useEntries.mockReturnValue({
       data: {
         data: [
@@ -60,9 +60,10 @@ describe("BrowsePage editorial shelves", () => {
     expect(within(section).getByText("Jackson, MS")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Housing Affordability 1 person or group 1 linked source Latest source Mar 1, 2026",
+        name: "Housing Affordability 3 records",
       }),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Jackson Tenant Union is active/)).not.toBeInTheDocument();
   });
 
   it("leaves the place line off a record with no location", () => {

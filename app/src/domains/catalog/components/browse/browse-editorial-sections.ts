@@ -9,16 +9,9 @@ import type {
 } from "@rebuildingamerica/atlas-api-client";
 
 export interface BrowseEditorialFacet {
-  actorCount?: number;
   count: number;
-  detail?: string;
-  evidenceCount?: number;
-  featuredActor?: string;
   filterKey: BrowseFilterKey;
   label: string;
-  latestSourceDate?: string;
-  placeCount?: number;
-  summary?: string;
   value: string;
 }
 
@@ -48,83 +41,8 @@ function sortFacets(facets: FacetOption[] | undefined): FacetOption[] {
 
 function sortEntriesForPrimitiveSection(entries: Entry[]): Entry[] {
   return [...entries]
-    .sort((left, right) => {
-      if (right.source_count !== left.source_count) {
-        return right.source_count - left.source_count;
-      }
-      return left.name.localeCompare(right.name);
-    })
+    .sort((left, right) => left.name.localeCompare(right.name))
     .slice(0, MAX_ENTRY_ITEMS);
-}
-
-function entryPlaceLabel(entry: Entry): string | undefined {
-  const state = entry.state ? (STATE_NAME_BY_CODE[entry.state] ?? entry.state) : undefined;
-  if (entry.city && state) {
-    return `${entry.city}, ${state}`;
-  }
-  return entry.city ?? state ?? entry.region;
-}
-
-function issueFacetDetail(issueValue: string, entries: Entry[]): string | undefined {
-  const featuredEntry = featuredEntryForIssue(issueValue, entries);
-  return featuredEntry ? entryPlaceLabel(featuredEntry) : undefined;
-}
-
-function entriesForIssue(issueValue: string, entries: Entry[]): Entry[] {
-  return entries.filter(
-    (entry) => Array.isArray(entry.issue_areas) && entry.issue_areas.includes(issueValue),
-  );
-}
-
-function featuredEntryForIssue(issueValue: string, entries: Entry[]): Entry | undefined {
-  return sortEntriesForPrimitiveSection(entriesForIssue(issueValue, entries))[0];
-}
-
-function evidenceCountForIssue(issueValue: string, entries: Entry[]): number | undefined {
-  const count = entriesForIssue(issueValue, entries).reduce(
-    (total, entry) => total + entry.source_count,
-    0,
-  );
-
-  return count > 0 ? count : undefined;
-}
-
-function latestSourceDateForIssue(issueValue: string, entries: Entry[]): string | undefined {
-  return entriesForIssue(issueValue, entries)
-    .map((entry) => entry.latest_source_date)
-    .filter((value): value is string => Boolean(value))
-    .sort((left, right) => right.localeCompare(left))[0];
-}
-
-function placeCountForIssue(issueValue: string, entries: Entry[]): number | undefined {
-  const places = new Set(
-    entriesForIssue(issueValue, entries)
-      .map((entry) => entryPlaceLabel(entry))
-      .filter((value): value is string => Boolean(value)),
-  );
-
-  return places.size > 1 ? places.size : undefined;
-}
-
-function issueSummary({
-  actorCount,
-  featuredActor,
-  place,
-}: {
-  actorCount: number | undefined;
-  featuredActor: string | undefined;
-  place: string | undefined;
-}): string | undefined {
-  if (!featuredActor) {
-    return undefined;
-  }
-
-  const placeLabel = place ? ` in ${place}` : "";
-  if (!actorCount || actorCount < 2) {
-    return `${featuredActor} is active${placeLabel}.`;
-  }
-
-  return `${featuredActor} and ${actorCount - 1} more are active${placeLabel}.`;
 }
 
 function issueFacetLabel(value: string, issueAreaLabels: Record<string, string>): string {
@@ -139,31 +57,15 @@ function issueFacetLabel(value: string, issueAreaLabels: Record<string, string>)
 function issueFacets(
   facets: FacetOption[] | undefined,
   issueAreaLabels: Record<string, string>,
-  entries: Entry[],
 ): BrowseEditorialFacet[] {
   return sortFacets(facets)
     .slice(0, MAX_SHELF_ITEMS)
-    .map((facet) => {
-      const issueEntries = entriesForIssue(facet.value, entries);
-      const featuredEntry = featuredEntryForIssue(facet.value, entries);
-      const detail = issueFacetDetail(facet.value, entries);
-      const actorCount = issueEntries.length > 0 ? issueEntries.length : undefined;
-      const featuredActor = featuredEntry?.name;
-
-      return {
-        actorCount,
-        count: facet.count,
-        detail,
-        evidenceCount: evidenceCountForIssue(facet.value, entries),
-        featuredActor,
-        filterKey: "issue_areas" as const,
-        label: issueFacetLabel(facet.value, issueAreaLabels),
-        latestSourceDate: latestSourceDateForIssue(facet.value, entries),
-        placeCount: placeCountForIssue(facet.value, entries),
-        summary: issueSummary({ actorCount, featuredActor, place: detail }),
-        value: facet.value,
-      };
-    });
+    .map((facet) => ({
+      count: facet.count,
+      filterKey: "issue_areas" as const,
+      label: issueFacetLabel(facet.value, issueAreaLabels),
+      value: facet.value,
+    }));
 }
 
 function placeFacets(response: EntryListResponse | undefined): BrowseEditorialFacet[] {
@@ -212,7 +114,7 @@ export function buildBrowseEditorialSections({
   response,
 }: BuildBrowseEditorialSectionsInput): BrowseEditorialSections {
   const entries = response?.data ?? [];
-  const activeIssues = issueFacets(response?.facets.issue_areas, issueAreaLabels, entries);
+  const activeIssues = issueFacets(response?.facets.issue_areas, issueAreaLabels);
   const activePlaces = placeFacets(response);
 
   return {

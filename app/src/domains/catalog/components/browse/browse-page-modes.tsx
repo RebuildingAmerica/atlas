@@ -12,12 +12,10 @@ import {
   ENTRY_TYPE_SECTION_ORDER,
   PRIMARY_ENTRY_TYPE_SECTION_ORDER,
   SECONDARY_ENTRY_TYPE_SECTION_ORDER,
-  actorCountLabel,
   dateLabel,
   entryLocation,
   entryProfileHref,
   facetAriaLabel,
-  placeCountLabel,
   resultLabel,
   sourceLabel,
 } from "./browse-page-labels";
@@ -233,13 +231,13 @@ function PrimitiveFacetSection({
           <button
             key={`${item.filterKey}:${item.value}`}
             type="button"
-            aria-label={facetAriaLabel(item, variant)}
+            aria-label={facetAriaLabel(item)}
             onClick={() => {
               onSelectFacet(item.filterKey, item.value);
             }}
             className={[
               variant === "issue"
-                ? "border-border-strong bg-surface-container-high hover:bg-surface-container-highest min-h-40 border px-5 py-5 text-left transition-colors duration-150 md:min-h-36"
+                ? "border-border-strong bg-surface-container-high hover:bg-surface-container-highest min-h-28 border px-5 py-5 text-left transition-colors duration-150"
                 : "border-border-strong bg-surface-container hover:bg-surface-container-high min-h-28 border px-5 py-4 text-left transition-colors duration-150",
               variant === "issue" && index === 0 ? "border-l-accent border-l-4" : "",
             ].join(" ")}
@@ -253,35 +251,10 @@ function PrimitiveFacetSection({
             >
               {item.label}
             </span>
-            {item.summary ? (
-              <span className="type-body-medium text-ink-soft mt-3 block">{item.summary}</span>
-            ) : null}
             <span className="mt-4 flex flex-wrap gap-2">
-              {item.actorCount ? (
-                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-soft border px-2.5 py-1">
-                  {actorCountLabel(item.actorCount)}
-                </span>
-              ) : null}
-              {item.placeCount ? (
-                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-soft border px-2.5 py-1">
-                  {placeCountLabel(item.placeCount)}
-                </span>
-              ) : null}
-              {item.evidenceCount ? (
-                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-soft border px-2.5 py-1">
-                  {sourceLabel(item.evidenceCount)}
-                </span>
-              ) : null}
-              {item.latestSourceDate ? (
-                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-muted border px-2.5 py-1">
-                  Latest source {dateLabel(item.latestSourceDate)}
-                </span>
-              ) : null}
-              {variant === "standard" ? (
-                <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-muted border px-2.5 py-1">
-                  {resultLabel(item.count)}
-                </span>
-              ) : null}
+              <span className="type-label-small border-border-strong bg-surface-container-lowest text-ink-muted border px-2.5 py-1">
+                {resultLabel(item.count)}
+              </span>
             </span>
           </button>
         ))}

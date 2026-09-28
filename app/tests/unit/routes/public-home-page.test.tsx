@@ -141,7 +141,12 @@ describe("HomePage", () => {
     expect(screen.getByText("40,247")).toBeInTheDocument();
     expect(screen.getByText("3,000")).toBeInTheDocument();
     expect(screen.getByText("50")).toBeInTheDocument();
-    expect(screen.getByText("states represented")).toBeInTheDocument();
+    expect(screen.getByText("states with listed records")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Coverage varies by place and issue. A listing does not mean every local question has a useful answer.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/All 50 states/)).not.toBeInTheDocument();
     expect(screen.queryByText(/every corner of the country/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Housing" })[0]).toHaveAttribute(

@@ -97,24 +97,13 @@ describe("BrowsePage editorial browsing", () => {
     expect(
       issues.compareDocumentPosition(organizations) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(within(issues).getByText("12 records")).toBeInTheDocument();
+    expect(within(issues).queryByText(/are active/)).not.toBeInTheDocument();
+    expect(within(issues).queryByText("2 people and groups")).not.toBeInTheDocument();
+    expect(within(issues).queryByText("12 linked sources")).not.toBeInTheDocument();
     expect(
-      within(issues).getByText(
-        "Kansas City Tenant Union and 1 more are active in Kansas City, Missouri.",
-      ),
+      within(issues).getByRole("button", { name: "Housing Affordability 12 records" }),
     ).toBeInTheDocument();
-    expect(within(issues).getByText("2 people and groups")).toBeInTheDocument();
-    expect(within(issues).getByText("2 places")).toBeInTheDocument();
-    expect(within(issues).getByText("12 linked sources")).toBeInTheDocument();
-    expect(within(issues).getByText("Latest source Apr 20, 2026")).toBeInTheDocument();
-    expect(within(issues).queryByText("12 records")).not.toBeInTheDocument();
-    expect(
-      within(issues).getByRole("button", {
-        name: /Housing Affordability.*2 people and groups.*12 linked sources/,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(issues).queryByRole("button", { name: "Housing Affordability 12 records" }),
-    ).not.toBeInTheDocument();
     expect(screen.getAllByText("Kansas City Tenant Union").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Maya Johnson").length).toBeGreaterThan(0);
     expect(within(organizations).getByText("9 linked sources")).toBeInTheDocument();

@@ -39,29 +39,8 @@ export function sourceLabel(count: number): string {
   return count === 1 ? "1 linked source" : `${count} linked sources`;
 }
 
-export function actorCountLabel(count: number): string {
-  return count === 1 ? "1 person or group" : `${count} people and groups`;
-}
-
-/** Only ever shown for an issue spread across more than one place. */
-export function placeCountLabel(count: number): string {
-  return `${count} places`;
-}
-
-export function facetAriaLabel(item: BrowseEditorialFacet, variant: "issue" | "standard"): string {
-  if (variant === "standard") {
-    return `${item.label} ${resultLabel(item.count)}`;
-  }
-
-  return [
-    item.label,
-    item.actorCount ? actorCountLabel(item.actorCount) : undefined,
-    item.placeCount ? placeCountLabel(item.placeCount) : undefined,
-    item.evidenceCount ? sourceLabel(item.evidenceCount) : undefined,
-    item.latestSourceDate ? `Latest source ${dateLabel(item.latestSourceDate)}` : undefined,
-  ]
-    .filter(Boolean)
-    .join(" ");
+export function facetAriaLabel(item: BrowseEditorialFacet): string {
+  return `${item.label} ${resultLabel(item.count)}`;
 }
 
 export function dateLabel(value: string): string {

@@ -85,14 +85,10 @@ describe("buildBrowseEditorialSections", () => {
       "Worker Power",
     ]);
     expect(sections.activeIssues[0]).toMatchObject({
-      actorCount: 2,
-      detail: "Kansas City, Missouri",
-      evidenceCount: 11,
-      featuredActor: "Tenant Union",
-      latestSourceDate: "2026-04-10",
-      placeCount: 2,
-      summary: "Tenant Union and 1 more are active in Kansas City, Missouri.",
+      count: 11,
+      label: "Housing Affordability",
     });
+    expect(sections.activeIssues[0]).not.toHaveProperty("summary");
     expect(sections.activePlaces.map((place) => place.label)).toEqual([
       "Missouri",
       "Kansas City",
@@ -127,7 +123,7 @@ describe("buildBrowseEditorialSections", () => {
     });
     expect("sourceTypes" in sections).toBe(false);
   });
-  it("breaks ties between equally common issues and equally sourced entries by name", () => {
+  it("breaks issue ties by name and does not rank people or groups by source count", () => {
     const sections = buildBrowseEditorialSections({
       issueAreaLabels: { housing_affordability: "Housing Affordability" },
       response: responseFixture({
@@ -146,7 +142,7 @@ describe("buildBrowseEditorialSections", () => {
             id: "a",
             issue_areas: ["housing_affordability"],
             name: "Alpha Coalition",
-            source_count: 4,
+            source_count: 1,
             state: "MS",
             type: "organization",
           }),
@@ -174,7 +170,7 @@ describe("buildBrowseEditorialSections", () => {
       "Alpha Coalition",
       "Beta Coalition",
     ]);
-    expect(sections.activeIssues[0]?.featuredActor).toBe("Alpha Coalition");
+    expect(sections.activeIssues[0]?.count).toBe(4);
   });
 
   it("titles an unlabelled issue slug in sentence case, keeping small words lowercase", () => {
@@ -196,35 +192,7 @@ describe("buildBrowseEditorialSections", () => {
     expect(sections.activeIssues[0]?.label).toBe("Housing and the Courts");
   });
 
-  it("places a featured actor by city, state, or region — whichever the record has", () => {
-    const place = (overrides: Partial<Parameters<typeof createEntryFixture>[0]>) =>
-      buildBrowseEditorialSections({
-        issueAreaLabels: {},
-        response: responseFixture({
-          data: [createEntryFixture({ issue_areas: ["housing"], ...overrides })],
-          facets: {
-            cities: [],
-            entity_types: [],
-            issue_areas: [{ count: 1, value: "housing" }],
-            regions: [],
-            source_patterns: [],
-            source_types: [],
-            states: [],
-          },
-        }),
-      }).activeIssues[0];
-
-    expect(place({ city: "Jackson", state: "MS" })?.detail).toBe("Jackson, Mississippi");
-    // An unrecognised code stands in for itself rather than disappearing.
-    expect(place({ city: "Jackson", state: "ZZ" })?.detail).toBe("Jackson, ZZ");
-    expect(place({ city: "Jackson", state: undefined })?.detail).toBe("Jackson");
-    expect(place({ city: undefined, state: "MS" })?.detail).toBe("Mississippi");
-    expect(place({ city: undefined, region: "Gulf Coast", state: undefined })?.detail).toBe(
-      "Gulf Coast",
-    );
-  });
-
-  it("summarizes a lone placeless actor without claiming a location", () => {
+  it("does not infer activity or source quality from one page of results", () => {
     const sections = buildBrowseEditorialSections({
       issueAreaLabels: {},
       response: responseFixture({
@@ -249,7 +217,8 @@ describe("buildBrowseEditorialSections", () => {
       }),
     });
 
-    expect(sections.activeIssues[0]?.summary).toBe("Prairie Coop is active.");
-    expect(sections.activeIssues[0]?.detail).toBeUndefined();
+    expect(sections.activeIssues[0]).toMatchObject({ count: 1, label: "Housing" });
+    expect(sections.activeIssues[0]).not.toHaveProperty("summary");
+    expect(sections.activeIssues[0]).not.toHaveProperty("evidenceCount");
   });
 });

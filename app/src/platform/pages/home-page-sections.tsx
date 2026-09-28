@@ -108,7 +108,7 @@ export function HomePageShell({
     },
     {
       stat: formatStatCount(stateCount),
-      label: "states represented",
+      label: "states with listed records",
       loading: stateCount === undefined,
     },
   ];
@@ -216,6 +216,10 @@ export function HomePageShell({
             </div>
           ))}
         </div>
+        <p className="type-body-small text-ink-soft border-border mx-auto max-w-[88rem] border-t px-8 py-4">
+          Coverage varies by place and issue. A listing does not mean every local question has a
+          useful answer.
+        </p>
       </section>
 
       <section className="border-border border-b px-4 py-24 md:px-8">
