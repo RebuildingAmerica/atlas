@@ -330,6 +330,9 @@ describe("DiscoveryReviewsPage", () => {
     fireEvent.change(screen.getByRole("textbox", { name: /What the organization does/ }), {
       target: { value: "Las Vegas Valley group organizing residents for better transit." },
     });
+    fireEvent.change(screen.getByRole("textbox", { name: "City" }), {
+      target: { value: "Las Vegas" },
+    });
     fireEvent.change(screen.getByRole("textbox", { name: /Official page supporting this work/ }), {
       target: { value: "https://lasvegasfortransit.org/about/" },
     });

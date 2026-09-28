@@ -91,8 +91,10 @@ class EditorialCandidateCreateRequest(BaseModel):
     def validate_editorial_scope(self) -> EditorialCandidateCreateRequest:
         """Require a defined place, taxonomy, and action on the cited organization's site."""
         self.state = self.state.strip().upper()
-        if self.geo_specificity in {"local", "regional"} and not self.city:
-            raise ValueError("Local and regional candidates need a city")  # noqa: TRY003
+        if self.geo_specificity == "local" and not self.city:
+            raise ValueError("Local candidates need a city")  # noqa: TRY003
+        if self.geo_specificity == "regional" and not (self.city or self.region):
+            raise ValueError("Regional candidates need a city or named region")  # noqa: TRY003
         invalid = set(self.issue_areas) - ALL_ISSUE_SLUGS
         if invalid:
             raise ValueError(f"Unknown issue area: {', '.join(sorted(invalid))}")  # noqa: TRY003
@@ -245,7 +247,11 @@ async def stage_editorial_candidate(
     if row is not None:
         raise EditorialCandidateConflictError(str(row[0]))
 
-    located = await geocode_entry(request.city, request.state, None, allow_remote=False)
+    located = (
+        None
+        if request.geo_specificity == "regional" and not request.city
+        else await geocode_entry(request.city, request.state, None, allow_remote=False)
+    )
     now = db.now_iso()
     today = datetime.now(UTC).date().isoformat()
     entity_id = db.generate_uuid()

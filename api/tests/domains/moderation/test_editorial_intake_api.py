@@ -87,6 +87,42 @@ async def test_editorial_candidate_requires_review_before_publication(
 
 
 @pytest.mark.asyncio
+async def test_regional_candidate_without_a_verified_city_keeps_its_region_without_a_false_map_point(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+) -> None:
+    response = await test_client.post(
+        "/api/review-queue/editorial-candidates",
+        json=candidate(
+            name="Southern Nevada Bicycle Coalition",
+            description="Southern Nevada coalition advocating safer roads and more bicycling.",
+            city=None,
+            region="Southern Nevada",
+            issue_areas=["transportation_and_mobility"],
+            source_url="https://www.snvbc.org/",
+            source_context="The official site describes bicycle advocacy across Southern Nevada.",
+            action_url="https://www.snvbc.org/join-for-free/",
+        ),
+    )
+
+    assert response.status_code == HTTPStatus.CREATED
+    entry = await EntryCRUD.get_by_id(test_db, response.json()["entity_id"])
+    assert entry is not None
+    assert entry.city is None
+    assert entry.region == "Southern Nevada"
+    assert entry.latitude is None
+    assert entry.longitude is None
+    approved = await test_client.post(
+        f"/api/review-queue/{response.json()['review_item_id']}/approve"
+    )
+    assert approved.status_code == HTTPStatus.OK
+    regional_results = await test_client.get(
+        "/api/entities?region=Southern%20Nevada&issue_area=transportation_and_mobility"
+    )
+    assert [item["id"] for item in regional_results.json()["items"]] == [entry.id]
+
+
+@pytest.mark.asyncio
 async def test_editor_can_stage_existing_profile_correction_without_changing_public_facts(
     test_client: httpx.AsyncClient,
     test_db: object,
@@ -532,6 +568,7 @@ async def test_editorial_candidate_without_queued_facts_needs_restaging(
         {"issue_areas": ["made_up_issue"]},
         {"issue_areas": ["public_transit", "public_transit"]},
         {"city": None, "geo_specificity": "local"},
+        {"city": None, "region": None, "geo_specificity": "regional"},
         {"sources_checked": False},
     ],
 )

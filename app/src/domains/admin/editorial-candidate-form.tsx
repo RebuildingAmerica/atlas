@@ -50,7 +50,7 @@ export function EditorialCandidateForm({
 }: EditorialCandidateFormProps) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [city, setCity] = useState(initial?.city ?? "Las Vegas");
+  const [city, setCity] = useState(initial?.city ?? "");
   const [state, setState] = useState(initial?.state ?? "NV");
   const [scope, setScope] = useState<GeographicScope>(initial?.geo_specificity ?? "local");
   const [region, setRegion] = useState(initial?.region ?? "");
@@ -65,16 +65,17 @@ export function EditorialCandidateForm({
   const actionHost = officialHost(actionUrl.trim());
   const sameOfficialSite = sourceHost !== null && sourceHost === actionHost;
   const placeReady =
-    (scope === "local" || scope === "regional" ? city.trim() : true) && state.trim().length === 2;
-  const ready = Boolean(
+    (scope === "local" ? Boolean(city.trim()) : true) &&
+    (scope === "regional" ? Boolean(city.trim() || region.trim()) : true) &&
+    state.trim().length === 2;
+  const ready =
     name.trim().length >= 3 &&
     description.trim().length >= 10 &&
     sourceContext.trim().length >= 10 &&
     selectedIssues.length > 0 &&
     sameOfficialSite &&
     placeReady &&
-    sourcesChecked,
-  );
+    sourcesChecked;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -130,6 +131,10 @@ export function EditorialCandidateForm({
           value={scope}
         />
       </div>
+      <p className="type-body-small text-ink-soft">
+        Enter a city only when the official source supports it. For a regional group without a
+        documented city, name its service area below; Atlas will not invent a map location.
+      </p>
       <Input
         label="Region, if needed"
         onChange={setRegion}

@@ -54,11 +54,15 @@ describe("EditorialCandidateForm", () => {
 
     const submit = screen.getByRole("button", { name: "Add to review queue" });
     expect(submit).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "City" })).toHaveValue("");
     fireEvent.change(screen.getByRole("textbox", { name: /Organization name/ }), {
       target: { value: "Las Vegans for Better Transit" },
     });
     fireEvent.change(screen.getByRole("textbox", { name: /What the organization does/ }), {
       target: { value: "Las Vegas Valley group organizing residents for better transit." },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "City" }), {
+      target: { value: "Las Vegas" },
     });
     fireEvent.change(screen.getByRole("textbox", { name: /Official page supporting this work/ }), {
       target: { value: "https://lasvegasfortransit.org/about/" },
@@ -107,7 +111,7 @@ describe("EditorialCandidateForm", () => {
       />,
     );
     expect(screen.getByText(/could not be queued/)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "City" })).toHaveValue("Las Vegas");
+    expect(screen.getByRole("textbox", { name: "City" })).toHaveValue("");
   });
 
   it("rejects unsafe and mismatched links, and supports a statewide source with no city", () => {
@@ -178,6 +182,52 @@ describe("EditorialCandidateForm", () => {
         state: "NV",
         region: "Nevada",
         geo_specificity: "statewide",
+      }),
+    );
+  });
+
+  it("accepts a documented regional service area without inventing a city", () => {
+    const onSubmit = vi.fn();
+    render(
+      <EditorialCandidateForm
+        issueAreas={[{ name: "Transportation and mobility", slug: "transportation_and_mobility" }]}
+        onSubmit={onSubmit}
+        pending={false}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: /Organization name/ }), {
+      target: { value: "Southern Nevada Bicycle Coalition" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /What the organization does/ }), {
+      target: { value: "A coalition advocating safer roads across Southern Nevada." },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Geographic scope" }), {
+      target: { value: "regional" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /Region, if needed/ }), {
+      target: { value: "Southern Nevada" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /Official page supporting this work/ }), {
+      target: { value: "https://www.snvbc.org/" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /What the page supports/ }), {
+      target: { value: "The official site describes Southern Nevada bicycle advocacy." },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /Official next step/ }), {
+      target: { value: "https://www.snvbc.org/join-for-free/" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Issue area" }), {
+      target: { value: "transportation_and_mobility" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add issue area" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked both official pages/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to review queue" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        city: null,
+        geo_specificity: "regional",
+        region: "Southern Nevada",
       }),
     );
   });
