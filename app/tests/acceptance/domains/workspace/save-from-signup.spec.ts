@@ -19,6 +19,7 @@ test("a new organizer can finish saving the profile that led them to sign up", a
 
   await page.getByRole("link", { name: /Create a free account/ }).click();
   await page.waitForURL((url) => url.pathname === "/sign-up");
+  await expect(page.getByRole("heading", { name: "Join Atlas" })).toBeVisible();
   expect(new URL(page.url()).searchParams.get("redirect")).toBe(
     "/profiles/people/maya-thompson?action=save",
   );
