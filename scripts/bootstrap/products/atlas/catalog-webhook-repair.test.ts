@@ -25,7 +25,7 @@ void test("production repair refuses to create a replacement webhook without a k
       list: () => listed([]),
       create: () => {
         created = true;
-        return Promise.resolve({ secret: "whsec_unexpected" });
+        return Promise.resolve({ secret: "whsec_unexpected" }); // pragma: allowlist secret
       },
     },
   } as unknown as Stripe;
@@ -58,7 +58,7 @@ void test("production repair updates the existing endpoint and preserves its ide
       },
       create: () => {
         created = true;
-        return Promise.resolve({ secret: "whsec_unexpected" });
+        return Promise.resolve({ secret: "whsec_unexpected" }); // pragma: allowlist secret
       },
     },
   } as unknown as Stripe;
