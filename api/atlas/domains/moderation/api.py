@@ -13,7 +13,9 @@ from atlas.domains.moderation.editorial_intake import (
     EditorialCandidateConflictError,
     EditorialCandidateCreateRequest,
     EditorialCandidateCreateResponse,
+    EditorialProfileChangeConflictError,
     stage_editorial_candidate,
+    stage_editorial_profile_change,
 )
 from atlas.domains.moderation.review_queue import ReviewConflictError, ReviewQueueCRUD
 from atlas.models import EntryCRUD, FlagCRUD, SourceCRUD, get_db_connection
@@ -412,6 +414,31 @@ async def create_editorial_candidate(
         ) from exc
     apply_no_store_headers(response)
     return candidate
+
+
+@router.post(
+    "/review-queue/editorial-profiles/{entity_id}/changes",
+    response_model=EditorialCandidateCreateResponse,
+    status_code=202,
+    summary="Stage a sourced correction to a published organization",
+    operation_id="stageEditorialProfileChange",
+    tags=["moderation"],
+)
+async def create_editorial_profile_change(
+    entity_id: str,
+    request: EditorialCandidateCreateRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> EditorialCandidateCreateResponse:
+    """Keep the current public facts in place until an editor reviews the change."""
+    _ = actor
+    try:
+        staged = await stage_editorial_profile_change(db, entity_id, request)
+    except EditorialProfileChangeConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    apply_no_store_headers(response)
+    return staged
 
 
 @router.post(

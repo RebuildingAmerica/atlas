@@ -23,6 +23,10 @@ __all__ = [
 
 PUBLISHED_CHANGE_REASON = "published_profile_change"
 WEBSITE_CANDIDATE_KIND = "website_candidate"
+EDITORIAL_PROFILE_CHANGE_KIND = "editorial_profile_change"
+STAGED_SOURCE_EVIDENCE_FIELD = "source_evidence"
+MAX_EDITORIAL_SOURCE_PAGES = 2
+MIN_EDITORIAL_SOURCE_CONTEXT_LENGTH = 10
 STAGED_ENTRY_FIELDS = frozenset(
     {
         "name",
@@ -195,6 +199,11 @@ async def _with_source_evidence(
     for item in items:
         if item.entity_id is None:
             continue
+        if item.kind == EDITORIAL_PROFILE_CHANGE_KIND and item.proposed_changes:
+            evidence = item.proposed_changes.get(STAGED_SOURCE_EVIDENCE_FIELD, {}).get("after")
+            if isinstance(evidence, list):
+                item.source_evidence = evidence
+                continue
         item.source_evidence = [
             {"url": url, "context": contexts[(item.entity_id, url)]}
             for url in item.source_urls
@@ -566,9 +575,11 @@ class ReviewQueueCRUD:
         await ReviewQueueCRUD._write_staged_entry_fields(conn, item.entity_id, changes)
         await ReviewQueueCRUD._write_staged_issues(conn, item.entity_id, changes)
         await ReviewQueueCRUD._refresh_staged_location(conn, item.entity_id, entry, changes)
+        if item.kind == EDITORIAL_PROFILE_CHANGE_KIND:
+            await ReviewQueueCRUD._link_editorial_profile_sources(conn, item, changes)
 
     @staticmethod
-    async def _validate_published_change(
+    async def _validate_published_change(  # noqa: PLR0912 - each field and source needs an explicit guard
         conn: Any,
         item: ReviewQueueItemModel,
         entry: Any,
@@ -578,7 +589,8 @@ class ReviewQueueCRUD:
         if (
             item.hold_reason != PUBLISHED_CHANGE_REASON
             or not changes
-            or set(changes) - (STAGED_ENTRY_FIELDS | {STAGED_ISSUE_FIELD})
+            or set(changes)
+            - (STAGED_ENTRY_FIELDS | {STAGED_ISSUE_FIELD, STAGED_SOURCE_EVIDENCE_FIELD})
         ):
             raise ReviewConflictError(_INVALID_PROPOSAL)
         if item.org_id is not None:
@@ -590,10 +602,17 @@ class ReviewQueueCRUD:
             )
             if await cursor.fetchone() is None:
                 raise ReviewConflictError(_STALE_PROPOSAL)
-        await ReviewQueueCRUD._validate_linked_candidate_source(conn, item)
+        if item.kind == EDITORIAL_PROFILE_CHANGE_KIND:
+            await ReviewQueueCRUD._validate_editorial_profile_source(conn, item, changes)
+        else:
+            if STAGED_SOURCE_EVIDENCE_FIELD in changes:
+                raise ReviewConflictError(_INVALID_PROPOSAL)
+            await ReviewQueueCRUD._validate_linked_candidate_source(conn, item)
         for field, change in changes.items():
             if set(change) != {"before", "after"}:
                 raise ReviewConflictError(_INVALID_PROPOSAL)
+            if field == STAGED_SOURCE_EVIDENCE_FIELD:
+                continue
             if field == STAGED_ISSUE_FIELD:
                 before_issues = change["before"]
                 after_issues = change["after"]
@@ -645,6 +664,78 @@ class ReviewQueueCRUD:
             raise ReviewConflictError(_MISSING_CANDIDATE_SOURCE)
 
     @staticmethod
+    async def _validate_editorial_profile_source(
+        conn: Any, item: ReviewQueueItemModel, changes: dict[str, dict[str, Any]]
+    ) -> None:
+        """Keep a new citation on the organization's already linked official site."""
+        evidence = changes.get(STAGED_SOURCE_EVIDENCE_FIELD, {}).get("after")
+        if (
+            item.entity_type != "organization"
+            or not isinstance(evidence, list)
+            or not 1 <= len(evidence) <= MAX_EDITORIAL_SOURCE_PAGES
+            or {entry.get("url") for entry in evidence if isinstance(entry, dict)}
+            != set(item.source_urls)
+            or any(
+                not isinstance(entry, dict)
+                or not isinstance(entry.get("context"), str)
+                or len(entry["context"].strip()) < MIN_EDITORIAL_SOURCE_CONTEXT_LENGTH
+                or not isinstance(entry.get("url"), str)
+                or not _reviewable_website_url(entry["url"])
+                for entry in evidence
+            )
+        ):
+            raise ReviewConflictError(_INVALID_PROPOSAL)
+        cursor = await conn.execute(
+            """SELECT s.url FROM entry_sources es JOIN sources s ON s.id = es.source_id
+               WHERE es.entry_id = ? AND s.type = 'org_website'""",
+            (item.entity_id,),
+        )
+        hosts = {
+            (urlsplit(str(row[0])).hostname or "").removeprefix("www.")
+            for row in await cursor.fetchall()
+        }
+        if not hosts or any(
+            (urlsplit(url).hostname or "").removeprefix("www.") not in hosts
+            for url in item.source_urls
+        ):
+            raise ReviewConflictError(_MISSING_CANDIDATE_SOURCE)
+
+    @staticmethod
+    async def _link_editorial_profile_sources(
+        conn: Any, item: ReviewQueueItemModel, changes: dict[str, dict[str, Any]]
+    ) -> None:
+        """Publish reviewed citations only when the public correction is approved."""
+        assert item.entity_id is not None
+        evidence = changes[STAGED_SOURCE_EVIDENCE_FIELD]["after"]
+        now = db.now_iso()
+        for source in evidence:
+            url = source["url"]
+            cursor = await conn.execute("SELECT id FROM sources WHERE url = ?", (url,))
+            row = await cursor.fetchone()
+            source_id = str(row[0]) if row is not None else db.generate_uuid()
+            if row is None:
+                await conn.execute(
+                    """INSERT INTO sources (
+                        id, url, title, publication, type, ingested_at,
+                        extraction_method, created_at
+                    ) VALUES (?, ?, ?, ?, 'org_website', ?, 'manual', ?)""",
+                    (
+                        source_id,
+                        url,
+                        "Reviewed official organization page",
+                        item.entity_name,
+                        now,
+                        now,
+                    ),
+                )
+            await conn.execute(
+                """INSERT INTO entry_sources (entry_id, source_id, extraction_context, created_at)
+                   VALUES (?, ?, ?, ?) ON CONFLICT(entry_id, source_id)
+                   DO UPDATE SET extraction_context = excluded.extraction_context""",
+                (item.entity_id, source_id, source["context"], now),
+            )
+
+    @staticmethod
     async def _write_staged_entry_fields(
         conn: Any, entity_id: str, changes: dict[str, dict[str, Any]]
     ) -> None:
@@ -653,7 +744,7 @@ class ReviewQueueCRUD:
         conditions: list[str] = []
         condition_values: list[Any] = []
         for field, change in changes.items():
-            if field == STAGED_ISSUE_FIELD:
+            if field in {STAGED_ISSUE_FIELD, STAGED_SOURCE_EVIDENCE_FIELD}:
                 continue
             before = change["before"]
             after = change["after"]
@@ -684,7 +775,7 @@ class ReviewQueueCRUD:
         """Apply reviewed issue tag corrections after their baseline has been checked."""
         issue_change = changes.get(STAGED_ISSUE_FIELD)
         if issue_change is not None:
-            if len(changes) == 1:
+            if set(changes) <= {STAGED_ISSUE_FIELD, STAGED_SOURCE_EVIDENCE_FIELD}:
                 cursor = await conn.execute(
                     "UPDATE entries SET updated_at = ? WHERE id = ? AND active = TRUE",
                     (db.now_iso(), entity_id),

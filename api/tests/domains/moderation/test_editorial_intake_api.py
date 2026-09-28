@@ -84,6 +84,229 @@ async def test_editorial_candidate_requires_review_before_publication(
 
 
 @pytest.mark.asyncio
+async def test_editor_can_stage_existing_profile_correction_without_changing_public_facts(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+) -> None:
+    entry_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Las Vegans for Better Transit",
+        description="Old generic description.",
+        city=None,
+        state="NV",
+        geo_specificity="statewide",
+        active=True,
+    )
+    about_url = "https://lasvegasfortransit.org/about/"
+    source_id = await SourceCRUD.create(
+        test_db,
+        url=about_url,
+        source_type="org_website",
+        extraction_method="manual",
+    )
+    await SourceCRUD.link_to_entry(test_db, entry_id, source_id)
+    await SourceCRUD.create(
+        test_db,
+        url="https://lasvegasfortransit.org/join/",
+        source_type="org_website",
+        extraction_method="manual",
+    )
+    await test_db.execute(
+        "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) VALUES (?, ?, ?)",
+        (entry_id, "housing_affordability", "2026-09-27T00:00:00Z"),
+    )
+    await test_db.commit()
+    request = candidate(
+        source_url="https://lasvegasfortransit.org/issues/transit/",
+        action_url="https://lasvegasfortransit.org/join/",
+    )
+
+    staged = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{entry_id}/changes", json=request
+    )
+
+    assert staged.status_code == HTTPStatus.ACCEPTED
+    assert staged.headers["cache-control"] == "no-store"
+    assert staged.json()["status"] == "pending"
+    before = await test_client.get(f"/api/entities/{entry_id}")
+    assert before.json()["description"] == "Old generic description."
+    assert before.json()["address"]["city"] is None
+    assert before.json()["issue_area_ids"] == ["housing_affordability"]
+    assert [source["url"] for source in before.json()["sources"]] == [about_url]
+    queue = await test_client.get("/api/review-queue")
+    review = queue.json()["items"][0]
+    assert review["entity_id"] == entry_id
+    assert review["proposed_changes"]["city"] == {"before": None, "after": "Las Vegas"}
+    assert review["source_evidence"][0]["url"] == request["source_url"]
+
+    approved = await test_client.post(
+        f"/api/review-queue/{staged.json()['review_item_id']}/approve"
+    )
+    assert approved.status_code == HTTPStatus.OK
+    after = await test_client.get(f"/api/entities/{entry_id}")
+    assert after.json()["description"] == request["description"]
+    assert after.json()["address"]["city"] == "Las Vegas"
+    assert after.json()["issue_area_ids"] == request["issue_areas"]
+    assert sorted(source["url"] for source in after.json()["sources"]) == sorted(
+        [about_url, request["source_url"], request["action_url"]]
+    )
+
+
+@pytest.mark.asyncio
+async def test_editorial_profile_change_rejects_unrelated_source_site(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+) -> None:
+    entry_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Las Vegans for Better Transit",
+        description="Old generic description.",
+        city=None,
+        state="NV",
+        geo_specificity="statewide",
+        active=True,
+    )
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://lasvegasfortransit.org/about/",
+        source_type="org_website",
+        extraction_method="manual",
+    )
+    await SourceCRUD.link_to_entry(test_db, entry_id, source_id)
+
+    staged = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{entry_id}/changes",
+        json=candidate(
+            source_url="https://unrelated.example/about",
+            action_url="https://unrelated.example/join",
+        ),
+    )
+
+    assert staged.status_code == HTTPStatus.CONFLICT
+    assert (await test_client.get("/api/review-queue")).json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_editorial_profile_change_rejects_stale_facts_without_linking_new_source(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+) -> None:
+    entry_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Las Vegans for Better Transit",
+        description="Old generic description.",
+        city=None,
+        state="NV",
+        geo_specificity="statewide",
+        active=True,
+    )
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://lasvegasfortransit.org/about/",
+        source_type="org_website",
+        extraction_method="manual",
+    )
+    await SourceCRUD.link_to_entry(test_db, entry_id, source_id)
+    staged = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{entry_id}/changes",
+        json=candidate(),
+    )
+    assert staged.status_code == HTTPStatus.ACCEPTED
+    await EntryCRUD.update(test_db, entry_id, description="Already corrected elsewhere.")
+
+    approved = await test_client.post(
+        f"/api/review-queue/{staged.json()['review_item_id']}/approve"
+    )
+
+    assert approved.status_code == HTTPStatus.CONFLICT
+    public = await test_client.get(f"/api/entities/{entry_id}")
+    assert public.json()["description"] == "Already corrected elsewhere."
+    assert [source["url"] for source in public.json()["sources"]] == [
+        "https://lasvegasfortransit.org/about/"
+    ]
+    assert (await test_client.get("/api/review-queue")).json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_editorial_profile_change_requires_a_real_change_and_one_pending_review(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+) -> None:
+    missing = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{uuid4()}/changes", json=candidate()
+    )
+    assert missing.status_code == HTTPStatus.CONFLICT
+
+    facts = candidate()
+    entry_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name=str(facts["name"]),
+        description=str(facts["description"]),
+        city=str(facts["city"]),
+        state=str(facts["state"]),
+        region=str(facts["region"]),
+        geo_specificity=str(facts["geo_specificity"]),
+        website=str(facts["action_url"]),
+        active=True,
+    )
+    source_id = await SourceCRUD.create(
+        test_db,
+        url=str(facts["source_url"]),
+        source_type="org_website",
+        extraction_method="manual",
+    )
+    await SourceCRUD.link_to_entry(test_db, entry_id, source_id)
+    for issue in facts["issue_areas"]:
+        await test_db.execute(
+            "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) VALUES (?, ?, ?)",
+            (entry_id, issue, "2026-09-27T00:00:00Z"),
+        )
+    await test_db.commit()
+
+    unchanged = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{entry_id}/changes", json=facts
+    )
+    assert unchanged.status_code == HTTPStatus.CONFLICT
+    assert "No public profile facts changed" in unchanged.json()["detail"]
+
+    changed = candidate(description="A corrected summary for this transit organization.")
+    staged = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{entry_id}/changes", json=changed
+    )
+    repeated = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{entry_id}/changes", json=changed
+    )
+    assert staged.status_code == HTTPStatus.ACCEPTED
+    assert repeated.status_code == HTTPStatus.CONFLICT
+
+    rejected = await test_client.post(f"/api/review-queue/{staged.json()['review_item_id']}/reject")
+    assert rejected.status_code == HTTPStatus.OK
+    public = await test_client.get(f"/api/entities/{entry_id}")
+    assert public.json()["description"] == facts["description"]
+    assert [source["url"] for source in public.json()["sources"]] == [facts["source_url"]]
+
+    before_issue_correction = await EntryCRUD.get_by_id(test_db, entry_id)
+    assert before_issue_correction is not None
+    issue_only = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{entry_id}/changes",
+        json=candidate(issue_areas=["public_transit"]),
+    )
+    assert issue_only.status_code == HTTPStatus.ACCEPTED
+    approved = await test_client.post(
+        f"/api/review-queue/{issue_only.json()['review_item_id']}/approve"
+    )
+    assert approved.status_code == HTTPStatus.OK
+    after_issue_correction = await EntryCRUD.get_by_id(test_db, entry_id)
+    assert after_issue_correction is not None
+    assert after_issue_correction.updated_at != before_issue_correction.updated_at
+    assert (await EntryCRUD.get_issue_areas(test_db, entry_id)) == ["public_transit"]
+
+
+@pytest.mark.asyncio
 async def test_editorial_candidate_reject_and_duplicate_intake_stay_private(
     test_client: httpx.AsyncClient,
     test_db: object,
@@ -354,3 +577,9 @@ async def test_editorial_intake_requires_an_allowlisted_operator(
         "/api/review-queue/editorial-candidates", json=candidate(), headers=ordinary_headers
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
+    correction = await test_client.post(
+        f"/api/review-queue/editorial-profiles/{uuid4()}/changes",
+        json=candidate(),
+        headers=ordinary_headers,
+    )
+    assert correction.status_code == HTTPStatus.FORBIDDEN

@@ -103,6 +103,21 @@ async def test_approval_refuses_a_profile_unpublished_after_staging(test_db: Any
             {"issue_areas": {"before": ["housing_affordability"], "after": []}},
             "organization",
             "published_profile_change",
+            "changed after",
+        ),
+        (
+            {"issue_areas": {"before": "housing_affordability", "after": []}},
+            "organization",
+            "published_profile_change",
+            "unsupported fields",
+        ),
+        (
+            {
+                **_DESCRIPTION,
+                "source_evidence": {"before": None, "after": []},
+            },
+            "organization",
+            "published_profile_change",
             "unsupported fields",
         ),
         (
@@ -149,6 +164,42 @@ async def test_approval_rejects_invalid_or_stale_provenance(
     assert entry.description == "Published fact."
     assert item is not None
     assert item.status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_editorial_correction_rejects_invalid_or_unlinked_source(test_db: Any) -> None:
+    changes = {
+        **_DESCRIPTION,
+        "source_evidence": {"before": None, "after": "not a source list"},
+    }
+    entry_id, invalid_id = await _stage(test_db, changes, kind="editorial_profile_change")
+    with pytest.raises(ReviewConflictError, match="unsupported fields"):
+        await ReviewQueueCRUD.approve(test_db, invalid_id, reviewed_by="editor")
+
+    await test_db.execute("DELETE FROM review_queue WHERE id = ?", (invalid_id,))
+    valid_changes = {
+        **_DESCRIPTION,
+        "source_evidence": {
+            "before": None,
+            "after": [{"url": _SOURCE_URL, "context": "Official organization page."}],
+        },
+    }
+    item_id = await ReviewQueueCRUD.stage_published_change(
+        test_db,
+        entity_id=entry_id,
+        kind="editorial_profile_change",
+        proposed_changes=valid_changes,
+        source_urls=[_SOURCE_URL],
+    )
+    await test_db.execute("DELETE FROM entry_sources WHERE entry_id = ?", (entry_id,))
+    await test_db.commit()
+
+    with pytest.raises(ReviewConflictError, match="no longer linked"):
+        await ReviewQueueCRUD.approve(test_db, item_id, reviewed_by="editor")
+
+    entry = await EntryCRUD.get_by_id(test_db, entry_id)
+    assert entry is not None
+    assert entry.description == "Published fact."
 
 
 class _ConcurrentChangeConnection:

@@ -8,9 +8,12 @@ import type { DiscoveryReviewPage } from "@/domains/admin/discovery-reviews.func
 
 const mocks = vi.hoisted(() => ({
   decideDiscoveryReview: vi.fn(),
+  loadEditorialProfile: vi.fn(),
   listDiscoveryReviews: vi.fn(),
   prepareLasVegasWebsiteReviews: vi.fn(),
+  searchEditorialProfiles: vi.fn(),
   stageEditorialCandidate: vi.fn(),
+  stageEditorialProfileChange: vi.fn(),
   useTaxonomy: vi.fn<() => { data: Record<string, { name: string; slug: string }[]> | undefined }>(
     () => ({
       data: {
@@ -26,9 +29,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/domains/admin/discovery-reviews.functions", () => ({
   decideDiscoveryReview: mocks.decideDiscoveryReview,
+  loadEditorialProfile: mocks.loadEditorialProfile,
   listDiscoveryReviews: mocks.listDiscoveryReviews,
   prepareLasVegasWebsiteReviews: mocks.prepareLasVegasWebsiteReviews,
+  searchEditorialProfiles: mocks.searchEditorialProfiles,
   stageEditorialCandidate: mocks.stageEditorialCandidate,
+  stageEditorialProfileChange: mocks.stageEditorialProfileChange,
 }));
 
 vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
@@ -69,9 +75,12 @@ function renderPage() {
 afterEach(() => {
   cleanup();
   mocks.decideDiscoveryReview.mockReset();
+  mocks.loadEditorialProfile.mockReset();
   mocks.listDiscoveryReviews.mockReset();
   mocks.prepareLasVegasWebsiteReviews.mockReset();
+  mocks.searchEditorialProfiles.mockReset();
   mocks.stageEditorialCandidate.mockReset();
+  mocks.stageEditorialProfileChange.mockReset();
   mocks.useTaxonomy.mockReset();
   mocks.useTaxonomy.mockReturnValue({
     data: {
@@ -86,6 +95,183 @@ afterEach(() => {
 });
 
 describe("DiscoveryReviewsPage", () => {
+  it("finds a published profile and queues its sourced correction without overwriting it", async () => {
+    const entityId = "d4ad7d29-75b9-420e-ba57-9d08c5a9e4c5";
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.searchEditorialProfiles.mockResolvedValue([
+      { id: entityId, name: "NAACP Las Vegas Branch #1111", city: null, state: "NV" },
+    ]);
+    mocks.loadEditorialProfile.mockResolvedValue({
+      id: entityId,
+      name: "NAACP Las Vegas Branch #1111",
+      profileUrl: "/profiles/organizations/naacp-las-vegas",
+      officialSources: ["https://www.naacplasvegas.org/about"],
+      initial: {
+        name: "NAACP Las Vegas Branch #1111",
+        description: "Old generic description.",
+        city: null,
+        state: "NV",
+        geo_specificity: "statewide",
+        region: null,
+        issue_areas: ["housing_affordability", "public_transit"],
+        source_url: "https://www.naacplasvegas.org/about",
+        source_context: "",
+        action_url: "",
+      },
+    });
+    mocks.stageEditorialProfileChange.mockResolvedValue({
+      entity_id: entityId,
+      review_item_id: "review-item",
+      status: "pending",
+    });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Improve existing organization" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Find published organization" }), {
+      target: { value: "NAACP Las Vegas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Find organization" }));
+    expect(
+      await screen.findByRole("button", { name: /Select NAACP Las Vegas Branch/ }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Select NAACP Las Vegas Branch/ }));
+    expect(
+      await screen.findByRole("heading", { name: "Improve existing organization" }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: /What the organization does/ }), {
+      target: { value: "The local branch organizes housing access work." },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "City" }), {
+      target: { value: "Las Vegas" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Geographic scope" }), {
+      target: { value: "local" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Remove Public transit" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Official page supporting this work/ }), {
+      target: { value: "https://www.naacplasvegas.org/housing" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /What the page supports/ }), {
+      target: { value: "The Housing Committee page describes local housing work." },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /Official next step/ }), {
+      target: { value: "https://www.naacplasvegas.org/housing" },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked both official pages/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Propose correction" }));
+
+    await waitFor(() => {
+      expect(mocks.stageEditorialProfileChange.mock.calls[0]?.[0]).toMatchObject({
+        data: {
+          entityId,
+          candidate: {
+            city: "Las Vegas",
+            issue_areas: ["housing_affordability"],
+            source_url: "https://www.naacplasvegas.org/housing",
+          },
+        },
+      });
+    });
+    expect(await screen.findByText(/Correction ready for editorial review/)).toBeInTheDocument();
+  });
+
+  it("shows search failure, empty results, and a sparse profile without an official site", async () => {
+    const entityId = "d4ad7d29-75b9-420e-ba57-9d08c5a9e4c5";
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.searchEditorialProfiles
+      .mockRejectedValueOnce(new Error("Search offline"))
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: entityId, name: "Sparse Group", city: null, state: null }]);
+    mocks.loadEditorialProfile.mockResolvedValue({
+      id: entityId,
+      name: "Sparse Group",
+      officialSources: [],
+      profileUrl: null,
+      initial: {},
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Improve existing organization" }));
+    const search = screen.getByRole("textbox", { name: "Find published organization" });
+    fireEvent.change(search, { target: { value: "Broken search" } });
+    fireEvent.click(screen.getByRole("button", { name: "Find organization" }));
+    expect(await screen.findByText(/Organization search could not load/)).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "No results" } });
+    fireEvent.click(screen.getByRole("button", { name: "Find organization" }));
+    expect(await screen.findByText(/No published organization matched/)).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "Sparse Group" } });
+    fireEvent.click(screen.getByRole("button", { name: "Find organization" }));
+    const select = await screen.findByRole("button", {
+      name: "Select Sparse Group · Place unknown",
+    });
+    fireEvent.click(select);
+    expect(await screen.findByText(/no linked official organization site/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Propose correction" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the editor on the current profile after a failed correction submission", async () => {
+    const entityId = "d4ad7d29-75b9-420e-ba57-9d08c5a9e4c5";
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.searchEditorialProfiles.mockResolvedValue([
+      { id: entityId, name: "NAACP Las Vegas Branch", city: "Las Vegas", state: "NV" },
+    ]);
+    mocks.loadEditorialProfile.mockResolvedValue({
+      id: entityId,
+      name: "NAACP Las Vegas Branch",
+      officialSources: ["https://www.naacplasvegas.org/about"],
+      profileUrl: null,
+      initial: {
+        name: "NAACP Las Vegas Branch",
+        description: "Existing local branch description.",
+        city: "Las Vegas",
+        state: "NV",
+        geo_specificity: "local",
+        issue_areas: ["housing_affordability"],
+        source_url: "https://www.naacplasvegas.org/about",
+        action_url: "https://www.naacplasvegas.org/housing",
+      },
+    });
+    mocks.stageEditorialProfileChange.mockRejectedValue(new Error("Queue offline"));
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Improve existing organization" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Find published organization" }), {
+      target: { value: "NAACP Las Vegas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Find organization" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Select NAACP Las Vegas Branch/ }));
+    expect(
+      await screen.findByRole("heading", { name: "Improve existing organization" }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: /What the page supports/ }), {
+      target: { value: "The official page describes local housing work." },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked both official pages/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Propose correction" }));
+    expect(await screen.findByText(/Correction could not be queued/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /Organization name/ })).toHaveValue(
+      "NAACP Las Vegas Branch",
+    );
+  });
+
+  it("shows a profile-loading error instead of an editable blank profile", async () => {
+    const entityId = "d4ad7d29-75b9-420e-ba57-9d08c5a9e4c5";
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.searchEditorialProfiles.mockResolvedValue([
+      { id: entityId, name: "NAACP Las Vegas Branch", city: "Las Vegas", state: "NV" },
+    ]);
+    mocks.loadEditorialProfile.mockRejectedValue(new Error("Profile offline"));
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Improve existing organization" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Find published organization" }), {
+      target: { value: "NAACP Las Vegas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Find organization" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Select NAACP Las Vegas Branch/ }));
+    expect(await screen.findByText(/Current profile could not load/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Propose correction" })).not.toBeInTheDocument();
+  });
+
   it("renders the admin shell while the private queue is pending", () => {
     mocks.listDiscoveryReviews.mockReturnValue(new Promise(() => undefined));
     renderPage();

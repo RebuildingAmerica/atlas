@@ -74,7 +74,7 @@ test.describe("admin journey", () => {
     const afterApproval = await page.request.get(publicQueryUrl.toString());
     expect(afterApproval.ok()).toBe(true);
     const results = (await afterApproval.json()) as {
-      items: { name: string; slug: string }[];
+      items: { id: string; name: string; slug: string }[];
       total: number;
     };
     expect(results.items).toContainEqual(expect.objectContaining({ name: candidateName }));
@@ -82,5 +82,55 @@ test.describe("admin journey", () => {
     expect(published?.slug).toBeTruthy();
     await page.goto(`/profiles/organizations/${published?.slug}`);
     await expect(page.getByRole("heading", { name: candidateName })).toBeVisible();
+
+    const correctedDescription =
+      "Synthetic Las Vegas group with a reviewed correction for transit research.";
+    await page.goto("/admin/discovery-reviews");
+    await page.getByRole("button", { name: "Improve existing organization" }).click();
+    await page.getByRole("textbox", { name: "Find published organization" }).fill(candidateName);
+    await page.getByRole("button", { name: "Find organization" }).click();
+    await page.getByRole("button", { name: `Select ${candidateName} · Las Vegas, NV` }).click();
+    await expect(
+      page.getByRole("heading", { name: "Improve existing organization" }),
+    ).toBeVisible();
+    await page
+      .getByRole("textbox", { name: "What the organization does" })
+      .fill(correctedDescription);
+    await page
+      .getByRole("textbox", { name: "What the page supports" })
+      .fill("The test page supports the updated transit research description.");
+    await page
+      .getByRole("combobox", { name: "Issue area" })
+      .selectOption("transportation_and_mobility");
+    await page.getByRole("button", { name: "Add issue area" }).click();
+    await page.getByRole("button", { name: "Remove Public transit" }).click();
+    await page.getByRole("checkbox", { name: /I checked both official pages/ }).check();
+    await page.getByRole("button", { name: "Propose correction" }).click();
+    await expect(page.getByText(/Correction ready for editorial review/)).toBeVisible();
+
+    const publicDetailUrl = new URL(
+      `/api/entities/${published?.id}`,
+      requireEnv("ATLAS_E2E_API_URL"),
+    );
+    const beforeCorrection = await page.request.get(publicDetailUrl.toString());
+    expect(beforeCorrection.ok()).toBe(true);
+    expect((await beforeCorrection.json()) as { description: string }).toHaveProperty(
+      "description",
+      "Synthetic Las Vegas group used to verify editorial publication.",
+    );
+    const correctionReview = page.locator("article").filter({ hasText: candidateName });
+    await expect(correctionReview).toBeVisible();
+    await correctionReview.getByRole("checkbox", { name: /I checked these sources/ }).check();
+    await correctionReview.getByRole("button", { name: `Approve ${candidateName}` }).click();
+    await expect(correctionReview).toHaveCount(0);
+
+    const afterCorrection = await page.request.get(publicDetailUrl.toString());
+    expect(afterCorrection.ok()).toBe(true);
+    const corrected = (await afterCorrection.json()) as {
+      description: string;
+      issue_area_ids: string[];
+    };
+    expect(corrected.description).toBe(correctedDescription);
+    expect(corrected.issue_area_ids).toEqual(["transportation_and_mobility"]);
   });
 });

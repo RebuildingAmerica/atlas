@@ -4,6 +4,47 @@ import { describe, expect, it, vi } from "vitest";
 import { EditorialCandidateForm } from "@/domains/admin/editorial-candidate-form";
 
 describe("EditorialCandidateForm", () => {
+  it("prefills an existing profile but still requires a new source check", () => {
+    const onSubmit = vi.fn();
+    render(
+      <EditorialCandidateForm
+        heading="Improve existing organization"
+        initial={{
+          name: "NAACP Las Vegas Branch #1111",
+          description: "Local branch working on housing access.",
+          city: "Las Vegas",
+          state: "NV",
+          geo_specificity: "local",
+          region: null,
+          issue_areas: ["housing_affordability"],
+          source_url: "https://www.naacplasvegas.org/housing",
+          source_context: "",
+          action_url: "https://www.naacplasvegas.org/housing",
+        }}
+        issueAreas={[{ name: "Housing affordability", slug: "housing_affordability" }]}
+        onSubmit={onSubmit}
+        pending={false}
+        submitLabel="Propose correction"
+      />,
+    );
+    expect(screen.getByRole("textbox", { name: /Organization name/ })).toHaveValue(
+      "NAACP Las Vegas Branch #1111",
+    );
+    expect(screen.getByRole("textbox", { name: "City" })).toHaveValue("Las Vegas");
+    expect(screen.getByRole("button", { name: "Propose correction" })).toBeDisabled();
+    fireEvent.change(screen.getByRole("textbox", { name: /What the page supports/ }), {
+      target: { value: "The official committee page describes housing access work." },
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked both official pages/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Propose correction" }));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "NAACP Las Vegas Branch #1111",
+        issue_areas: ["housing_affordability"],
+      }),
+    );
+  });
+
   it("requires an official source, public action, issue, and editor check", () => {
     const onSubmit = vi.fn();
     const issueAreas = [{ name: "Public transit", slug: "public_transit" }];

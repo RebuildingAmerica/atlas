@@ -32274,6 +32274,139 @@
         ]
       }
     },
+    "/api/review-queue/editorial-profiles/{entity_id}/changes": {
+      "post": {
+        "description": "Keep the current public facts in place until an editor reviews the change.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "stageEditorialProfileChange",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entity_id",
+            "required": true,
+            "schema": {
+              "title": "Entity Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorialCandidateCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialCandidateCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stage a sourced correction to a published organization",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/api/review-queue/source-staleness-scan": {
       "post": {
         "description": "Enqueue public records whose source receipts need freshness review.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",

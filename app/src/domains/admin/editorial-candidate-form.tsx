@@ -13,9 +13,12 @@ interface IssueAreaOption {
 
 interface EditorialCandidateFormProps {
   error?: string;
+  heading?: string;
+  initial?: Partial<EditorialCandidateInput>;
   issueAreas: IssueAreaOption[];
   onSubmit: (candidate: EditorialCandidateInput) => void;
   pending: boolean;
+  submitLabel?: string;
 }
 
 const SCOPE_OPTIONS = [
@@ -38,21 +41,24 @@ function officialHost(value: string): string | null {
 
 export function EditorialCandidateForm({
   error,
+  heading = "Add an organization for review",
+  initial,
   issueAreas,
   onSubmit,
   pending,
+  submitLabel = "Add to review queue",
 }: EditorialCandidateFormProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [city, setCity] = useState("Las Vegas");
-  const [state, setState] = useState("NV");
-  const [scope, setScope] = useState<GeographicScope>("local");
-  const [region, setRegion] = useState("");
-  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [city, setCity] = useState(initial?.city ?? "Las Vegas");
+  const [state, setState] = useState(initial?.state ?? "NV");
+  const [scope, setScope] = useState<GeographicScope>(initial?.geo_specificity ?? "local");
+  const [region, setRegion] = useState(initial?.region ?? "");
+  const [selectedIssues, setSelectedIssues] = useState<string[]>(initial?.issue_areas ?? []);
   const [issueToAdd, setIssueToAdd] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [sourceContext, setSourceContext] = useState("");
-  const [actionUrl, setActionUrl] = useState("");
+  const [sourceUrl, setSourceUrl] = useState(initial?.source_url ?? "");
+  const [sourceContext, setSourceContext] = useState(initial?.source_context ?? "");
+  const [actionUrl, setActionUrl] = useState(initial?.action_url ?? "");
   const [sourcesChecked, setSourcesChecked] = useState(false);
 
   const sourceHost = officialHost(sourceUrl.trim());
@@ -94,10 +100,14 @@ export function EditorialCandidateForm({
       onSubmit={submit}
     >
       <div className="space-y-1">
-        <h2 className="type-title-large text-ink-strong">Add an organization for review</h2>
+        <h2 className="type-title-large text-ink-strong">{heading}</h2>
         <p className="type-body-small text-ink-soft">
           Cite its own page for the work you describe and a page with a useful next step. An editor
-          must approve the profile before it appears in public search.
+          must approve the{" "}
+          {initial
+            ? "change before the public profile updates"
+            : "profile before it appears in public search"}
+          .
         </p>
       </div>
       <Input label="Organization name" onChange={setName} required value={name} />
@@ -216,7 +226,7 @@ export function EditorialCandidateForm({
       </label>
       <AdminInlineStatus message={error} />
       <Button disabled={!ready || pending} type="submit">
-        Add to review queue
+        {submitLabel}
       </Button>
     </form>
   );

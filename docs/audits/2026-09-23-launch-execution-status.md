@@ -82,11 +82,17 @@ passed locally, and main staging run 36379059918 passed remote API coverage and
 browser acceptance. No Las Vegas candidate was approved or published by these
 checks. A local full-coverage attempt ran out of disk space before completion.
 
-This change allows editorial approval to remove issue tags from an existing
-public profile after checking its original tag set. It has a passing local
-database regression, but has not been released to production or exposed through
-an editor form. The existing Las Vegas NAACP record still needs a source-backed
-correction staged, reviewed, and published.
+The review queue now allows editorial approval to remove issue tags from an
+existing public profile after checking its original tag set. The editor screen
+can search for a published organization, load its current facts, and submit a
+source-backed correction without changing the public profile before approval.
+New official-site citations become public only on approval. A synthetic local
+browser journey verified search, submission, unchanged public facts, approval,
+and the corrected public description and issue tag. The full local API suite
+passed 2,382 tests and 100% coverage; the app suite passed 3,959 tests and 100%
+coverage. These checks do not establish a hosted editor session or a published
+Las Vegas correction. The existing NAACP branch record still needs its exact
+source-backed correction staged, reviewed, and published in production.
 
 ## Prior production release `v2026.09.27-21`
 

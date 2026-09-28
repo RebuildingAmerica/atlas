@@ -12,6 +12,10 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from atlas.domains.catalog.geo import geocode_entry
 from atlas.domains.catalog.models.entry import EntryCRUD
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
+from atlas.domains.moderation.review_queue import (
+    EDITORIAL_PROFILE_CHANGE_KIND,
+    ReviewQueueCRUD,
+)
 from atlas.platform.database import db
 
 if TYPE_CHECKING:
@@ -24,6 +28,10 @@ class EditorialCandidateConflictError(Exception):
     def __init__(self, entity_id: str) -> None:
         self.entity_id = entity_id
         super().__init__("An existing profile may be the same organization.")
+
+
+class EditorialProfileChangeConflictError(Exception):
+    """An existing profile cannot accept this source-backed change."""
 
 
 class EditorialCandidateCreateRequest(BaseModel):
@@ -103,6 +111,64 @@ class EditorialCandidateCreateResponse(BaseModel):
     entity_id: str
     review_item_id: str
     status: Literal["pending"] = "pending"
+
+
+async def stage_editorial_profile_change(
+    conn: aiosqlite.Connection,
+    entity_id: str,
+    request: EditorialCandidateCreateRequest,
+) -> EditorialCandidateCreateResponse:
+    """Hold a correction to an existing organization until source review."""
+    entry = await EntryCRUD.get_by_id(conn, entity_id)
+    if entry is None or not entry.active or entry.type != "organization":
+        raise EditorialProfileChangeConflictError("Published organization not found")  # noqa: TRY003
+    if await ReviewQueueCRUD.has_pending_published_change(conn, entity_id=entity_id):
+        raise EditorialProfileChangeConflictError("A change is already awaiting review")  # noqa: TRY003
+    _, sources = await EntryCRUD.get_with_sources(conn, entity_id)
+    official_hosts = {
+        (urlsplit(source["url"]).hostname or "").removeprefix("www.")
+        for source in sources
+        if source["type"] == "org_website"
+    }
+    if (urlsplit(request.source_url).hostname or "").removeprefix("www.") not in official_hosts:
+        raise EditorialProfileChangeConflictError(  # noqa: TRY003
+            "The cited page must be on a linked official organization site"
+        )
+
+    proposed: dict[str, dict[str, object]] = {}
+    fields: dict[str, object] = {
+        "name": request.name,
+        "description": request.description,
+        "city": request.city,
+        "state": request.state,
+        "region": request.region,
+        "geo_specificity": request.geo_specificity,
+        "website": request.action_url,
+    }
+    for field, after in fields.items():
+        before = getattr(entry, field)
+        if before != after:
+            proposed[field] = {"before": before, "after": after}
+    before_issues = sorted(await EntryCRUD.get_issue_areas(conn, entity_id))
+    after_issues = sorted(request.issue_areas)
+    if before_issues != after_issues:
+        proposed["issue_areas"] = {"before": before_issues, "after": after_issues}
+    if not proposed:
+        raise EditorialProfileChangeConflictError("No public profile facts changed")  # noqa: TRY003
+
+    source_urls = sorted({request.source_url, request.action_url})
+    proposed["source_evidence"] = {
+        "before": None,
+        "after": _candidate_snapshot(request, source_urls)["source_evidence"]["after"],
+    }
+    review_item_id = await ReviewQueueCRUD.stage_published_change(
+        conn,
+        entity_id=entity_id,
+        kind=EDITORIAL_PROFILE_CHANGE_KIND,
+        proposed_changes=proposed,
+        source_urls=source_urls,
+    )
+    return EditorialCandidateCreateResponse(entity_id=entity_id, review_item_id=review_item_id)
 
 
 def _candidate_snapshot(

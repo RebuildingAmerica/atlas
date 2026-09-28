@@ -17,6 +17,107 @@ describe("discovery review server functions", () => {
     mocks.requestAtlasApi.mockReset();
   });
 
+  it("finds an existing organization and loads its published facts for correction", async () => {
+    const entityId = "d4ad7d29-75b9-420e-ba57-9d08c5a9e4c5";
+    mocks.requestAtlasApi
+      .mockResolvedValueOnce({
+        items: [{ id: entityId, name: "NAACP Las Vegas Branch #1111", address: { state: "NV" } }],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        id: entityId,
+        name: "NAACP Las Vegas Branch #1111",
+        description: "Existing branch description.",
+        address: { city: null, state: "NV", geo_specificity: "statewide", region: null },
+        issue_area_ids: ["housing_affordability", "public_transit"],
+        contact: { website: null },
+        sources: [{ url: "https://www.naacplasvegas.org/about", type: "org_website" }],
+      });
+    const { searchEditorialProfiles, loadEditorialProfile } =
+      await import("@/domains/admin/discovery-reviews.functions");
+
+    const matches = await searchEditorialProfiles({ data: { query: "NAACP Las Vegas" } });
+    const profile = await loadEditorialProfile({ data: { entityId } });
+
+    expect(mocks.requestAtlasApi).toHaveBeenNthCalledWith(
+      1,
+      "/entities?query=NAACP%20Las%20Vegas&entity_type=organization&limit=10",
+    );
+    expect(matches[0]?.id).toBe(entityId);
+    expect(profile.initial.issue_areas).toEqual(["housing_affordability", "public_transit"]);
+    expect(profile.initial.source_url).toBe("https://www.naacplasvegas.org/about");
+    expect(profile.initial.source_context).toBe("");
+  });
+
+  it("handles sparse legacy profiles without inventing place, issue, or official-source facts", async () => {
+    const entityId = "d4ad7d29-75b9-420e-ba57-9d08c5a9e4c5";
+    mocks.requestAtlasApi
+      .mockResolvedValueOnce({ total: 0 })
+      .mockResolvedValueOnce({
+        items: [{ id: entityId, name: "Sparse Group", address: {} }],
+        total: 1,
+      })
+      .mockResolvedValueOnce({
+        id: entityId,
+        name: "Sparse Group",
+        description: "An incomplete organization record.",
+        address: { city: "Las Vegas", geo_specificity: "unknown" },
+        contact: {},
+      })
+      .mockResolvedValueOnce({
+        id: entityId,
+        name: "Sparse Group",
+        description: "An incomplete organization record.",
+        address: { city: null, geo_specificity: "unknown" },
+        contact: {},
+        sources: [],
+      });
+    const { searchEditorialProfiles, loadEditorialProfile } =
+      await import("@/domains/admin/discovery-reviews.functions");
+
+    expect(await searchEditorialProfiles({ data: { query: "No match" } })).toEqual([]);
+    expect(await searchEditorialProfiles({ data: { query: "Sparse" } })).toEqual([
+      { id: entityId, name: "Sparse Group", city: null, state: null },
+    ]);
+    const local = await loadEditorialProfile({ data: { entityId } });
+    const statewide = await loadEditorialProfile({ data: { entityId } });
+    expect(local.initial).toMatchObject({
+      geo_specificity: "local",
+      issue_areas: [],
+      source_url: "",
+      state: "",
+    });
+    expect(statewide.initial.geo_specificity).toBe("statewide");
+    expect(local.officialSources).toEqual([]);
+  });
+
+  it("stages an existing profile change through the editorial review endpoint", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({ review_item_id: "review-1", status: "pending" });
+    const { stageEditorialProfileChange } =
+      await import("@/domains/admin/discovery-reviews.functions");
+    const entityId = "d4ad7d29-75b9-420e-ba57-9d08c5a9e4c5";
+    const candidate = {
+      action_url: "https://www.naacplasvegas.org/housing",
+      city: "Las Vegas",
+      description: "The local branch works on housing access.",
+      geo_specificity: "local" as const,
+      issue_areas: ["housing_affordability"],
+      name: "NAACP Las Vegas Branch #1111",
+      region: null,
+      source_context: "The Housing Committee page describes local housing work.",
+      source_url: "https://www.naacplasvegas.org/housing",
+      sources_checked: true as const,
+      state: "NV",
+    };
+
+    await stageEditorialProfileChange({ data: { entityId, candidate } });
+
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      `/review-queue/editorial-profiles/${entityId}/changes`,
+      { body: JSON.stringify(candidate), method: "POST" },
+    );
+  });
+
   it("shows identifiable before-and-after facts and cited URLs from the private queue", async () => {
     mocks.requestAtlasApi.mockResolvedValue({
       items: [

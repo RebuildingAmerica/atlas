@@ -13,6 +13,7 @@ import {
 } from "./discovery-reviews.functions";
 import { DiscoveryReviewsView } from "./discovery-reviews-view";
 import { EditorialCandidateForm } from "./editorial-candidate-form";
+import { EditorialProfileCorrection } from "./editorial-profile-correction";
 
 const PAGE_SIZE = 25;
 
@@ -23,6 +24,7 @@ export function DiscoveryReviewsPage() {
   const [offset, setOffset] = useState(0);
   const [prepareMessage, setPrepareMessage] = useState<string>();
   const [intakeOpen, setIntakeOpen] = useState(false);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
   const [intakeMessage, setIntakeMessage] = useState<string>();
   const issueAreas = useMemo(
     () =>
@@ -75,9 +77,30 @@ export function DiscoveryReviewsPage() {
       }
       editorialIntake={
         <section className="space-y-3" aria-label="Editorial organization intake">
+          {!correctionOpen ? (
+            <Button
+              onClick={() => {
+                setIntakeOpen(false);
+                setCorrectionOpen(true);
+              }}
+              size="sm"
+              variant="secondary"
+            >
+              Improve existing organization
+            </Button>
+          ) : (
+            <EditorialProfileCorrection
+              issueAreas={issueAreas}
+              onQueued={() => {
+                setOffset(0);
+                void queryClient.invalidateQueries({ queryKey: ["admin", "discovery-reviews"] });
+              }}
+            />
+          )}
           {!intakeOpen ? (
             <Button
               onClick={() => {
+                setCorrectionOpen(false);
                 setIntakeMessage(undefined);
                 intake.reset();
                 setIntakeOpen(true);
