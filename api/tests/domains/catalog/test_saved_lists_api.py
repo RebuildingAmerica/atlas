@@ -196,7 +196,7 @@ class TestSavedListsAPI:
                 "entry_id": claimable_org,
                 "name": "Mississippi Rising",
                 "type": "organization",
-                "location": "Jackson, MS",
+                "location": "Statewide · MS",
                 "source_count": "1",
                 "trust_level": "unverified",
                 "source_urls": "https://example.com/mississippi-rising",
