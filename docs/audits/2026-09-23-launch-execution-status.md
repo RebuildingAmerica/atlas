@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 28, 2026 · production release `v2026.09.27-22`
+Updated September 28, 2026 · production release `v2026.09.28-1`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,15 +16,15 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed public inventory is recorded here. The repository
 contains fixes for several privacy, purchase-isolation, refund, and journey
-defects. Release `v2026.09.27-22` deployed the cumulative-refund correction and
-mobile map-count simplification. The
-[v22 protected runtime Stripe inventory](https://github.com/RebuildingAmerica/atlas/actions/runs/36375819749)
+defects. Release `v2026.09.28-1` deploys the latest Team sharing and workspace
+setup fixes. The last recorded
+[protected runtime Stripe inventory, on v22](https://github.com/RebuildingAmerica/atlas/actions/runs/36375819749)
 passed its live key, charge-enabled account, Tax status, and catalog
 identifiers; the Atlas portal configuration, four webhook subscriptions, and
-offer allowlist are missing. No completed live payment, signed webhook delivery,
-or useful reviewed Las Vegas discovery slice has been demonstrated. Checkout
-remains disabled. Passing deployment checks does not satisfy those acceptance
-gates.
+offer allowlist were missing. No later inventory or completed live payment,
+signed webhook delivery, or useful reviewed Las Vegas discovery slice has been
+demonstrated. Checkout remains disabled. Passing deployment checks does not
+satisfy those acceptance gates.
 
 The
 [September 27 Las Vegas editorial packet](2026-09-27-las-vegas-editorial-packet.md)
@@ -39,7 +39,44 @@ in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
 
-## Current production release `v2026.09.27-22`
+## Current production release `v2026.09.28-1`
+
+[Release run 36416409020](https://github.com/RebuildingAmerica/atlas/actions/runs/36416409020)
+passed full release CI and browser acceptance, deployed commit
+`f4e49659bf1cd0d728fd1d9ca06d284e02b2f0fc` to the API, PDS, and Vercel app,
+promoted the production domains, and passed hosted public smoke and signed-in
+identity checks. The checkout job succeeded only because its live session step
+was **skipped** while sales remain closed. This run did not move money, fulfill
+an entitlement, or prove a visitor's or organizer's complete product task. The
+same commit's
+[staging run 36415678992](https://github.com/RebuildingAmerica/atlas/actions/runs/36415678992)
+deployed the API and passed hosted smoke and identity checks; its manual-release
+profile skipped the full CI jobs.
+
+The release removes the API's 60-second membership cache, so a changed Team role
+or product is checked on the next protected request. Concurrent sign-in requests
+now reuse a newly created personal workspace instead of creating suffix-named
+duplicates. A local two-account browser test exercised an owner creating a
+sourced list, upgrading to Team in isolated test data, inviting a colleague,
+sharing the list, and seeing the colleague's note after acceptance and passkey
+enrollment. It deliberately grants the Team entitlement in local test data and
+does **not** prove a Stripe purchase or the same journey against the hosted
+production app. The local full browser acceptance suite passed 33 tests. The
+production browser acceptance job also passed, including a synthetic Las Vegas
+editorial intake; it does not establish official-source review or publication of
+a real pilot profile.
+
+**GO/NO-GO:** This is a deployed software release, not pilot acceptance. The Las
+Vegas packet's candidates remain unreviewed and unpublished in Atlas, its ten
+visitor questions have not passed against production mobile, and the production
+billing lifecycle remains unproven. Keep promoted Las Vegas coverage and new
+paid sales closed. The next customer-facing work is to review and publish the
+packet's existing-record correction and qualified candidates, then run the ten
+questions on a phone; payment work must separately establish the Atlas portal,
+webhook events, offer allowlist, and an authorized buyer's purchase-to-exit
+journey.
+
+## Prior production release `v2026.09.27-22`
 
 [Release run 36373868581](https://github.com/RebuildingAmerica/atlas/actions/runs/36373868581)
 passed full CI, deployed commit `baa1d909845b9c02691664879b5784da88cd37bb`, and
