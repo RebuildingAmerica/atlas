@@ -1,6 +1,6 @@
 # Atlas launch execution status
 
-Updated September 28, 2026 · production release `v2026.09.28-1`
+Updated September 28, 2026 · production release `v2026.09.28-2`
 
 This is the current implementation and acceptance record for the
 [product launch audit](2026-09-23-product-launch-audit.md) and
@@ -16,8 +16,9 @@ closed.** The [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md)
 showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed public inventory is recorded here. The repository
 contains fixes for several privacy, purchase-isolation, refund, and journey
-defects. Release `v2026.09.28-1` deploys the latest Team sharing and workspace
-setup fixes. The last recorded
+defects. Release `v2026.09.28-2` also deploys visible saved-list output failures
+and stops forwarding Vercel protection credentials to the Atlas API. The last
+recorded
 [protected runtime Stripe inventory, on v22](https://github.com/RebuildingAmerica/atlas/actions/runs/36375819749)
 passed its live key, charge-enabled account, Tax status, and catalog
 identifiers; the Atlas portal configuration, four webhook subscriptions, and
@@ -39,7 +40,7 @@ in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
 
-## Organizer output change on `main`, not in production
+## Organizer output and staging recovery
 
 Commit `aaea9a5c` makes failed saved-list CSV and JSON downloads and denied copy
 actions explain the failure to the organizer. A local browser test first
@@ -59,14 +60,14 @@ check at 12:30 UTC on September 28 received HTTP 200 from direct staging API
 health and one-record person and organization requests in under 1.2 seconds. The
 available Vercel staging logs contained no completed `/api/entities` response
 for the timed-out hosted requests. The runner network, edge, and app proxy
-remain possible causes; the exact layer is unknown. **Do not call `aaea9a5c`
-production behavior or release it from this failed staging gate.**
+remain possible causes; the exact layer was unknown at that point. This failed
+attempt did not qualify `aaea9a5c` for production.
 
 Commit `de91923b` closes a separate credential-boundary defect: the app proxy
 previously forwarded Vercel protection bypass and trusted OIDC headers to the
 Atlas API. A failing local regression demonstrated both headers crossing that
 boundary; after the fix, all 12 proxy tests, app typecheck, lint, and the full
-pre-push quality gate passed. It is on `main`, **not in production**. Its
+pre-push quality gate passed. Its first
 [September 28 staging run](https://github.com/RebuildingAmerica/atlas/actions/runs/36423729391)
 passed browser acceptance, tests, quality, and secret scanning but failed hosted
 smoke again: a public person lookup and API health timed out; hosted identity
@@ -75,11 +76,32 @@ to Cloudflare for `atlas-api-staging.rebuildingus.org/health` but received no
 HTTP response within six seconds. That shows degradation outside the Vercel app
 as well, but does not isolate Cloudflare from Cloud Run. Local `gcloud` could
 not inspect the service because its session requires reauthentication; the
-available Codex browser had no provider tabs and the Mac was locked. Hold
-production release until the staging API path and hosted smoke work on the exact
-candidate. Do not treat a docs-only staging success as this gate.
+available Codex browser had no provider tabs and the Mac was locked. The same
+staging API health endpoint later returned HTTP 200 in 0.14 seconds. Without
+redeploying the app or API, attempt 2 of that staging run passed hosted smoke
+and hosted identity on commit `de91923b`. The transient failure's root cause is
+still unconfirmed; the later pass establishes a working staging path at that
+time, not permanent edge reliability. The docs-only staging run
+[36424906553](https://github.com/RebuildingAmerica/atlas/actions/runs/36424906553)
+skipped hosted smoke and did not clear the gate.
 
-## Current production release `v2026.09.28-1`
+## Current production release `v2026.09.28-2`
+
+[Release run 36425636464](https://github.com/RebuildingAmerica/atlas/actions/runs/36425636464)
+deployed staging-tested commit `de91923b3828ffa1413b937a3062a0819681beca` to the
+API, PDS, and Vercel app and promoted the production domains. Full CI, browser
+acceptance, hosted public smoke, and hosted identity passed. The production API
+health endpoint returned HTTP 200 after deployment, and the promoted Vercel
+deployment `dpl_Ac3NqWkvyRdbATpee9dCUr5u7Gxw` was Ready. The Checkout job passed
+only because its live-session step was **skipped** under the disabled checkout
+flag. This release did not move money or establish any paid entitlement. The
+organizer's failed copy/export actions now explain the failure instead of
+silently doing nothing; that behavior was exercised in a local browser, not by a
+signed-in production organizer. The proxy no longer sends Vercel access
+credentials to the upstream Atlas API. These are shipped software changes, not a
+completed Las Vegas public or paid pilot.
+
+## Prior production release `v2026.09.28-1`
 
 [Release run 36416409020](https://github.com/RebuildingAmerica/atlas/actions/runs/36416409020)
 passed full release CI and browser acceptance, deployed commit
