@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import type { QueryClient } from "@tanstack/react-query";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Entry, TaxonomyResponse } from "@rebuildingamerica/atlas-api-client";
+import { api, type Entry, type TaxonomyResponse } from "@rebuildingamerica/atlas-api-client";
 import { ProfilesOverviewPage } from "@/domains/catalog/pages/profiles/overview/profiles-overview-page";
 import { createEntryFixture } from "../../../../../../fixtures/catalog/entries";
 import { renderWithProviders } from "../../../../../../helpers/render-with-providers";
@@ -304,8 +304,30 @@ describe("ProfilesOverviewPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the spotlight placeholder and retries quietly while the catalog request fails", async () => {
-    const { requests } = stubFetch({ body: { detail: "Too many requests." }, status: 429 });
+  it("loads only the visible catalog slice for a people page", async () => {
+    const listSpy = vi
+      .spyOn(api.entries, "list")
+      .mockResolvedValue(createEntryListFixture(heroTrio()));
+    renderWithProviders(<ProfilesOverviewPage scope="people" />, {
+      seed: (queryClient) => {
+        queryClient.setQueryData(["taxonomy"], taxonomy());
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Ada Reyes" })).toBeInTheDocument();
+    });
+    expect(listSpy).toHaveBeenCalledTimes(1);
+    expect(listSpy).toHaveBeenCalledWith({ entry_types: ["person"], limit: 18 });
+    listSpy.mockRestore();
+  });
+
+  it("explains a failed catalog load and recovers on retry without hiding available people", async () => {
+    let recovered = false;
+    const listSpy = vi.spyOn(api.entries, "list").mockImplementation(() => {
+      if (!recovered) return Promise.reject(new Error("Too many requests."));
+      return Promise.resolve(createEntryListFixture(heroTrio()));
+    });
     renderWithProviders(<ProfilesOverviewPage />, {
       seed: (queryClient) => {
         queryClient.setQueryData(["taxonomy"], taxonomy());
@@ -318,14 +340,59 @@ describe("ProfilesOverviewPage", () => {
 
     await waitFor(
       () => {
-        expect(requests.filter((request) => request.url.includes("limit=18"))).toHaveLength(2);
+        expect(screen.getByRole("alert")).toHaveTextContent("Profiles couldn't load");
       },
-      { timeout: 3_000 },
+      { timeout: 4_000 },
     );
-    expect(screen.getByRole("heading", { name: "Featured profiles" })).toBeInTheDocument();
+    expect(listSpy).toHaveBeenCalledTimes(2);
     expect(screen.queryByText(/too many requests/i)).toBeNull();
-    expect(screen.queryByText(/unavailable|couldn.t load/i)).toBeNull();
     expect(screen.queryByText("No profiles listed yet.")).toBeNull();
     expect(linkedNamesIn(sectionFor("People worth knowing"))).toEqual(["Priya Nair"]);
+
+    recovered = true;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Ada Reyes" })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    listSpy.mockRestore();
   });
+
+  it.each(["person", "organization"] as const)(
+    "keeps featured profiles visible when the %s shelf fails and retries it",
+    async (failedType) => {
+      let recovered = false;
+      const listSpy = vi.spyOn(api.entries, "list").mockImplementation((filters) => {
+        if (filters?.limit === 10 && filters.entry_types?.[0] === failedType && !recovered) {
+          return Promise.reject(new Error("Catalog unavailable."));
+        }
+        const entries =
+          filters?.limit === 10
+            ? heroTrio().filter((entry) => entry.type === filters.entry_types?.[0])
+            : heroTrio();
+        return Promise.resolve(createEntryListFixture(entries));
+      });
+      renderWithProviders(<ProfilesOverviewPage />, {
+        seed: (queryClient) => {
+          queryClient.setQueryData(["taxonomy"], taxonomy());
+        },
+      });
+
+      await waitFor(
+        () => {
+          expect(screen.getByRole("alert")).toHaveTextContent("Profiles couldn't load");
+        },
+        { timeout: 4_000 },
+      );
+      expect(screen.getAllByRole("heading", { name: "Ada Reyes" }).length).toBeGreaterThan(0);
+      expect(screen.queryByText("No profiles listed yet.")).toBeNull();
+
+      recovered = true;
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await waitFor(() => {
+        expect(screen.queryByRole("alert")).toBeNull();
+      });
+      listSpy.mockRestore();
+    },
+  );
 });

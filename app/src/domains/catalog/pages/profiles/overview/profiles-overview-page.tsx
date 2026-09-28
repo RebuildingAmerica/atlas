@@ -16,7 +16,10 @@ import {
   type ProfileBrowseScope,
 } from "@/domains/catalog/profile-browse";
 import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
-import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
+import {
+  PUBLIC_QUERY_RETRY_OPTIONS,
+  shouldRetryPublicQuery,
+} from "@/platform/query/public-query-retry";
 import type { Entry, EntryListResponse } from "@rebuildingamerica/atlas-api-client";
 
 interface ProfilesOverviewPageProps {
@@ -28,6 +31,13 @@ interface ProfilesOverviewPageProps {
    */
   initialCatalog?: EntryListResponse;
 }
+
+// A temporary failure gets one automatic retry, then a visible recovery path.
+const PROFILE_QUERY_OPTIONS = {
+  ...PUBLIC_QUERY_RETRY_OPTIONS,
+  retry: (failureCount: number, error: unknown) =>
+    failureCount < 1 && shouldRetryPublicQuery(failureCount, error),
+};
 
 function buildIssueAreaLabels(
   taxonomy: ReturnType<typeof useTaxonomy>["data"],
@@ -99,29 +109,27 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
     [taxonomyQuery.data],
   );
 
-  // Every slice retries until the API answers. A failed slice keeps its
-  // section's placeholder up in the meantime, because a public page never
-  // shows a visitor an error in place of content.
+  // Keep available slices visible if another request fails.
   const catalogQuery = useEntries(
     {
       entry_types: lockedEntryTypesForScope(scope),
       limit: 18,
     },
-    { ...PUBLIC_QUERY_RETRY_OPTIONS, initialData: initialCatalog },
+    { ...PROFILE_QUERY_OPTIONS, initialData: initialCatalog },
   );
   const peopleQuery = useEntries(
     {
       entry_types: ["person"],
       limit: 10,
     },
-    PUBLIC_QUERY_RETRY_OPTIONS,
+    { ...PROFILE_QUERY_OPTIONS, enabled: scope === "all" },
   );
   const organizationsQuery = useEntries(
     {
       entry_types: ["organization"],
       limit: 10,
     },
-    PUBLIC_QUERY_RETRY_OPTIONS,
+    { ...PROFILE_QUERY_OPTIONS, enabled: scope === "all" },
   );
 
   const liveCatalogEntries = useMemo(
@@ -139,6 +147,10 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
   const isLoading =
     catalogQuery.isPending ||
     (scope === "all" && (peopleQuery.isPending || organizationsQuery.isPending));
+  const catalogFailure = catalogQuery.isError;
+  const peopleFailure = scope === "all" && peopleQuery.isError;
+  const organizationsFailure = scope === "all" && organizationsQuery.isError;
+  const hasLoadError = catalogFailure || peopleFailure || organizationsFailure;
   const catalogEntries = liveCatalogEntries;
 
   const heroEntries = catalogEntries.slice(0, 3);
@@ -183,6 +195,7 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
 
   const shouldShowEmptyState =
     !isLoading &&
+    !hasLoadError &&
     heroEntries.length === 0 &&
     peopleShelfEntries.length === 0 &&
     organizationShelfEntries.length === 0 &&
@@ -193,6 +206,30 @@ export function ProfilesOverviewPage({ scope = "all", initialCatalog }: Profiles
     <PageLayout className="pt-8 pb-8 lg:pt-12 lg:pb-10">
       <div className="mx-auto max-w-[78rem] space-y-10 lg:space-y-12">
         <ProfilesShowcaseHeader scope={scope} />
+
+        {hasLoadError ? (
+          <div
+            role="alert"
+            className="bg-error-container text-on-error-container rounded-xl px-5 py-4"
+          >
+            <p className="type-body-medium font-semibold">Profiles couldn't load.</p>
+            <p className="type-body-small mt-1">You can still use any results shown below.</p>
+            <button
+              type="button"
+              className="type-label-medium mt-3 underline underline-offset-4 disabled:opacity-60"
+              disabled={
+                catalogQuery.isFetching || peopleQuery.isFetching || organizationsQuery.isFetching
+              }
+              onClick={() => {
+                if (catalogFailure) void catalogQuery.refetch();
+                if (peopleFailure) void peopleQuery.refetch();
+                if (organizationsFailure) void organizationsQuery.refetch();
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        ) : null}
 
         {shouldShowEmptyState ? (
           <ProfilesEmptyState scope={scope} />
