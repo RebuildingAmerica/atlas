@@ -120,6 +120,35 @@ describe("useOrganizationPageData session", () => {
     expect(refetch).toHaveBeenCalled();
   });
 
+  it("surfaces a failed session refresh after a workspace action", async () => {
+    const refetch = vi.fn((options?: { throwOnError?: boolean }) =>
+      options?.throwOnError
+        ? Promise.reject(new Error("Session refresh failed"))
+        : Promise.resolve({ isError: true }),
+    );
+    mocks.useAtlasSession.mockReturnValue({ data: session, refetch });
+
+    const { result } = renderHook(() => useOrganizationPageData());
+
+    await expect(result.current.refreshWorkspaceData()).rejects.toThrow("Session refresh failed");
+  });
+
+  it("surfaces a failed workspace-details refresh after a workspace action", async () => {
+    const invalidateQueries = vi.fn(
+      (filters: { queryKey: string[] }, options?: { throwOnError?: boolean }) =>
+        filters.queryKey[1] === "organization" && options?.throwOnError
+          ? Promise.reject(new Error("Workspace details refresh failed"))
+          : Promise.resolve(),
+    );
+    mocks.useQueryClient.mockReturnValue({ invalidateQueries });
+
+    const { result } = renderHook(() => useOrganizationPageData());
+
+    await expect(result.current.refreshWorkspaceData()).rejects.toThrow(
+      "Workspace details refresh failed",
+    );
+  });
+
   it("invokes the organization queryFn against the API client", () => {
     const organizationQueryFn = vi.fn();
     const samlIssuersQueryFn = vi.fn();

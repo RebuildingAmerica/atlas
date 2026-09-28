@@ -136,12 +136,18 @@ export function useOrganizationPageData(
    * Refreshes the session and active-organization query after a mutation.
    */
   async function refreshWorkspaceData() {
-    const invalidateSessionPromise = queryClient.invalidateQueries({
-      queryKey: atlasSessionQueryKey,
-    });
-    const invalidateOrganizationPromise = queryClient.invalidateQueries({
-      queryKey: organizationQueryKey,
-    });
+    const invalidateSessionPromise = queryClient.invalidateQueries(
+      {
+        queryKey: atlasSessionQueryKey,
+      },
+      { throwOnError: true },
+    );
+    const invalidateOrganizationPromise = queryClient.invalidateQueries(
+      {
+        queryKey: organizationQueryKey,
+      },
+      { throwOnError: true },
+    );
     const invalidateTeamSeatCostPromise = queryClient.invalidateQueries({
       queryKey: teamSeatCostSummaryQueryKey,
     });
@@ -167,7 +173,7 @@ export function useOrganizationPageData(
       invalidateUsageAuditLogPromise,
       invalidateIntegrationMonitoringPromise,
     ]);
-    await atlasSession.refetch();
+    await atlasSession.refetch({ throwOnError: true });
   }
 
   return {
