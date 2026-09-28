@@ -2,7 +2,24 @@
 
 ## Rollback a Bad Deployment
 
-**Via Vercel dashboard (fastest):**
+**Whole production release (API and app), with read-back:**
+
+Run **Roll Back Production** (`.github/workflows/rollback-production.yml`) from
+the Actions tab with three values from the known-good release's "Deploy
+Production" run:
+
+- `release-tag`: the tag, for example `v2026.09.28-3`
+- `api-revision`: the Cloud Run revision in that run's deploy summary
+- `vercel-deployment-url`: the `https://…vercel.app` URL printed by its Vercel
+  deploy step
+
+The workflow moves all API traffic to that revision, re-promotes that app
+deployment, then fails unless the API health check passes and the production app
+reports the tag's commit. The next `v*` release takes API traffic back
+automatically. Migrations are additive, so an older API revision runs against
+the current schema.
+
+**App only, via Vercel dashboard:**
 
 1. Go to vercel.com → Atlas project → Deployments tab
 2. Find the last known-good deployment
@@ -70,7 +87,10 @@ This prevents all new requests to the Vercel deployment.
 1. Check Vercel status page for platform-wide incidents
 2. Check GCP Cloud Run status for API-layer issues
 3. For database issues: check Neon PostgreSQL dashboard (console.neon.tech)
-4. Contact: [fill in on-call rotation / owner contact]
+4. Contact: Atlas has one operator, who owns release, editorial, support, and
+   refunds. API errors and new visitor reports email that operator through the
+   Error Alerting workflow's alert policies. See
+   `docs/runbooks/one-person-operations.md` for response targets.
 
 ## Post-Incident
 

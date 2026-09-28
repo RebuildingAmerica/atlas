@@ -161,6 +161,9 @@ runs:
         service: ${{ inputs.service-name }}
         region: ${{ inputs.gcp-region }}
         image: ${{ inputs.image-registry }}/atlas-api:${{ inputs.image-tag }}
+        # A production rollback pins traffic to an older revision; each new
+        # release takes traffic back so it actually serves its own code.
+        revision_traffic: LATEST=100
         flags: |
           --ingress=all
           --allow-unauthenticated

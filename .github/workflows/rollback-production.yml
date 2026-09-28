@@ -1,0 +1,123 @@
+name: Roll Back Production
+
+# Puts production back on a known-good release when the current one is hurting
+# visitors: the API moves all traffic to a named Cloud Run revision and the app
+# re-promotes a named Vercel deployment. Both are then read back, so the run
+# only succeeds if production is actually serving the release that was named.
+#
+# Find the inputs in that release's "Deploy Production" run: the API revision
+# is in the deploy summary, and the Vercel deployment URL is the url= line of
+# the Vercel deploy step. Database migrations are additive, so an older API
+# revision runs against the current schema. A promoted Vercel deployment keeps
+# the environment it was built with; if a secret was rotated since, the
+# read-back fails and says so.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: Known-good production tag to return to (vYYYY.MM.DD-N).
+        required: true
+        type: string
+      api-revision:
+        description: Cloud Run revision that release deployed (atlas-api-00041-abc).
+        required: true
+        type: string
+      vercel-deployment-url:
+        description: Vercel deployment URL that release promoted (https://...vercel.app).
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+
+      - name: Resolve the release being restored
+        id: release
+        env:
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9]+$ ]]; then
+            echo "::error title=Invalid release tag::Use a vYYYY.MM.DD-N production tag."
+            exit 1
+          fi
+          sha="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Restoring $RELEASE_TAG at $sha"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Move API traffic to the named revision
+        env:
+          CLOUDSDK_CORE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+          SERVICE_NAME: ${{ secrets.ATLAS_API_SERVICE_NAME || 'atlas-api' }}
+          TARGET_REVISION: ${{ inputs.api-revision }}
+        run: node scripts/deploy/cloud-run-release.mjs rollback
+
+      - name: Re-promote the named app deployment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_DEPLOYMENT_URL: ${{ inputs.vercel-deployment-url }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERCEL_DEPLOYMENT_URL" =~ ^https://[a-z0-9-]+\.vercel\.app$ ]]; then
+            echo "::error title=Invalid deployment URL::Use the https://...vercel.app URL from the release's deploy log."
+            exit 1
+          fi
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
+
+      - name: Mint Vercel Trusted Source OIDC token
+        id: vercel-oidc
+        uses: ./.github/actions/vercel-trusted-oidc
+
+      - name: Read back what production serves
+        env:
+          ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+          ATLAS_API_URL: https://atlas-api.rebuildingus.org
+          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
+          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
+          EXPECTED_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+          curl -fsS "${ATLAS_API_URL}/health" > /dev/null
+          curl -fsS "${ATLAS_PUBLIC_URL%/}/api/health" > /dev/null
+          served="$(curl -fsS -X POST "${ATLAS_PUBLIC_URL%/}/api/e2e/hosted/billing-inventory" \
+            -H "x-atlas-hosted-e2e-secret: ${ATLAS_HOSTED_E2E_SECRET}" \
+            -H "x-vercel-trusted-oidc-idp-token: ${ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN}" \
+            | jq -r .revision)"
+          if [ "$served" != "$EXPECTED_SHA" ]; then
+            echo "::error title=App rollback not confirmed::Production app reports ${served}; expected ${EXPECTED_SHA}."
+            exit 1
+          fi
+          echo "Production API and app both serve ${EXPECTED_SHA}."

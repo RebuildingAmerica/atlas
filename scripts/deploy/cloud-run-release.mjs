@@ -73,6 +73,55 @@ function describeCloudRunService() {
   writeGithubOutput({ url, revision });
 }
 
+function rollbackCloudRunTraffic() {
+  const service = requiredEnv("SERVICE_NAME");
+  const region = requiredEnv("GCP_REGION");
+  const revision = requiredEnv("TARGET_REVISION");
+  if (!new RegExp(`^${service}-[a-z0-9-]{1,50}$`).test(revision)) {
+    throw new Error(
+      `TARGET_REVISION must name a ${service} revision; got ${revision}.`,
+    );
+  }
+  runTool(
+    "gcloud",
+    [
+      "run",
+      "services",
+      "update-traffic",
+      service,
+      "--region",
+      region,
+      `--to-revisions=${revision}=100`,
+      "--quiet",
+    ],
+    { stdio: "inherit" },
+  );
+  const payload = runTool("gcloud", [
+    "run",
+    "services",
+    "describe",
+    service,
+    "--region",
+    region,
+    "--format=json",
+  ]);
+  const traffic = JSON.parse(payload)?.status?.traffic;
+  if (!Array.isArray(traffic)) {
+    throw new Error("Cloud Run service status did not include traffic.");
+  }
+  const serving = traffic.filter((target) => target.percent > 0);
+  if (
+    serving.length !== 1 ||
+    serving[0].revisionName !== revision ||
+    serving[0].percent !== 100
+  ) {
+    throw new Error(
+      `Cloud Run did not confirm 100% traffic on ${revision}: ${JSON.stringify(serving)}`,
+    );
+  }
+  writeGithubOutput({ revision });
+}
+
 function schedulerJobExists(jobName, region) {
   const result = spawnSync(
     "gcloud",
@@ -165,8 +214,11 @@ switch (command) {
   case "summary":
     writeDeploySummary();
     break;
+  case "rollback":
+    rollbackCloudRunTraffic();
+    break;
   default:
     throw new Error(
-      "Usage: cloud-run-release.mjs <describe|ensure-scheduler|summary>",
+      "Usage: cloud-run-release.mjs <describe|ensure-scheduler|summary|rollback>",
     );
 }
