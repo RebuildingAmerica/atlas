@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
-from atlas.platform.dates import require_date
+from atlas.platform.dates import require_date, row_timestamp_string
 
 if TYPE_CHECKING:
     from datetime import date
@@ -66,6 +66,7 @@ class EntryModel:
     suppressed_source_ids: list[str] = field(default_factory=list)
     preferred_contact_channel: str | None = None
     action_url: str | None = None
+    last_reviewed_at: str | None = None
 
     def to_dict(self, include_internal: bool = True) -> dict[str, Any]:
         """
@@ -175,6 +176,7 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         suppressed_source_ids=suppressed,
         preferred_contact_channel=row.get("preferred_contact_channel"),
         action_url=row.get("action_url"),
+        last_reviewed_at=row_timestamp_string(row.get("last_reviewed_at")),
     )
 
 

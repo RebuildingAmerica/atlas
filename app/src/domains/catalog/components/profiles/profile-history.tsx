@@ -102,6 +102,16 @@ function buildHistoryEvents(entry: Entry): HistoryEvent[] {
     });
   }
 
+  if (entry.last_reviewed_at) {
+    events.push({
+      id: "editor-reviewed",
+      label: "Reviewed by an Atlas editor",
+      date: entry.last_reviewed_at,
+      description: "An editor checked this record against its sources.",
+      tone: "verified",
+    });
+  }
+
   if (entry.updated_at && entry.updated_at !== entry.created_at) {
     events.push({
       id: "record-updated",

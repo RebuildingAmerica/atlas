@@ -1,5 +1,6 @@
 """An editor can turn an official source into a held, reviewable profile."""
 
+from datetime import UTC, datetime
 from http import HTTPStatus
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -84,6 +85,10 @@ async def test_editorial_candidate_requires_review_before_publication(
     assert published.json()["items"][0]["id"] == body["entity_id"]
     assert published.json()["items"][0]["contact"]["website"] == candidate()["source_url"]
     assert published.json()["items"][0]["action_url"] == candidate()["action_url"]
+    freshness = published.json()["items"][0]["freshness"]
+    assert freshness["last_reviewed_at"].startswith(datetime.now(UTC).date().isoformat())
+    assert freshness["last_verified"] is None
+    assert published.json()["items"][0]["trust"]["level"] != "atlas_verified"
 
 
 @pytest.mark.asyncio

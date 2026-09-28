@@ -272,6 +272,75 @@ async def test_approve_marks_entry_active_and_item_approved(db_url: str) -> None
 
 
 @pytest.mark.asyncio
+async def test_editor_approval_records_review_date_without_claiming_identity(db_url: str) -> None:
+    """An editor's approval dates the review; it never marks identity as verified."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Reviewed Org",
+            description="Held pending review.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=False,
+        )
+        item_id = await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            hold_reason="uncorroborated_web_only",
+            score=0.5,
+            dedup_suspect=False,
+            dedup_note=None,
+        )
+        await ReviewQueueCRUD.approve(conn, item_id, reviewed_by="curator@atlas")
+        entry = await EntryCRUD.get_by_id(conn, entity_id)
+        item = await ReviewQueueCRUD.get_by_id(conn, item_id)
+    finally:
+        await conn.close()
+
+    assert entry is not None and item is not None
+    assert entry.last_reviewed_at is not None
+    assert entry.last_reviewed_at[:19] == str(item.reviewed_at)[:19]
+    assert entry.verified is False
+    assert entry.last_verified is None
+
+
+@pytest.mark.asyncio
+async def test_rejection_leaves_no_review_date(db_url: str) -> None:
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Rejected Org",
+            description="Rejected.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=False,
+        )
+        item_id = await ReviewQueueCRUD.enqueue(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            hold_reason="uncorroborated_web_only",
+            score=0.1,
+            dedup_suspect=False,
+            dedup_note=None,
+        )
+        await ReviewQueueCRUD.reject(conn, item_id, reviewed_by="curator@atlas")
+        entry = await EntryCRUD.get_by_id(conn, entity_id)
+    finally:
+        await conn.close()
+
+    assert entry is not None
+    assert entry.last_reviewed_at is None
+
+
+@pytest.mark.asyncio
 async def test_approve_applies_staged_public_change_and_reject_preserves_old_fact(
     db_url: str,
 ) -> None:

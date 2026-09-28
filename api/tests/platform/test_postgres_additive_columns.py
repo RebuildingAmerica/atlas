@@ -83,3 +83,8 @@ class TestPostgresAdditiveColumns:
                 f"{table} is altered to add {sorted(orphaned)}, which its CREATE TABLE "
                 f"does not declare, so a fresh database and an existing one disagree."
             )
+
+
+def test_editor_review_date_reaches_existing_postgres_databases() -> None:
+    """Production entries predate the review date, so it must arrive by ALTER."""
+    assert "last_reviewed_at" in _altered_columns(_schema_sql(), "entries")

@@ -138,6 +138,8 @@ ALTER TABLE entries ADD COLUMN IF NOT EXISTS last_confirmed_at TIMESTAMPTZ;
 ALTER TABLE entries ADD COLUMN IF NOT EXISTS suppressed_source_ids TEXT;
 ALTER TABLE entries ADD COLUMN IF NOT EXISTS preferred_contact_channel TEXT;
 ALTER TABLE entries ADD COLUMN IF NOT EXISTS action_url TEXT;
+-- When an Atlas editor last approved this record against its sources.
+ALTER TABLE entries ADD COLUMN IF NOT EXISTS last_reviewed_at TIMESTAMPTZ;
 DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.constraint_column_usage

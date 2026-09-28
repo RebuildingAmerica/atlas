@@ -503,24 +503,27 @@ class ReviewQueueCRUD:
 
     @staticmethod
     async def approve(conn: Any, item_id: str, *, reviewed_by: str) -> None:
-        """Approve a held record: publish its entry and close the item."""
+        """Approve a held record: publish it, date the editor's review, and close the item."""
         item = await ReviewQueueCRUD.get_by_id(conn, item_id)
         if item is not None and item.status != "pending":
             return
+        reviewed_at = db.now_iso()
         if item is None or item.entity_id is None:
-            await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
+            await ReviewQueueCRUD._close(
+                conn, item_id, "approved", reviewed_by, reviewed_at=reviewed_at
+            )
             return
         if item.hold_reason == EDITORIAL_CANDIDATE_REASON:
             await ReviewQueueCRUD._validate_editorial_candidate(conn, item)
-            await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (item.entity_id,))
-            await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
-            return
-        if item.proposed_changes is not None:
+        elif item.proposed_changes is not None:
             await ReviewQueueCRUD._apply_published_change(conn, item)
-            await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
-            return
-        await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (item.entity_id,))
-        await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
+        await conn.execute(
+            "UPDATE entries SET active = TRUE, last_reviewed_at = ? WHERE id = ?",
+            (reviewed_at, item.entity_id),
+        )
+        await ReviewQueueCRUD._close(
+            conn, item_id, "approved", reviewed_by, reviewed_at=reviewed_at
+        )
 
     @staticmethod
     async def _validate_editorial_candidate(conn: Any, item: ReviewQueueItemModel) -> None:
@@ -876,7 +879,9 @@ class ReviewQueueCRUD:
             (entity_id, *sorted(RESOLVABLE_HOLD_REASONS)),
         )
         for row in await cursor.fetchall():
-            await ReviewQueueCRUD._close(conn, row[0], "approved", "registry")
+            await ReviewQueueCRUD._close(
+                conn, row[0], "approved", "registry", reviewed_at=db.now_iso()
+            )
         await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (entity_id,))
         await conn.commit()
         return True
@@ -927,13 +932,17 @@ class ReviewQueueCRUD:
     @staticmethod
     async def reject(conn: Any, item_id: str, *, reviewed_by: str) -> None:
         """Reject a held record: leave its entry inactive, close the item."""
-        await ReviewQueueCRUD._close(conn, item_id, "rejected", reviewed_by)
+        await ReviewQueueCRUD._close(
+            conn, item_id, "rejected", reviewed_by, reviewed_at=db.now_iso()
+        )
 
     @staticmethod
-    async def _close(conn: Any, item_id: str, status: str, reviewed_by: str) -> None:
+    async def _close(
+        conn: Any, item_id: str, status: str, reviewed_by: str, *, reviewed_at: str
+    ) -> None:
         await conn.execute(
             "UPDATE review_queue SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?",
-            (status, db.now_iso(), reviewed_by, item_id),
+            (status, reviewed_at, reviewed_by, item_id),
         )
         await conn.commit()
         from atlas.domains.firehose.producers import record_review_decision_observation

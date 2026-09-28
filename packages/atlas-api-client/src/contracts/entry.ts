@@ -95,6 +95,8 @@ export interface Entry {
   active: boolean;
   verified: boolean;
   last_verified?: string;
+  /** When an Atlas editor last approved this record against its sources. */
+  last_reviewed_at?: string;
   claim: ClaimStatusInfo;
   claim_evidence?: ClaimEvidenceSet;
   profile_answers?: ProfileAnswers;

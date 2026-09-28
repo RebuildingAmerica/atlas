@@ -236,6 +236,7 @@ def _entity_freshness(
         created_at=row_timestamp_string(entry.created_at),
         last_seen=entry.last_seen.isoformat(),
         last_verified=entry.last_verified.isoformat() if entry.last_verified else None,
+        last_reviewed_at=entry.last_reviewed_at,
         latest_source_date=latest_source_date_value,
         staleness_status=status,
         staleness_reason=reason,

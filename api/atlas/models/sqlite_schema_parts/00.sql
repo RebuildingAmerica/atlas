@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS entries (
     last_confirmed_at DATETIME,
     suppressed_source_ids TEXT,
     preferred_contact_channel TEXT,
+    last_reviewed_at DATETIME,
     FOREIGN KEY (affiliated_org_id) REFERENCES entries(id)
 );
 

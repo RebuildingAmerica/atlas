@@ -7647,6 +7647,18 @@
             "description": "ingested at for this freshness info.",
             "title": "Ingested At"
           },
+          "last_reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "last reviewed at for this freshness info.",
+            "title": "Last Reviewed At"
+          },
           "last_seen": {
             "anyOf": [
               {

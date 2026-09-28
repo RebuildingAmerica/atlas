@@ -61,6 +61,7 @@ class FreshnessInfo(BaseModel):
     created_at: str | None = None
     last_seen: str | None = None
     last_verified: str | None = None
+    last_reviewed_at: str | None = None
     latest_source_date: str | None = None
     published_date: str | None = None
     ingested_at: str | None = None

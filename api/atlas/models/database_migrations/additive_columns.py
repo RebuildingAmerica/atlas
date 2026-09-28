@@ -48,6 +48,7 @@ async def _ensure_entry_columns(conn: Any) -> None:
             "ALTER TABLE entries ADD COLUMN preferred_contact_channel TEXT",
         ),
         ("latitude", "ALTER TABLE entries ADD COLUMN latitude REAL"),
+        ("last_reviewed_at", "ALTER TABLE entries ADD COLUMN last_reviewed_at DATETIME"),
         ("longitude", "ALTER TABLE entries ADD COLUMN longitude REAL"),
         ("geocode_precision", "ALTER TABLE entries ADD COLUMN geocode_precision TEXT"),
         ("geocode_source", "ALTER TABLE entries ADD COLUMN geocode_source TEXT"),

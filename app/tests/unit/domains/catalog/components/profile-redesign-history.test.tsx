@@ -50,6 +50,24 @@ describe("ProfileHistory", () => {
     expect(screen.getByText("Record updated")).toBeInTheDocument();
   });
 
+  it("dates an editor's review without calling it an identity verification", () => {
+    render(
+      <ProfileHistory
+        entry={buildEntry({
+          first_seen: "2024-01-15T00:00:00Z",
+          last_reviewed_at: "2026-09-20T18:30:00Z",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Reviewed by an Atlas editor")).toBeInTheDocument();
+    expect(
+      screen.getByText("An editor checked this record against its sources."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Sep 2026/)).toBeInTheDocument();
+    expect(screen.queryByText("Identity reviewed by Atlas")).not.toBeInTheDocument();
+  });
+
   it("shows an audit trail for corrections, verification, and representation changes", () => {
     render(
       <ProfileHistory

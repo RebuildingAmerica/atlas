@@ -363,6 +363,7 @@ class TestEnsureEntryColumns:
             "last_confirmed_at",
             "suppressed_source_ids",
             "preferred_contact_channel",
+            "last_reviewed_at",
         ):
             assert column in columns
 

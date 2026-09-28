@@ -51,6 +51,7 @@ async def test_release_publishes_and_closes_every_hold_resolution_can_decide(
     entry = await EntryCRUD.get_by_id(test_db, entity_id)
     assert entry is not None
     assert entry.active is True
+    assert entry.last_reviewed_at is None  # registry evidence is not an editor's review
     released = await ReviewQueueCRUD.get_by_id(test_db, stale)
     assert released is not None
     assert (released.status, released.reviewed_by) == ("approved", "registry")

@@ -167,6 +167,7 @@ function mapEntity(entity: EntityResponse): Entry {
     active: entity.active,
     verified: entity.verified,
     last_verified: entity.freshness.last_verified ?? undefined,
+    last_reviewed_at: entity.freshness.last_reviewed_at ?? undefined,
     claim: {
       status: (claim?.status ?? "unclaimed") as Entry["claim"]["status"],
       claimed_by_user_id: claim?.claimed_by_user_id ?? undefined,
