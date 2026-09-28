@@ -130,21 +130,22 @@ export async function verifyProductionBillingRepair(
 }
 
 async function main(): Promise<void> {
-  const command = process.argv.slice(2).join(" ");
+  const [command, outputFileArg, ...extraArgs] = process.argv.slice(2);
+  const outputFile = outputFileArg?.trim() ?? "";
   if (command !== "--apply" && command !== "--verify") {
     throw new Error("Production billing repair requires --apply or --verify.");
   }
-  const apiKey = process.env.STRIPE_API_KEY?.trim() ?? "";
-  const publicOrigin = process.env.ATLAS_PUBLIC_URL?.trim() ?? "";
-  const outputFile = process.env.ATLAS_PORTAL_ID_FILE?.trim() ?? "";
   if (
+    extraArgs.length > 0 ||
     (command === "--apply" && !outputFile) ||
-    !process.env.STRIPE_WEBHOOK_SECRET?.trim()
+    (command === "--verify" && outputFileArg !== undefined)
   ) {
     throw new Error(
-      "Production billing repair requires its protected output and signing-secret settings.",
+      "Use --apply <portal-id-output-file> or --verify without extra arguments.",
     );
   }
+  const apiKey = process.env.STRIPE_API_KEY?.trim() ?? "";
+  const publicOrigin = process.env.ATLAS_PUBLIC_URL?.trim() ?? "";
   requireProductionBillingTarget(apiKey, publicOrigin);
   const stripe = new Stripe(apiKey, { apiVersion: "2026-06-24.dahlia" });
   const catalogRaw = process.env.STRIPE_ATLAS_CATALOG?.trim() ?? "";
