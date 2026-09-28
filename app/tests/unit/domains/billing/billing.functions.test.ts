@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getAuthRuntimeConfig: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   getStripeClient: vi.fn(),
+  getBillingPortalConfigurationId: vi.fn(),
   requireAtlasSessionState: vi.fn(),
 }));
 
@@ -33,6 +34,7 @@ vi.mock("@/domains/access/server/session-state", () => ({
 
 vi.mock("@/domains/billing/server/stripe-client", () => ({
   getStripeClient: mocks.getStripeClient,
+  getBillingPortalConfigurationId: mocks.getBillingPortalConfigurationId,
 }));
 
 describe("billing.functions", () => {
@@ -56,6 +58,7 @@ describe("billing.functions", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({ publicBaseUrl: "https://atlas.test" });
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
     mocks.getStripeClient.mockReturnValue(stripeClient);
+    mocks.getBillingPortalConfigurationId.mockReturnValue("bpc_atlas");
     mocks.ensureAuthReady.mockResolvedValue({ api: authApi });
   });
 
@@ -78,6 +81,7 @@ describe("billing.functions", () => {
     expect(response.error).toBeUndefined();
     expect(response.result).toEqual({ url: "https://billing.stripe.test/p/session_123" });
     expect(portalSessionsCreate).toHaveBeenCalledWith({
+      configuration: "bpc_atlas",
       customer: "cus_123",
       return_url: "https://atlas.test/account",
     });

@@ -31,7 +31,12 @@ function completeEnv(): Map<string, string> {
   for (const coupon of ATLAS_COUPONS) {
     stripeIds.set(coupon.envKey, coupon.id);
   }
-  return buildStripeEnvUpdates("sk_test_123", "whsec_123", stripeIds);
+  return buildStripeEnvUpdates(
+    "sk_test_123",
+    "whsec_123",
+    stripeIds,
+    "bpc_atlas",
+  );
 }
 
 function productSnapshots(
@@ -272,6 +277,7 @@ void describe("Stripe catalog verifier", () => {
         "missing_hosted_env:STRIPE_API_KEY",
         "missing_hosted_env:STRIPE_WEBHOOK_SECRET",
         "missing_hosted_env:STRIPE_ATLAS_CATALOG",
+        "missing_hosted_env:STRIPE_BILLING_PORTAL_CONFIGURATION",
         "missing_hosted_env:ATLAS_BILLING_ALLOWED_OFFERS",
       ],
     );
@@ -283,6 +289,10 @@ void describe("Stripe catalog verifier", () => {
         { environment: "production", key: "STRIPE_API_KEY" },
         { environment: "production", key: "STRIPE_WEBHOOK_SECRET" },
         { environment: "production", key: "STRIPE_ATLAS_CATALOG" },
+        {
+          environment: "production",
+          key: "STRIPE_BILLING_PORTAL_CONFIGURATION",
+        },
       ]).map((finding) => finding.envKey),
       ["ATLAS_BILLING_ALLOWED_OFFERS"],
     );

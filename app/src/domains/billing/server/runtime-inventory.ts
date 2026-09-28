@@ -140,10 +140,13 @@ export async function inspectRuntimeBilling(
   }
 
   const checks: RuntimeBillingCheck[] = [{ name: "Runtime key", status: "pass" }];
+  const portalId = env.STRIPE_BILLING_PORTAL_CONFIGURATION?.trim();
   const results = await Promise.allSettled([
     stripe.accounts.retrieveCurrent(),
     stripe.tax.settings.retrieve(),
-    stripe.billingPortal.configurations.list({ is_default: true, limit: 1 }),
+    portalId
+      ? stripe.billingPortal.configurations.retrieve(portalId)
+      : Promise.reject(new Error("Portal configuration not set.")),
   ]);
 
   const account = results[0];
@@ -169,13 +172,16 @@ export async function inspectRuntimeBilling(
   });
 
   const portal = results[2];
-  const configuration = portal.status === "fulfilled" ? portal.value.data[0] : undefined;
   const portalReasons: string[] = [];
-  if (portal.status === "rejected") {
+  if (!portalId) {
+    portalReasons.push("portal_configuration_missing");
+  } else if (portal.status === "rejected") {
     portalReasons.push("portal_unreadable");
-  } else if (!configuration) {
-    portalReasons.push("portal_default_missing");
   } else {
+    const configuration = portal.value;
+    if (configuration.id !== portalId || configuration.metadata?.atlas_portal !== "billing") {
+      portalReasons.push("portal_metadata_mismatch");
+    }
     if (!configuration.active) portalReasons.push("portal_inactive");
     if (!configuration.livemode) portalReasons.push("portal_not_live");
     if (!configuration.features.invoice_history.enabled) {
@@ -190,11 +196,20 @@ export async function inspectRuntimeBilling(
     if (configuration.features.subscription_cancel.mode !== "at_period_end") {
       portalReasons.push("portal_cancellation_mode_wrong");
     }
+    if (configuration.features.subscription_update?.enabled) {
+      portalReasons.push("portal_plan_change_enabled");
+    }
   }
   checks.push(
     diagnosticCheck(
       "Customer portal",
-      portal.status === "rejected" ? "unverified" : portalReasons.length === 0 ? "pass" : "fail",
+      !portalId
+        ? "fail"
+        : portal.status === "rejected"
+          ? "unverified"
+          : portalReasons.length === 0
+            ? "pass"
+            : "fail",
       portalReasons,
     ),
   );

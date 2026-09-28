@@ -36,7 +36,7 @@ export const createPortalSession = createServerFn({ method: "POST" }).handler(as
   const { getBrowserSessionHeaders } = requestHeaders;
   const { getAuthRuntimeConfig } = runtimeModule;
   const { requireAtlasSessionState } = sessionState;
-  const { getStripeClient } = stripeClient;
+  const { getStripeClient, getBillingPortalConfigurationId } = stripeClient;
   const session = await requireAtlasSessionState();
   const activeWorkspace = session.workspace.activeOrganization;
 
@@ -69,6 +69,7 @@ export const createPortalSession = createServerFn({ method: "POST" }).handler(as
 
   const stripe = getStripeClient();
   const portalSession = await stripe.billingPortal.sessions.create({
+    configuration: getBillingPortalConfigurationId(),
     customer: orgMetadata.stripeCustomerId,
     return_url: new URL("/account", runtime.publicBaseUrl).toString(),
   });

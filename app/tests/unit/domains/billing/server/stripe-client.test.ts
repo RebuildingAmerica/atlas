@@ -61,3 +61,26 @@ describe("getStripeWebhookSecret", () => {
     expect(() => getStripeWebhookSecret()).toThrow(/STRIPE_WEBHOOK_SECRET/);
   });
 });
+
+describe("getBillingPortalConfigurationId", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("returns the configured Atlas portal ID", async () => {
+    vi.stubEnv("STRIPE_BILLING_PORTAL_CONFIGURATION", "  bpc_atlas  ");
+    const { getBillingPortalConfigurationId } =
+      await import("@/domains/billing/server/stripe-client");
+    expect(getBillingPortalConfigurationId()).toBe("bpc_atlas");
+  });
+
+  it("refuses a missing or malformed portal ID", async () => {
+    const { getBillingPortalConfigurationId } =
+      await import("@/domains/billing/server/stripe-client");
+    vi.stubEnv("STRIPE_BILLING_PORTAL_CONFIGURATION", "");
+    expect(() => getBillingPortalConfigurationId()).toThrow(/STRIPE_BILLING_PORTAL_CONFIGURATION/);
+    vi.stubEnv("STRIPE_BILLING_PORTAL_CONFIGURATION", "not_a_portal");
+    expect(() => getBillingPortalConfigurationId()).toThrow(/STRIPE_BILLING_PORTAL_CONFIGURATION/);
+  });
+});

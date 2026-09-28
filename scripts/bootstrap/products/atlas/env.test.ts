@@ -72,11 +72,25 @@ void describe("Stripe bootstrap environment helpers", () => {
       ["STRIPE_COUPON_JOURNALIST", "coupon_journalist"],
     ]);
 
-    const updates = buildStripeEnvUpdates("sk_test_123", "whsec_123", ids);
+    const updates = buildStripeEnvUpdates(
+      "sk_test_123",
+      "whsec_123",
+      ids,
+      "bpc_atlas",
+    );
 
     assert.deepEqual(
       [...updates.keys()],
-      ["STRIPE_API_KEY", "STRIPE_WEBHOOK_SECRET", STRIPE_ATLAS_CATALOG_ENV_KEY],
+      [
+        "STRIPE_API_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        STRIPE_ATLAS_CATALOG_ENV_KEY,
+        "STRIPE_BILLING_PORTAL_CONFIGURATION",
+      ],
+    );
+    assert.equal(
+      updates.get("STRIPE_BILLING_PORTAL_CONFIGURATION"),
+      "bpc_atlas",
     );
     assert.deepEqual(
       expandStripeCatalogEnv(updates).get("STRIPE_PRICE_ATLAS_PRO_MONTHLY"),
@@ -93,15 +107,16 @@ void describe("Stripe bootstrap environment helpers", () => {
       ["STRIPE_API_KEY", "sk_test_123"],
       ["STRIPE_WEBHOOK_SECRET", "whsec_123"],
       [STRIPE_ATLAS_CATALOG_ENV_KEY, "{}"],
+      ["STRIPE_BILLING_PORTAL_CONFIGURATION", "bpc_atlas"],
     ]);
 
     assert.deepEqual(
       buildStripeVercelEnvVars(env, "staging").map((item) => item.environments),
-      [["preview"], ["preview"], ["preview"]],
+      [["preview"], ["preview"], ["preview"], ["preview"]],
     );
     assert.deepEqual(
       buildStripeVercelEnvVars(env, "prod").map((item) => item.environments),
-      [["production"], ["production"], ["production"]],
+      [["production"], ["production"], ["production"], ["production"]],
     );
     assert.deepEqual(buildStripeVercelEnvVars(env, "local"), []);
   });

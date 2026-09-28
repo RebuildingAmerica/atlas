@@ -46,17 +46,24 @@ grant shared seats, SSO, or SCIM.
 
 ## Runtime keys
 
-Every local, staging, and production runtime needs the same three Stripe keys.
-Values are mode-specific; never copy test catalog values into live mode or live
-catalog values into test mode.
+Every local, staging, and production runtime needs the same four Stripe
+settings. Values are mode-specific; never copy test catalog values into live
+mode or live catalog values into test mode.
 
 ```env
 STRIPE_API_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_ATLAS_CATALOG=
+STRIPE_BILLING_PORTAL_CONFIGURATION=
 ```
 
-A fourth variable decides whether Atlas sells at all:
+The portal setting is the `bpc_...` ID of Atlas's own configuration. Bootstrap
+creates or updates one configuration per app origin and syncs its ID. Local and
+staging can share a Stripe test account without overwriting each other's portal
+links. Atlas uses the ID when a customer opens billing; it does not depend on
+another product's account-default portal.
+
+Two further variables decide whether Atlas sells at all:
 
 ```env
 ATLAS_BILLING_CHECKOUT_ENABLED=false
@@ -88,18 +95,20 @@ falls back to `false` when it is unset. Set that variable to `true` only after
 
 The production deploy preserves the Vercel Stripe variables provisioned by
 `pnpm setup:prod`; when checkout is enabled, it checks that the key, catalog,
-webhook secret, and offer allowlist are named in Vercel Production **before**
-deploying the API or PDS. A missing setting stops the release without a partial
-deployment. This is a presence check, not validation of values or payment. The
-repository's test-mode Stripe secret belongs to CI and is not copied into the
-production runtime. The deploy passes its checkout flag with the deployment,
-while the catalog, key, signing secret, and offer allowlist live in Vercel.
+webhook secret, Atlas portal configuration, and offer allowlist are named in
+Vercel Production **before** deploying the API or PDS. A missing setting stops
+the release without a partial deployment. This is a presence check, not
+validation of values or payment. The repository's test-mode Stripe secret
+belongs to CI and is not copied into the production runtime. The deploy passes
+its checkout flag with the deployment, while the catalog, key, signing secret,
+portal ID, and offer allowlist live in Vercel.
 
 The cutover requires these settings; it does not certify the payment lifecycle:
 
-1. Confirm `STRIPE_API_KEY`, `STRIPE_ATLAS_CATALOG`, and `STRIPE_WEBHOOK_SECRET`
-   are present in Vercel Production after live bootstrap. Confirm their values
-   belong to the same live account and deployed webhook.
+1. Confirm `STRIPE_API_KEY`, `STRIPE_ATLAS_CATALOG`, `STRIPE_WEBHOOK_SECRET`,
+   and `STRIPE_BILLING_PORTAL_CONFIGURATION` are present in Vercel Production
+   after live bootstrap. Confirm their values belong to the same live account
+   and deployed webhook.
 2. Set `ATLAS_BILLING_ALLOWED_OFFERS` in the production app runtime to only the
    offers whose acceptance rows have passed. Confirm the deployed pricing page
    enables exactly those offers.
@@ -244,11 +253,11 @@ If you do not have the live key yet:
    - **Read:** Charges, PaymentIntents, Invoices, Invoice Payments,
      Subscriptions, Refunds, and Billing Portal configuration.
    - **Write:** Products, Prices, Coupons, Customers, Checkout Sessions,
-     Subscriptions, Refunds, Billing Portal sessions, and Webhook Endpoints.
-     Confirm the exact permissions available for the installed Stripe API
-     version in the account's restricted-key UI. A key that can create Checkout
-     Sessions but cannot read invoice payments or create refunds is
-     insufficient.
+     Subscriptions, Refunds, Billing Portal configurations and sessions, and
+     Webhook Endpoints. Confirm the exact permissions available for the
+     installed Stripe API version in the account's restricted-key UI. A key that
+     can create Checkout Sessions but cannot read invoice payments or create
+     refunds is insufficient.
 7. Reveal the key once, copy the `rk_live_...` value, and keep it out of chat
    and committed files.
 8. Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes`.
@@ -259,8 +268,14 @@ permission, bootstrap can continue after Stripe returns the account ID and you
 confirm the ID belongs to The Rebuilding America Project.
 
 The command writes `.env.production`, creates or verifies the Stripe live-mode
-catalog, creates or verifies the production webhook endpoint, and syncs the
-three runtime Stripe keys into the linked Vercel Production environment.
+catalog, creates or verifies the production webhook endpoint, configures an
+Atlas-specific customer portal, and syncs the four runtime Stripe settings into
+the linked Vercel Production environment. The portal enables invoice history,
+payment-method updates, and cancellation at the end of the paid term. It also
+disables portal plan changes so a customer cannot enter an unreviewed offer.
+Bootstrap updates the existing billing webhook's event subscriptions when
+needed; it does not prove that the deployed signing secret belongs to that
+endpoint.
 
 The script checks test/live mode before mutating Stripe and stops when a key
 does not match the selected target.
@@ -292,13 +307,13 @@ STRIPE_API_KEY=rk_live_replace_me pnpm stripe:verify:prod
 Run only the target you just bootstrapped. The verifier checks required env
 keys, product IDs, price amounts and intervals, product-scoped coupons, and
 inactive or missing Stripe objects without printing secrets. For staging and
-production it also checks that Vercel has the three hosted Stripe runtime keys
-for the requested target and, for production, the offer allowlist variable. It
-checks that the Stripe billing webhook endpoint exists for `ATLAS_PUBLIC_URL`,
-is enabled for the canonical billing events, and carries the Atlas billing
-webhook metadata. Env-key presence cannot prove the deployed allowlist value,
-signing-secret match, runtime key permissions, tax setup, or successful payment
-and refund. Record those separately before sales open.
+production it also checks that Vercel has the four hosted Stripe runtime
+settings for the requested target and, for production, the offer allowlist
+variable. It checks that the Stripe billing webhook endpoint exists for
+`ATLAS_PUBLIC_URL`, is enabled for the canonical billing events, and carries the
+Atlas billing webhook metadata. Env-key presence cannot prove the deployed
+allowlist value, signing-secret match, runtime key permissions, tax setup, or
+successful payment and refund. Record those separately before sales open.
 
 If you want to inspect Vercel's encrypted env metadata directly:
 
@@ -320,13 +335,13 @@ It also calls a protected read-only inventory inside the deployed app, where the
 runtime Stripe key is available. That check requires the deployed revision to
 match the requested release tag and reports key mode, charge capability, whether
 catalog IDs resolve to active objects in the same account, required webhook
-endpoint metadata, Tax status, and default customer-portal controls. Fixed
-diagnostic codes identify failed portal controls and webhook settings, including
-each missing required event. The CI renderer accepts only an explicit allowlist
-of those codes; no key, catalog ID, endpoint URL, provider error, or signing
-secret is returned. The job then tries to pass readable values in memory to the
-fuller Stripe inventory of amounts, terms, coupons, and endpoint metadata.
-Vercel
+endpoint metadata, Tax status, and the configured Atlas customer-portal
+controls. Fixed diagnostic codes identify failed portal controls and webhook
+settings, including each missing required event. The CI renderer accepts only an
+explicit allowlist of those codes; no key, catalog ID, endpoint URL, provider
+error, or signing secret is returned. The job then tries to pass readable values
+in memory to the fuller Stripe inventory of amounts, terms, coupons, and
+endpoint metadata. Vercel
 [sensitive variables](https://vercel.com/docs/environment-variables/manage-across-environments)
 are non-readable once created; when the CLI cannot supply one, the report says
 **configured by name, runtime value unverified**, not absent. Its GitHub job
@@ -344,23 +359,23 @@ received and later lost paid access correctly. Record those separate acceptance
 results against the same release before opening an offer.
 
 For a failed **Customer portal** row, use the diagnostic codes to inspect the
-default live-mode billing portal configuration in the same account as the
-runtime key. The inventory requires it to be active, with invoice history,
-payment-method update, and subscription cancellation enabled; cancellation must
-take effect at the end of the current period. For a failed **Webhook endpoint
-metadata** row, use the diagnostic codes to inspect the enabled endpoint at
-`<ATLAS_PUBLIC_URL>/api/stripe/webhook` in that account and compare its
-subscribed events with the eight events in the Local development section. The
-inventory also requires a configured `whsec_` signing secret, but cannot
-establish that it belongs to this endpoint. Inspect existing live objects before
-provisioning replacements, correct the mismatch, and rerun the same release's
-billing-readiness workflow. A passing metadata row still needs an authentic
-signed delivery and retry rehearsal.
+Atlas portal configuration ID in the same live account as the runtime key. The
+inventory requires it to be active, with invoice history, payment-method update,
+and subscription cancellation enabled, with portal plan changes disabled;
+cancellation must take effect at the end of the current period. For a failed
+**Webhook endpoint metadata** row, use the diagnostic codes to inspect the
+enabled endpoint at `<ATLAS_PUBLIC_URL>/api/stripe/webhook` in that account and
+compare its subscribed events with the eight events in the Local development
+section. The inventory also requires a configured `whsec_` signing secret, but
+cannot establish that it belongs to this endpoint. Inspect existing live objects
+before provisioning replacements, correct the mismatch, and rerun the same
+release's billing-readiness workflow. A passing metadata row still needs an
+authentic signed delivery and retry rehearsal.
 
 The expected state is:
 
-- `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_ATLAS_CATALOG` are
-  present for the target environment.
+- `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_ATLAS_CATALOG`, and
+  `STRIPE_BILLING_PORTAL_CONFIGURATION` are present for the target environment.
 - `ATLAS_BILLING_ALLOWED_OFFERS` is present in production and contains only
   acceptance-tested offers; the deploy's checkout flag matches the release
   decision.

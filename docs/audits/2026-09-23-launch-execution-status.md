@@ -38,10 +38,10 @@ in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
 
-## Unreleased Las Vegas editorial intake
+## Staged Las Vegas editorial intake
 
-The local release candidate adds a guarded organization-intake form to the
-discovery review page. An editor enters an organization name, description,
+The current `main` release candidate adds a guarded organization-intake form to
+the discovery review page. An editor enters an organization name, description,
 geographic scope, issue areas, an official source with the claim it supports,
 and an official next step. The API checks HTTPS sources, a shared official site,
 taxonomy, place, exact-name and linked-source duplicates; it stores the profile
@@ -67,7 +67,31 @@ approval guard lacked a regression case. Two additional cases passed and
 appended coverage on the unchanged application code, bringing combined API
 statement and branch coverage to 100%. Python formatting, Ruff, and mypy passed.
 The complete API coverage command was not rerun in one invocation after those
-final two tests. No hosted editor or visitor journey was verified.
+final two tests.
+[Staging run 36362632652](https://github.com/RebuildingAmerica/atlas/actions/runs/36362632652)
+passed CI, API deployment, and hosted checks on commit `2743c8c6`. No hosted
+editor or visitor journey was verified, and this intake is not in production.
+
+## Billing portal setup in the next release candidate
+
+Stripe's portal-session API uses an account-default configuration when Atlas
+does not specify one. The v19 live account has no default configuration, so a
+buyer could be charged without a working self-service cancellation or invoice
+path. The current billing change makes bootstrap create or reuse a tagged
+Atlas-specific configuration, syncs its ID to the app, opens portal sessions
+with that ID, and checks that exact configuration for live mode, invoice
+history, payment-method updates, and end-of-term cancellation. Portal plan
+changes are disabled so customers cannot enter an unreviewed offer. Production
+preflight now requires the setting whenever checkout is enabled. The existing
+bootstrap webhook path can update an endpoint to the eight canonical events.
+The app passed 601 test files and 3,939 tests with 100% statement, branch,
+function, and line coverage. Focused bootstrap and billing preflight tests,
+lint, and app TypeScript checks passed. A fresh worktree dependency install and
+production build were not completed because the host ran out of disk space;
+release CI remains necessary. No live Stripe object has been changed or verified
+by this branch. The portal, webhook delivery, offer allowlist, genuine buyer
+payment, entitlement, cancellation, and refund gates remain open. Checkout
+remains closed.
 
 ## Verified September 27 production baseline
 

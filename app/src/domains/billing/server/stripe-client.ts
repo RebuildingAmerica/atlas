@@ -31,3 +31,12 @@ export function getStripeWebhookSecret(): string {
   }
   return secret;
 }
+
+/** The portal used for Atlas purchases, independent of Stripe's account default. */
+export function getBillingPortalConfigurationId(): string {
+  const id = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION?.trim();
+  if (!id?.startsWith("bpc_")) {
+    throw new Error("STRIPE_BILLING_PORTAL_CONFIGURATION is required for billing.");
+  }
+  return id;
+}

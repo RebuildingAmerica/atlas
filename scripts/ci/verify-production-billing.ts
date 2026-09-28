@@ -33,6 +33,7 @@ const runtimeKeys = [
   "STRIPE_API_KEY",
   "STRIPE_ATLAS_CATALOG",
   "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_BILLING_PORTAL_CONFIGURATION",
   "ATLAS_PUBLIC_URL",
   "ATLAS_BILLING_ALLOWED_OFFERS",
 ] as const;
@@ -163,7 +164,7 @@ function appendUnreadableRuntimeChecks(checks: Check[]): Check[] {
     "Charge-enabled account",
     "Catalog and webhook configuration",
     "Stripe Tax settings",
-    "Default customer portal",
+    "Atlas customer portal",
   ]) {
     checks.push({
       name,
@@ -298,36 +299,56 @@ async function inspect(): Promise<Check[]> {
     });
   }
 
+  checks.push(
+    await assessAtlasPortal(
+      stripe,
+      env.get("STRIPE_BILLING_PORTAL_CONFIGURATION"),
+    ),
+  );
+
+  return appendManualProof(checks);
+}
+
+export async function assessAtlasPortal(
+  stripe: Stripe,
+  configurationId?: string,
+): Promise<Check> {
+  if (!configurationId?.trim()) {
+    return {
+      name: "Atlas customer portal",
+      status: "fail",
+      detail:
+        "The Atlas portal configuration ID is missing from the runtime settings.",
+    };
+  }
   try {
-    const configurations = await stripe.billingPortal.configurations.list({
-      is_default: true,
-      limit: 1,
-    });
-    const portal = configurations.data[0];
-    const usable = Boolean(
-      portal?.active &&
+    const portal = await stripe.billingPortal.configurations.retrieve(
+      configurationId.trim(),
+    );
+    const usable =
+      portal.id === configurationId.trim() &&
+      portal.metadata?.atlas_portal === "billing" &&
+      portal.active &&
       portal.livemode &&
       portal.features.invoice_history.enabled &&
       portal.features.payment_method_update.enabled &&
       portal.features.subscription_cancel.enabled &&
-      portal.features.subscription_cancel.mode === "at_period_end",
-    );
-    checks.push({
-      name: "Default customer portal",
+      portal.features.subscription_cancel.mode === "at_period_end" &&
+      !portal.features.subscription_update?.enabled;
+    return {
+      name: "Atlas customer portal",
       status: usable ? "pass" : "fail",
       detail: usable
-        ? "Live default portal permits invoices, payment-method changes, and end-of-term cancellation."
-        : "The live default portal lacks a required customer exit or account-management control.",
-    });
+        ? "The live Atlas portal permits invoices, payment-method changes, and end-of-term cancellation."
+        : "The Atlas portal lacks a required customer exit or account-management control.",
+    };
   } catch (error) {
-    checks.push({
-      name: "Default customer portal",
+    return {
+      name: "Atlas customer portal",
       status: "unverified",
       detail: providerFailure(error),
-    });
+    };
   }
-
-  return appendManualProof(checks);
 }
 
 async function main(): Promise<void> {

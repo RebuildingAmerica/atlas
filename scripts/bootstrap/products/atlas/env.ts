@@ -6,11 +6,14 @@ export type StripeBootstrapTarget = "local" | "staging" | "prod";
 export type StripeRuntimeMode = "test" | "live";
 
 export const STRIPE_ATLAS_CATALOG_ENV_KEY = "STRIPE_ATLAS_CATALOG";
+export const STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY =
+  "STRIPE_BILLING_PORTAL_CONFIGURATION";
 
 const STRIPE_RUNTIME_ENV_KEYS = [
   "STRIPE_API_KEY",
   "STRIPE_WEBHOOK_SECRET",
   STRIPE_ATLAS_CATALOG_ENV_KEY,
+  STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY,
 ] as const;
 
 export const STRIPE_PRODUCT_ENV_KEYS = ATLAS_PRODUCTS.flatMap((product) => [
@@ -95,6 +98,7 @@ export function buildStripeEnvUpdates(
   apiKey: string,
   webhookSecret: string | null,
   stripeIds: Map<string, string>,
+  portalConfigurationId?: string | null,
 ): Map<string, string> {
   const updates = new Map<string, string>();
   updates.set("STRIPE_API_KEY", apiKey);
@@ -105,6 +109,12 @@ export function buildStripeEnvUpdates(
     STRIPE_ATLAS_CATALOG_ENV_KEY,
     buildStripeCatalogEnvValue(stripeIds),
   );
+  if (portalConfigurationId) {
+    updates.set(
+      STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY,
+      portalConfigurationId,
+    );
+  }
   return updates;
 }
 

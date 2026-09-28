@@ -26,6 +26,11 @@ void test("only Production names are reported, without encrypted values", () => 
     result.find((item) => item.name === "STRIPE_ATLAS_CATALOG")?.present,
     false,
   );
+  assert.equal(
+    result.find((item) => item.name === "STRIPE_BILLING_PORTAL_CONFIGURATION")
+      ?.present,
+    false,
+  );
   assert.doesNotMatch(JSON.stringify(result), /DO_NOT_PRINT|SECRET_CATALOG/);
 });
 

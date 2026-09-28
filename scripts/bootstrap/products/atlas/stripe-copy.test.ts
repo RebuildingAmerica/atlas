@@ -61,7 +61,7 @@ void describe("Stripe bootstrap account review", () => {
         { environment: "preview", key: "STRIPE_ATLAS_CATALOG" },
       ]),
       [
-        "Vercel Production Stripe env is missing STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_ATLAS_CATALOG.",
+        "Vercel Production Stripe env is missing STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_ATLAS_CATALOG, STRIPE_BILLING_PORTAL_CONFIGURATION.",
         "Vercel Preview Stripe env does not configure Production; run production setup to sync Production explicitly.",
       ],
     );

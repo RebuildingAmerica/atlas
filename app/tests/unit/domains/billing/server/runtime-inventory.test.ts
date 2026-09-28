@@ -9,6 +9,7 @@ describe("read-only billing inventory in the deployed runtime", () => {
       chargesEnabled?: boolean;
       taxStatus?: "active" | "pending";
       portalCancel?: boolean;
+      portalPlanChange?: boolean;
       wrongPriceParent?: boolean;
       webhookActive?: boolean;
     } = {},
@@ -26,23 +27,21 @@ describe("read-only billing inventory in the deployed runtime", () => {
       },
       billingPortal: {
         configurations: {
-          list: () =>
+          retrieve: () =>
             Promise.resolve({
-              data: [
-                {
-                  active: true,
-                  livemode: true,
-                  is_default: true,
-                  features: {
-                    invoice_history: { enabled: true },
-                    payment_method_update: { enabled: true },
-                    subscription_cancel: {
-                      enabled: overrides.portalCancel ?? true,
-                      mode: "at_period_end",
-                    },
-                  },
+              id: "bpc_atlas",
+              metadata: { atlas_portal: "billing" },
+              active: true,
+              livemode: true,
+              features: {
+                invoice_history: { enabled: true },
+                payment_method_update: { enabled: true },
+                subscription_cancel: {
+                  enabled: overrides.portalCancel ?? true,
+                  mode: "at_period_end",
                 },
-              ],
+                subscription_update: { enabled: overrides.portalPlanChange ?? false },
+              },
             }),
         },
       },
@@ -98,6 +97,7 @@ describe("read-only billing inventory in the deployed runtime", () => {
     STRIPE_API_KEY: "rk_live_example_credential", // pragma: allowlist secret
     STRIPE_ATLAS_CATALOG: createStripeAtlasCatalogFixture(),
     STRIPE_WEBHOOK_SECRET: "whsec_example_credential", // pragma: allowlist secret
+    STRIPE_BILLING_PORTAL_CONFIGURATION: "bpc_atlas",
     ATLAS_PUBLIC_URL: "https://atlas.example.test",
   };
 
@@ -127,22 +127,29 @@ describe("read-only billing inventory in the deployed runtime", () => {
     });
   });
 
+  test("rejects portal plan changes outside Atlas checkout", async () => {
+    const checks = await inspectRuntimeBilling(provider({ portalPlanChange: true }), runtime);
+    expect(checks).toContainEqual({
+      name: "Customer portal",
+      status: "fail",
+      reasonCodes: ["portal_plan_change_enabled"],
+    });
+  });
+
   test("reports every failed portal control and webhook setting without provider values", async () => {
     const stripe = provider();
-    stripe.billingPortal.configurations.list = (() =>
+    stripe.billingPortal.configurations.retrieve = (() =>
       Promise.resolve({
-        data: [
-          {
-            active: false,
-            livemode: false,
-            features: {
-              invoice_history: { enabled: false },
-              payment_method_update: { enabled: false },
-              subscription_cancel: { enabled: false, mode: "immediately" },
-            },
-          },
-        ],
-      })) as typeof stripe.billingPortal.configurations.list;
+        id: "bpc_atlas",
+        metadata: { atlas_portal: "billing" },
+        active: false,
+        livemode: false,
+        features: {
+          invoice_history: { enabled: false },
+          payment_method_update: { enabled: false },
+          subscription_cancel: { enabled: false, mode: "immediately" },
+        },
+      })) as unknown as typeof stripe.billingPortal.configurations.retrieve;
     stripe.webhookEndpoints.list = (() =>
       Promise.resolve({
         data: [
@@ -188,27 +195,51 @@ describe("read-only billing inventory in the deployed runtime", () => {
     expect(JSON.stringify(checks)).not.toContain("whsec_example_credential");
   });
 
-  test("identifies missing default portal and billing webhook separately", async () => {
+  test("identifies missing Atlas portal configuration and billing webhook separately", async () => {
     const stripe = provider();
-    stripe.billingPortal.configurations.list = (() =>
-      Promise.resolve({ data: [] })) as unknown as typeof stripe.billingPortal.configurations.list;
     stripe.webhookEndpoints.list = (() =>
       Promise.resolve({
         data: [],
         has_more: false,
       })) as unknown as typeof stripe.webhookEndpoints.list;
 
-    const checks = await inspectRuntimeBilling(stripe, runtime);
+    const checks = await inspectRuntimeBilling(stripe, {
+      ...runtime,
+      STRIPE_BILLING_PORTAL_CONFIGURATION: "",
+    });
 
     expect(checks).toContainEqual({
       name: "Customer portal",
       status: "fail",
-      reasonCodes: ["portal_default_missing"],
+      reasonCodes: ["portal_configuration_missing"],
     });
     expect(checks).toContainEqual({
       name: "Webhook endpoint metadata",
       status: "fail",
       reasonCodes: ["webhook_missing"],
+    });
+  });
+
+  test("rejects a portal configuration that belongs to another product", async () => {
+    const stripe = provider();
+    stripe.billingPortal.configurations.retrieve = (() =>
+      Promise.resolve({
+        id: "bpc_other",
+        metadata: { atlas_portal: "other" },
+        active: true,
+        livemode: true,
+        features: {
+          invoice_history: { enabled: true },
+          payment_method_update: { enabled: true },
+          subscription_cancel: { enabled: true, mode: "at_period_end" },
+        },
+      })) as unknown as typeof stripe.billingPortal.configurations.retrieve;
+
+    const checks = await inspectRuntimeBilling(stripe, runtime);
+    expect(checks).toContainEqual({
+      name: "Customer portal",
+      status: "fail",
+      reasonCodes: ["portal_metadata_mismatch"],
     });
   });
 
@@ -305,10 +336,8 @@ describe("read-only billing inventory in the deployed runtime", () => {
 
     const stripe = provider();
     stripe.tax.settings.retrieve = () => Promise.reject(new Error("private tax failure"));
-    stripe.billingPortal.configurations.list = (() =>
-      Promise.reject(
-        new Error("private portal failure"),
-      )) as typeof stripe.billingPortal.configurations.list;
+    stripe.billingPortal.configurations.retrieve = () =>
+      Promise.reject(new Error("private portal failure"));
     const unreadable = await inspectRuntimeBilling(stripe, runtime);
     expect(unreadable).toContainEqual({ name: "Stripe Tax", status: "unverified" });
     expect(unreadable).toContainEqual({

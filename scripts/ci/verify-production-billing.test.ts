@@ -1,10 +1,45 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type Stripe from "stripe";
 import {
+  assessAtlasPortal,
   assessOfferGate,
   assessUnreadableRuntimeKey,
   renderReport,
 } from "./verify-production-billing.js";
+
+void test("portal inventory checks the exact Atlas configuration used by sessions", async () => {
+  const requested: string[] = [];
+  let planChangesEnabled = false;
+  const stripe = {
+    billingPortal: {
+      configurations: {
+        retrieve: async (id: string) => {
+          requested.push(id);
+          return {
+            id,
+            active: true,
+            livemode: true,
+            metadata: { atlas_portal: "billing" },
+            features: {
+              invoice_history: { enabled: true },
+              payment_method_update: { enabled: true },
+              subscription_cancel: { enabled: true, mode: "at_period_end" },
+              subscription_update: { enabled: planChangesEnabled },
+            },
+          };
+        },
+      },
+    },
+  } as unknown as Stripe;
+
+  const check = await assessAtlasPortal(stripe, "bpc_atlas");
+  assert.deepEqual(requested, ["bpc_atlas"]);
+  assert.equal(check.status, "pass");
+  planChangesEnabled = true;
+  assert.equal((await assessAtlasPortal(stripe, "bpc_atlas")).status, "fail");
+  assert.equal((await assessAtlasPortal(stripe, "")).status, "fail");
+});
 
 void test("the inventory keeps new sales closed until an exact offer allowlist exists", () => {
   assert.equal(assessOfferGate("false", "atlas_pro:monthly").status, "fail");

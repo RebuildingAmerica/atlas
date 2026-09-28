@@ -90,7 +90,7 @@ export function stripeLiveRestrictedKeySetupSteps(): string[] {
     "Name the key Atlas Production Billing.",
     "Set permissions:",
     "Read: Accounts v2 (Basic Business Contact Information), Charges, PaymentIntents, Invoices, Invoice Payments, Subscriptions, Refunds, Billing Portal configuration.",
-    "Write: Products, Prices, Coupons, Customers, Checkout Sessions, Subscriptions, Refunds, Billing Portal sessions, Webhook Endpoints.",
+    "Write: Products, Prices, Coupons, Customers, Checkout Sessions, Subscriptions, Refunds, Billing Portal configurations and sessions, Webhook Endpoints.",
     "Confirm the exact restricted-key permission names shown by your Stripe account. Checkout access alone cannot operate cancellation and refunds.",
     "Reveal the key once, copy the rk_live_ value, and keep it out of chat and committed files.",
     "Run `STRIPE_API_KEY=rk_live_... pnpm setup:prod --yes` from this repo.",

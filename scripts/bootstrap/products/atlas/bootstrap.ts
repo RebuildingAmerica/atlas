@@ -2,7 +2,7 @@ import path from "node:path";
 import type Stripe from "stripe";
 import { log, note, password } from "@clack/prompts";
 import pc from "picocolors";
-import { mergeEnvFile } from "../../lib/env-file.js";
+import { mergeEnvFile, parseEnvFile } from "../../lib/env-file.js";
 import { detectAndLink, getVercelScope } from "../../lib/vercel.js";
 import { fetchExistingKeys, syncEnvVars } from "../../lib/vercel-env.js";
 import { logSubline, promptOrExit } from "../../lib/ui.js";
@@ -24,6 +24,7 @@ import {
   buildStripeVercelEnvVars,
   resolveStripeEnvFileTargets,
   resolveStripeMode,
+  STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY,
   validateStripeApiKeyMode,
   type StripeBootstrapTarget,
 } from "./env.js";
@@ -42,6 +43,7 @@ import {
   stripeDoctorFollowUp,
 } from "./stripe-copy.js";
 import { resolveWebhookSecret } from "./stripe-webhook-secret.js";
+import { ensureBillingPortalConfiguration } from "./portal.js";
 
 /**
  * Phase 6: Stripe product sync orchestrator.
@@ -231,7 +233,36 @@ export async function runProductPhase(
     allSucceeded = false;
   }
 
-  const envUpdates = buildStripeEnvUpdates(apiKey, webhookSecret, stripeIds);
+  const targetEnvFile = envFileTargets[0];
+  if (!targetEnvFile) throw new Error("Missing Stripe environment target.");
+  const targetEnv = parseEnvFile(targetEnvFile);
+  const publicOrigin = targetEnv.get("ATLAS_PUBLIC_URL")?.trim();
+  let portalConfigurationId: string | null = null;
+  try {
+    if (!publicOrigin && target !== "local") {
+      throw new Error("ATLAS_PUBLIC_URL is required for the customer portal.");
+    }
+    const portal = await ensureBillingPortalConfiguration(
+      stripe,
+      publicOrigin || "https://atlas.localhost",
+      targetEnv.get(STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY),
+    );
+    portalConfigurationId = portal.id;
+    logSubline(`Atlas billing portal: ${pc.dim(portal.id)}`);
+  } catch {
+    log.error("Failed to configure the Atlas billing portal.");
+    followUpItems.push(
+      "Check Stripe portal permissions and the Atlas public URL, then re-run bootstrap.",
+    );
+    allSucceeded = false;
+  }
+
+  const envUpdates = buildStripeEnvUpdates(
+    apiKey,
+    webhookSecret,
+    stripeIds,
+    portalConfigurationId,
+  );
   for (const envFile of envFileTargets) {
     mergeEnvFile(envFile, envUpdates);
     log.success(

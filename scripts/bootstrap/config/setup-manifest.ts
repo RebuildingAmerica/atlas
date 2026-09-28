@@ -171,6 +171,22 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
     instructions:
       "Bootstrap generates this from the canonical Atlas products, prices, and coupons.",
   },
+  {
+    key: "STRIPE_BILLING_PORTAL_CONFIGURATION",
+    label: "Atlas Stripe customer portal configuration",
+    targets: ["local", "staging", "prod"],
+    required: true,
+    source: "bootstrap",
+    destinations: [
+      ".env",
+      ".env.staging",
+      ".env.production",
+      "app/.env.local",
+      "Vercel",
+    ],
+    instructions:
+      "Bootstrap creates or updates an Atlas-specific portal with invoices, payment-method updates, and end-of-term cancellation.",
+  },
 ];
 
 export function setupCommandForTarget(target: SetupValueTarget): string {

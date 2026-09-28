@@ -12,13 +12,15 @@ const CHECK_NAMES = [
 const STATUSES = new Set(["pass", "fail", "unverified"]);
 const PORTAL_REASONS = new Set([
   "portal_unreadable",
-  "portal_default_missing",
+  "portal_configuration_missing",
+  "portal_metadata_mismatch",
   "portal_inactive",
   "portal_not_live",
   "portal_invoice_history_disabled",
   "portal_payment_update_disabled",
   "portal_cancellation_disabled",
   "portal_cancellation_mode_wrong",
+  "portal_plan_change_enabled",
 ]);
 const WEBHOOK_EVENTS = [
   "checkout.session.completed",

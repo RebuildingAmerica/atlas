@@ -16,6 +16,7 @@ const required = [
   production("STRIPE_API_KEY"),
   production("STRIPE_ATLAS_CATALOG"),
   production("STRIPE_WEBHOOK_SECRET"),
+  production("STRIPE_BILLING_PORTAL_CONFIGURATION"),
   production("ATLAS_BILLING_ALLOWED_OFFERS"),
 ];
 
@@ -30,6 +31,16 @@ test("enabled production billing preflight rejects an absent offer allowlist", (
   assert.equal(result.status, 1);
   assert.match(result.stderr, /ATLAS_BILLING_ALLOWED_OFFERS/);
   assert.doesNotMatch(result.stderr, /rk_live_|sk_live_|whsec_/);
+});
+
+test("enabled production billing preflight requires an Atlas portal", () => {
+  const result = run(
+    required.filter(
+      (item) => item.key !== "STRIPE_BILLING_PORTAL_CONFIGURATION",
+    ),
+  );
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /STRIPE_BILLING_PORTAL_CONFIGURATION/);
 });
 
 test("preview-only settings cannot satisfy production billing preflight", () => {
