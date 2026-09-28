@@ -39,30 +39,21 @@ afterEach(() => {
 describe("CorrectionInboxPage", () => {
   const oneReport = {
     createdAt: "2026-09-27T17:00:00Z",
-    entityId: "entry-1",
-    entityName: "Las Vegas Civic Group",
     entitySlug: "las-vegas-civic-group",
     entityType: "organization",
     id: "report-1",
     note: "Private correction",
     reason: "incorrect",
+    sourceUrl: null,
+    targetId: "entry-1",
+    targetName: "Las Vegas Civic Group",
+    targetType: "entity",
   };
 
   it("loads private reports and refreshes after a disposition", async () => {
     mocks.listCorrectionReports
       .mockResolvedValueOnce({
-        items: [
-          {
-            createdAt: "2026-09-27T17:00:00Z",
-            entityId: "entry-1",
-            entityName: "Las Vegas Civic Group",
-            entitySlug: "las-vegas-civic-group",
-            entityType: "organization",
-            id: "report-1",
-            note: "Private correction",
-            reason: "incorrect",
-          },
-        ],
+        items: [oneReport],
         total: 1,
       })
       .mockResolvedValue({ items: [], total: 0 });
@@ -74,27 +65,16 @@ describe("CorrectionInboxPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Resolve Las Vegas Civic Group" }));
     await waitFor(() => {
       expect(mocks.decideCorrectionReport.mock.calls[0]?.[0]).toEqual({
-        data: { decision: "resolve", reportId: "report-1" },
+        data: { decision: "resolve", reportId: "report-1", targetType: "entity" },
       });
       expect(mocks.listCorrectionReports).toHaveBeenCalledTimes(2);
     });
-    expect(await screen.findByText("No open profile reports.")).toBeInTheDocument();
+    expect(await screen.findByText("No open visitor reports.")).toBeInTheDocument();
   });
 
   it("keeps a report visible when its decision fails", async () => {
     mocks.listCorrectionReports.mockResolvedValue({
-      items: [
-        {
-          createdAt: "2026-09-27T17:00:00Z",
-          entityId: "entry-1",
-          entityName: "Las Vegas Civic Group",
-          entitySlug: null,
-          entityType: "organization",
-          id: "report-1",
-          note: "Private correction",
-          reason: "incorrect",
-        },
-      ],
+      items: [{ ...oneReport, entitySlug: null }],
       total: 1,
     });
     mocks.decideCorrectionReport.mockRejectedValue(new Error("API down"));
@@ -103,6 +83,33 @@ describe("CorrectionInboxPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dismiss Las Vegas Civic Group" }));
     expect(await screen.findByText("Decision could not be saved.")).toBeInTheDocument();
     expect(screen.getByText("Private correction")).toBeInTheDocument();
+  });
+
+  it("closes a source report through the source decision path", async () => {
+    mocks.listCorrectionReports.mockResolvedValue({
+      items: [
+        {
+          ...oneReport,
+          entitySlug: null,
+          entityType: null,
+          id: "source-report-1",
+          note: "Source is stale",
+          sourceUrl: "https://example.org/source",
+          targetId: "source-1",
+          targetName: "Official source",
+          targetType: "source",
+        },
+      ],
+      total: 1,
+    });
+    mocks.decideCorrectionReport.mockResolvedValue({ id: "source-report-1", status: "resolved" });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Resolve Official source" }));
+    await waitFor(() => {
+      expect(mocks.decideCorrectionReport.mock.calls[0]?.[0]).toEqual({
+        data: { decision: "resolve", reportId: "source-report-1", targetType: "source" },
+      });
+    });
   });
 
   it("returns to the previous page when its last open report closes", async () => {
@@ -123,8 +130,8 @@ describe("CorrectionInboxPage", () => {
   it("shows a private queue load failure without an empty success state", async () => {
     mocks.listCorrectionReports.mockRejectedValue(new Error("API down"));
     renderPage();
-    expect(await screen.findByText("Profile reports could not load.")).toBeInTheDocument();
-    expect(screen.queryByText("No open profile reports.")).not.toBeInTheDocument();
+    expect(await screen.findByText("Visitor reports could not load.")).toBeInTheDocument();
+    expect(screen.queryByText("No open visitor reports.")).not.toBeInTheDocument();
   });
 
   it("prevents a second disposition while a report is closing", async () => {

@@ -35,15 +35,15 @@ export function CorrectionInboxPage() {
       }
       errorMessage={
         reports.isError
-          ? userFacingErrorMessage(reports.error, "Profile reports could not load.")
+          ? userFacingErrorMessage(reports.error, "Visitor reports could not load.")
           : undefined
       }
       isLoading={reports.isPending}
       items={reports.data?.items ?? []}
       offset={offset}
-      onDecision={(reportId, selectedDecision) => {
+      onDecision={(reportId, targetType, selectedDecision) => {
         decision.reset();
-        decision.mutate({ data: { decision: selectedDecision, reportId } });
+        decision.mutate({ data: { decision: selectedDecision, reportId, targetType } });
       }}
       onPageChange={setOffset}
       pageSize={PAGE_SIZE}

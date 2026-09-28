@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 from atlas.platform.database import db
 
-__all__ = ["CorrectionInboxItem", "FlagCRUD", "FlagModel"]
+__all__ = ["CorrectionInboxItem", "FlagCRUD", "FlagModel", "ModerationInboxItem"]
 
 
 @dataclass
@@ -35,6 +35,22 @@ class CorrectionInboxItem:
     entity_name: str
     entity_slug: str | None
     entity_type: str
+    reason: str
+    note: str | None
+    created_at: str
+
+
+@dataclass
+class ModerationInboxItem:
+    """An open profile or source report with its target identity."""
+
+    id: str
+    target_type: str
+    target_id: str
+    target_name: str
+    entity_slug: str | None
+    entity_type: str | None
+    source_url: str | None
     reason: str
     note: str | None
     created_at: str
@@ -168,6 +184,52 @@ class FlagCRUD:
     async def count_open_corrections(conn: aiosqlite.Connection) -> int:
         """Count actionable profile reports without exposing their notes."""
         cursor = await conn.execute("SELECT COUNT(*) FROM entity_flags WHERE status = 'open'")
+        row = await cursor.fetchone()
+        assert row is not None, "COUNT(*) always returns one row"
+        return int(row[0])
+
+    @staticmethod
+    async def list_open_moderation_reports(
+        conn: aiosqlite.Connection, *, limit: int = 25, offset: int = 0
+    ) -> list[ModerationInboxItem]:
+        """List all open visitor reports, oldest first, across both target types."""
+        cursor = await conn.execute(
+            """
+            SELECT id, target_type, target_id, target_name, entity_slug,
+                   entity_type, source_url, reason, note, created_at
+            FROM (
+                SELECT f.id, 'entity' AS target_type, f.entity_id AS target_id,
+                       e.name AS target_name, e.slug AS entity_slug,
+                       e.type AS entity_type, NULL AS source_url,
+                       f.reason, f.note, f.created_at
+                FROM entity_flags f
+                JOIN entries e ON e.id = f.entity_id
+                WHERE f.status = 'open'
+                UNION ALL
+                SELECT f.id, 'source' AS target_type, f.source_id AS target_id,
+                       COALESCE(s.title, s.url) AS target_name,
+                       NULL AS entity_slug, NULL AS entity_type, s.url AS source_url,
+                       f.reason, f.note, f.created_at
+                FROM source_flags f
+                JOIN sources s ON s.id = f.source_id
+                WHERE f.status = 'open'
+            ) reports
+            ORDER BY created_at ASC, id ASC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        return [ModerationInboxItem(*row) for row in await cursor.fetchall()]
+
+    @staticmethod
+    async def count_open_moderation_reports(conn: aiosqlite.Connection) -> int:
+        """Count all open profile and source reports."""
+        cursor = await conn.execute(
+            """
+            SELECT (SELECT COUNT(*) FROM entity_flags WHERE status = 'open')
+                 + (SELECT COUNT(*) FROM source_flags WHERE status = 'open')
+            """
+        )
         row = await cursor.fetchone()
         assert row is not None, "COUNT(*) always returns one row"
         return int(row[0])

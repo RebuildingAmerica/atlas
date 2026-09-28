@@ -84,6 +84,34 @@ test.describe("admin journey", () => {
     await page.goto(`/profiles/organizations/${published?.slug}`);
     await expect(page.getByRole("heading", { name: candidateName })).toBeVisible();
 
+    const sourcesUrl = new URL(
+      `/api/entities/${published?.id}/sources`,
+      requireEnv("ATLAS_E2E_API_URL"),
+    );
+    const sourcesResponse = await page.request.get(sourcesUrl.toString());
+    expect(sourcesResponse.ok()).toBe(true);
+    const sources = (await sourcesResponse.json()) as { sources: { id: string }[] };
+    expect(sources.sources.length).toBeGreaterThan(0);
+    const sourceReportResponse = await page.request.post(
+      new URL("/api/source-flags", requireEnv("ATLAS_E2E_API_URL")).toString(),
+      {
+        data: {
+          source_id: sources.sources[0]?.id,
+          reason: "outdated_source",
+          note: "Synthetic source report for editor inbox acceptance.",
+        },
+      },
+    );
+    expect(sourceReportResponse.status()).toBe(201);
+    await page.goto("/admin/corrections");
+    const sourceReport = page.locator("article").filter({
+      hasText: "Synthetic source report for editor inbox acceptance.",
+    });
+    await expect(sourceReport).toBeVisible();
+    await expect(sourceReport.getByText(/^Source report ·/)).toBeVisible();
+    await sourceReport.getByRole("button", { name: /Resolve/ }).click();
+    await expect(sourceReport).toHaveCount(0);
+
     const correctedDescription =
       "Synthetic Las Vegas group with a reviewed correction for transit research.";
     await page.goto("/admin/discovery-reviews");

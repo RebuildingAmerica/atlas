@@ -8,13 +8,15 @@ describe("CorrectionInboxView", () => {
   function report(): CorrectionReport {
     return {
       createdAt: "2026-09-27T17:00:00Z",
-      entityId: "entry-1",
-      entityName: "Las Vegas Civic Group",
       entitySlug: "las-vegas-civic-group",
       entityType: "organization",
       id: "report-1",
       note: "The listed meeting time is wrong.\n\nContact: reporter@example.org",
       reason: "incorrect",
+      sourceUrl: null,
+      targetId: "entry-1",
+      targetName: "Las Vegas Civic Group",
+      targetType: "entity",
     };
   }
 
@@ -32,16 +34,115 @@ describe("CorrectionInboxView", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Profile corrections" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Visitor corrections" })).toBeInTheDocument();
     expect(screen.getByText(/The listed meeting time is wrong/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Las Vegas Civic Group" })).toHaveAttribute(
       "href",
       "/profiles/organizations/las-vegas-civic-group",
     );
     fireEvent.click(screen.getByRole("button", { name: "Resolve Las Vegas Civic Group" }));
-    expect(onDecision).toHaveBeenCalledWith("report-1", "resolve");
+    expect(onDecision).toHaveBeenCalledWith("report-1", "entity", "resolve");
     fireEvent.click(screen.getByRole("button", { name: "Dismiss Las Vegas Civic Group" }));
-    expect(onDecision).toHaveBeenCalledWith("report-1", "dismiss");
+    expect(onDecision).toHaveBeenCalledWith("report-1", "entity", "dismiss");
+  });
+
+  it("shows a source report in the same queue with a safe evidence link", () => {
+    const onDecision = vi.fn();
+    render(
+      <CorrectionInboxView
+        isLoading={false}
+        items={[
+          {
+            createdAt: "2026-09-27T18:00:00Z",
+            entitySlug: null,
+            entityType: null,
+            id: "source-report-1",
+            note: "The official page no longer supports this claim.",
+            reason: "outdated_source",
+            sourceUrl: "https://example.org/source",
+            targetId: "source-1",
+            targetName: "Official housing source",
+            targetType: "source",
+          },
+        ]}
+        offset={0}
+        onDecision={onDecision}
+        onPageChange={vi.fn()}
+        pageSize={25}
+        total={1}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Visitor corrections" })).toBeInTheDocument();
+    expect(
+      screen.getByText("The official page no longer supports this claim."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Official housing source" })).toHaveAttribute(
+      "href",
+      "https://example.org/source",
+    );
+    expect(screen.getByRole("link", { name: "Open Official housing source" })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Resolve Official housing source" }));
+    expect(onDecision).toHaveBeenCalledWith("source-report-1", "source", "resolve");
+  });
+
+  it("does not open an unsafe source URL from a report", () => {
+    render(
+      <CorrectionInboxView
+        isLoading={false}
+        items={[
+          {
+            ...report(),
+            entitySlug: null,
+            entityType: null,
+            sourceUrl: "javascript:alert(1)",
+            targetName: "Untrusted source",
+            targetType: "source",
+          },
+        ]}
+        offset={0}
+        onDecision={vi.fn()}
+        onPageChange={vi.fn()}
+        pageSize={25}
+        total={1}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Open Untrusted source" })).not.toBeInTheDocument();
+  });
+
+  it("keeps source reports actionable when their URL is missing or malformed", () => {
+    const item: CorrectionReport = {
+      ...report(),
+      entitySlug: null,
+      entityType: null,
+      sourceUrl: null,
+      targetName: "Source without a link",
+      targetType: "source",
+    };
+    const props = {
+      isLoading: false,
+      offset: 0,
+      onDecision: vi.fn(),
+      onPageChange: vi.fn(),
+      pageSize: 25,
+      total: 1,
+    };
+    const { rerender } = render(<CorrectionInboxView {...props} items={[item]} />);
+    expect(
+      screen.queryByRole("link", { name: "Open Source without a link" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Resolve Source without a link" })).toBeEnabled();
+
+    rerender(
+      <CorrectionInboxView
+        {...props}
+        items={[{ ...item, sourceUrl: "not a url", targetName: "Malformed source" }]}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Open Malformed source" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Resolve Malformed source" })).toBeEnabled();
   });
 
   it("does not make unsafe profile links and preserves loading or decision errors", () => {
@@ -129,7 +230,7 @@ describe("CorrectionInboxView", () => {
         total={0}
       />,
     );
-    expect(screen.getByRole("region", { name: "Open profile reports" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Open visitor reports" })).toBeInTheDocument();
     rerender(
       <CorrectionInboxView
         isLoading={false}
@@ -141,7 +242,7 @@ describe("CorrectionInboxView", () => {
         total={0}
       />,
     );
-    expect(screen.getByText("No open profile reports.")).toBeInTheDocument();
+    expect(screen.getByText("No open visitor reports.")).toBeInTheDocument();
     rerender(
       <CorrectionInboxView
         errorMessage="Profile reports could not load."
@@ -155,6 +256,6 @@ describe("CorrectionInboxView", () => {
       />,
     );
     expect(screen.getByText("Profile reports could not load.")).toBeInTheDocument();
-    expect(screen.queryByText("No open profile reports.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No open visitor reports.")).not.toBeInTheDocument();
   });
 });

@@ -8179,6 +8179,131 @@
         "title": "McpElicitationCompleteResponse",
         "type": "object"
       },
+      "ModerationInboxItemResponse": {
+        "description": "Private report with enough context to review its profile or source.",
+        "properties": {
+          "created_at": {
+            "description": "created at for this moderation inbox item.",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity slug for this moderation inbox item.",
+            "title": "Entity Slug"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity type for this moderation inbox item.",
+            "title": "Entity Type"
+          },
+          "id": {
+            "description": "id for this moderation inbox item.",
+            "title": "Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "note for this moderation inbox item.",
+            "title": "Note"
+          },
+          "reason": {
+            "description": "reason for this moderation inbox item.",
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "source url for this moderation inbox item.",
+            "title": "Source Url"
+          },
+          "target_id": {
+            "description": "target id for this moderation inbox item.",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "target_name": {
+            "description": "target name for this moderation inbox item.",
+            "title": "Target Name",
+            "type": "string"
+          },
+          "target_type": {
+            "description": "target type for this moderation inbox item.",
+            "enum": [
+              "entity",
+              "source"
+            ],
+            "title": "Target Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "target_type",
+          "target_id",
+          "target_name",
+          "entity_slug",
+          "entity_type",
+          "source_url",
+          "reason",
+          "note",
+          "created_at"
+        ],
+        "title": "ModerationInboxItemResponse",
+        "type": "object"
+      },
+      "ModerationInboxResponse": {
+        "description": "Paginated staff-only profile and source reports.",
+        "properties": {
+          "items": {
+            "description": "items for this moderation inbox.",
+            "items": {
+              "$ref": "#/components/schemas/ModerationInboxItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "description": "total for this moderation inbox.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ModerationInboxResponse",
+        "type": "object"
+      },
       "OrgBriefCollectionResponse": {
         "description": "Collection response for private Atlas Brief artifacts.",
         "properties": {
@@ -15318,6 +15443,143 @@
         "summary": "Auth health",
         "tags": [
           "access"
+        ]
+      }
+    },
+    "/api/correction-inbox": {
+      "get": {
+        "description": "Keep both kinds of private visitor report in the editor's work queue.\n\nUse this flag operation to report or review possible corrections. A flag is a review signal; keep the original source context available until a moderator resolves it.",
+        "operationId": "listModerationInbox",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationInboxResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List open profile and source reports for editors",
+        "tags": [
+          "flags"
         ]
       }
     },

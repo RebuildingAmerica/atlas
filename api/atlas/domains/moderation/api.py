@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator  # noqa: TC003
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -81,6 +81,28 @@ class CorrectionInboxResponse(BaseModel):
     total: int
 
 
+class ModerationInboxItemResponse(BaseModel):
+    """Private report with enough context to review its profile or source."""
+
+    id: str
+    target_type: Literal["entity", "source"]
+    target_id: str
+    target_name: str
+    entity_slug: str | None
+    entity_type: str | None
+    source_url: str | None
+    reason: str
+    note: str | None
+    created_at: str
+
+
+class ModerationInboxResponse(BaseModel):
+    """Paginated staff-only profile and source reports."""
+
+    items: list[ModerationInboxItemResponse]
+    total: int
+
+
 async def require_moderation_editor(
     actor: AuthenticatedActor = Depends(require_actor),
     settings: Settings = Depends(get_settings),
@@ -130,6 +152,31 @@ async def create_entity_flag(
     )
     apply_no_store_headers(response)
     return FlagReceipt.model_validate(flag.__dict__)
+
+
+@router.get(
+    "/correction-inbox",
+    response_model=ModerationInboxResponse,
+    summary="List open profile and source reports for editors",
+    operation_id="listModerationInbox",
+    tags=["flags"],
+)
+async def list_moderation_inbox(
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> ModerationInboxResponse:
+    """Keep both kinds of private visitor report in the editor's work queue."""
+    _ = actor
+    items = await FlagCRUD.list_open_moderation_reports(db, limit=limit, offset=offset)
+    total = await FlagCRUD.count_open_moderation_reports(db)
+    apply_no_store_headers(response)
+    return ModerationInboxResponse(
+        items=[ModerationInboxItemResponse.model_validate(item.__dict__) for item in items],
+        total=total,
+    )
 
 
 @router.get(

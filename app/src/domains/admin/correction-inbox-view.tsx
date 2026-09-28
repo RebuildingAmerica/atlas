@@ -8,7 +8,11 @@ export interface CorrectionInboxViewProps {
   isLoading: boolean;
   items: CorrectionReport[];
   offset: number;
-  onDecision: (itemId: string, decision: "resolve" | "dismiss") => void;
+  onDecision: (
+    itemId: string,
+    targetType: CorrectionReport["targetType"],
+    decision: "resolve" | "dismiss",
+  ) => void;
   onPageChange: (offset: number) => void;
   pageSize: number;
   pendingItemId?: string;
@@ -31,10 +35,10 @@ export function CorrectionInboxView({
     <AdminPageShell>
       <AdminPageHeader
         badge="Private reports"
-        title="Profile corrections"
-        description="Review public profile concerns, fix the underlying fact when needed, then close the report. Reporter notes and contact details stay in this editor-only view."
+        title="Visitor corrections"
+        description="Review profile and source concerns, fix the underlying fact when needed, then close the report. Reporter notes stay in this editor-only view."
       />
-      <section aria-label="Open profile reports" className="space-y-4">
+      <section aria-label="Open visitor reports" className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="type-title-large text-ink-strong">Waiting for review</h2>
           <span className="type-body-small text-ink-soft">{total} open</span>
@@ -48,7 +52,7 @@ export function CorrectionInboxView({
           />
         ) : items.length === 0 && !errorMessage ? (
           <div className="border-border bg-surface-container-lowest rounded-lg border p-6">
-            <p className="type-body-medium text-ink-soft">No open profile reports.</p>
+            <p className="type-body-medium text-ink-soft">No open visitor reports.</p>
           </div>
         ) : (
           items.map((item) => (
@@ -103,37 +107,44 @@ function ReportCard({
   onDecision: CorrectionInboxViewProps["onDecision"];
   pending: boolean;
 }) {
-  const profileUrl = publicProfileUrl(item);
+  const targetUrl =
+    item.targetType === "source" ? safeSourceUrl(item.sourceUrl) : publicProfileUrl(item);
   return (
     <article className="border-border bg-surface-container-lowest space-y-4 rounded-lg border p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="type-title-medium text-ink-strong">{item.entityName}</h3>
+          <h3 className="type-title-medium text-ink-strong">{item.targetName}</h3>
           <p className="type-body-small text-ink-soft">
+            {item.targetType === "source" ? "Source report" : "Profile report"} ·{" "}
             {item.reason.replaceAll("_", " ")} · {item.createdAt}
           </p>
-          {profileUrl ? (
-            <a className="type-label-medium text-accent hover:text-accent-ink" href={profileUrl}>
-              Open {item.entityName}
+          {targetUrl ? (
+            <a
+              className="type-label-medium text-accent hover:text-accent-ink"
+              href={targetUrl}
+              rel={item.targetType === "source" ? "noopener noreferrer" : undefined}
+              target={item.targetType === "source" ? "_blank" : undefined}
+            >
+              Open {item.targetName}
             </a>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
-            ariaLabel={`Resolve ${item.entityName}`}
+            ariaLabel={`Resolve ${item.targetName}`}
             disabled={pending}
             onClick={() => {
-              onDecision(item.id, "resolve");
+              onDecision(item.id, item.targetType, "resolve");
             }}
             size="sm"
           >
             Resolve
           </Button>
           <Button
-            ariaLabel={`Dismiss ${item.entityName}`}
+            ariaLabel={`Dismiss ${item.targetName}`}
             disabled={pending}
             onClick={() => {
-              onDecision(item.id, "dismiss");
+              onDecision(item.id, item.targetType, "dismiss");
             }}
             size="sm"
             variant="secondary"
@@ -164,4 +175,14 @@ function publicProfileUrl(item: CorrectionReport): string | null {
     return `/profiles/people/${encodeURIComponent(item.entitySlug)}`;
   }
   return null;
+}
+
+function safeSourceUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : null;
+  } catch {
+    return null;
+  }
 }

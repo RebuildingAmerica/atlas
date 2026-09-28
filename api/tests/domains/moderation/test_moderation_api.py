@@ -245,6 +245,64 @@ async def test_profile_correction_inbox_lists_open_reports_with_profile_context(
 
 
 @pytest.mark.asyncio
+async def test_editor_inbox_includes_open_source_reports_and_profile_reports(
+    test_client: object,
+    test_db: object,
+) -> None:
+    """An editor sees source reports without knowing the source ID in advance."""
+    entity_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Las Vegas Housing Group",
+        description="A group with a reported profile.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.test/housing-evidence",
+        source_type="org_website",
+        extraction_method="manual",
+        title="Housing evidence",
+    )
+    profile_receipt = await test_client.post(
+        "/api/entity-flags",
+        json={"entity_id": entity_id, "reason": "incorrect", "note": "Private profile note"},
+    )
+    source_receipt = await test_client.post(
+        "/api/source-flags",
+        json={"source_id": source_id, "reason": "outdated_source", "note": "Private source note"},
+    )
+
+    inbox = await test_client.get("/api/correction-inbox?limit=1&offset=0")
+    assert inbox.status_code == HTTPStatus.OK
+    assert inbox.headers["cache-control"] == "no-store"
+    assert inbox.json()["total"] == 2
+    assert inbox.json()["items"][0]["id"] == profile_receipt.json()["id"]
+
+    next_page = await test_client.get("/api/correction-inbox?limit=1&offset=1")
+    assert next_page.json()["items"] == [
+        {
+            "id": source_receipt.json()["id"],
+            "target_type": "source",
+            "target_id": source_id,
+            "target_name": "Housing evidence",
+            "entity_slug": None,
+            "entity_type": None,
+            "source_url": "https://example.test/housing-evidence",
+            "reason": "outdated_source",
+            "note": "Private source note",
+            "created_at": source_receipt.json()["created_at"],
+        }
+    ]
+    await test_client.post(f"/api/source-flags/{source_receipt.json()['id']}/resolve")
+    remaining = await test_client.get("/api/correction-inbox")
+    assert remaining.json()["total"] == 1
+    assert remaining.json()["items"][0]["id"] == profile_receipt.json()["id"]
+
+
+@pytest.mark.asyncio
 async def test_anonymous_callers_cannot_list_profile_correction_inbox(
     test_client: object,
     test_settings: object,
@@ -253,6 +311,8 @@ async def test_anonymous_callers_cannot_list_profile_correction_inbox(
     test_settings.multi_user = True
     response = await test_client.get("/api/entity-flags/inbox")
     assert response.status_code == HTTPStatus.UNAUTHORIZED
+    combined = await test_client.get("/api/correction-inbox")
+    assert combined.status_code == HTTPStatus.UNAUTHORIZED
 
 
 @pytest.mark.asyncio
@@ -305,6 +365,7 @@ async def test_only_allowlisted_editors_can_read_or_close_private_reports(
 
     for path in (
         "/api/entity-flags/inbox",
+        "/api/correction-inbox",
         f"/api/entity-flags?entity_id={entity_id}",
         f"/api/source-flags?source_id={source_id}",
         "/api/review-queue",
@@ -327,6 +388,9 @@ async def test_only_allowlisted_editors_can_read_or_close_private_reports(
     inbox = await test_client.get("/api/entity-flags/inbox", headers=editor_headers)
     assert inbox.status_code == HTTPStatus.OK
     assert inbox.json()["items"][0]["note"] == "Private report"
+    combined_inbox = await test_client.get("/api/correction-inbox", headers=editor_headers)
+    assert combined_inbox.status_code == HTTPStatus.OK
+    assert combined_inbox.json()["total"] == 2
     resolved = await test_client.post(
         f"/api/entity-flags/{report_id}/resolve", headers=editor_headers
     )

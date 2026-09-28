@@ -50,7 +50,7 @@ describe("AdminDashboardView", () => {
       "href",
       "/admin/discovery-reviews",
     );
-    expect(screen.getByRole("link", { name: "Review profile corrections" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Review visitor corrections" })).toHaveAttribute(
       "href",
       "/admin/corrections",
     );
