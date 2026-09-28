@@ -178,6 +178,66 @@ async def test_list_pending_can_filter_by_org_boundary(db_url: str) -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_pending_keeps_unlinked_holds_beside_cited_profiles(db_url: str) -> None:
+    """An org queue can mix tenant holds with profiles that carry source evidence."""
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Neighborhood Transit Group",
+            description="Organizes for local transit.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=False,
+        )
+        source_url = "https://example.org/about"
+        source_id = await SourceCRUD.create(
+            conn,
+            url=source_url,
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(
+            conn,
+            entity_id,
+            source_id,
+            extraction_context="Describes the group's transit work.",
+        )
+        await ReviewQueueCRUD.enqueue(
+            conn,
+            org_id="org-a",
+            entity_id=entity_id,
+            kind="organization",
+            hold_reason="editorial_candidate",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+            source_urls=[source_url],
+        )
+        await ReviewQueueCRUD.enqueue(
+            conn,
+            org_id="org-a",
+            entity_id=None,
+            kind="tenant_publish",
+            hold_reason="source_required_for_public_directory",
+            score=None,
+            dedup_suspect=False,
+            dedup_note=None,
+        )
+        pending = await ReviewQueueCRUD.list_pending(conn, org_id="org-a")
+    finally:
+        await conn.close()
+
+    assert len(pending) == 2
+    assert next(item for item in pending if item.entity_id is None).source_evidence == []
+    assert next(item for item in pending if item.entity_id == entity_id).source_evidence == [
+        {"url": source_url, "context": "Describes the group's transit work."}
+    ]
+
+
+@pytest.mark.asyncio
 async def test_approve_marks_entry_active_and_item_approved(db_url: str) -> None:
     conn = await get_db_connection(db_url)
     try:
