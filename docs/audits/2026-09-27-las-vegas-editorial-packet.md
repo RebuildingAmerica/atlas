@@ -5,13 +5,17 @@ This is a field-level acquisition packet, **not a published Atlas inventory or a
 passed visitor test**. A read-only September 27 check of all 1,403 public Atlas
 records found no exact-name match for the seven proposed new organization names
 and found an existing NAACP Las Vegas branch profile to update. It did not rule
-out fuzzy or linked-source duplicates. The browser security policy prevented
-hosted admin visual review. Scout cannot upload from this machine: its saved
-login returns HTTP 401, and no local extraction model is installed. A local
-editorial intake path now stages source-linked profiles privately for review,
-but it has not been deployed or used to publish these candidates. Before
-publishing, an editor must resolve remaining matches and check each claim
-against its official source.
+out fuzzy or linked-source duplicates. A later read-only check of all 30 public
+Nevada organization profiles found no candidate official-site domain on those
+profiles except the existing NAACP branch. That does not clear records listed
+outside Nevada or resolve near-name matches. The browser security policy
+prevented hosted admin visual review. Scout cannot upload from this machine: its
+saved login returns HTTP 401, and no local extraction model is installed. A
+local editorial intake path now stages source-linked profiles privately for
+review, and
+[staging deployed that path](https://github.com/RebuildingAmerica/atlas/actions/runs/36362632652).
+It has not been used to publish these candidates. Before publishing, an editor
+must resolve remaining matches and check each claim against its official source.
 
 ## Candidate profile facts and public actions
 

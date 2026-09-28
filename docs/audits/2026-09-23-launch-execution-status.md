@@ -46,10 +46,27 @@ geographic scope, issue areas, an official source with the claim it supports,
 and an official next step. The API checks HTTPS sources, a shared official site,
 taxonomy, place, exact-name and linked-source duplicates; it stores the profile
 as **inactive** with its citations and a pending review item in one transaction.
-The review card shows the proposed facts and cited URLs. A separate editorial
-decision is required to make the profile public, and approval refuses a
-candidate whose cited source was unlinked. These are local implementation and
-test results, not hosted editorial or visitor acceptance.
+The review card shows the proposed facts, cited URLs, and the recorded claim
+each cited page supports. A separate editorial decision is required to make the
+profile public, and approval refuses a candidate whose cited source was
+unlinked. These are local implementation and test results, not hosted editorial
+or visitor acceptance.
+
+A local Chromium acceptance test now signs in as an editor, stages a Las Vegas
+organization, confirms it is absent from public search while held, checks the
+recorded source note in the private review card, approves it, and opens the
+published profile. The test uses synthetic `example.org` pages; it proves the
+local product path, not the packet's real organizations or hosted operation. The
+app's full local suite passed 601 files and 3,941 tests at 100% statement,
+branch, function, and line coverage. Forty-seven focused API review and intake
+tests passed. The source-note mapping also rejects unsafe evidence URLs and
+keeps a homepage note attached after URL normalization. Earlier staging runs
+[36366344590](https://github.com/RebuildingAmerica/atlas/actions/runs/36366344590)
+and
+[36367814854](https://github.com/RebuildingAmerica/atlas/actions/runs/36367814854)
+stopped before deployment on one uncovered Python line and one uncovered app
+branch, respectively; regression cases for both are now on `main`. No hosted
+editor session or real Las Vegas candidate publication has been verified.
 
 A read-only inventory of all 1,403 production public records across 15 API pages
 found no exact-name match for the seven proposed new organization names in the
@@ -59,15 +76,21 @@ and linked-source duplicates, source claims, and useful actions still require a
 human editorial decision. No production profile was written during this
 inventory.
 
-Local acceptance for this unreleased change: the app passed 601 test files and
-3,935 tests with 100% statement, branch, function, and line coverage, plus lint,
-TypeScript, and a production build on Node 24. The full API run passed 2,361
-tests with six skips; its initial coverage report was 99.99% because one new
-approval guard lacked a regression case. Two additional cases passed and
-appended coverage on the unchanged application code, bringing combined API
-statement and branch coverage to 100%. Python formatting, Ruff, and mypy passed.
-The complete API coverage command was not rerun in one invocation after those
-final two tests.
+A later read-only detail scan of all 30 public Nevada organization profiles
+found one candidate official-site domain already linked: the existing NAACP Las
+Vegas branch. The other packet domains did not appear in that Nevada slice. This
+does not clear out-of-state records or near-name duplicates, and it did not
+publish or edit a profile.
+
+For the initial intake change at `2743c8c6`, local acceptance passed 601 test
+files and 3,935 tests with 100% statement, branch, function, and line coverage,
+plus lint, TypeScript, and a production build on Node 24. The full API run
+passed 2,361 tests with six skips; its initial coverage report was 99.99%
+because one new approval guard lacked a regression case. Two additional cases
+passed and appended coverage on the unchanged application code, bringing
+combined API statement and branch coverage to 100%. Python formatting, Ruff, and
+mypy passed. The complete API coverage command was not rerun in one invocation
+after those final two tests.
 [Staging run 36362632652](https://github.com/RebuildingAmerica/atlas/actions/runs/36362632652)
 passed CI, API deployment, and hosted checks on commit `2743c8c6`. No hosted
 editor or visitor journey was verified, and this intake is not in production.
@@ -83,15 +106,15 @@ with that ID, and checks that exact configuration for live mode, invoice
 history, payment-method updates, and end-of-term cancellation. Portal plan
 changes are disabled so customers cannot enter an unreviewed offer. Production
 preflight now requires the setting whenever checkout is enabled. The existing
-bootstrap webhook path can update an endpoint to the eight canonical events.
-The app passed 601 test files and 3,939 tests with 100% statement, branch,
-function, and line coverage. Focused bootstrap and billing preflight tests,
-lint, and app TypeScript checks passed. A fresh worktree dependency install and
-production build were not completed because the host ran out of disk space;
-release CI remains necessary. No live Stripe object has been changed or verified
-by this branch. The portal, webhook delivery, offer allowlist, genuine buyer
-payment, entitlement, cancellation, and refund gates remain open. Checkout
-remains closed.
+bootstrap webhook path can update an endpoint to the eight canonical events. The
+app passed 601 test files and 3,939 tests with 100% statement, branch, function,
+and line coverage. Focused bootstrap and billing preflight tests, lint, and app
+TypeScript checks passed. A fresh worktree dependency install and production
+build were not completed because the host ran out of disk space; release CI
+remains necessary. No live Stripe object has been changed or verified by this
+branch. The portal, webhook delivery, offer allowlist, genuine buyer payment,
+entitlement, cancellation, and refund gates remain open. Checkout remains
+closed.
 
 ## Verified September 27 production baseline
 
