@@ -62,6 +62,23 @@ for the timed-out hosted requests. The runner network, edge, and app proxy
 remain possible causes; the exact layer is unknown. **Do not call `aaea9a5c`
 production behavior or release it from this failed staging gate.**
 
+Commit `de91923b` closes a separate credential-boundary defect: the app proxy
+previously forwarded Vercel protection bypass and trusted OIDC headers to the
+Atlas API. A failing local regression demonstrated both headers crossing that
+boundary; after the fix, all 12 proxy tests, app typecheck, lint, and the full
+pre-push quality gate passed. It is on `main`, **not in production**. Its
+[September 28 staging run](https://github.com/RebuildingAmerica/atlas/actions/runs/36423729391)
+passed browser acceptance, tests, quality, and secret scanning but failed hosted
+smoke again: a public person lookup and API health timed out; hosted identity
+was skipped. At 12:51 UTC a separate request from this workspace completed TLS
+to Cloudflare for `atlas-api-staging.rebuildingus.org/health` but received no
+HTTP response within six seconds. That shows degradation outside the Vercel app
+as well, but does not isolate Cloudflare from Cloud Run. Local `gcloud` could
+not inspect the service because its session requires reauthentication; the
+available Codex browser had no provider tabs and the Mac was locked. Hold
+production release until the staging API path and hosted smoke work on the exact
+candidate. Do not treat a docs-only staging success as this gate.
+
 ## Current production release `v2026.09.28-1`
 
 [Release run 36416409020](https://github.com/RebuildingAmerica/atlas/actions/runs/36416409020)
