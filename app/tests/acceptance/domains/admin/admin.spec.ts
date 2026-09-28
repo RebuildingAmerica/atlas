@@ -34,13 +34,14 @@ test.describe("admin journey", () => {
     // The pages are synthetic, but the editor, private queue, approval, and
     // public profile all use the real local API and browser session.
     const candidateName = `Atlas E2E Transit ${randomUUID().slice(0, 8)}`;
-    const sourceNote = "The test page describes local transit advocacy.";
+    const sourceNote = "The test page describes local transit advocacy in Las Vegas, Nevada.";
     const publicQueryUrl = new URL("/api/entities", requireEnv("ATLAS_E2E_API_URL"));
     publicQueryUrl.searchParams.set("query", candidateName);
 
     await page.goto("/admin/discovery-reviews");
     await page.getByRole("button", { name: "Add organization from official source" }).click();
     await page.getByRole("textbox", { name: "Organization name" }).fill(candidateName);
+    await page.getByRole("textbox", { name: "City" }).fill("Las Vegas");
     await page
       .getByRole("textbox", { name: "What the organization does" })
       .fill("Synthetic Las Vegas group used to verify editorial publication.");
