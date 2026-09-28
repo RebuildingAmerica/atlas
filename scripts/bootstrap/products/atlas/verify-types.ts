@@ -84,4 +84,5 @@ export interface StripeCatalogSnapshot {
 export interface StripeCatalogVerificationOptions {
   expectedWebhookUrl?: string;
   requireWebhookSecret?: boolean;
+  requirePortalConfiguration?: boolean;
 }

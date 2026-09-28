@@ -157,13 +157,28 @@ void describe("Stripe catalog verifier", () => {
   void it("allows an acceptance preflight to use its later ephemeral webhook secret", () => {
     const env = completeEnv();
     env.delete("STRIPE_WEBHOOK_SECRET");
+    env.delete("STRIPE_BILLING_PORTAL_CONFIGURATION");
     const expandedEnv = expandStripeCatalogEnv(env);
 
     assert.deepEqual(
       verifyStripeCatalogSnapshot(env, matchingSnapshot(expandedEnv), {
         requireWebhookSecret: false,
+        requirePortalConfiguration: false,
       }),
       [],
+    );
+  });
+
+  void it("requires a portal configuration for full target verification", () => {
+    const env = completeEnv();
+    env.delete("STRIPE_BILLING_PORTAL_CONFIGURATION");
+    const expandedEnv = expandStripeCatalogEnv(env);
+
+    assert.deepEqual(
+      verifyStripeCatalogSnapshot(env, matchingSnapshot(expandedEnv)).map(
+        (finding) => `${finding.code}:${finding.envKey}`,
+      ),
+      ["missing_env:STRIPE_BILLING_PORTAL_CONFIGURATION"],
     );
   });
 

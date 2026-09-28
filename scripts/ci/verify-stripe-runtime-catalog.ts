@@ -53,9 +53,12 @@ async function main(): Promise<void> {
   const snapshot = await fetchStripeCatalogSnapshot(stripe, expandedEnv);
   // The acceptance runner obtains an ephemeral webhook secret from `stripe
   // listen` after this fast catalog preflight. It is not a hosted runtime
-  // secret and is intentionally absent here.
+  // secret and is intentionally absent here. The hosted billing portal is
+  // checked separately by target verification; this job only checks catalog
+  // objects and does not receive the hosted portal configuration ID.
   const issues = verifyStripeCatalogSnapshot(env, snapshot, {
     requireWebhookSecret: false,
+    requirePortalConfiguration: false,
   });
 
   if (issues.length === 0) {

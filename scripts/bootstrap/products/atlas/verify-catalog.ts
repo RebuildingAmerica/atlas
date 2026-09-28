@@ -9,6 +9,7 @@ import { hasVercelEnvKey } from "../../lib/vercel-env.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
 import {
   STRIPE_ATLAS_CATALOG_ENV_KEY,
+  STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY,
   STRIPE_ENV_KEYS,
   expandStripeCatalogEnv,
 } from "./env.js";
@@ -54,6 +55,12 @@ export function verifyStripeCatalogSnapshot(
     if (
       key === "STRIPE_WEBHOOK_SECRET" &&
       options.requireWebhookSecret === false
+    ) {
+      continue;
+    }
+    if (
+      key === STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY &&
+      options.requirePortalConfiguration === false
     ) {
       continue;
     }
