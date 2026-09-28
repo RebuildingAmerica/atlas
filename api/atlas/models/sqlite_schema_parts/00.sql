@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS entries (
     geocode_source TEXT,
     full_address TEXT,
     website TEXT,
+    action_url TEXT,
     email TEXT,
     phone TEXT,
     social_media TEXT,

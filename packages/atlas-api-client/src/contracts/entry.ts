@@ -86,6 +86,7 @@ export interface Entry {
   first_seen: string;
   last_seen: string;
   website?: string;
+  action_url?: string;
   email?: string;
   phone?: string;
   social_media?: Record<string, string>;

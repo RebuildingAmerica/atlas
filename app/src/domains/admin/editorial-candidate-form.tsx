@@ -208,6 +208,10 @@ export function EditorialCandidateForm({
         type="url"
         value={actionUrl}
       />
+      <p className="type-body-small text-ink-soft">
+        This appears as “Take the next step” on the public profile. It does not replace the
+        organization’s website.
+      </p>
       {sourceHost && actionHost && !sameOfficialSite ? (
         <p className="type-body-small text-on-error-container">
           The next step must be on the same official site as the source.

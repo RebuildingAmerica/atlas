@@ -118,6 +118,56 @@ describe("ActionCluster", () => {
     );
   });
 
+  it("leads with a reviewed official next step while keeping the website distinct", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        actionUrl="https://civic.example.org/join/"
+        actionGrounded
+        website="https://civic.example.org/"
+        websiteGrounded
+        isSignedIn={false}
+      />,
+    );
+    const actions = within(screen.getByRole("navigation", { name: "Profile actions" }));
+    expect(actions.getAllByRole("link")[0]).toHaveAccessibleName("Take the next step");
+    expect(actions.getByRole("link", { name: "Take the next step" })).toHaveAttribute(
+      "href",
+      "https://civic.example.org/join/",
+    );
+    expect(actions.getByRole("link", { name: "Visit website" })).toHaveAttribute(
+      "href",
+      "https://civic.example.org/",
+    );
+  });
+
+  it("does not promote an action without a visible supporting source", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        actionUrl="https://civic.example.org/join/"
+        actionGrounded={false}
+        isSignedIn={false}
+      />,
+    );
+    expect(screen.queryByRole("link", { name: "Take the next step" })).toBeNull();
+  });
+
+  it("shows one link when the reviewed action is also the website", () => {
+    render(
+      <ActionCluster
+        {...baseProps}
+        actionUrl="https://civic.example.org/join/"
+        actionGrounded
+        website="https://civic.example.org/join/"
+        websiteGrounded
+        isSignedIn={false}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Take the next step" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Visit website" })).toBeNull();
+  });
+
   it("does not promote an ungrounded website as a primary action", () => {
     render(
       <ActionCluster

@@ -37,6 +37,7 @@ STAGED_ENTRY_FIELDS = frozenset(
         "geo_specificity",
         "full_address",
         "website",
+        "action_url",
         "email",
         "phone",
         "social_media",
@@ -553,6 +554,7 @@ class ReviewQueueCRUD:
             "region": entry.region,
             "geo_specificity": entry.geo_specificity,
             "website": entry.website,
+            "action_url": entry.action_url,
             "issue_areas": sorted(item.entity_issue_areas),
             "source_evidence": item.source_evidence,
         }

@@ -65,6 +65,7 @@ class EntryModel:
     linked_atproto_status: str | None = None
     suppressed_source_ids: list[str] = field(default_factory=list)
     preferred_contact_channel: str | None = None
+    action_url: str | None = None
 
     def to_dict(self, include_internal: bool = True) -> dict[str, Any]:
         """
@@ -96,6 +97,7 @@ class EntryModel:
             "geocode_source": self.geocode_source,
             "full_address": self.full_address,
             "website": self.website,
+            "action_url": self.action_url,
             "email": self.email,
             "phone": self.phone,
             "social_media": self.social_media,
@@ -172,6 +174,7 @@ def _row_to_entry(row: dict[str, Any]) -> EntryModel:
         linked_atproto_status=row.get("linked_atproto_status"),
         suppressed_source_ids=suppressed,
         preferred_contact_channel=row.get("preferred_contact_channel"),
+        action_url=row.get("action_url"),
     )
 
 

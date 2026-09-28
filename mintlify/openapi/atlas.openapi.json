@@ -5353,6 +5353,18 @@
       "EntityDetailResponse": {
         "description": "Expanded entity detail record.",
         "properties": {
+          "action_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reviewed official page where a visitor can take a next step.",
+            "title": "Action Url"
+          },
           "active": {
             "description": "active for this entity detail.",
             "title": "Active",
@@ -5643,6 +5655,18 @@
       "EntityResponse": {
         "description": "Canonical public entity shape.",
         "properties": {
+          "action_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reviewed official page where a visitor can take a next step.",
+            "title": "Action Url"
+          },
           "active": {
             "description": "active for this entity.",
             "title": "Active",

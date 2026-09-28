@@ -23,6 +23,7 @@ async def _ensure_entry_columns(conn: Any) -> None:
 
     additive_columns = (
         ("full_address", "ALTER TABLE entries ADD COLUMN full_address TEXT"),
+        ("action_url", "ALTER TABLE entries ADD COLUMN action_url TEXT"),
         ("slug", "ALTER TABLE entries ADD COLUMN slug TEXT"),
         ("photo_url", "ALTER TABLE entries ADD COLUMN photo_url TEXT"),
         ("custom_bio", "ALTER TABLE entries ADD COLUMN custom_bio TEXT"),

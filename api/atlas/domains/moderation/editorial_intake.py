@@ -143,7 +143,7 @@ async def stage_editorial_profile_change(
         "state": request.state,
         "region": request.region,
         "geo_specificity": request.geo_specificity,
-        "website": request.action_url,
+        "action_url": request.action_url,
     }
     for field, after in fields.items():
         before = getattr(entry, field)
@@ -182,7 +182,8 @@ def _candidate_snapshot(
         "state": request.state,
         "region": request.region,
         "geo_specificity": request.geo_specificity,
-        "website": request.action_url,
+        "website": request.source_url,
+        "action_url": request.action_url,
         "issue_areas": sorted(request.issue_areas),
         "source_evidence": [
             {
@@ -254,9 +255,9 @@ async def stage_editorial_candidate(
         await conn.execute(
             """INSERT INTO entries (
                 id, type, name, description, city, state, region, geo_specificity,
-                latitude, longitude, geocode_precision, geocode_source, website,
+                latitude, longitude, geocode_precision, geocode_source, website, action_url,
                 active, first_seen, last_seen, created_at, updated_at, slug
-            ) VALUES (?, 'organization', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, 'organization', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, ?, ?, ?, ?, ?)""",
             (
                 entity_id,
                 request.name,
@@ -269,6 +270,7 @@ async def stage_editorial_candidate(
                 located.longitude if located else None,
                 located.precision if located else None,
                 located.source if located else None,
+                request.source_url,
                 request.action_url,
                 today,
                 today,

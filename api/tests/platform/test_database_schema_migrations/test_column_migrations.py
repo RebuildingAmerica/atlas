@@ -50,7 +50,7 @@ class TestEnsureEntryColumns:
 
             rows = await table_columns(conn, "entries")
             columns = rows
-            assert "full_address" in columns
+            assert {"full_address", "action_url"} <= columns
         finally:
             await conn.close()
 

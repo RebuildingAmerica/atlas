@@ -158,6 +158,7 @@ function mapEntity(entity: EntityResponse): Entry {
     first_seen: entity.freshness.created_at ?? entity.created_at,
     last_seen: entity.freshness.last_seen ?? entity.updated_at,
     website: entity.contact.website ?? undefined,
+    action_url: entity.action_url ?? undefined,
     email: entity.contact.email ?? undefined,
     phone: entity.contact.phone ?? undefined,
     social_media: entity.contact.social_media ?? undefined,

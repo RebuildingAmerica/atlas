@@ -82,6 +82,7 @@ describe("discovery review server functions", () => {
     const local = await loadEditorialProfile({ data: { entityId } });
     const statewide = await loadEditorialProfile({ data: { entityId } });
     expect(local.initial).toMatchObject({
+      action_url: "",
       geo_specificity: "local",
       issue_areas: [],
       source_url: "",

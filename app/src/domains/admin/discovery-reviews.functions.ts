@@ -145,7 +145,7 @@ export const loadEditorialProfile = createServerFn({ method: "GET" })
     return {
       id: profile.id,
       initial: {
-        action_url: profile.contact.website ?? "",
+        action_url: profile.action_url ?? "",
         city: profile.address.city ?? null,
         description: profile.description,
         geo_specificity: scope ?? (profile.address.city ? "local" : "statewide"),

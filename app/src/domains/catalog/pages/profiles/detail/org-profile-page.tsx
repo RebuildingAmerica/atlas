@@ -104,6 +104,10 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
           shareTitle={entry.name}
           email={entry.email}
           emailGrounded={entry.trust.email_grounded}
+          actionUrl={entry.action_url}
+          actionGrounded={entry.sources?.some(
+            (source) => source.url === entry.action_url && source.type === "org_website",
+          )}
           website={entry.website}
           websiteGrounded={entry.trust.website_grounded}
           isSignedIn={isSignedIn}

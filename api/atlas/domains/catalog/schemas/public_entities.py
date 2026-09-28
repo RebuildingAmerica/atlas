@@ -54,6 +54,9 @@ class EntityResponse(BaseModel):
     )
     address: Address
     contact: ContactInfo
+    action_url: str | None = Field(
+        None, description="Reviewed official page where a visitor can take a next step."
+    )
     preferred_contact_channel: str | None = Field(
         None,
         description="Subject preference for which channel readers should use to make contact.",

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS entries (
     geo_specificity TEXT NOT NULL CHECK(geo_specificity IN ('local', 'regional', 'statewide', 'national')),
     full_address TEXT,
     website TEXT,
+    action_url TEXT,
     email TEXT,
     phone TEXT,
     social_media TEXT,

@@ -48,7 +48,8 @@ async def test_editorial_candidate_requires_review_before_publication(
     entry = await EntryCRUD.get_by_id(test_db, body["entity_id"])
     assert entry is not None
     assert not entry.active
-    assert entry.website == "https://lasvegasfortransit.org/join/"
+    assert entry.website == candidate()["source_url"]
+    assert entry.action_url == candidate()["action_url"]
 
     public = await test_client.get("/api/entities?query=Las%20Vegans%20for%20Better%20Transit")
     assert public.json()["total"] == 0
@@ -60,7 +61,7 @@ async def test_editorial_candidate_requires_review_before_publication(
     assert item["entity_description"] == candidate()["description"]
     assert item["entity_city"] == "Las Vegas"
     assert item["entity_state"] == "NV"
-    assert item["entity_website"] == candidate()["action_url"]
+    assert item["entity_website"] == candidate()["source_url"]
     assert item["entity_issue_areas"] == ["public_transit", "transportation_and_mobility"]
     assert item["source_urls"] == [candidate()["source_url"], candidate()["action_url"]]
     assert item["source_evidence"] == [
@@ -81,6 +82,8 @@ async def test_editorial_candidate_requires_review_before_publication(
     published = await test_client.get("/api/entities?query=Las%20Vegans%20for%20Better%20Transit")
     assert published.json()["total"] == 1
     assert published.json()["items"][0]["id"] == body["entity_id"]
+    assert published.json()["items"][0]["contact"]["website"] == candidate()["source_url"]
+    assert published.json()["items"][0]["action_url"] == candidate()["action_url"]
 
 
 @pytest.mark.asyncio
@@ -97,6 +100,7 @@ async def test_editor_can_stage_existing_profile_correction_without_changing_pub
         state="NV",
         geo_specificity="statewide",
         active=True,
+        website="https://lasvegasfortransit.org/",
     )
     about_url = "https://lasvegasfortransit.org/about/"
     source_id = await SourceCRUD.create(
@@ -131,6 +135,8 @@ async def test_editor_can_stage_existing_profile_correction_without_changing_pub
     assert staged.json()["status"] == "pending"
     before = await test_client.get(f"/api/entities/{entry_id}")
     assert before.json()["description"] == "Old generic description."
+    assert before.json()["contact"]["website"] == "https://lasvegasfortransit.org/"
+    assert before.json()["action_url"] is None
     assert before.json()["address"]["city"] is None
     assert before.json()["issue_area_ids"] == ["housing_affordability"]
     assert [source["url"] for source in before.json()["sources"]] == [about_url]
@@ -146,6 +152,8 @@ async def test_editor_can_stage_existing_profile_correction_without_changing_pub
     assert approved.status_code == HTTPStatus.OK
     after = await test_client.get(f"/api/entities/{entry_id}")
     assert after.json()["description"] == request["description"]
+    assert after.json()["contact"]["website"] == "https://lasvegasfortransit.org/"
+    assert after.json()["action_url"] == request["action_url"]
     assert after.json()["address"]["city"] == "Las Vegas"
     assert after.json()["issue_area_ids"] == request["issue_areas"]
     assert sorted(source["url"] for source in after.json()["sources"]) == sorted(
@@ -250,9 +258,10 @@ async def test_editorial_profile_change_requires_a_real_change_and_one_pending_r
         state=str(facts["state"]),
         region=str(facts["region"]),
         geo_specificity=str(facts["geo_specificity"]),
-        website=str(facts["action_url"]),
+        website=str(facts["source_url"]),
         active=True,
     )
+    await EntryCRUD.update(test_db, entry_id, action_url=str(facts["action_url"]))
     source_id = await SourceCRUD.create(
         test_db,
         url=str(facts["source_url"]),
@@ -425,7 +434,11 @@ async def test_editorial_candidate_cannot_publish_after_reviewed_facts_are_remov
         ("UPDATE entries SET geo_specificity = ? WHERE id = ?", "statewide"),
         (
             "UPDATE entries SET website = ? WHERE id = ?",
-            "https://lasvegasfortransit.org/about/",
+            "https://lasvegasfortransit.org/join/",
+        ),
+        (
+            "UPDATE entries SET action_url = ? WHERE id = ?",
+            "https://lasvegasfortransit.org/donate/",
         ),
         (
             "UPDATE entry_issue_areas SET issue_area = ? WHERE entry_id = ? AND issue_area = 'public_transit'",

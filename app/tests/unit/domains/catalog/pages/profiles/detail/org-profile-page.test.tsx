@@ -215,6 +215,28 @@ describe("OrgProfilePage", () => {
     ).toBe(true);
   });
 
+  it("offers the reviewed next step when its official source is visible", () => {
+    renderWithProviders(
+      <OrgProfilePage
+        entry={organization({
+          action_url: "https://beacon.test/join/",
+          sources: [
+            createSourceFixture({
+              type: "org_website",
+              url: "https://beacon.test/join/",
+            }),
+          ],
+        })}
+      />,
+      { seed: seedAnonymous },
+    );
+
+    expect(screen.getByRole("link", { name: "Take the next step" })).toHaveAttribute(
+      "href",
+      "https://beacon.test/join/",
+    );
+  });
+
   it("omits the presence section for a record with nothing public to show", () => {
     renderWithProviders(<OrgProfilePage entry={organization({ first_seen: "" })} />, {
       seed: seedAnonymous,

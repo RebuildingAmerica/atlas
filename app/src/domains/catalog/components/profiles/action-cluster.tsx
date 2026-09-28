@@ -31,6 +31,8 @@ interface ActionClusterProps {
   shareTitle: string;
   email?: string;
   emailGrounded?: boolean | null;
+  actionUrl?: string;
+  actionGrounded?: boolean;
   website?: string;
   websiteGrounded?: boolean | null;
   isSignedIn: boolean;
@@ -75,6 +77,8 @@ export function ActionCluster({
   shareTitle,
   email,
   emailGrounded,
+  actionUrl,
+  actionGrounded = false,
   website,
   websiteGrounded,
   isSignedIn,
@@ -199,20 +203,35 @@ export function ActionCluster({
     watchWorkspaceMutation.isPending ||
     unwatchWorkspaceMutation.isPending;
   const websiteHref = website && websiteGrounded === true ? safeWebsiteHref(website) : null;
+  const actionHref = actionUrl && actionGrounded ? safeWebsiteHref(actionUrl) : null;
+  const distinctWebsiteHref = websiteHref === actionHref ? null : websiteHref;
 
   return (
     <nav
       aria-label="Profile actions"
       className="border-border-taupe bg-surface-container flex flex-wrap items-center gap-2.5 border px-6 py-5 sm:px-8"
     >
-      {websiteHref ? (
-        <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={SOLID_BUTTON}>
+      {actionHref ? (
+        <a href={actionHref} target="_blank" rel="noopener noreferrer" className={SOLID_BUTTON}>
+          Take the next step
+        </a>
+      ) : null}
+      {distinctWebsiteHref ? (
+        <a
+          href={distinctWebsiteHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={actionHref ? GHOST_BUTTON : SOLID_BUTTON}
+        >
           Visit website
         </a>
       ) : null}
 
       {sourcesHref ? (
-        <a href={sourcesHref} className={websiteHref ? GHOST_BUTTON : SOLID_BUTTON}>
+        <a
+          href={sourcesHref}
+          className={actionHref || distinctWebsiteHref ? GHOST_BUTTON : SOLID_BUTTON}
+        >
           Inspect sources
         </a>
       ) : null}

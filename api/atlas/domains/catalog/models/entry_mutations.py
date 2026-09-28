@@ -50,6 +50,7 @@ class EntryMutationMixin:
             "geocode_source",
             "full_address",
             "website",
+            "action_url",
             "email",
             "phone",
             "social_media",
