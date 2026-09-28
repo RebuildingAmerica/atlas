@@ -46,7 +46,7 @@ function landscapeStats(points: MapPoint[]): LandscapeStat[] {
   const sourceCount = points.reduce((total, point) => total + point.source_count, 0);
   return [
     { label: "Actors", value: pluralize(points.length, "person or group", "people and groups") },
-    { label: "Places", value: pluralize(places.size, "place", "places") },
+    { label: "Named places", value: pluralize(places.size, "place", "places") },
     { label: "Sources", value: pluralize(sourceCount, "source", "sources") },
   ];
 }
@@ -69,7 +69,7 @@ function LandscapeSummary({ points }: { points: MapPoint[] }) {
   const types = typeLabels(points);
   return (
     <div className="border-border-subtle mb-3 border-b px-1 pb-3">
-      <p className="type-label-small text-ink-soft uppercase">Landscape</p>
+      <p className="type-label-small text-ink-soft uppercase">In this map view</p>
       <dl className="mt-2 grid grid-cols-3 gap-2">
         {landscapeStats(points).map((stat) => (
           <div key={stat.label}>

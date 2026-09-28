@@ -14,7 +14,6 @@ import {
   ClusterSkeletons,
   MapEmptyState,
   MapErrorState,
-  SparsityPill,
 } from "@/domains/catalog/components/map/map-states";
 import { useMapPage } from "@/domains/catalog/hooks/use-map-page";
 import { useMapReveal } from "@/domains/catalog/hooks/use-map-reveal";
@@ -25,7 +24,7 @@ import {
   ATLAS_BASEMAP_BACKGROUND_TOKEN,
   atlasBasemapStyle,
 } from "@/domains/catalog/map/map-config";
-import { announceViewport, sparsityPill } from "@rebuildingamerica/atlas-catalog/map/map-summary";
+import { announceViewport } from "@rebuildingamerica/atlas-catalog/map/map-summary";
 import type { MapNavigate } from "@/domains/catalog/hooks/use-map-page";
 import type { FlyToCamera } from "@rebuildingamerica/atlas-catalog/map/map-camera";
 import type {
@@ -123,7 +122,6 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   const hasFetched = pointsQuery.data !== undefined;
   const showMapError = pointsQuery.isError;
   const isEmpty = hasFetched && points.length === 0 && !showMapError;
-  const pill = sparsityPill(points);
   const activeCounts = {
     issues: filters.issue_areas.length,
     types: filters.entry_types.length,
@@ -222,12 +220,6 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
             </Link>
           ) : null}
         </div>
-
-        {pill ? (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 sm:top-4">
-            <SparsityPill label={pill} />
-          </div>
-        ) : null}
 
         <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
           <MapLegend />

@@ -1,4 +1,4 @@
-import { MapPinOff, RotateCcw, Sparkles, ZoomOut } from "lucide-react";
+import { MapPinOff, RotateCcw, ZoomOut } from "lucide-react";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 /** Where the shimmer placeholders sit while the first dots load, in percentages. */
@@ -107,27 +107,6 @@ export function MapErrorState({ onRetry }: MapErrorStateProps) {
           </span>
         </Button>
       </div>
-    </div>
-  );
-}
-
-interface SparsityPillProps {
-  /** The honest "N actors in M places" framing copy. */
-  label: string;
-}
-
-/**
- * The designed-sparsity pill — a friendly framing of a deliberately thin map.
- *
- * Today's catalog is small on purpose; this pill states the real numbers so a
- * handful of dots reads as the honest start of something rather than a broken
- * map with most of it missing.
- */
-export function SparsityPill({ label }: SparsityPillProps) {
-  return (
-    <div className="bg-surface-container-high/92 shadow-soft border-border-strong text-ink-soft pointer-events-auto inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 backdrop-blur-md">
-      <Sparkles className="text-accent h-4 w-4" aria-hidden />
-      <span className="type-label-large">{label}</span>
     </div>
   );
 }

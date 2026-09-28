@@ -6,7 +6,6 @@ import {
   ClusterSkeletons,
   MapEmptyState,
   MapErrorState,
-  SparsityPill,
 } from "@/domains/catalog/components/map/map-states";
 
 afterEach(cleanup);
@@ -49,12 +48,5 @@ describe("MapErrorState", () => {
     expect(screen.queryByText(/Error:/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();
-  });
-});
-
-describe("SparsityPill", () => {
-  it("renders the honest framing copy", () => {
-    render(<SparsityPill label="3 people and groups in 2 places" />);
-    expect(screen.getByText("3 people and groups in 2 places")).toBeTruthy();
   });
 });

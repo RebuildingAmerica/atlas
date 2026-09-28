@@ -95,8 +95,9 @@ describe("MapResultsPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Landscape")).toBeTruthy();
+    expect(screen.getByText("In this map view")).toBeTruthy();
     expect(screen.getByText("2 people and groups")).toBeTruthy();
+    expect(screen.getByText("Named places")).toBeTruthy();
     expect(screen.getByText("2 places")).toBeTruthy();
     expect(screen.getByText("5 sources")).toBeTruthy();
     expect(screen.getByText("Housing Affordability")).toBeTruthy();

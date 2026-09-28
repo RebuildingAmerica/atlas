@@ -124,10 +124,11 @@ describe("MapPage", () => {
     );
   });
 
-  it("shows the result count pill when points are placed", () => {
+  it("keeps the visible count in results instead of floating over map search", () => {
     requireMapPageHarness().setState({ points: [makePoint({ id: "1", lat: 1, lng: 2 })] });
     render(<MapPage search={{}} />);
-    expect(screen.getByText(/1 person or group in 1 place/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show map results" })).toHaveTextContent("1 in view");
+    expect(screen.queryByText(/1 person or group in 1 place/i)).toBeNull();
   });
 
   it("shows the empty state with its actions when a viewport holds no actors", () => {

@@ -34,10 +34,34 @@ async function stubBasemap(page: Page): Promise<() => number> {
 }
 
 test.describe("public map", () => {
+  test("keeps search and results controls usable at phone width", async ({ page }) => {
+    await stubBasemap(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/map?lng=-115.14&lat=36.17&z=9");
+
+    const search = page.getByRole("combobox", { name: "Search a place or find an actor" });
+    await expect(search).toBeVisible();
+    await search.click();
+    await expect(search).toBeFocused();
+    await search.fill("Las Vegas");
+    await expect(search).toHaveValue("Las Vegas");
+    await search.press("Escape");
+
+    const results = page.getByRole("button", { name: "Show map results" });
+    await expect(results).toBeVisible();
+    await results.click();
+    await expect(page.getByRole("button", { name: "Hide map results" })).toBeVisible();
+  });
+
   test("keeps a selected map actor visible after switching to the list", async ({ page }) => {
     await stubBasemap(page);
+    const apiUrl = process.env.ATLAS_E2E_API_URL;
+    if (!apiUrl) throw new Error("ATLAS_E2E_API_URL is required for the map journey.");
     const response = await page.request.get(
-      "http://localhost:38000/api/entities/map?min_lng=-125&min_lat=24&max_lng=-66.5&max_lat=49.5",
+      new URL(
+        "/api/entities/map?min_lng=-125&min_lat=24&max_lng=-66.5&max_lat=49.5",
+        apiUrl,
+      ).toString(),
     );
     expect(response.ok()).toBe(true);
     const data = (await response.json()) as {
