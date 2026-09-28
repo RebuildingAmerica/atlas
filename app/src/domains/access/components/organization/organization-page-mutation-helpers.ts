@@ -29,16 +29,22 @@ export async function runOrganizationPageMutation<T>(params: {
   params.feedback.setErrorMessage(null);
   params.feedback.setFlashMessage(null);
 
+  let mutationResult: T;
   try {
-    const mutationResult = await params.action();
-
-    await params.refreshWorkspaceData();
-    params.feedback.setFlashMessage(params.successMessage);
-
-    return mutationResult;
+    mutationResult = await params.action();
   } catch (error) {
     params.feedback.setErrorMessage(userFacingErrorMessage(error, params.fallbackMessage));
-
     return null;
   }
+
+  try {
+    await params.refreshWorkspaceData();
+    params.feedback.setFlashMessage(params.successMessage);
+  } catch {
+    params.feedback.setFlashMessage(
+      `${params.successMessage} Atlas could not refresh this page. Reload to see the latest changes.`,
+    );
+  }
+
+  return mutationResult;
 }

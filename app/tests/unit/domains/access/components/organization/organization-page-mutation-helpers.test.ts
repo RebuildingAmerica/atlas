@@ -24,6 +24,22 @@ describe("runOrganizationPageMutation", () => {
     expect(refreshWorkspaceData).toHaveBeenCalled();
   });
 
+  it("reports a completed action accurately when refreshing the page fails", async () => {
+    const result = await runOrganizationPageMutation({
+      action: () => Promise.resolve({ invitationId: "invite_1" }),
+      fallbackMessage: "Could not send invitation.",
+      feedback,
+      refreshWorkspaceData: () => Promise.reject(new Error("Session refresh failed")),
+      successMessage: "Invitation sent.",
+    });
+
+    expect(result).toEqual({ invitationId: "invite_1" });
+    expect(feedback.setFlashMessage).toHaveBeenLastCalledWith(
+      "Invitation sent. Atlas could not refresh this page. Reload to see the latest changes.",
+    );
+    expect(feedback.setErrorMessage).not.toHaveBeenLastCalledWith("Could not send invitation.");
+  });
+
   it("shows a message written for the workspace admin", async () => {
     const action = vi.fn().mockRejectedValue(new UserFacingError("specific error"));
     const result = await runOrganizationPageMutation({
