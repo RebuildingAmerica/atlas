@@ -7,14 +7,18 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
-from atlas.domains.access import AuthenticatedActor, require_actor_permission
-from atlas.domains.discovery.models import (
-    DiscoveryJobCRUD,
+from atlas.domains.access import (
+    AuthenticatedActor,
+    is_atlas_staff,
+    require_actor_permission,
+    require_atlas_staff,
 )
+from atlas.domains.discovery.models import DiscoveryJobCRUD, RunVisibility
 from atlas.domains.discovery.schemas import (
     DiscoveryRunCancelResponse,
 )
 from atlas.models import DiscoveryRunCRUD
+from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 from atlas.schemas import (
     DiscoveryRunCollectionResponse,
@@ -34,6 +38,13 @@ router = APIRouter()
 __all__ = ["router"]
 
 
+def _run_visibility(actor: AuthenticatedActor, settings: Settings) -> RunVisibility:
+    """Return whose private runs this caller may read."""
+    if is_atlas_staff(actor, settings):
+        return RunVisibility.staff()
+    return RunVisibility.workspace(actor.org_id)
+
+
 @router.get(
     "",
     response_model=DiscoveryRunCollectionResponse,
@@ -51,6 +62,7 @@ async def list_discovery_runs(  # noqa: PLR0913
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    settings: Settings = Depends(get_settings),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunCollectionResponse:
     """
@@ -63,7 +75,7 @@ async def list_discovery_runs(  # noqa: PLR0913
     - cursor: pagination cursor (default: 0)
     """
     try:
-        _ = actor
+        visibility = _run_visibility(actor, settings)
         offset = max(int(cursor), 0) if cursor is not None else 0
         runs = await DiscoveryRunCRUD.list(
             db,
@@ -71,8 +83,9 @@ async def list_discovery_runs(  # noqa: PLR0913
             status=status,
             limit=limit,
             offset=offset,
+            visibility=visibility,
         )
-        total = await DiscoveryRunCRUD.count(db, state=state, status=status)
+        total = await DiscoveryRunCRUD.count(db, state=state, status=status, visibility=visibility)
         items = [_run_to_response(r).model_dump(mode="json") for r in runs]
         next_cursor = str(offset + limit) if offset + limit < total else None
         apply_no_store_headers(response)
@@ -106,11 +119,13 @@ async def get_discovery_run(
     run_id: str,
     response: Response = Response(),
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    settings: Settings = Depends(get_settings),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunResponse:
-    """Get a discovery run by ID."""
-    _ = actor
-    run = await DiscoveryRunCRUD.get_by_id(db, run_id)
+    """Get a discovery run by ID unless another workspace keeps it private."""
+    run = await DiscoveryRunCRUD.get_visible(
+        db, run_id, visibility=_run_visibility(actor, settings)
+    )
     if not run:
         raise HTTPException(status_code=404, detail="Discovery run not found")
     apply_no_store_headers(response)
@@ -128,7 +143,7 @@ async def get_discovery_run(
 async def cancel_discovery_run(
     run_id: str,
     response: Response = Response(),
-    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
+    actor: AuthenticatedActor = Depends(require_atlas_staff),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunCancelResponse:
     """Cancel a discovery run's outstanding jobs.

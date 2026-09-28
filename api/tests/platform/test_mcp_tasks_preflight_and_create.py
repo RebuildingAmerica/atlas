@@ -12,7 +12,7 @@ from mcp import types
 
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.discovery.budget import OrgDiscoveryBudgetCRUD
-from atlas.domains.discovery.models import DiscoveryJobCRUD
+from atlas.domains.discovery.models import DiscoveryJobCRUD, RunVisibility
 from atlas.domains.discovery.models import DiscoveryRunCRUD as DomainDiscoveryRunCRUD
 from atlas.platform.mcp.tasks import (
     DiscoveryRunPreflight,
@@ -273,7 +273,12 @@ class TestCreateDiscoveryRunTask:
         assert result.root.isError is True
         assert result.root.structuredContent["org_id"] == "org_1"
         runs = await DomainDiscoveryRunCRUD.list(
-            test_db, state=None, status=None, limit=50, offset=0
+            test_db,
+            state=None,
+            status=None,
+            limit=50,
+            offset=0,
+            visibility=RunVisibility.staff(),
         )
         assert runs == []
 

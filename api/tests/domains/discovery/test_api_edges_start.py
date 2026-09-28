@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
+from atlas.domains.discovery.models import RunVisibility
 from atlas_shared import (
     DeduplicatedEntry,
     DiscoveryContributionRequest,
@@ -30,6 +31,10 @@ from tests.domains.discovery.api_edges_support import (
     _bundle_with_ranked_entry,
     _local_actor,
 )
+
+
+# A local actor is always staff, so the operator allowlist is never read.
+_LOCAL_SETTINGS = SimpleNamespace(operator_allowed_emails=[])
 
 
 @pytest.mark.asyncio
@@ -174,6 +179,7 @@ async def test_discovery_route_functions_cover_direct_success_and_error_paths(
     response = await discovery_api.get_discovery_run(
         run_id,
         actor=actor,
+        settings=_LOCAL_SETTINGS,
         response=None,
         db=test_db,
     )
@@ -185,6 +191,7 @@ async def test_discovery_route_functions_cover_direct_success_and_error_paths(
         limit=50,
         cursor=None,
         actor=actor,
+        settings=_LOCAL_SETTINGS,
         response=None,
         db=test_db,
     )
@@ -221,6 +228,7 @@ async def test_discovery_route_functions_cover_direct_success_and_error_paths(
             limit=50,
             cursor=None,
             actor=actor,
+            settings=_LOCAL_SETTINGS,
             response=None,
             db=test_db,
         )
@@ -243,9 +251,17 @@ async def test_discovery_run_count_supports_state_and_status_filters(test_db: ob
     )
     await DiscoveryRunCRUD.complete(test_db, mo_run, queries_generated=1)
 
-    assert await DiscoveryRunCRUD.count(test_db, state="MO") == 1
-    assert await DiscoveryRunCRUD.count(test_db, status="completed") == 1
-    assert await DiscoveryRunCRUD.count(test_db, state="KS", status="running") == 1
+    assert await DiscoveryRunCRUD.count(test_db, state="MO", visibility=RunVisibility.staff()) == 1
+    assert (
+        await DiscoveryRunCRUD.count(test_db, status="completed", visibility=RunVisibility.staff())
+        == 1
+    )
+    assert (
+        await DiscoveryRunCRUD.count(
+            test_db, state="KS", status="running", visibility=RunVisibility.staff()
+        )
+        == 1
+    )
     assert ks_run
 
 
@@ -303,7 +319,7 @@ async def test_contribute_discovery_results_persists_shared_payload(test_db: obj
     assert result.entries_persisted == 1
     assert result.sources_persisted == 1
 
-    runs = await DiscoveryRunCRUD.list(test_db, state="KS")
+    runs = await DiscoveryRunCRUD.list(test_db, state="KS", visibility=RunVisibility.staff())
     assert any(run.location_query == "Garden City, KS" for run in runs)
 
     entries = await EntryCRUD.list(test_db, state="KS", city="Garden City", active_only=False)
@@ -336,5 +352,5 @@ async def test_sync_discovery_run_is_idempotent_for_same_local_bundle(test_db: o
     assert second.duplicate is True
     assert second.run_id == first.run_id
 
-    runs = await DiscoveryRunCRUD.list(test_db, state="KS")
+    runs = await DiscoveryRunCRUD.list(test_db, state="KS", visibility=RunVisibility.staff())
     assert len([run for run in runs if run.location_query == "Wichita, KS"]) == 1

@@ -9,6 +9,8 @@
 # target yields at most DISCOVERY_REGISTRY_MAX_ORGANIZATIONS organizations.
 #
 # Reads ATLAS_AUTH_INTERNAL_SECRET from .env.production, which is gitignored.
+# Listing and enabling schedule targets is staff-only, so ATLAS_OPERATOR_EMAIL
+# must be set to an address on the production ATLAS_OPERATOR_ALLOWED_EMAILS.
 
 set -euo pipefail
 
@@ -16,7 +18,7 @@ cd "$(dirname "$0")/.."
 
 ATLAS_URL="${ATLAS_URL:-https://atlas.rebuildingus.org}"
 ENV_FILE=".env.production"
-ACTOR_EMAIL="${ATLAS_OPERATOR_EMAIL:-operator@atlas.rebuildingus.org}"
+ACTOR_EMAIL="${ATLAS_OPERATOR_EMAIL:?Set ATLAS_OPERATOR_EMAIL to an address on ATLAS_OPERATOR_ALLOWED_EMAILS}"
 
 step() {
   printf '\n\033[1mStep %s: %s\033[0m\n' "$1" "$2"

@@ -41,6 +41,9 @@ internal actor identity headers:
 - `X-Atlas-Actor-Id=atlas-scheduler`
 - `X-Atlas-Actor-Email=scheduler@atlas.rebuildingus.org`
 
+The scheduled trigger only queues each enabled target once per day, so it does
+not need an operator identity. Listing or changing schedule targets does.
+
 Redeploying production from the fixed deploy workflow updates the
 `atlas-discovery-scheduled` job. To verify the live job without printing
 secrets:
@@ -82,13 +85,15 @@ restored. The recovery is complete when `/api/entities?limit=1` returns
 
 ## Add Future Schedule Targets
 
-Create schedule targets only after the place and issue scope is approved:
+Create schedule targets only after the place and issue scope is approved.
+Schedule changes are staff-only: `ATLAS_OPERATOR_EMAIL` must be an address on
+the production `ATLAS_OPERATOR_ALLOWED_EMAILS` secret, or the API answers 403.
 
 ```bash
 curl -X POST "https://atlas-api.rebuildingus.org/api/discovery-schedules" \
   -H "X-Atlas-Internal-Secret: $ATLAS_AUTH_INTERNAL_SECRET" \
   -H "X-Atlas-Actor-Id: atlas-operator" \
-  -H "X-Atlas-Actor-Email: operator@atlas.rebuildingus.org" \
+  -H "X-Atlas-Actor-Email: $ATLAS_OPERATOR_EMAIL" \
   -H "Content-Type: application/json" \
   --data '{"location_query":"Las Vegas, NV","state":"NV","issue_areas":["housing_affordability"],"search_depth":"standard"}'
 ```

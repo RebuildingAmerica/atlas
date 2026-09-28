@@ -14,6 +14,7 @@ from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationModel,
     DiscountVerificationStatus,
 )
+from atlas.domains.access.staff import ensure_atlas_staff
 from atlas.domains.access.verification import DiscountSegment  # noqa: TC001
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
@@ -86,11 +87,6 @@ def _verification_record_response(
     )
 
 
-def _normalized_allowed_operator_emails(settings: Settings) -> set[str]:
-    """Return the normalized operator-review allowlist."""
-    return {email.strip().lower() for email in settings.operator_allowed_emails if email.strip()}
-
-
 async def require_discount_review_actor(
     actor: AuthenticatedActor = Depends(require_actor),
     settings: Settings = Depends(get_settings),
@@ -102,16 +98,9 @@ async def require_discount_review_actor(
         # does not exist for them rather than standing open.
         raise HTTPException(status_code=404, detail="Not found.")
 
-    if actor.is_local:
-        return actor
-
-    if actor.auth_type != "internal":
-        raise HTTPException(status_code=403, detail="Discount review access requires Atlas staff.")
-
-    if actor.email.strip().lower() not in _normalized_allowed_operator_emails(settings):
-        raise HTTPException(status_code=403, detail="Discount review access requires Atlas staff.")
-
-    return actor
+    return ensure_atlas_staff(
+        actor, settings, detail="Discount review access requires Atlas staff."
+    )
 
 
 @router.get(

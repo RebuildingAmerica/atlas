@@ -16,6 +16,7 @@ from atlas.domains.catalog.models.profile_atproto_links import (
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.domains.catalog.services.atproto_identity import revalidate_linked_atproto_profiles
 from atlas.models import EntryCRUD
+from tests.support.staff_auth import enable_staff_auth
 
 
 async def _valid_atproto_identity(_handle: str, _did: str) -> bool:
@@ -461,3 +462,43 @@ class _StaleAtprotoResolver:
 
     async def did_document(self, did: str) -> dict[str, object]:
         return {"id": did, "alsoKnownAs": ["at://mississippi-rising.bsky.social"]}
+
+
+@pytest.mark.asyncio
+async def test_a_claimant_cannot_approve_their_own_profile_verification(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+    claimable_person: str,
+) -> None:
+    headers = enable_staff_auth(test_settings)
+    slug = (await EntryCRUD.get_by_id(test_db, claimable_person)).slug
+    claim = await test_client.post(
+        f"/api/profiles/{slug}/claim",
+        json={"evidence": "My staff page identifies me."},
+        headers=headers.ordinary,
+    )
+    assert claim.status_code == status.HTTP_201_CREATED, claim.text
+    claim_id = claim.json()["id"]
+
+    for method, path in (
+        ("GET", "/api/profiles/claims/review"),
+        ("POST", "/api/profiles/claims/review/atproto/revalidate"),
+        ("POST", f"/api/profiles/claims/review/{claim_id}/approve"),
+        ("POST", f"/api/profiles/claims/review/{claim_id}/reject"),
+    ):
+        denied = await test_client.request(
+            method,
+            path,
+            json={} if method == "POST" else None,
+            headers=headers.ordinary,
+        )
+        assert denied.status_code == status.HTTP_403_FORBIDDEN, (path, denied.text)
+
+    approved = await test_client.post(
+        f"/api/profiles/claims/review/{claim_id}/approve",
+        json={},
+        headers=headers.staff,
+    )
+    assert approved.status_code == status.HTTP_200_OK, approved.text
+    assert approved.json()["status"] == "verified"

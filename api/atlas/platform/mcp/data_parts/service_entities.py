@@ -12,6 +12,7 @@ from atlas.domains.catalog.schemas.public import (
     EntityDetailResponse,
     EntitySourcesResponse,
 )
+from atlas.domains.discovery.models import RunVisibility
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, FlagCRUD
 from atlas.platform.mcp.data_parts.context import (
     DatabaseSession,
@@ -162,8 +163,11 @@ class EntityDataServiceMixin:
                 status=status,
                 limit=limit,
                 offset=offset,
+                visibility=RunVisibility.public(),
             )
-            total = await DiscoveryRunCRUD.count(conn, state=state, status=status)
+            total = await DiscoveryRunCRUD.count(
+                conn, state=state, status=status, visibility=RunVisibility.public()
+            )
 
         next_cursor = None
         if offset + limit < total:
@@ -178,7 +182,9 @@ class EntityDataServiceMixin:
     async def get_discovery_run(self, run_id: str) -> dict[str, Any]:
         """Get one structured discovery-run artifact by ID."""
         async with DatabaseSession(self._database_url) as conn:
-            run = await DiscoveryRunCRUD.get_by_id(conn, run_id)
+            run = await DiscoveryRunCRUD.get_visible(
+                conn, run_id, visibility=RunVisibility.public()
+            )
             if run is None:
                 raise _discovery_run_not_found(run_id)
         return _discovery_run_record(run)

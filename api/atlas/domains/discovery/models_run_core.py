@@ -63,6 +63,54 @@ class DiscoveryRunModel:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class RunVisibility:
+    """Whose privately synced discovery runs a reader may see.
+
+    A workspace that syncs a run privately owns it. Public readers see none of
+    those runs, a workspace member sees only their own workspace's, and Atlas
+    staff see every workspace's.
+    """
+
+    org_id: str | None
+    every_workspace: bool
+
+    @classmethod
+    def public(cls) -> RunVisibility:
+        """Return visibility for readers with no workspace."""
+        return cls(org_id=None, every_workspace=False)
+
+    @classmethod
+    def workspace(cls, org_id: str | None) -> RunVisibility:
+        """Return visibility for a member of ``org_id`` (public when ``None``)."""
+        return cls(org_id=org_id, every_workspace=False)
+
+    @classmethod
+    def staff(cls) -> RunVisibility:
+        """Return visibility for Atlas staff and internal system readers."""
+        return cls(org_id=None, every_workspace=True)
+
+    def sql(self) -> tuple[str, list[Any]]:
+        """Return the ``AND`` clause and parameters that hide unseen private runs.
+
+        Returns
+        -------
+        tuple[str, list[Any]]
+            A clause to append to a ``discovery_runs`` query, and its parameters.
+        """
+        if self.every_workspace:
+            return "", []
+        clause = (
+            " AND NOT EXISTS (SELECT 1 FROM resource_ownership ro"
+            " WHERE ro.resource_id = discovery_runs.id"
+            " AND ro.resource_type = 'discovery_run'"
+            " AND ro.visibility = 'private'"
+        )
+        if self.org_id is None:
+            return f"{clause})", []
+        return f"{clause} AND ro.org_id <> ?)", [self.org_id]
+
+
 class DiscoveryRunCRUDCore:
     """CRUD operations for discovery runs."""
 
@@ -145,12 +193,49 @@ class DiscoveryRunCRUDCore:
         return _row_to_discovery_run(data)
 
     @staticmethod
-    async def list(
+    async def get_visible(
+        conn: aiosqlite.Connection,
+        run_id: str,
+        *,
+        visibility: RunVisibility,
+    ) -> DiscoveryRunModel | None:
+        """
+        Get a discovery run by ID when the reader may see it.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        run_id : str
+            Discovery run ID.
+        visibility : RunVisibility
+            Whose private runs the reader may see.
+
+        Returns
+        -------
+        DiscoveryRunModel | None
+            The run, or None when it does not exist or is private to another workspace.
+        """
+        clause, clause_params = visibility.sql()
+        cursor = await conn.execute(
+            f"SELECT * FROM discovery_runs WHERE id = ?{clause}",
+            (run_id, *clause_params),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        columns = [col[0] for col in cursor.description]
+        return _row_to_discovery_run(dict(zip(columns, row, strict=False)))
+
+    @staticmethod
+    async def list(  # noqa: PLR0913
         conn: aiosqlite.Connection,
         state: str | None = None,
         status: str | None = None,
         limit: int = 50,
         offset: int = 0,
+        *,
+        visibility: RunVisibility,
     ) -> list[DiscoveryRunModel]:
         """
         List discovery runs with optional filtering.
@@ -167,6 +252,8 @@ class DiscoveryRunCRUDCore:
             Result limit. Default is 50.
         offset : int, optional
             Result offset. Default is 0.
+        visibility : RunVisibility
+            Whose private runs the reader may see.
 
         Returns
         -------
@@ -182,6 +269,10 @@ class DiscoveryRunCRUDCore:
         if status:
             query += " AND status = ?"
             params.append(status)
+
+        clause, clause_params = visibility.sql()
+        query += clause
+        params.extend(clause_params)
 
         query += " ORDER BY started_at DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
@@ -200,8 +291,10 @@ class DiscoveryRunCRUDCore:
         conn: aiosqlite.Connection,
         state: str | None = None,
         status: str | None = None,
+        *,
+        visibility: RunVisibility,
     ) -> int:
-        """Count discovery runs with optional filtering."""
+        """Count discovery runs the reader may see, with optional filtering."""
         query = "SELECT COUNT(*) FROM discovery_runs WHERE 1=1"
         params: list[Any] = []
         if state:
@@ -210,6 +303,9 @@ class DiscoveryRunCRUDCore:
         if status:
             query += " AND status = ?"
             params.append(status)
+        clause, clause_params = visibility.sql()
+        query += clause
+        params.extend(clause_params)
         cursor = await conn.execute(query, params)
         row = await cursor.fetchone()
         return int(row[0] or 0) if row else 0

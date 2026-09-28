@@ -9,6 +9,7 @@ from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
     DiscoveryRunCRUD,
     DiscoveryScheduleCRUD,
+    RunVisibility,
 )
 
 
@@ -16,7 +17,7 @@ class TestDiscoveryCRUDBranchHelpers:
     @pytest.mark.asyncio
     async def test_run_list_returns_empty_when_no_rows(self, test_db: object) -> None:
         """Discovery run listing should fail closed on an empty table."""
-        assert await DiscoveryRunCRUD.list(test_db) == []
+        assert await DiscoveryRunCRUD.list(test_db, visibility=RunVisibility.staff()) == []
 
     @pytest.mark.asyncio
     async def test_schedule_helpers_cover_missing_and_boolean_paths(self, test_db: object) -> None:

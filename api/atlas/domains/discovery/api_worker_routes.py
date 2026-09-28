@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
-from atlas.domains.access import AuthenticatedActor, require_actor_permission
+from atlas.domains.access import AuthenticatedActor, require_actor_permission, require_atlas_staff
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
     DiscoveryScheduleCRUD,
+    RunVisibility,
 )
 from atlas.domains.discovery.schemas import (
     DiscoveryJobQueueResponse,
@@ -195,7 +196,7 @@ async def claim_discovery_job(
 async def get_discovery_job(
     job_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    actor: AuthenticatedActor = Depends(require_atlas_staff),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryJobResponse:
     """Get a job by ID."""
@@ -334,7 +335,7 @@ async def release_worker_jobs(
 )
 async def get_pipeline_summary(
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    actor: AuthenticatedActor = Depends(require_atlas_staff),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryPipelineSummaryResponse:
     """Return aggregate pipeline health metrics."""
@@ -345,7 +346,9 @@ async def get_pipeline_summary(
     running = status_counts.get("running", 0) + status_counts.get("claimed", 0)
     failed = status_counts.get("failed", 0)
 
-    completed_runs = await DiscoveryRunCRUD.list(db, status="completed", limit=500)
+    completed_runs = await DiscoveryRunCRUD.list(
+        db, status="completed", limit=500, visibility=RunVisibility.staff()
+    )
     total_confirmed = sum(r.entries_confirmed for r in completed_runs)
     last_completed_at = completed_runs[0].completed_at if completed_runs else None
 

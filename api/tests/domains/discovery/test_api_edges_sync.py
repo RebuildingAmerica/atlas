@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from atlas.domains.discovery.models import RunVisibility
 from atlas_shared import DiscoveryContributionRequest, DiscoveryRunInput, DiscoveryRunStats
 
 from atlas.domains.access.principals import AuthenticatedActor
@@ -119,7 +120,9 @@ async def test_contribute_discovery_results_marks_run_failed_when_persist_blows_
             db=test_db,
         )
 
-    runs = await DiscoveryRunCRUD.list(test_db, state="KS", status="failed")
+    runs = await DiscoveryRunCRUD.list(
+        test_db, state="KS", status="failed", visibility=RunVisibility.staff()
+    )
     assert any(run.location_query == "Wichita, KS" for run in runs)
 
 
@@ -235,7 +238,9 @@ async def test_sync_discovery_run_marks_run_failed_when_persist_blows_up(
             db=test_db,
         )
 
-    runs = await DiscoveryRunCRUD.list(test_db, state="KS", status="failed")
+    runs = await DiscoveryRunCRUD.list(
+        test_db, state="KS", status="failed", visibility=RunVisibility.staff()
+    )
     assert any(run.location_query == "Wichita, KS" for run in runs)
 
 

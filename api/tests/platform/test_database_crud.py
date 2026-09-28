@@ -2,6 +2,7 @@
 
 import pytest
 
+from atlas.domains.discovery.models import RunVisibility
 from atlas.models import (
     DiscoveryRunCRUD,
     EntryCRUD,
@@ -241,7 +242,7 @@ class TestDiscoveryRunModel:
     async def test_list_discovery_runs(self, test_db: object, sample_discovery_run: object) -> None:
         """Test listing discovery runs."""
         # sample_discovery_run is used to ensure there's at least one run
-        runs = await DiscoveryRunCRUD.list(test_db)
+        runs = await DiscoveryRunCRUD.list(test_db, visibility=RunVisibility.staff())
         assert len(runs) >= 1
         assert sample_discovery_run in [r.id for r in runs]
 

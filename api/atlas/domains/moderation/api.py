@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from atlas.domains.access import AuthenticatedActor, require_actor
+from atlas.domains.access import AuthenticatedActor, ensure_atlas_staff, require_actor
 from atlas.domains.moderation.editorial_intake import (
     EditorialCandidateConflictError,
     EditorialCandidateCreateRequest,
@@ -109,14 +109,7 @@ async def require_moderation_editor(
     settings: Settings = Depends(get_settings),
 ) -> AuthenticatedActor:
     """Keep reporter notes and publication decisions with named Atlas editors."""
-    if actor.is_local:
-        return actor
-    allowed_emails = {
-        email.strip().lower() for email in settings.operator_allowed_emails if email.strip()
-    }
-    if actor.auth_type != "internal" or actor.email.strip().lower() not in allowed_emails:
-        raise HTTPException(status_code=403, detail="Editorial review requires Atlas staff.")
-    return actor
+    return ensure_atlas_staff(actor, settings, detail="Editorial review requires Atlas staff.")
 
 
 async def get_db(

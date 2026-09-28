@@ -96,3 +96,36 @@ async def test_get_discovery_run_not_found_raises(db_url: str) -> None:
 
     with pytest.raises(ValueError, match="Discovery run not found"):
         await service.get_discovery_run("missing-run")
+
+
+@pytest.mark.asyncio
+async def test_agent_clients_never_see_a_workspace_private_run(
+    db_url: str,
+    test_db: object,
+) -> None:
+    """MCP readers have no workspace, so privately synced runs stay hidden."""
+    from atlas.domains.catalog.models.ownership import OwnershipCRUD
+
+    conn = test_db
+    public_run = await DiscoveryRunCRUD.create(
+        conn, location_query="Reno, NV", state="NV", issue_areas=["public_transit"]
+    )
+    private_run = await DiscoveryRunCRUD.create(
+        conn, location_query="Las Vegas, NV", state="NV", issue_areas=["housing_affordability"]
+    )
+    await OwnershipCRUD.create_ownership(
+        conn,
+        resource_id=private_run,
+        resource_type="discovery_run",
+        org_id="org_owner",
+        visibility="private",
+        created_by="user_owner",
+    )
+
+    service = AtlasDataService(db_url)
+    collection = await service.list_discovery_runs(state="NV")
+
+    assert [item["id"] for item in collection["items"]] == [public_run]
+    assert collection["total"] == 1
+    with pytest.raises(ValueError, match="Discovery run not found"):
+        await service.get_discovery_run(private_run)

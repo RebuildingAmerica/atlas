@@ -8,6 +8,7 @@ import pytest
 
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
+from atlas.domains.discovery.models import RunVisibility
 from atlas.models import DiscoveryRunCRUD
 from atlas.platform.mcp.workbench import (
     sync_scout_artifacts,
@@ -32,7 +33,9 @@ async def test_scout_sync_requires_confirmation(test_db: object) -> None:
         "status": "unsupported",
         "message": "This MCP client cannot confirm Scout artifact syncs.",
     }
-    runs = await DiscoveryRunCRUD.list(test_db, state=None, status=None, limit=10, offset=0)
+    runs = await DiscoveryRunCRUD.list(
+        test_db, state=None, status=None, limit=10, offset=0, visibility=RunVisibility.staff()
+    )
     assert runs == []
 
 
@@ -48,7 +51,9 @@ async def test_scout_sync_rejection_writes_nothing(test_db: object, action: str)
     )
 
     assert result == {"status": action, "message": "No Scout results were synced."}
-    runs = await DiscoveryRunCRUD.list(test_db, state=None, status=None, limit=10, offset=0)
+    runs = await DiscoveryRunCRUD.list(
+        test_db, state=None, status=None, limit=10, offset=0, visibility=RunVisibility.staff()
+    )
     assert runs == []
 
 
@@ -71,7 +76,9 @@ async def test_scout_sync_unchecked_confirmation_writes_nothing(test_db: object)
     )
 
     assert result == {"status": "decline", "message": "No Scout results were synced."}
-    runs = await DiscoveryRunCRUD.list(test_db, state=None, status=None, limit=10, offset=0)
+    runs = await DiscoveryRunCRUD.list(
+        test_db, state=None, status=None, limit=10, offset=0, visibility=RunVisibility.staff()
+    )
     assert runs == []
 
 
