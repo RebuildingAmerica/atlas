@@ -14,7 +14,6 @@ import {
 } from "../discount-segments";
 import type { DiscountVerificationSubmission } from "./discount-verification-payload";
 import { VerificationForm } from "./verification-form";
-import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 interface DiscountVerificationSectionProps {
   organizationId: string | null;
@@ -206,14 +205,6 @@ function WorkspaceDiscountVerification({ organizationId }: WorkspaceDiscountVeri
           }}
           isLoading={submitVerificationMutation.isPending}
         />
-        {submitVerificationMutation.isError && (
-          <p className="type-body-medium text-red-700" role="alert">
-            {userFacingErrorMessage(
-              submitVerificationMutation.error,
-              "Atlas couldn't submit your verification. Try again in a moment.",
-            )}
-          </p>
-        )}
       </div>
     );
   }

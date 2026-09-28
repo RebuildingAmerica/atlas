@@ -58,7 +58,9 @@ describe("WorkspaceSCIMSection", () => {
     expect(
       screen.getByDisplayValue("https://atlas.test/api/auth/scim/v2/Users"),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Provider ID")).toHaveValue("atlas-team-scim");
+    await waitFor(() => {
+      expect(screen.getByLabelText("Provider ID")).toHaveValue("atlas-team-scim");
+    });
     expect(screen.getByText("okta-scim")).toBeInTheDocument();
     expect(screen.queryByText("Loading")).toBeNull();
   });
