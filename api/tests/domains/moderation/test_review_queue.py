@@ -358,6 +358,62 @@ async def test_approve_applies_staged_public_change_and_reject_preserves_old_fac
 
 
 @pytest.mark.asyncio
+async def test_approval_removes_unsupported_issue_tag_from_published_profile(db_url: str) -> None:
+    conn = await get_db_connection(db_url)
+    try:
+        entity_id = await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Housing Coalition",
+            description="Tenant organizing.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+            active=True,
+        )
+        source_url = "https://example.org/about"
+        source_id = await SourceCRUD.create(
+            conn,
+            url=source_url,
+            source_type="org_website",
+            extraction_method="manual",
+        )
+        await SourceCRUD.link_to_entry(conn, entity_id, source_id)
+        await conn.execute(
+            "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) VALUES (?, ?, ?)",
+            (entity_id, "housing_affordability", datetime.now(UTC).isoformat()),
+        )
+        await conn.execute(
+            "INSERT INTO entry_issue_areas (entry_id, issue_area, created_at) VALUES (?, ?, ?)",
+            (entity_id, "transit_access", datetime.now(UTC).isoformat()),
+        )
+        await conn.commit()
+        review_id = await ReviewQueueCRUD.stage_published_change(
+            conn,
+            entity_id=entity_id,
+            kind="organization",
+            proposed_changes={
+                "issue_areas": {
+                    "before": ["housing_affordability", "transit_access"],
+                    "after": ["housing_affordability"],
+                }
+            },
+            source_urls=[source_url],
+        )
+
+        await ReviewQueueCRUD.approve(conn, review_id, reviewed_by="curator@atlas")
+        cursor = await conn.execute(
+            "SELECT issue_area FROM entry_issue_areas WHERE entry_id = ? ORDER BY issue_area",
+            (entity_id,),
+        )
+        remaining = [row[0] for row in await cursor.fetchall()]
+    finally:
+        await conn.close()
+
+    assert remaining == ["housing_affordability"]
+
+
+@pytest.mark.asyncio
 async def test_approval_refuses_stale_proposal_without_closing_review(db_url: str) -> None:
     conn = await get_db_connection(db_url)
     try:

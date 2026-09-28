@@ -67,14 +67,26 @@ search, map, and profile-network reads. A failed network lookup is no longer
 displayed as an empty relationship list; organization-related people also report
 failure rather than silently disappearing. The full app suite passed 601 files,
 3,951 tests, and 100% statement, branch, function, and line coverage. This
-change has not been released to production or verified there.
+change has not been released to production or verified there. The first staging
+run timed out on two hosted checks; the later
+[main staging run 36379059918](https://github.com/RebuildingAmerica/atlas/actions/runs/36379059918)
+passed CI, 30 browser acceptance checks, and hosted smoke on commit `849b5bea`.
+Staging success is not a production acceptance result.
 
-A later local editorial change records the exact identity, work, place, issue,
+Main commit `9e6ce510` records the exact identity, work, place, issue,
 official-action, and citation facts submitted for a held organization. Approval
 rejects any candidate whose facts or source notes changed before review. Older
-held candidates without a snapshot must be restaged. The 28 editorial-intake
-tests pass locally; full API coverage and hosted editorial acceptance remain
-open. The local full-coverage attempt ran out of disk space before completion.
+held candidates without a snapshot must be restaged. Commit `849b5bea` shows a
+candidate's citation note once in the review card. The 28 editorial-intake tests
+passed locally, and main staging run 36379059918 passed remote API coverage and
+browser acceptance. No Las Vegas candidate was approved or published by these
+checks. A local full-coverage attempt ran out of disk space before completion.
+
+This change allows editorial approval to remove issue tags from an existing
+public profile after checking its original tag set. It has a passing local
+database regression, but has not been released to production or exposed through
+an editor form. The existing Las Vegas NAACP record still needs a source-backed
+correction staged, reviewed, and published.
 
 ## Prior production release `v2026.09.27-21`
 

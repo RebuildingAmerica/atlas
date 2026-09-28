@@ -601,7 +601,6 @@ class ReviewQueueCRUD:
                     not isinstance(before_issues, list)
                     or not isinstance(after_issues, list)
                     or not all(isinstance(value, str) for value in [*before_issues, *after_issues])
-                    or not set(before_issues) <= set(after_issues)
                 ):
                     raise ReviewConflictError(_INVALID_PROPOSAL)
                 cursor = await conn.execute(
@@ -682,7 +681,7 @@ class ReviewQueueCRUD:
     async def _write_staged_issues(
         conn: Any, entity_id: str, changes: dict[str, dict[str, Any]]
     ) -> None:
-        """Add reviewed issue tags after their baseline has been checked."""
+        """Apply reviewed issue tag corrections after their baseline has been checked."""
         issue_change = changes.get(STAGED_ISSUE_FIELD)
         if issue_change is not None:
             if len(changes) == 1:
@@ -693,7 +692,13 @@ class ReviewQueueCRUD:
                 if cursor.rowcount != 1:
                     raise ReviewConflictError(_STALE_PROPOSAL)
             before_issues = set(issue_change["before"])
-            for issue_area in sorted(set(issue_change["after"]) - before_issues):
+            after_issues = set(issue_change["after"])
+            for issue_area in sorted(before_issues - after_issues):
+                await conn.execute(
+                    "DELETE FROM entry_issue_areas WHERE entry_id = ? AND issue_area = ?",
+                    (entity_id, issue_area),
+                )
+            for issue_area in sorted(after_issues - before_issues):
                 await conn.execute(
                     """INSERT INTO entry_issue_areas (entry_id, issue_area, created_at)
                     VALUES (?, ?, ?) ON CONFLICT(entry_id, issue_area) DO NOTHING""",
