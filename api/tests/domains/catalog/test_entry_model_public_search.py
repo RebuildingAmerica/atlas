@@ -423,3 +423,92 @@ async def test_bike_and_bicycle_wording_find_the_same_relevant_actors(test_db: o
 
     symbols_only = await EntryCRUD.search_public(conn, query="!!!")
     assert symbols_only["total"] == 0
+
+
+async def _statewide_fixture(conn: object) -> dict[str, str]:
+    return {
+        "local": await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Las Vegas Tenant Group",
+            description="Organizing renters in Las Vegas.",
+            city="Las Vegas",
+            state="NV",
+            geo_specificity="local",
+        ),
+        "statewide": await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Nevada Housing Alliance",
+            description="A statewide Nevada housing coalition.",
+            city=None,
+            state="NV",
+            geo_specificity="statewide",
+        ),
+        "other_state": await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="California Housing Alliance",
+            description="A statewide California housing coalition.",
+            city=None,
+            state="CA",
+            geo_specificity="statewide",
+        ),
+        "other_city": await EntryCRUD.create(
+            conn,
+            entry_type="organization",
+            name="Reno Tenant Group",
+            description="Organizing renters in Reno.",
+            city="Reno",
+            state="NV",
+            geo_specificity="local",
+        ),
+    }
+
+
+@pytest.mark.asyncio
+async def test_city_search_includes_statewide_groups_from_that_state(test_db: object) -> None:
+    """A Las Vegas visitor also sees the statewide Nevada groups working there."""
+    ids = await _statewide_fixture(test_db)
+
+    result = await EntryCRUD.search_public(test_db, states=["NV"], cities=["Las Vegas"])
+
+    found = {item["entry"].id for item in result["entries"]}
+    assert found == {ids["local"], ids["statewide"]}
+
+
+@pytest.mark.asyncio
+async def test_city_place_filter_includes_statewide_groups_from_that_state(
+    test_db: object,
+) -> None:
+    ids = await _statewide_fixture(test_db)
+
+    result = await EntryCRUD.search_public(
+        test_db, place_filters=[{"city": "Las Vegas", "state": "NV", "region": None}]
+    )
+
+    found = {item["entry"].id for item in result["entries"]}
+    assert found == {ids["local"], ids["statewide"]}
+
+
+@pytest.mark.asyncio
+async def test_city_without_a_state_does_not_guess_which_statewide_groups_apply(
+    test_db: object,
+) -> None:
+    ids = await _statewide_fixture(test_db)
+
+    result = await EntryCRUD.search_public(test_db, cities=["Las Vegas"])
+
+    assert {item["entry"].id for item in result["entries"]} == {ids["local"]}
+
+
+@pytest.mark.asyncio
+async def test_statewide_groups_are_labeled_statewide(test_client: object, test_db: object) -> None:
+    """A statewide group never reads as if it were based in the searched city."""
+    ids = await _statewide_fixture(test_db)
+
+    response = await test_client.get(f"/api/entities/{ids['statewide']}")
+    local = await test_client.get(f"/api/entities/{ids['local']}")
+
+    assert response.json()["address"]["display"] == "Statewide · NV"
+    assert local.json()["address"]["display"] == "Las Vegas, NV"

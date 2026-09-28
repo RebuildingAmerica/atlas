@@ -1,7 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@rebuildingamerica/atlas-ui/ui/card";
-import { formatFreshness } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
+import {
+  formatFreshness,
+  formatProfileLocation,
+} from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";
 import { pluralize } from "@/lib/pluralize";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
@@ -24,16 +27,6 @@ function humanize(value: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function formatLocation(entry: Entry): string {
-  if (entry.city && entry.state) {
-    return `${entry.city}, ${entry.state}`;
-  }
-  if (entry.region) {
-    return entry.region;
-  }
-  return entry.state ?? "Location not specified";
 }
 
 function sourcePacketSummary(sources: Entry["sources"]): {
@@ -192,7 +185,7 @@ export function EntryDetail({
           <div className="space-y-2">
             <CardTitle className="type-headline-medium">{entry.name}</CardTitle>
             <p className="type-body-medium text-on-surface-variant font-medium">
-              {formatLocation(entry)}
+              {formatProfileLocation(entry)}
             </p>
             {entry.full_address ? (
               <p className="type-body-medium text-ink-soft">{entry.full_address}</p>
@@ -217,7 +210,7 @@ export function EntryDetail({
                 {researchUseText(entry, issueAreaLabels)}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge>{formatLocation(entry)}</Badge>
+                <Badge>{formatProfileLocation(entry)}</Badge>
                 <Badge>{primaryIssueLabel}</Badge>
                 <Badge>{humanize(entry.type)}</Badge>
               </div>

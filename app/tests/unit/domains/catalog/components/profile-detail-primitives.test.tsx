@@ -32,6 +32,14 @@ describe("formatProfileLocation", () => {
     expect(formatProfileLocation(buildEntry({ city: undefined, region: undefined }))).toBe("MS");
   });
 
+  it("labels a statewide group by its scope rather than a city it lists", () => {
+    expect(
+      formatProfileLocation(
+        buildEntry({ city: "Las Vegas", state: "NV", geo_specificity: "statewide" }),
+      ),
+    ).toBe("Statewide · NV");
+  });
+
   it("returns a friendly fallback when no location is available", () => {
     expect(
       formatProfileLocation(buildEntry({ city: undefined, state: undefined, region: undefined })),

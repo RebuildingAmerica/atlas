@@ -184,7 +184,12 @@ def _entry_place_clause(
         clauses.append(f"e.state IN ({_make_placeholders(states)})")
         params.extend(states)
     if cities:
-        clauses.append(f"e.city IN ({_make_placeholders(cities)})")
+        # With a state to anchor them, statewide groups in that state work in
+        # every one of its cities, so a city search includes them.
+        city_clause = f"e.city IN ({_make_placeholders(cities)})"
+        if states:
+            city_clause = f"({city_clause} OR e.geo_specificity = 'statewide')"
+        clauses.append(city_clause)
         params.extend(cities)
     if regions:
         clauses.append(f"e.region IN ({_make_placeholders(regions)})")
@@ -204,7 +209,10 @@ def _place_filter_or_clause(
             filter_parts.append("e.state = ?")
             params.append(place_filter["state"])
         if place_filter.get("city"):
-            filter_parts.append("e.city = ?")
+            if place_filter.get("state"):
+                filter_parts.append("(e.city = ? OR e.geo_specificity = 'statewide')")
+            else:
+                filter_parts.append("e.city = ?")
             params.append(place_filter["city"])
         if place_filter.get("region"):
             filter_parts.append("e.region = ?")

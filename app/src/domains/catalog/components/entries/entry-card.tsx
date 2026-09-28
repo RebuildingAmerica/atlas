@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { trackDiscoveryEvent } from "@/domains/catalog/discovery-events";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Entry, EntryType, SourceType } from "@rebuildingamerica/atlas-api-client";
@@ -17,17 +18,6 @@ interface EntryCardProps {
   issueAreaLabels?: Record<string, string>;
   discoveryContext?: EntryDiscoveryContext;
   isMapSelection?: boolean;
-}
-
-/** Format an entry's location for display (city, state > region > state). */
-function formatLocation(entry: Entry): string {
-  if (entry.city && entry.state) {
-    return `${entry.city}, ${entry.state}`;
-  }
-  if (entry.region) {
-    return entry.region;
-  }
-  return entry.state ?? "Location not specified";
 }
 
 /** Convert a snake_case identifier into a Title Case label. */
@@ -93,7 +83,7 @@ function profileHref(entry: Entry): string {
 }
 
 function locationReason(entry: Entry): string | null {
-  const location = formatLocation(entry);
+  const location = formatProfileLocation(entry);
   return location === "Location not specified" ? null : location;
 }
 
@@ -191,7 +181,7 @@ export function EntryCard({
                 <span style={{ viewTransitionName: `entry-name-${entry.id}` }}>{entry.name}</span>
               </Link>
               <p className="type-body-medium text-ink-muted mt-1 font-medium">
-                {formatLocation(entry)}
+                {formatProfileLocation(entry)}
               </p>
             </div>
 

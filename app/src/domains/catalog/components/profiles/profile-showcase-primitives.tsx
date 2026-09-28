@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { humanize } from "@rebuildingamerica/atlas-catalog/catalog";
+import { formatProfileLocation } from "@/domains/catalog/components/profiles/detail/profile-detail-primitives";
 import { cn } from "@/lib/utils";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
@@ -29,13 +30,7 @@ interface EntryHeroMediaProps {
 }
 
 export function formatLocation(entry: Entry): string {
-  if (entry.city && entry.state) {
-    return `${entry.city}, ${entry.state}`;
-  }
-  if (entry.region) {
-    return entry.region;
-  }
-  return entry.state ?? "Location not specified";
+  return formatProfileLocation(entry);
 }
 
 export function formatFreshness(date?: string): string | null {

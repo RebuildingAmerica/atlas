@@ -135,7 +135,7 @@ def _entity_record(entry: EntryModel, context: EntityRecordContext) -> dict[str,
             "region": entry.region,
             "full_address": entry.full_address,
             "geo_specificity": entry.geo_specificity,
-            "display": _format_place(entry.city, entry.state, entry.region),
+            "display": _entry_place_display(entry),
         },
         contact={
             "website": entry.website,
@@ -292,6 +292,13 @@ async def _source_linked_entities_by_id(
 def _latest_source_date(sources: Sequence[Mapping[str, Any]]) -> str | None:
     """Expose only dates the linked sources actually publish."""
     return latest_published_source_date(sources)
+
+
+def _entry_place_display(entry: EntryModel) -> str | None:
+    """Label a statewide group by its scope, never by a city it happens to list."""
+    if entry.geo_specificity == "statewide" and entry.state:
+        return f"Statewide · {entry.state}"
+    return _format_place(entry.city, entry.state, entry.region)
 
 
 def _entity_freshness(

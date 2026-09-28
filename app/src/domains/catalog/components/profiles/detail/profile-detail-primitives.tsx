@@ -2,7 +2,12 @@ import type { ComponentType, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 
+/** Format an entry's place: statewide scope, then city and state, region, or state. */
 export function formatProfileLocation(entry: Entry): string {
+  if (entry.geo_specificity === "statewide" && entry.state) {
+    return `Statewide · ${entry.state}`;
+  }
+
   if (entry.city && entry.state) {
     return `${entry.city}, ${entry.state}`;
   }
