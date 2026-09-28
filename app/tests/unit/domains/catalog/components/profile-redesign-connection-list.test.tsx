@@ -3,8 +3,8 @@
 import "./profile-redesign-test-setup";
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { ConnectionList } from "@/domains/catalog/components/profiles/connection-list";
 import type { ConnectedActor, ConnectionNetwork } from "@rebuildingamerica/atlas-api-client";
 import { createEntryFixture as buildEntry } from "../../../../fixtures/catalog/entries";
@@ -253,6 +253,30 @@ describe("ConnectionList", () => {
   it("treats undefined network (not loading) as empty", () => {
     render(<ConnectionList entry={buildEntry()} network={undefined} isLoading={false} />);
     expect(screen.getByText("No related profiles listed.")).toBeInTheDocument();
+  });
+
+  it("distinguishes a failed network lookup from a genuinely empty network", () => {
+    const onRetry = vi.fn();
+    render(
+      <ConnectionList
+        entry={buildEntry()}
+        network={undefined}
+        isLoading={false}
+        isError
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Connections could not load");
+    expect(screen.queryByText("No related profiles listed.")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("still reports a failed network lookup when no retry handler is available", () => {
+    render(<ConnectionList entry={buildEntry()} network={undefined} isLoading={false} isError />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Connections could not load");
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
   it("renders a minimal browse-more list when entry lacks state and issue areas", () => {

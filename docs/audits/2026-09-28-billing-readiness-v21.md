@@ -3,9 +3,9 @@
 Assessed September 28, 2026 at 03:05 UTC. Production release
 [`v2026.09.27-21`](https://github.com/RebuildingAmerica/atlas/actions/runs/36370886771)
 deployed commit `3139be61b687d04467284cd6923fabc7295c7b17` and passed release
-CI, hosted smoke, signed-in identity, and the enabled hosted checkout checks.
-The live-session step was skipped because the repository checkout flag is
-`false`. The
+CI, hosted smoke, and signed-in identity checks. The hosted checkout job
+completed, but its live-session step was skipped because the repository checkout
+flag is `false`. The
 [read-only billing inventory](https://github.com/RebuildingAmerica/atlas/actions/runs/36372295127)
 ran against that exact release and intentionally returned **NO-GO**. It moved no
 money and changed no Stripe or Vercel settings.

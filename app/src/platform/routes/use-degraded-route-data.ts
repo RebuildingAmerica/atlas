@@ -12,12 +12,12 @@ export interface DegradedRouteDataOptions<T> {
 /**
  * Fetches, in the browser, the data a public route's loader could not.
  *
- * The route renders this only after `loadOrDegrade` returned nothing, so the
- * page is already on screen with placeholders. The fetch retries until the
- * API answers, and the caller keeps showing placeholders meanwhile.
+ * The route renders this only after `loadOrDegrade` returned nothing. A
+ * transient failure gets one automatic retry; callers can then show a manual
+ * recovery action rather than hold the placeholder indefinitely.
  *
  * @param options - The cache key and the loader's data call.
- * @returns The data once it arrives, or `undefined` while it is still coming.
+ * @returns The data and recovery state for the caller's content area.
  */
 export function useDegradedRouteData<T>({ queryKey, queryFn }: DegradedRouteDataOptions<T>) {
   const query = useQuery({ ...PUBLIC_QUERY_RETRY_OPTIONS, queryFn, queryKey });
@@ -29,5 +29,5 @@ export function useDegradedRouteData<T>({ queryKey, queryFn }: DegradedRouteData
     notFound({ routeId: rootRouteId, throw: true });
   }
 
-  return query.data;
+  return { data: query.data, isError: query.isError, refetch: query.refetch };
 }

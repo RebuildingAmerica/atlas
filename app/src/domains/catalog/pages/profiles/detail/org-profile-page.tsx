@@ -161,6 +161,22 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
             <AvatarRow people={affiliatedPeople} showHeader={false} />
           </ProfileSection>
         ) : null}
+        {affiliatedPeopleQuery.isError && !affiliatedPeopleQuery.data ? (
+          <ProfileSection label="People tied to this organization" sectionId="people" Icon={Users}>
+            <div role="alert" className="space-y-2">
+              <p className="type-body-medium text-ink-soft">
+                People tied to this group could not load.
+              </p>
+              <button
+                type="button"
+                onClick={() => void affiliatedPeopleQuery.refetch()}
+                className="type-label-medium text-ink-strong underline"
+              >
+                Try again
+              </button>
+            </div>
+          </ProfileSection>
+        ) : null}
 
         <ProfileSection
           label="Network — actors related to this profile"
@@ -174,6 +190,8 @@ export function OrgProfilePage({ entry, initialConnections, resumeSave }: OrgPro
             entry={entry}
             network={connectionsQuery.data}
             isLoading={connectionsQuery.isPending}
+            isError={connectionsQuery.isError}
+            onRetry={connectionsQuery.refetch}
           />
         </ProfileSection>
 

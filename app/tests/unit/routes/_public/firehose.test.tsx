@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import type { PageHead } from "@/platform/seo";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/../tests/helpers/render-with-providers";
 
@@ -158,6 +158,28 @@ describe("routes/_public/firehose", () => {
     expect(await screen.findByTestId("firehose-page")).toBeInTheDocument();
     expect(mocks.fetchPublicFirehoseSignals).toHaveBeenCalledWith({ place: "detroit-mi" });
     expect(mocks.firehosePageProps).toHaveBeenCalledWith({ initialSnapshot: snapshot });
+  });
+
+  it("offers recovery when updates cannot load and preserves the place filter", async () => {
+    const routeModule = await import("@/routes/_public/firehose");
+    const { asRouteStub, readRouterMocks } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useLoaderData.mockReturnValue({ initialSnapshot: undefined });
+    readRouterMocks().useSearch.mockReturnValue({ place: "las-vegas-nv" });
+    mocks.fetchPublicFirehoseSignals
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockResolvedValue({ signals: [] });
+
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    renderWithProviders(<Component />);
+
+    expect(await screen.findByRole("alert", undefined, { timeout: 3_000 })).toHaveTextContent(
+      "This page didn’t load",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByTestId("firehose-page")).toBeInTheDocument();
+    expect(mocks.fetchPublicFirehoseSignals).toHaveBeenLastCalledWith({ place: "las-vegas-nv" });
   });
 
   it("points the placeholder's RSS link at the whole feed when nothing is filtered", async () => {

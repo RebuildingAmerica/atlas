@@ -222,6 +222,8 @@ export function PersonProfilePage({
             entry={entry}
             network={connectionsQuery.data}
             isLoading={connectionsQuery.isPending}
+            isError={connectionsQuery.isError}
+            onRetry={connectionsQuery.refetch}
           />
         </ProfileSection>
 

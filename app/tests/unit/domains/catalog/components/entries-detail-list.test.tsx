@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { EntryDetail } from "@/domains/catalog/components/entries/entry-detail";
 import { EntryList } from "@/domains/catalog/components/entries/entry-list";
 import type { Entry } from "@rebuildingamerica/atlas-api-client/entry";
@@ -252,5 +252,13 @@ describe("catalog entry detail, filters, and list", () => {
 
     rerender(<EntryList entries={[sampleEntry]} />);
     expect(screen.queryByText("1 results")).toBeNull();
+  });
+
+  it("lets a visitor retry a failed search without changing filters", () => {
+    const onRetry = vi.fn();
+    render(<EntryList entries={[]} error={new Error("unavailable")} onRetry={onRetry} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });

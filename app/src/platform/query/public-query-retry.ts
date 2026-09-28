@@ -3,22 +3,22 @@ import { isNotFound } from "@tanstack/react-router";
 /** First wait before a public page asks the API again. */
 export const PUBLIC_QUERY_RETRY_BASE_MS = 1_000;
 
-/** Longest wait between attempts, so a recovered API shows up within half a minute. */
+/** Longest wait between attempts. */
 export const PUBLIC_QUERY_RETRY_CAP_MS = 30_000;
 
 /**
  * Decides whether a public page's browser fetch should try again.
  *
- * A public page never shows a visitor a failure: the section keeps its
- * placeholder until the API answers. A missing record is an answer, so it
- * stops the retries and lets the page render not-found instead.
+ * A public page retries one transient failure, then shows an actionable
+ * failure state instead of an indefinite placeholder. A missing record is an
+ * answer, so it stops immediately and lets the page render not-found.
  *
- * @param _failureCount - Attempts so far. The count never ends the retries.
+ * @param failureCount - Failed attempts so far.
  * @param error - Why the last attempt failed.
  * @returns Whether to schedule another attempt.
  */
-export function shouldRetryPublicQuery(_failureCount: number, error: unknown): boolean {
-  return !isNotFound(error);
+export function shouldRetryPublicQuery(failureCount: number, error: unknown): boolean {
+  return failureCount < 1 && !isNotFound(error);
 }
 
 /**

@@ -58,14 +58,13 @@ function fetchProfileEntry(lookup: ProfileEntryLookup): Promise<Entry> {
 /**
  * Loads a profile whose route loader came back empty.
  *
- * It retries until the API answers and throws the router's not-found when
- * the record does not exist, so the caller only has to show a placeholder
- * while the result is `undefined`.
+ * It retries a transient failure once and throws the router's not-found when
+ * the record does not exist. The caller can show a recovery action on failure.
  *
  * @param lookup - The slug and scope.
- * @returns The entry once it arrives, or `undefined` while it is still coming.
+ * @returns The entry and its loading/recovery state.
  */
-export function useProfileEntry(lookup: ProfileEntryLookup): Entry | undefined {
+export function useProfileEntry(lookup: ProfileEntryLookup) {
   return useDegradedRouteData({
     queryKey: profileEntryQueryKey(lookup),
     queryFn: () => fetchProfileEntry(lookup),
@@ -73,12 +72,7 @@ export function useProfileEntry(lookup: ProfileEntryLookup): Entry | undefined {
 }
 
 /**
- * Loads a profile's connection network, retrying until the API answers.
- *
- * `useConnections` gives up after the app's single default retry, and the
- * network section then tells the visitor no connections exist. This shares
- * its cache key and keeps retrying, so the section holds its loading state
- * through an outage instead.
+ * Loads a profile's connection network with one retry before showing recovery.
  *
  * @param entryId - The profile's entry id.
  * @param initialData - A server-rendered network, when a loader supplied one.

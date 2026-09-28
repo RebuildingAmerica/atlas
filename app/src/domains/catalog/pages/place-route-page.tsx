@@ -1,4 +1,5 @@
 import { useDegradedRouteData } from "@/platform/routes/use-degraded-route-data";
+import { PublicDataFailure } from "@/platform/routes/public-data-failure";
 import type { PlacePageData } from "@rebuildingamerica/atlas-api-client";
 import { PlacePage } from "./place-page";
 import { PlacePageSkeleton } from "./place-page-skeleton";
@@ -22,12 +23,14 @@ interface DegradedPlacePageProps {
 }
 
 function DegradedPlacePage({ options, params }: DegradedPlacePageProps) {
-  const data = useDegradedRouteData({
+  const { data, isError, refetch } = useDegradedRouteData({
     queryFn: () => loadPlaceRoute(params, options),
     queryKey: placePageQueryKey(params, options),
   });
 
-  return data ? <PlacePage data={data} /> : <PlacePageSkeleton />;
+  if (data) return <PlacePage data={data} />;
+  if (isError) return <PublicDataFailure onRetry={() => void refetch()} />;
+  return <PlacePageSkeleton />;
 }
 
 /**

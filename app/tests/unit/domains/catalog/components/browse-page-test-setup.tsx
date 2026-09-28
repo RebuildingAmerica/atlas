@@ -97,9 +97,18 @@ vi.mock("@/domains/catalog/components/browse/us-map-surface", () => ({
 }));
 
 vi.mock("@/domains/catalog/components/entries/entry-list", () => ({
-  EntryList: ({ error, total }: { error?: Error | null; total?: number }) => (
+  EntryList: ({
+    error,
+    total,
+    onRetry,
+  }: {
+    error?: Error | null;
+    total?: number;
+    onRetry?: () => void;
+  }) => (
     <div>
       {error ? <div role="alert">{error.message}</div> : null}
+      {error && onRetry ? <button onClick={onRetry}>Try again</button> : null}
       <div>Entry list total: {total ?? 0}</div>
     </div>
   ),

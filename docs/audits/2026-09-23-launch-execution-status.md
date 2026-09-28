@@ -17,13 +17,14 @@ showed no usable promoted transit or housing slice in its September 23 city
 snapshot; no later reviewed public inventory is recorded here. The repository
 contains fixes for several privacy, purchase-isolation, refund, and journey
 defects. Release `v2026.09.27-22` deployed the cumulative-refund correction and
-mobile map-count simplification. The latest protected runtime Stripe inventory
-was on v21: its live key, charge-enabled account, Tax status, and catalog
-identifiers passed; the Atlas portal configuration, four webhook subscriptions,
-and offer allowlist were missing. No v22 billing inventory or completed live
-payment, signed webhook delivery, or useful reviewed Las Vegas discovery slice
-has been demonstrated. Checkout remains disabled. Passing deployment checks does
-not satisfy those acceptance gates.
+mobile map-count simplification. The
+[v22 protected runtime Stripe inventory](https://github.com/RebuildingAmerica/atlas/actions/runs/36375819749)
+passed its live key, charge-enabled account, Tax status, and catalog
+identifiers; the Atlas portal configuration, four webhook subscriptions, and
+offer allowlist are missing. No completed live payment, signed webhook delivery,
+or useful reviewed Las Vegas discovery slice has been demonstrated. Checkout
+remains disabled. Passing deployment checks does not satisfy those acceptance
+gates.
 
 The
 [September 27 Las Vegas editorial packet](2026-09-27-las-vegas-editorial-packet.md)
@@ -47,14 +48,26 @@ job completed, but its live-session step was skipped because new sales are
 closed. This release includes the cumulative-full-refund entitlement fix, the
 mobile map-count correction, and bounded hosted public-page checks. The refund
 correction has a passing unit regression, but an actual refunded customer and
-signed provider event have not been demonstrated on this release. The most
-recent read-only billing inventory remains the v21 assessment below.
+signed provider event have not been demonstrated on this release. The
+[v22 read-only billing inventory](https://github.com/RebuildingAmerica/atlas/actions/runs/36375819749)
+returned **NO-GO** at 03:59 UTC on September 28: runtime key, charge capability,
+Tax, and catalog IDs passed; the Atlas portal was absent, the webhook missed
+both async-payment and both refund events, the offer allowlist was absent, and
+checkout was closed. It did not move money or modify provider settings.
 
 Commit `aed7acb2` follows this production tag on `main`. It replaces indefinite
 loading on the profiles overview with a visible retry and avoids unused catalog
 requests on scoped pages. Local app tests passed 601 files and 3,941 tests at
 100% coverage; the repository pre-push gate passed 33 of 33 tasks. It is **not
 part of v22** and is not recorded as production behavior.
+
+The next main change bounds public API retries to one automatic retry and then
+shows a manual recovery action for degraded profile, place, directory, Firehose,
+search, map, and profile-network reads. A failed network lookup is no longer
+displayed as an empty relationship list; organization-related people also report
+failure rather than silently disappearing. The full app suite passed 601 files,
+3,951 tests, and 100% statement, branch, function, and line coverage. This
+change has not been released to production or verified there.
 
 ## Prior production release `v2026.09.27-21`
 

@@ -4,7 +4,7 @@ import "./browse-page-test-setup";
 
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createEntryFixture } from "@/../tests/fixtures/catalog/entries";
 import { BrowsePage } from "@/domains/catalog/components/browse/browse-page";
 import { PUBLIC_QUERY_RETRY_OPTIONS } from "@/platform/query/public-query-retry";
@@ -77,6 +77,25 @@ describe("BrowsePage results", () => {
       PUBLIC_QUERY_RETRY_OPTIONS,
     );
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("retries failed search results without losing the selected place", () => {
+    const refetch = vi.fn();
+    mocks.useEntries.mockReturnValue({
+      data: undefined,
+      error: new Error("offline"),
+      isLoading: false,
+      refetch,
+    });
+
+    render(<BrowsePage search={{ states: "NV", query: "housing", view: "list" }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(mocks.useEntries).toHaveBeenCalledWith(
+      expect.objectContaining({ states: ["NV"], query: "housing" }),
+      PUBLIC_QUERY_RETRY_OPTIONS,
+    );
   });
 
   it("converts place-plus-issue search phrases into browse filters", () => {

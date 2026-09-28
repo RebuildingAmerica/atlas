@@ -28,7 +28,7 @@ describe("useProfileEntry", () => {
     });
 
     await waitFor(() => {
-      expect(result.current).toEqual(entry);
+      expect(result.current.data).toEqual(entry);
     });
     expect(profileEntryQueryKey({ scope: "people", slug: "ada-reyes" })).toEqual([
       "entries",
@@ -50,9 +50,9 @@ describe("useProfileEntry", () => {
       ),
     });
 
-    expect(result.current).toBeUndefined();
+    expect(result.current.data).toBeUndefined();
     await waitFor(() => {
-      expect(result.current).toEqual(entry);
+      expect(result.current.data).toEqual(entry);
     });
     expect(loadEntryBySlugAny).toHaveBeenCalledWith({ data: { slug: "acme" } });
     expect(queryClient.getQueryData(["entries", "by-slug-any", "acme"])).toEqual(entry);

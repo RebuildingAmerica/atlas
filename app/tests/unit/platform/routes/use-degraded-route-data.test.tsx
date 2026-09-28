@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { isNotFound, notFound, rootRouteId } from "@tanstack/react-router";
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CaptureRenderError } from "@/../tests/helpers/capture-render-error";
 import { DegradedRouteDataProbe } from "@/../tests/helpers/degraded-route-data-probe";
@@ -32,6 +32,24 @@ describe("useDegradedRouteData", () => {
 
     expect(await screen.findByText("Las Vegas", undefined, { timeout: 3_000 })).toBeInTheDocument();
     expect(queryFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers recovery after bounded retries and loads on demand", async () => {
+    const queryFn = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValue("Las Vegas");
+
+    renderWithProviders(
+      <DegradedRouteDataProbe queryFn={queryFn} queryKey={["probe", "outage"]} />,
+    );
+
+    expect(await screen.findByText("failed", undefined, { timeout: 3_000 })).toBeInTheDocument();
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Las Vegas")).toBeInTheDocument();
+    expect(queryFn).toHaveBeenCalledTimes(3);
   });
 
   it("hands a missing record to the root not-found page", async () => {

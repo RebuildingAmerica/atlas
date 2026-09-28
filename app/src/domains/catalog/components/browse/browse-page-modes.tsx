@@ -40,6 +40,7 @@ interface BrowseResultsModeProps {
   resultsHeading: string;
   selectedId?: string;
   onPageChange: (offset: number) => void;
+  onRetry?: () => void;
   onSelectFacet: (key: BrowseFilterKey, value: string) => void;
 }
 
@@ -58,6 +59,7 @@ export function BrowseResultsMode({
   resultsHeading,
   selectedId,
   onPageChange,
+  onRetry,
   onSelectFacet,
 }: BrowseResultsModeProps) {
   const previousOffset =
@@ -79,6 +81,7 @@ export function BrowseResultsMode({
           total={pagination?.total}
           isLoading={isLoading}
           error={error}
+          onRetry={onRetry}
           issueAreaLabels={issueAreaLabels}
           hasActiveSearch
           resultLabelPlural={resultLabelPlural}

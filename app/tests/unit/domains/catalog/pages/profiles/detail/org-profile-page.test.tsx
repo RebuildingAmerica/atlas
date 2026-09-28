@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { QueryClient } from "@tanstack/react-query";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { OrgProfilePage } from "@/domains/catalog/pages/profiles/detail/org-profile-page";
@@ -153,6 +153,28 @@ describe("OrgProfilePage", () => {
     renderWithProviders(<OrgProfilePage entry={organization()} />, { seed: seedAnonymous });
 
     expect(screen.queryByRole("region", { name: "People tied to this organization" })).toBeNull();
+  });
+
+  it("offers a retry when related people could not load", async () => {
+    renderWithProviders(<OrgProfilePage entry={organization()} />, {
+      seed: (queryClient) => {
+        queryClient.setQueryData(["auth", "session"], null);
+        queryClient.setQueryData(["taxonomy"], {});
+      },
+    });
+
+    const alert = await screen.findByText("People tied to this group could not load.", undefined, {
+      timeout: 3_000,
+    });
+    const errorMessage = alert.closest('[role="alert"]');
+    if (!(errorMessage instanceof HTMLElement)) {
+      throw new Error("Expected a related people error message");
+    }
+    fireEvent.click(
+      within(errorMessage).getByRole("button", {
+        name: "Try again",
+      }),
+    );
   });
 
   it("omits the issue footprint when the record names no issue area", () => {

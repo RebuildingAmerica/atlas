@@ -365,6 +365,7 @@ export function BrowsePage({ initialEntries, search, page }: BrowsePageProps) {
               onPageChange={(offset) => {
                 updateSearch({ offset });
               }}
+              onRetry={() => void entriesQuery.refetch()}
               onSelectFacet={handleToggleFilter}
             />
           </>

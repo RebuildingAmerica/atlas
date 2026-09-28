@@ -11,6 +11,7 @@ import {
 import { fetchPublicFirehoseSignals } from "@/platform/firehose/public-feed";
 import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { useDegradedRouteData } from "@/platform/routes/use-degraded-route-data";
+import { PublicDataFailure } from "@/platform/routes/public-data-failure";
 import { buildCanonicalUrl, buildPageHead } from "@/platform/seo";
 
 interface FirehoseSearch {
@@ -56,7 +57,11 @@ export const Route = createFileRoute("/_public/firehose")({
 });
 
 function DegradedFirehose({ search }: DegradedFirehoseProps) {
-  const snapshot = useDegradedRouteData({
+  const {
+    data: snapshot,
+    isError,
+    refetch,
+  } = useDegradedRouteData({
     queryFn: () => fetchPublicFirehoseSignals(search),
     queryKey: ["firehose", "public", search],
   });
@@ -64,6 +69,7 @@ function DegradedFirehose({ search }: DegradedFirehoseProps) {
   if (snapshot) {
     return <FirehoseFeedPage initialSnapshot={snapshot} />;
   }
+  if (isError) return <PublicDataFailure onRetry={() => void refetch()} />;
   return <FirehoseFeedPlaceholder query={normalizePublicFirehoseSearch(search)} />;
 }
 

@@ -10,6 +10,8 @@ interface ConnectionListProps {
   entry: Entry;
   network: ConnectionNetwork | undefined;
   isLoading: boolean;
+  isError?: boolean;
+  onRetry?: () => unknown;
 }
 
 interface ConnectionRowProps {
@@ -224,9 +226,32 @@ function BrowseMore({ entry }: { entry: Entry }) {
   );
 }
 
-export function ConnectionList({ entry, network, isLoading }: ConnectionListProps) {
+export function ConnectionList({
+  entry,
+  network,
+  isLoading,
+  isError,
+  onRetry,
+}: ConnectionListProps) {
   if (isLoading && !network) {
     return <ConnectionListSkeleton />;
+  }
+
+  if (isError && !network) {
+    return (
+      <div role="alert" className="space-y-2">
+        <p className="type-body-medium text-ink-soft">Connections could not load.</p>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={() => void onRetry()}
+            className="type-label-medium text-ink-strong underline"
+          >
+            Try again
+          </button>
+        ) : null}
+      </div>
+    );
   }
 
   if (!network || network.actors.length === 0) {

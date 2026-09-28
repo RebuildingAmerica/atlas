@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { isNotFound } from "@tanstack/react-router";
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AtlasApiError } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import { PlaceRoutePage } from "@/domains/catalog/pages/place-route-page";
@@ -78,6 +78,24 @@ describe("PlaceRoutePage", () => {
       await screen.findByRole("heading", { level: 1, name: "Las Vegas" }, { timeout: 3_000 }),
     ).toBeInTheDocument();
     expect(apiMocks.getPage).toHaveBeenLastCalledWith("las-vegas-nv");
+  });
+
+  it("replaces an outage placeholder with recovery and loads after a retry", async () => {
+    apiMocks.getPage
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockResolvedValue(placePageFixture);
+
+    renderWithProviders(
+      <PlaceRoutePage loaderData={undefined} params={{ placeSlug: "las-vegas-nv" }} />,
+    );
+
+    expect(await screen.findByRole("alert", undefined, { timeout: 3_000 })).toHaveTextContent(
+      "This page didn’t load",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Las Vegas" })).toBeInTheDocument();
+    expect(apiMocks.getPage).toHaveBeenCalledTimes(3);
   });
 
   it("renders not-found when the browser fetch learns the place does not exist", async () => {

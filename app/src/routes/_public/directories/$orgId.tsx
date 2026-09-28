@@ -8,6 +8,7 @@ import {
 } from "@/domains/catalog/server/public-directory";
 import { loadOrDegrade } from "@/platform/routes/load-or-degrade";
 import { useDegradedRouteData } from "@/platform/routes/use-degraded-route-data";
+import { PublicDataFailure } from "@/platform/routes/public-data-failure";
 import { buildPageHead } from "@/platform/seo";
 import { formatStableDateTime, MEDIUM_DATE } from "@rebuildingamerica/atlas-ui/format/date-time";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
@@ -44,7 +45,11 @@ function PublicDirectoryPage() {
 
 function DegradedPublicDirectory() {
   const { orgId } = Route.useParams();
-  const directory = useDegradedRouteData({
+  const {
+    data: directory,
+    isError,
+    refetch,
+  } = useDegradedRouteData({
     queryFn: () => loadPublicDirectory({ data: { orgId } }),
     queryKey: ["directories", "public", orgId],
   });
@@ -52,6 +57,7 @@ function DegradedPublicDirectory() {
   if (directory) {
     return <PublicDirectoryContent directory={directory} />;
   }
+  if (isError) return <PublicDataFailure onRetry={() => void refetch()} />;
   return <PublicDirectorySkeleton />;
 }
 

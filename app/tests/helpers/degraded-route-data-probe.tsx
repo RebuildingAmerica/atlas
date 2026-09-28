@@ -11,6 +11,11 @@ export interface DegradedRouteDataProbeProps {
  * route move from its placeholder to its data.
  */
 export function DegradedRouteDataProbe({ queryFn, queryKey }: DegradedRouteDataProbeProps) {
-  const data = useDegradedRouteData({ queryFn, queryKey });
-  return <p data-testid="probe">{data ?? "waiting"}</p>;
+  const { data, isError, refetch } = useDegradedRouteData({ queryFn, queryKey });
+  return (
+    <div>
+      <p data-testid="probe">{data ?? (isError ? "failed" : "waiting")}</p>
+      {isError ? <button onClick={() => void refetch()}>Try again</button> : null}
+    </div>
+  );
 }

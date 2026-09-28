@@ -8,11 +8,11 @@ import {
 } from "@/platform/query/public-query-retry";
 
 describe("public query retry", () => {
-  it("keeps retrying an outage no matter how many attempts have failed", () => {
+  it("retries a public outage once, then allows an actionable error state", () => {
     const rateLimited = Object.assign(new Error("Too many requests."), { status: 429 });
 
     expect(shouldRetryPublicQuery(0, rateLimited)).toBe(true);
-    expect(shouldRetryPublicQuery(500, new TypeError("fetch failed"))).toBe(true);
+    expect(shouldRetryPublicQuery(1, new TypeError("fetch failed"))).toBe(false);
   });
 
   it("stops at a missing record so the page can render not-found", () => {

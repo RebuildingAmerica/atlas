@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { isNotFound, notFound, rootRouteId } from "@tanstack/react-router";
-import { act, cleanup, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Entry } from "@rebuildingamerica/atlas-api-client";
 import { ProfileRoutePage } from "@/domains/catalog/pages/profiles/detail/profile-route-page";
@@ -107,6 +107,21 @@ describe("ProfileRoutePage", () => {
       await screen.findByRole("heading", { name: "Organization Beacon Trust" }, { timeout: 3_000 }),
     ).toBeInTheDocument();
     expect(loadProfileBySlug).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets a visitor recover a profile after a sustained API outage", async () => {
+    vi.mocked(loadProfileBySlug)
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockResolvedValue(createEntryFixture({ name: "Ada Reyes" }));
+
+    renderWithProviders(<ProfileRoutePage scope="people" slug="ada-reyes" entry={undefined} />);
+
+    expect(await screen.findByRole("alert", undefined, { timeout: 3_000 })).toHaveTextContent(
+      "This page didn’t load",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "Person Ada Reyes" })).toBeInTheDocument();
   });
 
   it("hands a profile that does not exist to the root not-found page", async () => {

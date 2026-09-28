@@ -544,6 +544,33 @@ describe("routes/_public/directories/$orgId", () => {
     expect(loadPublicDirectory).toHaveBeenCalledWith({ data: { orgId: "tenant-kc" } });
   });
 
+  it("shows recovery after an outage and then loads the same directory", async () => {
+    const support =
+      await import("@/../tests/unit/routes/_public/directories/public-directory-test-support");
+    const { loadPublicDirectory } = await import("@/domains/catalog/server/public-directory");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const { renderWithProviders } = await import("@/../tests/helpers/render-with-providers");
+    readRouterMocks().useLoaderData.mockReturnValue({ directory: undefined });
+    readRouterMocks().useParams.mockReturnValue({ orgId: "tenant-kc" });
+    vi.mocked(loadPublicDirectory)
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockRejectedValueOnce(new TypeError("offline"))
+      .mockResolvedValue(support.publicDirectoryFixture());
+
+    const routeModule = await import("@/routes/_public/directories/$orgId");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected component");
+    renderWithProviders(<Component />);
+
+    expect(await screen.findByRole("alert", undefined, { timeout: 3_000 })).toHaveTextContent(
+      "This page didn’t load",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByRole("heading", { name: "Kansas City tenant power directory" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders not-found when the browser fetch learns the directory does not exist", async () => {
     const { loadPublicDirectory } = await import("@/domains/catalog/server/public-directory");
     const { readRouterMocks, asRouteStub, isMockNotFound, mockNotFound } =

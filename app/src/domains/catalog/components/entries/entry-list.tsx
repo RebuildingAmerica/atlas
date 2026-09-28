@@ -25,6 +25,7 @@ interface EntryListProps {
     to: "/browse" | "/discovery" | "/profiles";
   };
   emptyRecoveryActions?: EmptyRecoveryAction[];
+  onRetry?: () => void;
   selectedId?: string;
 }
 
@@ -61,6 +62,7 @@ export function EntryList({
   discoveryContext,
   emptyAction = { label: "Browse profiles", to: "/profiles" },
   emptyRecoveryActions = [],
+  onRetry,
   selectedId,
 }: EntryListProps) {
   if (isLoading) {
@@ -83,6 +85,11 @@ export function EntryList({
           Search unavailable
         </div>
         <p className="type-body-medium mt-2">{ENTRY_LIST_ERROR_MESSAGE}</p>
+        {onRetry ? (
+          <Button className="mt-4" variant="secondary" onClick={onRetry}>
+            Try again
+          </Button>
+        ) : null}
       </div>
     );
   }
