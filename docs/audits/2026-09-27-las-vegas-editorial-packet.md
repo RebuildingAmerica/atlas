@@ -54,6 +54,31 @@ decisions against the live record before changing Atlas.
 | Nevada Housing Coalition            | Its [home page](https://nvhousingcoalition.org/) states a statewide affordable-housing policy mission. Its [membership page](https://nvhousingcoalition.org/membership/become-a-member/) lists dues and a membership route.                                                                                                            | Suitable statewide policy candidate; the Las Vegas mailing address is not a service office, and paid membership is not an eviction-help action.                                                               |
 | PedSafe Vegas                       | Its [site](https://pedsafe.vegas/) identifies a UNLV Transportation Research Center program focused on road-user safety in Clark County.                                                                                                                                                                                               | Continue to hold until the editor decides whether a program or its parent is the right Atlas entity.                                                                                                          |
 
+### September 28 production duplicate recheck
+
+After release `v2026.09.28-2`, the unauthenticated
+[public Atlas catalog](https://atlas-api.rebuildingus.org/api/entities?limit=100)
+returned all 1,403 published records in 15 pages. None of the seven proposed new
+or held entity names appeared exactly, and none of their official domains
+appeared in a published organization's contact website or action URL. Detail
+responses for all 30 published Nevada organizations were then checked for linked
+source domains: only `naacplasvegas.org` matched a candidate, on the
+[existing NAACP Las Vegas Branch #1111 record](https://atlas-api.rebuildingus.org/api/entities/by-slug/organizations/naacp-las-vegas-branch-1111-c530).
+Its public description does not yet mention the Housing Committee, its contact
+website is empty, and its one linked source is the branch About page. Update
+this record with the reviewed Housing Committee claim and official action; do
+not add a second NAACP entity.
+
+The nearest name to Nevada Housing Justice Alliance in the full catalog was
+[Nevada Affordable Housing Alliance Inc](https://atlas-api.rebuildingus.org/api/entities/c85999e8-4fd0-4c39-96a4-6c543cd5f55d).
+Its public detail is a Port Angeles, Washington IRS filing under EIN 810956743,
+sourced to ProPublica; it is not evidence of a Nevada coalition duplicate. Name
+and contact-domain checks across the full catalog, plus linked-source checks on
+Nevada records, narrow the duplicate risk. They do **not** clear a differently
+named out-of-state record with a linked candidate source, a private held entry,
+or a nonpublic alias. The editorial approver must check those remaining cases
+before publication.
+
 The
 [Las Vegas DSA housing campaign page](https://lvdsa.org/campaign/housing-justice/)
 remains a research lead only. It describes a 2021–22 priority and shows no
