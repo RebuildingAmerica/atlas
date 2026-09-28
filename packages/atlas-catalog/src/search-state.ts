@@ -82,15 +82,24 @@ interface IntentMatchResult<Value extends string> {
   query: string;
 }
 
-const ISSUE_SYNONYMS: Partial<Record<string, string[]>> = {
-  civic_participation: [
-    "democracy",
-    "voting",
-    "voter access",
-    "local elections",
+/**
+ * Everyday words for Atlas issues, keyed by real taxonomy slugs. A search
+ * only becomes an issue filter through an issue's full label, its slug, or one
+ * of these phrases, so single common words like "public" or "local" stay text.
+ */
+export const ISSUE_SYNONYMS: Readonly<Partial<Record<string, readonly string[]>>> = {
+  climate_adaptation_and_resilience: ["climate"],
+  healthcare_access_and_coverage: [
+    "health care",
+    "healthcare",
+    "clinics",
+    "medical access",
+    "health insurance",
   ],
-  healthcare_access: ["health care", "healthcare", "clinics", "medical access"],
+  homelessness_and_housing_insecurity: ["homelessness", "homeless", "unhoused"],
   housing_affordability: [
+    "housing",
+    "affordable housing",
     "renters",
     "rent",
     "tenant",
@@ -98,14 +107,12 @@ const ISSUE_SYNONYMS: Partial<Record<string, string[]>> = {
     "tenant organizing",
     "tenant union",
   ],
-  worker_power: [
-    "labor",
-    "worker",
-    "workers",
-    "union",
-    "unions",
-    "workplace organizing",
-  ],
+  immigration_and_belonging: ["immigration", "immigrant", "immigrants"],
+  local_government_and_civic_engagement: ["civic engagement", "civic participation"],
+  policing_and_community_safety: ["policing", "police"],
+  public_transit: ["transit", "public transportation", "bus", "buses"],
+  union_organizing: ["labor", "union", "unions", "labor organizing", "workplace organizing"],
+  voter_suppression_and_electoral_access: ["voting", "voter access", "voting rights"],
 };
 
 const ENTRY_TYPE_SYNONYMS: Partial<Record<EntryType, string[]>> = {
@@ -286,9 +293,8 @@ function issueCandidates(
   issueAreaLabels: Record<string, string>,
 ): IntentCandidate<string>[] {
   return Object.entries(issueAreaLabels).flatMap(([slug, label]) => {
-    const labelTerms = label.split(/\s+/).filter((term) => term.length > 3);
     const synonyms = ISSUE_SYNONYMS[slug] ?? [];
-    return [label, labelTerms[0], slug.replaceAll("_", " "), ...synonyms]
+    return [label, slug.replaceAll("_", " "), ...synonyms]
       .filter((candidate): candidate is string => Boolean(candidate))
       .map((candidate) => ({ label: candidate, value: slug }));
   });

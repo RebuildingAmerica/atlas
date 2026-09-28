@@ -41,13 +41,6 @@ export const FEATURED_ENTRY_TYPES: EntryType[] = [
   "campaign",
 ];
 
-export const FEATURED_ISSUE_STARTERS = [
-  { slug: "housing_affordability", label: "Housing Affordability" },
-  { slug: "worker_power", label: "Worker Power" },
-  { slug: "civic_participation", label: "Civic Participation" },
-  { slug: "healthcare_access", label: "Healthcare Access" },
-] as const;
-
 export function humanize(value: string): string {
   return value
     .split("_")

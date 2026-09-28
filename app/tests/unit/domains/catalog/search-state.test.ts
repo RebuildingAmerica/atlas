@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   buildBrowseSearch,
   hasActiveBrowseSearch,
+  ISSUE_SYNONYMS,
   parseList,
   resolveBrowseSearchIntent,
   serializeList,
   toggleValue,
 } from "@rebuildingamerica/atlas-catalog/search-state";
+import { ISSUE_AREA_TO_DOMAIN } from "@rebuildingamerica/atlas-catalog/taxonomy-domains";
 
 describe("parseList", () => {
   it("splits comma-separated values and trims whitespace", () => {
@@ -212,5 +214,62 @@ describe("resolveBrowseSearchIntent", () => {
       source_types: [],
       states: [],
     });
+  });
+});
+
+describe("resolveBrowseSearchIntent with real Atlas issues", () => {
+  const options = {
+    issueAreaLabels: {
+      community_health_infrastructure: "Community Health Infrastructure",
+      healthcare_access_and_coverage: "Healthcare Access and Coverage",
+      housing_affordability: "Housing Affordability",
+      just_transition: "Just Transition",
+      local_government_and_civic_engagement: "Local Government and Civic Engagement",
+      public_transit: "Public Transit",
+      union_organizing: "Union Organizing",
+    },
+    sourceTypeLabels: { news_article: "Local news" },
+    stateNameByCode: { NV: "Nevada" },
+  };
+
+  it("maps transit to the public transit issue", () => {
+    expect(resolveBrowseSearchIntent("transit in Nevada", options)).toMatchObject({
+      issue_areas: ["public_transit"],
+      states: ["NV"],
+      query: undefined,
+    });
+  });
+
+  it("keeps a bare 'public' as search text instead of a transit filter", () => {
+    expect(resolveBrowseSearchIntent("public library", options)).toMatchObject({
+      issue_areas: [],
+      query: "public library",
+    });
+  });
+
+  it("reads 'local news' as a source type, not local government", () => {
+    expect(resolveBrowseSearchIntent("local news", options)).toMatchObject({
+      issue_areas: [],
+      source_types: ["news_article"],
+    });
+  });
+
+  it("does not turn ordinary words into issue filters", () => {
+    expect(resolveBrowseSearchIntent("groups that just started", options).issue_areas).toEqual([]);
+  });
+
+  it("maps labor and health language to issues Atlas actually has", () => {
+    expect(resolveBrowseSearchIntent("labor unions", options).issue_areas).toEqual([
+      "union_organizing",
+    ]);
+    expect(resolveBrowseSearchIntent("health care", options).issue_areas).toEqual([
+      "healthcare_access_and_coverage",
+    ]);
+  });
+
+  it("only keeps synonyms for issues in the Atlas taxonomy", () => {
+    expect(Object.keys(ISSUE_SYNONYMS).filter((slug) => !(slug in ISSUE_AREA_TO_DOMAIN))).toEqual(
+      [],
+    );
   });
 });
