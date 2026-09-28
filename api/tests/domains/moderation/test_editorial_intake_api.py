@@ -2,6 +2,7 @@
 
 from http import HTTPStatus
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -234,12 +235,13 @@ async def test_editorial_intake_requires_an_allowlisted_operator(
 ) -> None:
     """A normal signed-in user cannot stage a public-profile candidate."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
+    internal_token = uuid4().hex
+    test_settings.auth_internal_secret = internal_token
     test_settings.operator_allowed_emails = ["editor@rebuildingus.org"]
     ordinary_headers = {
         "X-Atlas-Actor-Email": "visitor@example.org",
         "X-Atlas-Actor-Id": "ordinary-user",
-        "X-Atlas-Internal-Secret": "internal-test-secret",
+        "X-Atlas-Internal-Secret": internal_token,
     }
     response = await test_client.post(
         "/api/review-queue/editorial-candidates", json=candidate(), headers=ordinary_headers
