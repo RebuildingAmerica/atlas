@@ -7,6 +7,7 @@ export interface CorrectionReport {
   entitySlug: string | null;
   entityType: string | null;
   id: string;
+  linkedProfiles: { name: string; slug: string; type: string }[];
   note: string | null;
   reason: string;
   sourceUrl: string | null;
@@ -25,6 +26,7 @@ interface ApiCorrectionReport {
   entity_slug: string | null;
   entity_type: string | null;
   id: string;
+  linked_profiles: { name: string; slug: string; type: string }[];
   note: string | null;
   reason: string;
   source_url: string | null;
@@ -57,6 +59,7 @@ export const listCorrectionReports = createServerFn({ method: "POST" })
         entitySlug: item.entity_slug,
         entityType: item.entity_type,
         id: item.id,
+        linkedProfiles: item.linked_profiles,
         note: item.note,
         reason: item.reason,
         sourceUrl: item.source_url,

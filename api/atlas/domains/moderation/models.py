@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -54,6 +54,7 @@ class ModerationInboxItem:
     reason: str
     note: str | None
     created_at: str
+    linked_profiles: list[dict[str, str]] = field(default_factory=list)
 
 
 class FlagCRUD:
@@ -219,7 +220,29 @@ class FlagCRUD:
             """,
             (limit, offset),
         )
-        return [ModerationInboxItem(*row) for row in await cursor.fetchall()]
+        items = [ModerationInboxItem(*row) for row in await cursor.fetchall()]
+        source_ids = sorted({item.target_id for item in items if item.target_type == "source"})
+        if source_ids:
+            placeholders = ", ".join("?" for _ in source_ids)
+            profile_cursor = await conn.execute(
+                f"""
+                SELECT es.source_id, e.name, e.slug, e.type
+                FROM entry_sources es
+                JOIN entries e ON e.id = es.entry_id
+                WHERE es.source_id IN ({placeholders}) AND e.active = 1
+                ORDER BY e.name, e.id
+                """,
+                source_ids,
+            )
+            profiles_by_source: dict[str, list[dict[str, str]]] = {}
+            for source_id, name, slug, entry_type in await profile_cursor.fetchall():
+                profiles_by_source.setdefault(str(source_id), []).append(
+                    {"name": str(name), "slug": str(slug or ""), "type": str(entry_type)}
+                )
+            for item in items:
+                if item.target_type == "source":
+                    item.linked_profiles = profiles_by_source.get(item.target_id, [])
+        return items
 
     @staticmethod
     async def count_open_moderation_reports(conn: aiosqlite.Connection) -> int:

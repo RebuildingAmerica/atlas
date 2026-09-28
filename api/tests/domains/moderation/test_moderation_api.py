@@ -266,6 +266,21 @@ async def test_editor_inbox_includes_open_source_reports_and_profile_reports(
         extraction_method="manual",
         title="Housing evidence",
     )
+    await SourceCRUD.link_to_entry(test_db, entity_id, source_id)
+    linked_entry = await EntryCRUD.get_by_id(test_db, entity_id)
+    assert linked_entry is not None
+    second_entity_id = await EntryCRUD.create(
+        test_db,
+        entry_type="organization",
+        name="Nevada Tenant Network",
+        description="Another group that uses the same source.",
+        city="Las Vegas",
+        state="NV",
+        geo_specificity="local",
+    )
+    await SourceCRUD.link_to_entry(test_db, second_entity_id, source_id)
+    second_entry = await EntryCRUD.get_by_id(test_db, second_entity_id)
+    assert second_entry is not None
     profile_receipt = await test_client.post(
         "/api/entity-flags",
         json={"entity_id": entity_id, "reason": "incorrect", "note": "Private profile note"},
@@ -291,6 +306,18 @@ async def test_editor_inbox_includes_open_source_reports_and_profile_reports(
             "entity_slug": None,
             "entity_type": None,
             "source_url": "https://example.test/housing-evidence",
+            "linked_profiles": [
+                {
+                    "name": "Las Vegas Housing Group",
+                    "slug": linked_entry.slug,
+                    "type": "organization",
+                },
+                {
+                    "name": "Nevada Tenant Network",
+                    "slug": second_entry.slug,
+                    "type": "organization",
+                },
+            ],
             "reason": "outdated_source",
             "note": "Private source note",
             "created_at": source_receipt.json()["created_at"],
@@ -391,6 +418,12 @@ async def test_only_allowlisted_editors_can_read_or_close_private_reports(
     combined_inbox = await test_client.get("/api/correction-inbox", headers=editor_headers)
     assert combined_inbox.status_code == HTTPStatus.OK
     assert combined_inbox.json()["total"] == 2
+    assert (
+        next(item for item in combined_inbox.json()["items"] if item["target_type"] == "source")[
+            "linked_profiles"
+        ]
+        == []
+    )
     resolved = await test_client.post(
         f"/api/entity-flags/{report_id}/resolve", headers=editor_headers
     )

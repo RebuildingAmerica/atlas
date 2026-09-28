@@ -159,6 +159,39 @@ function ReportCard({
           {item.note || "No detail supplied."}
         </p>
       </div>
+      {item.targetType === "source" ? (
+        <div className="space-y-2">
+          <p className="type-label-small text-ink-muted">Profiles using this source</p>
+          {item.linkedProfiles.length > 0 ? (
+            <ul className="flex flex-wrap gap-2">
+              {item.linkedProfiles.map((profile) => {
+                const href = publicProfileUrl({
+                  entitySlug: profile.slug,
+                  entityType: profile.type,
+                });
+                return (
+                  <li key={`${profile.type}:${profile.slug}`}>
+                    {href ? (
+                      <a
+                        className="type-label-medium text-accent underline-offset-2 hover:underline"
+                        href={href}
+                      >
+                        {profile.name}
+                      </a>
+                    ) : (
+                      <span className="type-body-medium text-ink-soft">{profile.name}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="type-body-small text-ink-soft">
+              No public profile currently links this source.
+            </p>
+          )}
+        </div>
+      ) : null}
       <p className="type-body-small text-ink-soft">
         Resolve after the correction is complete. Dismiss if no change is warranted.
       </p>
@@ -166,15 +199,18 @@ function ReportCard({
   );
 }
 
-function publicProfileUrl(item: CorrectionReport): string | null {
+function publicProfileUrl(
+  item: Pick<CorrectionReport, "entitySlug" | "entityType">,
+): string | null {
   if (!item.entitySlug) return null;
-  if (item.entityType === "organization") {
-    return `/profiles/organizations/${encodeURIComponent(item.entitySlug)}`;
-  }
-  if (item.entityType === "person") {
-    return `/profiles/people/${encodeURIComponent(item.entitySlug)}`;
-  }
-  return null;
+  const segment = {
+    campaign: "campaigns",
+    event: "events",
+    initiative: "initiatives",
+    organization: "organizations",
+    person: "people",
+  }[item.entityType ?? ""];
+  return segment ? `/profiles/${segment}/${encodeURIComponent(item.entitySlug)}` : null;
 }
 
 function safeSourceUrl(value: string | null): string | null {

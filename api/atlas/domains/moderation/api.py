@@ -94,6 +94,7 @@ class ModerationInboxItemResponse(BaseModel):
     reason: str
     note: str | None
     created_at: str
+    linked_profiles: list[dict[str, str]] = Field(default_factory=list)
 
 
 class ModerationInboxResponse(BaseModel):

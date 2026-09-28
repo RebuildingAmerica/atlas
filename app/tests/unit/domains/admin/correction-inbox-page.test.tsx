@@ -42,6 +42,7 @@ describe("CorrectionInboxPage", () => {
     entitySlug: "las-vegas-civic-group",
     entityType: "organization",
     id: "report-1",
+    linkedProfiles: [],
     note: "Private correction",
     reason: "incorrect",
     sourceUrl: null,
@@ -93,6 +94,9 @@ describe("CorrectionInboxPage", () => {
           entitySlug: null,
           entityType: null,
           id: "source-report-1",
+          linkedProfiles: [
+            { name: "Las Vegas Civic Group", slug: "las-vegas-civic-group", type: "organization" },
+          ],
           note: "Source is stale",
           sourceUrl: "https://example.org/source",
           targetId: "source-1",
@@ -104,6 +108,10 @@ describe("CorrectionInboxPage", () => {
     });
     mocks.decideCorrectionReport.mockResolvedValue({ id: "source-report-1", status: "resolved" });
     renderPage();
+    expect(await screen.findByRole("link", { name: "Las Vegas Civic Group" })).toHaveAttribute(
+      "href",
+      "/profiles/organizations/las-vegas-civic-group",
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Resolve Official source" }));
     await waitFor(() => {
       expect(mocks.decideCorrectionReport.mock.calls[0]?.[0]).toEqual({

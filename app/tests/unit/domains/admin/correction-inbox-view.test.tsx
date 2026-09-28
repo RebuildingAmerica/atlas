@@ -11,6 +11,7 @@ describe("CorrectionInboxView", () => {
       entitySlug: "las-vegas-civic-group",
       entityType: "organization",
       id: "report-1",
+      linkedProfiles: [],
       note: "The listed meeting time is wrong.\n\nContact: reporter@example.org",
       reason: "incorrect",
       sourceUrl: null,
@@ -57,6 +58,13 @@ describe("CorrectionInboxView", () => {
             entitySlug: null,
             entityType: null,
             id: "source-report-1",
+            linkedProfiles: [
+              {
+                name: "Las Vegas Civic Group",
+                slug: "las-vegas-civic-group",
+                type: "organization",
+              },
+            ],
             note: "The official page no longer supports this claim.",
             reason: "outdated_source",
             sourceUrl: "https://example.org/source",
@@ -83,6 +91,10 @@ describe("CorrectionInboxView", () => {
     expect(screen.getByRole("link", { name: "Open Official housing source" })).toHaveAttribute(
       "target",
       "_blank",
+    );
+    expect(screen.getByRole("link", { name: "Las Vegas Civic Group" })).toHaveAttribute(
+      "href",
+      "/profiles/organizations/las-vegas-civic-group",
     );
     fireEvent.click(screen.getByRole("button", { name: "Resolve Official housing source" }));
     expect(onDecision).toHaveBeenCalledWith("source-report-1", "source", "resolve");
@@ -133,7 +145,22 @@ describe("CorrectionInboxView", () => {
     expect(
       screen.queryByRole("link", { name: "Open Source without a link" }),
     ).not.toBeInTheDocument();
+    expect(screen.getByText("No public profile currently links this source.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Resolve Source without a link" })).toBeEnabled();
+
+    rerender(
+      <CorrectionInboxView
+        {...props}
+        items={[
+          {
+            ...item,
+            linkedProfiles: [{ name: "Unroutable place", slug: "place", type: "place" }],
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Unroutable place")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Unroutable place" })).not.toBeInTheDocument();
 
     rerender(
       <CorrectionInboxView
@@ -146,11 +173,11 @@ describe("CorrectionInboxView", () => {
   });
 
   it("does not make unsafe profile links and preserves loading or decision errors", () => {
-    render(
+    const { rerender } = render(
       <CorrectionInboxView
         decisionError="Decision could not be saved."
         isLoading={false}
-        items={[{ ...report(), entitySlug: "a-place", entityType: "place", note: null }]}
+        items={[{ ...report(), entitySlug: "a-place", entityType: null, note: null }]}
         offset={0}
         onDecision={vi.fn()}
         onPageChange={vi.fn()}
@@ -165,6 +192,20 @@ describe("CorrectionInboxView", () => {
     expect(screen.getByText("No detail supplied.")).toBeInTheDocument();
     expect(screen.getByText("Decision could not be saved.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Resolve Las Vegas Civic Group" })).toBeDisabled();
+    rerender(
+      <CorrectionInboxView
+        isLoading={false}
+        items={[{ ...report(), entitySlug: null }]}
+        offset={0}
+        onDecision={vi.fn()}
+        onPageChange={vi.fn()}
+        pageSize={25}
+        total={1}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: /Open Las Vegas Civic Group/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("links person reports and pages the oldest open items", () => {

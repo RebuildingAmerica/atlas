@@ -8216,6 +8216,17 @@
             "title": "Id",
             "type": "string"
           },
+          "linked_profiles": {
+            "description": "linked profiles for this moderation inbox item.",
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Linked Profiles",
+            "type": "array"
+          },
           "note": {
             "anyOf": [
               {
