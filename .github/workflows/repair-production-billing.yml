@@ -1,0 +1,74 @@
+name: Repair Production Billing Configuration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type REPAIR_LIVE_ATLAS_BILLING to update the existing webhook and Atlas portal.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'REPAIR_LIVE_ATLAS_BILLING'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          python: "false"
+      - name: Keep new sales closed during repair
+        env:
+          ATLAS_BILLING_CHECKOUT_ENABLED: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
+        run: |
+          if [ "$ATLAS_BILLING_CHECKOUT_ENABLED" = "true" ]; then
+            echo "::error title=Checkout is open::Close new sales before repairing live billing configuration."
+            exit 1
+          fi
+      - name: Link the production Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::error title=Vercel access missing::Production billing settings cannot be read or updated."
+            exit 1
+          fi
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+      - name: Repair live Stripe webhook and portal
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          ATLAS_PORTAL_ID_FILE: ${{ runner.temp }}/atlas-portal-id
+        run: |
+          set -euo pipefail
+          pnpm exec vercel env run -e production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" -- \
+            pnpm exec tsx scripts/ci/repair-production-billing.ts --apply
+          portal_id="$(cat "$ATLAS_PORTAL_ID_FILE")"
+          if [[ ! "$portal_id" =~ ^bpc_[A-Za-z0-9]+$ ]]; then
+            echo "::error title=Portal ID invalid::Stripe did not return a usable Atlas portal configuration."
+            exit 1
+          fi
+          pnpm exec vercel env add STRIPE_BILLING_PORTAL_CONFIGURATION production \
+            --value "$portal_id" --force --yes --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
+      - name: Read back the production configuration
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          set -euo pipefail
+          pnpm exec vercel env run -e production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" -- \
+            pnpm exec tsx scripts/ci/repair-production-billing.ts --verify
+      - name: Record the decision boundary
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          The existing Atlas live webhook subscriptions and customer portal configuration were repaired and read back through Stripe. The portal ID was saved and read back from Vercel Production settings. The current deployed app does not receive that new setting until the next production deployment. Checkout remains closed. This does not establish a genuine charge, signed webhook delivery, entitlement, cancellation, or refund acceptance.
+          EOF

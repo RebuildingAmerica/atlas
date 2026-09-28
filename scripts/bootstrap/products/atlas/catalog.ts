@@ -336,9 +336,15 @@ function couponAppliesToProducts(
 export async function ensureBillingWebhookEndpoint(
   stripe: Stripe,
   webhookUrl: string,
+  options: { requireExisting?: boolean; requireLive?: boolean } = {},
 ): Promise<StripeWebhookEndpointResult> {
   const existing = await findWebhookEndpointByUrl(stripe, webhookUrl);
   if (existing) {
+    if (options.requireLive && !existing.livemode) {
+      throw new Error(
+        "A live Atlas webhook is required for production repair.",
+      );
+    }
     const endpoint = await stripe.webhookEndpoints.update(existing.id, {
       enabled_events: STRIPE_BILLING_WEBHOOK_EVENTS,
       metadata: {
@@ -347,6 +353,12 @@ export async function ensureBillingWebhookEndpoint(
       },
     });
     return { endpoint, secret: null };
+  }
+
+  if (options.requireExisting) {
+    throw new Error(
+      "An existing Atlas webhook is required to preserve its signing secret.",
+    );
   }
 
   const endpoint = await stripe.webhookEndpoints.create({
@@ -364,12 +376,18 @@ async function findWebhookEndpointByUrl(
   stripe: Stripe,
   webhookUrl: string,
 ): Promise<Stripe.WebhookEndpoint | null> {
+  let match: Stripe.WebhookEndpoint | null = null;
   for await (const endpoint of stripe.webhookEndpoints.list({ limit: 100 })) {
     if (endpoint.url === webhookUrl && endpoint.status !== "disabled") {
-      return endpoint;
+      if (match) {
+        throw new Error(
+          "Multiple enabled Atlas webhook endpoints share the same URL.",
+        );
+      }
+      match = endpoint;
     }
   }
-  return null;
+  return match;
 }
 
 /**
