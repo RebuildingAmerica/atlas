@@ -20,6 +20,7 @@ export interface DiscoveryReview {
   id: string;
   issueAreas?: string[];
   sourceUrls: string[];
+  sourceEvidence?: { context: string; url: string }[];
 }
 
 export interface DiscoveryReviewPage {
@@ -95,7 +96,9 @@ export const stageEditorialCandidate = createServerFn({ method: "POST" })
     });
   });
 
-function toReview(item: ReviewQueueItemResponse): DiscoveryReview {
+function toReview(
+  item: ReviewQueueItemResponse & { source_evidence?: { context: string; url: string }[] },
+): DiscoveryReview {
   return {
     changes: Object.entries(item.proposed_changes ?? {}).map(([field, values]) => ({
       after: displayValue(values.after),
@@ -113,6 +116,7 @@ function toReview(item: ReviewQueueItemResponse): DiscoveryReview {
     id: item.id,
     issueAreas: item.entity_issue_areas ?? [],
     sourceUrls: item.source_urls ?? [],
+    sourceEvidence: item.source_evidence ?? [],
   };
 }
 

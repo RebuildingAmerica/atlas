@@ -63,6 +63,16 @@ async def test_editorial_candidate_requires_review_before_publication(
     assert item["entity_website"] == candidate()["action_url"]
     assert item["entity_issue_areas"] == ["public_transit", "transportation_and_mobility"]
     assert item["source_urls"] == [candidate()["source_url"], candidate()["action_url"]]
+    assert item["source_evidence"] == [
+        {
+            "url": candidate()["source_url"],
+            "context": candidate()["source_context"],
+        },
+        {
+            "url": candidate()["action_url"],
+            "context": "Official next step supplied for editorial review.",
+        },
+    ]
 
     approval = await test_client.post(f"/api/review-queue/{body['review_item_id']}/approve")
     assert approval.status_code == HTTPStatus.OK

@@ -108,6 +108,7 @@ class ReviewQueueItemModel:
     entity_state: str | None = None
     entity_website: str | None = None
     entity_issue_areas: list[str] = dataclass_field(default_factory=list)
+    source_evidence: list[dict[str, str]] = dataclass_field(default_factory=list)
 
 
 def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
@@ -170,6 +171,42 @@ async def _with_issue_areas(
     for item in items:
         item.entity_issue_areas = issue_areas.get(item.entity_id or "", [])
     return items
+
+
+async def _with_source_evidence(
+    conn: Any, items: list[ReviewQueueItemModel]
+) -> list[ReviewQueueItemModel]:
+    """Keep each cited page's recorded claim visible to private reviewers."""
+    entity_ids = sorted({item.entity_id for item in items if item.entity_id is not None})
+    if not entity_ids:
+        return items
+    placeholders = ", ".join("?" for _ in entity_ids)
+    cursor = await conn.execute(
+        f"""SELECT es.entry_id, s.url, es.extraction_context
+            FROM entry_sources es JOIN sources s ON s.id = es.source_id
+            WHERE es.entry_id IN ({placeholders})""",
+        entity_ids,
+    )
+    contexts = {
+        (str(entry_id), str(url)): str(context)
+        for entry_id, url, context in await cursor.fetchall()
+        if context
+    }
+    for item in items:
+        if item.entity_id is None:
+            continue
+        item.source_evidence = [
+            {"url": url, "context": contexts[(item.entity_id, url)]}
+            for url in item.source_urls
+            if (item.entity_id, url) in contexts
+        ]
+    return items
+
+
+async def _with_review_details(
+    conn: Any, items: list[ReviewQueueItemModel]
+) -> list[ReviewQueueItemModel]:
+    return await _with_source_evidence(conn, await _with_issue_areas(conn, items))
 
 
 class ReviewQueueCRUD:
@@ -344,7 +381,7 @@ class ReviewQueueCRUD:
                 (org_id, limit, offset),
             )
             rows = await cursor.fetchall()
-            return await _with_issue_areas(conn, [_row_to_item(row) for row in rows])
+            return await _with_review_details(conn, [_row_to_item(row) for row in rows])
 
         cursor = await conn.execute(
             f"""
@@ -356,7 +393,7 @@ class ReviewQueueCRUD:
             (limit, offset),
         )
         rows = await cursor.fetchall()
-        return await _with_issue_areas(conn, [_row_to_item(row) for row in rows])
+        return await _with_review_details(conn, [_row_to_item(row) for row in rows])
 
     @staticmethod
     async def enqueue_stale_public_sources(
@@ -452,7 +489,7 @@ class ReviewQueueCRUD:
         row = await cursor.fetchone()
         if row is None:
             return None
-        return (await _with_issue_areas(conn, [_row_to_item(row)]))[0]
+        return (await _with_review_details(conn, [_row_to_item(row)]))[0]
 
     @staticmethod
     async def approve(conn: Any, item_id: str, *, reviewed_by: str) -> None:

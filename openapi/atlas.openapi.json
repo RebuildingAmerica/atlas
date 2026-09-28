@@ -12472,6 +12472,14 @@
             "description": "score for this review queue item.",
             "title": "Score"
           },
+          "source_evidence": {
+            "description": "source evidence for this review queue item.",
+            "items": {
+              "$ref": "#/components/schemas/ReviewSourceEvidenceResponse"
+            },
+            "title": "Source Evidence",
+            "type": "array"
+          },
           "source_urls": {
             "description": "source urls for this review queue item.",
             "items": {
@@ -12518,6 +12526,27 @@
           "total"
         ],
         "title": "ReviewQueueListResponse",
+        "type": "object"
+      },
+      "ReviewSourceEvidenceResponse": {
+        "description": "One cited URL and the claim recorded for editorial review.",
+        "properties": {
+          "context": {
+            "description": "context for this review source evidence.",
+            "title": "Context",
+            "type": "string"
+          },
+          "url": {
+            "description": "url for this review source evidence.",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "context"
+        ],
+        "title": "ReviewSourceEvidenceResponse",
         "type": "object"
       },
       "RunCheckpoint": {

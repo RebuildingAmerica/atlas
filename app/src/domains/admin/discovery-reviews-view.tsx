@@ -148,6 +148,7 @@ function ReviewCard({
   pending: boolean;
 }) {
   const sources = item.sourceUrls.map(safeSourceUrl).filter(isPresent);
+  const sourceEvidence = new Map(item.sourceEvidence?.map(({ url, context }) => [url, context]));
   const changes = item.changes;
   const profileUrl = changes.length > 0 ? publicProfileUrl(item) : null;
   const name = item.entityName;
@@ -262,6 +263,11 @@ function ReviewCard({
                 >
                   {source}
                 </a>
+                {sourceEvidence.get(source) ? (
+                  <p className="type-body-small text-ink-soft mt-1">
+                    What this source supports: {sourceEvidence.get(source)}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

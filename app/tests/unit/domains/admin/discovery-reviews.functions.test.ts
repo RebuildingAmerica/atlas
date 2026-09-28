@@ -32,6 +32,12 @@ describe("discovery review server functions", () => {
           entity_type: "organization",
           hold_reason: "published_profile_change",
           source_urls: ["https://example.org/about"],
+          source_evidence: [
+            {
+              url: "https://example.org/about",
+              context: "The About page describes local transit advocacy.",
+            },
+          ],
           proposed_changes: {
             description: { before: "Old", after: "New" },
             issue_areas: { before: [], after: ["housing", "transit"] },
@@ -54,6 +60,12 @@ describe("discovery review server functions", () => {
     expect(result.items[0]?.entityDescription).toBe("A source-backed local organization.");
     expect(result.items[0]?.issueAreas).toEqual(["public_transit"]);
     expect(result.items[0]?.sourceUrls).toEqual(["https://example.org/about"]);
+    expect(result.items[0]?.sourceEvidence).toEqual([
+      {
+        url: "https://example.org/about",
+        context: "The About page describes local transit advocacy.",
+      },
+    ]);
     expect(result.items[0]?.changes).toContainEqual({
       field: "issue_areas",
       before: "None listed",

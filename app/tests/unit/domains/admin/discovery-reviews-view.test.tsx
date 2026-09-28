@@ -89,6 +89,12 @@ describe("DiscoveryReviewsView", () => {
         holdReason: "editorial_candidate",
         issueAreas: ["public_transit"],
         sourceUrls: ["https://example.org/about", "https://example.org/join"],
+        sourceEvidence: [
+          {
+            url: "https://example.org/about",
+            context: "The About page describes public education and transit advocacy.",
+          },
+        ],
       }),
     ]);
 
@@ -100,6 +106,9 @@ describe("DiscoveryReviewsView", () => {
       "href",
       "https://example.org/join",
     );
+    expect(
+      screen.getByRole("region", { name: "Candidate sources for Civic Group" }),
+    ).toHaveTextContent("The About page describes public education and transit advocacy.");
   });
 
   it("shows missing place plainly and does not link an unsafe claimed next step", () => {

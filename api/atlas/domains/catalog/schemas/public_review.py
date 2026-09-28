@@ -7,6 +7,13 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class ReviewSourceEvidenceResponse(BaseModel):
+    """One cited URL and its recorded claim context."""
+
+    url: str
+    context: str
+
+
 class ReviewQueueItemResponse(BaseModel):
     """A publication hold or proposed public-profile change for review."""
 
@@ -24,6 +31,7 @@ class ReviewQueueItemResponse(BaseModel):
     reviewed_by: str | None = None
     proposed_changes: dict[str, dict[str, Any]] | None = None
     source_urls: list[str] = Field(default_factory=list)
+    source_evidence: list[ReviewSourceEvidenceResponse] = Field(default_factory=list)
     entity_name: str | None = None
     entity_slug: str | None = None
     entity_type: str | None = None
