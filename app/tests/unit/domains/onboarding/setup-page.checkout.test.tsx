@@ -115,6 +115,31 @@ describe("SetupPage", () => {
     expect(screen.getByRole("button", { name: "Continue to Stripe" })).toBeEnabled();
   });
 
+  it("tells a buyer why checkout was refused when Atlas explains it", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: {
+        accountReady: true,
+        hasPasskey: true,
+        workspace: { activeOrganization: null },
+      },
+    });
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_student", workspaceId: "org_1" });
+    mocks.startPurchaseCheckout.mockRejectedValue(
+      new UserFacingError(
+        "The student price needs a verified student discount on this workspace. Request one, then return to finish checkout.",
+      ),
+    );
+
+    render(<SetupPage product="atlas_pro" interval="four_month" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The student price needs a verified student discount on this workspace.",
+    );
+    expect(screen.getByRole("button", { name: "Continue to Stripe" })).toBeEnabled();
+  });
+
   it("shows why a purchase could not start when the funnel is closed", async () => {
     // /onboarding is reachable by direct link, so the disabled pricing
     // buttons do not gate it. Without surfacing the refusal the buyer sat on

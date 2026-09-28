@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   ensureStripeCustomerForWorkspace: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
+  getVerifiedDiscountSegmentForWorkspace: vi.fn(),
   loadPurchaseIntent: vi.fn(),
   markPurchaseCheckoutCreated: vi.fn(),
   reconcilePaidCheckoutSession: vi.fn(),
@@ -60,6 +61,10 @@ vi.mock("@/domains/billing/server/purchase-intents", () => ({
   markPurchaseCheckoutCreated: mocks.markPurchaseCheckoutCreated,
 }));
 
+vi.mock("@/domains/billing/server/discount-verifications", () => ({
+  getVerifiedDiscountSegmentForWorkspace: mocks.getVerifiedDiscountSegmentForWorkspace,
+}));
+
 vi.mock("@/domains/billing/server/stripe-customer", () => ({
   ensureStripeCustomerForWorkspace: mocks.ensureStripeCustomerForWorkspace,
 }));
@@ -82,12 +87,92 @@ describe("purchase onboarding functions", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({ publicBaseUrl: "https://atlas.test" });
     mocks.getBrowserSessionHeaders.mockReturnValue(new Headers({ cookie: "test" }));
     mocks.reconcilePaidCheckoutSession.mockResolvedValue(false);
+    mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue(null);
     mocks.resolveCheckoutAvailability.mockResolvedValue({ available: true, reason: null });
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     mocks.requireReadyAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     authApi.getFullOrganization.mockResolvedValue({
       members: [{ id: "member_owner" }],
       metadata: { workspaceType: "team" },
+    });
+  });
+
+  describe("startPurchaseCheckout discounts", () => {
+    const readyIntent = {
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      id: "pi_discount",
+      interval: "monthly",
+      product: "atlas_pro",
+      status: "workspace_ready",
+      stripeCheckoutSessionId: null,
+      userId: "user_123",
+      workspaceId: "org_team",
+    };
+
+    it("charges a verified student the discounted four-month price", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({ ...readyIntent, interval: "four_month" });
+      mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue("student");
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_1", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_discount" },
+      })) as ServerFnExecutionResponse;
+
+      expect(response.error).toBeUndefined();
+      expect(mocks.getVerifiedDiscountSegmentForWorkspace).toHaveBeenCalledWith("org_team");
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.discountCouponId).toBe("coupon_student");
+    });
+
+    it("applies an approved nonprofit discount to Pro monthly", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue(readyIntent);
+      mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue("grassroots_nonprofit");
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_2", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_discount" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.discountCouponId).toBe("coupon_nonprofit");
+    });
+
+    it("keeps Team at list price for a verified journalist", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({ ...readyIntent, product: "atlas_team" });
+      mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue("independent_journalist");
+      mocks.createCheckoutSession.mockResolvedValue({ id: "cs_3", url: "https://pay.test/c" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_discount" },
+      });
+
+      const options = mocks.createCheckoutSession.mock.calls[0]?.[0] as CreateCheckoutOptions;
+      expect(options.discountCouponId).toBeNull();
+    });
+
+    it("refuses the student price until student status is verified", async () => {
+      mocks.loadPurchaseIntent.mockResolvedValue({ ...readyIntent, interval: "four_month" });
+
+      const { startPurchaseCheckout } =
+        await import("@/domains/billing/purchase-onboarding.functions");
+      const response = (await startPurchaseCheckout.__executeServer({
+        method: "POST",
+        data: { purchaseId: "pi_discount" },
+      })) as ServerFnExecutionResponse;
+
+      expect((response.error as Error).message).toBe(
+        "The student price needs a verified student discount on this workspace. Request one, then return to finish checkout.",
+      );
+      expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
     });
   });
 
@@ -370,6 +455,10 @@ describe("purchase onboarding functions", () => {
         workspaceId: "org_team",
       });
       mocks.ensureStripeCustomerForWorkspace.mockResolvedValue("cus_123");
+      // The student plan opens only for a verified student.
+      mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue(
+        interval === "four_month" ? "student" : null,
+      );
       mocks.createCheckoutSession.mockResolvedValue({ id: "cs_123", url: "https://pay.test/c" });
 
       const { startPurchaseCheckout } =

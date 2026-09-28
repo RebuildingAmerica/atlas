@@ -170,8 +170,10 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     try {
       const result = await startPurchaseCheckout({ data: { purchaseId: id } });
       window.location.assign(result.url);
-    } catch {
-      setErrorMessage("Atlas could not open Stripe checkout. Try again.");
+    } catch (error) {
+      setErrorMessage(
+        userFacingErrorMessage(error, "Atlas could not open Stripe checkout. Try again."),
+      );
       setIsPending(false);
     }
   };

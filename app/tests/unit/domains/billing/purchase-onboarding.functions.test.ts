@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   ensureStripeCustomerForWorkspace: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
+  getVerifiedDiscountSegmentForWorkspace: vi.fn(),
   loadPurchaseIntent: vi.fn(),
   markPurchaseCheckoutCreated: vi.fn(),
   reconcilePaidCheckoutSession: vi.fn(),
@@ -60,6 +61,10 @@ vi.mock("@/domains/billing/server/purchase-intents", () => ({
   markPurchaseCheckoutCreated: mocks.markPurchaseCheckoutCreated,
 }));
 
+vi.mock("@/domains/billing/server/discount-verifications", () => ({
+  getVerifiedDiscountSegmentForWorkspace: mocks.getVerifiedDiscountSegmentForWorkspace,
+}));
+
 vi.mock("@/domains/billing/server/stripe-customer", () => ({
   ensureStripeCustomerForWorkspace: mocks.ensureStripeCustomerForWorkspace,
 }));
@@ -82,6 +87,7 @@ describe("purchase onboarding functions", () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({ publicBaseUrl: "https://atlas.test" });
     mocks.getBrowserSessionHeaders.mockReturnValue(new Headers({ cookie: "test" }));
     mocks.reconcilePaidCheckoutSession.mockResolvedValue(false);
+    mocks.getVerifiedDiscountSegmentForWorkspace.mockResolvedValue(null);
     mocks.resolveCheckoutAvailability.mockResolvedValue({ available: true, reason: null });
     mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
     mocks.requireReadyAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());

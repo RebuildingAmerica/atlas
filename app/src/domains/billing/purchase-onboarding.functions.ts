@@ -114,6 +114,8 @@ async function loadPurchaseServerModules() {
       auth,
       checkout,
       checkoutAvailability,
+      discountCoupons,
+      discountVerifications,
       purchaseIntents,
       requestHeaders,
       runtime,
@@ -124,6 +126,8 @@ async function loadPurchaseServerModules() {
       import("@/domains/access/server/auth"),
       import("@/domains/billing/server/checkout"),
       import("@/domains/billing/server/checkout-availability"),
+      import("@/domains/billing/server/discount-coupons"),
+      import("@/domains/billing/server/discount-verifications"),
       import("@/domains/billing/server/purchase-intents"),
       import("@/domains/access/server/request-headers"),
       import("@/domains/access/server/runtime"),
@@ -135,6 +139,8 @@ async function loadPurchaseServerModules() {
       auth,
       checkout,
       checkoutAvailability,
+      discountCoupons,
+      discountVerifications,
       purchaseIntents,
       requestHeaders,
       runtime,
@@ -268,6 +274,8 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
       auth: authModule,
       checkout,
       checkoutAvailability,
+      discountCoupons,
+      discountVerifications,
       purchaseIntents,
       requestHeaders,
       runtime: runtimeModule,
@@ -291,6 +299,24 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
       throw new UserFacingError("Create a workspace before continuing to payment.");
     }
     requireManagedBillingWorkspace(session, intent.workspaceId);
+
+    const discountSegment = await discountVerifications.getVerifiedDiscountSegmentForWorkspace(
+      intent.workspaceId,
+    );
+    const discountCouponId = discountSegment
+      ? discountCoupons.getDiscountCouponIdForCheckout(
+          discountSegment,
+          intent.product,
+          intent.interval,
+        )
+      : null;
+    // The pricing page promises the student price only after verification, so
+    // an unverified buyer is sent to verify rather than charged the list price.
+    if (intent.interval === "four_month" && discountCouponId === null) {
+      throw new UserFacingError(
+        "The student price needs a verified student discount on this workspace. Request one, then return to finish checkout.",
+      );
+    }
 
     const auth = await authModule.ensureAuthReady();
     const headers = requestHeaders.getBrowserSessionHeaders();
@@ -349,6 +375,7 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
       stripeCustomerId,
       seatPriceId,
       seatQuantity,
+      discountCouponId,
     });
 
     if (!checkoutSession.url) {
