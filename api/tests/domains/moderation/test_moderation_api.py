@@ -288,18 +288,19 @@ async def test_only_allowlisted_editors_can_read_or_close_private_reports(
         json={"source_id": source_id, "reason": "outdated_source", "note": "Private source note"},
     )
     source_report_id = source_receipt.json()["id"]
+    test_internal_secret = "internal-test-secret"  # pragma: allowlist secret
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
+    test_settings.auth_internal_secret = test_internal_secret
     test_settings.operator_allowed_emails = ["editor@rebuildingus.org"]
     ordinary_headers = {
         "X-Atlas-Actor-Email": "visitor@example.org",
         "X-Atlas-Actor-Id": "ordinary-user",
-        "X-Atlas-Internal-Secret": "internal-test-secret",
+        "X-Atlas-Internal-Secret": test_internal_secret,
     }
     editor_headers = {
         "X-Atlas-Actor-Email": "EDITOR@rebuildingus.org",
         "X-Atlas-Actor-Id": "editor-user",
-        "X-Atlas-Internal-Secret": "internal-test-secret",
+        "X-Atlas-Internal-Secret": test_internal_secret,
     }
 
     for path in (
