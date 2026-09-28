@@ -132,6 +132,25 @@ describe("DiscoveryReviewsView", () => {
     expect(sources).toHaveTextContent("The homepage explains the group's current work.");
   });
 
+  it("ignores an unsafe evidence URL while keeping the cited page reviewable", () => {
+    renderQueue([
+      review({
+        sourceEvidence: [
+          {
+            url: "javascript:alert(1)",
+            context: "This note must not appear beside a cited page.",
+          },
+        ],
+      }),
+    ]);
+
+    const sources = screen.getByRole("region", { name: "Candidate sources for Civic Group" });
+    expect(
+      within(sources).getByRole("link", { name: "https://example.org/about" }),
+    ).toHaveAttribute("href", "https://example.org/about");
+    expect(sources).not.toHaveTextContent("This note must not appear beside a cited page.");
+  });
+
   it("shows missing place plainly and does not link an unsafe claimed next step", () => {
     renderQueue([
       review({
