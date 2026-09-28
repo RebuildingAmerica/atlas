@@ -9,7 +9,6 @@ import pytest
 
 from atlas.domains.access.membership import (
     MembershipResult,
-    _cache,
     verify_org_membership,
 )
 from atlas.platform.config import Settings
@@ -60,16 +59,10 @@ def _client_factory(response: httpx.Response | Exception) -> object:
     return factory
 
 
-@pytest.fixture(autouse=True)
-def _clear_cache() -> None:
-    """Clear the membership cache before each test."""
-    _cache.clear()
-
-
-async def test_cache_hit_returns_cached_result_without_http(
+async def test_membership_change_is_visible_on_the_next_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Second call within TTL should return cached result without making an HTTP request."""
+    """A paid upgrade or role change must not wait for a cached permission to expire."""
     settings = _make_settings()
     success_payload = {
         "role": "admin",
@@ -78,21 +71,23 @@ async def test_cache_hit_returns_cached_result_without_http(
         "workspaceType": "team",
         "activeProducts": [],
     }
-    response = httpx.Response(
-        200,
-        json=success_payload,
-        request=httpx.Request(
-            "GET",
-            "http://localhost:3000/api/auth/internal/memberships/org_1/members/user_1",
-        ),
-    )
-
     call_count = 0
 
     def counting_factory(*, timeout: float) -> _FakeAsyncClient:
         nonlocal call_count
         call_count += 1
         del timeout
+        if call_count == 2:
+            success_payload["activeProducts"] = ["atlas_team"]
+            success_payload["role"] = "owner"
+        response = httpx.Response(
+            200,
+            json=success_payload,
+            request=httpx.Request(
+                "GET",
+                "http://localhost:3000/api/auth/internal/memberships/org_1/members/user_1",
+            ),
+        )
         return _FakeAsyncClient(response)
 
     monkeypatch.setattr(
@@ -100,17 +95,17 @@ async def test_cache_hit_returns_cached_result_without_http(
         counting_factory,
     )
 
-    # First call: makes HTTP request
     result1 = await verify_org_membership("user_1", "org_1", settings)
     assert call_count == 1
     assert result1 is not None
     assert result1.role == "admin"
+    assert result1.active_products == []
 
-    # Second call: should use cache, no new HTTP request
     result2 = await verify_org_membership("user_1", "org_1", settings)
-    assert call_count == 1
+    assert call_count == 2
     assert result2 is not None
-    assert result2.role == "admin"
+    assert result2.role == "owner"
+    assert result2.active_products == ["atlas_team"]
 
 
 async def test_cache_miss_makes_http_get(
@@ -295,60 +290,6 @@ async def test_200_response_returns_workspace_domain_proof_fields(
     assert result is not None
     assert result.workspace_domain == "acme.org"
     assert result.verified_sso_domains == ["acme.org", "staff.acme.org"]
-
-
-async def test_expired_cache_entry_is_refetched(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A cache entry past its TTL should be evicted and refreshed."""
-    settings = _make_settings()
-    response = httpx.Response(
-        200,
-        json={
-            "role": "member",
-            "slug": "org",
-            "name": "Org",
-            "workspaceType": "team",
-            "activeProducts": [],
-        },
-        request=httpx.Request(
-            "GET",
-            "http://localhost:3000/api/auth/internal/memberships/org_e/members/user_e",
-        ),
-    )
-
-    fetches = 0
-
-    def factory(*, timeout: float) -> _FakeAsyncClient:
-        nonlocal fetches
-        fetches += 1
-        del timeout
-        return _FakeAsyncClient(response)
-
-    monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
-        factory,
-    )
-
-    monotonic_calls = {"n": 0}
-
-    def fake_monotonic() -> float:
-        monotonic_calls["n"] += 1
-        # First call seeds the cache with expires_at = 100 + TTL. Subsequent
-        # calls return a far-future time so the cache lookup sees expiry.
-        return 100.0 if monotonic_calls["n"] == 1 else 10_000_000.0
-
-    monkeypatch.setattr(
-        "atlas.domains.access.membership.time.monotonic",
-        fake_monotonic,
-    )
-
-    first = await verify_org_membership("user_e", "org_e", settings)
-    second = await verify_org_membership("user_e", "org_e", settings)
-
-    assert first is not None
-    assert second is not None
-    assert fetches == 2, "Cache miss on second call due to expiry."  # noqa: PLR2004
 
 
 async def test_network_failure_propagates_after_logging(

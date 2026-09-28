@@ -113,6 +113,19 @@ async function createPersonalWorkspace(
       });
       return organizationSummarySchema.parse(created);
     } catch (error) {
+      // Several session requests can observe the same missing personal
+      // workspace. If one won the slug race, use its workspace instead of
+      // creating a suffixed duplicate on this request.
+      const currentOrganizations = z
+        .array(organizationSummarySchema)
+        .parse(await auth.api.listOrganizations({ headers }));
+      const existingPersonalWorkspace = currentOrganizations.find(
+        (organization) =>
+          normalizeAtlasOrganizationMetadata(organization.metadata).workspaceType === "individual",
+      );
+      if (existingPersonalWorkspace) {
+        return existingPersonalWorkspace;
+      }
       if (attempt === MAX_PERSONAL_WORKSPACE_SLUG_ATTEMPTS) {
         throw error;
       }

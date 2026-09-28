@@ -358,6 +358,41 @@ describe("organization-session", () => {
     });
   });
 
+  it("reuses the personal workspace another session request just created", async () => {
+    const organizations: CreatedOrganization[] = [];
+    const listOrganizations = vi.fn(() => Promise.resolve([...organizations]));
+    const createOrganization = vi.fn<CreateOrganization>(({ body }) => {
+      if (organizations.some((organization) => organization.slug === body.slug)) {
+        return Promise.reject(new Error("slug already exists"));
+      }
+      const created = {
+        id: "org_personal",
+        metadata: { workspaceType: "individual" },
+        name: body.name,
+        slug: body.slug,
+      };
+      organizations.push(created);
+      return Promise.resolve(created);
+    });
+    const auth = {
+      api: {
+        createOrganization,
+        getActiveMemberRole: vi.fn().mockResolvedValue({ role: "owner" }),
+        listOrganizations,
+        listUserInvitations: vi.fn().mockResolvedValue([]),
+      },
+    } as unknown as AuthParam;
+
+    const [first, second] = await Promise.all([
+      loadAtlasWorkspaceState(auth, headers, session, { ensurePersonalWorkspace: true }),
+      loadAtlasWorkspaceState(auth, headers, session, { ensurePersonalWorkspace: true }),
+    ]);
+
+    expect(organizations).toHaveLength(1);
+    expect(first.memberships.map((membership) => membership.id)).toEqual(["org_personal"]);
+    expect(second.memberships.map((membership) => membership.id)).toEqual(["org_personal"]);
+  });
+
   it("retries with a suffixed slug when the first choice is already taken", async () => {
     const createOrganization = vi
       .fn<CreateOrganization>()

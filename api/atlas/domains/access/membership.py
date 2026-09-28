@@ -1,9 +1,8 @@
-"""Membership verification client with in-memory TTL cache."""
+"""Membership verification client for current workspace roles and products."""
 
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -14,10 +13,6 @@ if TYPE_CHECKING:
     from atlas.platform.config import Settings
 
 logger = logging.getLogger(__name__)
-
-_CACHE_TTL_SECONDS = 60
-
-_CacheKey = tuple[str, str]
 
 
 @dataclass(slots=True)
@@ -33,34 +28,6 @@ class MembershipResult:
     verified_sso_domains: list[str] = field(default_factory=list)
 
 
-@dataclass(slots=True)
-class _CacheEntry:
-    result: MembershipResult
-    expires_at: float
-
-
-_cache: dict[_CacheKey, _CacheEntry] = {}
-
-
-def _get_cached(user_id: str, org_id: str) -> MembershipResult | None:
-    key: _CacheKey = (user_id, org_id)
-    entry = _cache.get(key)
-    if entry is None:
-        return None
-    if time.monotonic() > entry.expires_at:
-        del _cache[key]
-        return None
-    return entry.result
-
-
-def _set_cached(user_id: str, org_id: str, result: MembershipResult) -> None:
-    key: _CacheKey = (user_id, org_id)
-    _cache[key] = _CacheEntry(
-        result=result,
-        expires_at=time.monotonic() + _CACHE_TTL_SECONDS,
-    )
-
-
 def _membership_request_headers(settings: Settings) -> dict[str, str]:
     headers = {
         "X-Atlas-Internal-Secret": settings.auth_internal_secret,
@@ -74,15 +41,12 @@ def _membership_request_headers(settings: Settings) -> dict[str, str]:
 async def verify_org_membership(
     user_id: str, org_id: str, settings: Settings
 ) -> MembershipResult | None:
-    """Verify a user's membership in an organization.
+    """Verify current membership, role, and products for every request.
 
-    Returns the membership details on success, None if the user is not a member.
+    A cached product grant delays a paid upgrade; a cached role can retain
+    revoked access. Returns None if the user is no longer a member.
     Raises on unexpected errors.
     """
-    cached = _get_cached(user_id, org_id)
-    if cached is not None:
-        return cached
-
     url = (
         f"{settings.auth_membership_verification_url.rstrip('/')}"
         f"/api/auth/internal/memberships/{org_id}/members/{user_id}"
@@ -121,7 +85,7 @@ async def verify_org_membership(
         response.raise_for_status()
 
     payload = response.json()
-    result = MembershipResult(
+    return MembershipResult(
         role=str(payload["role"]),
         slug=str(payload["slug"]),
         name=str(payload["name"]),
@@ -132,6 +96,3 @@ async def verify_org_membership(
         ),
         verified_sso_domains=[str(domain) for domain in payload.get("verifiedSsoDomains", [])],
     )
-
-    _set_cached(user_id, org_id, result)
-    return result
