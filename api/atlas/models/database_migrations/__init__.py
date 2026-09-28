@@ -17,6 +17,7 @@ from .additive_columns import (
     _ensure_place_context_columns,
     _ensure_place_related_place_columns,
     _ensure_review_queue_columns,
+    _ensure_saved_list_columns,
 )
 from .atproto_ddl import _ATPROTO_GRAPH_POSTGRES_DDL, _ATPROTO_GRAPH_SQLITE_DDL
 from .atproto_graph import migrate_atproto_identity_graph
@@ -35,6 +36,7 @@ __all__ = [
     "_ensure_place_context_columns",
     "_ensure_place_related_place_columns",
     "_ensure_review_queue_columns",
+    "_ensure_saved_list_columns",
     "_migration_id",
     "db",
     "migrate_atproto_identity_graph",

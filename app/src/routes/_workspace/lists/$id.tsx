@@ -5,6 +5,7 @@ import {
   useAddSavedListItem,
   useRemoveSavedListItem,
   useSavedList,
+  useSetSavedListSharing,
 } from "@/domains/catalog/hooks/use-claims";
 import { useAtlasSession } from "@/domains/access";
 import { buildNewsroomAssignmentPacket } from "@/domains/workspace/newsroom-handoff";
@@ -14,6 +15,8 @@ import {
   getExportSavedListUrl,
 } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
+import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 import {
   buildCrmHandoffPacket,
@@ -46,6 +49,8 @@ function ListDetailRoute() {
   const list = useSavedList(id, true);
   const removeItem = useRemoveSavedListItem();
   const saveItem = useAddSavedListItem();
+  const setSharing = useSetSavedListSharing();
+  const [sharingError, setSharingError] = useState<string | null>(null);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteErrorEntryId, setNoteErrorEntryId] = useState<string | null>(null);
@@ -115,8 +120,13 @@ function ListDetailRoute() {
   const canWriteNotes = capabilities.includes("workspace.notes");
   const canExport = capabilities.includes("workspace.export");
   const isTeamWorkspace = activeOrganization?.workspaceType === "team";
-  const workspaceName = isTeamWorkspace ? activeOrganization.name : "You";
-  const workspaceBadge = isTeamWorkspace ? "Team research workspace" : "Research thread";
+  const isShared = Boolean(data.org_id);
+  const canShare =
+    isTeamWorkspace &&
+    capabilities.includes("workspace.shared") &&
+    data.user_id === session.data?.user?.id;
+  const workspaceName = isShared ? (activeOrganization?.name ?? "Your team") : "You";
+  const workspaceBadge = isShared ? "Shared team list" : "Private research list";
   const researchThread = buildResearchThreadSummary(items);
   const projectMetadata = buildProjectMetadata(format, items, data.updated_at, workspaceName);
   const evidencePack = buildEvidencePack(data.name, data.description ?? null, items);
@@ -219,6 +229,35 @@ function ListDetailRoute() {
       <div className="space-y-3">
         <Badge variant="info">{workspaceBadge}</Badge>
         <h1 className="type-display-small text-ink-strong">{data.name}</h1>
+        <p className="type-body-small text-ink-soft">
+          {isShared
+            ? `Everyone in ${activeOrganization?.name ?? "your team"} can read and edit this list and its notes.`
+            : "Only you can see this list and its notes."}
+        </p>
+        {canShare ? (
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={setSharing.isPending}
+              onClick={() => {
+                setSharingError(null);
+                void setSharing
+                  .mutateAsync({ listId: data.id, shared: !isShared })
+                  .catch((error: unknown) => {
+                    setSharingError(userFacingErrorMessage(error, "Could not change sharing."));
+                  });
+              }}
+            >
+              {isShared ? "Stop sharing with team" : `Share with ${activeOrganization.name}`}
+            </Button>
+            {sharingError ? (
+              <p role="alert" className="text-rose-700">
+                {sharingError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {data.description ? (
           <p className="type-body-large text-ink-soft max-w-2xl">{data.description}</p>
         ) : null}
@@ -277,7 +316,7 @@ function ListDetailRoute() {
         evidencePack={evidencePack}
         crmPacketText={crmPacketText}
         institutionalExport={institutionalExport}
-        isTeamWorkspace={isTeamWorkspace}
+        isTeamWorkspace={isShared}
         newsroomAssignmentPacket={newsroomAssignmentPacket}
         nonprofitSystemsPacket={nonprofitSystemsPacket}
         onCopyCrmPacket={() => {

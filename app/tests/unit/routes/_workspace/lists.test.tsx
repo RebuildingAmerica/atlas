@@ -280,14 +280,18 @@ describe("routes/_workspace/lists", () => {
 
   it("renders saved lists with the singular/plural counter and the description block", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
+    const access = await import("@/domains/access");
+    vi.mocked(access.useAtlasSession).mockReturnValue({
+      data: { user: { id: "user-1" } },
+    } as unknown as ReturnType<typeof access.useAtlasSession>);
     const deleteMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(claims.useDeleteSavedList).mockReturnValue({
       mutateAsync: deleteMock,
     } as unknown as ReturnType<typeof claims.useDeleteSavedList>);
     vi.mocked(claims.useSavedLists).mockReturnValue({
       data: [
-        { id: "list-1", name: "Outreach", description: "stuff", item_count: 1 },
-        { id: "list-2", name: "Coalition", description: null, item_count: 3 },
+        { id: "list-1", user_id: "user-1", name: "Outreach", description: "stuff", item_count: 1 },
+        { id: "list-2", user_id: "user-1", name: "Coalition", description: null, item_count: 3 },
       ],
       isLoading: false,
     } as unknown as ReturnType<typeof claims.useSavedLists>);
@@ -298,7 +302,8 @@ describe("routes/_workspace/lists", () => {
     const Component = Route.options.component;
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
-    expect(screen.getByText("Project workspaces")).toBeInTheDocument();
+    expect(screen.getByText("Your research lists")).toBeInTheDocument();
+    expect(screen.getAllByText("Private to you")).toHaveLength(2);
     expect(screen.getAllByText("Leads, notes, briefs, and exports")).toHaveLength(2);
     expect(screen.getByText("Outreach")).toBeInTheDocument();
     expect(screen.getByText("Coalition")).toBeInTheDocument();
@@ -314,6 +319,7 @@ describe("routes/_workspace/lists", () => {
     const access = await import("@/domains/access");
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: {
+        user: { id: "owner" },
         workspace: {
           activeOrganization: {
             id: "org_1",
@@ -324,7 +330,24 @@ describe("routes/_workspace/lists", () => {
       },
     } as unknown as ReturnType<typeof access.useAtlasSession>);
     vi.mocked(claims.useSavedLists).mockReturnValue({
-      data: [{ id: "list-1", name: "Outreach", description: "stuff", item_count: 1 }],
+      data: [
+        {
+          id: "list-1",
+          user_id: "teammate",
+          org_id: "org_1",
+          name: "Outreach",
+          description: "stuff",
+          item_count: 1,
+        },
+        {
+          id: "list-2",
+          user_id: "owner",
+          org_id: "org_1",
+          name: "Owned work",
+          description: null,
+          item_count: 0,
+        },
+      ],
       isLoading: false,
     } as unknown as ReturnType<typeof claims.useSavedLists>);
 
@@ -335,10 +358,28 @@ describe("routes/_workspace/lists", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
 
-    expect(screen.getByText("Shared project workspaces")).toBeInTheDocument();
-    expect(screen.getByText("Shared project workspace")).toBeInTheDocument();
-    expect(screen.getByText("Team-visible notes")).toBeInTheDocument();
-    expect(screen.getByText("Owner: Atlas Team")).toBeInTheDocument();
-    expect(screen.getByText("Activity: leads, notes, and exports")).toBeInTheDocument();
+    expect(screen.getByText("Your research lists")).toBeInTheDocument();
+    expect(screen.getAllByText("Shared with Atlas Team")).toHaveLength(2);
+    expect(screen.getByText("Created by a teammate")).toBeInTheDocument();
+    expect(screen.getByText("Created by you")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Delete Outreach")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "New list" }));
+    expect(screen.getByText(/This list starts private/)).toBeInTheDocument();
+  });
+
+  it("does not present shared work as private when workspace metadata is delayed", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    vi.mocked(claims.useSavedLists).mockReturnValue({
+      data: [
+        { id: "list-1", user_id: "teammate", org_id: "org_1", name: "Shared work", item_count: 0 },
+      ],
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedLists>);
+    const routeModule = await import("@/routes/_workspace/lists");
+    const { asRouteStub } = await import("@/../tests/helpers/router-harness");
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+    expect(screen.getByText("Shared with your team")).toBeInTheDocument();
   });
 });

@@ -12,6 +12,7 @@ vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useAddSavedListItem: vi.fn(),
   useRemoveSavedListItem: vi.fn(),
   useSavedList: vi.fn(),
+  useSetSavedListSharing: vi.fn(),
 }));
 
 vi.mock("@/domains/catalog/components/profiles/actor-avatar", () => ({
@@ -46,6 +47,10 @@ describe("routes/_workspace/lists/$id packet exports", () => {
     vi.mocked(claims.useRemoveSavedListItem).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof claims.useRemoveSavedListItem>);
+    vi.mocked(claims.useSetSavedListSharing).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useSetSavedListSharing>);
   });
 
   afterEach(() => {
@@ -92,6 +97,7 @@ describe("routes/_workspace/lists/$id packet exports", () => {
       data: {
         id: "list-1",
         user_id: "user-1",
+        org_id: "org_1",
         name: "Tenant power map",
         description: "Actors and notes for the housing story.",
         item_count: 1,
@@ -126,7 +132,7 @@ describe("routes/_workspace/lists/$id packet exports", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
 
-    expect(screen.getByText("Team research workspace")).toBeInTheDocument();
+    expect(screen.getByText("Shared team list")).toBeInTheDocument();
     expect(screen.getAllByText("Metro Desk").length).toBeGreaterThan(0);
     expect(screen.getByText("Institutional export")).toBeInTheDocument();
     expect(screen.getByText("CRM handoff")).toBeInTheDocument();
@@ -202,6 +208,7 @@ describe("routes/_workspace/lists/$id packet exports", () => {
       data: {
         id: "list-1",
         user_id: "user-1",
+        org_id: "org_1",
         name: "Tenant power map",
         description: "Actors and notes for the housing story.",
         item_count: 1,

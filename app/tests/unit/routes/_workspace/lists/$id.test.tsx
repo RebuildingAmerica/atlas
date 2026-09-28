@@ -12,6 +12,7 @@ vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useAddSavedListItem: vi.fn(),
   useRemoveSavedListItem: vi.fn(),
   useSavedList: vi.fn(),
+  useSetSavedListSharing: vi.fn(),
 }));
 
 vi.mock("@/domains/catalog/components/profiles/actor-avatar", () => ({
@@ -46,6 +47,10 @@ describe("routes/_workspace/lists/$id", () => {
     vi.mocked(claims.useRemoveSavedListItem).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof claims.useRemoveSavedListItem>);
+    vi.mocked(claims.useSetSavedListSharing).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useSetSavedListSharing>);
   });
 
   afterEach(() => {
@@ -87,6 +92,123 @@ describe("routes/_workspace/lists/$id", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
     expect(screen.getByText("List not found")).toBeInTheDocument();
+  });
+
+  it("lets the owner deliberately share a private list with the active team", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const access = await import("@/domains/access");
+    const setSharing = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(access.useAtlasSession).mockReturnValue({
+      data: {
+        user: { id: "owner" },
+        workspace: {
+          activeOrganization: { id: "team-one", name: "Transit Coalition", workspaceType: "team" },
+          resolvedCapabilities: { capabilities: ["workspace.shared", "workspace.notes"] },
+        },
+      },
+    } as unknown as ReturnType<typeof access.useAtlasSession>);
+    vi.mocked(claims.useSetSavedListSharing).mockReturnValue({
+      mutateAsync: setSharing,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useSetSavedListSharing>);
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        user_id: "owner",
+        org_id: null,
+        name: "Bus access",
+        description: null,
+        item_count: 0,
+        items: [],
+        updated_at: "2026-09-28T00:00:00Z",
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByText("Only you can see this list and its notes.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Share with Transit Coalition" }));
+    await waitFor(() => {
+      expect(setSharing).toHaveBeenCalledWith({ listId: "list-1", shared: true });
+    });
+  });
+
+  it("lets the owner stop sharing and explains a failed change", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    const access = await import("@/domains/access");
+    const setSharing = vi.fn().mockRejectedValue(new Error("internal failure"));
+    vi.mocked(access.useAtlasSession).mockReturnValue({
+      data: {
+        user: { id: "owner" },
+        workspace: {
+          activeOrganization: { id: "team-one", name: "Transit Coalition", workspaceType: "team" },
+          resolvedCapabilities: { capabilities: ["workspace.shared", "workspace.notes"] },
+        },
+      },
+    } as unknown as ReturnType<typeof access.useAtlasSession>);
+    vi.mocked(claims.useSetSavedListSharing).mockReturnValue({
+      mutateAsync: setSharing,
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useSetSavedListSharing>);
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        user_id: "owner",
+        org_id: "team-one",
+        name: "Bus access",
+        description: null,
+        item_count: 0,
+        items: [],
+        updated_at: "2026-09-28T00:00:00Z",
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+
+    expect(screen.getByText(/Everyone in Transit Coalition can read and edit/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Stop sharing with team" }));
+    await waitFor(() => {
+      expect(setSharing).toHaveBeenCalledWith({ listId: "list-1", shared: false });
+      expect(screen.getByRole("alert")).toHaveTextContent("Could not change sharing.");
+    });
+    expect(screen.queryByText(/internal failure/)).not.toBeInTheDocument();
+  });
+
+  it("keeps shared-list visibility clear while team metadata is loading", async () => {
+    const claims = await import("@/domains/catalog/hooks/use-claims");
+    vi.mocked(claims.useSavedList).mockReturnValue({
+      data: {
+        id: "list-1",
+        user_id: "owner",
+        org_id: "team-one",
+        name: "Bus access",
+        description: null,
+        item_count: 0,
+        items: [],
+        updated_at: "2026-09-28T00:00:00Z",
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof claims.useSavedList>);
+    const routeModule = await import("@/routes/_workspace/lists/$id");
+    const { readRouterMocks, asRouteStub } = await import("@/../tests/helpers/router-harness");
+    readRouterMocks().useParams.mockReturnValue({ id: "list-1" });
+    const Component = asRouteStub(routeModule.Route).options.component;
+    if (!Component) throw new Error("Expected Route.options.component");
+    render(<Component />);
+    expect(screen.getByText(/Everyone in your team can read and edit/)).toBeInTheDocument();
+    expect(screen.getAllByText("Your team").length).toBeGreaterThan(0);
   });
 
   it("shows the no-actors copy when items is undefined or empty", async () => {

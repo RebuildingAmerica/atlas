@@ -9,6 +9,14 @@ from __future__ import annotations
 from typing import Any
 
 
+async def _ensure_saved_list_columns(conn: Any) -> None:
+    """Keep existing personal lists private when adding explicit team sharing."""
+    cursor = await conn.execute("PRAGMA table_info(saved_lists)")
+    rows = await cursor.fetchall()
+    if rows and "org_id" not in {row[1] for row in rows}:
+        await conn.execute("ALTER TABLE saved_lists ADD COLUMN org_id TEXT")
+
+
 async def _ensure_entry_columns(conn: Any) -> None:
     """Apply additive entry-table migrations for local SQLite databases.
 

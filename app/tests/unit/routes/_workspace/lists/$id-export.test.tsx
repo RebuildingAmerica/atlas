@@ -12,6 +12,7 @@ vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useAddSavedListItem: vi.fn(),
   useRemoveSavedListItem: vi.fn(),
   useSavedList: vi.fn(),
+  useSetSavedListSharing: vi.fn(),
 }));
 
 vi.mock("@/domains/catalog/components/profiles/actor-avatar", () => ({
@@ -46,6 +47,10 @@ describe("routes/_workspace/lists/$id export cases", () => {
     vi.mocked(claims.useRemoveSavedListItem).mockReturnValue({
       mutateAsync: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReturnType<typeof claims.useRemoveSavedListItem>);
+    vi.mocked(claims.useSetSavedListSharing).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof claims.useSetSavedListSharing>);
   });
 
   afterEach(() => {
@@ -103,7 +108,7 @@ describe("routes/_workspace/lists/$id export cases", () => {
     if (!Component) throw new Error("Expected Route.options.component");
     render(<Component />);
 
-    expect(screen.getByText("Research thread")).toBeInTheDocument();
+    expect(screen.getByText("Private research list")).toBeInTheDocument();
     expect(screen.getByText("Project status")).toBeInTheDocument();
     expect(screen.getByText("Needs notes")).toBeInTheDocument();
     expect(screen.getByText("Owner")).toBeInTheDocument();

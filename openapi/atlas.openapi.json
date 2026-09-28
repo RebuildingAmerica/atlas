@@ -12948,6 +12948,18 @@
             "title": "Name",
             "type": "string"
           },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "org id for this saved list.",
+            "title": "Org Id"
+          },
           "updated_at": {
             "description": "updated at for this saved list.",
             "title": "Updated At",
@@ -12967,6 +12979,21 @@
           "updated_at"
         ],
         "title": "SavedListResponse",
+        "type": "object"
+      },
+      "SavedListSharingRequest": {
+        "description": "Explicitly share or unshare an owned list with the active team workspace.",
+        "properties": {
+          "shared": {
+            "description": "shared for this saved list sharing.",
+            "title": "Shared",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "shared"
+        ],
+        "title": "SavedListSharingRequest",
         "type": "object"
       },
       "ScheduledRunResponse": {
@@ -22123,7 +22150,7 @@
     },
     "/api/lists": {
       "get": {
-        "description": "Return all lists the current user owns.\n\nUse this saved-list operation to collect actors for a signed-in user's later review. Lists are personal workflow artifacts; exports should keep source counts or receipts attached to the actors they describe.",
+        "description": "Return private lists and lists shared with the active paid team.\n\nUse this saved-list operation to collect actors for a signed-in user's later review. Lists are personal workflow artifacts; exports should keep source counts or receipts attached to the actors they describe.",
         "operationId": "listSavedLists",
         "parameters": [
           {
@@ -23115,6 +23142,139 @@
           }
         },
         "summary": "Remove an entry from a saved list",
+        "tags": [
+          "lists"
+        ]
+      }
+    },
+    "/api/lists/{list_id}/sharing": {
+      "patch": {
+        "description": "Only the list owner can change its visibility, within the active team.\n\nUse this saved-list operation to collect actors for a signed-in user's later review. Lists are personal workflow artifacts; exports should keep source counts or receipts attached to the actors they describe.",
+        "operationId": "setSavedListSharing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_id",
+            "required": true,
+            "schema": {
+              "title": "List Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavedListSharingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Share or unshare a saved list with my team workspace",
         "tags": [
           "lists"
         ]

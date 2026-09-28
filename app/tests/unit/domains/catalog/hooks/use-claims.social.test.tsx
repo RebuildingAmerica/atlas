@@ -3,7 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   ProfileFollowResponse,
   SavedListResponse,
@@ -19,11 +19,19 @@ import {
   useSavedList,
   useSavedListMembership,
   useSavedLists,
+  useSetSavedListSharing,
   useUnfollowProfile,
 } from "@/domains/catalog/hooks/use-claims";
 import { createTestQueryClient } from "../../../../helpers/render-with-providers";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { stubFetch } from "../../../../helpers/stub-fetch";
 import type { StubbedFetch, StubbedResponse } from "../../../../helpers/stub-fetch";
+
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
+  useAtlasSession: vi.fn(() => ({
+    data: { user: { id: "user_1" }, workspace: { activeOrganization: null } },
+  })),
+}));
 
 describe("profile claim, follow and saved-list hooks", () => {
   interface ProvidersProps {
@@ -41,6 +49,9 @@ describe("profile claim, follow and saved-list hooks", () => {
   let routes: Map<string, StubbedResponse>;
 
   beforeEach(() => {
+    vi.mocked(useAtlasSession).mockReturnValue({
+      data: { user: { id: "user_1" }, workspace: { activeOrganization: null } },
+    } as unknown as ReturnType<typeof useAtlasSession>);
     queryClient = createTestQueryClient();
     routes = new Map<string, StubbedResponse>();
     http = stubFetch((input, init) => {
@@ -179,6 +190,80 @@ describe("profile claim, follow and saved-list hooks", () => {
   });
 
   describe("saved lists", () => {
+    it("starts with separate anonymous cache keys before a session resolves", async () => {
+      vi.mocked(useAtlasSession).mockReturnValue({
+        data: null,
+      } as unknown as ReturnType<typeof useAtlasSession>);
+      route("GET /api/lists", { body: [] });
+      const { result } = renderHook(
+        () => ({
+          lists: useSavedLists(),
+          list: useSavedList("list_1", false),
+          membership: useSavedListMembership("entry_1", false),
+        }),
+        { wrapper: Providers },
+      );
+      await waitFor(() => {
+        expect(result.current.lists.isSuccess).toBe(true);
+      });
+      expect(queryClient.getQueryData(["saved-lists", "anonymous", "none"])).toEqual([]);
+      expect(result.current.list.fetchStatus).toBe("idle");
+      expect(result.current.membership.fetchStatus).toBe("idle");
+    });
+
+    it("shares a list and refreshes list and membership state", async () => {
+      queryClient.setQueryData(["saved-lists", "user_1", "none"], [savedList()]);
+      queryClient.setQueryData(["saved-list-membership", "user_1", "none", "entry_1"], []);
+      route("PATCH /api/lists/list_1/sharing", {
+        body: savedList({ org_id: "team-one" }),
+      });
+
+      const { result } = renderHook(() => useSetSavedListSharing(), { wrapper: Providers });
+      const shared = await result.current.mutateAsync({ listId: "list_1", shared: true });
+
+      expect(shared.org_id).toBe("team-one");
+      expect(requests()).toEqual([
+        {
+          body: { shared: true },
+          method: "PATCH",
+          target: "/api/lists/list_1/sharing",
+        },
+      ]);
+      await waitFor(() => {
+        expect(queryClient.getQueryState(["saved-lists", "user_1", "none"])?.isInvalidated).toBe(
+          true,
+        );
+        expect(
+          queryClient.getQueryState(["saved-list-membership", "user_1", "none", "entry_1"])
+            ?.isInvalidated,
+        ).toBe(true);
+      });
+    });
+
+    it("does not reuse a previous team's list cache after switching workspaces", async () => {
+      vi.mocked(useAtlasSession).mockReturnValue({
+        data: { user: { id: "user_1" }, workspace: { activeOrganization: { id: "team-one" } } },
+      } as unknown as ReturnType<typeof useAtlasSession>);
+      route("GET /api/lists", { body: [savedList({ id: "first-team-list" })] });
+      const { result, rerender } = renderHook(() => useSavedLists(), { wrapper: Providers });
+      await waitFor(() => {
+        expect(result.current.data?.[0]?.id).toBe("first-team-list");
+      });
+
+      route("GET /api/lists", { body: [savedList({ id: "second-team-list" })] });
+      vi.mocked(useAtlasSession).mockReturnValue({
+        data: { user: { id: "user_1" }, workspace: { activeOrganization: { id: "team-two" } } },
+      } as unknown as ReturnType<typeof useAtlasSession>);
+      rerender();
+      await waitFor(() => {
+        expect(result.current.data?.[0]?.id).toBe("second-team-list");
+      });
+      expect(targets()).toEqual(["GET /api/lists", "GET /api/lists"]);
+      expect(queryClient.getQueryData(["saved-lists", "user_1", "team-two"])).toEqual([
+        savedList({ id: "second-team-list" }),
+      ]);
+    });
+
     it("loads every list the user owns", async () => {
       route("GET /api/lists", { body: [savedList()] });
 

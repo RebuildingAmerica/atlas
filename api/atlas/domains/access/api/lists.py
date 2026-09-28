@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from atlas.domains.access.capabilities import ResolvedCapabilities, get_limit, resolve_capabilities
-from atlas.domains.access.dependencies import require_actor
-from atlas.domains.access.models.saved_lists import SavedListCRUD
+from atlas.domains.access.dependencies import require_actor, require_org_actor
+from atlas.domains.access.models.saved_lists import SavedListCRUD, SavedListModel
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
 from atlas.domains.catalog.schemas.public import (
     SavedListCreateRequest,
@@ -16,6 +16,7 @@ from atlas.domains.catalog.schemas.public import (
     SavedListItemRequest,
     SavedListItemResponse,
     SavedListResponse,
+    SavedListSharingRequest,
 )
 from atlas.models import EntryCRUD
 from atlas.platform.config import Settings, get_settings
@@ -95,6 +96,33 @@ def _raise_limit_reached(limit: str, maximum: int) -> None:
     )
 
 
+async def require_list_actor(
+    actor: AuthenticatedActor = Depends(require_actor),
+    settings: Settings = Depends(get_settings),
+) -> AuthenticatedActor:
+    """Verify active workspace membership before using its shared research."""
+    if actor.org_id is not None:
+        return await require_org_actor(actor=actor, settings=settings)
+    return actor
+
+
+def _shared_org_id(actor: AuthenticatedActor) -> str | None:
+    capabilities = actor.resolved_capabilities
+    if (
+        actor.workspace_type == "team"
+        and capabilities is not None
+        and "workspace.shared" in capabilities.capabilities
+    ):
+        return actor.org_id
+    return None
+
+
+def _can_access(record: SavedListModel, actor: AuthenticatedActor) -> bool:
+    if record.org_id is None:
+        return record.user_id == actor.user_id
+    return record.org_id == _shared_org_id(actor)
+
+
 @router.post(
     "",
     response_model=SavedListResponse,
@@ -106,7 +134,7 @@ def _raise_limit_reached(limit: str, maximum: int) -> None:
 async def create_list(
     payload: SavedListCreateRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> SavedListResponse:
@@ -135,17 +163,47 @@ async def create_list(
 )
 async def list_my_lists(
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> list[SavedListResponse]:
-    """Return all lists the current user owns."""
-    records = await SavedListCRUD.list_for_user(db, actor.user_id)
+    """Return private lists and lists shared with the active paid team."""
+    records = await SavedListCRUD.list_for_user(db, actor.user_id, _shared_org_id(actor))
     apply_no_store_headers(response)
     out: list[SavedListResponse] = []
     for record in records:
         count = await SavedListCRUD.count_items(db, record.id)
         out.append(_list_to_response(record, item_count=count))
     return out
+
+
+@router.patch(
+    "/{list_id}/sharing",
+    response_model=SavedListResponse,
+    summary="Share or unshare a saved list with my team workspace",
+    operation_id="setSavedListSharing",
+    tags=["lists"],
+)
+async def set_list_sharing(
+    list_id: str,
+    payload: SavedListSharingRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_list_actor),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> SavedListResponse:
+    """Only the list owner can change its visibility, within the active team."""
+    record = await SavedListCRUD.get_by_id(db, list_id)
+    if record is None or record.user_id != actor.user_id:
+        raise HTTPException(status_code=404, detail="List not found.")
+    if record.org_id is not None and record.org_id != actor.org_id:
+        raise HTTPException(status_code=404, detail="List not found.")
+    org_id = _shared_org_id(actor)
+    if payload.shared and org_id is None:
+        _raise_capability_required("workspace.shared")
+    updated = await SavedListCRUD.set_sharing(db, list_id, org_id if payload.shared else None)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="List not found.")
+    apply_no_store_headers(response)
+    return _list_to_response(updated, item_count=await SavedListCRUD.count_items(db, list_id))
 
 
 @router.get(
@@ -158,12 +216,12 @@ async def list_my_lists(
 async def get_list(
     list_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> SavedListResponse:
     """Return a saved list with hydrated entries."""
     record = await SavedListCRUD.get_by_id(db, list_id)
-    if record is None or record.user_id != actor.user_id:
+    if record is None or not _can_access(record, actor):
         raise HTTPException(status_code=404, detail="List not found.")
     items = await _list_items_response(db, list_id)
     apply_no_store_headers(response)
@@ -181,7 +239,7 @@ async def export_list(  # noqa: PLR0913
     list_id: str,
     response: Response,
     export_format: Literal["json", "csv"] = Query("json", alias="format"),
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> SavedListExportResponse | Response:
@@ -190,7 +248,7 @@ async def export_list(  # noqa: PLR0913
     if "workspace.export" not in capabilities.capabilities:
         _raise_capability_required("workspace.export")
     record = await SavedListCRUD.get_by_id(db, list_id)
-    if record is None or record.user_id != actor.user_id:
+    if record is None or not _can_access(record, actor):
         raise HTTPException(status_code=404, detail="List not found.")
     items = await _list_export_items_response(db, list_id)
     export = _saved_list_export_response(record, items)
@@ -219,12 +277,12 @@ async def export_list(  # noqa: PLR0913
 async def delete_list(
     list_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> Response:
     """Delete a saved list and (cascade) its items."""
     record = await SavedListCRUD.get_by_id(db, list_id)
-    if record is None or record.user_id != actor.user_id:
+    if record is None or record.user_id != actor.user_id or not _can_access(record, actor):
         raise HTTPException(status_code=404, detail="List not found.")
     await SavedListCRUD.delete(db, list_id)
     apply_no_store_headers(response)
@@ -244,13 +302,13 @@ async def add_item(  # noqa: PLR0913
     list_id: str,
     payload: SavedListItemRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> SavedListItemResponse:
     """Add an entry to a saved list."""
     record = await SavedListCRUD.get_by_id(db, list_id)
-    if record is None or record.user_id != actor.user_id:
+    if record is None or not _can_access(record, actor):
         raise HTTPException(status_code=404, detail="List not found.")
     capabilities = _actor_capabilities(actor, settings)
     if payload.note is not None and "workspace.notes" not in capabilities.capabilities:
@@ -303,12 +361,12 @@ async def remove_item(
     list_id: str,
     entry_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> Response:
     """Remove an entry from a saved list."""
     record = await SavedListCRUD.get_by_id(db, list_id)
-    if record is None or record.user_id != actor.user_id:
+    if record is None or not _can_access(record, actor):
         raise HTTPException(status_code=404, detail="List not found.")
     removed = await SavedListCRUD.remove_item(db, list_id=list_id, entry_id=entry_id)
     if not removed:
@@ -329,9 +387,11 @@ async def remove_item(
 async def membership(
     entry_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor),
+    actor: AuthenticatedActor = Depends(require_list_actor),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> list[str]:
     """Return list ids that contain ``entry_id`` for the current user."""
     apply_no_store_headers(response)
-    return await SavedListCRUD.lists_containing_entry(db, user_id=actor.user_id, entry_id=entry_id)
+    return await SavedListCRUD.lists_containing_entry(
+        db, user_id=actor.user_id, entry_id=entry_id, org_id=_shared_org_id(actor)
+    )

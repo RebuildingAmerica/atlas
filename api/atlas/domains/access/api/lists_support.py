@@ -103,6 +103,7 @@ def _list_to_response(
     return SavedListResponse(
         id=list_record.id,
         user_id=list_record.user_id,
+        org_id=list_record.org_id,
         name=list_record.name,
         description=list_record.description,
         item_count=item_count,

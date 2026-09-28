@@ -91,6 +91,7 @@ from .public_profiles import (
     SavedListItemRequest,
     SavedListItemResponse,
     SavedListResponse,
+    SavedListSharingRequest,
 )
 
 __all__ = [
@@ -171,6 +172,7 @@ __all__ = [
     "SavedListItemRequest",
     "SavedListItemResponse",
     "SavedListResponse",
+    "SavedListSharingRequest",
     "SourceCollectionResponse",
     "SourceFlagCreateRequest",
     "SourceFlagListResponse",

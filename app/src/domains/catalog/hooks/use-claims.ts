@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryOptions } from "@tanstack/react-query";
 import { atprotoIdentitiesQueryKey } from "@/domains/access/atproto-identities";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import {
   attachProfileAtprotoIdentity,
   approveProfileClaimReview,
@@ -22,6 +23,7 @@ import {
   listSavedLists,
   manageProfile,
   removeSavedListItem,
+  setSavedListSharing,
   rejectProfileClaimReview,
   revalidateProfileAtprotoLinks,
   unfollowProfile,
@@ -206,15 +208,25 @@ export function useFollowingFeed(limit = 50) {
 }
 
 export function useSavedLists() {
+  const session = useAtlasSession();
+  const scope = [
+    session.data?.user?.id ?? "anonymous",
+    session.data?.workspace?.activeOrganization?.id ?? "none",
+  ];
   return useQuery<SavedListResponse[]>({
-    queryKey: LISTS_KEY,
+    queryKey: [...LISTS_KEY, ...scope],
     queryFn: () => listSavedLists(),
   });
 }
 
 export function useSavedList(listId: string, enabled: boolean) {
+  const session = useAtlasSession();
+  const scope = [
+    session.data?.user?.id ?? "anonymous",
+    session.data?.workspace?.activeOrganization?.id ?? "none",
+  ];
   return useQuery<SavedListResponse>({
-    queryKey: [...LISTS_KEY, listId],
+    queryKey: [...LISTS_KEY, ...scope, listId],
     queryFn: () => getSavedList(listId),
     enabled,
   });
@@ -236,6 +248,18 @@ export function useDeleteSavedList() {
     mutationFn: (listId: string) => deleteSavedList(listId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: LISTS_KEY });
+    },
+  });
+}
+
+export function useSetSavedListSharing() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ listId, shared }: { listId: string; shared: boolean }) =>
+      setSavedListSharing(listId, { shared }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: LISTS_KEY });
+      void queryClient.invalidateQueries({ queryKey: MEMBERSHIP_KEY });
     },
   });
 }
@@ -270,8 +294,13 @@ export function useRemoveSavedListItem() {
 }
 
 export function useSavedListMembership(entryId: string, enabled: boolean) {
+  const session = useAtlasSession();
+  const scope = [
+    session.data?.user?.id ?? "anonymous",
+    session.data?.workspace?.activeOrganization?.id ?? "none",
+  ];
   return useQuery<string[]>({
-    queryKey: [...MEMBERSHIP_KEY, entryId],
+    queryKey: [...MEMBERSHIP_KEY, ...scope, entryId],
     queryFn: () => getSavedListMembership(entryId),
     enabled,
   });

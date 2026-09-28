@@ -42,11 +42,9 @@ function ListsRoute() {
     }
   }
 
-  const activeOrganization = session.data?.workspace.activeOrganization;
+  const activeOrganization = session.data?.workspace?.activeOrganization;
   const isTeamWorkspace = activeOrganization?.workspaceType === "team";
-  const workspaceOwner = isTeamWorkspace ? activeOrganization.name : "You";
-  const heading = isTeamWorkspace ? "Shared project workspaces" : "Project workspaces";
-  const workspaceKindLabel = isTeamWorkspace ? "Shared project workspace" : "Project workspace";
+  const heading = "Your research lists";
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-12">
@@ -55,7 +53,8 @@ function ListsRoute() {
           <Badge variant="info">Research workspace</Badge>
           <h1 className="type-display-small text-ink-strong mt-2">{heading}</h1>
           <p className="type-body-large text-ink-soft max-w-2xl">
-            Group leads, notes, briefs, and exports around a reporting or research goal.
+            Group leads and notes around a goal. Your lists stay private until you choose to share
+            one with a Team workspace.
           </p>
         </div>
         <Button
@@ -72,6 +71,12 @@ function ListsRoute() {
 
       {showCreate ? (
         <section className="bg-surface-container space-y-3 rounded-[1rem] p-5">
+          {isTeamWorkspace ? (
+            <p className="type-body-small text-ink-soft">
+              This list starts private. You can share it with {activeOrganization.name} after
+              creating it.
+            </p>
+          ) : null}
           <input
             type="text"
             value={name}
@@ -146,25 +151,35 @@ function ListsRoute() {
                 ) : null}
                 <p className="type-label-small text-ink-soft">Leads, notes, briefs, and exports</p>
                 <div className="type-label-small text-ink-muted flex flex-wrap gap-x-3 gap-y-1">
-                  <span>{workspaceKindLabel}</span>
-                  {isTeamWorkspace ? <span>Team-visible notes</span> : null}
-                  <span>Owner: {workspaceOwner}</span>
-                  <span>Activity: leads, notes, and exports</span>
+                  <span>
+                    {list.org_id
+                      ? `Shared with ${activeOrganization?.name ?? "your team"}`
+                      : "Private to you"}
+                  </span>
+                  {list.org_id ? (
+                    <span>
+                      {list.user_id === session.data?.user?.id
+                        ? "Created by you"
+                        : "Created by a teammate"}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="type-label-small text-ink-muted">
                   {list.item_count} {list.item_count === 1 ? "actor" : "actors"}
                 </p>
               </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  void deleteList.mutateAsync(list.id);
-                }}
-                className="text-ink-muted hover:text-rose-700"
-                aria-label={`Delete ${list.name}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {list.user_id === session.data?.user?.id ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void deleteList.mutateAsync(list.id);
+                  }}
+                  className="text-ink-muted hover:text-rose-700"
+                  aria-label={`Delete ${list.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

@@ -80,11 +80,13 @@ CREATE TABLE IF NOT EXISTS profile_claim_proofs (
 CREATE TABLE IF NOT EXISTS saved_lists (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    org_id TEXT,
     name TEXT NOT NULL,
     description TEXT,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_saved_lists_org ON saved_lists(org_id);
 
 -- List membership (entries pinned to a list)
 CREATE TABLE IF NOT EXISTS saved_list_items (

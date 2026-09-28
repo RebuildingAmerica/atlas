@@ -25,6 +25,7 @@ from .database_migrations import (
     _ensure_place_context_columns,
     _ensure_place_related_place_columns,
     _ensure_review_queue_columns,
+    _ensure_saved_list_columns,
     db,
     migrate_atproto_identity_graph,
 )
@@ -291,6 +292,7 @@ async def _init_sqlite(database_url: str) -> None:
         await _ensure_discovery_run_columns(conn)
         await _ensure_discovery_job_columns(conn)
         await _ensure_review_queue_columns(conn)
+        await _ensure_saved_list_columns(conn)
         await _ensure_org_annotation_columns(conn)
         await _ensure_org_coverage_target_columns(conn)
         await _ensure_place_context_columns(conn)

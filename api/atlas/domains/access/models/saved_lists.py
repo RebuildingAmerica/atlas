@@ -26,6 +26,7 @@ class SavedListModel:
     description: str | None
     created_at: str
     updated_at: str
+    org_id: str | None = None
 
 
 @dataclass
@@ -67,13 +68,14 @@ class SavedListCRUD:
             description=description,
             created_at=now,
             updated_at=now,
+            org_id=None,
         )
 
     @staticmethod
     async def get_by_id(conn: aiosqlite.Connection, list_id: str) -> SavedListModel | None:
         """Fetch a list by id."""
         cursor = await conn.execute(
-            "SELECT id, user_id, name, description, created_at, updated_at "
+            "SELECT id, user_id, name, description, created_at, updated_at, org_id "
             "FROM saved_lists WHERE id = ?",
             (list_id,),
         )
@@ -87,18 +89,22 @@ class SavedListCRUD:
             description=row[3],
             created_at=row[4],
             updated_at=row[5],
+            org_id=row[6],
         )
 
     @staticmethod
-    async def list_for_user(conn: aiosqlite.Connection, user_id: str) -> list[SavedListModel]:
-        """Return every list owned by the user, newest first."""
+    async def list_for_user(
+        conn: aiosqlite.Connection, user_id: str, org_id: str | None = None
+    ) -> list[SavedListModel]:
+        """Return private lists plus shared lists in the active team workspace."""
         cursor = await conn.execute(
             """
-            SELECT id, user_id, name, description, created_at, updated_at
-            FROM saved_lists WHERE user_id = ?
+            SELECT id, user_id, name, description, created_at, updated_at, org_id
+            FROM saved_lists
+            WHERE (user_id = ? AND org_id IS NULL) OR (org_id IS NOT NULL AND org_id = ?)
             ORDER BY updated_at DESC
             """,
-            (user_id,),
+            (user_id, org_id),
         )
         rows = await cursor.fetchall()
         return [
@@ -109,6 +115,7 @@ class SavedListCRUD:
                 description=row[3],
                 created_at=row[4],
                 updated_at=row[5],
+                org_id=row[6],
             )
             for row in rows
         ]
@@ -122,6 +129,18 @@ class SavedListCRUD:
         )
         row = await cursor.fetchone()
         return int(row[0]) if row else 0
+
+    @staticmethod
+    async def set_sharing(
+        conn: aiosqlite.Connection, list_id: str, org_id: str | None
+    ) -> SavedListModel | None:
+        """Change the visibility of an owned list after authorization in the API."""
+        cursor = await conn.execute(
+            "UPDATE saved_lists SET org_id = ?, updated_at = ? WHERE id = ?",
+            (org_id, db.now_iso(), list_id),
+        )
+        await conn.commit()
+        return await SavedListCRUD.get_by_id(conn, list_id) if cursor.rowcount else None
 
     @staticmethod
     async def update(
@@ -246,16 +265,17 @@ class SavedListCRUD:
 
     @staticmethod
     async def lists_containing_entry(
-        conn: aiosqlite.Connection, *, user_id: str, entry_id: str
+        conn: aiosqlite.Connection, *, user_id: str, entry_id: str, org_id: str | None = None
     ) -> list[str]:
         """Return ids of all of the user's lists that contain ``entry_id``."""
         cursor = await conn.execute(
             """
             SELECT sli.list_id FROM saved_list_items sli
             JOIN saved_lists sl ON sl.id = sli.list_id
-            WHERE sl.user_id = ? AND sli.entry_id = ?
+            WHERE ((sl.user_id = ? AND sl.org_id IS NULL) OR sl.org_id = ?)
+                AND sli.entry_id = ?
             """,
-            (user_id, entry_id),
+            (user_id, org_id, entry_id),
         )
         rows = await cursor.fetchall()
         return [row[0] for row in rows]

@@ -258,6 +258,12 @@ class SavedListCreateRequest(BaseModel):
     description: str | None = None
 
 
+class SavedListSharingRequest(BaseModel):
+    """Explicitly share or unshare an owned list with the active team workspace."""
+
+    shared: bool
+
+
 class SavedListItemRequest(BaseModel):
     """Add an entry to a saved list."""
 
@@ -280,6 +286,7 @@ class SavedListResponse(BaseModel):
 
     id: str
     user_id: str
+    org_id: str | None = None
     name: str
     description: str | None = None
     item_count: int = 0
