@@ -121,14 +121,25 @@ variable is the deliberate decision.
 If the live Atlas portal is missing or the existing billing webhook lacks the
 required events, run the protected **Repair Production Billing Configuration**
 workflow from `main` with confirmation input `REPAIR_LIVE_ATLAS_BILLING`. It
-uses the live key already stored in Vercel Production, updates the existing
-Atlas webhook in place so its signing secret is retained, provisions or updates
-the Atlas-specific portal, saves that portal ID to Vercel Production, and reads
-both objects back. It refuses a missing, duplicate, or test-mode webhook and
-runs only while checkout is closed. A subsequent production deployment is
-required before the app runtime receives the new portal ID. The workflow does
-not set the offer allowlist, open checkout, deliver a signed event, or prove a
-customer lifecycle; those remain separate acceptance gates.
+requires `ATLAS_STRIPE_LIVE_REPAIR_KEY` and `ATLAS_STRIPE_LIVE_CATALOG` in the
+GitHub **production environment**. Provision them from the approved live
+credential and catalog record for the same Stripe account used by the deployed
+app; do not paste their values into an issue or workflow input. Vercel marks the
+runtime Stripe settings sensitive and does not export their values through
+`vercel env run`. The September 28 repair attempt stopped before mutation
+because it received no key from that command. The saved local Stripe CLI live
+key was also rejected by Stripe, so it is not a repair credential.
+
+The workflow checks the live account and catalog before mutation, updates the
+existing Atlas webhook in place so its signing secret is retained, provisions or
+updates the Atlas-specific portal, saves its ID to Vercel Production, and reads
+both Stripe objects back. It refuses a missing, duplicate, or test-mode webhook
+and runs only while checkout is closed. Vercel can confirm the portal setting
+**exists by name**, but cannot return its sensitive value; verify the deployed
+portal setting through a guarded owner portal-session journey after a subsequent
+production deployment. The workflow does not set the offer allowlist, open
+checkout, deliver a signed event, or prove a customer lifecycle; those remain
+separate acceptance gates.
 
 ## Sales tax
 

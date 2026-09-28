@@ -157,7 +157,7 @@ async function main(): Promise<void> {
     await requireLiveAtlasCatalog(stripe, catalogRaw);
     await verifyProductionBillingRepair(stripe, publicOrigin, portalId);
     process.stdout.write(
-      "Vercel Production points to the verified live Atlas portal and webhook. This command did not open checkout.\n",
+      "Stripe retained the live Atlas portal and webhook configuration. The deployed app setting still needs verification. Checkout remains closed.\n",
     );
     return;
   }

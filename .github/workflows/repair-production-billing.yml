@@ -30,6 +30,15 @@ jobs:
             echo "::error title=Checkout is open::Close new sales before repairing live billing configuration."
             exit 1
           fi
+      - name: Require dedicated live repair credentials
+        env:
+          STRIPE_API_KEY: ${{ secrets.ATLAS_STRIPE_LIVE_REPAIR_KEY }}
+          STRIPE_ATLAS_CATALOG: ${{ secrets.ATLAS_STRIPE_LIVE_CATALOG }}
+        run: |
+          if [ -z "$STRIPE_API_KEY" ] || [ -z "$STRIPE_ATLAS_CATALOG" ]; then
+            echo "::error title=Live repair credentials missing::Set ATLAS_STRIPE_LIVE_REPAIR_KEY and ATLAS_STRIPE_LIVE_CATALOG in the production GitHub environment. Vercel sensitive settings cannot be exported to this workflow."
+            exit 1
+          fi
       - name: Link the production Vercel project
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -45,14 +54,16 @@ jobs:
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
       - name: Repair live Stripe webhook and portal
         env:
+          STRIPE_API_KEY: ${{ secrets.ATLAS_STRIPE_LIVE_REPAIR_KEY }}
+          STRIPE_ATLAS_CATALOG: ${{ secrets.ATLAS_STRIPE_LIVE_CATALOG }}
+          ATLAS_PUBLIC_URL: https://atlas.rebuildingus.org
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           ATLAS_PORTAL_ID_FILE: ${{ runner.temp }}/atlas-portal-id
         run: |
           set -euo pipefail
-          pnpm exec vercel env run -e production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" -- \
-            pnpm exec tsx scripts/ci/repair-production-billing.ts --apply "$ATLAS_PORTAL_ID_FILE"
+          pnpm exec tsx scripts/ci/repair-production-billing.ts --apply "$ATLAS_PORTAL_ID_FILE"
           portal_id="$(cat "$ATLAS_PORTAL_ID_FILE")"
           if [[ ! "$portal_id" =~ ^bpc_[A-Za-z0-9]+$ ]]; then
             echo "::error title=Portal ID invalid::Stripe did not return a usable Atlas portal configuration."
@@ -60,17 +71,23 @@ jobs:
           fi
           pnpm exec vercel env add STRIPE_BILLING_PORTAL_CONFIGURATION production \
             --value "$portal_id" --force --yes --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
-      - name: Read back the production configuration
+      - name: Read back Stripe configuration and Vercel setting presence
         env:
+          STRIPE_API_KEY: ${{ secrets.ATLAS_STRIPE_LIVE_REPAIR_KEY }}
+          STRIPE_ATLAS_CATALOG: ${{ secrets.ATLAS_STRIPE_LIVE_CATALOG }}
+          ATLAS_PUBLIC_URL: https://atlas.rebuildingus.org
+          ATLAS_PORTAL_ID_FILE: ${{ runner.temp }}/atlas-portal-id
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
-          pnpm exec vercel env run -e production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" -- \
+          STRIPE_BILLING_PORTAL_CONFIGURATION="$(cat "$ATLAS_PORTAL_ID_FILE")" \
             pnpm exec tsx scripts/ci/repair-production-billing.ts --verify
+          pnpm exec vercel env list production --format json --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" \
+            | node scripts/ci/verify-production-portal-env.mjs
       - name: Record the decision boundary
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
-          The existing Atlas live webhook subscriptions and customer portal configuration were repaired and read back through Stripe. The portal ID was saved and read back from Vercel Production settings. The current deployed app does not receive that new setting until the next production deployment. Checkout remains closed. This does not establish a genuine charge, signed webhook delivery, entitlement, cancellation, or refund acceptance.
+          The existing Atlas live webhook subscriptions and customer portal configuration were repaired and read back through Stripe. Vercel accepted the portal ID, and its Production setting name was read back. Sensitive Vercel values cannot be exported here, so the deployed runtime value remains unverified until the next production deployment and a guarded portal-session check. Checkout remains closed. This does not establish a genuine charge, signed webhook delivery, entitlement, cancellation, or refund acceptance.
           EOF
