@@ -61,13 +61,20 @@ requests on scoped pages. Local app tests passed 601 files and 3,941 tests at
 100% coverage; the repository pre-push gate passed 33 of 33 tasks. It is **not
 part of v22** and is not recorded as production behavior.
 
-The next main change bounds public API retries to one automatic retry and then
+Main commit `50c6a6e2` bounds public API retries to one automatic retry and then
 shows a manual recovery action for degraded profile, place, directory, Firehose,
 search, map, and profile-network reads. A failed network lookup is no longer
 displayed as an empty relationship list; organization-related people also report
 failure rather than silently disappearing. The full app suite passed 601 files,
 3,951 tests, and 100% statement, branch, function, and line coverage. This
 change has not been released to production or verified there.
+
+A later local editorial change records the exact identity, work, place, issue,
+official-action, and citation facts submitted for a held organization. Approval
+rejects any candidate whose facts or source notes changed before review. Older
+held candidates without a snapshot must be restaged. The 28 editorial-intake
+tests pass locally; full API coverage and hosted editorial acceptance remain
+open. The local full-coverage attempt ran out of disk space before completion.
 
 ## Prior production release `v2026.09.27-21`
 

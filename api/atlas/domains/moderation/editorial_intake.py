@@ -105,6 +105,32 @@ class EditorialCandidateCreateResponse(BaseModel):
     status: Literal["pending"] = "pending"
 
 
+def _candidate_snapshot(
+    request: EditorialCandidateCreateRequest, source_urls: list[str]
+) -> dict[str, dict[str, object]]:
+    """Keep the exact proposed facts so approval can reject later edits."""
+    facts: dict[str, object] = {
+        "name": request.name,
+        "description": request.description,
+        "city": request.city,
+        "state": request.state,
+        "region": request.region,
+        "geo_specificity": request.geo_specificity,
+        "website": request.action_url,
+        "issue_areas": sorted(request.issue_areas),
+        "source_evidence": [
+            {
+                "url": url,
+                "context": request.source_context
+                if url == request.source_url
+                else "Official next step supplied for editorial review.",
+            }
+            for url in source_urls
+        ],
+    }
+    return {field: {"before": None, "after": value} for field, value in facts.items()}
+
+
 async def stage_editorial_candidate(
     conn: aiosqlite.Connection,
     request: EditorialCandidateCreateRequest,
@@ -227,9 +253,15 @@ async def stage_editorial_candidate(
         await conn.execute(
             """INSERT INTO review_queue (
                 id, entity_id, kind, status, hold_reason, dedup_suspect,
-                created_at, source_urls
-            ) VALUES (?, ?, 'organization', 'pending', 'editorial_candidate', FALSE, ?, ?)""",
-            (review_item_id, entity_id, now, db.encode_json(source_urls)),
+                created_at, source_urls, proposed_changes
+            ) VALUES (?, ?, 'organization', 'pending', 'editorial_candidate', FALSE, ?, ?, ?)""",
+            (
+                review_item_id,
+                entity_id,
+                now,
+                db.encode_json(source_urls),
+                db.encode_json(_candidate_snapshot(request, source_urls)),
+            ),
         )
         await conn.commit()
     except Exception:

@@ -500,18 +500,21 @@ class ReviewQueueCRUD:
         if item is None or item.entity_id is None:
             await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
             return
+        if item.hold_reason == EDITORIAL_CANDIDATE_REASON:
+            await ReviewQueueCRUD._validate_editorial_candidate(conn, item)
+            await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (item.entity_id,))
+            await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
+            return
         if item.proposed_changes is not None:
             await ReviewQueueCRUD._apply_published_change(conn, item)
             await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
             return
-        if item.hold_reason == EDITORIAL_CANDIDATE_REASON:
-            await ReviewQueueCRUD._validate_editorial_candidate(conn, item)
         await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (item.entity_id,))
         await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
 
     @staticmethod
     async def _validate_editorial_candidate(conn: Any, item: ReviewQueueItemModel) -> None:
-        """A held intake cannot publish after its cited evidence is removed."""
+        """A held intake can publish only the facts and evidence originally staged."""
         if (
             item.entity_id is None
             or item.entity_type != "organization"
@@ -528,6 +531,26 @@ class ReviewQueueCRUD:
         linked = {str(row[0]) for row in await cursor.fetchall()}
         if not set(item.source_urls) <= linked:
             raise ReviewConflictError("Editorial candidate source is no longer linked")  # noqa: TRY003
+        from atlas.domains.catalog.models.entry import EntryCRUD
+
+        entry = await EntryCRUD.get_by_id(conn, item.entity_id)
+        if entry is None or entry.active or item.proposed_changes is None:
+            raise ReviewConflictError("Editorial candidate needs a new factual review")  # noqa: TRY003
+        current: dict[str, Any] = {
+            "name": entry.name,
+            "description": entry.description,
+            "city": entry.city,
+            "state": entry.state,
+            "region": entry.region,
+            "geo_specificity": entry.geo_specificity,
+            "website": entry.website,
+            "issue_areas": sorted(item.entity_issue_areas),
+            "source_evidence": item.source_evidence,
+        }
+        if set(item.proposed_changes) != set(current) or any(
+            item.proposed_changes[field].get("after") != value for field, value in current.items()
+        ):
+            raise ReviewConflictError("Editorial candidate changed after staging")  # noqa: TRY003
 
     @staticmethod
     async def _apply_published_change(conn: Any, item: ReviewQueueItemModel) -> None:

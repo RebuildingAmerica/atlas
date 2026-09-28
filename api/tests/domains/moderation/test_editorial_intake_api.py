@@ -73,6 +73,8 @@ async def test_editorial_candidate_requires_review_before_publication(
             "context": "Official next step supplied for editorial review.",
         },
     ]
+    assert item["proposed_changes"]["description"]["after"] == candidate()["description"]
+    assert item["proposed_changes"]["source_evidence"]["after"] == item["source_evidence"]
 
     approval = await test_client.post(f"/api/review-queue/{body['review_item_id']}/approve")
     assert approval.status_code == HTTPStatus.OK
@@ -182,6 +184,101 @@ async def test_editorial_candidate_cannot_publish_after_reviewed_facts_are_remov
     )
     assert approval.status_code == HTTPStatus.CONFLICT
     entry = await EntryCRUD.get_by_id(test_db, entity_id)
+    assert entry is not None
+    assert not entry.active
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("sql", "value"),
+    [
+        ("UPDATE entries SET name = ? WHERE id = ?", "Different Valley Transit Group"),
+        (
+            "UPDATE entries SET description = ? WHERE id = ?",
+            "Unreviewed new description of the organization's work.",
+        ),
+        ("UPDATE entries SET city = ? WHERE id = ?", "Henderson"),
+        ("UPDATE entries SET region = ? WHERE id = ?", "Clark County"),
+        ("UPDATE entries SET geo_specificity = ? WHERE id = ?", "statewide"),
+        (
+            "UPDATE entries SET website = ? WHERE id = ?",
+            "https://lasvegasfortransit.org/about/",
+        ),
+        (
+            "UPDATE entry_issue_areas SET issue_area = ? WHERE entry_id = ? AND issue_area = 'public_transit'",
+            "housing_affordability",
+        ),
+    ],
+)
+async def test_editorial_candidate_cannot_publish_changed_facts(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+    sql: str,
+    value: str,
+) -> None:
+    """Approval must not publish different identity, work, place, action, or issue facts."""
+    staged = await test_client.post("/api/review-queue/editorial-candidates", json=candidate())
+    entity_id = staged.json()["entity_id"]
+    await test_db.execute(sql, (value, entity_id))
+    await test_db.commit()
+
+    approval = await test_client.post(
+        f"/api/review-queue/{staged.json()['review_item_id']}/approve"
+    )
+    assert approval.status_code == HTTPStatus.CONFLICT
+    entry = await EntryCRUD.get_by_id(test_db, entity_id)
+    assert entry is not None
+    assert not entry.active
+
+
+@pytest.mark.asyncio
+async def test_editorial_candidate_cannot_publish_a_changed_source_note(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+) -> None:
+    """A changed citation note cannot silently support the queued description."""
+    staged = await test_client.post("/api/review-queue/editorial-candidates", json=candidate())
+    entity_id = staged.json()["entity_id"]
+    await test_db.execute(
+        """UPDATE entry_sources SET extraction_context = ? WHERE entry_id = ?
+           AND source_id = (SELECT id FROM sources WHERE url = ?)""",
+        (
+            "This page says something else about a different transit group.",
+            entity_id,
+            candidate()["source_url"],
+        ),
+    )
+    await test_db.commit()
+
+    approval = await test_client.post(
+        f"/api/review-queue/{staged.json()['review_item_id']}/approve"
+    )
+    assert approval.status_code == HTTPStatus.CONFLICT
+    entry = await EntryCRUD.get_by_id(test_db, entity_id)
+    assert entry is not None
+    assert not entry.active
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("replacement", [None, "{}"])
+async def test_editorial_candidate_without_queued_facts_needs_restaging(
+    test_client: httpx.AsyncClient,
+    test_db: object,
+    replacement: str | None,
+) -> None:
+    """A pre-snapshot hold or stripped snapshot cannot bypass factual review."""
+    staged = await test_client.post("/api/review-queue/editorial-candidates", json=candidate())
+    await test_db.execute(
+        "UPDATE review_queue SET proposed_changes = ? WHERE id = ?",
+        (replacement, staged.json()["review_item_id"]),
+    )
+    await test_db.commit()
+
+    approval = await test_client.post(
+        f"/api/review-queue/{staged.json()['review_item_id']}/approve"
+    )
+    assert approval.status_code == HTTPStatus.CONFLICT
+    entry = await EntryCRUD.get_by_id(test_db, staged.json()["entity_id"])
     assert entry is not None
     assert not entry.active
 
