@@ -47,6 +47,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           ATLAS_PORTAL_ID_FILE: ${{ runner.temp }}/atlas-portal-id
         run: |
           set -euo pipefail
@@ -63,6 +64,7 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
           pnpm exec vercel env run -e production --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN" -- \
