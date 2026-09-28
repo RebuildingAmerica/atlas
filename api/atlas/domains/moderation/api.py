@@ -9,6 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from atlas.domains.access import AuthenticatedActor, require_actor
+from atlas.domains.moderation.editorial_intake import (
+    EditorialCandidateConflictError,
+    EditorialCandidateCreateRequest,
+    EditorialCandidateCreateResponse,
+    stage_editorial_candidate,
+)
 from atlas.domains.moderation.review_queue import ReviewConflictError, ReviewQueueCRUD
 from atlas.models import EntryCRUD, FlagCRUD, SourceCRUD, get_db_connection
 from atlas.platform.config import Settings, get_settings
@@ -379,6 +385,33 @@ async def list_review_queue(
     total = await ReviewQueueCRUD.count_pending(db)
     apply_no_store_headers(response)
     return ReviewQueueListResponse(items=items, total=total)
+
+
+@router.post(
+    "/review-queue/editorial-candidates",
+    response_model=EditorialCandidateCreateResponse,
+    status_code=201,
+    summary="Stage an official-source organization for editorial review",
+    operation_id="createEditorialCandidate",
+    tags=["moderation"],
+)
+async def create_editorial_candidate(
+    request: EditorialCandidateCreateRequest,
+    response: Response,
+    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    db: aiosqlite.Connection = Depends(get_db),
+) -> EditorialCandidateCreateResponse:
+    """Keep a researched organization private until an editor publishes it."""
+    _ = actor
+    try:
+        candidate = await stage_editorial_candidate(db, request)
+    except EditorialCandidateConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": str(exc), "entity_id": exc.entity_id},
+        ) from exc
+    apply_no_store_headers(response)
+    return candidate
 
 
 @router.post(

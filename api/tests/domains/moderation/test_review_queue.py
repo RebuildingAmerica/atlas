@@ -133,6 +133,10 @@ def test_row_to_item_accepts_postgres_timestamp_values_for_api_response() -> Non
             None,
             None,
             None,
+            None,
+            None,
+            None,
+            None,
         )
     )
 

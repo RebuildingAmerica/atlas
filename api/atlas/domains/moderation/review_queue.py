@@ -68,6 +68,7 @@ class ReviewConflictError(Exception):
 STALE_SOURCE_REVIEW_DAYS = 365
 STALE_SOURCE_REVIEW_KIND = "source_staleness"
 STALE_SOURCE_REVIEW_REASON = "stale_public_source_review"
+EDITORIAL_CANDIDATE_REASON = "editorial_candidate"
 # Holds that a later resolution of the same entity may lift. A possible
 # duplicate and a stale public source are left for a person to close.
 RESOLVABLE_HOLD_REASONS = frozenset(
@@ -102,6 +103,11 @@ class ReviewQueueItemModel:
     entity_name: str | None = None
     entity_slug: str | None = None
     entity_type: str | None = None
+    entity_description: str | None = None
+    entity_city: str | None = None
+    entity_state: str | None = None
+    entity_website: str | None = None
+    entity_issue_areas: list[str] = dataclass_field(default_factory=list)
 
 
 def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
@@ -125,6 +131,10 @@ def _row_to_item(row: tuple[Any, ...]) -> ReviewQueueItemModel:
         entity_name=row[14],
         entity_slug=row[15],
         entity_type=row[16],
+        entity_description=row[17],
+        entity_city=row[18],
+        entity_state=row[19],
+        entity_website=row[20],
     )
 
 
@@ -133,8 +143,33 @@ _SELECT_COLUMNS = (
     "dedup_note, created_at, reviewed_at, reviewed_by, proposed_changes, source_urls, "
     "(SELECT name FROM entries WHERE entries.id = review_queue.entity_id), "
     "(SELECT slug FROM entries WHERE entries.id = review_queue.entity_id), "
-    "(SELECT type FROM entries WHERE entries.id = review_queue.entity_id)"
+    "(SELECT type FROM entries WHERE entries.id = review_queue.entity_id), "
+    "(SELECT description FROM entries WHERE entries.id = review_queue.entity_id), "
+    "(SELECT city FROM entries WHERE entries.id = review_queue.entity_id), "
+    "(SELECT state FROM entries WHERE entries.id = review_queue.entity_id), "
+    "(SELECT website FROM entries WHERE entries.id = review_queue.entity_id)"
 )
+
+
+async def _with_issue_areas(
+    conn: Any, items: list[ReviewQueueItemModel]
+) -> list[ReviewQueueItemModel]:
+    """Show reviewers the proposed issue tags before a held profile is published."""
+    entity_ids = [item.entity_id for item in items if item.entity_id is not None]
+    if not entity_ids:
+        return items
+    placeholders = ", ".join("?" for _ in entity_ids)
+    cursor = await conn.execute(
+        f"""SELECT entry_id, issue_area FROM entry_issue_areas
+            WHERE entry_id IN ({placeholders}) ORDER BY issue_area""",
+        entity_ids,
+    )
+    issue_areas: dict[str, list[str]] = {}
+    for entry_id, issue_area in await cursor.fetchall():
+        issue_areas.setdefault(str(entry_id), []).append(str(issue_area))
+    for item in items:
+        item.entity_issue_areas = issue_areas.get(item.entity_id or "", [])
+    return items
 
 
 class ReviewQueueCRUD:
@@ -309,7 +344,7 @@ class ReviewQueueCRUD:
                 (org_id, limit, offset),
             )
             rows = await cursor.fetchall()
-            return [_row_to_item(row) for row in rows]
+            return await _with_issue_areas(conn, [_row_to_item(row) for row in rows])
 
         cursor = await conn.execute(
             f"""
@@ -321,7 +356,7 @@ class ReviewQueueCRUD:
             (limit, offset),
         )
         rows = await cursor.fetchall()
-        return [_row_to_item(row) for row in rows]
+        return await _with_issue_areas(conn, [_row_to_item(row) for row in rows])
 
     @staticmethod
     async def enqueue_stale_public_sources(
@@ -415,7 +450,9 @@ class ReviewQueueCRUD:
             (item_id,),
         )
         row = await cursor.fetchone()
-        return _row_to_item(row) if row else None
+        if row is None:
+            return None
+        return (await _with_issue_areas(conn, [_row_to_item(row)]))[0]
 
     @staticmethod
     async def approve(conn: Any, item_id: str, *, reviewed_by: str) -> None:
@@ -430,8 +467,30 @@ class ReviewQueueCRUD:
             await ReviewQueueCRUD._apply_published_change(conn, item)
             await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
             return
+        if item.hold_reason == EDITORIAL_CANDIDATE_REASON:
+            await ReviewQueueCRUD._validate_editorial_candidate(conn, item)
         await conn.execute("UPDATE entries SET active = TRUE WHERE id = ?", (item.entity_id,))
         await ReviewQueueCRUD._close(conn, item_id, "approved", reviewed_by)
+
+    @staticmethod
+    async def _validate_editorial_candidate(conn: Any, item: ReviewQueueItemModel) -> None:
+        """A held intake cannot publish after its cited evidence is removed."""
+        if (
+            item.entity_id is None
+            or item.entity_type != "organization"
+            or not item.source_urls
+            or item.entity_website not in item.source_urls
+            or not item.entity_issue_areas
+        ):
+            raise ReviewConflictError("Editorial candidate is missing its official evidence")  # noqa: TRY003
+        cursor = await conn.execute(
+            """SELECT s.url FROM entry_sources es JOIN sources s ON s.id = es.source_id
+               WHERE es.entry_id = ?""",
+            (item.entity_id,),
+        )
+        linked = {str(row[0]) for row in await cursor.fetchall()}
+        if not set(item.source_urls) <= linked:
+            raise ReviewConflictError("Editorial candidate source is no longer linked")  # noqa: TRY003
 
     @staticmethod
     async def _apply_published_change(conn: Any, item: ReviewQueueItemModel) -> None:

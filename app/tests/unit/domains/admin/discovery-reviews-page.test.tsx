@@ -10,6 +10,17 @@ const mocks = vi.hoisted(() => ({
   decideDiscoveryReview: vi.fn(),
   listDiscoveryReviews: vi.fn(),
   prepareLasVegasWebsiteReviews: vi.fn(),
+  stageEditorialCandidate: vi.fn(),
+  useTaxonomy: vi.fn<() => { data: Record<string, { name: string; slug: string }[]> | undefined }>(
+    () => ({
+      data: {
+        transportation: [
+          { name: "Public transit", slug: "public_transit" },
+          { name: "Housing affordability", slug: "housing_affordability" },
+        ],
+      },
+    }),
+  ),
   useHydrated: vi.fn(() => true),
 }));
 
@@ -17,6 +28,11 @@ vi.mock("@/domains/admin/discovery-reviews.functions", () => ({
   decideDiscoveryReview: mocks.decideDiscoveryReview,
   listDiscoveryReviews: mocks.listDiscoveryReviews,
   prepareLasVegasWebsiteReviews: mocks.prepareLasVegasWebsiteReviews,
+  stageEditorialCandidate: mocks.stageEditorialCandidate,
+}));
+
+vi.mock("@rebuildingamerica/atlas-catalog/hooks/use-taxonomy", () => ({
+  useTaxonomy: mocks.useTaxonomy,
 }));
 
 vi.mock("@/platform/runtime/use-hydrated", () => ({ useHydrated: mocks.useHydrated }));
@@ -55,6 +71,16 @@ afterEach(() => {
   mocks.decideDiscoveryReview.mockReset();
   mocks.listDiscoveryReviews.mockReset();
   mocks.prepareLasVegasWebsiteReviews.mockReset();
+  mocks.stageEditorialCandidate.mockReset();
+  mocks.useTaxonomy.mockReset();
+  mocks.useTaxonomy.mockReturnValue({
+    data: {
+      transportation: [
+        { name: "Public transit", slug: "public_transit" },
+        { name: "Housing affordability", slug: "housing_affordability" },
+      ],
+    },
+  });
   mocks.useHydrated.mockReset();
   mocks.useHydrated.mockReturnValue(true);
 });
@@ -99,6 +125,66 @@ describe("DiscoveryReviewsPage", () => {
     await waitFor(() => {
       expect(mocks.listDiscoveryReviews).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("opens official-source intake and adds a held profile to the review queue", async () => {
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.stageEditorialCandidate
+      .mockRejectedValueOnce(new Error("Queue unavailable"))
+      .mockResolvedValue({
+        entity_id: "held-entity",
+        review_item_id: "review-item",
+        status: "pending",
+      });
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Add organization from official source" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Organization name/ }), {
+      target: { value: "Las Vegans for Better Transit" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /What the organization does/ }), {
+      target: { value: "Las Vegas Valley group organizing residents for better transit." },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /Official page supporting this work/ }), {
+      target: { value: "https://lasvegasfortransit.org/about/" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /What the page supports/ }), {
+      target: { value: "The About page describes transit advocacy." },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: /Official next step/ }), {
+      target: { value: "https://lasvegasfortransit.org/join/" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Issue area" }), {
+      target: { value: "public_transit" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add issue area" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /I checked both official pages/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to review queue" }));
+
+    expect(await screen.findByText(/Organization could not be queued/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /Organization name/ })).toHaveValue(
+      "Las Vegans for Better Transit",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add to review queue" }));
+
+    await waitFor(() => {
+      expect(mocks.stageEditorialCandidate).toHaveBeenCalledTimes(2);
+    });
+    expect(
+      await screen.findByText(
+        "Organization ready for editorial review. Its profile is not public.",
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mocks.listDiscoveryReviews).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("shows that intake cannot proceed when issue taxonomy is unavailable", () => {
+    mocks.listDiscoveryReviews.mockResolvedValue({ items: [], total: 0 });
+    mocks.useTaxonomy.mockReturnValue({ data: undefined });
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Add organization from official source" }));
+    expect(screen.getByText("Issue areas unavailable.")).toBeInTheDocument();
   });
 
   it("states when the website scan finds no new proposals", async () => {

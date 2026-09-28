@@ -4867,6 +4867,143 @@
         "title": "DomainResponse",
         "type": "object"
       },
+      "EditorialCandidateCreateRequest": {
+        "description": "One organization's claim source and official next step for human review.",
+        "properties": {
+          "action_url": {
+            "description": "action url for this editorial candidate.",
+            "title": "Action Url",
+            "type": "string"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "city for this editorial candidate.",
+            "title": "City"
+          },
+          "description": {
+            "description": "description for this editorial candidate.",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "geo_specificity": {
+            "description": "geo specificity for this editorial candidate.",
+            "enum": [
+              "local",
+              "regional",
+              "statewide",
+              "national"
+            ],
+            "title": "Geo Specificity",
+            "type": "string"
+          },
+          "issue_areas": {
+            "description": "issue areas for this editorial candidate.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Issue Areas",
+            "type": "array"
+          },
+          "name": {
+            "description": "name for this editorial candidate.",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Name",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "region for this editorial candidate.",
+            "title": "Region"
+          },
+          "source_context": {
+            "description": "source context for this editorial candidate.",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Source Context",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "source url for this editorial candidate.",
+            "title": "Source Url",
+            "type": "string"
+          },
+          "sources_checked": {
+            "const": true,
+            "description": "sources checked for this editorial candidate.",
+            "title": "Sources Checked",
+            "type": "boolean"
+          },
+          "state": {
+            "description": "state for this editorial candidate.",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "state",
+          "geo_specificity",
+          "issue_areas",
+          "source_url",
+          "source_context",
+          "action_url",
+          "sources_checked"
+        ],
+        "title": "EditorialCandidateCreateRequest",
+        "type": "object"
+      },
+      "EditorialCandidateCreateResponse": {
+        "description": "A held profile and the queue item an editor must decide.",
+        "properties": {
+          "entity_id": {
+            "description": "entity id for this editorial candidate.",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "review_item_id": {
+            "description": "review item id for this editorial candidate.",
+            "title": "Review Item Id",
+            "type": "string"
+          },
+          "status": {
+            "const": "pending",
+            "default": "pending",
+            "description": "status for this editorial candidate.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id",
+          "review_item_id"
+        ],
+        "title": "EditorialCandidateCreateResponse",
+        "type": "object"
+      },
       "EntityCollectionResponse": {
         "description": "Collection response for entities.",
         "properties": {
@@ -12152,6 +12289,30 @@
             "title": "Dedup Suspect",
             "type": "boolean"
           },
+          "entity_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity city for this review queue item.",
+            "title": "Entity City"
+          },
+          "entity_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity description for this review queue item.",
+            "title": "Entity Description"
+          },
           "entity_id": {
             "anyOf": [
               {
@@ -12163,6 +12324,14 @@
             ],
             "description": "entity id for this review queue item.",
             "title": "Entity Id"
+          },
+          "entity_issue_areas": {
+            "description": "entity issue areas for this review queue item.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Issue Areas",
+            "type": "array"
           },
           "entity_name": {
             "anyOf": [
@@ -12188,6 +12357,18 @@
             "description": "entity slug for this review queue item.",
             "title": "Entity Slug"
           },
+          "entity_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity state for this review queue item.",
+            "title": "Entity State"
+          },
           "entity_type": {
             "anyOf": [
               {
@@ -12199,6 +12380,18 @@
             ],
             "description": "entity type for this review queue item.",
             "title": "Entity Type"
+          },
+          "entity_website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "entity website for this review queue item.",
+            "title": "Entity Website"
           },
           "hold_reason": {
             "description": "hold reason for this review queue item.",
@@ -31923,6 +32116,130 @@
           }
         },
         "summary": "List pending discovery reviews",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/review-queue/editorial-candidates": {
+      "post": {
+        "description": "Keep a researched organization private until an editor publishes it.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "createEditorialCandidate",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-atlas-internal-secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Internal-Secret"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-actor-email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Actor-Email"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-atlas-organization-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Atlas-Organization-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorialCandidateCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorialCandidateCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stage an official-source organization for editorial review",
         "tags": [
           "moderation"
         ]

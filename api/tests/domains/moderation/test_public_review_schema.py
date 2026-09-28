@@ -42,5 +42,10 @@ def test_public_review_queue_item_serializes_nullable_review_fields() -> None:
         "entity_name": None,
         "entity_slug": None,
         "entity_type": None,
+        "entity_description": None,
+        "entity_city": None,
+        "entity_state": None,
+        "entity_website": None,
+        "entity_issue_areas": [],
         "source_urls": [],
     }

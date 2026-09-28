@@ -27,6 +27,11 @@ class ReviewQueueItemResponse(BaseModel):
     entity_name: str | None = None
     entity_slug: str | None = None
     entity_type: str | None = None
+    entity_description: str | None = None
+    entity_city: str | None = None
+    entity_state: str | None = None
+    entity_website: str | None = None
+    entity_issue_areas: list[str] = Field(default_factory=list)
 
 
 class ReviewQueueListResponse(BaseModel):

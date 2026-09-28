@@ -78,6 +78,59 @@ describe("DiscoveryReviewsView", () => {
     expect(screen.getByRole("button", { name: "Approve Civic Group" })).toBeDisabled();
   });
 
+  it("shows a held organization's work, scope, issues, and action before approval", () => {
+    renderQueue([
+      review({
+        changes: [],
+        entityCity: "Las Vegas",
+        entityDescription: "Organizes residents to advocate for better transit.",
+        entityState: "NV",
+        entityWebsite: "https://example.org/join",
+        holdReason: "editorial_candidate",
+        issueAreas: ["public_transit"],
+        sourceUrls: ["https://example.org/about", "https://example.org/join"],
+      }),
+    ]);
+
+    expect(screen.getByRole("region", { name: "Profile facts for Civic Group" })).toHaveTextContent(
+      "Organizes residents to advocate for better transit.",
+    );
+    expect(screen.getByText(/Las Vegas, NV.*public transit/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Official next step/ })).toHaveAttribute(
+      "href",
+      "https://example.org/join",
+    );
+  });
+
+  it("shows missing place plainly and does not link an unsafe claimed next step", () => {
+    renderQueue([
+      review({
+        changes: [],
+        entityDescription: "A statewide group under editorial review.",
+        entityWebsite: "javascript:alert(1)",
+        issueAreas: [],
+      }),
+    ]);
+    const facts = screen.getByRole("region", { name: "Profile facts for Civic Group" });
+    expect(facts).toHaveTextContent("Place not listed");
+    expect(within(facts).queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("can review held facts that do not yet have an action link", () => {
+    renderQueue([
+      review({
+        changes: [],
+        entityCity: "Las Vegas",
+        entityDescription: "A local group awaiting a next-step check.",
+        entityWebsite: null,
+      }),
+    ]);
+    expect(screen.getByRole("region", { name: "Profile facts for Civic Group" })).toHaveTextContent(
+      "Las Vegas",
+    );
+    expect(screen.queryByRole("link", { name: /Official next step/ })).not.toBeInTheDocument();
+  });
+
   it("links a person and leaves unknown entity types without a profile link", () => {
     renderQueue([
       review({

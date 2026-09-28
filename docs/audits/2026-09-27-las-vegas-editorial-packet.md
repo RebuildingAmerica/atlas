@@ -2,11 +2,16 @@
 
 Researched September 27, 2026 from the linked organizations' own public sites.
 This is a field-level acquisition packet, **not a published Atlas inventory or a
-passed visitor test**. The browser security policy prevented a fresh catalog
-duplicate check and hosted visual review. Scout cannot upload from this machine:
-its saved login returns HTTP 401, and no local extraction model is installed.
-Before publishing, an editor must resolve existing matches, attach each official
-source to the specific claims it supports, and use Atlas's normal review path.
+passed visitor test**. A read-only September 27 check of all 1,403 public Atlas
+records found no exact-name match for the seven proposed new organization names
+and found an existing NAACP Las Vegas branch profile to update. It did not rule
+out fuzzy or linked-source duplicates. The browser security policy prevented
+hosted admin visual review. Scout cannot upload from this machine: its saved
+login returns HTTP 401, and no local extraction model is installed. A local
+editorial intake path now stages source-linked profiles privately for review,
+but it has not been deployed or used to publish these candidates. Before
+publishing, an editor must resolve remaining matches and check each claim
+against its official source.
 
 ## Candidate profile facts and public actions
 
@@ -61,8 +66,8 @@ It does not change the
 [Las Vegas coverage gate](2026-09-23-las-vegas-coverage-gate.md): the September
 23 city inventory lacked useful contact routes, and no later approved/published
 inventory or ten-task visitor run is evidenced. Before publishing any candidate,
-resolve duplicates against current Atlas data, check that the official page
-still supports each field, record the review date, and stage material changes to
-the existing NAACP profile for approval. Then run the ten questions above
-against production and promote only a place/issue promise whose results
-consistently meet the usefulness threshold.
+resolve fuzzy and linked-source duplicates against current Atlas data, check
+that the official page still supports each field, record the review date, and
+stage material changes to the existing NAACP profile for approval. Then run the
+ten questions above against production and promote only a place/issue promise
+whose results consistently meet the usefulness threshold.

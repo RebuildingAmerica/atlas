@@ -1,5 +1,5 @@
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   AdminInlineStatus,
   AdminPageHeader,
@@ -12,6 +12,7 @@ type ReviewDecision = "approve" | "reject";
 
 interface DiscoveryReviewsViewProps {
   decisionError?: string;
+  editorialIntake?: ReactNode;
   errorMessage?: string;
   isLoading: boolean;
   items: DiscoveryReview[];
@@ -29,6 +30,7 @@ interface DiscoveryReviewsViewProps {
 
 export function DiscoveryReviewsView({
   decisionError,
+  editorialIntake,
   errorMessage,
   isLoading,
   items,
@@ -50,6 +52,7 @@ export function DiscoveryReviewsView({
         title="Discovered profiles"
         description="Compare proposed facts with the current profile and check the cited sources before publishing."
       />
+      {editorialIntake}
       <section className="space-y-4" aria-label="Pending discovery reviews">
         {onPrepareWebsiteReviews ? (
           <div className="border-border bg-surface-container-lowest flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">
@@ -148,6 +151,7 @@ function ReviewCard({
   const changes = item.changes;
   const profileUrl = changes.length > 0 ? publicProfileUrl(item) : null;
   const name = item.entityName;
+  const actionUrl = item.entityWebsite ? safeSourceUrl(item.entityWebsite) : null;
   const [sourcesChecked, setSourcesChecked] = useState(false);
 
   return (
@@ -220,6 +224,27 @@ function ReviewCard({
               </div>
             ))}
           </dl>
+        </section>
+      ) : null}
+
+      {changes.length === 0 && item.entityDescription ? (
+        <section className="space-y-2" aria-label={`Profile facts for ${name}`}>
+          <h4 className="type-label-medium text-ink-strong">Profile facts to review</h4>
+          <p className="type-body-medium text-ink-strong">{item.entityDescription}</p>
+          <p className="type-body-small text-ink-soft">
+            {[item.entityCity, item.entityState].filter(Boolean).join(", ") || "Place not listed"}
+            {item.issueAreas?.length ? ` · ${item.issueAreas.map(readableReason).join(", ")}` : ""}
+          </p>
+          {actionUrl ? (
+            <a
+              className="type-body-small text-accent hover:text-accent-ink break-all"
+              href={actionUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Official next step: {item.entityWebsite}
+            </a>
+          ) : null}
         </section>
       ) : null}
 

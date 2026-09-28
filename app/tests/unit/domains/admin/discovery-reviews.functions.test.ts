@@ -23,6 +23,11 @@ describe("discovery review server functions", () => {
         {
           id: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e",
           entity_name: "Civic Group",
+          entity_description: "A source-backed local organization.",
+          entity_city: "Las Vegas",
+          entity_state: "NV",
+          entity_website: "https://example.org/join",
+          entity_issue_areas: ["public_transit"],
           entity_slug: "civic-group",
           entity_type: "organization",
           hold_reason: "published_profile_change",
@@ -46,6 +51,8 @@ describe("discovery review server functions", () => {
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/review-queue?limit=25&offset=25");
     expect(result.total).toBe(1);
     expect(result.items[0]?.entityName).toBe("Civic Group");
+    expect(result.items[0]?.entityDescription).toBe("A source-backed local organization.");
+    expect(result.items[0]?.issueAreas).toEqual(["public_transit"]);
     expect(result.items[0]?.sourceUrls).toEqual(["https://example.org/about"]);
     expect(result.items[0]?.changes).toContainEqual({
       field: "issue_areas",
@@ -116,5 +123,33 @@ describe("discovery review server functions", () => {
       { method: "POST" },
     );
     expect(result).toEqual({ enqueued: 2 });
+  });
+
+  it("stages a checked official-source candidate without publishing it", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({
+      entity_id: "held-entity",
+      review_item_id: "review-item",
+      status: "pending",
+    });
+    const { stageEditorialCandidate } = await import("@/domains/admin/discovery-reviews.functions");
+    const candidate = {
+      action_url: "https://lasvegasfortransit.org/join/",
+      city: "Las Vegas",
+      description: "Las Vegas Valley group organizing residents for transit.",
+      geo_specificity: "regional" as const,
+      issue_areas: ["public_transit"],
+      name: "Las Vegans for Better Transit",
+      region: "Las Vegas Valley",
+      source_context: "The About page describes its transit advocacy.",
+      source_url: "https://lasvegasfortransit.org/about/",
+      sources_checked: true as const,
+      state: "NV",
+    };
+    const result = await stageEditorialCandidate({ data: candidate });
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith("/review-queue/editorial-candidates", {
+      body: JSON.stringify(candidate),
+      method: "POST",
+    });
+    expect(result.status).toBe("pending");
   });
 });

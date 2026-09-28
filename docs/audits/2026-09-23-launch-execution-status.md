@@ -28,14 +28,46 @@ deployment checks does not satisfy those acceptance gates.
 The
 [September 27 Las Vegas editorial packet](2026-09-27-las-vegas-editorial-packet.md)
 identifies candidate organizations, official next steps, and ten visitor
-questions. It has not been published into Atlas, checked against a fresh
-production catalog for duplicates, or exercised as a visitor journey. The Las
-Vegas pilot gate remains closed.
+questions. The September 27 public catalog was checked for exact-name
+duplicates, and one existing NAACP branch record was identified for an update
+instead of a new profile. The candidates have not been published into Atlas or
+exercised as a visitor journey. The Las Vegas pilot gate remains closed.
 
 The launch promise remains: a person can find relevant people and organizations
 in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
+
+## Unreleased Las Vegas editorial intake
+
+The local release candidate adds a guarded organization-intake form to the
+discovery review page. An editor enters an organization name, description,
+geographic scope, issue areas, an official source with the claim it supports,
+and an official next step. The API checks HTTPS sources, a shared official site,
+taxonomy, place, exact-name and linked-source duplicates; it stores the profile
+as **inactive** with its citations and a pending review item in one transaction.
+The review card shows the proposed facts and cited URLs. A separate editorial
+decision is required to make the profile public, and approval refuses a
+candidate whose cited source was unlinked. These are local implementation and
+test results, not hosted editorial or visitor acceptance.
+
+A read-only inventory of all 1,403 production public records across 15 API pages
+found no exact-name match for the seven proposed new organization names in the
+editorial packet. `NAACP Las Vegas Branch #1111` already exists and must be
+updated on that record; PedSafe Vegas remains held for entity-type review. Fuzzy
+and linked-source duplicates, source claims, and useful actions still require a
+human editorial decision. No production profile was written during this
+inventory.
+
+Local acceptance for this unreleased change: the app passed 601 test files and
+3,935 tests with 100% statement, branch, function, and line coverage, plus lint,
+TypeScript, and a production build on Node 24. The full API run passed 2,361
+tests with six skips; its initial coverage report was 99.99% because one new
+approval guard lacked a regression case. Two additional cases passed and
+appended coverage on the unchanged application code, bringing combined API
+statement and branch coverage to 100%. Python formatting, Ruff, and mypy passed.
+The complete API coverage command was not rerun in one invocation after those
+final two tests. No hosted editor or visitor journey was verified.
 
 ## Verified September 27 production baseline
 

@@ -9,11 +9,16 @@ import type {
 
 export interface DiscoveryReview {
   changes: { after: string; before: string; field: string }[];
+  entityCity?: string | null;
+  entityDescription?: string | null;
   entityName: string;
   entitySlug: string | null;
+  entityState?: string | null;
   entityType: string | null;
+  entityWebsite?: string | null;
   holdReason: string;
   id: string;
+  issueAreas?: string[];
   sourceUrls: string[];
 }
 
@@ -27,6 +32,27 @@ const decisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
   itemId: z.string().uuid(),
 });
+const editorialCandidateSchema = z.object({
+  action_url: z.url(),
+  city: z.string().nullable(),
+  description: z.string().min(10).max(500),
+  geo_specificity: z.enum(["local", "regional", "statewide", "national"]),
+  issue_areas: z.array(z.string()).min(1).max(8),
+  name: z.string().min(3).max(160),
+  region: z.string().nullable(),
+  source_context: z.string().min(10).max(500),
+  source_url: z.url(),
+  sources_checked: z.literal(true),
+  state: z.string().length(2),
+});
+
+export type EditorialCandidateInput = z.infer<typeof editorialCandidateSchema>;
+
+interface EditorialCandidateReceipt {
+  entity_id: string;
+  review_item_id: string;
+  status: "pending";
+}
 
 export const listDiscoveryReviews = createServerFn({ method: "GET" })
   .validator(pageSchema)
@@ -60,6 +86,15 @@ export const prepareLasVegasWebsiteReviews = createServerFn({ method: "POST" }).
   },
 );
 
+export const stageEditorialCandidate = createServerFn({ method: "POST" })
+  .validator(editorialCandidateSchema)
+  .handler(async ({ data }) => {
+    return await requestAtlasApi<EditorialCandidateReceipt>("/review-queue/editorial-candidates", {
+      body: JSON.stringify(data),
+      method: "POST",
+    });
+  });
+
 function toReview(item: ReviewQueueItemResponse): DiscoveryReview {
   return {
     changes: Object.entries(item.proposed_changes ?? {}).map(([field, values]) => ({
@@ -67,11 +102,16 @@ function toReview(item: ReviewQueueItemResponse): DiscoveryReview {
       before: displayValue(values.before),
       field,
     })),
+    entityCity: item.entity_city ?? null,
+    entityDescription: item.entity_description ?? null,
     entityName: item.entity_name || "Unnamed profile",
     entitySlug: item.entity_slug ?? null,
+    entityState: item.entity_state ?? null,
     entityType: item.entity_type ?? null,
+    entityWebsite: item.entity_website ?? null,
     holdReason: item.hold_reason,
     id: item.id,
+    issueAreas: item.entity_issue_areas ?? [],
     sourceUrls: item.source_urls ?? [],
   };
 }
