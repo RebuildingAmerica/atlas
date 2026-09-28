@@ -3,6 +3,7 @@ import { NonprofitSystemsBridgePanel } from "@/domains/workspace/components/nonp
 import type { ResearchThreadSummary } from "./list-detail-page-utils";
 
 interface WorkflowSectionsProps {
+  actionError: string | null;
   canExport: boolean;
   completedFollowUps: string[];
   evidencePack: string;
@@ -27,6 +28,7 @@ interface WorkflowSectionsProps {
 }
 
 export function WorkflowSections({
+  actionError,
   canExport,
   completedFollowUps,
   evidencePack,
@@ -51,6 +53,14 @@ export function WorkflowSections({
 }: WorkflowSectionsProps) {
   return (
     <>
+      {actionError ? (
+        <p
+          role="alert"
+          className="type-body-small bg-surface-container-lowest sticky top-4 z-30 rounded-lg border border-rose-300 px-4 py-3 text-rose-700 shadow-md"
+        >
+          {actionError}
+        </p>
+      ) : null}
       <section className="bg-surface-container space-y-3 rounded-[1rem] p-5">
         <p className="type-label-medium text-ink-muted">Follow-up context</p>
         <ul className="type-body-small text-ink-soft space-y-2">

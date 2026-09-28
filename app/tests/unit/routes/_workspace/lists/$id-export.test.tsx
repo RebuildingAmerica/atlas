@@ -188,9 +188,17 @@ describe("routes/_workspace/lists/$id export cases", () => {
     expect(clipboardWriteText).toHaveBeenCalledWith(
       expect.stringContaining("KC Tenants — Kansas City, MO — 2 sources"),
     );
+
+    clipboardWriteText.mockRejectedValueOnce(new Error("Clipboard denied"));
+    fireEvent.click(screen.getByRole("button", { name: "Copy evidence pack" }));
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Could not copy evidence pack. Try again.",
+      );
+    });
   });
 
-  it("does not hand the researcher a file when the CSV export request fails", async () => {
+  it("explains failed CSV and JSON downloads without handing the researcher a file", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
     const createObjectUrl = vi.fn().mockReturnValue("blob:atlas-list-export");
     const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 503, text: () => "" });
@@ -236,6 +244,13 @@ describe("routes/_workspace/lists/$id export cases", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/lists/list-1/export?format=csv", {
         headers: { Accept: "text/csv" },
       });
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not download CSV. Try again.");
+    expect(createObjectUrl).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Download JSON" }));
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Could not download JSON. Try again.");
     });
     expect(createObjectUrl).not.toHaveBeenCalled();
   });

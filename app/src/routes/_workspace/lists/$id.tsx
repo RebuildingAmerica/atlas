@@ -51,6 +51,7 @@ function ListDetailRoute() {
   const saveItem = useAddSavedListItem();
   const setSharing = useSetSavedListSharing();
   const [sharingError, setSharingError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteErrorEntryId, setNoteErrorEntryId] = useState<string | null>(null);
@@ -166,46 +167,41 @@ function ListDetailRoute() {
   );
   const crmPacketText = JSON.stringify(crmPacket, null, 2);
 
-  async function copyEvidencePack() {
-    await navigator.clipboard?.writeText(evidencePack);
-  }
-
-  async function copySpreadsheetExport() {
-    await navigator.clipboard?.writeText(spreadsheetExport);
-  }
-
-  async function copyInstitutionalExport() {
-    await navigator.clipboard?.writeText(institutionalExport);
-  }
-
-  async function copyNewsroomPacket(packetText: string) {
-    await navigator.clipboard?.writeText(packetText);
-  }
-
-  async function copyNonprofitSystemsPacket(packetText: string) {
-    await navigator.clipboard?.writeText(packetText);
-  }
-
-  async function copyCrmPacket() {
-    await navigator.clipboard?.writeText(crmPacketText);
+  async function copyWithFeedback(content: string, label: string) {
+    setActionError(null);
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch {
+      setActionError(`Could not copy ${label}. Try again.`);
+    }
   }
 
   async function downloadSpreadsheetExport() {
-    const response = await fetch(getExportSavedListUrl(data.id, { format: "csv" }), {
-      headers: { Accept: "text/csv" },
-    });
-    if (!response.ok) {
-      return;
+    setActionError(null);
+    try {
+      const response = await fetch(getExportSavedListUrl(data.id, { format: "csv" }), {
+        headers: { Accept: "text/csv" },
+      });
+      if (!response.ok) {
+        throw new Error("CSV export failed.");
+      }
+      downloadCsvFile(savedListCsvFilename(data.name, data.id), await response.text());
+    } catch {
+      setActionError("Could not download CSV. Try again.");
     }
-    downloadCsvFile(savedListCsvFilename(data.name, data.id), await response.text());
   }
 
   async function downloadSavedListExport() {
-    const exportPayload = await exportSavedList(data.id);
-    downloadJsonFile(
-      savedListJsonFilename(data.name, data.id),
-      JSON.stringify(exportPayload, null, 2),
-    );
+    setActionError(null);
+    try {
+      const exportPayload = await exportSavedList(data.id);
+      downloadJsonFile(
+        savedListJsonFilename(data.name, data.id),
+        JSON.stringify(exportPayload, null, 2),
+      );
+    } catch {
+      setActionError("Could not download JSON. Try again.");
+    }
   }
 
   function downloadInstitutionalExport() {
@@ -311,6 +307,7 @@ function ListDetailRoute() {
       </section>
 
       <WorkflowSections
+        actionError={actionError}
         canExport={canExport}
         completedFollowUps={completedFollowUps}
         evidencePack={evidencePack}
@@ -320,22 +317,22 @@ function ListDetailRoute() {
         newsroomAssignmentPacket={newsroomAssignmentPacket}
         nonprofitSystemsPacket={nonprofitSystemsPacket}
         onCopyCrmPacket={() => {
-          void copyCrmPacket();
+          void copyWithFeedback(crmPacketText, "CRM packet");
         }}
         onCopyEvidencePack={() => {
-          void copyEvidencePack();
+          void copyWithFeedback(evidencePack, "evidence pack");
         }}
         onCopyInstitutionalExport={() => {
-          void copyInstitutionalExport();
+          void copyWithFeedback(institutionalExport, "institutional CSV");
         }}
         onCopyNewsroomPacket={(packetText) => {
-          void copyNewsroomPacket(packetText);
+          void copyWithFeedback(packetText, "newsroom packet");
         }}
         onCopyNonprofitSystemsPacket={(packetText) => {
-          void copyNonprofitSystemsPacket(packetText);
+          void copyWithFeedback(packetText, "systems packet");
         }}
         onCopySpreadsheetExport={() => {
-          void copySpreadsheetExport();
+          void copyWithFeedback(spreadsheetExport, "CSV");
         }}
         onDownloadCrmPacket={downloadCrmPacket}
         onDownloadInstitutionalExport={downloadInstitutionalExport}

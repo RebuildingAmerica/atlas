@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { expect, test } from "@playwright/test";
@@ -134,4 +135,67 @@ test("an admin invites a colleague who accepts and edits the same saved list", a
 
   await page.goto(listUrl, { waitUntil: "networkidle" });
   await expect(page.getByText("“Ask about route access.”", { exact: true })).toBeVisible();
+});
+
+test("an organizer with Team access can retry failed exports and obtain sourced rows", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", "Virtual passkey setup requires Chromium.");
+
+  const owner = await performSignIn(page, { createWorkspace: true });
+  await page.goto("/lists", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "New list" }).click();
+  await page.getByPlaceholder("List name").fill("Transit research leads");
+  await page.getByRole("button", { name: "Create list" }).click();
+
+  await page.goto("/profiles/people/maya-thompson", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  const picker = page.getByRole("dialog", { name: "Save to list" });
+  await picker.getByRole("button", { name: /Transit research leads/ }).click();
+  await expect(picker.getByRole("button", { name: /Transit research leads/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.goto("/lists", { waitUntil: "networkidle" });
+  await page.getByRole("link", { name: /Transit research leads/ }).click();
+  const listUrl = page.url();
+  await page.goto("/organization", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Upgrade to a team workspace/i }).click();
+  await page.waitForURL(/\/pricing/);
+  grantLocalTeamAccess(owner.email);
+  await page.goto(listUrl, { waitUntil: "networkidle" });
+
+  const csvUrl = /\/api\/lists\/[^/]+\/export\?format=csv/;
+  await page.route(csvUrl, (route) =>
+    route.fulfill({ status: 503, contentType: "text/plain", body: "Export unavailable" }),
+  );
+  await page.getByRole("button", { name: "Download CSV" }).click();
+  await expect(page.getByRole("alert")).toContainText("Could not download CSV");
+  await expect(page.getByRole("alert")).toBeInViewport();
+
+  await page.unroute(csvUrl);
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download CSV" }).click();
+  const download = await downloadPromise;
+  const csv = await readFile(await download.path(), "utf8");
+  expect(csv).toContain("Maya Thompson");
+  expect(csv).toContain("https://");
+
+  const jsonUrl = /\/api\/lists\/[^/]+\/export$/;
+  await page.route(jsonUrl, (route) =>
+    route.fulfill({ status: 503, contentType: "text/plain", body: "Export unavailable" }),
+  );
+  await page.getByRole("button", { name: "Download JSON" }).click();
+  await expect(page.getByRole("alert")).toContainText("Could not download JSON");
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error("Clipboard denied")) },
+    });
+  });
+  await page.getByRole("button", { name: "Copy evidence pack" }).click();
+  await expect(page.getByRole("alert")).toContainText("Could not copy evidence pack");
 });

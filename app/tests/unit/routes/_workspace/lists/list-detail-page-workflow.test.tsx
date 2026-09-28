@@ -19,6 +19,7 @@ describe("routes/_workspace/lists workflow sections", () => {
 
     render(
       <WorkflowSections
+        actionError={null}
         canExport={true}
         completedFollowUps={[]}
         crmPacketText="{}"
