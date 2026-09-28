@@ -8,7 +8,7 @@ export const MAP_RESULTS_LIST_ID = "map-results-list";
 
 const MAP_RESULTS_PANEL_LABEL = "Civic actors on the map";
 const MAP_RESULTS_PANEL_CLASS =
-  "bg-surface-container-high/95 shadow-soft border-border-strong focus:ring-accent pointer-events-auto absolute right-3 top-52 z-40 rounded-[1.1rem] border backdrop-blur-md focus:ring-2 focus:outline-none sm:right-4 sm:top-24 sm:max-h-[min(72vh,38rem)] sm:w-[min(26rem,calc(100vw-1.5rem))] sm:overflow-y-auto sm:p-3";
+  "bg-surface-container-high/95 shadow-soft border-border-strong focus:ring-accent pointer-events-auto relative z-40 self-end rounded-[1.1rem] border backdrop-blur-md focus:ring-2 focus:outline-none sm:absolute sm:right-4 sm:top-24 sm:max-h-[min(72vh,38rem)] sm:w-[min(26rem,calc(100vw-1.5rem))] sm:overflow-y-auto sm:p-3";
 const MAP_RESULTS_HEADING_CLASS = "type-label-large text-ink-strong px-1";
 const MAP_RESULTS_STATUS_CLASS = "type-body-small text-ink-muted px-1 py-4";
 const LANDSCAPE_LIMIT = 3;

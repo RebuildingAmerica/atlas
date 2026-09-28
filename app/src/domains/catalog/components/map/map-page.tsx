@@ -154,14 +154,18 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
       <a
-        href={`#${MAP_RESULTS_LIST_ID}`}
+        href={selection ? "#map-detail-panel" : `#${MAP_RESULTS_LIST_ID}`}
         onClick={() => {
-          setResultsExpanded(true);
-          resultsListRef.current?.focus();
+          if (selection) {
+            detailPanelRef.current?.focus();
+          } else {
+            setResultsExpanded(true);
+            resultsListRef.current?.focus();
+          }
         }}
         className="bg-surface-container-high text-ink-strong sr-only z-50 rounded-lg px-4 py-2 focus:not-sr-only focus:absolute focus:top-3 focus:left-3"
       >
-        Skip to results list
+        {selection ? "Skip to selected profile" : "Skip to results list"}
       </a>
 
       <MapStyleProvider
@@ -192,11 +196,11 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
       </div>
 
       <div
-        className={`pointer-events-none absolute inset-0 p-3 transition-opacity sm:p-4 ${
+        className={`pointer-events-none absolute inset-0 flex flex-col gap-2 p-3 transition-opacity sm:block sm:p-4 ${
           reveal.chromeRevealed ? "opacity-100" : "opacity-0"
         }`}
       >
-        <div className="absolute top-3 left-3 flex flex-col items-start gap-2 sm:top-4 sm:left-4">
+        <div className="flex flex-col items-start gap-2 sm:absolute sm:top-4 sm:left-4">
           <MapCommandBar
             points={points}
             quickIssueAreas={quickIssueAreas}
@@ -220,6 +224,19 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
             </Link>
           ) : null}
         </div>
+
+        {!selection ? (
+          <MapResultsPanel
+            panelRef={resultsListRef}
+            expanded={resultsExpanded}
+            onToggle={() => {
+              setResultsExpanded((current) => !current);
+            }}
+            points={points}
+            isLoading={!hasFetched}
+            onFocusActor={page.onSelectActor}
+          />
+        ) : null}
 
         <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
           <MapLegend />
@@ -265,17 +282,6 @@ export function MapPage({ search, initialPoints }: MapPageProps) {
           </div>
         ) : null}
       </div>
-
-      <MapResultsPanel
-        panelRef={resultsListRef}
-        expanded={resultsExpanded}
-        onToggle={() => {
-          setResultsExpanded((current) => !current);
-        }}
-        points={points}
-        isLoading={!hasFetched}
-        onFocusActor={page.onSelectActor}
-      />
     </div>
   );
 }

@@ -305,6 +305,7 @@ export function MapDetailPanel({
   const headingId = "map-detail-panel-heading";
   return (
     <div
+      id="map-detail-panel"
       ref={panelRef}
       role="dialog"
       aria-modal={false}

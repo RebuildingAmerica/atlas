@@ -49,12 +49,32 @@ test.describe("public map", () => {
 
     const results = page.getByRole("button", { name: "Show map results" });
     await expect(results).toBeVisible();
+    const listSwitch = page.getByRole("link", { name: "List view" });
+    const listBounds = await listSwitch.boundingBox();
+    const resultsBounds = await results.boundingBox();
+    expect(listBounds).not.toBeNull();
+    expect(resultsBounds).not.toBeNull();
+    if (listBounds && resultsBounds) {
+      expect(resultsBounds.y).toBeGreaterThanOrEqual(listBounds.y + listBounds.height);
+    }
+    await page.setViewportSize({ width: 320, height: 568 });
+    const narrowListBounds = await listSwitch.boundingBox();
+    const narrowResultsBounds = await results.boundingBox();
+    expect(narrowListBounds).not.toBeNull();
+    expect(narrowResultsBounds).not.toBeNull();
+    if (narrowListBounds && narrowResultsBounds) {
+      expect(narrowResultsBounds.y).toBeGreaterThanOrEqual(
+        narrowListBounds.y + narrowListBounds.height,
+      );
+      expect(narrowResultsBounds.x + narrowResultsBounds.width).toBeLessThanOrEqual(320);
+    }
     await results.click();
     await expect(page.getByRole("button", { name: "Hide map results" })).toBeVisible();
   });
 
   test("keeps a selected map actor visible after switching to the list", async ({ page }) => {
     await stubBasemap(page);
+    await page.setViewportSize({ width: 390, height: 844 });
     const apiUrl = process.env.ATLAS_E2E_API_URL;
     if (!apiUrl) throw new Error("ATLAS_E2E_API_URL is required for the map journey.");
     const response = await page.request.get(
@@ -78,6 +98,11 @@ test.describe("public map", () => {
     );
     const panel = page.getByRole("dialog", { name: actor.name });
     await expect(panel).toBeVisible();
+    await expect(page.getByRole("button", { name: "Show map results" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Skip to selected profile" })).toHaveAttribute(
+      "href",
+      "#map-detail-panel",
+    );
     await panel.getByRole("link", { name: "List view" }).click();
 
     await expect(page).toHaveURL(/\/browse\?/);

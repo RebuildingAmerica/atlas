@@ -182,6 +182,12 @@ describe("MapPage", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog.getAttribute("aria-modal")).toBe("false");
     expect(dialog).toHaveFocus();
+    const skip = screen.getByRole("link", { name: "Skip to selected profile" });
+    expect(skip).toHaveAttribute("href", "#map-detail-panel");
+    expect(screen.queryByRole("button", { name: "Show map results" })).toBeNull();
+    screen.getByRole("button", { name: "Zoom in" }).focus();
+    fireEvent.click(skip);
+    expect(dialog).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Close detail panel" }));
     expect(requireMapPageHarness().handlers.onClosePanel).toHaveBeenCalledOnce();
   });
