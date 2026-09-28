@@ -255,9 +255,16 @@ export function BriefCreatePage({ initialListId = "" }: BriefCreatePageProps) {
               </p>
             ) : null}
             {listExport.isError ? (
-              <p className="type-body-small text-ink-soft">
-                This list could not load. Choose it again or try later.
-              </p>
+              <div className="space-y-1">
+                <p className="type-body-small text-ink-soft">This list could not load.</p>
+                <button
+                  type="button"
+                  onClick={() => void listExport.refetch()}
+                  className="type-label-medium text-accent hover:underline"
+                >
+                  Try loading this list again
+                </button>
+              </div>
             ) : listExport.isPending && selectedListId ? (
               <p className="type-body-small text-ink-soft">Loading saved profiles…</p>
             ) : null}

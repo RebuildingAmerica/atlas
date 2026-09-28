@@ -338,14 +338,39 @@ describe("BriefCreatePage", () => {
     mocks.exportSavedList.mockRejectedValue(new Error("private API detail"));
     renderPage();
     fillRequiredFields();
-    expect(
-      await screen.findByText("This list could not load. Choose it again or try later."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("This list could not load.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Create brief" }));
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Choose a saved list with people or groups to include.",
     );
     expect(screen.queryByText("private API detail")).not.toBeInTheDocument();
+  });
+
+  it("retries a failed saved list without losing the brief draft", async () => {
+    mocks.exportSavedList.mockRejectedValueOnce(new Error("temporary failure"));
+    mocks.createBrief.mockResolvedValue(createdBrief());
+    renderPage();
+    fillRequiredFields();
+
+    expect(await screen.findByText(/This list could not load/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try loading this list again" }));
+
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Tenant organizing" }));
+    expect(screen.getByLabelText("Brief title")).toHaveValue("Detroit Tenant Power Brief");
+    expect(screen.getByLabelText("Brief summary")).toHaveValue(
+      "A source-linked brief for tenant organizing.",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create brief" }));
+
+    await waitFor(() => {
+      expect(mocks.createBrief).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Detroit Tenant Power Brief",
+          linked_entry_ids: ["entry_1"],
+          linked_source_ids: ["source_1"],
+        }),
+      );
+    });
   });
 
   it("shows source gaps and prevents a receipt without a type from being submitted", async () => {
