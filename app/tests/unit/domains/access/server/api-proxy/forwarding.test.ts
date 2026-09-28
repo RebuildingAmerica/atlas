@@ -65,6 +65,8 @@ describe("proxyAtlasApiRequest forwarding", () => {
         "X-Atlas-Client-IP": "192.0.2.99",
         "X-Atlas-Proxy-Secret": "spoofed-secret",
         "X-Real-IP": "203.0.113.10",
+        "X-Vercel-Protection-Bypass": "preview-access-secret",
+        "X-Vercel-Trusted-OIDC-IDP-Token": "preview-oidc-token",
       },
       method: "POST",
     });
@@ -88,6 +90,8 @@ describe("proxyAtlasApiRequest forwarding", () => {
     expect(forwardedHeaders.get("x-forwarded-host")).toBeNull();
     expect(forwardedHeaders.get("x-forwarded-proto")).toBeNull();
     expect(forwardedHeaders.get("x-real-ip")).toBeNull();
+    expect(forwardedHeaders.get("x-vercel-protection-bypass")).toBeNull();
+    expect(forwardedHeaders.get("x-vercel-trusted-oidc-idp-token")).toBeNull();
     expect(forwardedHeaders.get("x-atlas-client-ip")).toBe("203.0.113.10");
     expect(forwardedHeaders.get("x-atlas-proxy-secret")).toBe("internal-test-secret");
     expect(forwardedHeaders.get("x-atlas-actor-email")).toBe("operator@atlas.test");
