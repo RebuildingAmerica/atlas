@@ -39,6 +39,29 @@ in a named place and issue, inspect evidence, and take a useful next step.
 Paying organizers can keep that work; a team can share it without confusing a
 public profile claim with a workspace or a purchase.
 
+## Organizer output change on `main`, not in production
+
+Commit `aaea9a5c` makes failed saved-list CSV and JSON downloads and denied copy
+actions explain the failure to the organizer. A local browser test first
+reproduced silent failures, then verified a visible retry message at the
+organizer's scroll position and a downloaded CSV containing the saved person and
+source URL. The full local browser suite passed 34 journeys and the repository
+quality suite passed 33 tasks at its required coverage. The Team capability in
+that browser test was granted only in isolated local data; this is not a
+purchase or hosted customer acceptance.
+
+[Staging run 36421217945](https://github.com/RebuildingAmerica/atlas/actions/runs/36421217945)
+passed its test, quality, secrets, and browser jobs but failed hosted smoke on
+both attempts. The first timed out on a public person lookup and API health; the
+second timed out on a public organization lookup. The app-only change did not
+deploy a new staging API and hosted identity was skipped. A separate read-only
+check at 12:30 UTC on September 28 received HTTP 200 from direct staging API
+health and one-record person and organization requests in under 1.2 seconds. The
+available Vercel staging logs contained no completed `/api/entities` response
+for the timed-out hosted requests. The runner network, edge, and app proxy
+remain possible causes; the exact layer is unknown. **Do not call `aaea9a5c`
+production behavior or release it from this failed staging gate.**
+
 ## Current production release `v2026.09.28-1`
 
 [Release run 36416409020](https://github.com/RebuildingAmerica/atlas/actions/runs/36416409020)
