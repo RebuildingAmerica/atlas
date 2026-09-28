@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
+import {
+  createAtlasSessionFixture,
+  createAtlasWorkspace,
+} from "../../../../fixtures/access/sessions";
 import {
   fullOrganizationFixture,
   individualWorkspaceSession,
@@ -32,6 +35,21 @@ describe("organizations.functions team management", () => {
       totalCents: 3300,
     });
     expect(mocks.syncTeamSeats).toHaveBeenCalledWith("org_team");
+  });
+
+  it("does not quote a Team cost when provider seat reconciliation fails", async () => {
+    mocks.ensureAtlasSession.mockResolvedValue(subscribedTeamSession(50));
+    mocks.syncTeamSeats.mockRejectedValue(new Error("provider seat price mismatch"));
+    authApi.getFullOrganization.mockResolvedValue(fullOrganizationFixture(2, []));
+
+    const { getTeamSeatCostSummary } = await import("@/domains/access/organizations.functions");
+    const response = (await getTeamSeatCostSummary.__executeServer({
+      method: "GET",
+      data: undefined,
+    })) as ServerFnExecutionResponse;
+
+    expect((response.error as Error).message).toContain("Could not confirm Team seat billing");
+    expect(response.result).toBeUndefined();
   });
 
   it("returns no seat-cost summary when the team workspace has no active subscription", async () => {

@@ -47,6 +47,8 @@ export interface OrganizationPageData {
   samlAllowedIssuerOrigins: readonly string[];
   session: AtlasSessionPayload | null | undefined;
   teamSeatCostSummary: TeamSeatCostSummary | null;
+  teamSeatCostError: boolean;
+  retryTeamSeatCost: () => void;
   integrationMonitoring: Awaited<ReturnType<typeof loadWorkspaceIntegrationMonitoring>> | undefined;
   integrationMonitoringLoading: boolean;
   usageAuditLog: Awaited<ReturnType<typeof loadWorkspaceUsageAuditLog>> | undefined;
@@ -185,6 +187,8 @@ export function useOrganizationPageData(
     samlAllowedIssuerOrigins: samlAllowedIssuersQuery.data?.issuerOrigins ?? [],
     session,
     teamSeatCostSummary: teamSeatCostSummaryQuery.data ?? null,
+    teamSeatCostError: teamSeatCostSummaryQuery.isError,
+    retryTeamSeatCost: () => void teamSeatCostSummaryQuery.refetch(),
     integrationMonitoring: integrationMonitoringQuery.data,
     integrationMonitoringLoading: integrationMonitoringQuery.isLoading,
     usageAuditLog: usageAuditLogQuery.data,

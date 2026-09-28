@@ -253,4 +253,18 @@ describe("useOrganizationPageData session", () => {
     const { result } = renderHook(() => useOrganizationPageData());
     expect(result.current.teamSeatCostSummary).toBeNull();
   });
+
+  it("exposes a retry when Team billing could not be confirmed", () => {
+    const refetch = vi.fn();
+    mocks.useQuery.mockImplementationOnce(() => ({ data: { id: "org_1" }, isLoading: false }));
+    mocks.useQuery.mockImplementationOnce(() => ({ data: { issuerOrigins: [] } }));
+    mocks.useQuery.mockImplementationOnce(() => ({ data: undefined, isError: true, refetch }));
+
+    const { result } = renderHook(() => useOrganizationPageData());
+    expect(result.current.teamSeatCostError).toBe(true);
+    expect(result.current.teamSeatCostSummary).toBeNull();
+
+    result.current.retryTeamSeatCost();
+    expect(refetch).toHaveBeenCalledOnce();
+  });
 });

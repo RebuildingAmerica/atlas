@@ -113,6 +113,8 @@ export interface OrganizationPageController {
   ) => void;
   ssoMutationPending: boolean;
   teamSeatCostSummary: TeamSeatCostSummary | null;
+  teamSeatCostError: boolean;
+  retryTeamSeatCost: () => void;
   integrationMonitoring:
     NonNullable<ReturnType<typeof useOrganizationPageData>["integrationMonitoring"]> | undefined;
   integrationMonitoringLoading: boolean;
@@ -275,6 +277,8 @@ export function useOrganizationPageController(
     setSamlSetupForm: forms.setSamlSetupForm,
     ssoMutationPending: ssoActions.ssoMutationPending,
     teamSeatCostSummary: data.teamSeatCostSummary,
+    teamSeatCostError: data.teamSeatCostError,
+    retryTeamSeatCost: data.retryTeamSeatCost,
     integrationMonitoring: data.integrationMonitoring,
     integrationMonitoringLoading: data.integrationMonitoringLoading,
     updateWorkspaceMemberRolePending: workspaceActions.updateWorkspaceMemberRolePending,

@@ -17,26 +17,20 @@ function seatPriceIds(products: AtlasBillingProducts): Set<string> {
   );
 }
 
-/**
- * Resolves the seat price matching a subscription's billing interval.
- *
- * The interval is inferred from the recognized base line item; a subscription
- * billed on the yearly base uses the yearly seat price, everything else uses
- * the monthly seat price.
- *
- * @param subscription - The Stripe subscription being reconciled.
- */
-function resolveSeatPriceId(
+/** Refuses to guess a billing interval from an unknown or ambiguous subscription. */
+function resolveTeamBillingInterval(
   products: AtlasBillingProducts,
   subscription: Stripe.Subscription,
-): string {
-  const baseItem = subscription.items.data.find(
+): TeamBillingInterval {
+  const baseItems = subscription.items.data.filter(
     (item) =>
       item.price.id === products.atlas_team.monthlyPriceId ||
       item.price.id === products.atlas_team.yearlyPriceId,
   );
-  const isYearly = baseItem?.price.id === products.atlas_team.yearlyPriceId;
-  return isYearly ? products.atlas_team.yearlySeatPriceId : products.atlas_team.monthlySeatPriceId;
+  if (baseItems.length !== 1) {
+    throw new Error("Atlas Team base price is missing or ambiguous in the subscription.");
+  }
+  return baseItems[0]?.price.id === products.atlas_team.yearlyPriceId ? "yearly" : "monthly";
 }
 
 /**
@@ -65,14 +59,29 @@ export async function syncTeamSeats(workspaceId: string): Promise<void> {
     headers: new Headers(),
     query: { organizationId: workspaceId },
   });
-  const memberCount = fullOrganization?.members?.length ?? 0;
+  if (!Array.isArray(fullOrganization?.members)) {
+    throw new Error("Atlas could not read workspace membership for Team seat billing.");
+  }
+  const memberCount = fullOrganization.members.length;
   const targetSeats = Math.max(0, memberCount - 1);
 
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const products = getAtlasBillingProducts();
+  const interval = resolveTeamBillingInterval(products, subscription);
+  const expectedSeatPriceId =
+    interval === "yearly"
+      ? products.atlas_team.yearlySeatPriceId
+      : products.atlas_team.monthlySeatPriceId;
   const seats = seatPriceIds(products);
-  const existingSeatItem = subscription.items.data.find((item) => seats.has(item.price.id));
+  const seatItems = subscription.items.data.filter((item) => seats.has(item.price.id));
+  if (seatItems.length > 1) {
+    throw new Error("Atlas Team seat items are ambiguous in the subscription.");
+  }
+  const existingSeatItem = seatItems[0];
+  if (existingSeatItem && existingSeatItem.price.id !== expectedSeatPriceId) {
+    throw new Error("Atlas Team seat price does not match the subscription interval.");
+  }
 
   if (existingSeatItem) {
     if (targetSeats === 0) {
@@ -93,7 +102,7 @@ export async function syncTeamSeats(workspaceId: string): Promise<void> {
   if (targetSeats >= 1) {
     await stripe.subscriptionItems.create({
       subscription: subscriptionId,
-      price: resolveSeatPriceId(products, subscription),
+      price: expectedSeatPriceId,
       quantity: targetSeats,
       proration_behavior: "create_prorations",
     });
@@ -117,10 +126,5 @@ export async function resolveActiveTeamBillingInterval(
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   const products = getAtlasBillingProducts();
-  const baseItem = subscription.items.data.find(
-    (item) =>
-      item.price.id === products.atlas_team.monthlyPriceId ||
-      item.price.id === products.atlas_team.yearlyPriceId,
-  );
-  return baseItem?.price.id === products.atlas_team.yearlyPriceId ? "yearly" : "monthly";
+  return resolveTeamBillingInterval(products, subscription);
 }

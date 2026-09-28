@@ -9,6 +9,8 @@ import {
  * Props for the Team seat-and-cost summary section.
  */
 interface TeamSeatCostSectionProps {
+  isError?: boolean;
+  onRetry: () => void;
   summary: TeamSeatCostSummary | null;
 }
 
@@ -18,7 +20,29 @@ interface TeamSeatCostSectionProps {
  * Renders nothing until the summary loads so the members panel never shows a
  * partial or guessed price.
  */
-export function TeamSeatCostSection({ summary }: TeamSeatCostSectionProps) {
+export function TeamSeatCostSection({
+  isError = false,
+  onRetry,
+  summary,
+}: TeamSeatCostSectionProps) {
+  if (isError) {
+    return (
+      <article className="border-border bg-surface space-y-3 rounded-[1.5rem] border p-6">
+        <h2 className="type-title-large text-ink-strong">Seats &amp; cost</h2>
+        <p className="type-body-medium text-ink-soft">
+          We could not confirm your Team seat billing. Try again or contact support before changing
+          your team.
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="type-label-medium text-accent hover:underline"
+        >
+          Try again
+        </button>
+      </article>
+    );
+  }
   if (summary === null) {
     return null;
   }

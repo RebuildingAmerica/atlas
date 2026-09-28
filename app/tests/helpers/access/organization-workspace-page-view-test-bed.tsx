@@ -200,6 +200,8 @@ export const buildController = (overrides = {}): OrganizationPageController => {
     setSamlSetupForm: vi.fn(),
     ssoMutationPending: false,
     teamSeatCostSummary: null,
+    teamSeatCostError: false,
+    retryTeamSeatCost: vi.fn(),
     integrationMonitoring: undefined,
     integrationMonitoringLoading: false,
     updateWorkspaceMemberRolePending: false,

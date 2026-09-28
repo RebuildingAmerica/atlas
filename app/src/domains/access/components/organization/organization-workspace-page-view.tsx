@@ -230,7 +230,11 @@ export function OrganizationWorkspacePageView({ controller }: OrganizationWorksp
               ) : null}
 
               {controller.canUseTeamFeatures ? (
-                <TeamSeatCostSection summary={controller.teamSeatCostSummary} />
+                <TeamSeatCostSection
+                  summary={controller.teamSeatCostSummary}
+                  isError={controller.teamSeatCostError}
+                  onRetry={controller.retryTeamSeatCost}
+                />
               ) : null}
 
               {!controller.canUseTeamFeatures && canManageActiveWorkspace ? (

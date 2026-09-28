@@ -118,9 +118,14 @@ export const getTeamSeatCostSummary = createServerFn({ method: "GET" }).handler(
     return null;
   }
 
-  // Loading the billing panel is also the reconciliation point: nudge Stripe's
-  // seat quantity back in line with membership in case an earlier sync failed.
-  await syncTeamSeatsBestEffort(activeWorkspace.id);
+  // The billing panel must not quote a membership-derived cost when Stripe
+  // reconciliation failed: that could differ from the actual seat charge.
+  const { teamSeats } = await loadOrganizationsServerModules();
+  try {
+    await teamSeats.syncTeamSeats(activeWorkspace.id);
+  } catch {
+    throw new UserFacingError("Could not confirm Team seat billing. Try again or contact support.");
+  }
 
   const details = organizationDetailsSchema.parse(
     await auth.api.getFullOrganization({
@@ -132,7 +137,6 @@ export const getTeamSeatCostSummary = createServerFn({ method: "GET" }).handler(
     return null;
   }
 
-  const { teamSeats } = await loadOrganizationsServerModules();
   const { resolveActiveTeamBillingInterval } = teamSeats;
   const interval = await resolveActiveTeamBillingInterval(activeWorkspace.id);
   return teamSeatCostSummarySchema.parse(

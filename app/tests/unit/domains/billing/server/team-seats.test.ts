@@ -167,25 +167,28 @@ describe("syncTeamSeats", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("treats a missing organization as zero seats and deletes the existing seat item", async () => {
+  it("does not change billed seats when workspace membership cannot be read", async () => {
     mocks.queryActiveTeamSubscriptionId.mockResolvedValue("sub_1");
     withSubscription([baseItem(BASE_MONTHLY), seatItem(SEAT_MONTHLY, 3)], null);
 
-    await syncTeamSeats("org_1");
+    await expect(syncTeamSeats("org_1")).rejects.toThrow(/workspace membership/);
 
-    expect(del).toHaveBeenCalledWith("si_seat", { proration_behavior: "create_prorations" });
+    expect(del).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("treats an organization without a members array as zero seats", async () => {
+  it("does not infer zero seats from a missing members array", async () => {
     mocks.queryActiveTeamSubscriptionId.mockResolvedValue("sub_1");
-    retrieve.mockResolvedValue({ items: { data: [baseItem(BASE_MONTHLY)] } });
+    retrieve.mockResolvedValue({
+      items: { data: [baseItem(BASE_MONTHLY), seatItem(SEAT_MONTHLY, 2)] },
+    });
     getFullOrganization.mockResolvedValue({});
 
-    await syncTeamSeats("org_1");
+    await expect(syncTeamSeats("org_1")).rejects.toThrow(/workspace membership/);
 
     expect(create).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
   });
 
   it("throws when the seat price is not configured but seats are needed", async () => {
@@ -203,18 +206,42 @@ describe("syncTeamSeats", () => {
     );
   });
 
-  it("falls back to the monthly seat price when no recognized base item is present", async () => {
+  it("does not create a seat item when the base price is unrecognized", async () => {
     mocks.queryActiveTeamSubscriptionId.mockResolvedValue("sub_1");
     withSubscription([{ id: "si_legacy", price: { id: "price_legacy" }, quantity: 1 }], 3);
 
-    await syncTeamSeats("org_1");
+    await expect(syncTeamSeats("org_1")).rejects.toThrow(/Team base price/);
 
-    expect(create).toHaveBeenCalledWith({
-      subscription: "sub_1",
-      price: SEAT_MONTHLY,
-      quantity: 2,
-      proration_behavior: "create_prorations",
-    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("does not adjust a seat item billed at the wrong interval", async () => {
+    mocks.queryActiveTeamSubscriptionId.mockResolvedValue("sub_1");
+    withSubscription([baseItem(BASE_YEARLY), seatItem(SEAT_MONTHLY, 1)], 3);
+
+    await expect(syncTeamSeats("org_1")).rejects.toThrow(/Team seat price/);
+
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it("does not change seats when the subscription has duplicate seat items", async () => {
+    mocks.queryActiveTeamSubscriptionId.mockResolvedValue("sub_1");
+    withSubscription(
+      [
+        baseItem(BASE_MONTHLY),
+        seatItem(SEAT_MONTHLY, 1),
+        { id: "si_seat_2", price: { id: SEAT_MONTHLY }, quantity: 1 },
+      ],
+      3,
+    );
+
+    await expect(syncTeamSeats("org_1")).rejects.toThrow(/Team seat items/);
+
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
   });
 });
 
@@ -267,12 +294,12 @@ describe("resolveActiveTeamBillingInterval", () => {
     expect(await resolveActiveTeamBillingInterval("org_1")).toBe("monthly");
   });
 
-  it("defaults to monthly when no recognized base item is present", async () => {
+  it("does not quote a monthly total for an unrecognized active Team price", async () => {
     mocks.queryActiveTeamSubscriptionId.mockResolvedValue("sub_1");
     retrieve.mockResolvedValue({
       items: { data: [{ id: "si", price: { id: "price_legacy" }, quantity: 1 }] },
     });
 
-    expect(await resolveActiveTeamBillingInterval("org_1")).toBe("monthly");
+    await expect(resolveActiveTeamBillingInterval("org_1")).rejects.toThrow(/Team base price/);
   });
 });
