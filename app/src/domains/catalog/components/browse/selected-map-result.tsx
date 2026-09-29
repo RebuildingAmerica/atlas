@@ -34,7 +34,7 @@ export function SelectedMapResult({
       {listedEntry ? (
         <a
           href="#selected-map-result"
-          className="type-body-medium text-ink-strong hover:text-accent underline underline-offset-4"
+          className="type-body-medium text-ink-strong hover:text-accent-deep underline underline-offset-4"
         >
           {listedEntry.name}
         </a>

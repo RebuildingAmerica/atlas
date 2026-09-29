@@ -134,7 +134,7 @@ function ReviewCard({ approving, claim, onApprove, onReject, rejecting }: Review
             <Link
               to="/claim/$slug"
               params={{ slug: claim.entry_slug }}
-              className="type-label-medium text-accent hover:text-accent-ink inline-flex items-center gap-1"
+              className="type-label-medium text-accent-deep hover:text-accent-ink inline-flex items-center gap-1"
             >
               Open verification
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />

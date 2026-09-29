@@ -74,7 +74,7 @@ export function SignUpFormPanel({
         <Link
           to="/sign-in"
           search={effectiveRedirect ? { redirect: effectiveRedirect } : undefined}
-          className="text-accent type-label-medium hover:underline"
+          className="text-accent-deep type-label-medium hover:underline"
         >
           Sign in &rarr;
         </Link>
@@ -84,7 +84,7 @@ export function SignUpFormPanel({
         <div className="border-outline-variant rounded-2xl border px-4 py-3">
           <p className="type-body-small text-outline">
             Working with a team?{" "}
-            <Link to="/pricing" className="text-accent type-label-small hover:underline">
+            <Link to="/pricing" className="text-accent-deep type-label-small hover:underline">
               Compare Team plans &rarr;
             </Link>
           </p>

@@ -12,6 +12,7 @@ import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 
 export const Route = createFileRoute("/_workspace/lists/")({
+  head: () => ({ meta: [{ title: "Research lists | Atlas" }] }),
   component: ListsRoute,
 });
 

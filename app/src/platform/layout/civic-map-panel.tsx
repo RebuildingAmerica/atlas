@@ -164,7 +164,7 @@ export function CivicMapPanel() {
                 <Geography
                   key={geography.rsmKey}
                   geography={geography}
-                  aria-label={geography.properties.name}
+                  aria-hidden="true"
                   tabIndex={-1}
                   style={{
                     default: {
@@ -294,7 +294,7 @@ function StatItem({ value, label }: StatItemProps) {
       </div>
       <div
         className="mt-[3px] text-[10px] uppercase"
-        style={{ color: "rgba(250,246,238,0.38)", letterSpacing: "0" }}
+        style={{ color: "rgba(250,246,238,0.6)", letterSpacing: "0" }}
       >
         {label}
       </div>

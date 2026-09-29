@@ -41,7 +41,7 @@ export function SignInStatusBlocks({
         <p className="type-body-small text-outline rounded-2xl bg-blue-50 px-4 py-3 text-blue-900">
           Connecting an MCP client? If a sign-in link doesn&rsquo;t arrive within a minute, your
           email may not be approved yet.{" "}
-          <a href="/docs/mcp" className="text-accent type-label-small hover:underline">
+          <a href="/docs/mcp" className="text-accent-deep type-label-small hover:underline">
             See connection requirements &rarr;
           </a>
         </p>

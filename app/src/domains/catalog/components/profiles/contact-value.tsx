@@ -35,7 +35,7 @@ export function ContactValue({ value, href, grounded, external = false }: Contac
     <a
       href={safeHref}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="text-accent focus-visible:ring-civic rounded-sm break-words hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      className="text-accent-deep focus-visible:ring-civic rounded-sm break-words hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       {value}
     </a>

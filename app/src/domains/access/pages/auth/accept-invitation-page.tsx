@@ -46,7 +46,7 @@ function InvitationPanel({ eyebrow, heading, body, action }: InvitationPanelProp
       {action ? (
         <Link
           to={action.to}
-          className="text-accent type-label-large inline-flex items-center hover:underline"
+          className="text-accent-deep type-label-large inline-flex items-center hover:underline"
         >
           {action.label}
         </Link>

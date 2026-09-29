@@ -176,7 +176,7 @@ export function EntryCard({
                     source: "result_card_title",
                   });
                 }}
-                className="type-title-large text-ink-strong hover:text-accent transition-colors"
+                className="type-title-large text-ink-strong hover:text-accent-deep transition-colors"
               >
                 <span style={{ viewTransitionName: `entry-name-${entry.id}` }}>{entry.name}</span>
               </Link>

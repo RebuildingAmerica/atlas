@@ -108,7 +108,7 @@ export function CheckoutCompletePage({ product }: CheckoutCompletePageProps) {
             yet — usually under a minute. Refresh in a moment, or email{" "}
             <a
               href="mailto:hello@rebuildingus.org"
-              className="text-ink-strong hover:text-accent underline"
+              className="text-ink-strong hover:text-accent-deep underline"
             >
               hello@rebuildingus.org
             </a>{" "}

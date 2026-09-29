@@ -53,7 +53,7 @@ function PersonDetailPanel({ person }: PersonDetailPanelProps) {
           {person.issue_areas.map((area) => (
             <span
               key={area}
-              className="type-label-small bg-accent-soft text-accent-ink inline-block rounded-full px-2 py-0.5"
+              className="type-label-small bg-accent-soft text-on-primary-container inline-block rounded-full px-2 py-0.5"
             >
               {humanize(area)}
             </span>
@@ -65,7 +65,7 @@ function PersonDetailPanel({ person }: PersonDetailPanelProps) {
         <Link
           to="/entries/$entryId"
           params={{ entryId: person.id }}
-          className="type-label-medium text-accent inline-flex items-center gap-1 font-medium hover:underline"
+          className="type-label-medium text-accent-deep inline-flex items-center gap-1 font-medium hover:underline"
         >
           View full profile
           <ArrowRight className="h-3.5 w-3.5" />

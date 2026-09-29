@@ -123,7 +123,7 @@ export function EditorialProfileCorrection({
       {profile.data && profile.data.officialSources.length > 0 ? (
         <div className="space-y-3">
           {profile.data.profileUrl ? (
-            <a className="type-label-medium text-accent" href={profile.data.profileUrl}>
+            <a className="type-label-medium text-accent-deep" href={profile.data.profileUrl}>
               Open current public profile
             </a>
           ) : null}

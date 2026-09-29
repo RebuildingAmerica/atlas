@@ -40,7 +40,7 @@ export interface MockGeographiesProps {
 }
 
 export interface MockGeographyProps {
-  "aria-label"?: string;
+  "aria-hidden"?: "true";
   geography: MockGeography;
 }
 

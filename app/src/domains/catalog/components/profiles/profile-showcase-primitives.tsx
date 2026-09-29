@@ -220,7 +220,7 @@ export function ShelfCard({
     >
       <article className="flex h-full flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="bg-accent-soft text-accent-ink flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold">
+          <div className="bg-accent-soft text-on-primary-container flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold">
             {getInitials(entry.name)}
           </div>
           <ArrowUpRight className="text-ink-muted h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

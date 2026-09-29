@@ -94,7 +94,7 @@ function CompactSourceRow({ source }: { source: Source }) {
         href={source.url}
         target="_blank"
         rel="noreferrer"
-        className="type-body-medium text-accent block font-medium hover:underline"
+        className="type-body-medium text-accent-deep block font-medium hover:underline"
       >
         {source.title ?? source.url}
       </a>
@@ -121,7 +121,7 @@ function ExpandedSource({ source }: { source: Source }) {
         href={source.url}
         target="_blank"
         rel="noreferrer"
-        className="type-title-medium text-accent block hover:underline"
+        className="type-title-medium text-accent-deep block hover:underline"
       >
         {source.title ?? source.url}
       </a>

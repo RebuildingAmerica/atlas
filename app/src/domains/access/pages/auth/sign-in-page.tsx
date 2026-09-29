@@ -317,7 +317,7 @@ export function SignInPage({ errorCode, initialEmail, invitationId, redirectTo }
           <Link
             to="/sign-up"
             search={redirectTo ? { redirect: redirectTo } : undefined}
-            className="text-accent type-label-medium hover:underline"
+            className="text-accent-deep type-label-medium hover:underline"
           >
             Create a free account &rarr;
           </Link>

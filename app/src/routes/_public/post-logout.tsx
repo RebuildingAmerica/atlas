@@ -22,7 +22,7 @@ function PostLogoutRoute() {
         </p>
       </div>
 
-      <Link to="/" className="text-accent type-label-medium hover:underline">
+      <Link to="/" className="text-accent-deep type-label-medium hover:underline">
         Back to Atlas &rarr;
       </Link>
     </div>

@@ -108,7 +108,7 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
         >
           Rebuilding America Project
         </a>
-        <p className="type-label-small text-on-footer-surface/45 hidden sm:block">38°54N 77°02W</p>
+        <p className="type-label-small text-on-footer-surface/75 hidden sm:block">38°54N 77°02W</p>
       </div>
 
       <div className="relative grid flex-1 items-center gap-10 px-8 py-7 md:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)] md:px-12 md:py-10">
@@ -118,7 +118,7 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
             Indeed, it is the only thing that ever has.”
           </blockquote>
           <div className="bg-on-footer-surface/35 mt-7 h-px w-10" />
-          <p className="type-label-small text-on-footer-surface/60 mt-5">Margaret Mead</p>
+          <p className="type-label-small text-on-footer-surface/75 mt-5">Margaret Mead</p>
         </div>
 
         <nav aria-label="Footer navigation" className="grid grid-cols-3 gap-5 md:gap-7">
@@ -150,7 +150,7 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
       </div>
 
       <div className="border-footer-outline relative flex flex-col justify-between gap-3 border-t px-8 pt-3 pb-7 md:flex-row md:px-12 md:pt-4">
-        <p className="type-body-small text-on-footer-surface/60 max-w-4xl">
+        <p className="type-body-small text-on-footer-surface/75 max-w-4xl">
           Public records, organized for civic discovery.
         </p>
         <div className="flex shrink-0 gap-5">
@@ -158,7 +158,7 @@ export function PublicFooter({ localMode }: PublicFooterProps) {
             <a
               key={link.href}
               href={link.href}
-              className="type-body-small text-on-footer-surface/65 hover:text-on-footer-surface no-underline transition-colors duration-150 hover:underline"
+              className="type-body-small text-on-footer-surface/75 hover:text-on-footer-surface no-underline transition-colors duration-150 hover:underline"
             >
               {link.label}
             </a>

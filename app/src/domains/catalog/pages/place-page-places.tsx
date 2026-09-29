@@ -219,7 +219,9 @@ function PlaceCard({ place, places }: PlaceCardProps) {
     >
       <PlaceMapThumbnail place={place} places={places} />
       <div className="px-1 pt-3">
-        <p className="type-title-large text-ink-strong group-hover:text-accent">{place.name}</p>
+        <p className="type-title-large text-ink-strong group-hover:text-accent-deep">
+          {place.name}
+        </p>
         <p className="type-body-small text-ink-soft mt-1">{place.summary}</p>
       </div>
     </a>

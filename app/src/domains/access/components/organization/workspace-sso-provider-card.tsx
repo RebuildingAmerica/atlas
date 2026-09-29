@@ -107,7 +107,7 @@ export function WorkspaceSSOProviderCard({
         <div className="space-y-2">
           <WorkspaceSSOCopyField label="SP metadata URL" value={provider.spMetadataUrl} />
           <a
-            className="type-label-medium text-accent hover:underline"
+            className="type-label-medium text-accent-deep hover:underline"
             href={provider.spMetadataUrl}
             download={`${provider.providerId}-sp-metadata.xml`}
           >

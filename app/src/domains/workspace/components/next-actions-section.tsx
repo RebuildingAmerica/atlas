@@ -181,7 +181,11 @@ function NextActionCard({ action }: NextActionCardProps) {
     <div className="border-outline-variant bg-surface-container-lowest space-y-2 rounded-[1rem] border p-4">
       <p className="type-title-medium text-ink-strong">{action.title}</p>
       <p className="type-body-small text-ink-soft">{action.body}</p>
-      <Link hash={action.hash} to={action.to} className="type-label-large text-accent underline">
+      <Link
+        hash={action.hash}
+        to={action.to}
+        className="type-label-large text-accent-deep underline"
+      >
         {action.cta}
       </Link>
     </div>

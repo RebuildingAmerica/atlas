@@ -308,7 +308,7 @@ function ResearchSummaryBlock({
             {summary.key_sources.slice(0, 3).map((source) => (
               <li key={source.source_id} className="space-y-1">
                 <a
-                  className="type-title-small text-primary hover:text-on-primary-container"
+                  className="type-title-small text-accent-deep hover:text-on-primary-container"
                   href={source.url}
                   rel="noreferrer"
                   target="_blank"

@@ -143,7 +143,7 @@ export function SaveListPicker({ entryId, id, open, onClose }: SaveListPickerPro
                     <span className="type-body-medium text-ink-strong truncate">{list.name}</span>
                   </span>
                   {checked ? (
-                    <Check className="text-accent h-4 w-4" aria-hidden />
+                    <Check className="text-accent-deep h-4 w-4" aria-hidden />
                   ) : (
                     <span className="type-label-small text-ink-muted">
                       {list.item_count} {list.item_count === 1 ? "actor" : "actors"}

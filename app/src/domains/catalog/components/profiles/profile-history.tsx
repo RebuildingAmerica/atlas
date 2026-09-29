@@ -230,7 +230,7 @@ export function ProfileHistory({ entry }: ProfileHistoryProps) {
           <Link
             to="/feedback/$slug"
             params={{ slug: entry.slug }}
-            className="type-label-medium text-accent hover:underline"
+            className="type-label-medium text-accent-deep hover:underline"
           >
             Send a correction
           </Link>

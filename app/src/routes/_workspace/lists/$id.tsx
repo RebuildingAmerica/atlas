@@ -39,6 +39,7 @@ import { SavedListItemsSection } from "./list-detail-page-panels";
 import { WorkflowSections } from "./list-detail-page-workflow";
 
 export const Route = createFileRoute("/_workspace/lists/$id")({
+  head: () => ({ meta: [{ title: "Research list | Atlas" }] }),
   component: ListDetailRoute,
 });
 
@@ -288,7 +289,7 @@ function ListDetailRoute() {
             <p>Your saved list stays available on Free.</p>
             <p>
               Atlas Pro adds notes, CSV/JSON downloads, and briefs.{" "}
-              <Link to="/pricing" className="text-accent hover:text-accent-ink underline">
+              <Link to="/pricing" className="text-accent-deep hover:text-accent-ink underline">
                 Compare plans
               </Link>
               .
@@ -299,7 +300,7 @@ function ListDetailRoute() {
           <Link
             to="/briefs/new"
             search={{ list: data.id }}
-            className="type-label-medium text-accent hover:text-accent-ink inline-flex"
+            className="type-label-medium text-accent-deep hover:text-accent-ink inline-flex"
           >
             Create a brief from this list
           </Link>

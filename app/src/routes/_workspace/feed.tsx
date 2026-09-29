@@ -7,6 +7,7 @@ import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";
 import { MEDIUM_DATE, useDateTimeFormatter } from "@rebuildingamerica/atlas-ui/format/date-time";
 
 export const Route = createFileRoute("/_workspace/feed")({
+  head: () => ({ meta: [{ title: "Feed | Atlas" }] }),
   component: FeedRoute,
 });
 

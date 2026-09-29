@@ -58,8 +58,8 @@ vi.mock("react-simple-maps", () => ({
 
     return <g data-testid="auth-us-geographies">{children({ geographies })}</g>;
   },
-  Geography: ({ "aria-label": ariaLabel, geography }: MockGeographyProps) => (
-    <path aria-label={ariaLabel} data-state-name={geography.properties.name} />
+  Geography: ({ "aria-hidden": ariaHidden, geography }: MockGeographyProps) => (
+    <path aria-hidden={ariaHidden} data-state-name={geography.properties.name} />
   ),
   Marker: ({ children, coordinates }: MockMarkerProps) => (
     <g data-coordinates={coordinates?.join(",")}>{children}</g>
@@ -79,9 +79,12 @@ describe("CivicMapPanel", () => {
     const map = screen.getByLabelText("United States map");
 
     expect(map).toHaveAttribute("data-projection", "geoAlbersUsa");
-    expect(screen.getByLabelText("Alaska")).toBeInTheDocument();
-    expect(screen.getByLabelText("Hawaii")).toBeInTheDocument();
-    expect(screen.getByLabelText("California")).toBeInTheDocument();
+    // The state shapes are decoration inside the labelled map, so assistive
+    // technology skips them rather than reading 56 unlabelled-role paths.
+    for (const state of ["Alaska", "Hawaii", "California"]) {
+      const shape = map.querySelector(`[data-state-name="${state}"]`);
+      expect(shape).toHaveAttribute("aria-hidden", "true");
+    }
     await waitFor(() => {
       expect(mocks.listEntries).toHaveBeenCalledWith({ limit: 50 });
     });

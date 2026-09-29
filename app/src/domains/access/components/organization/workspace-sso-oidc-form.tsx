@@ -124,7 +124,7 @@ export function WorkspaceSSOOidcForm({
                 href="https://atlas.rebuildingus.org/docs/deployment/google-workspace-oidc-sso"
                 target="_blank"
                 rel="noreferrer"
-                className="text-accent underline"
+                className="text-accent-deep underline"
               >
                 Learn more
               </a>

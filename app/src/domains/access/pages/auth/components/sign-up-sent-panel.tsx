@@ -88,7 +88,7 @@ export function SignUpSentPanel({
 
       <button
         type="button"
-        className="type-label-medium text-accent hover:underline"
+        className="type-label-medium text-accent-deep hover:underline"
         onClick={onUseDifferentEmail}
       >
         Use a different email

@@ -51,7 +51,7 @@ function LatestList({ items }: LatestListProps) {
               </div>
               <a
                 href={item.href}
-                className="type-title-large text-ink-strong hover:text-accent inline-flex items-start gap-2 transition-colors"
+                className="type-title-large text-ink-strong hover:text-accent-deep inline-flex items-start gap-2 transition-colors"
               >
                 <span>{item.title}</span>
                 <ExternalLink className="mt-1 h-4 w-4 shrink-0" aria-hidden />

@@ -31,7 +31,7 @@ export function RolePermissionsGuide() {
       className="border-border bg-surface-container-lowest rounded-[1rem] border px-4 py-4"
     >
       <div className="flex items-center gap-2">
-        <KeyRound className="text-accent h-4 w-4" />
+        <KeyRound className="text-accent-deep h-4 w-4" />
         <h3 className="type-title-small text-ink-strong">Role guide</h3>
       </div>
       <div className="border-border mt-3 overflow-hidden rounded-[0.75rem] border">

@@ -172,7 +172,10 @@ function ReviewCard({
           </div>
           <p className="type-body-small text-ink-soft">{readableReason(item.holdReason)}</p>
           {profileUrl ? (
-            <a className="type-label-medium text-accent hover:text-accent-ink" href={profileUrl}>
+            <a
+              className="type-label-medium text-accent-deep hover:text-accent-ink"
+              href={profileUrl}
+            >
               Open current profile
             </a>
           ) : null}
@@ -243,7 +246,7 @@ function ReviewCard({
           </p>
           {actionUrl ? (
             <a
-              className="type-body-small text-accent hover:text-accent-ink break-all"
+              className="type-body-small text-accent-deep hover:text-accent-ink break-all"
               href={actionUrl}
               rel="noopener noreferrer"
               target="_blank"
@@ -261,7 +264,7 @@ function ReviewCard({
             {sources.map((source) => (
               <li key={source}>
                 <a
-                  className="type-body-small text-accent hover:text-accent-ink break-all"
+                  className="type-body-small text-accent-deep hover:text-accent-ink break-all"
                   href={source}
                   rel="noopener noreferrer"
                   target="_blank"

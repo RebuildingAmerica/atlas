@@ -31,7 +31,7 @@ export function IssueFootprint({
           {issueAreas.map((slug) => (
             <span
               key={slug}
-              className="type-label-medium bg-accent-soft text-accent-ink inline-block rounded-full px-3 py-1 font-semibold"
+              className="type-label-medium bg-accent-soft text-on-primary-container inline-block rounded-full px-3 py-1 font-semibold"
             >
               {issueAreaLabels[slug] ?? humanize(slug)}
             </span>
@@ -56,7 +56,7 @@ export function IssueFootprint({
               {slugs.map((slug) => (
                 <span
                   key={slug}
-                  className="type-label-medium bg-accent-soft text-accent-ink inline-block rounded-full px-3 py-1 font-semibold"
+                  className="type-label-medium bg-accent-soft text-on-primary-container inline-block rounded-full px-3 py-1 font-semibold"
                 >
                   {issueAreaLabels[slug] ?? humanize(slug)}
                 </span>

@@ -261,13 +261,13 @@ export function SignUpPage({ intent, redirectTo }: SignUpPageProps = {}) {
           </p>
         </div>
         <div className="flex flex-wrap gap-4">
-          <Link to="/sign-up" className="type-label-medium text-accent hover:underline">
+          <Link to="/sign-up" className="type-label-medium text-accent-deep hover:underline">
             Create a free account &rarr;
           </Link>
-          <Link to="/pricing" className="type-label-medium text-accent hover:underline">
+          <Link to="/pricing" className="type-label-medium text-accent-deep hover:underline">
             Compare plans &rarr;
           </Link>
-          <Link to="/browse" className="type-label-medium text-accent hover:underline">
+          <Link to="/browse" className="type-label-medium text-accent-deep hover:underline">
             Browse Atlas &rarr;
           </Link>
         </div>

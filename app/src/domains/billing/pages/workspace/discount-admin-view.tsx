@@ -165,7 +165,7 @@ function VerificationRecordCard({
           ) : null}
           <a
             href={`/admin/verifications/${record.id}`}
-            className="type-label-small text-accent hover:text-accent-dark whitespace-nowrap underline"
+            className="type-label-small text-accent-deep hover:text-accent-dark whitespace-nowrap underline"
           >
             View details
           </a>

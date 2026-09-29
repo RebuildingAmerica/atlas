@@ -38,7 +38,7 @@ export function AccountSetupPasskeyCard({
         to wait on.
       </p>
       <details className="mt-3">
-        <summary className="type-label-medium text-accent cursor-pointer hover:underline">
+        <summary className="type-label-medium text-accent-deep cursor-pointer hover:underline">
           What's a passkey?
         </summary>
         <div className="type-body-small text-ink-soft mt-2 space-y-2 leading-relaxed">

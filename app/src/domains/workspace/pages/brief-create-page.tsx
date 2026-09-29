@@ -260,7 +260,7 @@ export function BriefCreatePage({ initialListId = "" }: BriefCreatePageProps) {
                 <button
                   type="button"
                   onClick={() => void listExport.refetch()}
-                  className="type-label-medium text-accent hover:underline"
+                  className="type-label-medium text-accent-deep hover:underline"
                 >
                   Try loading this list again
                 </button>
@@ -329,7 +329,7 @@ export function BriefCreatePage({ initialListId = "" }: BriefCreatePageProps) {
                         href={source.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="type-label-small text-accent break-all"
+                        className="type-label-small text-accent-deep break-all"
                       >
                         Open source
                       </a>

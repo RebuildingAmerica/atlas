@@ -112,7 +112,7 @@ export function FollowsSummarySection({
           <p className="type-body-medium text-ink-strong">You&apos;re not following anyone yet.</p>
           <p className="type-body-small text-ink-soft">
             Follow actors to track them over time.{" "}
-            <Link to="/profiles" className="text-accent underline">
+            <Link to="/profiles" className="text-accent-deep underline">
               Browse profiles
             </Link>
             .

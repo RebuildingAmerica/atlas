@@ -35,7 +35,7 @@ function SavedListItemNoteEditor({
       <button
         type="button"
         onClick={onEdit}
-        className="type-label-small text-accent hover:text-accent-dark inline-flex items-center gap-1.5 transition-colors"
+        className="type-label-small text-accent-deep hover:text-accent-dark inline-flex items-center gap-1.5 transition-colors"
         aria-label={`${note ? "Edit" : "Add"} note for ${actorName}`}
       >
         <PencilLine className="h-3.5 w-3.5" aria-hidden />

@@ -35,8 +35,9 @@
   /* Ink hierarchy */
   --color-ink: #44403c;
   --color-ink-strong: #1c1917;
-  --color-ink-soft: #78716c;
-  --color-ink-muted: #a8a29e;
+  /* Every ink step keeps at least 4.5:1 contrast on every light surface (WCAG AA). */
+  --color-ink-soft: #57534e;
+  --color-ink-muted: #645d58;
 
   /* Borders */
   --color-border: #e7e0d4;
@@ -50,7 +51,7 @@
   /* Accent (warm terracotta) */
   --color-accent: #c2956a;
   --color-accent-soft: #d4b896;
-  --color-accent-deep: #a67b50;
+  --color-accent-deep: #80592f;
   --color-accent-ink: #ffffff;
 
   /* Semantic role aliases consumed by app primitives. */
@@ -70,7 +71,7 @@
   --color-on-warning-container: #76521a;
   --color-error-container: #f5d8d3;
   --color-on-error-container: #8d2118;
-  --color-footer-surface: #a67b50;
+  --color-footer-surface: #6f4d30;
   --color-on-footer-surface: #ffffff;
   --color-footer-outline: rgba(255, 255, 255, 0.24);
   --color-public-grid-line: rgba(28, 31, 43, 0.045);

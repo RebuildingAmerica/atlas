@@ -66,7 +66,7 @@ export function FeedItemRow({ item }: FeedItemRowProps) {
           href={item.source_url}
           target="_blank"
           rel="noreferrer"
-          className="text-accent hover:underline"
+          className="text-accent-deep hover:underline"
         >
           {item.source_title ?? item.source_url}
         </a>

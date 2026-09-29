@@ -17,6 +17,7 @@ import type { Entry, Source } from "@rebuildingamerica/atlas-api-client";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 
 export const Route = createFileRoute("/_workspace/manage/$slug")({
+  head: () => ({ meta: [{ title: "Manage profile | Atlas" }] }),
   component: ManageProfileRoute,
 });
 

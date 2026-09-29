@@ -47,7 +47,7 @@ function IssueClusterColumn({
           <ProfileEntryLink
             key={entry.id}
             entry={entry}
-            className="group hover:text-accent flex items-center justify-between gap-4 py-4 transition-colors"
+            className="group hover:text-accent-deep flex items-center justify-between gap-4 py-4 transition-colors"
           >
             <div className="min-w-0 space-y-1">
               <p className="type-title-small text-ink-strong truncate">{entry.name}</p>

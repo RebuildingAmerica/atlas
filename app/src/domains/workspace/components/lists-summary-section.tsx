@@ -71,7 +71,7 @@ export function ListsSummarySection({ lists, capabilities, isLocal }: ListsSumma
           <p className="type-body-medium text-ink-strong">You haven&apos;t built any lists yet.</p>
           <p className="type-body-small text-ink-soft">
             Save actors into named lists to organize a research thread or an outreach push.{" "}
-            <Link to="/lists" className="text-accent underline">
+            <Link to="/lists" className="text-accent-deep underline">
               Start a list
             </Link>
             .

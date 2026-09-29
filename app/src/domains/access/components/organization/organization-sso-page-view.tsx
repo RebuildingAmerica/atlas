@@ -135,7 +135,7 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
                 href="/docs/deployment/google-workspace-saml-sso"
                 target="_blank"
                 rel="noreferrer"
-                className="text-accent underline"
+                className="text-accent-deep underline"
               >
                 Google Workspace (SAML)
               </a>
@@ -145,7 +145,7 @@ export function OrganizationSSOPageView({ controller }: OrganizationSSOPageViewP
                 href="/docs/deployment/google-workspace-oidc-sso"
                 target="_blank"
                 rel="noreferrer"
-                className="text-accent underline"
+                className="text-accent-deep underline"
               >
                 Google Workspace (OIDC)
               </a>

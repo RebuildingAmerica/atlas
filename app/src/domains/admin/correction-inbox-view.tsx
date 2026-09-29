@@ -120,7 +120,7 @@ function ReportCard({
           </p>
           {targetUrl ? (
             <a
-              className="type-label-medium text-accent hover:text-accent-ink"
+              className="type-label-medium text-accent-deep hover:text-accent-ink"
               href={targetUrl}
               rel={item.targetType === "source" ? "noopener noreferrer" : undefined}
               target={item.targetType === "source" ? "_blank" : undefined}
@@ -173,7 +173,7 @@ function ReportCard({
                   <li key={`${profile.type}:${profile.slug}`}>
                     {href ? (
                       <a
-                        className="type-label-medium text-accent underline-offset-2 hover:underline"
+                        className="type-label-medium text-accent-deep underline-offset-2 hover:underline"
                         href={href}
                       >
                         {profile.name}

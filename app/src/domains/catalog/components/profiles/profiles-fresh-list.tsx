@@ -55,7 +55,7 @@ export function ProfilesFreshList({
               <ProfileEntryLink
                 key={entry.id}
                 entry={entry}
-                className="group hover:text-accent flex flex-col gap-3 py-4 transition-colors sm:flex-row sm:items-center sm:justify-between"
+                className="group hover:text-accent-deep flex flex-col gap-3 py-4 transition-colors sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="type-title-medium text-ink-strong truncate">{entry.name}</p>

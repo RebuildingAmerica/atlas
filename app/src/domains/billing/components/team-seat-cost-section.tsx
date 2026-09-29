@@ -36,7 +36,7 @@ export function TeamSeatCostSection({
         <button
           type="button"
           onClick={onRetry}
-          className="type-label-medium text-accent hover:underline"
+          className="type-label-medium text-accent-deep hover:underline"
         >
           Try again
         </button>

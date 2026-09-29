@@ -45,7 +45,7 @@ function ActorCard({ actor }: ActorCardProps) {
     <article className="bg-surface-container-lowest rounded-lg p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <a href={actor.href} className="type-title-medium text-ink-strong hover:text-accent">
+          <a href={actor.href} className="type-title-medium text-ink-strong hover:text-accent-deep">
             {actor.name}
           </a>
           <p className="type-body-small text-ink-muted mt-1 font-medium">{actor.description}</p>
