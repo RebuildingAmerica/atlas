@@ -1,0 +1,98 @@
+name: Diagnose Atlas API
+
+# Read-only incident check for when the Atlas API stops answering. It reports
+# what Cloud Run says about the service and its newest revisions, whether the
+# image the serving revision runs still exists, and the exact error the
+# database returns to a plain connection attempt. It never prints the database
+# URL or any secret, and it changes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which environment's API to inspect.
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Report the Cloud Run service and its newest revisions
+        env:
+          CLOUDSDK_CORE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+          TARGET: ${{ inputs.target }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          set -uo pipefail
+          service="atlas-api"
+          if [ "$TARGET" = "staging" ]; then service="atlas-api-staging"; fi
+          echo "service=$service" >> "$GITHUB_ENV"
+          echo "## Service conditions"
+          gcloud run services describe "$service" --region "$GCP_REGION" \
+            --format='yaml(status.conditions,status.traffic,status.latestReadyRevisionName,status.latestCreatedRevisionName)' 2>&1
+          echo "## Newest revisions"
+          for revision in $(gcloud run revisions list --service "$service" --region "$GCP_REGION" \
+            --limit 4 --format='value(metadata.name)' 2>&1); do
+            echo "### $revision"
+            gcloud run revisions describe "$revision" --region "$GCP_REGION" \
+              --format='yaml(spec.containers[0].image,status.conditions)' 2>&1
+          done
+
+      - name: Check that the serving image still exists
+        env:
+          CLOUDSDK_CORE_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          set -uo pipefail
+          serving="$(gcloud run services describe "$service" --region "$GCP_REGION" \
+            --format='value(status.traffic[0].revisionName)' 2>&1)"
+          image="$(gcloud run revisions describe "$serving" --region "$GCP_REGION" \
+            --format='value(spec.containers[0].image)' 2>&1)"
+          echo "Serving revision: $serving"
+          echo "Image: $image"
+          gcloud artifacts docker images describe "$image" --format='value(image_summary.digest)' 2>&1 \
+            && echo "Image exists." || echo "Image lookup failed (see message above)."
+
+      - name: Try a plain database connection
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        shell: bash --noprofile --norc {0}
+        run: |
+          set -uo pipefail
+          python3 -m pip install --quiet "psycopg[binary]>=3.1"
+          python3 - <<'PY'
+          import os, time
+          import psycopg
+          started = time.monotonic()
+          try:
+              with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=20) as conn:
+                  conn.execute("select 1").fetchone()
+              print(f"Database answered in {time.monotonic() - started:.1f}s.")
+          except Exception as exc:  # report the class and message, never the URL
+              message = str(exc).replace(os.environ["DATABASE_URL"], "<database-url>")
+              print(f"Database connection failed after {time.monotonic() - started:.1f}s: "
+                    f"{type(exc).__name__}: {message}")
+          PY
