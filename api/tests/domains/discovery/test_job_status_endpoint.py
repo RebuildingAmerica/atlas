@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi import HTTPException
 
 from atlas.domains.discovery import api as discovery_api
 from atlas.domains.discovery.models import DiscoveryJobCRUD, DiscoveryRunCRUD
 from tests.domains.discovery.schedule_support import EXPECTED_NOT_FOUND
+
+# The test actor is not staff, so only public runs' jobs are visible.
+_NO_OPERATORS = SimpleNamespace(operator_allowed_emails=[])
 
 
 class TestJobStatusEndpoint:
@@ -25,6 +30,7 @@ class TestJobStatusEndpoint:
             job_id,
             response=None,
             actor=actor,
+            settings=_NO_OPERATORS,
             db=test_db,
         )
         assert resp.id == job_id
@@ -37,6 +43,7 @@ class TestJobStatusEndpoint:
                 "nonexistent",
                 response=None,
                 actor=actor,
+                settings=_NO_OPERATORS,
                 db=test_db,
             )
         assert exc_info.value.status_code == EXPECTED_NOT_FOUND

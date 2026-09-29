@@ -9,11 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from atlas.domains.access import (
     AuthenticatedActor,
-    is_atlas_staff,
     require_actor_permission,
     require_atlas_staff,
 )
-from atlas.domains.discovery.models import DiscoveryJobCRUD, RunVisibility
+from atlas.domains.discovery.models import DiscoveryJobCRUD
 from atlas.domains.discovery.schemas import (
     DiscoveryRunCancelResponse,
 )
@@ -25,7 +24,7 @@ from atlas.schemas import (
     DiscoveryRunResponse,
 )
 
-from .api_helpers import _run_to_response, get_db
+from .api_helpers import _run_to_response, get_db, run_visibility_for
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -36,13 +35,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 __all__ = ["router"]
-
-
-def _run_visibility(actor: AuthenticatedActor, settings: Settings) -> RunVisibility:
-    """Return whose private runs this caller may read."""
-    if is_atlas_staff(actor, settings):
-        return RunVisibility.staff()
-    return RunVisibility.workspace(actor.org_id)
 
 
 @router.get(
@@ -75,7 +67,7 @@ async def list_discovery_runs(  # noqa: PLR0913
     - cursor: pagination cursor (default: 0)
     """
     try:
-        visibility = _run_visibility(actor, settings)
+        visibility = run_visibility_for(actor, settings)
         offset = max(int(cursor), 0) if cursor is not None else 0
         runs = await DiscoveryRunCRUD.list(
             db,
@@ -124,7 +116,7 @@ async def get_discovery_run(
 ) -> DiscoveryRunResponse:
     """Get a discovery run by ID unless another workspace keeps it private."""
     run = await DiscoveryRunCRUD.get_visible(
-        db, run_id, visibility=_run_visibility(actor, settings)
+        db, run_id, visibility=run_visibility_for(actor, settings)
     )
     if not run:
         raise HTTPException(status_code=404, detail="Discovery run not found")
