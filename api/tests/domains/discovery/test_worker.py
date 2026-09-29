@@ -19,7 +19,11 @@ from atlas.models import DiscoveryRunCRUD, get_db_connection, init_db
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from atlas.domains.discovery.models import DiscoveryJobModel
+
 _POLL_TEST_INTERVAL_SECONDS = 0.05
+_JOB_WAIT_INTERVAL_SECONDS = 0.02
+_JOB_WAIT_TIMEOUT_SECONDS = 5.0
 _WORKER_RECOVERY_TIMEOUT_SECONDS = 2.0
 _EXPECTED_RECOVERY_DB_CONNECTION_ATTEMPTS = 2
 
@@ -44,6 +48,34 @@ async def _wait_until(predicate: Callable[[], bool], *, timeout_seconds: float) 
     if predicate():
         return
     pytest.fail("Timed out waiting for worker side effect.")
+
+
+async def _wait_for_job(
+    db_url: str,
+    job_id: str,
+    reached: Callable[[DiscoveryJobModel], bool],
+    *,
+    describe: str,
+) -> DiscoveryJobModel:
+    """Poll a job until the worker has moved it into the expected state.
+
+    A fixed sleep raced the worker under parallel load, so each test waits for
+    the state it asserts, bounded so a stuck worker still fails clearly.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _JOB_WAIT_TIMEOUT_SECONDS
+    while True:
+        conn = await get_db_connection(db_url)
+        try:
+            job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
+        finally:
+            await conn.close()
+        if job is not None and reached(job):
+            return job
+        if loop.time() >= deadline:
+            last = job.status if job is not None else "missing"
+            pytest.fail(f"Job {job_id} never {describe}; last status was {last!r}.")
+        await asyncio.sleep(_JOB_WAIT_INTERVAL_SECONDS)
 
 
 class TestWorkerLifecycle:
@@ -132,17 +164,17 @@ class TestWorkerExecution:
             fake_pipeline,
         )
 
-        # Run the worker briefly
         await start_job_worker(db_url, anthropic_api_key="test")
-        await asyncio.sleep(0.5)
-        await stop_job_worker()
+        try:
+            job = await _wait_for_job(
+                db_url,
+                job_id,
+                lambda job: job.retry_count >= 1 and job.error_message is not None,
+                describe="recorded a failed attempt",
+            )
+        finally:
+            await stop_job_worker()
 
-        # Check the job was attempted and re-queued
-        conn = await get_db_connection(db_url)
-        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
-        await conn.close()
-
-        assert job is not None
         # Either re-queued (retry_count=1, status=queued) or failed permanently
         assert job.retry_count >= 1
         assert job.error_message is not None
@@ -181,14 +213,13 @@ class TestWorkerExecution:
         )
 
         await start_job_worker(db_url, anthropic_api_key="test")
-        await asyncio.sleep(0.4)
-        await stop_job_worker()
+        try:
+            job = await _wait_for_job(
+                db_url, job_id, lambda job: job.status == "failed", describe="was dead-lettered"
+            )
+        finally:
+            await stop_job_worker()
 
-        conn = await get_db_connection(db_url)
-        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
-        await conn.close()
-
-        assert job is not None
         assert job.status == "failed"
         assert job.error_message is not None
         assert "permanent failure" in job.error_message
@@ -225,14 +256,13 @@ class TestWorkerExecution:
         )
 
         await start_job_worker(db_url, anthropic_api_key="test")
-        await asyncio.sleep(0.4)
-        await stop_job_worker()
+        try:
+            job = await _wait_for_job(
+                db_url, job_id, lambda job: job.status == "completed", describe="completed"
+            )
+        finally:
+            await stop_job_worker()
 
-        conn = await get_db_connection(db_url)
-        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
-        await conn.close()
-
-        assert job is not None
         assert job.status == "completed"
 
     @pytest.mark.asyncio
@@ -276,14 +306,13 @@ class TestWorkerExecution:
         )
 
         await start_job_worker(db_url, anthropic_api_key="test")
-        await asyncio.sleep(0.4)
-        await stop_job_worker()
+        try:
+            job = await _wait_for_job(
+                db_url, job_id, lambda job: job.status == "completed", describe="completed"
+            )
+        finally:
+            await stop_job_worker()
 
-        conn = await get_db_connection(db_url)
-        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
-        await conn.close()
-
-        assert job is not None
         # The stranded job was reaped, reclaimed, and run to completion.
         assert job.status == "completed"
         assert job.retry_count == 1
@@ -309,15 +338,17 @@ class TestWorkerExecution:
         settings = Settings(database_url=db_url, discovery_cost_kill_switch=True)
 
         await start_job_worker(db_url, anthropic_api_key="test", settings=settings)
-        await asyncio.sleep(0.4)
-        await stop_job_worker()
+        try:
+            job = await _wait_for_job(
+                db_url, job_id, lambda job: job.status == "completed", describe="completed"
+            )
+        finally:
+            await stop_job_worker()
 
         conn = await get_db_connection(db_url)
-        job = await DiscoveryJobCRUD.get_by_id(conn, job_id)
         run = await DiscoveryRunCRUD.get_by_id(conn, run_id)
         await conn.close()
 
-        assert job is not None
         assert job.status == "completed"
         assert run is not None
         assert run.status == "failed"
