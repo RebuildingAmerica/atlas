@@ -42,16 +42,17 @@ jobs:
         shell: bash --noprofile --norc {0}
         run: |
           set -uo pipefail
+          # gcloud has no test-iam-permissions command, so ask Resource
+          # Manager directly which of these permissions the caller holds.
+          token="$(gcloud auth print-access-token)"
+          required='["monitoring.alertPolicies.create","monitoring.alertPolicies.list","monitoring.notificationChannels.create","logging.logEntries.list"]'
+          held="$(curl -sS -X POST \
+            "https://cloudresourcemanager.googleapis.com/v1/projects/${GCP_PROJECT_ID}:testIamPermissions" \
+            -H "Authorization: Bearer $token" -H "Content-Type: application/json" \
+            -d "{\"permissions\": $required}" | jq -r '(.permissions // [])[]')"
           missing=""
-          for permission in \
-            monitoring.alertPolicies.create \
-            monitoring.alertPolicies.list \
-            monitoring.notificationChannels.create \
-            logging.logEntries.list; do
-            granted="$(gcloud projects test-iam-permissions "$GCP_PROJECT_ID" \
-              --permissions="$permission" --format='value(permissions)' 2>&1 || true)"
-            case "$granted" in *"$permission"*) granted="$permission" ;; *) granted="" ;; esac
-            if [ -n "$granted" ]; then
+          for permission in $(echo "$required" | jq -r '.[]'); do
+            if printf '%s\n' "$held" | grep -qx "$permission"; then
               echo "ok      $permission"
             else
               echo "::warning title=Missing permission::$permission is not granted to this service account."
