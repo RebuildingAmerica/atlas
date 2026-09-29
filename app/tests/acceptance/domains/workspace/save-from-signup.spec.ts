@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { extractFirstUrlFromEmail } from "../../helpers/email";
+import { expectNoAxeViolations } from "../../helpers/accessibility";
 import { installVirtualAuthenticator, pollLatestMessage } from "../../helpers/auth";
 
 test("a new organizer can finish saving the profile that led them to sign up", async ({
@@ -20,6 +21,7 @@ test("a new organizer can finish saving the profile that led them to sign up", a
   await page.getByRole("link", { name: /Create a free account/ }).click();
   await page.waitForURL((url) => url.pathname === "/sign-up");
   await expect(page.getByRole("heading", { name: "Join Atlas" })).toBeVisible();
+  await expectNoAxeViolations(page, "Sign up");
   expect(new URL(page.url()).searchParams.get("redirect")).toBe(
     "/profiles/people/maya-thompson?action=save",
   );
@@ -28,6 +30,7 @@ test("a new organizer can finish saving the profile that led them to sign up", a
   await page.getByLabel("Email").fill(email);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: "Check your inbox" })).toBeVisible();
+  await expectNoAxeViolations(page, "Check your inbox");
   const magicLink = extractFirstUrlFromEmail(await pollLatestMessage(email));
   await page.goto(magicLink);
 
@@ -43,6 +46,7 @@ test("a new organizer can finish saving the profile that led them to sign up", a
       url.searchParams.get("action") === "save",
   );
   await expect(page.getByRole("dialog", { name: "Save to list" })).toBeVisible();
+  await expectNoAxeViolations(page, "Save to list dialog");
   await page.getByRole("button", { name: "Create a new list" }).click();
   await page.getByLabel("List name").fill("My local research");
   await page.getByRole("button", { name: "Create", exact: true }).click();
@@ -59,6 +63,7 @@ test("a new organizer can finish saving the profile that led them to sign up", a
   await page.reload();
   await expect(page.getByRole("link", { name: "Maya Thompson" })).toBeVisible();
   await expect(page.getByText("Your saved list stays available on Free.")).toBeVisible();
+  await expectNoAxeViolations(page, "List detail");
   await expect(page.getByRole("button", { name: "Add note for Maya Thompson" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Download CSV" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Create a brief from this list" })).toHaveCount(0);

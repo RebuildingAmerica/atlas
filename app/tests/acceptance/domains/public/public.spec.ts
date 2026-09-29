@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectNoAxeViolations } from "../../helpers/accessibility";
 
 test.describe("public visitor journey", () => {
   test("keeps discovery primary while secondary pages stay reachable on desktop and phone", async ({
@@ -49,6 +50,7 @@ test.describe("public visitor journey", () => {
     await expect(
       page.getByRole("textbox", { name: "Search people and groups by issue, place, or name" }),
     ).toBeVisible();
+    await expectNoAxeViolations(page, "Browse");
 
     // 3. Pricing Page
     await page.goto("/pricing");

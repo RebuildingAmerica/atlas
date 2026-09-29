@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { expectNoAxeViolations } from "../../helpers/accessibility";
 import { performSignIn } from "../../helpers/auth";
 
 interface SeededWorkspaceMember {
@@ -40,6 +41,7 @@ test.describe("organization management journey", () => {
         .getByRole("heading", { name: /(Workspace setup|Workspace management|workspace)/i })
         .first(),
     ).toBeVisible();
+    await expectNoAxeViolations(page, "Organization");
 
     await page.goto("/organization/sso");
     // Free-tier accounts without the auth.sso capability see the

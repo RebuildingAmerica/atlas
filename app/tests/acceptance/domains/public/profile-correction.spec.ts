@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { expectNoAxeViolations } from "../../helpers/accessibility";
 
 test("a visitor can report a profile error and keep a follow-up reference", async ({ page }) => {
   await page.goto("/profiles/people/maya-thompson", { waitUntil: "networkidle" });
   await page.getByRole("link", { name: "Report stale or incorrect information" }).click();
   await expect(page.getByRole("heading", { name: "Review Maya Thompson" })).toBeVisible();
+  await expectNoAxeViolations(page, "Correction form");
 
   await page
     .getByRole("textbox", { name: "What should be reviewed?" })
@@ -14,6 +16,7 @@ test("a visitor can report a profile error and keep a follow-up reference", asyn
   const receipt = page.getByRole("status");
   await expect(receipt).toContainText("Received for review.");
   await expect(receipt).toContainText(/Reference: [0-9a-f-]{36}/);
+  await expectNoAxeViolations(page, "Correction receipt");
   await expect(page.getByRole("link", { name: "Email Atlas about this report" })).toHaveAttribute(
     "href",
     /^mailto:hello@rebuildingus\.org\?subject=Atlas%20report%20[0-9a-f-]{36}$/,
@@ -36,6 +39,7 @@ test("a reporter can check a report's status without seeing what they wrote", as
 
   await expect(page.getByRole("heading", { name: "Report status" })).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Waiting for an editor.");
+  await expectNoAxeViolations(page, "Report status");
   await expect(page.getByText("Private detail only an editor should read.")).toHaveCount(0);
   await expect(page.getByText("visitor@atlas.test")).toHaveCount(0);
 });

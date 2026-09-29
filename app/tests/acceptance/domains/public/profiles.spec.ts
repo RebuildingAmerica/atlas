@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expectNoAxeViolations } from "../../helpers/accessibility";
 
 interface ProfileSsrExpectation {
   heading: string;
@@ -93,6 +94,7 @@ test.describe("public profile routes", () => {
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
 
     await expect(page.getByText("Hide Error")).toHaveCount(0);
+    await expectNoAxeViolations(page, "Person profile");
   });
 
   test("renders the organization profile with contact, footprint, and sources", async ({

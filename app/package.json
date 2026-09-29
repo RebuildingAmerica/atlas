@@ -91,6 +91,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@playwright/test": "catalog:",
     "@rebuildingamerica/eslint-config": "workspace:*",
     "@rebuildingamerica/tsconfig": "workspace:*",
