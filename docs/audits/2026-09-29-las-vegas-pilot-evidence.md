@@ -37,15 +37,23 @@ gate would normally need a second person, the row says how it was handled.
 
 ## Security fixes found during this pilot
 
-| Defect                                                                                    | Found      | Fixed in | Production check |
-| ----------------------------------------------------------------------------------------- | ---------- | -------- | ---------------- |
-| Any signed-in account could approve profile verifications and change discovery schedules. | 2026-09-28 | Pending  | Pending          |
-| Any signed-in account could read other workspaces' private research runs.                 | 2026-09-28 | Pending  | Pending          |
+| Defect                                                                                                                                                  | Found      | Fixed in                                                    | Production check |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------- | ---------------- |
+| Any signed-in account could approve profile verifications and change discovery schedules.                                                               | 2026-09-28 | Branch `fix/staff-review-and-private-runs` (not yet merged) | Pending          |
+| Any signed-in account could read other workspaces' private research runs, and any signed-in MCP client could read them through the discovery-run tools. | 2026-09-28 | Branch `fix/staff-review-and-private-runs` (not yet merged) | Pending          |
 
 ## Log
 
 Newest first. Each entry: date · release · actor · observation · result.
 
+- 2026-09-28 · `v2026.09.28-4` · Claude · Baseline of the ten questions against
+  the production API (`state=NV&city=Las Vegas`): public transit 0 results;
+  "bus", "bicycle", "pedestrian", and "eviction" text searches 0; housing 4
+  (three city boards plus the NAACP branch); housing people 0; transportation
+  tag 3 (two city traffic committees plus the NAACP branch). Every result is a
+  government board or the NAACP branch, with one source each and no action link.
+  · No question has a useful answer today. City boards and committees are
+  excluded from any promoted answer.
 - 2026-09-28 · `v2026.09.28-4` · Claude · Public API
   `GET /api/entities?city=Las Vegas&state=NV` returns 73 records (45 people, 28
   organizations, 70 single-source); none of the editorial packet's candidates is
