@@ -11,6 +11,7 @@ import asyncio
 import contextlib
 import logging
 import uuid
+import weakref
 
 from atlas.domains.discovery.models import DiscoveryJobCRUD
 from atlas.domains.discovery.pipeline.runner import (
@@ -23,9 +24,20 @@ from atlas.platform.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["start_job_worker", "stop_job_worker"]
+__all__ = ["notify_job_queued", "start_job_worker", "stop_job_worker"]
 
 _POLL_INTERVAL_SECONDS = 10
+# Neon suspends an idle database after five minutes, but a worker polling every
+# ten seconds kept it awake for as long as any API instance lived, and that
+# spent the plan's compute allowance and took the API down on September 29.
+# With nothing queued the worker waits twice as long each time, up to fifteen
+# minutes, so an idle database can suspend; a newly queued job wakes it at once.
+_IDLE_WAIT_MAX_SECONDS = 900
+# One wake-up signal per event loop, so a queued job only wakes the worker
+# running on the loop that queued it.
+_work_queued: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Event] = (
+    weakref.WeakKeyDictionary()
+)
 _LEASE_SECONDS = 900
 # A run that reads the nonprofit register and its IRS returns takes 10 to 20
 # minutes, longer than one lease. Renewing well inside the lease keeps another
@@ -75,6 +87,51 @@ async def stop_job_worker() -> None:
     logger.info("Discovery job worker stopped")
 
 
+def _work_queued_event() -> asyncio.Event:
+    """Return the running loop's wake-up signal, creating it on first use."""
+    loop = asyncio.get_running_loop()
+    event = _work_queued.get(loop)
+    if event is None:
+        event = asyncio.Event()
+        _work_queued[loop] = event
+    return event
+
+
+def notify_job_queued() -> None:
+    """Wake this process's worker because a job was just queued."""
+    _work_queued_event().set()
+
+
+def _next_idle_wait(seconds: float) -> float:
+    """Return the next empty-poll wait: double the last, up to the ceiling.
+
+    Parameters
+    ----------
+    seconds : float
+        The wait just used.
+
+    Returns
+    -------
+    float
+        The wait to use after another empty poll.
+    """
+    return min(seconds * 2, _IDLE_WAIT_MAX_SECONDS)
+
+
+async def _wait_for_work(seconds: float) -> None:
+    """Wait until a job is queued in this process or ``seconds`` pass.
+
+    Parameters
+    ----------
+    seconds : float
+        The longest time to wait before polling again.
+    """
+    event = _work_queued_event()
+    with contextlib.suppress(TimeoutError):
+        await asyncio.wait_for(event.wait(), timeout=seconds)
+    event.clear()
+
+
 async def _worker_loop(
     database_url: str,
     *,
@@ -91,6 +148,7 @@ async def _worker_loop(
         anthropic_api_key=anthropic_api_key,
     )
 
+    idle_wait: float = _POLL_INTERVAL_SECONDS
     while True:
         try:
             conn = await get_db_connection(database_url, backend=database_backend)
@@ -106,8 +164,11 @@ async def _worker_loop(
                 )
                 if job is None:
                     await conn.close()
-                    await asyncio.sleep(_POLL_INTERVAL_SECONDS)
+                    await _wait_for_work(idle_wait)
+                    idle_wait = _next_idle_wait(idle_wait)
                     continue
+
+                idle_wait = _POLL_INTERVAL_SECONDS
 
                 logger.info("Claimed job %s for run %s", job.id, job.run_id)
 

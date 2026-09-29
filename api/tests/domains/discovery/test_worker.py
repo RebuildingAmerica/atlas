@@ -99,27 +99,27 @@ class TestWorkerLifecycle:
 
 class TestWorkerExecution:
     @pytest.mark.asyncio
-    async def test_worker_loop_continues_when_no_job_is_claimed(
+    async def test_worker_loop_backs_off_while_no_job_is_waiting(
         self,
         db_url: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """An empty claim cycle should sleep and then keep polling."""
-        claim_results = [None, None]
-        sleep_calls = 0
+        """Empty polls wait longer each time so an idle database can suspend."""
+        from atlas.domains.discovery import worker as worker_module
+
+        waits: list[float] = []
 
         async def fake_claim_next(_conn: object, **_kwargs: object) -> object | None:
-            return claim_results.pop(0)
+            return None
 
-        async def fake_sleep(_seconds: float) -> None:
-            nonlocal sleep_calls
-            sleep_calls += 1
-            if sleep_calls == 2:
+        async def fake_wait_for_work(seconds: float) -> None:
+            waits.append(seconds)
+            if len(waits) == 4:
                 raise asyncio.CancelledError
 
         monkeypatch.setattr(DiscoveryJobCRUD, "reap_orphans", AsyncMock(return_value=0))
         monkeypatch.setattr(DiscoveryJobCRUD, "claim_next", fake_claim_next)
-        monkeypatch.setattr("atlas.domains.discovery.worker.asyncio.sleep", fake_sleep)
+        monkeypatch.setattr(worker_module, "_wait_for_work", fake_wait_for_work)
 
         with pytest.raises(asyncio.CancelledError):
             await _worker_loop(
@@ -130,6 +130,34 @@ class TestWorkerExecution:
                     anthropic_api_key="test",
                 ),
             )
+
+        assert waits == [10, 20, 40, 80]
+
+    def test_idle_wait_doubles_up_to_a_ceiling_past_the_database_suspend_window(self) -> None:
+        from atlas.domains.discovery import worker as worker_module
+
+        assert worker_module._next_idle_wait(10) == 20
+        assert worker_module._next_idle_wait(600) == worker_module._IDLE_WAIT_MAX_SECONDS
+        assert worker_module._IDLE_WAIT_MAX_SECONDS > 5 * 60
+
+    @pytest.mark.asyncio
+    async def test_queued_job_wakes_an_idle_worker_immediately(self) -> None:
+        from atlas.domains.discovery import worker as worker_module
+
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        waiting = asyncio.create_task(worker_module._wait_for_work(60))
+        await asyncio.sleep(0)
+        worker_module.notify_job_queued()
+        await asyncio.wait_for(waiting, timeout=2)
+
+        assert loop.time() - started < 2
+
+    @pytest.mark.asyncio
+    async def test_idle_wait_returns_after_its_timeout_without_a_job(self) -> None:
+        from atlas.domains.discovery import worker as worker_module
+
+        await asyncio.wait_for(worker_module._wait_for_work(0.01), timeout=2)
 
     @pytest.mark.asyncio
     async def test_worker_claims_and_fails_job_with_retry(

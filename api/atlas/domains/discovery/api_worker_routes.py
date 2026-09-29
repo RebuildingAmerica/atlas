@@ -27,6 +27,7 @@ from atlas.domains.discovery.schemas import (
     ScheduledRunResponse,
     ScheduledRunResult,
 )
+from atlas.domains.discovery.worker import notify_job_queued
 from atlas.models import DiscoveryRunCRUD
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import db as db_manager
@@ -107,6 +108,7 @@ async def execute_scheduled_runs(
             run_id=run_id,
             idempotency_key=idempotency_key,
         )
+        notify_job_queued()
         await DiscoveryScheduleCRUD.update(
             db,
             schedule.id,

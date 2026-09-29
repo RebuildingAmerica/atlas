@@ -20,6 +20,7 @@ from atlas.domains.discovery.pipeline.runner import (
     DiscoveryPipelineJob,
     run_discovery_pipeline_for_run,
 )
+from atlas.domains.discovery.worker import notify_job_queued
 from atlas.models import DiscoveryRunCRUD
 
 if TYPE_CHECKING:
@@ -114,5 +115,6 @@ async def create_discovery_run_records(
                 payload=input_payload,
             ),
         )
+        notify_job_queued()
 
     return run
