@@ -2,8 +2,19 @@ import "@tanstack/react-start/server-only";
 
 import { z } from "zod";
 import { ensureAuthReady } from "./auth";
+import { getAuthRuntimeConfig } from "./runtime";
 import { ScoutDeviceRevokedError, registerOrTouchScoutDevice } from "./scout-devices";
 import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
+
+/** Fifteen minutes, matching OAuth access tokens; Scout refreshes through this bridge. */
+const SCOUT_TOKEN_LIFETIME_SECONDS = 15 * 60;
+
+/**
+ * What a Scout worker may do: sync its runs and lease discovery jobs. It may
+ * not write entities or read the Firehose, which the generic session token
+ * used to allow.
+ */
+const SCOUT_PERMISSIONS = { discovery: ["read", "write"] };
 
 const scoutSessionSchema = z
   .object({
@@ -60,7 +71,9 @@ async function readScoutTokenRequestBody(request: Request): Promise<ScoutTokenRe
  * Scout's device authorization flow returns a Better Auth bearer session. The
  * Python API accepts OAuth/JWT-style bearer tokens, so this bridge keeps the
  * opaque session on the app server and gives Scout a resource-server token for
- * sync calls.
+ * sync calls. The token names the worker device the user just enrolled, so the
+ * API lets it lease discovery jobs only under that worker's id, and refuses it
+ * once the owner revokes the device.
  *
  * @param request - Incoming `/api/auth/scout/token` request.
  */
@@ -100,7 +113,24 @@ export async function issueScoutTokenRequest(request: Request): Promise<Response
     throw error;
   }
 
-  const jwt = scoutJwtSchema.parse(await auth.api.getToken({ headers: request.headers }));
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const audience = getAuthRuntimeConfig().authJwtAudience;
+  const jwt = scoutJwtSchema.parse(
+    await auth.api.signJWT({
+      body: {
+        payload: {
+          ...(audience ? { aud: audience } : {}),
+          email: user.email ?? "",
+          exp: issuedAt + SCOUT_TOKEN_LIFETIME_SECONDS,
+          iat: issuedAt,
+          ...(workspaceId ? { org_id: workspaceId } : {}),
+          permissions: SCOUT_PERMISSIONS,
+          sub: user.id,
+          worker_id: workerId,
+        },
+      },
+    }),
+  );
   if (!jwt?.token) {
     return Response.json({ error: "Scout token could not be issued" }, { status: 500 });
   }

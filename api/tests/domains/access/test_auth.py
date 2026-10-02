@@ -10,6 +10,7 @@ from atlas.domains.access.dependencies import _enforce_external_api_call_quota
 from atlas.domains.access.models.usage_events import OrgUsageEventCRUD
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.platform.config import Settings
+from tests.support.app_assertions import configure_test_app_issuer, sign_app_assertion
 
 
 @pytest.mark.asyncio
@@ -19,7 +20,6 @@ async def test_protected_discovery_requires_auth_when_enabled(
 ) -> None:
     """Protected endpoints should reject anonymous access when auth is enabled."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]
 
@@ -67,22 +67,21 @@ async def test_protected_discovery_allows_local_mode_without_auth(
 
 
 @pytest.mark.asyncio
-async def test_protected_discovery_accepts_internal_actor_headers(
+async def test_protected_discovery_accepts_the_apps_signed_assertion(
     test_client: object,
     test_settings: Settings,
     test_db: object,
 ) -> None:
-    """The app server should be able to call protected API routes with trusted headers."""
+    """The app server calls protected API routes with a signed assertion for the person."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
+    configure_test_app_issuer(test_settings)
 
     response = await test_client.post(
         "/api/discovery-runs",
         headers={
-            "X-Atlas-Internal-Secret": "internal-test-secret",
-            "X-Atlas-Actor-Id": "user_123",
-            "X-Atlas-Actor-Email": "operator@example.com",
-            "X-Atlas-Organization-Id": "org_123",
+            "X-Atlas-Actor-Assertion": sign_app_assertion(
+                user_id="user_123", email="operator@example.com", org_id="org_123"
+            ),
         },
         json={
             "location_query": "Gary, IN",
@@ -105,7 +104,6 @@ async def test_protected_discovery_accepts_valid_api_key(
     """Direct API clients should be able to use API keys when auth is enabled."""
 
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
@@ -151,7 +149,6 @@ async def test_api_key_requests_stop_when_daily_plan_quota_is_exhausted(
     # Daily plan quotas exist only where there is a plan to be on.
     test_settings.managed = True
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
@@ -246,7 +243,6 @@ async def test_discovery_read_requires_matching_api_key_scope(
 ) -> None:
     """Discovery reads should reject API keys that only have write access."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
@@ -283,7 +279,6 @@ async def test_oauth_jwt_insufficient_scope_emits_step_up_challenge(
 ) -> None:
     """OAuth tokens missing a required scope must trigger the spec's step-up flow."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]
     test_settings.auth_jwt_issuer = "https://atlas.example/api/auth"
 
@@ -342,7 +337,6 @@ async def test_entity_mutation_requires_matching_api_key_scope(
 ) -> None:
     """Entity mutations should reject API keys without entity write access."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:

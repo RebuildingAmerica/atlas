@@ -22,7 +22,6 @@ async def test_require_actor_verifies_api_key_without_middleware_state(
 ) -> None:
     """Protected routes outside the limited set should still verify API keys."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
 
     async def fake_verify_api_key(
         api_key: str,
@@ -45,9 +44,6 @@ async def test_require_actor_verifies_api_key_without_middleware_state(
     actor = await require_actor(
         SimpleNamespace(headers={}),
         settings=test_settings,
-        x_atlas_internal_secret=None,
-        x_atlas_actor_id=None,
-        x_atlas_actor_email=None,
         x_api_key="atlas_test_key",
     )
 
@@ -58,9 +54,6 @@ async def test_require_actor_verifies_api_key_without_middleware_state(
         await require_actor(
             SimpleNamespace(headers={}),
             settings=test_settings,
-            x_atlas_internal_secret=None,
-            x_atlas_actor_id=None,
-            x_atlas_actor_email=None,
             x_api_key="invalid-key",
         )
 
@@ -72,7 +65,6 @@ async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
 ) -> None:
     """Protected dependencies should accept one auth scheme and reject ambiguous requests."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_jwt_issuer = "https://atlas.example"
     test_settings.auth_jwt_audience = ["atlas-api"]
     test_settings.auth_jwt_jwks_url = "https://atlas.example/jwks"
@@ -99,18 +91,12 @@ async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
         await require_actor(
             SimpleNamespace(headers={"authorization": "Bearer token-123"}),
             settings=test_settings,
-            x_atlas_internal_secret=None,
-            x_atlas_actor_id=None,
-            x_atlas_actor_email=None,
             x_api_key="atlas_test_key",
         )
 
     actor = await require_actor(
         SimpleNamespace(headers={"authorization": "Bearer token-123"}),
         settings=test_settings,
-        x_atlas_internal_secret=None,
-        x_atlas_actor_id=None,
-        x_atlas_actor_email=None,
         x_api_key=None,
     )
     assert actor.auth_type == "oauth_jwt"
@@ -130,8 +116,5 @@ async def test_require_actor_accepts_oauth_jwts_and_rejects_anonymous_requests(
         await require_actor(
             SimpleNamespace(headers={}),
             settings=test_settings,
-            x_atlas_internal_secret=None,
-            x_atlas_actor_id=None,
-            x_atlas_actor_email=None,
             x_api_key=None,
         )

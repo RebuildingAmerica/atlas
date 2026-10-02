@@ -30,7 +30,6 @@ async def test_cloud_cost_posture_requires_internal_operator(db_url: str) -> Non
             managed=True,
             database_url=db_url,
             multi_user=True,
-            auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
@@ -60,7 +59,6 @@ async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> No
             managed=True,
             database_url=db_url,
             multi_user=True,
-            auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             operator_allowed_emails=["ops@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],

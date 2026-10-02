@@ -18,15 +18,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from atlas.domains.access.api_keys import verify_api_key
 from atlas.domains.access.app_assertion import verify_app_actor_assertion
 from atlas.domains.access.jwt import verify_bearer_jwt
+from atlas.domains.access.machine import parse_machine_issuers, verify_machine_token
 from atlas.domains.access.request_state import mark_api_key_verification
 from atlas.platform.http.anonymous_rate_limit_support import (
     _ACTOR_ASSERTION_HEADER,
-    _ACTOR_EMAIL_HEADER,
-    _ACTOR_ID_HEADER,
     _API_KEY_CACHE_TTL_SECONDS,
     _CLIENT_IP_HEADER,
     _EXEMPT_PATHS,
-    _INTERNAL_SECRET_HEADER,
     _LIMITED_EXACT_PATHS,
     _LIMITED_PATH_PREFIXES,
     _MAX_API_KEY_CACHE_ENTRIES,
@@ -225,12 +223,27 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         )
         if payload is not None:
             return True
+        if self._is_trusted_machine(authorization):
+            return True
 
         self._prune_bearer_cache(now)
         self._bearer_cache[cache_key] = _InvalidBearerCacheEntry(
             expires_at=now + _API_KEY_CACHE_TTL_SECONDS,
         )
         return False
+
+    def _is_trusted_machine(self, authorization: str) -> bool:
+        """Return whether a bearer credential is one of the declared machine credentials.
+
+        Cloud Scheduler and the Firehose bus authenticate with their own
+        credentials, so their calls must not spend, or be refused by, the
+        buckets meant for invalid customer tokens.
+        """
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token.strip():
+            return False
+        issuers = parse_machine_issuers(self._settings.machine_trusted_issuers)
+        return verify_machine_token(token.strip(), issuers) is not None
 
     def _credential_kind(self, request: Request) -> str:
         has_api_key = bool(request.headers.get("x-api-key"))
@@ -311,26 +324,19 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
             del self._bearer_cache[cache_key]
 
     def _has_trusted_internal_actor(self, request: Request) -> bool:
+        """Return whether the Atlas app signed this request for a signed-in person."""
         assertion = request.headers.get(_ACTOR_ASSERTION_HEADER)
-        if assertion is not None:
-            try:
-                verify_app_actor_assertion(
-                    assertion,
-                    issuer=self._settings.auth_jwt_issuer,
-                    jwks_url=self._settings.auth_jwt_jwks_url,
-                )
-            except HTTPException:
-                return False
-            return True
-        configured_secret = self._settings.auth_internal_secret
-        supplied_secret = request.headers.get(_INTERNAL_SECRET_HEADER)
-        if not configured_secret or not supplied_secret:
+        if assertion is None:
             return False
-        if not compare_digest(supplied_secret, configured_secret):
+        try:
+            verify_app_actor_assertion(
+                assertion,
+                issuer=self._settings.auth_jwt_issuer,
+                jwks_url=self._settings.auth_jwt_jwks_url,
+            )
+        except HTTPException:
             return False
-        return bool(
-            request.headers.get(_ACTOR_ID_HEADER) and request.headers.get(_ACTOR_EMAIL_HEADER)
-        )
+        return True
 
     def _client_key(self, request: Request) -> str:
         signed_client_ip = self._signed_proxy_client_ip(request)

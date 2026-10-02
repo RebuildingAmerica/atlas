@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sys
 from collections import deque
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ from tests.support.anonymous_rate_limit import (
     MINUTE_SECONDS,
     _settings,
 )
+from tests.support.app_assertions import TEST_APP_ORIGIN, sign_app_assertion
 
 if TYPE_CHECKING:
     from atlas.domains.access import ApiKeyPrincipal
@@ -363,21 +365,51 @@ async def test_has_valid_api_key_logs_and_handles_lookup_errors(
 
 
 @pytest.mark.asyncio
-async def test_authenticated_internal_actor_bypasses_anonymous_limit_checks(
+async def test_a_signed_app_request_is_recognized_before_anonymous_billing(
     db_url: str,
 ) -> None:
-    """Trusted app-to-API traffic should be recognized before anonymous billing."""
-    settings = _settings(db_url)
+    """Traffic the app signed for a person is authenticated, not anonymous."""
+    settings = _settings(db_url, auth_jwt_issuer=TEST_APP_ORIGIN)
     middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=settings)
     request = SimpleNamespace(
         headers={
-            "x-atlas-actor-email": "operator@atlas.test",
-            "x-atlas-actor-id": "user-123",
-            "x-atlas-internal-secret": "internal-test-secret",
+            "x-atlas-actor-assertion": sign_app_assertion(
+                user_id="user-123", email="operator@atlas.test"
+            ),
         }
     )
 
     assert await middleware._is_authenticated_request(request) is True  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_a_trusted_machine_credential_is_recognized_before_anonymous_billing(
+    db_url: str,
+) -> None:
+    """Cloud Scheduler and the Firehose bus must not trip the invalid-token buckets."""
+    key = "machine-test-key-" + "m" * 40  # pragma: allowlist secret
+    settings = _settings(
+        db_url,
+        machine_trusted_issuers=json.dumps(
+            [
+                {
+                    "kind": "static_key",
+                    "name": "cron",
+                    "key_sha256": hashlib.sha256(key.encode()).hexdigest(),
+                    "actions": ["machine.runs.trigger_scheduled"],
+                }
+            ]
+        ),
+    )
+    middleware = AnonymousRateLimitMiddleware(app=AsyncMock(), settings=settings)
+
+    trusted = SimpleNamespace(headers={"authorization": f"Bearer {key}"})
+    untrusted = SimpleNamespace(headers={"authorization": "Bearer not-a-machine"})
+    not_bearer = SimpleNamespace(headers={"authorization": f"Basic {key}"})
+
+    assert await middleware._is_authenticated_request(trusted) is True  # noqa: SLF001
+    assert await middleware._is_authenticated_request(untrusted) is False  # noqa: SLF001
+    assert await middleware._is_authenticated_request(not_bearer) is False  # noqa: SLF001
 
 
 def test_client_key_falls_back_to_direct_host_when_forwarded_headers_fail(db_url: str) -> None:

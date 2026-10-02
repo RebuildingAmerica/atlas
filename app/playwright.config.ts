@@ -138,7 +138,6 @@ export default defineConfig({
         ...baseWebServerEnv,
         ANTHROPIC_API_KEY: "e2e-test-key",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
-        ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_AUTH_CALLBACK_SECRET: e2eCallbackSecret,
         ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
         ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,

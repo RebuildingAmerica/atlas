@@ -93,7 +93,6 @@ jobs:
           database-url: ${{ secrets.DATABASE_URL }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           search-api-key: ${{ secrets.SEARCH_API_KEY }}
-          auth-internal-secret: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
           auth-callback-secret: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
           edge-origin-secret: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           auth-api-key-introspection-url: ${{ secrets.ATLAS_AUTH_API_KEY_INTROSPECTION_URL }}

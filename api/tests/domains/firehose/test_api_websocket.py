@@ -76,39 +76,17 @@ def test_firehose_session_socket_allows_missing_subprotocol() -> None:
 
 
 @pytest.mark.asyncio
-async def test_firehose_session_socket_accepts_internal_actor(test_settings: Settings) -> None:
-    """Internal trusted callers should be able to consume workspace Firehose sockets."""
+async def test_firehose_session_socket_ignores_the_retired_shared_secret(
+    test_settings: Settings,
+) -> None:
+    """The old shared-secret headers open no Firehose stream; a key or token is required."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     websocket = _FakeWebSocket(
         {
             "X-Atlas-Internal-Secret": "internal-test-secret",
             "X-Atlas-Actor-ID": "user_123",
             "X-Atlas-Actor-Email": "operator@example.com",
             "X-Atlas-Organization-ID": "org_123",
-        }
-    )
-
-    actor = await firehose_api._websocket_actor(websocket, test_settings)  # noqa: SLF001
-
-    assert actor.org_id == "org_123"
-    assert actor.user_id == "user_123"
-    assert actor.auth_type == "internal"
-    assert actor.api_key_id is None
-
-
-@pytest.mark.asyncio
-async def test_firehose_session_socket_rejects_internal_actor_without_org(
-    test_settings: Settings,
-) -> None:
-    """Trusted Firehose socket callers must still be scoped to an organization."""
-    test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
-    websocket = _FakeWebSocket(
-        {
-            "X-Atlas-Internal-Secret": "internal-test-secret",
-            "X-Atlas-Actor-ID": "user_123",
-            "X-Atlas-Actor-Email": "operator@example.com",
         }
     )
 
@@ -288,7 +266,6 @@ async def test_firehose_requires_firehose_read_scope_for_api_keys(
 ) -> None:
     """API keys need the Firehose read scope and are counted against their workspace."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
@@ -333,7 +310,6 @@ async def test_firehose_rejects_api_keys_without_firehose_read_scope(
 ) -> None:
     """A discovery API key should not read Firehose by accident."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
 
     async def fake_verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
@@ -369,7 +345,6 @@ async def test_firehose_requires_auth_when_auth_is_enabled(
 ) -> None:
     """Firehose is not anonymous when Atlas auth is enabled."""
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "internal-test-secret"
     test_settings.auth_api_key_introspection_url = "http://auth.test/internal/api-keys/introspect"
     test_settings.auth_jwt_audience = ["https://atlas.example/api"]
 

@@ -2,8 +2,8 @@
 
 from .actions import Action
 from .audit import AuditEntry, AuditLogCRUD, AuditRecord, Plane, actor_plane
-from .dependency import ActionGuard, require_action
-from .policy import Decision, authorize, is_granted
+from .dependency import ActionGuard, MachineActionGuard, require_action, require_machine_action
+from .policy import Decision, authorize, authorize_machine, is_granted
 
 __all__ = [
     "Action",
@@ -12,9 +12,12 @@ __all__ = [
     "AuditLogCRUD",
     "AuditRecord",
     "Decision",
+    "MachineActionGuard",
     "Plane",
     "actor_plane",
     "authorize",
+    "authorize_machine",
     "is_granted",
     "require_action",
+    "require_machine_action",
 ]

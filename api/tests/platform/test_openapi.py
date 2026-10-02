@@ -156,10 +156,6 @@ async def test_openapi_uses_explicit_metadata_for_health_and_access_routes(
         "organization_id",
         "status",
         "segment",
-        "x-atlas-internal-secret",
-        "x-atlas-actor-id",
-        "x-atlas-actor-email",
-        "x-atlas-organization-id",
         "x-api-key",
     ]
     assert "Args:" not in list_verifications_operation["description"]
@@ -168,10 +164,6 @@ async def test_openapi_uses_explicit_metadata_for_health_and_access_routes(
     assert update_verification_operation["tags"] == ["access"]
     assert [parameter["name"] for parameter in update_verification_operation["parameters"]] == [
         "verification_id",
-        "x-atlas-internal-secret",
-        "x-atlas-actor-id",
-        "x-atlas-actor-email",
-        "x-atlas-organization-id",
         "x-api-key",
     ]
     assert "Args:" not in update_verification_operation["description"]

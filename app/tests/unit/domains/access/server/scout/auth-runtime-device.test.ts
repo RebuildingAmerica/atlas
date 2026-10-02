@@ -141,7 +141,7 @@ describe("OAuth device auth runtime wiring", () => {
     expect(options?.rateLimit?.customRules?.["/device/token"]).toBe(false);
   });
 
-  it("mints API JWTs with Atlas discovery write permissions", async () => {
+  it("mints generic session JWTs with no API permissions", async () => {
     mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
     const mod = await import("@/domains/access/server/auth");
     await mod.getAuth();
@@ -159,14 +159,12 @@ describe("OAuth device auth runtime wiring", () => {
       user: { id: "user-123", email: "operator@atlas.test" },
     });
 
+    // Any signed-in browser can fetch this token from /api/auth/token, so it
+    // carries no scopes. Scout gets a worker-bound token from its own bridge.
     expect(payload).toEqual({
       aud: "https://atlas.test/api",
       email: "operator@atlas.test",
-      permissions: {
-        discovery: ["read", "write"],
-        entities: ["write"],
-        firehose: ["read"],
-      },
+      permissions: {},
       org_id: "org-123",
     });
   });
