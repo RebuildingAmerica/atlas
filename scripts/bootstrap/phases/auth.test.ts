@@ -36,21 +36,30 @@ void describe("bootstrap auth identity parsing", () => {
     );
   });
 
-  void it("shows the Cloudflare account table identity", () => {
+  void it("shows the Cloudflare person and every account cf can act on", () => {
     assert.equal(
       parseAuthIdentity(
-        "deploy-wrangler",
-        `
- ⛅️ wrangler 4.107.1
-────────────────────
-┌──────────────┬──────────────────────────────────┐
-│ Account Name │ Account ID                       │
-├──────────────┼──────────────────────────────────┤
-│ Atlas Cloud  │ 0123456789abcdef0123456789abcdef │
-└──────────────┴──────────────────────────────────┘
-`,
+        "deploy-cf",
+        JSON.stringify({
+          accounts: [
+            { id: "0123456789abcdef0123456789abcdef", name: "Atlas Cloud" },
+            { id: "fedcba9876543210fedcba9876543210", name: "Side Project" },
+          ],
+          authenticated: true,
+          email: "operator@example.test",
+        }),
       ),
-      "Atlas Cloud / 0123456789abcdef0123456789abcdef",
+      "operator@example.test / Atlas Cloud, Side Project",
+    );
+  });
+
+  void it("shows only the email when cf lists no accounts", () => {
+    assert.equal(
+      parseAuthIdentity(
+        "deploy-cf",
+        JSON.stringify({ email: "operator@example.test" }),
+      ),
+      "operator@example.test",
     );
   });
 

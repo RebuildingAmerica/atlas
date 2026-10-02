@@ -38,6 +38,14 @@ navigation.
 
 → [Read: Admin Portal Standards](./admin-portal.md)
 
+### Internal Apps
+
+How apps only Rebuilding America operators use are hosted on Cloudflare Workers,
+gated by Cloudflare Access with Google Workspace sign-in, verified again inside
+the app, and authorized by the app's own policy.
+
+→ [Read: Internal Apps](./internal-apps.md)
+
 ### Documentation (Diátaxis)
 
 How we organize and write docs. Every page is one of four modes — tutorial,
@@ -124,6 +132,7 @@ Queries target different source types (news, nonprofits, etc).
 | Design a REST endpoint           | [API Conventions](./api-conventions.md)        |
 | Keep cloud costs bounded         | [Cloud Costs](./cloud-costs.md)                |
 | Organize admin portal pages      | [Admin Portal](./admin-portal.md)              |
+| Gate an operator-only app        | [Internal Apps](./internal-apps.md)            |
 | Write or organize documentation  | [Documentation (Diátaxis)](./documentation.md) |
 
 ---

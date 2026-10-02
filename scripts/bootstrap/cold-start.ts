@@ -27,6 +27,8 @@
  * | `pnpm bootstrap --api-domain --target staging`            | Ensures the staging atlas-api Cloud Run and Cloudflare CNAME. |
  * | `pnpm bootstrap --api-edge`                               | Enables Cloudflare proxy and API rate limits. |
  * | `pnpm bootstrap --api-edge --target staging`              | Enables staging Cloudflare proxy and API rate limits. |
+ * | `pnpm bootstrap --access-gate`                            | Puts Cloudflare Access (Google Workspace) in front of the platform admin. |
+ * | `pnpm bootstrap --access-gate --doctor`                   | Reports how the live Access gate differs, changing nothing. |
  * | `pnpm bootstrap --target prod --live`                     | Runs explicit production setup. |
  */
 
@@ -96,7 +98,8 @@ async function main(): Promise<void> {
     !args.mcpRegistryOnly &&
     !args.ciCacheOnly &&
     !args.apiDomainOnly &&
-    !args.apiEdgeOnly
+    !args.apiEdgeOnly &&
+    !args.accessGateOnly
   ) {
     note(
       renderSetupGuide(args.localOnly ? "local" : args.stripeTarget),
