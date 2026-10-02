@@ -11,7 +11,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
-import probablepeople
 from atlas_discovery_engine import FilingPosition, NameField
 from atlas_shared import PageContent, SourceType
 from nameparser import HumanName
@@ -151,6 +150,11 @@ def _type_conflict(officer: FilingOfficer) -> bool:
     """
     if FilingPosition.INSTITUTIONAL_TRUSTEE in officer.positions:
         return True
+    # Imported here: loading the model's ratio tables takes minutes under the
+    # coverage tracer, which stalled every test process at startup, and only
+    # register resolution needs it.
+    import probablepeople
+
     try:
         _, kind = probablepeople.tag(officer.name)
     except probablepeople.RepeatedLabelError:
