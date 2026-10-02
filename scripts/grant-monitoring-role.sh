@@ -54,10 +54,12 @@ if [ -z "$SERVICE_ACCOUNT" ]; then
   exit 1
 fi
 
-step 4 "Grant the two roles the alert needs"
-# monitoring.editor covers the policy and the channel; logging.viewer lets a
-# later job read back what fired.
-for role in roles/monitoring.editor roles/logging.viewer; do
+step 4 "Grant the three roles the alerts need"
+# monitoring.editor covers the policies and the channel. Each log-based alert
+# also owns a Cloud Logging notification rule, and only logging.configWriter
+# may create one; without it Monitoring refuses the policy with a 403.
+# logging.viewer lets a later job read back what fired.
+for role in roles/monitoring.editor roles/logging.configWriter roles/logging.viewer; do
   echo "Granting $role ..."
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:$SERVICE_ACCOUNT" \
@@ -65,7 +67,7 @@ for role in roles/monitoring.editor roles/logging.viewer; do
     --condition=None \
     --quiet >/dev/null
 done
-echo "Both roles granted."
+echo "All three roles granted."
 
 step 5 "Choose where the alerts go"
 read -r -p "Email address to notify on a production error: " ALERT_EMAIL
@@ -82,6 +84,6 @@ RUN_ID="$(gh run list --workflow=error-alerting.yml --limit 1 --json databaseId 
 gh run watch "$RUN_ID" --exit-status
 
 step 7 "Confirm"
-echo "Alert policy 'Atlas API errors' now notifies $ALERT_EMAIL."
+echo "Alert policies 'Atlas API errors' and 'Atlas visitor reports' now notify $ALERT_EMAIL."
 echo "Google sends a confirmation email to that address. Accept it, or the"
 echo "channel stays unverified and delivers nothing."

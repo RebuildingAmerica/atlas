@@ -45,7 +45,7 @@ jobs:
           # gcloud has no test-iam-permissions command, so ask Resource
           # Manager directly which of these permissions the caller holds.
           token="$(gcloud auth print-access-token)"
-          required='["monitoring.alertPolicies.create","monitoring.alertPolicies.list","monitoring.notificationChannels.create","logging.logEntries.list"]'
+          required='["monitoring.alertPolicies.create","monitoring.alertPolicies.list","monitoring.notificationChannels.create","logging.notificationRules.create","logging.logEntries.list"]'
           held="$(curl -sS -X POST \
             "https://cloudresourcemanager.googleapis.com/v1/projects/${GCP_PROJECT_ID}:testIamPermissions" \
             -H "Authorization: Bearer $token" -H "Content-Type: application/json" \
@@ -77,12 +77,21 @@ jobs:
           token="$(gcloud auth print-access-token)"
           base="https://monitoring.googleapis.com/v3/projects/$GCP_PROJECT_ID"
 
+          # A refusal prints Google's own reason, which names the missing
+          # permission or the field it rejected, instead of a bare status.
           api() {
-            local method="$1" url="$2"
+            local method="$1" url="$2" response status
             shift 2
-            curl -sS --fail-with-body -X "$method" "$url" \
+            response="$(curl -sS -w '\n%{http_code}' -X "$method" "$url" \
               -H "Authorization: Bearer $token" \
-              -H "Content-Type: application/json" "$@"
+              -H "Content-Type: application/json" "$@")"
+            status="${response##*$'\n'}"
+            response="${response%$'\n'*}"
+            if [ "$status" -ge 300 ]; then
+              echo "::error title=Cloud Monitoring refused $method::HTTP $status $(jq -c '.error // .' <<<"$response")" >&2
+              return 1
+            fi
+            printf '%s\n' "$response"
           }
 
           channel="$(api GET "$base/notificationChannels" \
