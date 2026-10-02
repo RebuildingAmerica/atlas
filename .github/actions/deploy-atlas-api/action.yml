@@ -37,9 +37,6 @@ inputs:
     description: Search provider API key for discovery.
     required: false
     default: ""
-  auth-internal-secret:
-    description: Shared app/API internal auth secret.
-    required: true
   auth-callback-secret:
     description: Secret the API presents as X-Atlas-Callback-Secret when it calls back into the app for membership checks and API-key introspection. The app must hold the same value.
     required: true
@@ -101,14 +98,13 @@ runs:
       shell: bash
       env:
         ENVIRONMENT_NAME: ${{ inputs.environment-name }}
-        ATLAS_AUTH_INTERNAL_SECRET: ${{ inputs.auth-internal-secret }}
         ATLAS_AUTH_CALLBACK_SECRET: ${{ inputs.auth-callback-secret }}
         ATLAS_EDGE_ORIGIN_SECRET: ${{ inputs.edge-origin-secret }}
       run: |
         set -euo pipefail
 
         missing=0
-        for key in ATLAS_AUTH_INTERNAL_SECRET ATLAS_AUTH_CALLBACK_SECRET ATLAS_EDGE_ORIGIN_SECRET; do
+        for key in ATLAS_AUTH_CALLBACK_SECRET ATLAS_EDGE_ORIGIN_SECRET; do
           if [ -z "${!key}" ]; then
             echo "::error title=Missing ${key}::${key} is empty for the ${ENVIRONMENT_NAME} deploy. Set it in the GitHub \"${ENVIRONMENT_NAME}\" Environment secrets (pnpm bootstrap --infra uploads it from the env files) and run the deploy again."
             missing=1
@@ -181,6 +177,42 @@ runs:
           echo "atlas-api-audience=${api_audience}"
         } >> "${GITHUB_OUTPUT}"
 
+    # The API trusts no machine unless it is declared here. Cloud Scheduler
+    # signs each nightly call with a Google ID token for the atlas-scheduler
+    # service account and this fixed audience; the API accepts that token for
+    # scheduled discovery and nothing else. The audience is a plain string, so
+    # it does not depend on the run.app URL the deploy is about to create.
+    - name: Declare trusted machine credentials
+      id: machine-issuers
+      shell: bash
+      env:
+        DEPLOY_SERVICE_ACCOUNT: ${{ inputs.service-account }}
+        ATLAS_PUBLIC_URL: ${{ inputs.atlas-public-url }}
+        SCHEDULER_JOB_NAME: ${{ inputs.scheduler-job-name }}
+      run: |
+        set -euo pipefail
+
+        project_id="${DEPLOY_SERVICE_ACCOUNT#*@}"
+        project_id="${project_id%.iam.gserviceaccount.com}"
+        scheduler_sa="atlas-scheduler@${project_id}.iam.gserviceaccount.com"
+        scheduler_audience="${ATLAS_PUBLIC_URL%/}/api/discovery-runs/scheduled"
+
+        if [ -z "${SCHEDULER_JOB_NAME}" ]; then
+          issuers='[]'
+        else
+          issuers="$(jq -cn \
+            --arg sa "${scheduler_sa}" \
+            --arg aud "${scheduler_audience}" \
+            '[{kind: "google_oidc", name: "cloud-scheduler", service_account: $sa, audience: $aud, actions: ["machine.runs.trigger_scheduled"]}]')"
+        fi
+
+        # deploy-cloudrun splits env_vars on commas unless they are escaped.
+        {
+          echo "issuers=${issuers//,/\\,}"
+          echo "scheduler-service-account=${scheduler_sa}"
+          echo "scheduler-audience=${scheduler_audience}"
+        } >> "${GITHUB_OUTPUT}"
+
     - name: Deploy ${{ inputs.service-name }}
       uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
       with:
@@ -200,7 +232,7 @@ runs:
           --timeout=900
           --concurrency=8
           --port=8000
-          --remove-env-vars=ATLAS_AUTH_ALLOWED_EMAILS
+          --remove-env-vars=ATLAS_AUTH_ALLOWED_EMAILS,ATLAS_AUTH_INTERNAL_SECRET
         env_vars: |
           ATLAS_MANAGED=true
           ATLAS_MULTI_USER=true
@@ -212,8 +244,8 @@ runs:
           SEARCH_API_KEY=${{ inputs.search-api-key }}
           DISCOVERY_REGISTRY_MAX_ORGANIZATIONS=250
           DISCOVERY_REGISTRY_MAX_PEOPLE=500
-          ATLAS_AUTH_INTERNAL_SECRET=${{ inputs.auth-internal-secret }}
           ATLAS_AUTH_CALLBACK_SECRET=${{ inputs.auth-callback-secret }}
+          ATLAS_MACHINE_TRUSTED_ISSUERS=${{ steps.machine-issuers.outputs.issuers }}
           ATLAS_EDGE_ORIGIN_SECRET=${{ inputs.edge-origin-secret }}
           ATLAS_AUTH_API_KEY_INTROSPECTION_URL=${{ steps.hosted-auth.outputs.auth-api-key-introspection-url }}
           ATLAS_AUTH_MEMBERSHIP_URL=${{ steps.hosted-auth.outputs.auth-membership-url }}
@@ -245,9 +277,10 @@ runs:
       shell: bash
       env:
         API_URL: ${{ steps.api-url.outputs.url }}
-        ATLAS_AUTH_INTERNAL_SECRET: ${{ inputs.auth-internal-secret }}
         GCP_REGION: ${{ inputs.gcp-region }}
         JOB_NAME: ${{ inputs.scheduler-job-name }}
+        SCHEDULER_SERVICE_ACCOUNT: ${{ steps.machine-issuers.outputs.scheduler-service-account }}
+        SCHEDULER_AUDIENCE: ${{ steps.machine-issuers.outputs.scheduler-audience }}
       run: node scripts/deploy/cloud-run-release.mjs ensure-scheduler
 
     - name: Run OpenStatus synthetics

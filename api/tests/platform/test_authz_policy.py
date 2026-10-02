@@ -18,6 +18,8 @@ GENERIC_REFUSAL = "This action requires Atlas staff."
 
 INSTANCE_ACTIONS = [action for action in Action if action.value.startswith("instance.")]
 PLATFORM_ACTIONS = [action for action in Action if action.value.startswith("platform.")]
+MACHINE_ACTIONS = [action for action in Action if action.value.startswith("machine.")]
+MACHINE_REFUSAL = "Only a trusted machine credential can do this."
 
 
 def _actor(
@@ -39,10 +41,24 @@ def _local_actor() -> AuthenticatedActor:
     return AuthenticatedActor(user_id="local", email="", auth_type="local", is_local=True)
 
 
-def test_every_action_is_either_an_instance_or_a_platform_operation() -> None:
+def test_every_action_is_an_instance_platform_or_machine_operation() -> None:
     assert INSTANCE_ACTIONS
     assert PLATFORM_ACTIONS
-    assert len(INSTANCE_ACTIONS) + len(PLATFORM_ACTIONS) == len(list(Action))
+    assert MACHINE_ACTIONS
+    assert len(INSTANCE_ACTIONS) + len(PLATFORM_ACTIONS) + len(MACHINE_ACTIONS) == len(list(Action))
+
+
+@pytest.mark.parametrize("action", MACHINE_ACTIONS)
+def test_no_person_ever_holds_a_machine_action(test_settings: object, action: Action) -> None:
+    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.managed = True
+
+    for actor in (_actor(), _local_actor()):
+        decision = authorize(actor, action, test_settings)
+
+        assert decision.allowed is False
+        assert decision.status_code == HTTP_FORBIDDEN
+        assert decision.detail == MACHINE_REFUSAL
 
 
 @pytest.mark.parametrize("action", INSTANCE_ACTIONS)

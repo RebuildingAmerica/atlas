@@ -95,7 +95,6 @@ const apiWebServer = {
     ANTHROPIC_API_KEY: "screenshots-test-key", // pragma: allowlist secret
     ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
     ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
-    ATLAS_AUTH_INTERNAL_SECRET: internalSecret,
     ATLAS_AUTH_CALLBACK_SECRET: callbackSecret,
     ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
     ATLAS_AUTH_MEMBERSHIP_URL: appUrl,

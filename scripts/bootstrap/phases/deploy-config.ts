@@ -14,6 +14,10 @@ import {
   type HostedDeployTarget,
 } from "../lib/hosted-target.js";
 import { isPlaceholder } from "../lib/secret.js";
+import {
+  SCHEDULED_DISCOVERY_PATH,
+  SCHEDULER_SA_NAME,
+} from "./infra-constants.js";
 
 export interface DeployConfig {
   projectId: string;
@@ -22,7 +26,6 @@ export interface DeployConfig {
   databaseUrl: string;
   anthropicApiKey: string;
   searchApiKey: string;
-  authInternalSecret: string;
   authCallbackSecret: string;
   authApiKeyIntrospectionUrl: string;
   authMembershipUrl: string;
@@ -30,13 +33,13 @@ export interface DeployConfig {
   publicUrl: string;
   authJwtAudiences: string;
   operatorAllowedEmails: string;
+  machineTrustedIssuers: string;
 }
 
 interface AtlasApiCloudRunEnvConfig {
   databaseUrl: string;
   anthropicApiKey: string;
   searchApiKey: string;
-  authInternalSecret: string;
   authCallbackSecret: string;
   authApiKeyIntrospectionUrl: string;
   authMembershipUrl: string;
@@ -44,6 +47,37 @@ interface AtlasApiCloudRunEnvConfig {
   publicUrl: string;
   authJwtAudiences: string;
   operatorAllowedEmails: string;
+  machineTrustedIssuers: string;
+}
+
+interface GoogleOidcMachineIssuer {
+  kind: "google_oidc";
+  name: string;
+  service_account: string;
+  audience: string;
+  actions: string[];
+}
+
+/**
+ * The machine issuers a hosted deploy trusts: Cloud Scheduler's account,
+ * allowed only to start the scheduled discovery run. It matches what the
+ * deploy workflow writes, so a bootstrap redeploy never drops the trust the
+ * nightly run depends on.
+ */
+export function buildHostedMachineIssuers(
+  projectId: string,
+  publicUrl: string,
+): string {
+  const issuers: GoogleOidcMachineIssuer[] = [
+    {
+      kind: "google_oidc",
+      name: "cloud-scheduler",
+      service_account: `${SCHEDULER_SA_NAME}@${projectId}.iam.gserviceaccount.com`,
+      audience: `${publicUrl.replace(/\/+$/, "")}${SCHEDULED_DISCOVERY_PATH}`,
+      actions: ["machine.runs.trigger_scheduled"],
+    },
+  ];
+  return JSON.stringify(issuers);
 }
 
 export function formatCloudRunEnvVarsFileContent(
@@ -62,7 +96,6 @@ export function buildAtlasApiCloudRunEnvVars(
     DATABASE_URL: config.databaseUrl,
     ANTHROPIC_API_KEY: config.anthropicApiKey,
     SEARCH_API_KEY: config.searchApiKey,
-    ATLAS_AUTH_INTERNAL_SECRET: config.authInternalSecret,
     ATLAS_AUTH_CALLBACK_SECRET: config.authCallbackSecret,
     ATLAS_AUTH_API_KEY_INTROSPECTION_URL: config.authApiKeyIntrospectionUrl,
     ATLAS_AUTH_MEMBERSHIP_URL: config.authMembershipUrl,
@@ -70,6 +103,7 @@ export function buildAtlasApiCloudRunEnvVars(
     ATLAS_PUBLIC_URL: config.publicUrl,
     ATLAS_AUTH_JWT_AUDIENCES: config.authJwtAudiences,
     ATLAS_OPERATOR_ALLOWED_EMAILS: config.operatorAllowedEmails,
+    ATLAS_MACHINE_TRUSTED_ISSUERS: config.machineTrustedIssuers,
   };
 }
 
@@ -97,7 +131,6 @@ export function readDeployConfig(
   const databaseUrl = resolve("DATABASE_URL");
   const anthropicApiKey = resolve("ANTHROPIC_API_KEY");
   const searchApiKey = resolve("SEARCH_API_KEY");
-  const authInternalSecret = resolve("ATLAS_AUTH_INTERNAL_SECRET");
   const authCallbackSecret = resolve("ATLAS_AUTH_CALLBACK_SECRET");
   const edgeOriginSecret = resolve("ATLAS_EDGE_ORIGIN_SECRET");
   const publicUrl =
@@ -136,11 +169,6 @@ export function readDeployConfig(
     return undefined;
   }
 
-  if (!authInternalSecret) {
-    log.error("ATLAS_AUTH_INTERNAL_SECRET not found in env files.");
-    return undefined;
-  }
-
   if (!authCallbackSecret) {
     log.error("ATLAS_AUTH_CALLBACK_SECRET not found in env files.");
     return undefined;
@@ -170,7 +198,6 @@ export function readDeployConfig(
     databaseUrl,
     anthropicApiKey,
     searchApiKey,
-    authInternalSecret,
     authCallbackSecret,
     authApiKeyIntrospectionUrl,
     authMembershipUrl,
@@ -178,6 +205,7 @@ export function readDeployConfig(
     publicUrl,
     authJwtAudiences,
     operatorAllowedEmails: resolve("ATLAS_OPERATOR_ALLOWED_EMAILS"),
+    machineTrustedIssuers: buildHostedMachineIssuers(projectId, publicUrl),
   };
 }
 

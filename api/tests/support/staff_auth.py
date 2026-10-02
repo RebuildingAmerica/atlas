@@ -10,7 +10,8 @@ from tests.support.app_assertions import configure_test_app_issuer, sign_app_ass
 if TYPE_CHECKING:
     from atlas.platform.config import Settings
 
-INTERNAL_TEST_SECRET = "internal-test-secret"  # pragma: allowlist secret
+LEGACY_SHARED_SECRET = "internal-test-secret"  # pragma: allowlist secret
+"""A value the API no longer reads; tests send it to prove it carries no authority."""
 STAFF_EMAIL = "editor@rebuildingus.org"
 VISITOR_EMAIL = "visitor@example.org"
 
@@ -66,7 +67,6 @@ def enable_staff_auth(settings: Settings) -> StaffAuthHeaders:
         passkey-ready sessions.
     """
     settings.multi_user = True
-    settings.auth_internal_secret = INTERNAL_TEST_SECRET
     settings.operator_allowed_emails = [STAFF_EMAIL]
     configure_test_app_issuer(settings)
     return StaffAuthHeaders(

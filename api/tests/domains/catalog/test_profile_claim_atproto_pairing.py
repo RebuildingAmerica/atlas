@@ -9,6 +9,7 @@ from atlas.domains.access.membership import MembershipResult
 from atlas.domains.catalog.models.atproto_identity_controls import AtprotoIdentityControlCRUD
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.models import EntryCRUD
+from tests.support.app_assertions import configure_test_app_issuer, sign_app_assertion
 
 
 async def _valid_atproto_identity(_handle: str, _did: str) -> bool:
@@ -28,7 +29,7 @@ async def test_generic_atproto_handle_links_when_workspace_domain_verifies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "test-secret"
+    configure_test_app_issuer(test_settings)
     test_settings.auth_membership_verification_url = "https://app.example"
     monkeypatch.setattr(
         "atlas.domains.catalog.api.profile_claim_atproto_helpers.verify_linked_atproto_identity",
@@ -71,10 +72,9 @@ async def test_generic_atproto_handle_links_when_workspace_domain_verifies(
     response = await test_client.post(
         f"/api/profiles/{slug}/claim",
         headers={
-            "X-Atlas-Internal-Secret": "test-secret",
-            "X-Atlas-Actor-Id": "user_1",
-            "X-Atlas-Actor-Email": "operator@example.net",
-            "X-Atlas-Organization-Id": "workspace_1",
+            "X-Atlas-Actor-Assertion": sign_app_assertion(
+                user_id="user_1", email="operator@example.net", org_id="workspace_1"
+            ),
         },
         json={
             "atproto_identity_id": identity.id,
@@ -105,7 +105,7 @@ async def test_stale_atproto_handle_does_not_link_when_workspace_domain_verifies
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "test-secret"
+    configure_test_app_issuer(test_settings)
     test_settings.auth_membership_verification_url = "https://app.example"
     verification_results = [_valid_atproto_identity, _stale_atproto_identity]
 
@@ -150,10 +150,9 @@ async def test_stale_atproto_handle_does_not_link_when_workspace_domain_verifies
     response = await test_client.post(
         f"/api/profiles/{slug}/claim",
         headers={
-            "X-Atlas-Internal-Secret": "test-secret",
-            "X-Atlas-Actor-Id": "user_1",
-            "X-Atlas-Actor-Email": "operator@example.net",
-            "X-Atlas-Organization-Id": "workspace_1",
+            "X-Atlas-Actor-Assertion": sign_app_assertion(
+                user_id="user_1", email="operator@example.net", org_id="workspace_1"
+            ),
         },
         json={
             "atproto_identity_id": identity.id,

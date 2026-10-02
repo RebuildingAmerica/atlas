@@ -22,7 +22,7 @@ from .api_keys import verify_api_key
 from .app_assertion import verify_app_actor_assertion
 from .capabilities import get_limit, resolve_capabilities
 from .challenges import build_bearer_challenge
-from .internal import build_local_actor, verify_internal_actor
+from .internal import build_local_actor
 from .jwt import verify_bearer_jwt
 from .membership import verify_org_membership
 from .models.usage_events import OrgUsageEventCRUD, OrgUsageEventRecord
@@ -162,22 +162,18 @@ def _authenticated_actor_from_api_key_principal(
     )
 
 
-async def require_actor(  # noqa: PLR0913
+async def require_actor(
     request: Request,
     settings: Settings = Depends(get_settings),
-    x_atlas_internal_secret: str | None = Header(None),
-    x_atlas_actor_id: str | None = Header(None),
-    x_atlas_actor_email: str | None = Header(None),
-    x_atlas_organization_id: str | None = Header(None),
     x_atlas_actor_assertion: str | None = Header(None, include_in_schema=False),
     x_api_key: str | None = Header(None),
 ) -> AuthenticatedActor:
-    """Require an authenticated actor unless local mode disables auth.
+    """Require an authenticated person unless local mode disables auth.
 
-    The Atlas app identifies the person it acts for with a signed, short-lived
-    ``X-Atlas-Actor-Assertion``. The shared-secret headers remain for system
-    callers that have no person behind them; they never carry a passkey-ready
-    session, so they never carry operator authority.
+    A person arrives one of three ways: the Atlas app's signed, short-lived
+    ``X-Atlas-Actor-Assertion``, an API key, or an OAuth bearer token. There is
+    no shared-secret path: machines use their own credentials on the routes
+    that accept them (see ``atlas.platform.authz.require_machine_action``).
     """
     if not settings.multi_user:
         return build_local_actor()
@@ -188,16 +184,6 @@ async def require_actor(  # noqa: PLR0913
             issuer=settings.auth_jwt_issuer,
             jwks_url=settings.auth_jwt_jwks_url,
         )
-
-    trusted_actor = verify_internal_actor(
-        settings,
-        x_atlas_internal_secret,
-        x_atlas_actor_id,
-        x_atlas_actor_email,
-        org_id=x_atlas_organization_id,
-    )
-    if trusted_actor is not None:
-        return trusted_actor
 
     authorization = request.headers.get("authorization")
     if x_api_key and authorization:
@@ -226,12 +212,16 @@ async def require_actor(  # noqa: PLR0913
     )
     if jwt_payload:
         raw_org_id = jwt_payload.get("org_id")
+        # Only the app's Scout token endpoint puts a worker id in a token, for
+        # the worker device the user enrolled; it binds the token's job leases.
+        raw_worker_id = jwt_payload.get("worker_id")
         return AuthenticatedActor(
             user_id=str(jwt_payload["sub"]),
             email=str(jwt_payload.get("email", "")),
             auth_type="oauth_jwt",
             permissions=jwt_payload.get("permissions"),  # type: ignore[arg-type]
             org_id=str(raw_org_id) if raw_org_id is not None else None,
+            worker_id=raw_worker_id if isinstance(raw_worker_id, str) and raw_worker_id else None,
         )
 
     # MCP clients use the WWW-Authenticate header to discover the auth server.

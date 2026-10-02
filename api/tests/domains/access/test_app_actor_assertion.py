@@ -124,16 +124,16 @@ async def test_the_operator_acts_through_a_signed_assertion(
 
 
 @pytest.mark.asyncio
-async def test_holding_the_shared_secret_no_longer_makes_anyone_the_operator(
+async def test_the_old_shared_secret_is_no_credential_at_all(
     test_client: object,
     test_settings: object,
 ) -> None:
-    """A leaked internal secret can no longer approve profiles or read reporter notes."""
-    from tests.support.staff_auth import INTERNAL_TEST_SECRET, STAFF_EMAIL, enable_staff_auth
+    """A leaked internal secret cannot approve profiles, read reporter notes, or sign in."""
+    from tests.support.staff_auth import LEGACY_SHARED_SECRET, STAFF_EMAIL, enable_staff_auth
 
     enable_staff_auth(test_settings)
     secret_headers = {
-        "X-Atlas-Internal-Secret": INTERNAL_TEST_SECRET,
+        "X-Atlas-Internal-Secret": LEGACY_SHARED_SECRET,
         "X-Atlas-Actor-Id": "user_editor",
         "X-Atlas-Actor-Email": STAFF_EMAIL,
         "X-Atlas-Actor-Account-Ready": "true",
@@ -142,8 +142,8 @@ async def test_holding_the_shared_secret_no_longer_makes_anyone_the_operator(
     read = await test_client.get("/api/review-queue", headers=secret_headers)
     decide = await test_client.post("/api/review-queue/missing/approve", headers=secret_headers)
 
-    assert read.status_code == HTTP_FORBIDDEN
-    assert decide.status_code == HTTP_FORBIDDEN
+    assert read.status_code == HTTP_UNAUTHORIZED
+    assert decide.status_code == HTTP_UNAUTHORIZED
 
 
 @pytest.mark.asyncio
@@ -151,7 +151,7 @@ async def test_a_bad_assertion_is_refused_rather_than_ignored(
     test_client: object,
     test_settings: object,
 ) -> None:
-    from tests.support.staff_auth import INTERNAL_TEST_SECRET, enable_staff_auth
+    from tests.support.staff_auth import LEGACY_SHARED_SECRET, enable_staff_auth
 
     enable_staff_auth(test_settings)
 
@@ -159,7 +159,7 @@ async def test_a_bad_assertion_is_refused_rather_than_ignored(
         "/api/review-queue",
         headers={
             "X-Atlas-Actor-Assertion": "forged",
-            "X-Atlas-Internal-Secret": INTERNAL_TEST_SECRET,
+            "X-Atlas-Internal-Secret": LEGACY_SHARED_SECRET,
             "X-Atlas-Actor-Id": "user_editor",
             "X-Atlas-Actor-Email": "editor@rebuildingus.org",
         },

@@ -10,6 +10,7 @@ import {
   REPO_NAME,
   REQUIRED_APIS,
   SA_NAME,
+  SCHEDULER_SA_NAME,
   SERVICE_ACCOUNT_ROLES,
 } from "./infra-constants.js";
 
@@ -213,6 +214,52 @@ export function ensureServiceAccount(
     doctorMode,
     followUpItems,
   );
+}
+
+/**
+ * Create the account Cloud Scheduler signs scheduled discovery calls as.
+ * It gets no project roles; the deploy account's project-wide
+ * `iam.serviceAccountUser` already lets the deploy workflow attach it to the
+ * scheduler job.
+ */
+export function ensureSchedulerServiceAccount(
+  projectId: string,
+  doctorMode: boolean,
+  followUpItems: string[],
+): void {
+  const email = `${SCHEDULER_SA_NAME}@${projectId}.iam.gserviceaccount.com`;
+  const createCommand =
+    `gcloud iam service-accounts create ${SCHEDULER_SA_NAME} ` +
+    `--project=${projectId} --display-name="Atlas scheduled discovery"`;
+  const checkResult = runCommand(
+    `gcloud iam service-accounts describe "${email}" --project="${projectId}" 2>/dev/null`,
+  );
+
+  if (checkResult.ok) {
+    log.success(`Scheduler service account '${email}' already exists`);
+    return;
+  }
+
+  if (doctorMode) {
+    log.warn(`Scheduler service account '${email}' does not exist`);
+    followUpItems.push(
+      `Create the scheduler service account: ${createCommand}`,
+    );
+    return;
+  }
+
+  const s = spinner();
+  s.start("Creating scheduler service account...");
+  const createResult = runCommand(`${createCommand} --quiet`);
+  if (!createResult.ok) {
+    s.stop("Failed to create scheduler service account");
+    log.error(commandOutput(createResult));
+    followUpItems.push(
+      `Create the scheduler service account: ${createCommand}`,
+    );
+    return;
+  }
+  s.stop(`Scheduler service account '${email}' created`);
 }
 
 function ensurePdsAppProvisioningSecretAccess(

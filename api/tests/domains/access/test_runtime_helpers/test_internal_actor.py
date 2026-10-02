@@ -5,51 +5,17 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 
-from atlas.domains.access.internal import build_local_actor, verify_internal_actor
+from atlas.domains.access.internal import build_local_actor
 from atlas.domains.access.permissions import has_permission, require_permission
 from atlas.domains.access.principals import AuthenticatedActor
-from atlas.platform.config import Settings
 
 
-def test_verify_internal_actor_and_local_actor_cover_success_and_validation() -> None:
-    """Trusted internal headers should build actors and reject incomplete identity."""
-    settings = Settings()
-    settings.auth_internal_secret = "internal-test-secret"
+def test_single_user_mode_runs_as_the_local_actor() -> None:
+    actor = build_local_actor()
 
-    actor = verify_internal_actor(
-        settings,
-        internal_secret="internal-test-secret",
-        actor_id="user_123",
-        actor_email="operator@example.com",
-    )
-
-    assert actor is not None
-    assert actor.auth_type == "internal"
-    assert build_local_actor().is_local is True
-
-    with pytest.raises(HTTPException, match="Trusted requests must include actor identity headers"):
-        verify_internal_actor(
-            settings,
-            internal_secret="internal-test-secret",
-            actor_id=None,
-            actor_email="operator@example.com",
-        )
-
-
-def test_shared_secret_actors_are_never_passkey_ready() -> None:
-    """A deployment credential proves no one signed in, so it never carries operator power."""
-    settings = Settings()
-    settings.auth_internal_secret = "internal-test-secret"
-
-    actor = verify_internal_actor(
-        settings,
-        internal_secret="internal-test-secret",
-        actor_id="user_123",
-        actor_email="operator@example.com",
-    )
-
-    assert actor is not None
-    assert actor.account_ready is False
+    assert actor.is_local is True
+    assert actor.auth_type == "local"
+    assert actor.org_id == "local"
 
 
 def test_permission_helpers_enforce_api_key_and_jwt_scopes() -> None:

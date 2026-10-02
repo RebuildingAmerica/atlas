@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from fastapi import status
 
 if TYPE_CHECKING:
+    from atlas.domains.access.machine import MachinePrincipal
     from atlas.domains.access.principals import AuthenticatedActor
     from atlas.platform.config import Settings
 
@@ -79,6 +80,8 @@ def authorize(actor: AuthenticatedActor, action: Action, settings: Settings) -> 
         status_code=status.HTTP_403_FORBIDDEN,
         detail=action.refusal_detail,
     )
+    if action.is_machine:
+        return refusal
     if action.is_platform:
         if not settings.managed:
             return Decision(
@@ -91,6 +94,42 @@ def authorize(actor: AuthenticatedActor, action: Action, settings: Settings) -> 
     if _is_instance_operator(actor, settings):
         return Decision(allowed=True)
     return refusal
+
+
+def authorize_machine(
+    principal: MachinePrincipal,
+    action: Action,
+    settings: Settings,
+) -> Decision:
+    """Decide whether a verified machine may perform the action.
+
+    Parameters
+    ----------
+    principal : MachinePrincipal
+        The machine the API verified.
+    action : Action
+        The operation being attempted.
+    settings : Settings
+        Runtime settings carrying the deployment profile.
+
+    Returns
+    -------
+    Decision
+        Allowed only when the machine's issuer grants exactly this action.
+        Platform actions report 404 outside a managed deployment, as they do
+        for people.
+    """
+    if action.is_platform and not settings.managed:
+        return Decision(
+            allowed=False, status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL
+        )
+    if action.value in principal.actions:
+        return Decision(allowed=True)
+    return Decision(
+        allowed=False,
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="This machine credential is not trusted for that action.",
+    )
 
 
 def is_granted(actor: AuthenticatedActor, action: Action, settings: Settings) -> bool:

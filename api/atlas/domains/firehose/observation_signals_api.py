@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
-from atlas.domains.access.internal import build_local_actor, verify_internal_actor
+from atlas.domains.access.machine import (
+    MachinePrincipal,  # noqa: TC001 - FastAPI resolves this annotation at runtime
+)
 from atlas.models import get_db_connection
+from atlas.platform.authz import Action, require_machine_action
 from atlas.platform.config import Settings, get_settings
 
 from .bus import INVALID_OBSERVATION_DELIVERY_MESSAGE, parse_observation_delivery
@@ -54,30 +57,8 @@ async def get_internal_firehose_db(
         await conn.close()
 
 
-def require_internal_firehose_request(
-    settings: Settings = Depends(get_settings),
-    x_atlas_internal_secret: str | None = Header(None),
-    x_atlas_actor_id: str | None = Header(None),
-    x_atlas_actor_email: str | None = Header(None),
-    x_atlas_organization_id: str | None = Header(None),
-) -> None:
-    """Allow local mode or trusted internal callers to create observation signals."""
-    if not settings.multi_user:
-        _ = build_local_actor()
-        return
-
-    actor = verify_internal_actor(
-        settings,
-        x_atlas_internal_secret,
-        x_atlas_actor_id,
-        x_atlas_actor_email,
-        x_atlas_organization_id,
-    )
-    if actor is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Trusted Firehose internal access is required.",
-        )
+require_firehose_delivery = require_machine_action(Action.DELIVER_FIREHOSE_OBSERVATIONS)
+"""Only the message bus, holding a trusted machine credential, delivers observations."""
 
 
 @router.post(
@@ -96,7 +77,7 @@ def require_internal_firehose_request(
 async def create_observation_signals(
     observation_id: str,
     response: Response,
-    _internal: None = Depends(require_internal_firehose_request),
+    _machine: MachinePrincipal = Depends(require_firehose_delivery),
     db: Any = Depends(get_internal_firehose_db),
 ) -> FirehoseObservationSignalsResponse:
     """Create user-facing signal resources for one stored observation."""
@@ -137,7 +118,7 @@ async def create_observation_signals(
 async def create_observation_delivery(
     payload: dict[str, Any],
     response: Response,
-    _internal: None = Depends(require_internal_firehose_request),
+    _machine: MachinePrincipal = Depends(require_firehose_delivery),
     db: Any = Depends(get_internal_firehose_db),
 ) -> FirehoseObservationSignalsResponse:
     """Accept one Pub/Sub-style observation delivery."""
@@ -152,6 +133,6 @@ async def create_observation_delivery(
     return await create_observation_signals(
         delivery.observation_id,
         response,
-        _internal,
+        _machine,
         db,
     )

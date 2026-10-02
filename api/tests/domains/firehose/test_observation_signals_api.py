@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from http import HTTPStatus
 
 import pytest
-from fastapi import HTTPException, Response
+from fastapi import Response
 
 from atlas.domains.discovery.coverage_targets import CoverageTargetCRUD
 from atlas.domains.firehose import observation_signals_api
 from atlas.domains.firehose.models import FirehoseObservationCreate, FirehoseObservationCRUD
-from atlas.domains.firehose.observation_signals_api import require_internal_firehose_request
-from atlas.platform.config import Settings
 
 
 async def _coverage_target(test_db: object) -> str:
@@ -122,47 +122,78 @@ async def test_post_observation_signals_returns_not_found_for_unknown_observatio
     assert response.json()["detail"] == "Unknown Firehose observation."
 
 
-def test_internal_firehose_request_rejects_untrusted_production_call() -> None:
-    """Production internal signal writes should require trusted caller headers."""
-    settings = Settings(
-        database_url="sqlite:///tmp/test.db",
-        multi_user=True,
-        auth_internal_secret="internal-secret",
-        auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
+BUS_KEY = "firehose-bus-test-key-" + "b" * 40  # pragma: allowlist secret
+SCHEDULER_KEY = "scheduler-test-key-" + "s" * 40  # pragma: allowlist secret
+
+
+def _trust_machines(test_settings: object) -> None:
+    test_settings.multi_user = True
+    test_settings.machine_trusted_issuers = json.dumps(
+        [
+            {
+                "kind": "static_key",
+                "name": "firehose-bus",
+                "key_sha256": hashlib.sha256(BUS_KEY.encode()).hexdigest(),
+                "actions": ["machine.firehose.deliver"],
+            },
+            {
+                "kind": "static_key",
+                "name": "scheduler",
+                "key_sha256": hashlib.sha256(SCHEDULER_KEY.encode()).hexdigest(),
+                "actions": ["machine.runs.trigger_scheduled"],
+            },
+        ]
     )
 
-    with pytest.raises(HTTPException) as exc_info:
-        require_internal_firehose_request(
-            settings=settings,
-            x_atlas_internal_secret=None,
-            x_atlas_actor_id=None,
-            x_atlas_actor_email=None,
-            x_atlas_organization_id=None,
-        )
 
-    assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
-    assert exc_info.value.detail == "Trusted Firehose internal access is required."
+@pytest.mark.asyncio
+async def test_the_message_bus_delivers_observations_with_its_machine_credential(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    _trust_machines(test_settings)
+    observation_id = await _observation(test_db)
 
-
-def test_internal_firehose_request_accepts_trusted_production_call() -> None:
-    """Trusted production callers should be allowed to deliver observation signals."""
-    settings = Settings(
-        database_url="sqlite:///tmp/test.db",
-        multi_user=True,
-        auth_internal_secret="internal-secret",
-        auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
+    response = await test_client.post(
+        f"/api/internal/firehose/observations/{observation_id}/signals",
+        headers={"Authorization": f"Bearer {BUS_KEY}"},
     )
 
-    assert (
-        require_internal_firehose_request(
-            settings=settings,
-            x_atlas_internal_secret="internal-secret",
-            x_atlas_actor_id="worker_123",
-            x_atlas_actor_email="worker@atlas.local",
-            x_atlas_organization_id="org_firehose",
-        )
-        is None
+    assert response.status_code == HTTPStatus.CREATED
+
+
+@pytest.mark.asyncio
+async def test_signal_writes_without_a_machine_credential_are_refused(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    _trust_machines(test_settings)
+    observation_id = await _observation(test_db)
+
+    response = await test_client.post(
+        f"/api/internal/firehose/observations/{observation_id}/signals"
     )
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_a_machine_trusted_for_something_else_cannot_deliver_observations(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    _trust_machines(test_settings)
+    observation_id = await _observation(test_db)
+
+    response = await test_client.post(
+        f"/api/internal/firehose/observations/{observation_id}/signals",
+        headers={"Authorization": f"Bearer {SCHEDULER_KEY}"},
+    )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 @pytest.mark.asyncio

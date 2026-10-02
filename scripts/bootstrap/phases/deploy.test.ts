@@ -7,6 +7,7 @@ import { describe, it } from "node:test";
 import { atlasApiServiceName } from "./deploy.js";
 import {
   buildAtlasApiCloudRunEnvVars,
+  buildHostedMachineIssuers,
   formatCloudRunEnvVarsFileContent,
   readDeployConfig,
 } from "./deploy-config.js";
@@ -210,7 +211,6 @@ void describe("deploy resilience", () => {
       databaseUrl: "postgresql://db.example.org/atlas",
       anthropicApiKey: "anthropic-value", // pragma: allowlist secret
       searchApiKey: "",
-      authInternalSecret: "internal-value", // pragma: allowlist secret
       authCallbackSecret: "callback-value", // pragma: allowlist secret
       authApiKeyIntrospectionUrl:
         "https://atlas.example.org/api/auth/internal/api-key",
@@ -219,11 +219,29 @@ void describe("deploy resilience", () => {
       publicUrl: "https://atlas.example.org",
       authJwtAudiences: "https://atlas.example.org/mcp",
       operatorAllowedEmails: "",
+      machineTrustedIssuers: "[]",
     });
 
-    assert.equal(envVars.ATLAS_AUTH_INTERNAL_SECRET, "internal-value");
     assert.equal(envVars.ATLAS_AUTH_CALLBACK_SECRET, "callback-value");
     assert.equal(envVars.ATLAS_EDGE_ORIGIN_SECRET, "edge-value");
+    assert.equal(envVars.ATLAS_MACHINE_TRUSTED_ISSUERS, "[]");
+    assert.equal("ATLAS_AUTH_INTERNAL_SECRET" in envVars, false);
+  });
+
+  void it("trusts only Cloud Scheduler's account to start the scheduled run", () => {
+    const issuers = JSON.parse(
+      buildHostedMachineIssuers("atlas-test", "https://atlas.example.org/"),
+    ) as unknown;
+
+    assert.deepEqual(issuers, [
+      {
+        kind: "google_oidc",
+        name: "cloud-scheduler",
+        service_account: "atlas-scheduler@atlas-test.iam.gserviceaccount.com",
+        audience: "https://atlas.example.org/api/discovery-runs/scheduled",
+        actions: ["machine.runs.trigger_scheduled"],
+      },
+    ]);
   });
 
   void it("refuses to deploy the API without a callback secret", () => {
@@ -235,7 +253,6 @@ void describe("deploy resilience", () => {
         "GCP_PROJECT_ID=atlas-test",
         "DATABASE_URL=postgresql://db.example.org/atlas",
         "ANTHROPIC_API_KEY=anthropic-value", // pragma: allowlist secret
-        "ATLAS_AUTH_INTERNAL_SECRET=internal-value",
         "ATLAS_EDGE_ORIGIN_SECRET=edge-value",
         "ATLAS_PUBLIC_URL=https://atlas.example.org",
       ];

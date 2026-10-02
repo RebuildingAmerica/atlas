@@ -7,6 +7,7 @@ from fastapi import status
 
 from atlas.domains.catalog.models.profile_claims import ProfileClaimCRUD
 from atlas.models import EntryCRUD
+from tests.support.app_assertions import configure_test_app_issuer, sign_app_assertion
 
 
 async def _assert_no_claim_side_effect(
@@ -47,16 +48,16 @@ async def test_missing_active_workspace_does_not_create_profile_claim(
     claimable_org: str,
 ) -> None:
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "test-secret"
+    configure_test_app_issuer(test_settings)
     test_settings.auth_membership_verification_url = "https://app.example"
     slug = (await EntryCRUD.get_by_id(test_db, claimable_org)).slug
 
     response = await test_client.post(
         f"/api/profiles/{slug}/claim",
         headers={
-            "X-Atlas-Internal-Secret": "test-secret",
-            "X-Atlas-Actor-Id": "user_1",
-            "X-Atlas-Actor-Email": "operator@example.net",
+            "X-Atlas-Actor-Assertion": sign_app_assertion(
+                user_id="user_1", email="operator@example.net"
+            ),
         },
         json={
             "evidence": "I manage the organization workspace.",
@@ -78,7 +79,7 @@ async def test_unknown_active_workspace_membership_does_not_create_profile_claim
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     test_settings.multi_user = True
-    test_settings.auth_internal_secret = "test-secret"
+    configure_test_app_issuer(test_settings)
     test_settings.auth_membership_verification_url = "https://app.example"
 
     async def missing_membership(
@@ -97,10 +98,9 @@ async def test_unknown_active_workspace_membership_does_not_create_profile_claim
     response = await test_client.post(
         f"/api/profiles/{slug}/claim",
         headers={
-            "X-Atlas-Internal-Secret": "test-secret",
-            "X-Atlas-Actor-Id": "user_1",
-            "X-Atlas-Actor-Email": "operator@example.net",
-            "X-Atlas-Organization-Id": "workspace_1",
+            "X-Atlas-Actor-Assertion": sign_app_assertion(
+                user_id="user_1", email="operator@example.net", org_id="workspace_1"
+            ),
         },
         json={
             "evidence": "I manage the organization workspace.",

@@ -180,33 +180,13 @@ async def test_disabled_rate_limit_and_options_requests_pass_through(db_url: str
 
 
 @pytest.mark.asyncio
-async def test_internal_app_requests_bypass_anonymous_limits(db_url: str) -> None:
-    """Trusted app-to-API actor requests should not spend anonymous buckets."""
+async def test_the_old_shared_secret_headers_spend_the_anonymous_bucket(db_url: str) -> None:
+    """The retired shared-secret headers mean nothing; the caller is an anonymous visitor."""
     settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1)
     headers = {
         "X-Atlas-Actor-Email": "operator@atlas.test",
         "X-Atlas-Actor-Id": "user-123",
         "X-Atlas-Internal-Secret": "internal-test-secret",
-    }
-
-    async for client in _client(settings):
-        responses = [await client.get(READ_PATH, headers=headers) for _ in range(3)]
-
-    assert [response.status_code for response in responses] == [
-        HTTPStatus.OK,
-        HTTPStatus.OK,
-        HTTPStatus.OK,
-    ]
-
-
-@pytest.mark.asyncio
-async def test_wrong_internal_secret_does_not_bypass_anonymous_limits(db_url: str) -> None:
-    """A forged internal actor header should still spend the anonymous bucket."""
-    settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1)
-    headers = {
-        "X-Atlas-Actor-Email": "operator@atlas.test",
-        "X-Atlas-Actor-Id": "user-123",
-        "X-Atlas-Internal-Secret": "wrong-secret",
     }
 
     async for client in _client(settings):

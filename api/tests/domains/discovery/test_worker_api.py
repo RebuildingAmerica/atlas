@@ -40,12 +40,17 @@ async def test_db() -> object:
 
 @pytest.fixture
 def actor() -> AuthenticatedActor:
-    """Return a discovery-write actor."""
+    """Return the single-user actor, which has no worker enrollment to check.
+
+    Worker binding for signed-in Scout tokens is covered in
+    test_scout_worker_binding.py; these tests cover the lease rules themselves.
+    """
     return AuthenticatedActor(
         user_id="test-user",
         email="test@example.com",
         auth_type="local",
         permissions={"discovery": ["read", "write"]},
+        is_local=True,
     )
 
 

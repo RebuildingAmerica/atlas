@@ -16,6 +16,7 @@ import {
 import {
   enableApis,
   ensureArtifactRegistry,
+  ensureSchedulerServiceAccount,
   ensureServiceAccount,
   ensureWorkloadIdentityFederation,
 } from "./infra-cloud.js";
@@ -109,6 +110,7 @@ export async function runInfraPhase(
 
   const saEmail = `${SA_NAME}@${projectId}.iam.gserviceaccount.com`;
   ensureServiceAccount(projectId, saEmail, doctorMode, followUpItems);
+  ensureSchedulerServiceAccount(projectId, doctorMode, followUpItems);
 
   const wifProvider = ensureWorkloadIdentityFederation(
     projectId,
