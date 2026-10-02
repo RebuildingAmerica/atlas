@@ -30,6 +30,7 @@ async function loadScoutDevicesModule() {
 }
 
 interface ScoutLeaseReleaseSession {
+  accountReady: boolean;
   user: {
     email: string;
     id: string;
@@ -56,7 +57,9 @@ async function releaseScoutWorkerLeases(
   const response = await fetch(releaseUrl, {
     headers: {
       Accept: "application/json",
-      ...createInternalAuthHeaders(session.user, runtime.internalSecret),
+      ...createInternalAuthHeaders(session.user, runtime.internalSecret, {
+        accountReady: session.accountReady,
+      }),
     },
     method: "POST",
   });

@@ -22,6 +22,7 @@ from atlas.domains.access.models.discount_verifications import (
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.main import create_app
 from atlas.platform.authz import Action, require_action
+from tests.support.authz_requests import guard_request
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -87,6 +88,7 @@ async def test_admin_verifications_allows_allowlisted_internal_reviewers(
                 "X-Atlas-Actor-Email": "reviewer@rebuildingus.org",
                 "X-Atlas-Actor-Id": "reviewer-user",
                 "X-Atlas-Internal-Secret": "internal-test-secret",
+                "X-Atlas-Actor-Account-Ready": "true",
             },
         )
 
@@ -124,6 +126,7 @@ async def test_admin_verifications_rejects_unlisted_internal_users(
                 "X-Atlas-Actor-Email": "member@example.org",
                 "X-Atlas-Actor-Id": "member-user",
                 "X-Atlas-Internal-Secret": "internal-test-secret",
+                "X-Atlas-Actor-Account-Ready": "true",
             },
         )
 
@@ -141,7 +144,9 @@ async def test_discount_review_dependency_refuses_local_actor() -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_action(Action.DISCOUNTS_REVIEW)(actor=actor, settings=Settings(managed=True))
+        await require_action(Action.DISCOUNTS_REVIEW)(
+            request=guard_request(), actor=actor, settings=Settings(managed=True)
+        )
 
     assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
 
@@ -157,7 +162,9 @@ async def test_discount_review_dependency_rejects_when_not_managed() -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_action(Action.DISCOUNTS_REVIEW)(actor=actor, settings=Settings(managed=False))
+        await require_action(Action.DISCOUNTS_REVIEW)(
+            request=guard_request(), actor=actor, settings=Settings(managed=False)
+        )
 
     assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
 
@@ -171,7 +178,9 @@ async def test_discount_review_dependency_rejects_non_internal_actor() -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_action(Action.DISCOUNTS_REVIEW)(actor=actor, settings=Settings(managed=True))
+        await require_action(Action.DISCOUNTS_REVIEW)(
+            request=guard_request(), actor=actor, settings=Settings(managed=True)
+        )
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "Discount review access requires Atlas staff."

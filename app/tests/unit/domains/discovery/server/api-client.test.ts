@@ -37,6 +37,7 @@ describe("api-client", () => {
 
   it("sends an authenticated request to the Atlas API", async () => {
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      accountReady: true,
       user: { email: "operator@atlas.test", id: "user_123" },
       workspace: { activeOrganization: { id: "org_123" } },
     });
@@ -54,6 +55,7 @@ describe("api-client", () => {
       expect.objectContaining({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.objectContaining returns any
         headers: expect.objectContaining({
+          "X-Atlas-Actor-Account-Ready": "true",
           "X-Atlas-Actor-Email": "operator@atlas.test",
           "X-Atlas-Actor-Id": "user_123",
           "X-Atlas-Internal-Secret": "test-secret",

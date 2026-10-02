@@ -79,6 +79,7 @@ async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> No
                 "X-Atlas-Actor-Email": "ops@rebuildingus.org",
                 "X-Atlas-Actor-Id": "ops-user",
                 "X-Atlas-Internal-Secret": "internal-test-secret",  # pragma: allowlist secret
+                "X-Atlas-Actor-Account-Ready": "true",
             },
         )
 

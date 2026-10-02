@@ -238,6 +238,7 @@ describe("scout-devices.functions", () => {
     );
     expect(releaseInit?.method).toBe("POST");
     expect(releaseInit?.headers).toMatchObject({
+      "X-Atlas-Actor-Account-Ready": "true",
       "X-Atlas-Actor-Email": "operator@atlas.test",
       "X-Atlas-Actor-Id": "user-123",
       "X-Atlas-Internal-Secret": "internal-secret",

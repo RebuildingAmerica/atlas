@@ -38,14 +38,20 @@ def _is_instance_operator(actor: AuthenticatedActor, settings: Settings) -> bool
     Returns
     -------
     bool
-        ``True`` in local single-user mode, or for an app-signed request whose
-        email is on the operator allowlist. Customer API keys and OAuth tokens
-        never qualify, because any account can mint them.
+        ``True`` in local single-user mode, or for an app-signed request from a
+        passkey-ready session whose email is on the operator allowlist. Customer
+        API keys and OAuth tokens never qualify, because any account can mint
+        them, and a magic-link-only session never qualifies, because it proves
+        control of a mailbox rather than of the operator's passkey.
     """
     if actor.is_local:
         return True
     allowed = {email.strip().lower() for email in settings.operator_allowed_emails if email.strip()}
-    return actor.auth_type == "internal" and actor.email.strip().lower() in allowed
+    return (
+        actor.auth_type == "internal"
+        and actor.account_ready
+        and actor.email.strip().lower() in allowed
+    )
 
 
 def authorize(actor: AuthenticatedActor, action: Action, settings: Settings) -> Decision:
