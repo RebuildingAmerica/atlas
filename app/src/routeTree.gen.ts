@@ -9,143 +9,124 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
-import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
-import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
-import { Route as HealthRouteImport } from './routes/health'
-import { Route as FirehoseDotrssRouteImport } from './routes/firehose[.]rss'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as WorkspaceRouteImport } from './routes/_workspace'
-import { Route as PublicRouteImport } from './routes/_public'
-import { Route as OnboardingRouteImport } from './routes/_onboarding'
 import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as PublicIndexRouteImport } from './routes/_public/index'
-import { Route as DocsSplatRouteImport } from './routes/docs/$'
-import { Route as DeviceTokenRouteImport } from './routes/device/token'
-import { Route as DeviceStatusRouteImport } from './routes/device/status'
-import { Route as DeviceDenyRouteImport } from './routes/device/deny'
-import { Route as DeviceCodeRouteImport } from './routes/device/code'
-import { Route as DeviceApproveRouteImport } from './routes/device/approve'
-import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiSplatRouteImport } from './routes/api/$'
-import { Route as WorkspaceWatchingRouteImport } from './routes/_workspace/watching'
-import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
-import { Route as WorkspaceHomeRouteImport } from './routes/_workspace/home'
-import { Route as WorkspaceFeedRouteImport } from './routes/_workspace/feed'
-import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
-import { Route as WorkspaceCheckoutCompleteRouteImport } from './routes/_workspace/checkout-complete'
-import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
-import { Route as PublicTermsRouteImport } from './routes/_public/terms'
-import { Route as PublicSecurityRouteImport } from './routes/_public/security'
-import { Route as PublicRequestDiscountRouteImport } from './routes/_public/request-discount'
-import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
-import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
-import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logout'
-import { Route as PublicMapRouteImport } from './routes/_public/map'
-import { Route as PublicFirehoseRouteImport } from './routes/_public/firehose'
-import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
-import { Route as OnboardingOnboardingRouteImport } from './routes/_onboarding/onboarding'
-import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
-import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
-import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
+import { Route as OnboardingRouteImport } from './routes/_onboarding'
+import { Route as PublicRouteImport } from './routes/_public'
+import { Route as WorkspaceRouteImport } from './routes/_workspace'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as FirehoseDotrssRouteImport } from './routes/firehose[.]rss'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as OpenapiDotjsonRouteImport } from './routes/openapi[.]json'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthDeviceRouteImport } from './routes/_auth/device'
-import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization/index'
-import { Route as WorkspaceListsIndexRouteImport } from './routes/_workspace/lists/index'
-import { Route as WorkspaceCoverageIndexRouteImport } from './routes/_workspace/coverage/index'
-import { Route as WorkspaceBriefsIndexRouteImport } from './routes/_workspace/briefs/index'
-import { Route as WorkspaceAdminIndexRouteImport } from './routes/_workspace/admin/index'
-import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
-import { Route as OnboardingOnboardingIndexRouteImport } from './routes/_onboarding/onboarding/index'
-import { Route as AuthDeviceIndexRouteImport } from './routes/_auth/device/index'
-import { Route as DotwellKnownOauthProtectedResourceIndexRouteImport } from './routes/[.]well-known/oauth-protected-resource/index'
+import { Route as AuthSetupRouteImport } from './routes/_auth/setup'
+import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
+import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
+import { Route as OnboardingOnboardingRouteImport } from './routes/_onboarding/onboarding'
+import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as PublicBrowseRouteImport } from './routes/_public/browse'
+import { Route as PublicFirehoseRouteImport } from './routes/_public/firehose'
+import { Route as PublicMapRouteImport } from './routes/_public/map'
+import { Route as PublicPostLogoutRouteImport } from './routes/_public/post-logout'
+import { Route as PublicPricingRouteImport } from './routes/_public/pricing'
+import { Route as PublicPrivacyRouteImport } from './routes/_public/privacy'
+import { Route as PublicRequestDiscountRouteImport } from './routes/_public/request-discount'
+import { Route as PublicSecurityRouteImport } from './routes/_public/security'
+import { Route as PublicTermsRouteImport } from './routes/_public/terms'
+import { Route as WorkspaceAccountRouteImport } from './routes/_workspace/account'
+import { Route as WorkspaceCheckoutCompleteRouteImport } from './routes/_workspace/checkout-complete'
+import { Route as WorkspaceDiscoveryRouteImport } from './routes/_workspace/discovery'
+import { Route as WorkspaceFeedRouteImport } from './routes/_workspace/feed'
+import { Route as WorkspaceHomeRouteImport } from './routes/_workspace/home'
+import { Route as WorkspaceOrganizationRouteImport } from './routes/_workspace/organization'
+import { Route as WorkspaceWatchingRouteImport } from './routes/_workspace/watching'
+import { Route as ApiSplatRouteImport } from './routes/api/$'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as DeviceApproveRouteImport } from './routes/device/approve'
+import { Route as DeviceCodeRouteImport } from './routes/device/code'
+import { Route as DeviceDenyRouteImport } from './routes/device/deny'
+import { Route as DeviceStatusRouteImport } from './routes/device/status'
+import { Route as DeviceTokenRouteImport } from './routes/device/token'
+import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as DotwellKnownOauthAuthorizationServerIndexRouteImport } from './routes/[.]well-known/oauth-authorization-server/index'
-import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization/sso'
-import { Route as WorkspaceManageSlugRouteImport } from './routes/_workspace/manage/$slug'
-import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists/$id'
-import { Route as WorkspaceCoverageTargetIdRouteImport } from './routes/_workspace/coverage/$targetId'
-import { Route as WorkspaceBriefsNewRouteImport } from './routes/_workspace/briefs/new'
-import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/briefs/$briefId'
-import { Route as WorkspaceAdminProfileClaimsRouteImport } from './routes/_workspace/admin/profile-claims'
-import { Route as WorkspaceAdminDiscoveryReviewsRouteImport } from './routes/_workspace/admin/discovery-reviews'
-import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
-import { Route as WorkspaceAdminCorrectionsRouteImport } from './routes/_workspace/admin/corrections'
-import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
-import { Route as PublicReportsReportIdRouteImport } from './routes/_public/reports/$reportId'
-import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
-import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
-import { Route as PublicPlacesPlaceSlugRouteImport } from './routes/_public/places/$placeSlug'
-import { Route as PublicFeedbackSlugRouteImport } from './routes/_public/feedback/$slug'
-import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries/$entryId'
-import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories/$orgId'
-import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim/$slug'
-import { Route as OnboardingOnboardingCompleteRouteImport } from './routes/_onboarding/onboarding/complete'
-import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
-import { Route as AuthDeviceApprovedRouteImport } from './routes/_auth/device/approved'
-import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_auth/accept-invitation/$invitationId'
+import { Route as DotwellKnownOauthProtectedResourceIndexRouteImport } from './routes/[.]well-known/oauth-protected-resource/index'
 import { Route as DotwellKnownOauthProtectedResourceMcpRouteImport } from './routes/[.]well-known/oauth-protected-resource/mcp'
-import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
-import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations/index'
-import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
-import { Route as ApiE2eHostedIdentityRouteImport } from './routes/api/e2e/hosted/identity'
-import { Route as ApiE2eHostedBillingInventoryRouteImport } from './routes/api/e2e/hosted/billing-inventory'
-import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
-import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/sign-in/start'
-import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
-import { Route as ApiAtprotoOauthClientMetadataDotjsonRouteImport } from './routes/api/atproto/oauth/client-metadata[.]json'
-import { Route as ApiAtprotoOauthCallbackRouteImport } from './routes/api/atproto/oauth/callback'
-import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people/$slug'
-import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations/$slug'
-import { Route as PublicProfilesInitiativesSlugRouteImport } from './routes/_public/profiles/initiatives/$slug'
-import { Route as PublicProfilesEventsSlugRouteImport } from './routes/_public/profiles/events/$slug'
-import { Route as PublicProfilesCampaignsSlugRouteImport } from './routes/_public/profiles/campaigns/$slug'
-import { Route as PublicPlacesPolitiesPlaceSlugRouteImport } from './routes/_public/places/polities/$placeSlug'
-import { Route as PublicPlacesNeighborhoodsPlaceSlugRouteImport } from './routes/_public/places/neighborhoods/$placeSlug'
-import { Route as PublicPlacesMetrosPlaceSlugRouteImport } from './routes/_public/places/metros/$placeSlug'
-import { Route as PublicPlacesDistrictsPlaceSlugRouteImport } from './routes/_public/places/districts/$placeSlug'
-import { Route as PublicPlacesCountiesPlaceSlugRouteImport } from './routes/_public/places/counties/$placeSlug'
-import { Route as PublicPlacesCitiesPlaceSlugRouteImport } from './routes/_public/places/cities/$placeSlug'
-import { Route as PublicPlacesBoroughsPlaceSlugRouteImport } from './routes/_public/places/boroughs/$placeSlug'
+import { Route as AuthAcceptInvitationInvitationIdRouteImport } from './routes/_auth/accept-invitation/$invitationId'
+import { Route as AuthDeviceIndexRouteImport } from './routes/_auth/device/index'
+import { Route as AuthDeviceApprovedRouteImport } from './routes/_auth/device/approved'
+import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
+import { Route as OnboardingOnboardingIndexRouteImport } from './routes/_onboarding/onboarding/index'
+import { Route as OnboardingOnboardingCompleteRouteImport } from './routes/_onboarding/onboarding/complete'
+import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim/$slug'
+import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories/$orgId'
+import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries/$entryId'
+import { Route as PublicFeedbackSlugRouteImport } from './routes/_public/feedback/$slug'
+import { Route as PublicPlacesPlaceSlugRouteImport } from './routes/_public/places/$placeSlug'
+import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profiles/index'
+import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
+import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
+import { Route as PublicReportsReportIdRouteImport } from './routes/_public/reports/$reportId'
+import { Route as WorkspaceAdminIndexRouteImport } from './routes/_workspace/admin/index'
+import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
+import { Route as WorkspaceAdminCorrectionsRouteImport } from './routes/_workspace/admin/corrections'
+import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
+import { Route as WorkspaceAdminDiscoveryReviewsRouteImport } from './routes/_workspace/admin/discovery-reviews'
+import { Route as WorkspaceAdminProfileClaimsRouteImport } from './routes/_workspace/admin/profile-claims'
+import { Route as WorkspaceBriefsIndexRouteImport } from './routes/_workspace/briefs/index'
+import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/briefs/$briefId'
+import { Route as WorkspaceBriefsNewRouteImport } from './routes/_workspace/briefs/new'
+import { Route as WorkspaceCoverageIndexRouteImport } from './routes/_workspace/coverage/index'
+import { Route as WorkspaceCoverageTargetIdRouteImport } from './routes/_workspace/coverage/$targetId'
+import { Route as WorkspaceListsIndexRouteImport } from './routes/_workspace/lists/index'
+import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists/$id'
+import { Route as WorkspaceManageSlugRouteImport } from './routes/_workspace/manage/$slug'
+import { Route as WorkspaceOrganizationIndexRouteImport } from './routes/_workspace/organization/index'
+import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization/sso'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
+import { Route as PublicPlacesBoroughsPlaceSlugRouteImport } from './routes/_public/places/boroughs/$placeSlug'
+import { Route as PublicPlacesCitiesPlaceSlugRouteImport } from './routes/_public/places/cities/$placeSlug'
+import { Route as PublicPlacesCountiesPlaceSlugRouteImport } from './routes/_public/places/counties/$placeSlug'
+import { Route as PublicPlacesDistrictsPlaceSlugRouteImport } from './routes/_public/places/districts/$placeSlug'
+import { Route as PublicPlacesMetrosPlaceSlugRouteImport } from './routes/_public/places/metros/$placeSlug'
+import { Route as PublicPlacesNeighborhoodsPlaceSlugRouteImport } from './routes/_public/places/neighborhoods/$placeSlug'
+import { Route as PublicPlacesPolitiesPlaceSlugRouteImport } from './routes/_public/places/polities/$placeSlug'
+import { Route as PublicProfilesCampaignsSlugRouteImport } from './routes/_public/profiles/campaigns/$slug'
+import { Route as PublicProfilesEventsSlugRouteImport } from './routes/_public/profiles/events/$slug'
+import { Route as PublicProfilesInitiativesSlugRouteImport } from './routes/_public/profiles/initiatives/$slug'
+import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_public/profiles/organizations/index'
+import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations/$slug'
+import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
+import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people/$slug'
+import { Route as ApiAtprotoOauthCallbackRouteImport } from './routes/api/atproto/oauth/callback'
+import { Route as ApiAtprotoOauthClientMetadataDotjsonRouteImport } from './routes/api/atproto/oauth/client-metadata[.]json'
+import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
+import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/sign-in/start'
+import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
+import { Route as ApiE2eHostedBillingInventoryRouteImport } from './routes/api/e2e/hosted/billing-inventory'
+import { Route as ApiE2eHostedIdentityRouteImport } from './routes/api/e2e/hosted/identity'
+import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
 import { Route as ApiAtprotoOauthHarnessAuthorizeRouteImport } from './routes/api/atproto/oauth/harness/authorize'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships/$organizationId/members/$userId'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
-  id: '/robots.txt',
-  path: '/robots.txt',
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/_onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
-  id: '/openapi.json',
-  path: '/openapi.json',
+const PublicRoute = PublicRouteImport.update({
+  id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
-  id: '/llms.txt',
-  path: '/llms.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FirehoseDotrssRoute = FirehoseDotrssRouteImport.update({
-  id: '/firehose.rss',
-  path: '/firehose.rss',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
+const WorkspaceRoute = WorkspaceRouteImport.update({
+  id: '/_workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -153,90 +134,119 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkspaceRoute = WorkspaceRouteImport.update({
-  id: '/_workspace',
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PublicRoute = PublicRouteImport.update({
-  id: '/_public',
+const FirehoseDotrssRoute = FirehoseDotrssRouteImport.update({
+  id: '/firehose.rss',
+  path: '/firehose.rss',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/_onboarding',
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
   getParentRoute: () => rootRouteImport,
+} as any)
+const OpenapiDotjsonRoute = OpenapiDotjsonRouteImport.update({
+  id: '/openapi.json',
+  path: '/openapi.json',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDeviceRoute = AuthDeviceRouteImport.update({
+  id: '/device',
+  path: '/device',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSetupRoute = AuthSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSignInRoute = AuthSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSignUpRoute = AuthSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => AuthRoute,
+} as any)
+const OnboardingOnboardingRoute = OnboardingOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => OnboardingRoute,
 } as any)
 const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
 } as any)
-const DocsSplatRoute = DocsSplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => DocsRoute,
+const PublicBrowseRoute = PublicBrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => PublicRoute,
 } as any)
-const DeviceTokenRoute = DeviceTokenRouteImport.update({
-  id: '/device/token',
-  path: '/device/token',
-  getParentRoute: () => rootRouteImport,
+const PublicFirehoseRoute = PublicFirehoseRouteImport.update({
+  id: '/firehose',
+  path: '/firehose',
+  getParentRoute: () => PublicRoute,
 } as any)
-const DeviceStatusRoute = DeviceStatusRouteImport.update({
-  id: '/device/status',
-  path: '/device/status',
-  getParentRoute: () => rootRouteImport,
+const PublicMapRoute = PublicMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => PublicRoute,
 } as any)
-const DeviceDenyRoute = DeviceDenyRouteImport.update({
-  id: '/device/deny',
-  path: '/device/deny',
-  getParentRoute: () => rootRouteImport,
+const PublicPostLogoutRoute = PublicPostLogoutRouteImport.update({
+  id: '/post-logout',
+  path: '/post-logout',
+  getParentRoute: () => PublicRoute,
 } as any)
-const DeviceCodeRoute = DeviceCodeRouteImport.update({
-  id: '/device/code',
-  path: '/device/code',
-  getParentRoute: () => rootRouteImport,
+const PublicPricingRoute = PublicPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => PublicRoute,
 } as any)
-const DeviceApproveRoute = DeviceApproveRouteImport.update({
-  id: '/device/approve',
-  path: '/device/approve',
-  getParentRoute: () => rootRouteImport,
+const PublicPrivacyRoute = PublicPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => PublicRoute,
 } as any)
-const ApiHealthRoute = ApiHealthRouteImport.update({
-  id: '/api/health',
-  path: '/api/health',
-  getParentRoute: () => rootRouteImport,
+const PublicRequestDiscountRoute = PublicRequestDiscountRouteImport.update({
+  id: '/request-discount',
+  path: '/request-discount',
+  getParentRoute: () => PublicRoute,
 } as any)
-const ApiSplatRoute = ApiSplatRouteImport.update({
-  id: '/api/$',
-  path: '/api/$',
-  getParentRoute: () => rootRouteImport,
+const PublicSecurityRoute = PublicSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => PublicRoute,
 } as any)
-const WorkspaceWatchingRoute = WorkspaceWatchingRouteImport.update({
-  id: '/watching',
-  path: '/watching',
-  getParentRoute: () => WorkspaceRoute,
+const PublicTermsRoute = PublicTermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => PublicRoute,
 } as any)
-const WorkspaceOrganizationRoute = WorkspaceOrganizationRouteImport.update({
-  id: '/organization',
-  path: '/organization',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceHomeRoute = WorkspaceHomeRouteImport.update({
-  id: '/home',
-  path: '/home',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceFeedRoute = WorkspaceFeedRouteImport.update({
-  id: '/feed',
-  path: '/feed',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceDiscoveryRoute = WorkspaceDiscoveryRouteImport.update({
-  id: '/discovery',
-  path: '/discovery',
+const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => WorkspaceRoute,
 } as any)
 const WorkspaceCheckoutCompleteRoute =
@@ -245,111 +255,109 @@ const WorkspaceCheckoutCompleteRoute =
     path: '/checkout-complete',
     getParentRoute: () => WorkspaceRoute,
   } as any)
-const WorkspaceAccountRoute = WorkspaceAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
+const WorkspaceDiscoveryRoute = WorkspaceDiscoveryRouteImport.update({
+  id: '/discovery',
+  path: '/discovery',
   getParentRoute: () => WorkspaceRoute,
 } as any)
-const PublicTermsRoute = PublicTermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => PublicRoute,
+const WorkspaceFeedRoute = WorkspaceFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => WorkspaceRoute,
 } as any)
-const PublicSecurityRoute = PublicSecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
-  getParentRoute: () => PublicRoute,
+const WorkspaceHomeRoute = WorkspaceHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => WorkspaceRoute,
 } as any)
-const PublicRequestDiscountRoute = PublicRequestDiscountRouteImport.update({
-  id: '/request-discount',
-  path: '/request-discount',
-  getParentRoute: () => PublicRoute,
+const WorkspaceOrganizationRoute = WorkspaceOrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => WorkspaceRoute,
 } as any)
-const PublicPrivacyRoute = PublicPrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => PublicRoute,
+const WorkspaceWatchingRoute = WorkspaceWatchingRouteImport.update({
+  id: '/watching',
+  path: '/watching',
+  getParentRoute: () => WorkspaceRoute,
 } as any)
-const PublicPricingRoute = PublicPricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => PublicRoute,
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PublicPostLogoutRoute = PublicPostLogoutRouteImport.update({
-  id: '/post-logout',
-  path: '/post-logout',
-  getParentRoute: () => PublicRoute,
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PublicMapRoute = PublicMapRouteImport.update({
-  id: '/map',
-  path: '/map',
-  getParentRoute: () => PublicRoute,
+const DeviceApproveRoute = DeviceApproveRouteImport.update({
+  id: '/device/approve',
+  path: '/device/approve',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PublicFirehoseRoute = PublicFirehoseRouteImport.update({
-  id: '/firehose',
-  path: '/firehose',
-  getParentRoute: () => PublicRoute,
+const DeviceCodeRoute = DeviceCodeRouteImport.update({
+  id: '/device/code',
+  path: '/device/code',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PublicBrowseRoute = PublicBrowseRouteImport.update({
-  id: '/browse',
-  path: '/browse',
-  getParentRoute: () => PublicRoute,
+const DeviceDenyRoute = DeviceDenyRouteImport.update({
+  id: '/device/deny',
+  path: '/device/deny',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const OnboardingOnboardingRoute = OnboardingOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => OnboardingRoute,
+const DeviceStatusRoute = DeviceStatusRouteImport.update({
+  id: '/device/status',
+  path: '/device/status',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthSignUpRoute = AuthSignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => AuthRoute,
+const DeviceTokenRoute = DeviceTokenRouteImport.update({
+  id: '/device/token',
+  path: '/device/token',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthSignInRoute = AuthSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => AuthRoute,
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => DocsRoute,
 } as any)
-const AuthSetupRoute = AuthSetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthDeviceRoute = AuthDeviceRouteImport.update({
-  id: '/device',
-  path: '/device',
-  getParentRoute: () => AuthRoute,
-} as any)
-const WorkspaceOrganizationIndexRoute =
-  WorkspaceOrganizationIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => WorkspaceOrganizationRoute,
+const DotwellKnownOauthAuthorizationServerIndexRoute =
+  DotwellKnownOauthAuthorizationServerIndexRouteImport.update({
+    id: '/.well-known/oauth-authorization-server/',
+    path: '/.well-known/oauth-authorization-server/',
+    getParentRoute: () => rootRouteImport,
   } as any)
-const WorkspaceListsIndexRoute = WorkspaceListsIndexRouteImport.update({
-  id: '/lists/',
-  path: '/lists/',
-  getParentRoute: () => WorkspaceRoute,
+const DotwellKnownOauthProtectedResourceIndexRoute =
+  DotwellKnownOauthProtectedResourceIndexRouteImport.update({
+    id: '/.well-known/oauth-protected-resource/',
+    path: '/.well-known/oauth-protected-resource/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownOauthProtectedResourceMcpRoute =
+  DotwellKnownOauthProtectedResourceMcpRouteImport.update({
+    id: '/.well-known/oauth-protected-resource/mcp',
+    path: '/.well-known/oauth-protected-resource/mcp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthAcceptInvitationInvitationIdRoute =
+  AuthAcceptInvitationInvitationIdRouteImport.update({
+    id: '/accept-invitation/$invitationId',
+    path: '/accept-invitation/$invitationId',
+    getParentRoute: () => AuthRoute,
+  } as any)
+const AuthDeviceIndexRoute = AuthDeviceIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthDeviceRoute,
 } as any)
-const WorkspaceCoverageIndexRoute = WorkspaceCoverageIndexRouteImport.update({
-  id: '/coverage/',
-  path: '/coverage/',
-  getParentRoute: () => WorkspaceRoute,
+const AuthDeviceApprovedRoute = AuthDeviceApprovedRouteImport.update({
+  id: '/approved',
+  path: '/approved',
+  getParentRoute: () => AuthDeviceRoute,
 } as any)
-const WorkspaceBriefsIndexRoute = WorkspaceBriefsIndexRouteImport.update({
-  id: '/briefs/',
-  path: '/briefs/',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceAdminIndexRoute = WorkspaceAdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const PublicProfilesIndexRoute = PublicProfilesIndexRouteImport.update({
-  id: '/profiles/',
-  path: '/profiles/',
-  getParentRoute: () => PublicRoute,
+const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => AuthRoute,
 } as any)
 const OnboardingOnboardingIndexRoute =
   OnboardingOnboardingIndexRouteImport.update({
@@ -357,102 +365,40 @@ const OnboardingOnboardingIndexRoute =
     path: '/',
     getParentRoute: () => OnboardingOnboardingRoute,
   } as any)
-const AuthDeviceIndexRoute = AuthDeviceIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthDeviceRoute,
-} as any)
-const DotwellKnownOauthProtectedResourceIndexRoute =
-  DotwellKnownOauthProtectedResourceIndexRouteImport.update({
-    id: '/.well-known/oauth-protected-resource/',
-    path: '/.well-known/oauth-protected-resource/',
-    getParentRoute: () => rootRouteImport,
+const OnboardingOnboardingCompleteRoute =
+  OnboardingOnboardingCompleteRouteImport.update({
+    id: '/complete',
+    path: '/complete',
+    getParentRoute: () => OnboardingOnboardingRoute,
   } as any)
-const DotwellKnownOauthAuthorizationServerIndexRoute =
-  DotwellKnownOauthAuthorizationServerIndexRouteImport.update({
-    id: '/.well-known/oauth-authorization-server/',
-    path: '/.well-known/oauth-authorization-server/',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
-  id: '/api/stripe/webhook',
-  path: '/api/stripe/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WorkspaceOrganizationSsoRoute =
-  WorkspaceOrganizationSsoRouteImport.update({
-    id: '/sso',
-    path: '/sso',
-    getParentRoute: () => WorkspaceOrganizationRoute,
-  } as any)
-const WorkspaceManageSlugRoute = WorkspaceManageSlugRouteImport.update({
-  id: '/manage/$slug',
-  path: '/manage/$slug',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceListsIdRoute = WorkspaceListsIdRouteImport.update({
-  id: '/lists/$id',
-  path: '/lists/$id',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceCoverageTargetIdRoute =
-  WorkspaceCoverageTargetIdRouteImport.update({
-    id: '/coverage/$targetId',
-    path: '/coverage/$targetId',
-    getParentRoute: () => WorkspaceRoute,
-  } as any)
-const WorkspaceBriefsNewRoute = WorkspaceBriefsNewRouteImport.update({
-  id: '/briefs/new',
-  path: '/briefs/new',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceBriefsBriefIdRoute = WorkspaceBriefsBriefIdRouteImport.update({
-  id: '/briefs/$briefId',
-  path: '/briefs/$briefId',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceAdminProfileClaimsRoute =
-  WorkspaceAdminProfileClaimsRouteImport.update({
-    id: '/admin/profile-claims',
-    path: '/admin/profile-claims',
-    getParentRoute: () => WorkspaceRoute,
-  } as any)
-const WorkspaceAdminDiscoveryReviewsRoute =
-  WorkspaceAdminDiscoveryReviewsRouteImport.update({
-    id: '/admin/discovery-reviews',
-    path: '/admin/discovery-reviews',
-    getParentRoute: () => WorkspaceRoute,
-  } as any)
-const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
-  id: '/admin/discounts',
-  path: '/admin/discounts',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
-const WorkspaceAdminCorrectionsRoute =
-  WorkspaceAdminCorrectionsRouteImport.update({
-    id: '/admin/corrections',
-    path: '/admin/corrections',
-    getParentRoute: () => WorkspaceRoute,
-  } as any)
-const WorkspaceAdminCloudCostsRoute =
-  WorkspaceAdminCloudCostsRouteImport.update({
-    id: '/admin/cloud-costs',
-    path: '/admin/cloud-costs',
-    getParentRoute: () => WorkspaceRoute,
-  } as any)
-const PublicReportsReportIdRoute = PublicReportsReportIdRouteImport.update({
-  id: '/reports/$reportId',
-  path: '/reports/$reportId',
+const PublicClaimSlugRoute = PublicClaimSlugRouteImport.update({
+  id: '/claim/$slug',
+  path: '/claim/$slug',
   getParentRoute: () => PublicRoute,
 } as any)
-const PublicProfilesPeopleRoute = PublicProfilesPeopleRouteImport.update({
-  id: '/profiles/people',
-  path: '/profiles/people',
+const PublicDirectoriesOrgIdRoute = PublicDirectoriesOrgIdRouteImport.update({
+  id: '/directories/$orgId',
+  path: '/directories/$orgId',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicEntriesEntryIdRoute = PublicEntriesEntryIdRouteImport.update({
+  id: '/entries/$entryId',
+  path: '/entries/$entryId',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicFeedbackSlugRoute = PublicFeedbackSlugRouteImport.update({
+  id: '/feedback/$slug',
+  path: '/feedback/$slug',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicPlacesPlaceSlugRoute = PublicPlacesPlaceSlugRouteImport.update({
+  id: '/places/$placeSlug',
+  path: '/places/$placeSlug',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicProfilesIndexRoute = PublicProfilesIndexRouteImport.update({
+  id: '/profiles/',
+  path: '/profiles/',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicProfilesOrganizationsRoute =
@@ -461,171 +407,123 @@ const PublicProfilesOrganizationsRoute =
     path: '/profiles/organizations',
     getParentRoute: () => PublicRoute,
   } as any)
-const PublicPlacesPlaceSlugRoute = PublicPlacesPlaceSlugRouteImport.update({
-  id: '/places/$placeSlug',
-  path: '/places/$placeSlug',
+const PublicProfilesPeopleRoute = PublicProfilesPeopleRouteImport.update({
+  id: '/profiles/people',
+  path: '/profiles/people',
   getParentRoute: () => PublicRoute,
 } as any)
-const PublicFeedbackSlugRoute = PublicFeedbackSlugRouteImport.update({
-  id: '/feedback/$slug',
-  path: '/feedback/$slug',
+const PublicReportsReportIdRoute = PublicReportsReportIdRouteImport.update({
+  id: '/reports/$reportId',
+  path: '/reports/$reportId',
   getParentRoute: () => PublicRoute,
 } as any)
-const PublicEntriesEntryIdRoute = PublicEntriesEntryIdRouteImport.update({
-  id: '/entries/$entryId',
-  path: '/entries/$entryId',
-  getParentRoute: () => PublicRoute,
+const WorkspaceAdminIndexRoute = WorkspaceAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => WorkspaceRoute,
 } as any)
-const PublicDirectoriesOrgIdRoute = PublicDirectoriesOrgIdRouteImport.update({
-  id: '/directories/$orgId',
-  path: '/directories/$orgId',
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicClaimSlugRoute = PublicClaimSlugRouteImport.update({
-  id: '/claim/$slug',
-  path: '/claim/$slug',
-  getParentRoute: () => PublicRoute,
-} as any)
-const OnboardingOnboardingCompleteRoute =
-  OnboardingOnboardingCompleteRouteImport.update({
-    id: '/complete',
-    path: '/complete',
-    getParentRoute: () => OnboardingOnboardingRoute,
+const WorkspaceAdminCloudCostsRoute =
+  WorkspaceAdminCloudCostsRouteImport.update({
+    id: '/admin/cloud-costs',
+    path: '/admin/cloud-costs',
+    getParentRoute: () => WorkspaceRoute,
   } as any)
-const AuthOauthConsentRoute = AuthOauthConsentRouteImport.update({
-  id: '/oauth/consent',
-  path: '/oauth/consent',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthDeviceApprovedRoute = AuthDeviceApprovedRouteImport.update({
-  id: '/approved',
-  path: '/approved',
-  getParentRoute: () => AuthDeviceRoute,
-} as any)
-const AuthAcceptInvitationInvitationIdRoute =
-  AuthAcceptInvitationInvitationIdRouteImport.update({
-    id: '/accept-invitation/$invitationId',
-    path: '/accept-invitation/$invitationId',
-    getParentRoute: () => AuthRoute,
+const WorkspaceAdminCorrectionsRoute =
+  WorkspaceAdminCorrectionsRouteImport.update({
+    id: '/admin/corrections',
+    path: '/admin/corrections',
+    getParentRoute: () => WorkspaceRoute,
   } as any)
-const DotwellKnownOauthProtectedResourceMcpRoute =
-  DotwellKnownOauthProtectedResourceMcpRouteImport.update({
-    id: '/.well-known/oauth-protected-resource/mcp',
-    path: '/.well-known/oauth-protected-resource/mcp',
-    getParentRoute: () => rootRouteImport,
+const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
+  id: '/admin/discounts',
+  path: '/admin/discounts',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceAdminDiscoveryReviewsRoute =
+  WorkspaceAdminDiscoveryReviewsRouteImport.update({
+    id: '/admin/discovery-reviews',
+    path: '/admin/discovery-reviews',
+    getParentRoute: () => WorkspaceRoute,
   } as any)
-const PublicProfilesPeopleIndexRoute =
-  PublicProfilesPeopleIndexRouteImport.update({
+const WorkspaceAdminProfileClaimsRoute =
+  WorkspaceAdminProfileClaimsRouteImport.update({
+    id: '/admin/profile-claims',
+    path: '/admin/profile-claims',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
+const WorkspaceBriefsIndexRoute = WorkspaceBriefsIndexRouteImport.update({
+  id: '/briefs/',
+  path: '/briefs/',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceBriefsBriefIdRoute = WorkspaceBriefsBriefIdRouteImport.update({
+  id: '/briefs/$briefId',
+  path: '/briefs/$briefId',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceBriefsNewRoute = WorkspaceBriefsNewRouteImport.update({
+  id: '/briefs/new',
+  path: '/briefs/new',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceCoverageIndexRoute = WorkspaceCoverageIndexRouteImport.update({
+  id: '/coverage/',
+  path: '/coverage/',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceCoverageTargetIdRoute =
+  WorkspaceCoverageTargetIdRouteImport.update({
+    id: '/coverage/$targetId',
+    path: '/coverage/$targetId',
+    getParentRoute: () => WorkspaceRoute,
+  } as any)
+const WorkspaceListsIndexRoute = WorkspaceListsIndexRouteImport.update({
+  id: '/lists/',
+  path: '/lists/',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceListsIdRoute = WorkspaceListsIdRouteImport.update({
+  id: '/lists/$id',
+  path: '/lists/$id',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceManageSlugRoute = WorkspaceManageSlugRouteImport.update({
+  id: '/manage/$slug',
+  path: '/manage/$slug',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
+const WorkspaceOrganizationIndexRoute =
+  WorkspaceOrganizationIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => PublicProfilesPeopleRoute,
+    getParentRoute: () => WorkspaceOrganizationRoute,
   } as any)
-const PublicProfilesOrganizationsIndexRoute =
-  PublicProfilesOrganizationsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => PublicProfilesOrganizationsRoute,
+const WorkspaceOrganizationSsoRoute =
+  WorkspaceOrganizationSsoRouteImport.update({
+    id: '/sso',
+    path: '/sso',
+    getParentRoute: () => WorkspaceOrganizationRoute,
   } as any)
-const ApiE2eWorkspaceMemberRoute = ApiE2eWorkspaceMemberRouteImport.update({
-  id: '/api/e2e/workspace/member',
-  path: '/api/e2e/workspace/member',
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiE2eHostedIdentityRoute = ApiE2eHostedIdentityRouteImport.update({
-  id: '/api/e2e/hosted/identity',
-  path: '/api/e2e/hosted/identity',
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe/webhook',
+  path: '/api/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiE2eHostedBillingInventoryRoute =
-  ApiE2eHostedBillingInventoryRouteImport.update({
-    id: '/api/e2e/hosted/billing-inventory',
-    path: '/api/e2e/hosted/billing-inventory',
+const DotwellKnownOauthAuthorizationServerApiAuthRoute =
+  DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
+    id: '/.well-known/oauth-authorization-server/api/auth',
+    path: '/.well-known/oauth-authorization-server/api/auth',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
-  id: '/api/auth/internal/api-key',
-  path: '/api/auth/internal/api-key',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAtprotoSignInStartRoute = ApiAtprotoSignInStartRouteImport.update({
-  id: '/api/atproto/sign-in/start',
-  path: '/api/atproto/sign-in/start',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAtprotoOauthStartRoute = ApiAtprotoOauthStartRouteImport.update({
-  id: '/api/atproto/oauth/start',
-  path: '/api/atproto/oauth/start',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAtprotoOauthClientMetadataDotjsonRoute =
-  ApiAtprotoOauthClientMetadataDotjsonRouteImport.update({
-    id: '/api/atproto/oauth/client-metadata.json',
-    path: '/api/atproto/oauth/client-metadata.json',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiAtprotoOauthCallbackRoute = ApiAtprotoOauthCallbackRouteImport.update({
-  id: '/api/atproto/oauth/callback',
-  path: '/api/atproto/oauth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PublicProfilesPeopleSlugRoute =
-  PublicProfilesPeopleSlugRouteImport.update({
-    id: '/$slug',
-    path: '/$slug',
-    getParentRoute: () => PublicProfilesPeopleRoute,
-  } as any)
-const PublicProfilesOrganizationsSlugRoute =
-  PublicProfilesOrganizationsSlugRouteImport.update({
-    id: '/$slug',
-    path: '/$slug',
-    getParentRoute: () => PublicProfilesOrganizationsRoute,
-  } as any)
-const PublicProfilesInitiativesSlugRoute =
-  PublicProfilesInitiativesSlugRouteImport.update({
-    id: '/profiles/initiatives/$slug',
-    path: '/profiles/initiatives/$slug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const PublicProfilesEventsSlugRoute =
-  PublicProfilesEventsSlugRouteImport.update({
-    id: '/profiles/events/$slug',
-    path: '/profiles/events/$slug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const PublicProfilesCampaignsSlugRoute =
-  PublicProfilesCampaignsSlugRouteImport.update({
-    id: '/profiles/campaigns/$slug',
-    path: '/profiles/campaigns/$slug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const PublicPlacesPolitiesPlaceSlugRoute =
-  PublicPlacesPolitiesPlaceSlugRouteImport.update({
-    id: '/places/polities/$placeSlug',
-    path: '/places/polities/$placeSlug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const PublicPlacesNeighborhoodsPlaceSlugRoute =
-  PublicPlacesNeighborhoodsPlaceSlugRouteImport.update({
-    id: '/places/neighborhoods/$placeSlug',
-    path: '/places/neighborhoods/$placeSlug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const PublicPlacesMetrosPlaceSlugRoute =
-  PublicPlacesMetrosPlaceSlugRouteImport.update({
-    id: '/places/metros/$placeSlug',
-    path: '/places/metros/$placeSlug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const PublicPlacesDistrictsPlaceSlugRoute =
-  PublicPlacesDistrictsPlaceSlugRouteImport.update({
-    id: '/places/districts/$placeSlug',
-    path: '/places/districts/$placeSlug',
-    getParentRoute: () => PublicRoute,
-  } as any)
-const PublicPlacesCountiesPlaceSlugRoute =
-  PublicPlacesCountiesPlaceSlugRouteImport.update({
-    id: '/places/counties/$placeSlug',
-    path: '/places/counties/$placeSlug',
+const PublicPlacesBoroughsPlaceSlugRoute =
+  PublicPlacesBoroughsPlaceSlugRouteImport.update({
+    id: '/places/boroughs/$placeSlug',
+    path: '/places/boroughs/$placeSlug',
     getParentRoute: () => PublicRoute,
   } as any)
 const PublicPlacesCitiesPlaceSlugRoute =
@@ -634,18 +532,120 @@ const PublicPlacesCitiesPlaceSlugRoute =
     path: '/places/cities/$placeSlug',
     getParentRoute: () => PublicRoute,
   } as any)
-const PublicPlacesBoroughsPlaceSlugRoute =
-  PublicPlacesBoroughsPlaceSlugRouteImport.update({
-    id: '/places/boroughs/$placeSlug',
-    path: '/places/boroughs/$placeSlug',
+const PublicPlacesCountiesPlaceSlugRoute =
+  PublicPlacesCountiesPlaceSlugRouteImport.update({
+    id: '/places/counties/$placeSlug',
+    path: '/places/counties/$placeSlug',
     getParentRoute: () => PublicRoute,
   } as any)
-const DotwellKnownOauthAuthorizationServerApiAuthRoute =
-  DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
-    id: '/.well-known/oauth-authorization-server/api/auth',
-    path: '/.well-known/oauth-authorization-server/api/auth',
+const PublicPlacesDistrictsPlaceSlugRoute =
+  PublicPlacesDistrictsPlaceSlugRouteImport.update({
+    id: '/places/districts/$placeSlug',
+    path: '/places/districts/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesMetrosPlaceSlugRoute =
+  PublicPlacesMetrosPlaceSlugRouteImport.update({
+    id: '/places/metros/$placeSlug',
+    path: '/places/metros/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesNeighborhoodsPlaceSlugRoute =
+  PublicPlacesNeighborhoodsPlaceSlugRouteImport.update({
+    id: '/places/neighborhoods/$placeSlug',
+    path: '/places/neighborhoods/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicPlacesPolitiesPlaceSlugRoute =
+  PublicPlacesPolitiesPlaceSlugRouteImport.update({
+    id: '/places/polities/$placeSlug',
+    path: '/places/polities/$placeSlug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicProfilesCampaignsSlugRoute =
+  PublicProfilesCampaignsSlugRouteImport.update({
+    id: '/profiles/campaigns/$slug',
+    path: '/profiles/campaigns/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicProfilesEventsSlugRoute =
+  PublicProfilesEventsSlugRouteImport.update({
+    id: '/profiles/events/$slug',
+    path: '/profiles/events/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicProfilesInitiativesSlugRoute =
+  PublicProfilesInitiativesSlugRouteImport.update({
+    id: '/profiles/initiatives/$slug',
+    path: '/profiles/initiatives/$slug',
+    getParentRoute: () => PublicRoute,
+  } as any)
+const PublicProfilesOrganizationsIndexRoute =
+  PublicProfilesOrganizationsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => PublicProfilesOrganizationsRoute,
+  } as any)
+const PublicProfilesOrganizationsSlugRoute =
+  PublicProfilesOrganizationsSlugRouteImport.update({
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => PublicProfilesOrganizationsRoute,
+  } as any)
+const PublicProfilesPeopleIndexRoute =
+  PublicProfilesPeopleIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => PublicProfilesPeopleRoute,
+  } as any)
+const PublicProfilesPeopleSlugRoute =
+  PublicProfilesPeopleSlugRouteImport.update({
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => PublicProfilesPeopleRoute,
+  } as any)
+const ApiAtprotoOauthCallbackRoute = ApiAtprotoOauthCallbackRouteImport.update({
+  id: '/api/atproto/oauth/callback',
+  path: '/api/atproto/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAtprotoOauthClientMetadataDotjsonRoute =
+  ApiAtprotoOauthClientMetadataDotjsonRouteImport.update({
+    id: '/api/atproto/oauth/client-metadata.json',
+    path: '/api/atproto/oauth/client-metadata.json',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAtprotoOauthStartRoute = ApiAtprotoOauthStartRouteImport.update({
+  id: '/api/atproto/oauth/start',
+  path: '/api/atproto/oauth/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAtprotoSignInStartRoute = ApiAtprotoSignInStartRouteImport.update({
+  id: '/api/atproto/sign-in/start',
+  path: '/api/atproto/sign-in/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
+  id: '/api/auth/internal/api-key',
+  path: '/api/auth/internal/api-key',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiE2eHostedBillingInventoryRoute =
+  ApiE2eHostedBillingInventoryRouteImport.update({
+    id: '/api/e2e/hosted/billing-inventory',
+    path: '/api/e2e/hosted/billing-inventory',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiE2eHostedIdentityRoute = ApiE2eHostedIdentityRouteImport.update({
+  id: '/api/e2e/hosted/identity',
+  path: '/api/e2e/hosted/identity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiE2eWorkspaceMemberRoute = ApiE2eWorkspaceMemberRouteImport.update({
+  id: '/api/e2e/workspace/member',
+  path: '/api/e2e/workspace/member',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAtprotoOauthHarnessAuthorizeRoute =
   ApiAtprotoOauthHarnessAuthorizeRouteImport.update({
     id: '/api/atproto/oauth/harness/authorize',
@@ -1307,74 +1307,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/robots.txt': {
-      id: '/robots.txt'
-      path: '/robots.txt'
-      fullPath: '/robots.txt'
-      preLoaderRoute: typeof RobotsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/openapi.json': {
-      id: '/openapi.json'
-      path: '/openapi.json'
-      fullPath: '/openapi.json'
-      preLoaderRoute: typeof OpenapiDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/llms.txt': {
-      id: '/llms.txt'
-      path: '/llms.txt'
-      fullPath: '/llms.txt'
-      preLoaderRoute: typeof LlmsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/firehose.rss': {
-      id: '/firehose.rss'
-      path: '/firehose.rss'
-      fullPath: '/firehose.rss'
-      preLoaderRoute: typeof FirehoseDotrssRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs': {
-      id: '/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_workspace': {
-      id: '/_workspace'
+    '/_auth': {
+      id: '/_auth'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof WorkspaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_public': {
-      id: '/_public'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof PublicRouteImport
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_onboarding': {
@@ -1384,207 +1321,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth': {
-      id: '/_auth'
+    '/_public': {
+      id: '/_public'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof AuthRouteImport
+      preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_public/': {
-      id: '/_public/'
-      path: '/'
+    '/_workspace': {
+      id: '/_workspace'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof PublicIndexRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/docs/$': {
-      id: '/docs/$'
-      path: '/$'
-      fullPath: '/docs/$'
-      preLoaderRoute: typeof DocsSplatRouteImport
-      parentRoute: typeof DocsRoute
-    }
-    '/device/token': {
-      id: '/device/token'
-      path: '/device/token'
-      fullPath: '/device/token'
-      preLoaderRoute: typeof DeviceTokenRouteImport
+      preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/device/status': {
-      id: '/device/status'
-      path: '/device/status'
-      fullPath: '/device/status'
-      preLoaderRoute: typeof DeviceStatusRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/device/deny': {
-      id: '/device/deny'
-      path: '/device/deny'
-      fullPath: '/device/deny'
-      preLoaderRoute: typeof DeviceDenyRouteImport
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/device/code': {
-      id: '/device/code'
-      path: '/device/code'
-      fullPath: '/device/code'
-      preLoaderRoute: typeof DeviceCodeRouteImport
+    '/firehose.rss': {
+      id: '/firehose.rss'
+      path: '/firehose.rss'
+      fullPath: '/firehose.rss'
+      preLoaderRoute: typeof FirehoseDotrssRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/device/approve': {
-      id: '/device/approve'
-      path: '/device/approve'
-      fullPath: '/device/approve'
-      preLoaderRoute: typeof DeviceApproveRouteImport
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/health': {
-      id: '/api/health'
-      path: '/api/health'
-      fullPath: '/api/health'
-      preLoaderRoute: typeof ApiHealthRouteImport
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/$': {
-      id: '/api/$'
-      path: '/api/$'
-      fullPath: '/api/$'
-      preLoaderRoute: typeof ApiSplatRouteImport
+    '/openapi.json': {
+      id: '/openapi.json'
+      path: '/openapi.json'
+      fullPath: '/openapi.json'
+      preLoaderRoute: typeof OpenapiDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_workspace/watching': {
-      id: '/_workspace/watching'
-      path: '/watching'
-      fullPath: '/watching'
-      preLoaderRoute: typeof WorkspaceWatchingRouteImport
-      parentRoute: typeof WorkspaceRoute
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_workspace/organization': {
-      id: '/_workspace/organization'
-      path: '/organization'
-      fullPath: '/organization'
-      preLoaderRoute: typeof WorkspaceOrganizationRouteImport
-      parentRoute: typeof WorkspaceRoute
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_workspace/home': {
-      id: '/_workspace/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof WorkspaceHomeRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/feed': {
-      id: '/_workspace/feed'
-      path: '/feed'
-      fullPath: '/feed'
-      preLoaderRoute: typeof WorkspaceFeedRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/discovery': {
-      id: '/_workspace/discovery'
-      path: '/discovery'
-      fullPath: '/discovery'
-      preLoaderRoute: typeof WorkspaceDiscoveryRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/checkout-complete': {
-      id: '/_workspace/checkout-complete'
-      path: '/checkout-complete'
-      fullPath: '/checkout-complete'
-      preLoaderRoute: typeof WorkspaceCheckoutCompleteRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/account': {
-      id: '/_workspace/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof WorkspaceAccountRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_public/terms': {
-      id: '/_public/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof PublicTermsRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/security': {
-      id: '/_public/security'
-      path: '/security'
-      fullPath: '/security'
-      preLoaderRoute: typeof PublicSecurityRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/request-discount': {
-      id: '/_public/request-discount'
-      path: '/request-discount'
-      fullPath: '/request-discount'
-      preLoaderRoute: typeof PublicRequestDiscountRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/privacy': {
-      id: '/_public/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PublicPrivacyRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/pricing': {
-      id: '/_public/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PublicPricingRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/post-logout': {
-      id: '/_public/post-logout'
-      path: '/post-logout'
-      fullPath: '/post-logout'
-      preLoaderRoute: typeof PublicPostLogoutRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/map': {
-      id: '/_public/map'
-      path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof PublicMapRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/firehose': {
-      id: '/_public/firehose'
-      path: '/firehose'
-      fullPath: '/firehose'
-      preLoaderRoute: typeof PublicFirehoseRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/browse': {
-      id: '/_public/browse'
-      path: '/browse'
-      fullPath: '/browse'
-      preLoaderRoute: typeof PublicBrowseRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_onboarding/onboarding': {
-      id: '/_onboarding/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingOnboardingRouteImport
-      parentRoute: typeof OnboardingRoute
-    }
-    '/_auth/sign-up': {
-      id: '/_auth/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof AuthSignUpRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/sign-in': {
-      id: '/_auth/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof AuthSignInRouteImport
+    '/_auth/device': {
+      id: '/_auth/device'
+      path: '/device'
+      fullPath: '/device'
+      preLoaderRoute: typeof AuthDeviceRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/setup': {
@@ -1594,75 +1405,201 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSetupRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_auth/device': {
-      id: '/_auth/device'
-      path: '/device'
-      fullPath: '/device'
-      preLoaderRoute: typeof AuthDeviceRouteImport
+    '/_auth/sign-in': {
+      id: '/_auth/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof AuthSignInRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_workspace/organization/': {
-      id: '/_workspace/organization/'
+    '/_auth/sign-up': {
+      id: '/_auth/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof AuthSignUpRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_onboarding/onboarding': {
+      id: '/_onboarding/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingOnboardingRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/_public/': {
+      id: '/_public/'
       path: '/'
-      fullPath: '/organization/'
-      preLoaderRoute: typeof WorkspaceOrganizationIndexRouteImport
-      parentRoute: typeof WorkspaceOrganizationRoute
-    }
-    '/_workspace/lists/': {
-      id: '/_workspace/lists/'
-      path: '/lists'
-      fullPath: '/lists/'
-      preLoaderRoute: typeof WorkspaceListsIndexRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/coverage/': {
-      id: '/_workspace/coverage/'
-      path: '/coverage'
-      fullPath: '/coverage/'
-      preLoaderRoute: typeof WorkspaceCoverageIndexRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/briefs/': {
-      id: '/_workspace/briefs/'
-      path: '/briefs'
-      fullPath: '/briefs/'
-      preLoaderRoute: typeof WorkspaceBriefsIndexRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/admin/': {
-      id: '/_workspace/admin/'
-      path: '/admin'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof WorkspaceAdminIndexRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_public/profiles/': {
-      id: '/_public/profiles/'
-      path: '/profiles'
-      fullPath: '/profiles/'
-      preLoaderRoute: typeof PublicProfilesIndexRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_onboarding/onboarding/': {
-      id: '/_onboarding/onboarding/'
-      path: '/'
-      fullPath: '/onboarding/'
-      preLoaderRoute: typeof OnboardingOnboardingIndexRouteImport
-      parentRoute: typeof OnboardingOnboardingRoute
+    '/_public/browse': {
+      id: '/_public/browse'
+      path: '/browse'
+      fullPath: '/browse'
+      preLoaderRoute: typeof PublicBrowseRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_auth/device/': {
-      id: '/_auth/device/'
-      path: '/'
-      fullPath: '/device/'
-      preLoaderRoute: typeof AuthDeviceIndexRouteImport
-      parentRoute: typeof AuthDeviceRoute
+    '/_public/firehose': {
+      id: '/_public/firehose'
+      path: '/firehose'
+      fullPath: '/firehose'
+      preLoaderRoute: typeof PublicFirehoseRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/.well-known/oauth-protected-resource/': {
-      id: '/.well-known/oauth-protected-resource/'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource/'
-      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceIndexRouteImport
+    '/_public/map': {
+      id: '/_public/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof PublicMapRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/post-logout': {
+      id: '/_public/post-logout'
+      path: '/post-logout'
+      fullPath: '/post-logout'
+      preLoaderRoute: typeof PublicPostLogoutRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/pricing': {
+      id: '/_public/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PublicPricingRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/privacy': {
+      id: '/_public/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PublicPrivacyRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/request-discount': {
+      id: '/_public/request-discount'
+      path: '/request-discount'
+      fullPath: '/request-discount'
+      preLoaderRoute: typeof PublicRequestDiscountRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/security': {
+      id: '/_public/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof PublicSecurityRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/terms': {
+      id: '/_public/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof PublicTermsRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_workspace/account': {
+      id: '/_workspace/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof WorkspaceAccountRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/checkout-complete': {
+      id: '/_workspace/checkout-complete'
+      path: '/checkout-complete'
+      fullPath: '/checkout-complete'
+      preLoaderRoute: typeof WorkspaceCheckoutCompleteRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/discovery': {
+      id: '/_workspace/discovery'
+      path: '/discovery'
+      fullPath: '/discovery'
+      preLoaderRoute: typeof WorkspaceDiscoveryRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/feed': {
+      id: '/_workspace/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof WorkspaceFeedRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/home': {
+      id: '/_workspace/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof WorkspaceHomeRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/organization': {
+      id: '/_workspace/organization'
+      path: '/organization'
+      fullPath: '/organization'
+      preLoaderRoute: typeof WorkspaceOrganizationRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/watching': {
+      id: '/_workspace/watching'
+      path: '/watching'
+      fullPath: '/watching'
+      preLoaderRoute: typeof WorkspaceWatchingRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/approve': {
+      id: '/device/approve'
+      path: '/device/approve'
+      fullPath: '/device/approve'
+      preLoaderRoute: typeof DeviceApproveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/code': {
+      id: '/device/code'
+      path: '/device/code'
+      fullPath: '/device/code'
+      preLoaderRoute: typeof DeviceCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/deny': {
+      id: '/device/deny'
+      path: '/device/deny'
+      fullPath: '/device/deny'
+      preLoaderRoute: typeof DeviceDenyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/status': {
+      id: '/device/status'
+      path: '/device/status'
+      fullPath: '/device/status'
+      preLoaderRoute: typeof DeviceStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device/token': {
+      id: '/device/token'
+      path: '/device/token'
+      fullPath: '/device/token'
+      preLoaderRoute: typeof DeviceTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/.well-known/oauth-authorization-server/': {
       id: '/.well-known/oauth-authorization-server/'
@@ -1671,137 +1608,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/stripe/webhook': {
-      id: '/api/stripe/webhook'
-      path: '/api/stripe/webhook'
-      fullPath: '/api/stripe/webhook'
-      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+    '/.well-known/oauth-protected-resource/': {
+      id: '/.well-known/oauth-protected-resource/'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource/'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
+    '/.well-known/oauth-protected-resource/mcp': {
+      id: '/.well-known/oauth-protected-resource/mcp'
+      path: '/.well-known/oauth-protected-resource/mcp'
+      fullPath: '/.well-known/oauth-protected-resource/mcp'
+      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceMcpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_workspace/organization/sso': {
-      id: '/_workspace/organization/sso'
-      path: '/sso'
-      fullPath: '/organization/sso'
-      preLoaderRoute: typeof WorkspaceOrganizationSsoRouteImport
-      parentRoute: typeof WorkspaceOrganizationRoute
+    '/_auth/accept-invitation/$invitationId': {
+      id: '/_auth/accept-invitation/$invitationId'
+      path: '/accept-invitation/$invitationId'
+      fullPath: '/accept-invitation/$invitationId'
+      preLoaderRoute: typeof AuthAcceptInvitationInvitationIdRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/_workspace/manage/$slug': {
-      id: '/_workspace/manage/$slug'
-      path: '/manage/$slug'
-      fullPath: '/manage/$slug'
-      preLoaderRoute: typeof WorkspaceManageSlugRouteImport
-      parentRoute: typeof WorkspaceRoute
+    '/_auth/device/': {
+      id: '/_auth/device/'
+      path: '/'
+      fullPath: '/device/'
+      preLoaderRoute: typeof AuthDeviceIndexRouteImport
+      parentRoute: typeof AuthDeviceRoute
     }
-    '/_workspace/lists/$id': {
-      id: '/_workspace/lists/$id'
-      path: '/lists/$id'
-      fullPath: '/lists/$id'
-      preLoaderRoute: typeof WorkspaceListsIdRouteImport
-      parentRoute: typeof WorkspaceRoute
+    '/_auth/device/approved': {
+      id: '/_auth/device/approved'
+      path: '/approved'
+      fullPath: '/device/approved'
+      preLoaderRoute: typeof AuthDeviceApprovedRouteImport
+      parentRoute: typeof AuthDeviceRoute
     }
-    '/_workspace/coverage/$targetId': {
-      id: '/_workspace/coverage/$targetId'
-      path: '/coverage/$targetId'
-      fullPath: '/coverage/$targetId'
-      preLoaderRoute: typeof WorkspaceCoverageTargetIdRouteImport
-      parentRoute: typeof WorkspaceRoute
+    '/_auth/oauth/consent': {
+      id: '/_auth/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof AuthOauthConsentRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/_workspace/briefs/new': {
-      id: '/_workspace/briefs/new'
-      path: '/briefs/new'
-      fullPath: '/briefs/new'
-      preLoaderRoute: typeof WorkspaceBriefsNewRouteImport
-      parentRoute: typeof WorkspaceRoute
+    '/_onboarding/onboarding/': {
+      id: '/_onboarding/onboarding/'
+      path: '/'
+      fullPath: '/onboarding/'
+      preLoaderRoute: typeof OnboardingOnboardingIndexRouteImport
+      parentRoute: typeof OnboardingOnboardingRoute
     }
-    '/_workspace/briefs/$briefId': {
-      id: '/_workspace/briefs/$briefId'
-      path: '/briefs/$briefId'
-      fullPath: '/briefs/$briefId'
-      preLoaderRoute: typeof WorkspaceBriefsBriefIdRouteImport
-      parentRoute: typeof WorkspaceRoute
+    '/_onboarding/onboarding/complete': {
+      id: '/_onboarding/onboarding/complete'
+      path: '/complete'
+      fullPath: '/onboarding/complete'
+      preLoaderRoute: typeof OnboardingOnboardingCompleteRouteImport
+      parentRoute: typeof OnboardingOnboardingRoute
     }
-    '/_workspace/admin/profile-claims': {
-      id: '/_workspace/admin/profile-claims'
-      path: '/admin/profile-claims'
-      fullPath: '/admin/profile-claims'
-      preLoaderRoute: typeof WorkspaceAdminProfileClaimsRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/admin/discovery-reviews': {
-      id: '/_workspace/admin/discovery-reviews'
-      path: '/admin/discovery-reviews'
-      fullPath: '/admin/discovery-reviews'
-      preLoaderRoute: typeof WorkspaceAdminDiscoveryReviewsRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/admin/discounts': {
-      id: '/_workspace/admin/discounts'
-      path: '/admin/discounts'
-      fullPath: '/admin/discounts'
-      preLoaderRoute: typeof WorkspaceAdminDiscountsRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/admin/corrections': {
-      id: '/_workspace/admin/corrections'
-      path: '/admin/corrections'
-      fullPath: '/admin/corrections'
-      preLoaderRoute: typeof WorkspaceAdminCorrectionsRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/admin/cloud-costs': {
-      id: '/_workspace/admin/cloud-costs'
-      path: '/admin/cloud-costs'
-      fullPath: '/admin/cloud-costs'
-      preLoaderRoute: typeof WorkspaceAdminCloudCostsRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_public/reports/$reportId': {
-      id: '/_public/reports/$reportId'
-      path: '/reports/$reportId'
-      fullPath: '/reports/$reportId'
-      preLoaderRoute: typeof PublicReportsReportIdRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/profiles/people': {
-      id: '/_public/profiles/people'
-      path: '/profiles/people'
-      fullPath: '/profiles/people'
-      preLoaderRoute: typeof PublicProfilesPeopleRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/profiles/organizations': {
-      id: '/_public/profiles/organizations'
-      path: '/profiles/organizations'
-      fullPath: '/profiles/organizations'
-      preLoaderRoute: typeof PublicProfilesOrganizationsRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/places/$placeSlug': {
-      id: '/_public/places/$placeSlug'
-      path: '/places/$placeSlug'
-      fullPath: '/places/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesPlaceSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/feedback/$slug': {
-      id: '/_public/feedback/$slug'
-      path: '/feedback/$slug'
-      fullPath: '/feedback/$slug'
-      preLoaderRoute: typeof PublicFeedbackSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/entries/$entryId': {
-      id: '/_public/entries/$entryId'
-      path: '/entries/$entryId'
-      fullPath: '/entries/$entryId'
-      preLoaderRoute: typeof PublicEntriesEntryIdRouteImport
+    '/_public/claim/$slug': {
+      id: '/_public/claim/$slug'
+      path: '/claim/$slug'
+      fullPath: '/claim/$slug'
+      preLoaderRoute: typeof PublicClaimSlugRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/directories/$orgId': {
@@ -1811,186 +1678,193 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicDirectoriesOrgIdRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_public/claim/$slug': {
-      id: '/_public/claim/$slug'
-      path: '/claim/$slug'
-      fullPath: '/claim/$slug'
-      preLoaderRoute: typeof PublicClaimSlugRouteImport
+    '/_public/entries/$entryId': {
+      id: '/_public/entries/$entryId'
+      path: '/entries/$entryId'
+      fullPath: '/entries/$entryId'
+      preLoaderRoute: typeof PublicEntriesEntryIdRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_onboarding/onboarding/complete': {
-      id: '/_onboarding/onboarding/complete'
-      path: '/complete'
-      fullPath: '/onboarding/complete'
-      preLoaderRoute: typeof OnboardingOnboardingCompleteRouteImport
-      parentRoute: typeof OnboardingOnboardingRoute
+    '/_public/feedback/$slug': {
+      id: '/_public/feedback/$slug'
+      path: '/feedback/$slug'
+      fullPath: '/feedback/$slug'
+      preLoaderRoute: typeof PublicFeedbackSlugRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_auth/oauth/consent': {
-      id: '/_auth/oauth/consent'
-      path: '/oauth/consent'
-      fullPath: '/oauth/consent'
-      preLoaderRoute: typeof AuthOauthConsentRouteImport
-      parentRoute: typeof AuthRoute
+    '/_public/places/$placeSlug': {
+      id: '/_public/places/$placeSlug'
+      path: '/places/$placeSlug'
+      fullPath: '/places/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_auth/device/approved': {
-      id: '/_auth/device/approved'
-      path: '/approved'
-      fullPath: '/device/approved'
-      preLoaderRoute: typeof AuthDeviceApprovedRouteImport
-      parentRoute: typeof AuthDeviceRoute
+    '/_public/profiles/': {
+      id: '/_public/profiles/'
+      path: '/profiles'
+      fullPath: '/profiles/'
+      preLoaderRoute: typeof PublicProfilesIndexRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_auth/accept-invitation/$invitationId': {
-      id: '/_auth/accept-invitation/$invitationId'
-      path: '/accept-invitation/$invitationId'
-      fullPath: '/accept-invitation/$invitationId'
-      preLoaderRoute: typeof AuthAcceptInvitationInvitationIdRouteImport
-      parentRoute: typeof AuthRoute
+    '/_public/profiles/organizations': {
+      id: '/_public/profiles/organizations'
+      path: '/profiles/organizations'
+      fullPath: '/profiles/organizations'
+      preLoaderRoute: typeof PublicProfilesOrganizationsRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/.well-known/oauth-protected-resource/mcp': {
-      id: '/.well-known/oauth-protected-resource/mcp'
-      path: '/.well-known/oauth-protected-resource/mcp'
-      fullPath: '/.well-known/oauth-protected-resource/mcp'
-      preLoaderRoute: typeof DotwellKnownOauthProtectedResourceMcpRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_public/profiles/people': {
+      id: '/_public/profiles/people'
+      path: '/profiles/people'
+      fullPath: '/profiles/people'
+      preLoaderRoute: typeof PublicProfilesPeopleRouteImport
+      parentRoute: typeof PublicRoute
     }
-    '/_public/profiles/people/': {
-      id: '/_public/profiles/people/'
+    '/_public/reports/$reportId': {
+      id: '/_public/reports/$reportId'
+      path: '/reports/$reportId'
+      fullPath: '/reports/$reportId'
+      preLoaderRoute: typeof PublicReportsReportIdRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_workspace/admin/': {
+      id: '/_workspace/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof WorkspaceAdminIndexRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/admin/cloud-costs': {
+      id: '/_workspace/admin/cloud-costs'
+      path: '/admin/cloud-costs'
+      fullPath: '/admin/cloud-costs'
+      preLoaderRoute: typeof WorkspaceAdminCloudCostsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/admin/corrections': {
+      id: '/_workspace/admin/corrections'
+      path: '/admin/corrections'
+      fullPath: '/admin/corrections'
+      preLoaderRoute: typeof WorkspaceAdminCorrectionsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/admin/discounts': {
+      id: '/_workspace/admin/discounts'
+      path: '/admin/discounts'
+      fullPath: '/admin/discounts'
+      preLoaderRoute: typeof WorkspaceAdminDiscountsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/admin/discovery-reviews': {
+      id: '/_workspace/admin/discovery-reviews'
+      path: '/admin/discovery-reviews'
+      fullPath: '/admin/discovery-reviews'
+      preLoaderRoute: typeof WorkspaceAdminDiscoveryReviewsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/admin/profile-claims': {
+      id: '/_workspace/admin/profile-claims'
+      path: '/admin/profile-claims'
+      fullPath: '/admin/profile-claims'
+      preLoaderRoute: typeof WorkspaceAdminProfileClaimsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/briefs/': {
+      id: '/_workspace/briefs/'
+      path: '/briefs'
+      fullPath: '/briefs/'
+      preLoaderRoute: typeof WorkspaceBriefsIndexRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/briefs/$briefId': {
+      id: '/_workspace/briefs/$briefId'
+      path: '/briefs/$briefId'
+      fullPath: '/briefs/$briefId'
+      preLoaderRoute: typeof WorkspaceBriefsBriefIdRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/briefs/new': {
+      id: '/_workspace/briefs/new'
+      path: '/briefs/new'
+      fullPath: '/briefs/new'
+      preLoaderRoute: typeof WorkspaceBriefsNewRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/coverage/': {
+      id: '/_workspace/coverage/'
+      path: '/coverage'
+      fullPath: '/coverage/'
+      preLoaderRoute: typeof WorkspaceCoverageIndexRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/coverage/$targetId': {
+      id: '/_workspace/coverage/$targetId'
+      path: '/coverage/$targetId'
+      fullPath: '/coverage/$targetId'
+      preLoaderRoute: typeof WorkspaceCoverageTargetIdRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/lists/': {
+      id: '/_workspace/lists/'
+      path: '/lists'
+      fullPath: '/lists/'
+      preLoaderRoute: typeof WorkspaceListsIndexRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/lists/$id': {
+      id: '/_workspace/lists/$id'
+      path: '/lists/$id'
+      fullPath: '/lists/$id'
+      preLoaderRoute: typeof WorkspaceListsIdRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/manage/$slug': {
+      id: '/_workspace/manage/$slug'
+      path: '/manage/$slug'
+      fullPath: '/manage/$slug'
+      preLoaderRoute: typeof WorkspaceManageSlugRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/organization/': {
+      id: '/_workspace/organization/'
       path: '/'
-      fullPath: '/profiles/people/'
-      preLoaderRoute: typeof PublicProfilesPeopleIndexRouteImport
-      parentRoute: typeof PublicProfilesPeopleRoute
+      fullPath: '/organization/'
+      preLoaderRoute: typeof WorkspaceOrganizationIndexRouteImport
+      parentRoute: typeof WorkspaceOrganizationRoute
     }
-    '/_public/profiles/organizations/': {
-      id: '/_public/profiles/organizations/'
-      path: '/'
-      fullPath: '/profiles/organizations/'
-      preLoaderRoute: typeof PublicProfilesOrganizationsIndexRouteImport
-      parentRoute: typeof PublicProfilesOrganizationsRoute
+    '/_workspace/organization/sso': {
+      id: '/_workspace/organization/sso'
+      path: '/sso'
+      fullPath: '/organization/sso'
+      preLoaderRoute: typeof WorkspaceOrganizationSsoRouteImport
+      parentRoute: typeof WorkspaceOrganizationRoute
     }
-    '/api/e2e/workspace/member': {
-      id: '/api/e2e/workspace/member'
-      path: '/api/e2e/workspace/member'
-      fullPath: '/api/e2e/workspace/member'
-      preLoaderRoute: typeof ApiE2eWorkspaceMemberRouteImport
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/e2e/hosted/identity': {
-      id: '/api/e2e/hosted/identity'
-      path: '/api/e2e/hosted/identity'
-      fullPath: '/api/e2e/hosted/identity'
-      preLoaderRoute: typeof ApiE2eHostedIdentityRouteImport
+    '/api/stripe/webhook': {
+      id: '/api/stripe/webhook'
+      path: '/api/stripe/webhook'
+      fullPath: '/api/stripe/webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/e2e/hosted/billing-inventory': {
-      id: '/api/e2e/hosted/billing-inventory'
-      path: '/api/e2e/hosted/billing-inventory'
-      fullPath: '/api/e2e/hosted/billing-inventory'
-      preLoaderRoute: typeof ApiE2eHostedBillingInventoryRouteImport
+    '/.well-known/oauth-authorization-server/api/auth': {
+      id: '/.well-known/oauth-authorization-server/api/auth'
+      path: '/.well-known/oauth-authorization-server/api/auth'
+      fullPath: '/.well-known/oauth-authorization-server/api/auth'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/internal/api-key': {
-      id: '/api/auth/internal/api-key'
-      path: '/api/auth/internal/api-key'
-      fullPath: '/api/auth/internal/api-key'
-      preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/atproto/sign-in/start': {
-      id: '/api/atproto/sign-in/start'
-      path: '/api/atproto/sign-in/start'
-      fullPath: '/api/atproto/sign-in/start'
-      preLoaderRoute: typeof ApiAtprotoSignInStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/atproto/oauth/start': {
-      id: '/api/atproto/oauth/start'
-      path: '/api/atproto/oauth/start'
-      fullPath: '/api/atproto/oauth/start'
-      preLoaderRoute: typeof ApiAtprotoOauthStartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/atproto/oauth/client-metadata.json': {
-      id: '/api/atproto/oauth/client-metadata.json'
-      path: '/api/atproto/oauth/client-metadata.json'
-      fullPath: '/api/atproto/oauth/client-metadata.json'
-      preLoaderRoute: typeof ApiAtprotoOauthClientMetadataDotjsonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/atproto/oauth/callback': {
-      id: '/api/atproto/oauth/callback'
-      path: '/api/atproto/oauth/callback'
-      fullPath: '/api/atproto/oauth/callback'
-      preLoaderRoute: typeof ApiAtprotoOauthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_public/profiles/people/$slug': {
-      id: '/_public/profiles/people/$slug'
-      path: '/$slug'
-      fullPath: '/profiles/people/$slug'
-      preLoaderRoute: typeof PublicProfilesPeopleSlugRouteImport
-      parentRoute: typeof PublicProfilesPeopleRoute
-    }
-    '/_public/profiles/organizations/$slug': {
-      id: '/_public/profiles/organizations/$slug'
-      path: '/$slug'
-      fullPath: '/profiles/organizations/$slug'
-      preLoaderRoute: typeof PublicProfilesOrganizationsSlugRouteImport
-      parentRoute: typeof PublicProfilesOrganizationsRoute
-    }
-    '/_public/profiles/initiatives/$slug': {
-      id: '/_public/profiles/initiatives/$slug'
-      path: '/profiles/initiatives/$slug'
-      fullPath: '/profiles/initiatives/$slug'
-      preLoaderRoute: typeof PublicProfilesInitiativesSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/profiles/events/$slug': {
-      id: '/_public/profiles/events/$slug'
-      path: '/profiles/events/$slug'
-      fullPath: '/profiles/events/$slug'
-      preLoaderRoute: typeof PublicProfilesEventsSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/profiles/campaigns/$slug': {
-      id: '/_public/profiles/campaigns/$slug'
-      path: '/profiles/campaigns/$slug'
-      fullPath: '/profiles/campaigns/$slug'
-      preLoaderRoute: typeof PublicProfilesCampaignsSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/places/polities/$placeSlug': {
-      id: '/_public/places/polities/$placeSlug'
-      path: '/places/polities/$placeSlug'
-      fullPath: '/places/polities/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesPolitiesPlaceSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/places/neighborhoods/$placeSlug': {
-      id: '/_public/places/neighborhoods/$placeSlug'
-      path: '/places/neighborhoods/$placeSlug'
-      fullPath: '/places/neighborhoods/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesNeighborhoodsPlaceSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/places/metros/$placeSlug': {
-      id: '/_public/places/metros/$placeSlug'
-      path: '/places/metros/$placeSlug'
-      fullPath: '/places/metros/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesMetrosPlaceSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/places/districts/$placeSlug': {
-      id: '/_public/places/districts/$placeSlug'
-      path: '/places/districts/$placeSlug'
-      fullPath: '/places/districts/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesDistrictsPlaceSlugRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/places/counties/$placeSlug': {
-      id: '/_public/places/counties/$placeSlug'
-      path: '/places/counties/$placeSlug'
-      fullPath: '/places/counties/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesCountiesPlaceSlugRouteImport
+    '/_public/places/boroughs/$placeSlug': {
+      id: '/_public/places/boroughs/$placeSlug'
+      path: '/places/boroughs/$placeSlug'
+      fullPath: '/places/boroughs/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesBoroughsPlaceSlugRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/places/cities/$placeSlug': {
@@ -2000,18 +1874,144 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicPlacesCitiesPlaceSlugRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/_public/places/boroughs/$placeSlug': {
-      id: '/_public/places/boroughs/$placeSlug'
-      path: '/places/boroughs/$placeSlug'
-      fullPath: '/places/boroughs/$placeSlug'
-      preLoaderRoute: typeof PublicPlacesBoroughsPlaceSlugRouteImport
+    '/_public/places/counties/$placeSlug': {
+      id: '/_public/places/counties/$placeSlug'
+      path: '/places/counties/$placeSlug'
+      fullPath: '/places/counties/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesCountiesPlaceSlugRouteImport
       parentRoute: typeof PublicRoute
     }
-    '/.well-known/oauth-authorization-server/api/auth': {
-      id: '/.well-known/oauth-authorization-server/api/auth'
-      path: '/.well-known/oauth-authorization-server/api/auth'
-      fullPath: '/.well-known/oauth-authorization-server/api/auth'
-      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
+    '/_public/places/districts/$placeSlug': {
+      id: '/_public/places/districts/$placeSlug'
+      path: '/places/districts/$placeSlug'
+      fullPath: '/places/districts/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesDistrictsPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/metros/$placeSlug': {
+      id: '/_public/places/metros/$placeSlug'
+      path: '/places/metros/$placeSlug'
+      fullPath: '/places/metros/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesMetrosPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/neighborhoods/$placeSlug': {
+      id: '/_public/places/neighborhoods/$placeSlug'
+      path: '/places/neighborhoods/$placeSlug'
+      fullPath: '/places/neighborhoods/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesNeighborhoodsPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/places/polities/$placeSlug': {
+      id: '/_public/places/polities/$placeSlug'
+      path: '/places/polities/$placeSlug'
+      fullPath: '/places/polities/$placeSlug'
+      preLoaderRoute: typeof PublicPlacesPolitiesPlaceSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/campaigns/$slug': {
+      id: '/_public/profiles/campaigns/$slug'
+      path: '/profiles/campaigns/$slug'
+      fullPath: '/profiles/campaigns/$slug'
+      preLoaderRoute: typeof PublicProfilesCampaignsSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/events/$slug': {
+      id: '/_public/profiles/events/$slug'
+      path: '/profiles/events/$slug'
+      fullPath: '/profiles/events/$slug'
+      preLoaderRoute: typeof PublicProfilesEventsSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/initiatives/$slug': {
+      id: '/_public/profiles/initiatives/$slug'
+      path: '/profiles/initiatives/$slug'
+      fullPath: '/profiles/initiatives/$slug'
+      preLoaderRoute: typeof PublicProfilesInitiativesSlugRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/profiles/organizations/': {
+      id: '/_public/profiles/organizations/'
+      path: '/'
+      fullPath: '/profiles/organizations/'
+      preLoaderRoute: typeof PublicProfilesOrganizationsIndexRouteImport
+      parentRoute: typeof PublicProfilesOrganizationsRoute
+    }
+    '/_public/profiles/organizations/$slug': {
+      id: '/_public/profiles/organizations/$slug'
+      path: '/$slug'
+      fullPath: '/profiles/organizations/$slug'
+      preLoaderRoute: typeof PublicProfilesOrganizationsSlugRouteImport
+      parentRoute: typeof PublicProfilesOrganizationsRoute
+    }
+    '/_public/profiles/people/': {
+      id: '/_public/profiles/people/'
+      path: '/'
+      fullPath: '/profiles/people/'
+      preLoaderRoute: typeof PublicProfilesPeopleIndexRouteImport
+      parentRoute: typeof PublicProfilesPeopleRoute
+    }
+    '/_public/profiles/people/$slug': {
+      id: '/_public/profiles/people/$slug'
+      path: '/$slug'
+      fullPath: '/profiles/people/$slug'
+      preLoaderRoute: typeof PublicProfilesPeopleSlugRouteImport
+      parentRoute: typeof PublicProfilesPeopleRoute
+    }
+    '/api/atproto/oauth/callback': {
+      id: '/api/atproto/oauth/callback'
+      path: '/api/atproto/oauth/callback'
+      fullPath: '/api/atproto/oauth/callback'
+      preLoaderRoute: typeof ApiAtprotoOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/atproto/oauth/client-metadata.json': {
+      id: '/api/atproto/oauth/client-metadata.json'
+      path: '/api/atproto/oauth/client-metadata.json'
+      fullPath: '/api/atproto/oauth/client-metadata.json'
+      preLoaderRoute: typeof ApiAtprotoOauthClientMetadataDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/atproto/oauth/start': {
+      id: '/api/atproto/oauth/start'
+      path: '/api/atproto/oauth/start'
+      fullPath: '/api/atproto/oauth/start'
+      preLoaderRoute: typeof ApiAtprotoOauthStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/atproto/sign-in/start': {
+      id: '/api/atproto/sign-in/start'
+      path: '/api/atproto/sign-in/start'
+      fullPath: '/api/atproto/sign-in/start'
+      preLoaderRoute: typeof ApiAtprotoSignInStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/internal/api-key': {
+      id: '/api/auth/internal/api-key'
+      path: '/api/auth/internal/api-key'
+      fullPath: '/api/auth/internal/api-key'
+      preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/e2e/hosted/billing-inventory': {
+      id: '/api/e2e/hosted/billing-inventory'
+      path: '/api/e2e/hosted/billing-inventory'
+      fullPath: '/api/e2e/hosted/billing-inventory'
+      preLoaderRoute: typeof ApiE2eHostedBillingInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/e2e/hosted/identity': {
+      id: '/api/e2e/hosted/identity'
+      path: '/api/e2e/hosted/identity'
+      fullPath: '/api/e2e/hosted/identity'
+      preLoaderRoute: typeof ApiE2eHostedIdentityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/e2e/workspace/member': {
+      id: '/api/e2e/workspace/member'
+      path: '/api/e2e/workspace/member'
+      fullPath: '/api/e2e/workspace/member'
+      preLoaderRoute: typeof ApiE2eWorkspaceMemberRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/atproto/oauth/harness/authorize': {

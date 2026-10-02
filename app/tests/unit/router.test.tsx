@@ -98,12 +98,14 @@ describe("router", () => {
     serverQueryClient.setQueryData(["discovery", "runs"], runs);
 
     await options.hydrate({
-      dehydratedQueryClient: dehydrate(serverQueryClient),
-      queryStream: new ReadableStream({
-        start(controller) {
-          controller.close();
-        },
-      }),
+      query: {
+        initial: dehydrate(serverQueryClient).queries,
+        stream: new ReadableStream({
+          start(controller) {
+            controller.close();
+          },
+        }),
+      },
     });
 
     const clientQueryClient = options.context?.queryClient;

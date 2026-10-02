@@ -24,14 +24,19 @@ export const ROUTER_SENTINEL = { __atlasRouter: true } as const;
  */
 export const START_HANDLER_SENTINEL = { __atlasHandler: true } as const;
 
+/** Queries the React Query SSR integration carries from server to client. */
+export type DehydratedRouterQueries = DehydratedState["queries"];
+
 /**
  * Router-level dehydrated payload the React Query SSR integration installs a
- * `hydrate` handler for: the server's cache snapshot plus the stream carrying
- * queries that only settled after the shell was flushed.
+ * `hydrate` handler for: the queries the server settled before flushing the
+ * shell, plus the stream carrying queries that settled afterwards.
  */
 export interface DehydratedRouterPayload {
-  dehydratedQueryClient?: DehydratedState;
-  queryStream: ReadableStream<DehydratedState>;
+  query: {
+    initial?: DehydratedRouterQueries;
+    stream: ReadableStream<DehydratedRouterQueries>;
+  };
 }
 
 /**
