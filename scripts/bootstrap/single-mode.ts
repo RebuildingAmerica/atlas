@@ -9,6 +9,7 @@
 import { log, note, outro } from "@clack/prompts";
 import { describePhase, formatFollowUpNote } from "./lib/cold-start.js";
 import type { HostedDeployTarget } from "./lib/hosted-target.js";
+import { runAccessGatePhase } from "./phases/access-gate.js";
 import { runApiDomainPhase } from "./phases/api-domain.js";
 import { runApiEdgePhase } from "./phases/api-edge.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
@@ -131,6 +132,18 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
       },
       successMessage: `atlas-api ${args.apiDomainTarget} edge protection ready.`,
       failureMessage: "API edge protection had issues.",
+    };
+  }
+  if (args.accessGateOnly) {
+    return {
+      announcement: "Running the platform admin Access gate only.",
+      phaseLabel: "Platform Admin Access Gate",
+      run: () => runAccessGatePhase(projectRoot, args.doctorMode),
+      record: (result) => {
+        markPhase(state, "access-gate", reportedPhaseStatus(result));
+      },
+      successMessage: "Cloudflare Access gate for the platform admin is ready.",
+      failureMessage: "The platform admin Access gate had issues.",
     };
   }
   if (args.productOnly === "atlas") {

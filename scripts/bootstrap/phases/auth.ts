@@ -64,21 +64,26 @@ function joinIdentityParts(parts: (string | null)[]): string | null {
   return displayParts.length > 0 ? displayParts.join(" / ") : null;
 }
 
-function parseWranglerAccount(output: string): string | null {
-  for (const line of output.split("\n")) {
-    const parts = line
-      .split("│")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0);
-    if (
-      parts.length === 2 &&
-      parts[0] !== "Account Name" &&
-      parts[1] !== "Account ID"
-    ) {
-      return `${parts[0]} / ${parts[1]}`;
-    }
-  }
-  return null;
+/**
+ * Names the person and accounts `cf auth whoami` is signed in as. Showing the
+ * account matters: one person often has several Cloudflare accounts, and
+ * provisioning Atlas in the wrong one is the mistake to catch here.
+ */
+function parseCfIdentity(
+  record: Record<string, unknown> | null,
+): string | null {
+  const accounts = Array.isArray(record?.accounts) ? record.accounts : [];
+  const accountNames = accounts
+    .map((account: unknown) =>
+      account && typeof account === "object" && "name" in account
+        ? String(account.name)
+        : null,
+    )
+    .filter((name): name is string => name !== null);
+  return joinIdentityParts([
+    jsonString(record, "email"),
+    accountNames.length > 0 ? accountNames.join(", ") : null,
+  ]);
 }
 
 export function parseAuthIdentity(
@@ -92,8 +97,8 @@ export function parseAuthIdentity(
     if (login) return login;
   }
 
-  if (capabilityId === "deploy-wrangler") {
-    return parseWranglerAccount(output);
+  if (capabilityId === "deploy-cf") {
+    return parseCfIdentity(record);
   }
 
   if (capabilityId === "product-stripe") {

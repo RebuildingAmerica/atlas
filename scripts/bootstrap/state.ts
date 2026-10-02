@@ -32,7 +32,8 @@ export type PhaseId =
   | "mcp-registry"
   | "ci-cache"
   | "api-domain"
-  | "api-edge";
+  | "api-edge"
+  | "access-gate";
 
 export interface PhaseResult {
   success: boolean;
