@@ -35,7 +35,6 @@ EXPECTED_ACTIONS: dict[tuple[str, str], Action] = {
     ("PATCH", "/api/discovery-schedules/{schedule_id}"): Action.SCHEDULES_WRITE,
     ("DELETE", "/api/discovery-schedules/{schedule_id}"): Action.SCHEDULES_WRITE,
     ("POST", "/api/discovery-runs/{run_id}/cancel"): Action.RUNS_CANCEL,
-    ("GET", "/api/discovery-runs/jobs/{job_id}"): Action.RUNS_INSPECT,
     ("GET", "/api/discovery-runs/summary"): Action.RUNS_INSPECT,
     ("GET", "/api/admin/verifications"): Action.DISCOUNTS_REVIEW,
     ("PATCH", "/api/admin/verifications/{verification_id}"): Action.DISCOUNTS_REVIEW,
@@ -51,7 +50,7 @@ def _declared() -> dict[tuple[str, str], set[Action]]:
     }
 
 
-def test_the_thirty_operator_routes_declare_exactly_the_expected_action() -> None:
+def test_operator_routes_declare_exactly_the_expected_action() -> None:
     declared = _declared()
 
     assert declared == {route: {action} for route, action in EXPECTED_ACTIONS.items()}
