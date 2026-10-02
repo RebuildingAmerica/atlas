@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.models import EntryCRUD, SourceCRUD
 from atlas.platform.authz import Action, require_action
+from tests.support.authz_requests import guard_request
 
 
 @pytest.mark.asyncio
@@ -383,11 +384,13 @@ async def test_only_allowlisted_editors_can_read_or_close_private_reports(
         "X-Atlas-Actor-Email": "visitor@example.org",
         "X-Atlas-Actor-Id": "ordinary-user",
         "X-Atlas-Internal-Secret": test_internal_secret,
+        "X-Atlas-Actor-Account-Ready": "true",
     }
     editor_headers = {
         "X-Atlas-Actor-Email": "EDITOR@rebuildingus.org",
         "X-Atlas-Actor-Id": "editor-user",
         "X-Atlas-Internal-Secret": test_internal_secret,
+        "X-Atlas-Actor-Account-Ready": "true",
     }
 
     for path in (
@@ -442,7 +445,9 @@ async def test_discovery_api_key_cannot_become_a_moderation_editor(test_settings
         permissions={"discovery": ["write"]},
     )
     with pytest.raises(HTTPException) as exc:
-        await require_action(Action.FLAGS_READ)(actor=actor, settings=test_settings)
+        await require_action(Action.FLAGS_READ)(
+            request=guard_request(), actor=actor, settings=test_settings
+        )
     assert exc.value.status_code == HTTPStatus.FORBIDDEN
 
 

@@ -32,12 +32,16 @@ def enable_staff_auth(settings: Settings) -> StaffAuthHeaders:
     -------
     StaffAuthHeaders
         Trusted app headers for an ordinary signed-in account and for an
-        allowlisted operator whose email differs only in case.
+        allowlisted operator whose email differs only in case, both from
+        passkey-ready sessions.
     """
     settings.multi_user = True
     settings.auth_internal_secret = INTERNAL_TEST_SECRET
     settings.operator_allowed_emails = [STAFF_EMAIL]
-    base = {"X-Atlas-Internal-Secret": INTERNAL_TEST_SECRET}
+    base = {
+        "X-Atlas-Internal-Secret": INTERNAL_TEST_SECRET,
+        "X-Atlas-Actor-Account-Ready": "true",
+    }
     return StaffAuthHeaders(
         ordinary={
             **base,

@@ -53,6 +53,7 @@ async function requestAtlasBase<T>(baseUrl: string, path: string, init?: Request
   const headers = localMode
     ? {}
     : createInternalAuthHeaders(session.user, internalSecret, {
+        accountReady: session.accountReady,
         organizationId: session.workspace.activeOrganization?.id,
       });
   const response = await fetch(`${baseUrl}${path}`, {

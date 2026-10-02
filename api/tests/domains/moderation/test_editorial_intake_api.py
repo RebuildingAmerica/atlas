@@ -627,6 +627,7 @@ async def test_editorial_intake_requires_an_allowlisted_operator(
         "X-Atlas-Actor-Email": "visitor@example.org",
         "X-Atlas-Actor-Id": "ordinary-user",
         "X-Atlas-Internal-Secret": internal_token,
+        "X-Atlas-Actor-Account-Ready": "true",
     }
     response = await test_client.post(
         "/api/review-queue/editorial-candidates", json=candidate(), headers=ordinary_headers

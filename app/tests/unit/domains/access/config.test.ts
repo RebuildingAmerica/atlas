@@ -41,8 +41,10 @@ describe("createInternalAuthHeaders", () => {
           id: "user_123",
         },
         "internal-test-secret",
+        { accountReady: true },
       ),
     ).toEqual({
+      "X-Atlas-Actor-Account-Ready": "true",
       "X-Atlas-Actor-Email": "operator@example.com",
       "X-Atlas-Actor-Id": "user_123",
       "X-Atlas-Internal-Secret": "internal-test-secret",
@@ -51,8 +53,12 @@ describe("createInternalAuthHeaders", () => {
 
   it("includes organization id when provided", () => {
     expect(
-      createInternalAuthHeaders({ email: "a@b.com", id: "u1" }, "s", { organizationId: "org_1" }),
+      createInternalAuthHeaders({ email: "a@b.com", id: "u1" }, "s", {
+        accountReady: false,
+        organizationId: "org_1",
+      }),
     ).toEqual({
+      "X-Atlas-Actor-Account-Ready": "false",
       "X-Atlas-Actor-Email": "a@b.com",
       "X-Atlas-Actor-Id": "u1",
       "X-Atlas-Internal-Secret": "s",

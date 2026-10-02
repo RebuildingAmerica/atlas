@@ -36,6 +36,30 @@ def test_verify_internal_actor_and_local_actor_cover_success_and_validation() ->
         )
 
 
+@pytest.mark.parametrize(
+    ("header", "ready"),
+    [("true", True), (None, False), ("false", False), ("TRUE", False), ("1", False)],
+)
+def test_only_an_explicit_true_marks_the_session_passkey_ready(
+    header: str | None,
+    ready: bool,
+) -> None:
+    """Readiness is never inferred: anything but the literal ``true`` means not ready."""
+    settings = Settings()
+    settings.auth_internal_secret = "internal-test-secret"
+
+    actor = verify_internal_actor(
+        settings,
+        internal_secret="internal-test-secret",
+        actor_id="user_123",
+        actor_email="operator@example.com",
+        account_ready=header,
+    )
+
+    assert actor is not None
+    assert actor.account_ready is ready
+
+
 def test_permission_helpers_enforce_api_key_and_jwt_scopes() -> None:
     """Permission helpers should pass through locals and reject missing scoped access."""
     local_actor = AuthenticatedActor(

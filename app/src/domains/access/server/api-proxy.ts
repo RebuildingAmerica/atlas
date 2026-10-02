@@ -75,6 +75,7 @@ async function buildInternalAuthHeaders(
   }
 
   return createInternalAuthHeaders(session.user, internalSecret, {
+    accountReady: session.accountReady,
     organizationId: session.workspace.activeOrganization?.id,
   });
 }

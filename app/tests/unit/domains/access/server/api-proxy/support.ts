@@ -16,6 +16,7 @@ export function baseRuntimeConfig(overrides: Record<string, unknown> = {}) {
 
 export function makeAuthenticatedSession() {
   return {
+    accountReady: true,
     user: {
       email: "operator@atlas.test",
       id: "user-123",
@@ -30,6 +31,7 @@ export function makeAuthenticatedSession() {
 
 export function makeInternalAuthHeaders() {
   return {
+    "X-Atlas-Actor-Account-Ready": "true",
     "X-Atlas-Actor-Email": "operator@atlas.test",
     "X-Atlas-Actor-Id": "user-123",
     "X-Atlas-Internal-Secret": "internal-test-secret",
