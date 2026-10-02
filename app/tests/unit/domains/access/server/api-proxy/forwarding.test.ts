@@ -96,6 +96,7 @@ describe("proxyAtlasApiRequest forwarding", () => {
     expect(forwardedHeaders.get("x-atlas-proxy-secret")).toBe("internal-test-secret");
     expect(forwardedHeaders.get("x-atlas-actor-email")).toBe("operator@atlas.test");
     expect(forwardedHeaders.get("x-atlas-actor-id")).toBe("user-123");
+    expect(forwardedHeaders.get("x-atlas-actor-account-ready")).toBe("true");
     expect(forwardedHeaders.get("x-atlas-internal-secret")).toBe("internal-test-secret");
     expect(forwardedHeaders.get("x-atlas-organization-id")).toBe("org-456");
     expect(mocks.createInternalAuthHeaders).toHaveBeenCalledWith(
@@ -105,6 +106,7 @@ describe("proxyAtlasApiRequest forwarding", () => {
       },
       "internal-test-secret",
       {
+        accountReady: true,
         organizationId: "org-456",
       },
     );

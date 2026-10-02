@@ -38,3 +38,4 @@ class AuthenticatedActor:
     workspace_type: str | None = None
     active_products: list[str] | None = None
     resolved_capabilities: ResolvedCapabilities | None = None
+    account_ready: bool = False

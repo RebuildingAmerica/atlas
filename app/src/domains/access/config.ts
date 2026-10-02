@@ -20,6 +20,12 @@ export function getAuthConfig(env: AuthEnv = {}) {
 }
 
 interface InternalAuthHeadersOptions {
+  /**
+   * Whether the signed-in session has a verified email and a registered
+   * passkey. The API grants operator authority only to ready sessions, so a
+   * magic-link-only session can never act as the operator.
+   */
+  accountReady: boolean;
   organizationId?: string;
 }
 
@@ -33,15 +39,16 @@ export function createInternalAuthHeaders(
     id: string;
   },
   internalSecret: string,
-  options?: InternalAuthHeadersOptions,
+  options: InternalAuthHeadersOptions,
 ): Record<string, string> {
   const headers: Record<string, string> = {
+    "X-Atlas-Actor-Account-Ready": options.accountReady ? "true" : "false",
     "X-Atlas-Actor-Email": actor.email,
     "X-Atlas-Actor-Id": actor.id,
     "X-Atlas-Internal-Secret": internalSecret,
   };
 
-  if (options?.organizationId) {
+  if (options.organizationId) {
     headers["X-Atlas-Organization-Id"] = options.organizationId;
   }
 

@@ -168,6 +168,7 @@ async def require_actor(  # noqa: PLR0913
     x_atlas_actor_id: str | None = Header(None),
     x_atlas_actor_email: str | None = Header(None),
     x_atlas_organization_id: str | None = Header(None),
+    x_atlas_actor_account_ready: str | None = Header(None, include_in_schema=False),
     x_api_key: str | None = Header(None),
 ) -> AuthenticatedActor:
     """Require an authenticated actor unless local mode disables auth."""
@@ -180,6 +181,7 @@ async def require_actor(  # noqa: PLR0913
         x_atlas_actor_id,
         x_atlas_actor_email,
         org_id=x_atlas_organization_id,
+        account_ready=x_atlas_actor_account_ready,
     )
     if trusted_actor is not None:
         return trusted_actor

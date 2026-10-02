@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.platform.authz import Action, Decision, authorize, is_granted, require_action
+from tests.support.authz_requests import guard_request
 
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
@@ -19,12 +20,18 @@ INSTANCE_ACTIONS = [action for action in Action if action.value.startswith("inst
 PLATFORM_ACTIONS = [action for action in Action if action.value.startswith("platform.")]
 
 
-def _actor(*, auth_type: str = "internal", email: str = OPERATOR) -> AuthenticatedActor:
+def _actor(
+    *,
+    auth_type: str = "internal",
+    email: str = OPERATOR,
+    account_ready: bool = True,
+) -> AuthenticatedActor:
     return AuthenticatedActor(
         user_id="user_1",
         email=email,
         auth_type=auth_type,
         permissions={"discovery": ["read", "write"]},
+        account_ready=account_ready,
     )
 
 
@@ -73,6 +80,21 @@ def test_signed_in_account_outside_the_allowlist_is_refused(
     test_settings.operator_allowed_emails = [OPERATOR]
 
     decision = authorize(_actor(email="visitor@example.org"), action, test_settings)
+
+    assert decision.allowed is False
+    assert decision.status_code == HTTP_FORBIDDEN
+
+
+@pytest.mark.parametrize("action", list(Action))
+def test_operator_without_a_passkey_ready_session_is_refused(
+    test_settings: object,
+    action: Action,
+) -> None:
+    """A magic-link-only session proves a mailbox, not the operator, so it holds no authority."""
+    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.managed = True
+
+    decision = authorize(_actor(account_ready=False), action, test_settings)
 
     assert decision.allowed is False
     assert decision.status_code == HTTP_FORBIDDEN
@@ -174,7 +196,7 @@ async def test_require_action_returns_the_actor_when_allowed(test_settings: obje
 
     dependency = require_action(Action.SCHEDULES_WRITE)
 
-    assert await dependency(actor=actor, settings=test_settings) is actor
+    assert await dependency(request=guard_request(), actor=actor, settings=test_settings) is actor
 
 
 @pytest.mark.asyncio
@@ -184,7 +206,11 @@ async def test_require_action_raises_the_decision_when_refused(test_settings: ob
     dependency = require_action(Action.REVIEW_QUEUE_DECIDE)
 
     with pytest.raises(HTTPException) as exc:
-        await dependency(actor=_actor(email="visitor@example.org"), settings=test_settings)
+        await dependency(
+            request=guard_request(),
+            actor=_actor(email="visitor@example.org"),
+            settings=test_settings,
+        )
 
     assert exc.value.status_code == HTTP_FORBIDDEN
     assert exc.value.detail == EDITORIAL_REFUSAL
@@ -200,7 +226,7 @@ async def test_require_action_reports_a_missing_platform_surface_as_not_found(
     dependency = require_action(Action.DISCOUNTS_REVIEW)
 
     with pytest.raises(HTTPException) as exc:
-        await dependency(actor=_actor(), settings=test_settings)
+        await dependency(request=guard_request(), actor=_actor(), settings=test_settings)
 
     assert exc.value.status_code == HTTP_NOT_FOUND
 

@@ -414,6 +414,7 @@ async function persistLinkedAtprotoIdentity(
     headers: {
       "Content-Type": "application/json",
       ...createInternalAuthHeaders(session.user, runtime.internalSecret, {
+        accountReady: session.accountReady,
         organizationId: session.workspace.activeOrganization?.id,
       }),
     },
@@ -437,6 +438,7 @@ async function resolveAtprotoSignInController(
       ...createInternalAuthHeaders(
         { email: "atproto-sign-in@atlas.internal", id: "atproto-sign-in" },
         runtime.internalSecret,
+        { accountReady: false },
       ),
     },
     method: "POST",

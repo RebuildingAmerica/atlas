@@ -24,14 +24,20 @@ def build_local_actor() -> AuthenticatedActor:
     )
 
 
-def verify_internal_actor(
+def verify_internal_actor(  # noqa: PLR0913 - one parameter per trusted header
     settings: Settings,
     internal_secret: str | None,
     actor_id: str | None,
     actor_email: str | None,
     org_id: str | None = None,
+    account_ready: str | None = None,
 ) -> AuthenticatedActor | None:
-    """Validate trusted app-to-API headers."""
+    """Validate trusted app-to-API headers.
+
+    ``account_ready`` is the app's ``X-Atlas-Actor-Account-Ready`` header: the
+    literal ``true`` when the signed-in session has a verified email and a
+    registered passkey. Anything else, including its absence, means not ready.
+    """
     if not (
         settings.auth_internal_secret
         and internal_secret
@@ -50,4 +56,5 @@ def verify_internal_actor(
         email=actor_email,
         auth_type="internal",
         org_id=org_id,
+        account_ready=account_ready == "true",
     )
