@@ -17,9 +17,12 @@ Every target below is sized to one person's capacity.
 | The public site, sitemap, catalog, or search stops answering | Failed hourly run notification from GitHub                      | `production-canary.yml`                                 |
 | A Stripe webhook keeps failing, or a dispute opens           | Stripe's own email to the account owner                         | Stripe account notification settings                    |
 
-The Error Alerting workflow needs the deploy service account to hold the
-monitoring roles. `scripts/grant-monitoring-role.sh` grants them and dispatches
-the workflow with the operator's email.
+The Error Alerting workflow needs the deploy service account to hold
+`roles/monitoring.editor`, `roles/logging.configWriter` (every log-based alert
+owns a Cloud Logging notification rule), and `roles/logging.viewer`.
+`scripts/grant-monitoring-role.sh` grants them and dispatches the workflow with
+the operator's email. Accept Google's confirmation email afterwards, or the
+channel delivers nothing.
 
 ## Response targets
 
@@ -74,6 +77,12 @@ Reverse both steps on return, after clearing the correction inbox.
 
 ## When something is broken
 
+- **The API answers 500 everywhere and the canary fails:** dispatch the Diagnose
+  Atlas API workflow for the affected environment. It prints the database's own
+  error. A Neon error saying the project "exceeded the quota" means the plan ran
+  out, as it did on September 30, 2026; raise the plan or wait for the monthly
+  reset, then confirm `/health` and the next canary run. Rolling back does not
+  help, because every release shares the same database.
 - **A release hurts visitors:** roll back with the Roll Back Production
   workflow; see `docs/runbooks/vercel-incident-response.md`.
 - **Wrong data is shown confidently on a promoted profile:** stage a correction
