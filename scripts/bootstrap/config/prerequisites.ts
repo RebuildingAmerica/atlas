@@ -1,3 +1,5 @@
+import { CF_CLI } from "../lib/cf.js";
+
 export type CapabilityId =
   | "core-node"
   | "core-pnpm"
@@ -7,7 +9,7 @@ export type CapabilityId =
   | "deploy-gcloud"
   | "deploy-gh"
   | "deploy-actionlint"
-  | "deploy-wrangler"
+  | "deploy-cf"
   | "deploy-vercel"
   | "deploy-mcp-publisher"
   | "deploy-dig"
@@ -179,21 +181,24 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     },
   },
   {
-    id: "deploy-wrangler",
-    label: "Cloudflare Wrangler",
+    // Cloudflare's `cf` CLI, the successor to Wrangler. Pinned and run through
+    // `pnpm dlx` (see scripts/bootstrap/lib/cf.ts), so there is nothing to
+    // install beyond pnpm; this checks that the pinned version runs.
+    id: "deploy-cf",
+    label: "Cloudflare cf CLI",
     category: "deploy",
     requiredFor: [],
     requiredByDefault: false,
-    binaryCommand: "command -v wrangler",
-    versionCommand: "wrangler --version 2>/dev/null",
+    binaryCommand: `${CF_CLI} --version >/dev/null 2>&1`,
+    versionCommand: `${CF_CLI} --version 2>/dev/null`,
     installCommands: {
-      macos: ["pnpm add -g wrangler"],
-      linux: ["pnpm add -g wrangler"],
+      macos: [`${CF_CLI} --version`],
+      linux: [`${CF_CLI} --version`],
     },
     auth: {
-      checkCommand: "wrangler whoami 2>/dev/null | grep -q 'You are logged in'",
-      identityCommand: "wrangler whoami 2>/dev/null",
-      loginCommand: "wrangler login",
+      checkCommand: `${CF_CLI} auth whoami >/dev/null 2>&1`,
+      identityCommand: `${CF_CLI} auth whoami 2>/dev/null`,
+      loginCommand: `${CF_CLI} auth login`,
       interactive: true,
     },
   },
