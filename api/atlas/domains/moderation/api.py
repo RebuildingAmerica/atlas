@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from atlas.domains.access import AuthenticatedActor, ensure_atlas_staff, require_actor
+from atlas.domains.access import (
+    AuthenticatedActor,  # noqa: TC001 - FastAPI resolves this annotation at runtime
+)
 from atlas.domains.moderation.editorial_intake import (
     EditorialCandidateConflictError,
     EditorialCandidateCreateRequest,
@@ -20,6 +22,7 @@ from atlas.domains.moderation.editorial_intake import (
 )
 from atlas.domains.moderation.review_queue import ReviewConflictError, ReviewQueueCRUD
 from atlas.models import EntryCRUD, FlagCRUD, SourceCRUD, get_db_connection
+from atlas.platform.authz import Action, require_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 from atlas.schemas import (
@@ -126,14 +129,6 @@ class ModerationInboxResponse(BaseModel):
     total: int
 
 
-async def require_moderation_editor(
-    actor: AuthenticatedActor = Depends(require_actor),
-    settings: Settings = Depends(get_settings),
-) -> AuthenticatedActor:
-    """Keep reporter notes and publication decisions with named Atlas editors."""
-    return ensure_atlas_staff(actor, settings, detail="Editorial review requires Atlas staff.")
-
-
 async def get_db(
     settings: Settings = Depends(get_settings),
 ) -> AsyncGenerator[aiosqlite.Connection, None]:
@@ -207,7 +202,7 @@ async def get_entity_flag_status(
 )
 async def list_moderation_inbox(
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_READ)),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: aiosqlite.Connection = Depends(get_db),
@@ -232,7 +227,7 @@ async def list_moderation_inbox(
 )
 async def list_correction_inbox(
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_READ)),
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: aiosqlite.Connection = Depends(get_db),
@@ -259,7 +254,7 @@ async def list_correction_inbox(
 )
 async def list_entity_flags(  # noqa: PLR0913 - FastAPI dependency parameters
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_READ)),
     entity_id: str = Query(...),
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
@@ -309,7 +304,7 @@ async def _update_entity_flag_status(
 async def resolve_entity_flag(
     flag_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one entity flag resolved."""
@@ -330,7 +325,7 @@ async def resolve_entity_flag(
 async def dismiss_entity_flag(
     flag_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one entity flag dismissed."""
@@ -376,7 +371,7 @@ async def create_source_flag(
 )
 async def list_source_flags(  # noqa: PLR0913 - FastAPI dependency parameters
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_READ)),
     source_id: str = Query(...),
     limit: int = Query(50, ge=1, le=500),
     cursor: str | None = Query(None),
@@ -426,7 +421,7 @@ async def _update_source_flag_status(
 async def resolve_source_flag(
     flag_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one source flag resolved."""
@@ -447,7 +442,7 @@ async def resolve_source_flag(
 async def dismiss_source_flag(
     flag_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one source flag dismissed."""
@@ -469,7 +464,7 @@ async def list_review_queue(
     response: Response,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_READ)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ReviewQueueListResponse:
     """List pending review-queue items oldest-first."""
@@ -494,7 +489,7 @@ async def list_review_queue(
 async def create_editorial_candidate(
     request: EditorialCandidateCreateRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_STAGE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EditorialCandidateCreateResponse:
     """Keep a researched organization private until an editor publishes it."""
@@ -522,7 +517,7 @@ async def create_editorial_profile_change(
     entity_id: str,
     request: EditorialCandidateCreateRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_STAGE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> EditorialCandidateCreateResponse:
     """Keep the current public facts in place until an editor reviews the change."""
@@ -547,7 +542,7 @@ async def create_editorial_profile_change(
 async def scan_source_staleness_review_queue(
     response: Response,
     org_id: str | None = Query(None),
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_SCAN)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> SourceStalenessReviewScanResponse:
     """Enqueue stale public records for operator review."""
@@ -572,7 +567,7 @@ async def scan_website_candidates(
     response: Response,
     city: str = Query(..., min_length=1),
     state: str = Query(..., min_length=2, max_length=2),
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_SCAN)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> WebsiteCandidateScanResponse:
     """Queue public organization site URLs for an editor to confirm."""
@@ -596,7 +591,7 @@ async def scan_website_candidates(
 async def approve_review_queue_item(
     item_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_DECIDE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ReviewQueueItemResponse:
     """Approve a held record and publish its entry."""
@@ -624,7 +619,7 @@ async def approve_review_queue_item(
 async def reject_review_queue_item(
     item_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_moderation_editor),
+    actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_DECIDE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ReviewQueueItemResponse:
     """Reject a held record and keep its entry inactive."""

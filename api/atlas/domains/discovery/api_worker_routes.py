@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
-from atlas.domains.access import AuthenticatedActor, require_actor_permission, require_atlas_staff
+from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
     DiscoveryScheduleCRUD,
@@ -28,6 +28,7 @@ from atlas.domains.discovery.schemas import (
     ScheduledRunResult,
 )
 from atlas.models import DiscoveryRunCRUD
+from atlas.platform.authz import Action, require_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import db as db_manager
 from atlas.platform.http.cache import apply_no_store_headers
@@ -196,7 +197,7 @@ async def claim_discovery_job(
 async def get_discovery_job(
     job_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.RUNS_INSPECT)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryJobResponse:
     """Get a job by ID."""
@@ -335,7 +336,7 @@ async def release_worker_jobs(
 )
 async def get_pipeline_summary(
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.RUNS_INSPECT)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryPipelineSummaryResponse:
     """Return aggregate pipeline health metrics."""
