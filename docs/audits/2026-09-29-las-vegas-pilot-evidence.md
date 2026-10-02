@@ -1,7 +1,7 @@
 # Las Vegas pilot evidence board
 
-Opened September 28, 2026 · production release `v2026.09.28-4` · decision
-**NO-GO**
+Opened September 28, 2026 · current production release `v2026.10.02-2`
+(`5f43e4d2`, deployed October 2, 2026) · decision **NO-GO**
 
 This board records what has been observed for each gate of the Las Vegas pilot,
 tied to the release that was deployed when it was observed. A gate changes only
@@ -37,14 +37,38 @@ gate would normally need a second person, the row says how it was handled.
 
 ## Security fixes found during this pilot
 
-| Defect                                                                                                                                                  | Found      | Fixed in                                                    | Production check |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------- | ---------------- |
-| Any signed-in account could approve profile verifications and change discovery schedules.                                                               | 2026-09-28 | Branch `fix/staff-review-and-private-runs` (not yet merged) | Pending          |
-| Any signed-in account could read other workspaces' private research runs, and any signed-in MCP client could read them through the discovery-run tools. | 2026-09-28 | Branch `fix/staff-review-and-private-runs` (not yet merged) | Pending          |
+| Defect                                                                                                                                                  | Found      | Fixed in                                               | Production check                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Any signed-in account could approve profile verifications and change discovery schedules.                                                               | 2026-09-28 | `8ad023f1`, released in `v2026.10.02-2`                | 2026-10-02: anonymous `POST /api/profiles/claims/review/x/approve` returns 401 through the production app and API. A signed-in non-operator account seeing 403 is still to be observed. |
+| Any signed-in account could read other workspaces' private research runs, and any signed-in MCP client could read them through the discovery-run tools. | 2026-09-28 | `8ad023f1` and `9930eaf6`, released in `v2026.10.02-2` | 2026-10-02: anonymous `GET /api/discovery-runs` returns 401 on the production API. A cross-workspace read by a signed-in account is still to be observed.                               |
 
 ## Log
 
 Newest first. Each entry: date · release · actor · observation · result.
+
+- 2026-10-02 · `v2026.10.02-2` · Claude · `deploy-production.yml` run
+  37053223990 passed every job, including hosted smoke, hosted checkout, and
+  hosted identity. Readback: API `/health`, app `/`, `/browse`, and proxied
+  `/api/entities` return 200; anonymous profile-verification approval and
+  `/api/correction-inbox` return 401 through the app; unknown report status
+  returns 404 from the API. · Release live. Gates unchanged.
+- 2026-10-02 · `v2026.10.02-1` · Claude · The API and PDS deployed, but Vercel
+  refused the app build over the TanStack Start server-function XSS
+  (CVE-2026-102989), so production served the new API behind the previous app
+  until `v2026.10.02-2` shipped the patched TanStack Start. · Superseded.
+- 2026-10-02 · `v2026.10.02-2` · Claude · `error-alerting.yml` run 37045872284
+  created the email channel for the operator, then Cloud Monitoring refused the
+  first log-based alert policy with 403: log-based policies need
+  `logging.notificationRules.create` (`roles/logging.configWriter`), which the
+  deploy account lacks. · Operator alerts not yet live; waiting on the operator
+  to grant the role (`scripts/grant-monitoring-role.sh` now includes it).
+- 2026-09-30 to 2026-10-01 · `v2026.09.28-4` · Claude · Production and staging
+  APIs returned 500 because the Neon project exceeded its compute quota; the
+  discovery worker's 10-second polling kept the database from suspending. The
+  operator upgraded the Neon plan, and the hourly production canary has passed
+  since 2026-10-01 05:53 UTC. The worker now backs off to 15 minutes while no
+  job waits and wakes immediately when one is queued (`df2633c8`). · Outage
+  closed; no rollback rehearsal was involved.
 
 - 2026-09-28 · `v2026.09.28-4` · Claude · Baseline of the ten questions against
   the production API (`state=NV&city=Las Vegas`): public transit 0 results;
