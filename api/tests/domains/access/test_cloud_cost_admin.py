@@ -14,6 +14,7 @@ from atlas.domains.access.api.cloud_cost_admin import get_cloud_cost_posture
 from atlas.domains.discovery.cost import record_cost
 from atlas.domains.discovery.models import DiscoveryRunCRUD
 from atlas.main import create_app
+from tests.support.app_assertions import sign_app_assertion
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -30,6 +31,7 @@ async def test_cloud_cost_posture_requires_internal_operator(db_url: str) -> Non
             database_url=db_url,
             multi_user=True,
             auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
             auth_api_key_introspection_url=(  # pragma: allowlist secret
@@ -59,6 +61,7 @@ async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> No
             database_url=db_url,
             multi_user=True,
             auth_internal_secret="internal-test-secret",  # pragma: allowlist secret
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             operator_allowed_emails=["ops@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
@@ -76,10 +79,11 @@ async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> No
         response = await client.get(
             "/api/admin/cloud-costs",
             headers={
-                "X-Atlas-Actor-Email": "ops@rebuildingus.org",
-                "X-Atlas-Actor-Id": "ops-user",
-                "X-Atlas-Internal-Secret": "internal-test-secret",  # pragma: allowlist secret
-                "X-Atlas-Actor-Account-Ready": "true",
+                "X-Atlas-Actor-Assertion": sign_app_assertion(
+                    user_id="ops-user",
+                    email="ops@rebuildingus.org",
+                    issuer="https://atlas.example.test/api/auth",
+                ),
             },
         )
 

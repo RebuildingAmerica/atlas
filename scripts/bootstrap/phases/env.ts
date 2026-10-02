@@ -17,8 +17,13 @@ import {
 
 const AUTO_GENERATED_SECRETS = new Set([
   "ATLAS_AUTH_INTERNAL_SECRET",
+  "ATLAS_AUTH_CALLBACK_SECRET",
   "ATLAS_EDGE_ORIGIN_SECRET",
 ]);
+
+// Values the root .env shares with the staging, production, API, and app env
+// files so every service holds the same copy.
+const SHARED_ENV_KEYS = [...AUTO_GENERATED_SECRETS, "ANTHROPIC_API_KEY"];
 
 interface EnvKeyConfig {
   prompt: string;
@@ -136,6 +141,40 @@ export function summarizeEnvDoctor(env: Map<string, string>): EnvDoctorSummary {
     followUpItems,
     message: lines.join("\n"),
   };
+}
+
+/**
+ * The shared values one existing env file should receive from this run.
+ *
+ * Anything set during this run propagates everywhere, as before. A generated
+ * secret that the target file lacks, or still holds as a placeholder, is also
+ * copied from the root .env. Without that, a secret introduced after the file
+ * was created never reaches it: the app needs ATLAS_AUTH_CALLBACK_SECRET and
+ * ATLAS_EDGE_ORIGIN_SECRET in app/.env.local even when the root .env already
+ * had them, and the app refuses to start with accounts enabled without them.
+ * A real value already in the target file is never overwritten.
+ */
+export function sharedEnvUpdates(
+  targetEnv: Map<string, string>,
+  rootEnv: Map<string, string>,
+  updates: Map<string, string>,
+): Map<string, string> {
+  const envUpdates = new Map<string, string>();
+  for (const key of SHARED_ENV_KEYS) {
+    const updated = updates.get(key);
+    if (updated) {
+      envUpdates.set(key, updated);
+      continue;
+    }
+    if (!AUTO_GENERATED_SECRETS.has(key) || envValueReady(targetEnv, key)) {
+      continue;
+    }
+    const rootValue = rootEnv.get(key);
+    if (rootValue !== undefined && !isPlaceholder(rootValue)) {
+      envUpdates.set(key, rootValue);
+    }
+  }
+  return envUpdates;
 }
 
 export function formatEnvValuePromptMessage(key: string): string {
@@ -316,25 +355,21 @@ export async function runEnvPhase(
     mergeEnvFile(rootEnvPath, updates);
     log.success("Setup values saved");
     logSubline(`${updates.size} value${updates.size === 1 ? "" : "s"} updated`);
+  }
 
-    // Propagate shared keys to API and app env files
-    const sharedKeys = [
-      "ATLAS_AUTH_INTERNAL_SECRET",
-      "ATLAS_EDGE_ORIGIN_SECRET",
-      "ANTHROPIC_API_KEY",
-    ];
-    for (const envSpec of envFiles.slice(1)) {
-      const targetPath = path.join(projectRoot, envSpec.target);
-      if (!existsSync(targetPath)) continue;
+  // Propagate shared keys to the hosted, API, and app env files
+  const resolvedRootEnv = parseEnvFile(rootEnvPath);
+  for (const envSpec of envFiles.slice(1)) {
+    const targetPath = path.join(projectRoot, envSpec.target);
+    if (!existsSync(targetPath)) continue;
 
-      const envUpdates = new Map<string, string>();
-      for (const key of sharedKeys) {
-        const value = updates.get(key);
-        if (value) envUpdates.set(key, value);
-      }
-      if (envUpdates.size > 0) {
-        mergeEnvFile(targetPath, envUpdates);
-      }
+    const envUpdates = sharedEnvUpdates(
+      parseEnvFile(targetPath),
+      resolvedRootEnv,
+      updates,
+    );
+    if (envUpdates.size > 0) {
+      mergeEnvFile(targetPath, envUpdates);
     }
   }
 

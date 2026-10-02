@@ -18,6 +18,8 @@ describe("runtime additional branches", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret", // pragma: allowlist secret
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_EMAIL_RESEND_API_KEY: "re_test_123", // pragma: allowlist secret
         ATLAS_PUBLIC_URL: "https://atlas.example.com",
       },
@@ -78,6 +80,8 @@ describe("runtime additional branches", () => {
         emailFrom: "Atlas <auth@atlas.test>",
         emailProvider: "capture",
         internalSecret: "internal-test-secret", // pragma: allowlist secret
+        callbackSecret: "",
+        edgeOriginSecret: "",
         passkeyRpId: null,
         publicBaseUrl: "https://atlas.test",
         publicDomain: "atlas.test",
@@ -112,6 +116,8 @@ describe("runtime additional branches", () => {
       const runtime = await loadFreshRuntime({
         ATLAS_PUBLIC_URL: "https://atlas.test",
         ATLAS_AUTH_INTERNAL_SECRET: "internal", // pragma: allowlist secret
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_OPERATOR_ALLOWED_EMAILS: "ops@atlas.test, ROOT@atlas.test",
       });
 
@@ -130,6 +136,8 @@ describe("runtime additional branches", () => {
       const runtime = await loadFreshRuntime({
         ATLAS_PUBLIC_URL: "https://atlas.test",
         ATLAS_AUTH_INTERNAL_SECRET: "internal", // pragma: allowlist secret
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_SAML_ALLOWED_ISSUERS: "",
       });
 
@@ -141,6 +149,8 @@ describe("runtime additional branches", () => {
       const runtime = await loadFreshRuntime({
         ATLAS_PUBLIC_URL: "https://atlas.test",
         ATLAS_AUTH_INTERNAL_SECRET: "internal", // pragma: allowlist secret
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_SAML_ALLOWED_ISSUERS: "https://accounts.google.com, https://login.microsoft.com",
       });
 
@@ -159,6 +169,8 @@ describe("runtime additional branches", () => {
       const runtime = await loadFreshRuntime({
         ATLAS_PUBLIC_URL: "https://atlas.test",
         ATLAS_AUTH_INTERNAL_SECRET: "internal", // pragma: allowlist secret
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_SAML_ALLOWED_ISSUERS: "https://accounts.google.com",
       });
 
@@ -211,6 +223,8 @@ describe("runtime additional branches", () => {
       const runtime = await loadFreshRuntime({
         ATLAS_PUBLIC_URL: "https://atlas.test",
         ATLAS_AUTH_INTERNAL_SECRET: "internal", // pragma: allowlist secret
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST: "atlas-clients.example, partner.example.com",
       });
 

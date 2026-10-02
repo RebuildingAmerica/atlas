@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 async def verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | None:
     """Verify an API key through the configured introspection endpoint."""
-    if not settings.auth_api_key_introspection_url or not settings.auth_internal_secret:
+    if not settings.auth_api_key_introspection_url or not settings.auth_callback_secret:
         return None
 
     try:
@@ -27,7 +27,7 @@ async def verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | 
                 settings.auth_api_key_introspection_url,
                 headers={
                     "X-API-Key": api_key,
-                    "X-Atlas-Internal-Secret": settings.auth_internal_secret,
+                    "X-Atlas-Callback-Secret": settings.auth_callback_secret,
                 },
             )
     except Exception:

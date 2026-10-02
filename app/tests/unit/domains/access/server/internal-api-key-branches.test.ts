@@ -19,16 +19,16 @@ describe("internal-api-key additional branches", () => {
     mocks.ensureAuthReady.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      internalSecret: "internal-test-secret",
+      callbackSecret: "internal-test-secret",
     });
   });
 
-  it("returns 401 when the internal secret does not match", async () => {
+  it("returns 401 when the callback secret does not match", async () => {
     const { introspectApiKeyRequest } = await import("@/domains/access/server/internal-api-key");
     const response = await introspectApiKeyRequest(
       new Request("http://atlas.test/api/auth/internal/api-key", {
         headers: {
-          "X-Atlas-Internal-Secret": "wrong-secret",
+          "X-Atlas-Callback-Secret": "wrong-secret",
           "X-API-Key": "atlas_valid_key",
         },
         method: "POST",
@@ -46,7 +46,7 @@ describe("internal-api-key additional branches", () => {
     const response = await introspectApiKeyRequest(
       new Request("http://atlas.test/api/auth/internal/api-key", {
         headers: {
-          "X-Atlas-Internal-Secret": "internal-test-secret",
+          "X-Atlas-Callback-Secret": "internal-test-secret",
         },
         method: "POST",
       }),
@@ -73,7 +73,7 @@ describe("internal-api-key additional branches", () => {
     const promise = introspectApiKeyRequest(
       new Request("http://atlas.test/api/auth/internal/api-key", {
         headers: {
-          "X-Atlas-Internal-Secret": "internal-test-secret",
+          "X-Atlas-Callback-Secret": "internal-test-secret",
           "X-API-Key": "atlas_valid_key",
         },
         method: "POST",

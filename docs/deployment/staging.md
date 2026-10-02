@@ -61,6 +61,7 @@ than as repo-level fallbacks:
 - `ANTHROPIC_API_KEY`
 - `SEARCH_API_KEY`
 - `ATLAS_AUTH_INTERNAL_SECRET`
+- `ATLAS_AUTH_CALLBACK_SECRET`
 - `ATLAS_EDGE_ORIGIN_SECRET`
 - `ATLAS_AUTH_API_KEY_INTROSPECTION_URL`
 - `ATLAS_AUTH_MEMBERSHIP_URL`
@@ -81,12 +82,21 @@ ATLAS_AUTH_JWT_AUDIENCES=https://atlas-staging.rebuildingus.org/mcp,https://atla
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas-staging.rebuildingus.org/api/auth/internal/api-key
 ATLAS_AUTH_MEMBERSHIP_URL=https://atlas-staging.rebuildingus.org
 ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
-ATLAS_EDGE_ORIGIN_SECRET=<long random staging edge origin secret>
+ATLAS_AUTH_CALLBACK_SECRET=<long random staging callback secret>
+ATLAS_EDGE_ORIGIN_SECRET=<long random edge origin secret>
 ```
 
 Those values keep OAuth challenges, MCP protected-resource metadata, CORS, and
 app-to-API traffic on staging origins. That separation lets someone test sign-in
 and MCP access without risking production users or production data.
+
+The staging API deploy fails before it builds anything if
+`ATLAS_AUTH_INTERNAL_SECRET`, `ATLAS_AUTH_CALLBACK_SECRET`, or
+`ATLAS_EDGE_ORIGIN_SECRET` is missing from the `staging` Environment.
+`ATLAS_EDGE_ORIGIN_SECRET` must currently match production's, because
+`pnpm bootstrap --api-edge --target staging` installs the value from
+`.env.production` into the staging Cloudflare rule. See
+[Callback and Edge Origin Secret Rotation](../runbooks/rotate-auth-secrets.md).
 
 The GitHub Actions deploy path accepts either `ATLAS_API_AUDIENCE` or
 `ATLAS_AUTH_JWT_AUDIENCES` for the API audience secret. If the hosted auth
@@ -112,8 +122,16 @@ ATLAS_SERVER_API_PROXY_TARGET=https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_JWT_AUDIENCES=https://atlas-staging.rebuildingus.org/mcp,https://atlas-api-staging.rebuildingus.org
 ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas-staging.rebuildingus.org/api/auth/internal/api-key
 ATLAS_AUTH_INTERNAL_SECRET=<same staging secret used by atlas-api-staging>
+ATLAS_AUTH_CALLBACK_SECRET=<same staging callback secret used by atlas-api-staging>
+ATLAS_EDGE_ORIGIN_SECRET=<same edge origin secret used by atlas-api-staging>
 ATLAS_PDS_PUBLIC_URL=https://atlas-pds-staging.rebuildingus.org
 ```
+
+The staging app refuses to start with accounts enabled when
+`ATLAS_AUTH_CALLBACK_SECRET` or `ATLAS_EDGE_ORIGIN_SECRET` is missing, so set
+both before Vercel next builds `main`. `pnpm setup:staging` syncs them to
+Vercel's Preview environment when the project is linked. Set them by hand in the
+`staging` custom environment if the staging app builds from that instead.
 
 If the staging app proxies docs through Mintlify, set `ATLAS_DOCS_URL` for the
 staging app as well.

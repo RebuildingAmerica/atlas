@@ -32,14 +32,14 @@ async def test_invalid_signed_proxy_client_ip_falls_back_to_direct_client(db_url
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "not-an-ip",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
         blocked = await client.get(
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "also-not-an-ip",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
 
@@ -57,11 +57,11 @@ async def test_signed_proxy_secret_without_client_ip_falls_back_to_direct_client
     async for client in _client(settings):
         first = await client.get(
             READ_PATH,
-            headers={"X-Atlas-Proxy-Secret": "internal-test-secret"},
+            headers={"X-Atlas-Proxy-Secret": "edge-test-secret"},
         )
         blocked = await client.get(
             READ_PATH,
-            headers={"X-Atlas-Proxy-Secret": "internal-test-secret"},
+            headers={"X-Atlas-Proxy-Secret": "edge-test-secret"},
         )
 
     assert first.status_code == HTTPStatus.OK
@@ -182,14 +182,14 @@ async def test_signed_proxy_client_headers_partition_proxied_clients(db_url: str
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
         second = await client.get(
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "198.51.100.30",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
 
@@ -236,28 +236,28 @@ async def test_signed_proxy_client_header_normalizes_ipv6_and_ipv4_ports(db_url:
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "[2001:db8::1]",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
         ipv6_blocked = await client.get(
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "2001:db8::1",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
         port_first = await client.get(
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20:4321",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
         port_blocked = await client.get(
             READ_PATH,
             headers={
                 "X-Atlas-Client-IP": "203.0.113.20",
-                "X-Atlas-Proxy-Secret": "internal-test-secret",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
             },
         )
 
@@ -265,3 +265,52 @@ async def test_signed_proxy_client_header_normalizes_ipv6_and_ipv4_ports(db_url:
     assert ipv6_blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
     assert port_first.status_code == HTTPStatus.OK
     assert port_blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_the_internal_secret_no_longer_vouches_for_client_addresses(db_url: str) -> None:
+    """Only the edge origin secret names a visitor's address; the app's signing secret does not."""
+    settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1)
+
+    async for client in _client(settings):
+        first = await client.get(
+            READ_PATH,
+            headers={
+                "X-Atlas-Client-IP": "198.51.100.1",
+                "X-Atlas-Proxy-Secret": "internal-test-secret",
+            },
+        )
+        blocked = await client.get(
+            READ_PATH,
+            headers={
+                "X-Atlas-Client-IP": "198.51.100.2",
+                "X-Atlas-Proxy-Secret": "internal-test-secret",
+            },
+        )
+
+    assert first.status_code == HTTPStatus.OK
+    assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_no_edge_secret_means_no_vouched_addresses(db_url: str) -> None:
+    settings = _settings(db_url, anonymous_rate_limit_reads_per_minute=1, edge_origin_secret="")
+
+    async for client in _client(settings):
+        first = await client.get(
+            READ_PATH,
+            headers={
+                "X-Atlas-Client-IP": "198.51.100.1",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
+            },
+        )
+        blocked = await client.get(
+            READ_PATH,
+            headers={
+                "X-Atlas-Client-IP": "198.51.100.2",
+                "X-Atlas-Proxy-Secret": "edge-test-secret",
+            },
+        )
+
+    assert first.status_code == HTTPStatus.OK
+    assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS

@@ -11,6 +11,16 @@ vi.mock("@/domains/access/server/session-state", () => ({
   requireReadyAtlasSessionState: mocks.requireReadyAtlasSessionState,
 }));
 
+vi.mock("@/domains/access/server/app-actor-assertion", () => ({
+  createAppActorHeaders: (
+    actor: { id: string },
+    options: { accountReady: boolean; organizationId?: string },
+  ) =>
+    Promise.resolve({
+      "X-Atlas-Actor-Assertion": `assertion-for-${actor.id}-in-${options.organizationId ?? "none"}-ready-${String(options.accountReady)}`,
+    }),
+}));
+
 vi.mock("@/platform/config/app-config", () => ({
   getServerApiBaseUrl: mocks.getServerApiBaseUrl,
   getServerServiceBaseUrl: mocks.getServerServiceBaseUrl,
@@ -27,7 +37,6 @@ describe("api-client", () => {
     fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
 
     vi.stubEnv("ATLAS_MULTI_USER", "true");
-    vi.stubEnv("ATLAS_AUTH_INTERNAL_SECRET", "test-secret");
   });
 
   afterEach(() => {
@@ -55,10 +64,7 @@ describe("api-client", () => {
       expect.objectContaining({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.objectContaining returns any
         headers: expect.objectContaining({
-          "X-Atlas-Actor-Account-Ready": "true",
-          "X-Atlas-Actor-Email": "operator@atlas.test",
-          "X-Atlas-Actor-Id": "user_123",
-          "X-Atlas-Internal-Secret": "test-secret",
+          "X-Atlas-Actor-Assertion": "assertion-for-user_123-in-org_123-ready-true",
         }),
       }),
     );
@@ -66,6 +72,7 @@ describe("api-client", () => {
 
   it("sends service-level requests to the service origin without an API prefix", async () => {
     mocks.requireReadyAtlasSessionState.mockResolvedValue({
+      accountReady: true,
       user: { email: "operator@atlas.test", id: "user_123" },
       workspace: { activeOrganization: { id: "org_123" } },
     });
@@ -83,24 +90,10 @@ describe("api-client", () => {
       expect.objectContaining({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- expect.objectContaining returns any
         headers: expect.objectContaining({
-          "X-Atlas-Actor-Email": "operator@atlas.test",
-          "X-Atlas-Actor-Id": "user_123",
-          "X-Atlas-Internal-Secret": "test-secret",
+          "X-Atlas-Actor-Assertion": "assertion-for-user_123-in-org_123-ready-true",
         }),
       }),
     );
-  });
-
-  it("throws when internal secret is missing outside local mode", async () => {
-    vi.stubEnv("ATLAS_AUTH_INTERNAL_SECRET", "");
-    mocks.requireReadyAtlasSessionState.mockResolvedValue({
-      user: { email: "operator@atlas.test", id: "user_123" },
-      workspace: { activeOrganization: { id: "org_123" } },
-    });
-    await expect(requestAtlasApi("/test-endpoint")).rejects.toThrow(
-      "ATLAS_AUTH_INTERNAL_SECRET is required for authenticated discovery requests.",
-    );
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("sends an unauthenticated request in local mode", async () => {

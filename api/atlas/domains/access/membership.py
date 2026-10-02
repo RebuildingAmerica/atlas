@@ -30,7 +30,7 @@ class MembershipResult:
 
 def _membership_request_headers(settings: Settings) -> dict[str, str]:
     headers = {
-        "X-Atlas-Internal-Secret": settings.auth_internal_secret,
+        "X-Atlas-Callback-Secret": settings.auth_callback_secret,
     }
     bypass_secret = settings.auth_membership_protection_bypass_secret.strip()
     if bypass_secret:

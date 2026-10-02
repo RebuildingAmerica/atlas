@@ -324,6 +324,8 @@ const VERCEL_HOSTED_ENV_FILE_SPECS: VercelEnvFileSpec[] = [
   { key: "ATLAS_AUTH_JWT_AUDIENCES" },
   { key: "ATLAS_EMAIL_PROVIDER", fallback: "resend" },
   { key: "ATLAS_AUTH_INTERNAL_SECRET" },
+  { key: "ATLAS_AUTH_CALLBACK_SECRET" },
+  { key: "ATLAS_EDGE_ORIGIN_SECRET" },
   { key: "ATLAS_EMAIL_RESEND_API_KEY" },
   { key: "ATLAS_EMAIL_FROM" },
   { key: "ATLAS_OPERATOR_ALLOWED_EMAILS" },

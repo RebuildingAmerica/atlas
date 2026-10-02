@@ -40,8 +40,11 @@ inputs:
   auth-internal-secret:
     description: Shared app/API internal auth secret.
     required: true
+  auth-callback-secret:
+    description: Secret the API presents as X-Atlas-Callback-Secret when it calls back into the app for membership checks and API-key introspection. The app must hold the same value.
+    required: true
   edge-origin-secret:
-    description: Shared Cloudflare/API origin identity secret.
+    description: Shared Cloudflare/app/API origin identity secret. Cloudflare and the app proxy present it as X-Atlas-Proxy-Secret to vouch for visitor IP addresses.
     required: true
   auth-api-key-introspection-url:
     description: App endpoint the API calls to verify Atlas API keys. Defaults to <atlas-public-url>/api/auth/internal/api-key when omitted.
@@ -90,6 +93,29 @@ outputs:
 runs:
   using: composite
   steps:
+    # Composite actions do not enforce `required: true`, and the API refuses to
+    # start with accounts enabled when any of these is empty. Failing here,
+    # before anything is built or deployed, names the missing secret instead of
+    # leaving a revision that never becomes ready.
+    - name: Verify required deploy secrets
+      shell: bash
+      env:
+        ENVIRONMENT_NAME: ${{ inputs.environment-name }}
+        ATLAS_AUTH_INTERNAL_SECRET: ${{ inputs.auth-internal-secret }}
+        ATLAS_AUTH_CALLBACK_SECRET: ${{ inputs.auth-callback-secret }}
+        ATLAS_EDGE_ORIGIN_SECRET: ${{ inputs.edge-origin-secret }}
+      run: |
+        set -euo pipefail
+
+        missing=0
+        for key in ATLAS_AUTH_INTERNAL_SECRET ATLAS_AUTH_CALLBACK_SECRET ATLAS_EDGE_ORIGIN_SECRET; do
+          if [ -z "${!key}" ]; then
+            echo "::error title=Missing ${key}::${key} is empty for the ${ENVIRONMENT_NAME} deploy. Set it in the GitHub \"${ENVIRONMENT_NAME}\" Environment secrets (pnpm bootstrap --infra uploads it from the env files) and run the deploy again."
+            missing=1
+          fi
+        done
+        exit "${missing}"
+
     - name: Authenticate to GCP
       id: auth
       uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
@@ -187,6 +213,7 @@ runs:
           DISCOVERY_REGISTRY_MAX_ORGANIZATIONS=250
           DISCOVERY_REGISTRY_MAX_PEOPLE=500
           ATLAS_AUTH_INTERNAL_SECRET=${{ inputs.auth-internal-secret }}
+          ATLAS_AUTH_CALLBACK_SECRET=${{ inputs.auth-callback-secret }}
           ATLAS_EDGE_ORIGIN_SECRET=${{ inputs.edge-origin-secret }}
           ATLAS_AUTH_API_KEY_INTROSPECTION_URL=${{ steps.hosted-auth.outputs.auth-api-key-introspection-url }}
           ATLAS_AUTH_MEMBERSHIP_URL=${{ steps.hosted-auth.outputs.auth-membership-url }}

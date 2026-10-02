@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { baseRuntimeConfig, makeAuthenticatedSession, makeInternalAuthHeaders } from "./support";
+import { baseRuntimeConfig, makeAuthenticatedSession, makeAppActorHeaders } from "./support";
 
 const mocks = vi.hoisted(() => ({
-  createInternalAuthHeaders: vi.fn(),
+  createAppActorHeaders: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   loadAtlasSession: vi.fn(),
 }));
 
-vi.mock("@/domains/access/config", () => ({
-  createInternalAuthHeaders: mocks.createInternalAuthHeaders,
+vi.mock("@/domains/access/server/app-actor-assertion", () => ({
+  createAppActorHeaders: mocks.createAppActorHeaders,
 }));
 
 vi.mock("@/domains/access/server/runtime", () => ({
@@ -22,7 +22,7 @@ vi.mock("@/domains/access/server/session-state", () => ({
 
 describe("proxyAtlasApiRequest forwarding", () => {
   beforeEach(() => {
-    mocks.createInternalAuthHeaders.mockReset();
+    mocks.createAppActorHeaders.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.loadAtlasSession.mockReset();
     vi.spyOn(globalThis, "fetch").mockImplementation(vi.fn());
@@ -48,7 +48,7 @@ describe("proxyAtlasApiRequest forwarding", () => {
       }),
     );
     mocks.loadAtlasSession.mockResolvedValue(makeAuthenticatedSession());
-    mocks.createInternalAuthHeaders.mockReturnValue(makeInternalAuthHeaders());
+    mocks.createAppActorHeaders.mockResolvedValue(makeAppActorHeaders());
 
     const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
     const request = new Request("https://atlas.test/api/entities?state=CA", {
@@ -93,18 +93,15 @@ describe("proxyAtlasApiRequest forwarding", () => {
     expect(forwardedHeaders.get("x-vercel-protection-bypass")).toBeNull();
     expect(forwardedHeaders.get("x-vercel-trusted-oidc-idp-token")).toBeNull();
     expect(forwardedHeaders.get("x-atlas-client-ip")).toBe("203.0.113.10");
-    expect(forwardedHeaders.get("x-atlas-proxy-secret")).toBe("internal-test-secret");
-    expect(forwardedHeaders.get("x-atlas-actor-email")).toBe("operator@atlas.test");
-    expect(forwardedHeaders.get("x-atlas-actor-id")).toBe("user-123");
-    expect(forwardedHeaders.get("x-atlas-actor-account-ready")).toBe("true");
-    expect(forwardedHeaders.get("x-atlas-internal-secret")).toBe("internal-test-secret");
-    expect(forwardedHeaders.get("x-atlas-organization-id")).toBe("org-456");
-    expect(mocks.createInternalAuthHeaders).toHaveBeenCalledWith(
+    expect(forwardedHeaders.get("x-atlas-proxy-secret")).toBe("edge-test-secret");
+    expect(forwardedHeaders.get("x-atlas-actor-assertion")).toBe("signed.app.assertion");
+    expect(forwardedHeaders.get("x-atlas-internal-secret")).toBeNull();
+    expect(forwardedHeaders.get("x-atlas-actor-email")).toBeNull();
+    expect(mocks.createAppActorHeaders).toHaveBeenCalledWith(
       {
         email: "operator@atlas.test",
         id: "user-123",
       },
-      "internal-test-secret",
       {
         accountReady: true,
         organizationId: "org-456",
@@ -140,10 +137,47 @@ describe("proxyAtlasApiRequest forwarding", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.loadAtlasSession).toHaveBeenCalledTimes(1);
-    expect(mocks.createInternalAuthHeaders).not.toHaveBeenCalled();
+    expect(mocks.createAppActorHeaders).not.toHaveBeenCalled();
     const [, init] = fetchMock.mock.calls[0] ?? [];
     const forwardedHeaders = new Headers(init?.headers);
     expect(forwardedHeaders.get("x-atlas-actor-id")).toBeNull();
+  });
+
+  it("strips app-only headers a browser tries to send", async () => {
+    const fetchMock = vi.mocked(global.fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      }),
+    );
+
+    const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
+    await proxyAtlasApiRequest(
+      new Request("https://atlas.test/api/review-queue", {
+        headers: {
+          "X-Atlas-Actor-Assertion": "forged.assertion",
+          "X-Atlas-Actor-Email": "editor@rebuildingus.org",
+          "X-Atlas-Actor-Id": "user_editor",
+          "X-Atlas-Callback-Secret": "guessed",
+          "X-Atlas-Internal-Secret": "guessed",
+          "X-Atlas-Organization-Id": "org_other",
+        },
+      }),
+    );
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    const forwardedHeaders = new Headers(init?.headers);
+    for (const name of [
+      "x-atlas-actor-assertion",
+      "x-atlas-actor-email",
+      "x-atlas-actor-id",
+      "x-atlas-callback-secret",
+      "x-atlas-internal-secret",
+      "x-atlas-organization-id",
+    ]) {
+      expect(forwardedHeaders.get(name)).toBeNull();
+    }
   });
 
   it("skips session loading for anonymous requests without cookies", async () => {
@@ -170,7 +204,7 @@ describe("proxyAtlasApiRequest forwarding", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
     expect(mocks.loadAtlasSession).not.toHaveBeenCalled();
-    expect(mocks.createInternalAuthHeaders).not.toHaveBeenCalled();
+    expect(mocks.createAppActorHeaders).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       "https://api.atlas.test/api/entities?limit=1",
       expect.objectContaining({

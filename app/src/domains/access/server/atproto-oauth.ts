@@ -3,7 +3,6 @@ import "@tanstack/react-start/server-only";
 import { randomUUID } from "node:crypto";
 import { Agent } from "@atproto/api";
 import { NodeOAuthClient, type OAuthClientOptions } from "@atproto/oauth-client-node";
-import { createInternalAuthHeaders } from "@/domains/access/config";
 import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import {
   createAtprotoOAuthStores,
@@ -11,6 +10,7 @@ import {
   type AtprotoOAuthAppState,
 } from "./atproto-oauth-stores";
 import { provisionManagedAtprotoIdentity } from "./atproto-pds";
+import { createAppActorHeaders } from "./app-actor-assertion";
 import { createAtprotoSessionForUser } from "./atproto-sign-in";
 import { loadAtlasSession } from "./session-state";
 import { getAuthRuntimeConfig } from "./runtime";
@@ -413,10 +413,10 @@ async function persistLinkedAtprotoIdentity(
     body: JSON.stringify(input),
     headers: {
       "Content-Type": "application/json",
-      ...createInternalAuthHeaders(session.user, runtime.internalSecret, {
+      ...(await createAppActorHeaders(session.user, {
         accountReady: session.accountReady,
         organizationId: session.workspace.activeOrganization?.id,
-      }),
+      })),
     },
     method: "POST",
   });
@@ -435,11 +435,10 @@ async function resolveAtprotoSignInController(
     body: JSON.stringify(input),
     headers: {
       "Content-Type": "application/json",
-      ...createInternalAuthHeaders(
+      ...(await createAppActorHeaders(
         { email: "atproto-sign-in@atlas.internal", id: "atproto-sign-in" },
-        runtime.internalSecret,
         { accountReady: false },
-      ),
+      )),
     },
     method: "POST",
   });

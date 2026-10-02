@@ -11,13 +11,16 @@ from math import ceil
 from secrets import compare_digest
 from typing import TYPE_CHECKING
 
+from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from atlas.domains.access.api_keys import verify_api_key
+from atlas.domains.access.app_assertion import verify_app_actor_assertion
 from atlas.domains.access.jwt import verify_bearer_jwt
 from atlas.domains.access.request_state import mark_api_key_verification
 from atlas.platform.http.anonymous_rate_limit_support import (
+    _ACTOR_ASSERTION_HEADER,
     _ACTOR_EMAIL_HEADER,
     _ACTOR_ID_HEADER,
     _API_KEY_CACHE_TTL_SECONDS,
@@ -308,6 +311,17 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
             del self._bearer_cache[cache_key]
 
     def _has_trusted_internal_actor(self, request: Request) -> bool:
+        assertion = request.headers.get(_ACTOR_ASSERTION_HEADER)
+        if assertion is not None:
+            try:
+                verify_app_actor_assertion(
+                    assertion,
+                    issuer=self._settings.auth_jwt_issuer,
+                    jwks_url=self._settings.auth_jwt_jwks_url,
+                )
+            except HTTPException:
+                return False
+            return True
         configured_secret = self._settings.auth_internal_secret
         supplied_secret = request.headers.get(_INTERNAL_SECRET_HEADER)
         if not configured_secret or not supplied_secret:
@@ -367,13 +381,16 @@ class AnonymousRateLimitMiddleware(BaseHTTPMiddleware):
         )
 
     def _signed_proxy_client_ip(self, request: Request) -> str | None:
+        """Return the client address a trusted proxy vouched for, if any.
+
+        Only the edge origin secret vouches for addresses. The Cloudflare edge
+        and the Atlas app server both hold it; it lets a caller choose which
+        rate-limit bucket it spends and nothing more.
+        """
         supplied_secret = request.headers.get(_PROXY_SECRET_HEADER)
-        if not supplied_secret:
+        configured_secret = self._settings.edge_origin_secret
+        if not supplied_secret or not configured_secret:
             return None
-        for configured_secret in (
-            self._settings.auth_internal_secret,
-            self._settings.edge_origin_secret,
-        ):
-            if configured_secret and compare_digest(supplied_secret, configured_secret):
-                return _normalized_ip(request.headers.get(_CLIENT_IP_HEADER))
-        return None
+        if not compare_digest(supplied_secret, configured_secret):
+            return None
+        return _normalized_ip(request.headers.get(_CLIENT_IP_HEADER))

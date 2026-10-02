@@ -22,6 +22,10 @@ vi.mock("@/domains/access/server/auth", () => ({
   getAuthPgPool: atprotoOAuthMocks.getAuthPgPool,
 }));
 
+vi.mock("@/domains/access/server/app-actor-assertion", () => ({
+  createAppActorHeaders: () => Promise.resolve({ "X-Atlas-Actor-Assertion": "test-assertion" }),
+}));
+
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: atprotoOAuthMocks.getAuthRuntimeConfig,
 }));

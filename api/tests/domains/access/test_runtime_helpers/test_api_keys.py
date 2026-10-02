@@ -22,7 +22,7 @@ async def test_verify_api_key_returns_none_without_introspection_settings(
 ) -> None:
     """API-key auth should be disabled when required runtime config is missing."""
     test_settings.auth_api_key_introspection_url = None
-    test_settings.auth_internal_secret = ""
+    test_settings.auth_callback_secret = ""
 
     assert await verify_api_key("atlas_test_key", test_settings) is None
 
@@ -33,7 +33,7 @@ async def test_verify_api_key_handles_success_and_rejected_tokens(
 ) -> None:
     """Introspection should accept valid keys and reject invalid ones cleanly."""
     test_settings.auth_api_key_introspection_url = "https://auth.example.test/introspect"
-    test_settings.auth_internal_secret = "internal-test-secret"
+    test_settings.auth_callback_secret = "internal-test-secret"
 
     success_response = httpx.Response(
         200,
@@ -77,7 +77,7 @@ async def test_verify_api_key_treats_not_found_and_unauthorized_as_invalid(
 ) -> None:
     """Missing or unauthorized introspection responses should behave like invalid keys."""
     test_settings.auth_api_key_introspection_url = "https://auth.example.test/introspect"
-    test_settings.auth_internal_secret = "internal-test-secret"
+    test_settings.auth_callback_secret = "internal-test-secret"
 
     for status_code in (401, 404):
         response = httpx.Response(
@@ -97,7 +97,7 @@ async def test_verify_api_key_raises_for_server_errors_and_transport_failures(
 ) -> None:
     """Operational introspection failures should still surface upstream."""
     test_settings.auth_api_key_introspection_url = "https://auth.example.test/introspect"
-    test_settings.auth_internal_secret = "internal-test-secret"
+    test_settings.auth_callback_secret = "internal-test-secret"
 
     server_error = httpx.Response(
         500,
