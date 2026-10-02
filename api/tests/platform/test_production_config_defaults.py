@@ -108,7 +108,8 @@ class TestProductionConfig:
             "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
             "http://atlas-web:3000/api/auth/internal/api-key",
         )
-        monkeypatch.setenv("ATLAS_AUTH_INTERNAL_SECRET", "internal-secret")
+        monkeypatch.setenv("ATLAS_AUTH_CALLBACK_SECRET", "callback-secret")
+        monkeypatch.setenv("ATLAS_MACHINE_TRUSTED_ISSUERS", "[]")
 
         settings = Settings(database_url="sqlite:///tmp/test.db", environment="production")
 
@@ -117,7 +118,8 @@ class TestProductionConfig:
             settings.auth_api_key_introspection_url
             == "http://atlas-web:3000/api/auth/internal/api-key"
         )
-        assert settings.auth_internal_secret == "internal-secret"
+        assert settings.auth_callback_secret == "callback-secret"
+        assert settings.machine_trusted_issuers == "[]"
 
     def test_database_url_uses_environment_override(self, monkeypatch: MonkeyPatch) -> None:
         """The API should respect DATABASE_URL when the API process is booted by env."""

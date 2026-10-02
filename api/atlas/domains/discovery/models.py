@@ -29,6 +29,7 @@ from .models_schedule import (
     DiscoveryScheduleModel,
     _row_to_discovery_schedule,
 )
+from .scout_workers import ScoutWorkerRevocationCRUD
 
 
 class DiscoveryRunCRUD(DiscoveryRunCRUDCore, DiscoveryRunCRUDOps):
@@ -51,6 +52,7 @@ __all__ = [
     "DiscoveryScheduleCRUD",
     "DiscoveryScheduleModel",
     "RunVisibility",
+    "ScoutWorkerRevocationCRUD",
     "_job_input_payload",
     "_retry_backoff_at",
     "_row_to_discovery_job",

@@ -30,3 +30,13 @@ CREATE TRIGGER IF NOT EXISTS audit_log_no_delete BEFORE DELETE ON audit_log
 BEGIN
     SELECT RAISE(ABORT, 'audit_log is append-only');
 END;
+
+-- Scout workers their owner revoked. A Scout sign-in names the enrolled worker
+-- it belongs to; once its owner revokes that worker, the API refuses its job
+-- claims and lease updates even while an already-issued token is unexpired.
+CREATE TABLE IF NOT EXISTS scout_worker_revocations (
+    worker_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    revoked_at TEXT NOT NULL,
+    PRIMARY KEY (worker_id, user_id)
+);

@@ -12,10 +12,6 @@ import { jwt } from "better-auth/plugins/jwt";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { z } from "zod";
-import {
-  API_KEY_SCOPES,
-  scopesToPermissions,
-} from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { SUPPORTED_OAUTH_SCOPES } from "@rebuildingamerica/atlas-access/oauth-as-metadata";
 import {
   hasCapability,
@@ -230,11 +226,15 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
           // api/auth/$.ts catch-all serves automatically.
           issuer: new URL("/api/auth", runtime.publicBaseUrl).toString().replace(/\/$/, ""),
           audience: runtime.authJwtAudience ?? undefined,
+          // Any signed-in browser can fetch this token from /api/auth/token,
+          // so it grants no API permissions. Scout gets a worker-bound token
+          // from its own bridge (scout-token.ts); the app speaks for people
+          // with a signed actor assertion (app-actor-assertion.ts).
           definePayload: async ({ user }) => {
             const orgId = await resolvePrimaryWorkspaceId(user.id);
             return {
               email: user.email,
-              permissions: scopesToPermissions([...API_KEY_SCOPES]),
+              permissions: {},
               ...(orgId ? { org_id: orgId } : {}),
               ...(runtime.authJwtAudience ? { aud: runtime.authJwtAudience } : {}),
             };

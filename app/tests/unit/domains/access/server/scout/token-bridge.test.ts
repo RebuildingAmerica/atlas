@@ -3,13 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
   getSession: vi.fn(),
-  getToken: vi.fn(),
+  signJWT: vi.fn(),
   registerOrTouchScoutDevice: vi.fn(),
   resolvePrimaryWorkspaceId: vi.fn(),
 }));
 
 vi.mock("@/domains/access/server/auth", () => ({
   ensureAuthReady: mocks.ensureAuthReady,
+}));
+
+vi.mock("@/domains/access/server/runtime", () => ({
+  getAuthRuntimeConfig: () => ({ authJwtAudience: "https://atlas.test/api" }),
 }));
 
 vi.mock("@/domains/access/server/workspace-lookup", () => ({
@@ -30,13 +34,13 @@ describe("issueScoutTokenRequest", () => {
     vi.resetModules();
     mocks.ensureAuthReady.mockReset();
     mocks.getSession.mockReset();
-    mocks.getToken.mockReset();
+    mocks.signJWT.mockReset();
     mocks.registerOrTouchScoutDevice.mockReset();
     mocks.resolvePrimaryWorkspaceId.mockReset();
     mocks.ensureAuthReady.mockResolvedValue({
       api: {
         getSession: mocks.getSession,
-        getToken: mocks.getToken,
+        signJWT: mocks.signJWT,
       },
     });
     mocks.registerOrTouchScoutDevice.mockResolvedValue({
@@ -64,14 +68,14 @@ describe("issueScoutTokenRequest", () => {
     );
 
     expect(response.status).toBe(401);
-    expect(mocks.getToken).not.toHaveBeenCalled();
+    expect(mocks.signJWT).not.toHaveBeenCalled();
   });
 
   it("returns an API token and workspace hint for valid Scout sessions", async () => {
     mocks.getSession.mockResolvedValue({
       user: { id: "user-123", email: "user@example.org" },
     });
-    mocks.getToken.mockResolvedValue({ token: "api-jwt" });
+    mocks.signJWT.mockResolvedValue({ token: "api-jwt" });
     mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
     const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
 
@@ -106,11 +110,74 @@ describe("issueScoutTokenRequest", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
 
+  it("binds the token to the enrolled worker and grants only discovery access", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-02T12:00:00Z"));
+    try {
+      mocks.getSession.mockResolvedValue({
+        user: { id: "user-123", email: "user@example.org" },
+      });
+      mocks.signJWT.mockResolvedValue({ token: "api-jwt" });
+      mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
+      const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+      await issueScoutTokenRequest(
+        new Request("https://atlas.test/api/auth/scout/token", {
+          body: JSON.stringify({
+            default_upload_target: "workspace",
+            worker_id: "worker-123",
+            worker_name: "Willie's MacBook Pro",
+            workspace_id: "org-123",
+          }),
+          headers: { Authorization: "Bearer device-session-token" },
+          method: "POST",
+        }),
+      );
+
+      const now = Math.floor(new Date("2026-10-02T12:00:00Z").getTime() / 1000);
+      expect(mocks.signJWT).toHaveBeenCalledWith({
+        body: {
+          payload: {
+            aud: "https://atlas.test/api",
+            email: "user@example.org",
+            exp: now + 15 * 60,
+            iat: now,
+            org_id: "org-123",
+            permissions: { discovery: ["read", "write"] },
+            sub: "user-123",
+            worker_id: "worker-123",
+          },
+        },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("leaves the workspace out of a public worker's token", async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: "user-123", email: "user@example.org" } });
+    mocks.signJWT.mockResolvedValue({ token: "api-jwt" });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue(null);
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token", {
+        body: JSON.stringify({ default_upload_target: "public", worker_name: "Laptop" }),
+        headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
+      }),
+    );
+
+    const call = mocks.signJWT.mock.calls[0]?.[0] as { body: { payload: Record<string, unknown> } };
+    expect(call.body.payload).not.toHaveProperty("org_id");
+    expect(call.body.payload.worker_id).toBe("worker-123");
+  });
+
   it("accepts first-run public Scout logins with no worker id yet", async () => {
     mocks.getSession.mockResolvedValue({
       user: { id: "user-123", email: "user@example.org" },
     });
-    mocks.getToken.mockResolvedValue({ token: "api-jwt" });
+    mocks.signJWT.mockResolvedValue({ token: "api-jwt" });
     mocks.resolvePrimaryWorkspaceId.mockResolvedValue(null);
     const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
 
@@ -148,7 +215,7 @@ describe("issueScoutTokenRequest", () => {
     mocks.getSession.mockResolvedValue({
       user: { id: "user-123", email: "user@example.org" },
     });
-    mocks.getToken.mockResolvedValue({ token: "api-jwt" });
+    mocks.signJWT.mockResolvedValue({ token: "api-jwt" });
     mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
     const { ScoutDeviceRevokedError } = await import("@/domains/access/server/scout-devices");
     mocks.registerOrTouchScoutDevice.mockRejectedValue(new ScoutDeviceRevokedError("worker-123"));
@@ -168,7 +235,7 @@ describe("issueScoutTokenRequest", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(mocks.getToken).not.toHaveBeenCalled();
+    expect(mocks.signJWT).not.toHaveBeenCalled();
   });
 
   it("explains that Scout device metadata is required when the body is unusable", async () => {
@@ -213,7 +280,7 @@ describe("issueScoutTokenRequest", () => {
   it("reports a failure rather than an empty token when Better Auth mints none", async () => {
     mocks.getSession.mockResolvedValue({ user: { id: "user-123", email: "user@example.org" } });
     mocks.resolvePrimaryWorkspaceId.mockResolvedValue("org-123");
-    mocks.getToken.mockResolvedValue(null);
+    mocks.signJWT.mockResolvedValue(null);
     const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
 
     const response = await issueScoutTokenRequest(
@@ -236,7 +303,7 @@ describe("issueScoutTokenRequest", () => {
   it("returns an empty email when the account has none on file", async () => {
     mocks.getSession.mockResolvedValue({ user: { id: "user-123" } });
     mocks.resolvePrimaryWorkspaceId.mockResolvedValue(null);
-    mocks.getToken.mockResolvedValue({ token: "api-jwt" });
+    mocks.signJWT.mockResolvedValue({ token: "api-jwt" });
     const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
 
     const response = await issueScoutTokenRequest(

@@ -13,6 +13,7 @@ from atlas.domains.moderation.editorial_intake import (
     stage_editorial_candidate,
 )
 from atlas.models import EntryCRUD, SourceCRUD
+from tests.support.staff_auth import enable_staff_auth
 
 
 def candidate(**overrides: object) -> dict[str, object]:
@@ -619,16 +620,7 @@ async def test_editorial_intake_requires_an_allowlisted_operator(
     test_settings: object,
 ) -> None:
     """A normal signed-in user cannot stage a public-profile candidate."""
-    test_settings.multi_user = True
-    internal_token = uuid4().hex
-    test_settings.auth_internal_secret = internal_token
-    test_settings.operator_allowed_emails = ["editor@rebuildingus.org"]
-    ordinary_headers = {
-        "X-Atlas-Actor-Email": "visitor@example.org",
-        "X-Atlas-Actor-Id": "ordinary-user",
-        "X-Atlas-Internal-Secret": internal_token,
-        "X-Atlas-Actor-Account-Ready": "true",
-    }
+    ordinary_headers = enable_staff_auth(test_settings).ordinary
     response = await test_client.post(
         "/api/review-queue/editorial-candidates", json=candidate(), headers=ordinary_headers
     )

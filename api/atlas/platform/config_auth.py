@@ -45,6 +45,28 @@ def _refuse_identity_harness_outside_staging(settings: Settings) -> None:
         raise RuntimeError(msg)
 
 
+def _require_parseable_machine_issuers(settings: Settings) -> None:
+    """Refuse to start with a trusted machine list that does not parse.
+
+    Parameters
+    ----------
+    settings
+        Loaded application settings.
+
+    Raises
+    ------
+    RuntimeError
+        If ``ATLAS_MACHINE_TRUSTED_ISSUERS`` is set but invalid.
+    """
+    # Imported here: the access domain imports this module's settings.
+    from atlas.domains.access.machine import parse_machine_issuers
+
+    try:
+        parse_machine_issuers(settings.machine_trusted_issuers)
+    except ValueError as exc:
+        raise RuntimeError(str(exc)) from exc
+
+
 def validate_runtime_auth_config(settings: Settings) -> None:
     """Fail fast when an instance with accounts is missing required config.
 
@@ -65,6 +87,7 @@ def validate_runtime_auth_config(settings: Settings) -> None:
         If an instance with accounts is missing required configuration.
     """
     _refuse_identity_harness_outside_staging(settings)
+    _require_parseable_machine_issuers(settings)
     if not settings.multi_user:
         return
     if not settings.auth_jwt_audience:
@@ -73,9 +96,6 @@ def validate_runtime_auth_config(settings: Settings) -> None:
             "Set it to the canonical resource URL(s) the API accepts in JWT 'aud' "
             "claims, with the MCP resource first, e.g. https://atlas.example.com/mcp."
         )
-        raise RuntimeError(msg)
-    if not settings.auth_internal_secret:
-        msg = "ATLAS_AUTH_INTERNAL_SECRET is required when ATLAS_MULTI_USER is true."
         raise RuntimeError(msg)
     if not settings.auth_callback_secret:
         msg = "ATLAS_AUTH_CALLBACK_SECRET is required when ATLAS_MULTI_USER is true."

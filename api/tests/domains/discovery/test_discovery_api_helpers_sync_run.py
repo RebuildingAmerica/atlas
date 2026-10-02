@@ -148,7 +148,7 @@ async def test_refresh_complete_and_fail_jobs_reject_missing_jobs(
             job_id="job-1",
             req=discovery_api.DiscoveryWorkerHeartbeatRequest(worker_id="worker-1", progress={}),
             response=response,
-            actor=SimpleNamespace(),
+            actor=SimpleNamespace(is_local=True),
             db=test_db,
         )
     assert exc_info.value.status_code == 404
@@ -165,7 +165,7 @@ async def test_refresh_complete_and_fail_jobs_reject_missing_jobs(
             job_id="job-1",
             req=discovery_api.DiscoveryWorkerHeartbeatRequest(worker_id="worker-1", progress={}),
             response=response,
-            actor=SimpleNamespace(),
+            actor=SimpleNamespace(is_local=True),
             db=test_db,
         )
     assert exc_info.value.status_code == 404
@@ -176,7 +176,7 @@ async def test_refresh_complete_and_fail_jobs_reject_missing_jobs(
             job_id="job-1",
             req=discovery_api.DiscoveryWorkerCompleteRequest(worker_id="worker-1"),
             response=response,
-            actor=SimpleNamespace(),
+            actor=SimpleNamespace(is_local=True),
             db=test_db,
         )
     assert exc_info.value.status_code == 404
@@ -191,7 +191,7 @@ async def test_refresh_complete_and_fail_jobs_reject_missing_jobs(
                 retryable=False,
             ),
             response=response,
-            actor=SimpleNamespace(),
+            actor=SimpleNamespace(is_local=True),
             db=test_db,
         )
     assert exc_info.value.status_code == 404

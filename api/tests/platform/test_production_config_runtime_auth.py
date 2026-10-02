@@ -42,22 +42,26 @@ class TestValidateRuntimeAuthConfig:
             multi_user=True,
             auth_jwt_issuer="https://atlas.test",
             auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
         )
         validate_runtime_auth_config(settings)
 
-    def test_multi_user_requires_internal_secret(self) -> None:
-        """A hosted deploy needs the shared app/API secret for trusted internal calls."""
+    @pytest.mark.parametrize("multi_user", [True, False])
+    def test_malformed_machine_issuers_stop_startup(self, multi_user: bool) -> None:  # noqa: FBT001
+        """A typo in the trusted machine list must not silently trust nothing or everything."""
         settings = Settings(
             database_url="sqlite:///tmp/test.db",
-            multi_user=True,
+            multi_user=multi_user,
+            auth_jwt_issuer="https://atlas.test",
             auth_jwt_audience=["https://atlas.test/mcp"],
-            auth_internal_secret="",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
+            auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
+            auth_membership_verification_url="https://atlas.test",
+            machine_trusted_issuers="not json",
         )
-        with pytest.raises(RuntimeError, match="ATLAS_AUTH_INTERNAL_SECRET is required"):
+        with pytest.raises(RuntimeError, match="ATLAS_MACHINE_TRUSTED_ISSUERS must be a JSON list"):
             validate_runtime_auth_config(settings)
 
     def test_multi_user_requires_callback_secret(self) -> None:
@@ -66,7 +70,6 @@ class TestValidateRuntimeAuthConfig:
             database_url="sqlite:///tmp/test.db",
             multi_user=True,
             auth_jwt_audience=["https://atlas.test/mcp"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="",
         )
         with pytest.raises(RuntimeError, match="ATLAS_AUTH_CALLBACK_SECRET is required"):
@@ -78,7 +81,6 @@ class TestValidateRuntimeAuthConfig:
             database_url="sqlite:///tmp/test.db",
             multi_user=True,
             auth_jwt_audience=["https://atlas.test/mcp"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url=None,
         )
@@ -96,7 +98,6 @@ class TestValidateRuntimeAuthConfig:
             database_url="sqlite:///tmp/test.db",
             multi_user=True,
             auth_jwt_audience=["https://atlas.test/mcp"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="",
@@ -110,7 +111,6 @@ class TestValidateRuntimeAuthConfig:
             database_url="sqlite:///tmp/test.db",
             multi_user=True,
             auth_jwt_audience=["https://atlas.test/mcp"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
@@ -126,7 +126,6 @@ class TestValidateRuntimeAuthConfig:
             multi_user=True,
             auth_jwt_issuer="http://atlas.test",
             auth_jwt_audience=["http://atlas.test/mcp"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
@@ -143,7 +142,6 @@ class TestValidateRuntimeAuthConfig:
             multi_user=True,
             auth_jwt_issuer="http://127.0.0.1:3100",
             auth_jwt_audience=["http://127.0.0.1:3100/mcp", "http://127.0.0.1:8000"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="http://127.0.0.1:3100/api/auth/internal/api-key",
             auth_membership_verification_url="http://127.0.0.1:3100",
@@ -158,7 +156,6 @@ class TestValidateRuntimeAuthConfig:
             multi_user=True,
             auth_jwt_issuer="https://atlas.test",
             auth_jwt_audience=["https://api.atlas.test", "https://atlas.test/mcp"],
-            auth_internal_secret="internal-secret",
             auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",

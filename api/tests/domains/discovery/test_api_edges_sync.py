@@ -15,6 +15,7 @@ from atlas.domains.access.principals import AuthenticatedActor
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery import api as discovery_api
 from atlas.domains.discovery.models import DiscoveryJobCRUD, DiscoveryRunCRUD, DiscoveryScheduleCRUD
+from atlas.platform.authz.dependency import LOCAL_MACHINE
 
 from tests.domains.discovery.api_edges_support import (
     DB_BOOM_ERROR,
@@ -247,16 +248,10 @@ async def test_sync_discovery_run_marks_run_failed_when_persist_blows_up(
 @pytest.mark.asyncio
 async def test_execute_scheduled_runs_no_schedules_returns_empty(test_db: object) -> None:
     """No enabled schedules should short-circuit with enqueued=0."""
-    actor = _local_actor()
     http_response = SimpleNamespace(status_code=None, headers={})
     response = await discovery_api.execute_scheduled_runs(
         response=http_response,
-        actor=actor,
-        settings=SimpleNamespace(
-            database_url="sqlite:///atlas.db",
-            search_api_key=None,
-            anthropic_api_key="test-key",
-        ),
+        machine=LOCAL_MACHINE,
         db=test_db,
     )
     assert http_response.status_code == HTTPStatus.ACCEPTED
@@ -269,8 +264,6 @@ async def test_execute_scheduled_runs_enqueues_a_job_per_schedule(
     test_db: object,
 ) -> None:
     """Each enabled schedule should enqueue exactly one durable queued job."""
-    actor = _local_actor()
-
     first_id = await DiscoveryScheduleCRUD.create(
         test_db,
         location_query="Topeka, KS",
@@ -287,12 +280,7 @@ async def test_execute_scheduled_runs_enqueues_a_job_per_schedule(
     http_response = SimpleNamespace(status_code=None, headers={})
     response = await discovery_api.execute_scheduled_runs(
         response=http_response,
-        actor=actor,
-        settings=SimpleNamespace(
-            database_url="sqlite:///atlas.db",
-            search_api_key=None,
-            anthropic_api_key="test-key",
-        ),
+        machine=LOCAL_MACHINE,
         db=test_db,
     )
 

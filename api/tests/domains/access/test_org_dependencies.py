@@ -22,7 +22,7 @@ def _make_settings(
 ) -> MagicMock:
     settings = MagicMock(spec=Settings)
     settings.auth_membership_verification_url = membership_url
-    settings.auth_internal_secret = secret
+    settings.auth_callback_secret = secret
     settings.managed = managed
     return settings
 

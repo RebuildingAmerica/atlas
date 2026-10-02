@@ -39,3 +39,4 @@ class AuthenticatedActor:
     active_products: list[str] | None = None
     resolved_capabilities: ResolvedCapabilities | None = None
     account_ready: bool = False
+    worker_id: str | None = None

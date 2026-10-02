@@ -1,16 +1,8 @@
-"""Trusted internal auth helpers."""
+"""The actor single-user mode runs as."""
 
 from __future__ import annotations
 
-from secrets import compare_digest
-from typing import TYPE_CHECKING
-
-from fastapi import HTTPException, status
-
 from .principals import AuthenticatedActor
-
-if TYPE_CHECKING:
-    from atlas.platform.config import Settings
 
 
 def build_local_actor() -> AuthenticatedActor:
@@ -21,39 +13,4 @@ def build_local_actor() -> AuthenticatedActor:
         auth_type="local",
         is_local=True,
         org_id="local",
-    )
-
-
-def verify_internal_actor(
-    settings: Settings,
-    internal_secret: str | None,
-    actor_id: str | None,
-    actor_email: str | None,
-    org_id: str | None = None,
-) -> AuthenticatedActor | None:
-    """Validate trusted shared-secret headers from system callers.
-
-    The actor this returns is never passkey-ready: a shared secret proves the
-    caller holds a deployment credential, not that a person signed in, so it
-    can never act as the operator. People reach the API through the app's
-    signed assertion instead.
-    """
-    if not (
-        settings.auth_internal_secret
-        and internal_secret
-        and compare_digest(internal_secret, settings.auth_internal_secret)
-    ):
-        return None
-
-    if not actor_id or not actor_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Trusted requests must include actor identity headers",
-        )
-
-    return AuthenticatedActor(
-        user_id=actor_id,
-        email=actor_email,
-        auth_type="internal",
-        org_id=org_id,
     )

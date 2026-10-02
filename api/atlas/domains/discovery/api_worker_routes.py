@@ -8,10 +8,14 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from atlas.domains.access import AuthenticatedActor, require_actor_permission
+from atlas.domains.access.machine import (
+    MachinePrincipal,  # noqa: TC001 - FastAPI resolves this annotation at runtime
+)
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
     DiscoveryScheduleCRUD,
     RunVisibility,
+    ScoutWorkerRevocationCRUD,
 )
 from atlas.domains.discovery.schemas import (
     DiscoveryJobQueueResponse,
@@ -29,7 +33,7 @@ from atlas.domains.discovery.schemas import (
 )
 from atlas.domains.discovery.worker import notify_job_queued
 from atlas.models import DiscoveryRunCRUD
-from atlas.platform.authz import Action, require_action
+from atlas.platform.authz import Action, require_action, require_machine_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import db as db_manager
 from atlas.platform.http.cache import apply_no_store_headers
@@ -41,6 +45,7 @@ from .api_helpers import (
     get_db,
     run_visibility_for,
 )
+from .scout_workers import require_bound_worker
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -69,13 +74,16 @@ __all__ = ["router"]
 )
 async def execute_scheduled_runs(
     response: Response,
-    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
-    settings: Settings = Depends(get_settings),
+    machine: MachinePrincipal = Depends(require_machine_action(Action.TRIGGER_SCHEDULED_RUNS)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ScheduledRunResponse:
-    """Enqueue durable discovery jobs for every enabled schedule target."""
-    _ = actor
-    _ = settings
+    """Enqueue durable discovery jobs for every enabled schedule target.
+
+    Only a trusted machine credential, such as Cloud Scheduler's OIDC token,
+    can call this. A signed-in account or customer token cannot start the
+    nightly sweep, whatever scopes it holds.
+    """
+    _ = machine
     response.status_code = 202
     schedules = await DiscoveryScheduleCRUD.list(db, enabled_only=True)
     if not schedules:
@@ -176,7 +184,7 @@ async def claim_discovery_job(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryWorkerClaimResponse:
     """Lease the next queued job for a remote Scout worker."""
-    _ = actor
+    await require_bound_worker(db, actor, req.worker_id)
     job = await DiscoveryJobCRUD.claim_next(
         db,
         claimed_by=req.worker_id,
@@ -243,7 +251,7 @@ async def heartbeat_discovery_job(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryWorkerJobResponse:
     """Renew a claimed job lease for its current Scout worker."""
-    _ = actor
+    await require_bound_worker(db, actor, req.worker_id)
     job = await _require_worker_job(db, job_id=job_id, worker_id=req.worker_id)
     await DiscoveryJobCRUD.update_progress(
         db,
@@ -274,7 +282,7 @@ async def complete_discovery_job(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryWorkerJobResponse:
     """Complete a claimed job lease for its current Scout worker."""
-    _ = actor
+    await require_bound_worker(db, actor, req.worker_id)
     job = await _require_worker_job(db, job_id=job_id, worker_id=req.worker_id)
     await DiscoveryJobCRUD.complete(db, job.id)
     completed = await DiscoveryJobCRUD.get_by_id(db, job.id)
@@ -300,7 +308,7 @@ async def fail_discovery_job(
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryWorkerJobResponse:
     """Fail a claimed job lease for its current Scout worker."""
-    _ = actor
+    await require_bound_worker(db, actor, req.worker_id)
     job = await _require_worker_job(db, job_id=job_id, worker_id=req.worker_id)
     await DiscoveryJobCRUD.fail(db, job.id, req.error_message, retryable=req.retryable)
     failed = await DiscoveryJobCRUD.get_by_id(db, job.id)
@@ -324,8 +332,14 @@ async def release_worker_jobs(
     actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "write")),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryWorkerReleaseResponse:
-    """Release active job leases held by one Scout worker."""
-    _ = actor
+    """Release a revoked Scout worker's leases and refuse its further claims.
+
+    The app calls this when the signed-in owner revokes a worker device. The
+    revocation is recorded against the caller, so it binds only that owner's
+    worker: someone else naming the same worker id cannot lock it out.
+    """
+    if not actor.is_local:
+        await ScoutWorkerRevocationCRUD.revoke(db, worker_id=worker_id, user_id=actor.user_id)
     released = await DiscoveryJobCRUD.release_worker_leases(db, worker_id)
     apply_no_store_headers(response)
     return DiscoveryWorkerReleaseResponse(worker_id=worker_id, jobs_released=released)

@@ -4,8 +4,6 @@ import { spawnSync } from "node:child_process";
 
 const [, , command] = process.argv;
 
-const SCHEDULER_ACTOR_ID = "atlas-scheduler";
-const SCHEDULER_ACTOR_EMAIL = "scheduler@atlas.rebuildingus.org";
 
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
@@ -134,17 +132,41 @@ function schedulerJobExists(jobName, region) {
   return result.status === 0;
 }
 
-function schedulerHeaderFlag(operation) {
-  return operation === "update" ? "--update-headers" : "--headers";
+/**
+ * Headers the scheduler job used to carry when it authenticated with the
+ * shared secret. An update removes them so no copy of that secret stays in
+ * the job's configuration.
+ */
+const RETIRED_SCHEDULER_HEADERS = [
+  "X-Atlas-Internal-Secret",
+  "X-Atlas-Actor-Id",
+  "X-Atlas-Actor-Email",
+];
+
+function schedulerHeaderFlags(operation) {
+  if (operation === "update") {
+    return [
+      "--update-headers",
+      "Content-Type=application/json",
+      "--remove-headers",
+      RETIRED_SCHEDULER_HEADERS.join(","),
+    ];
+  }
+  return ["--headers", "Content-Type=application/json"];
 }
 
-function schedulerHeaders() {
+/**
+ * Cloud Scheduler signs each call with a Google ID token for the scheduler
+ * service account; the API trusts exactly this account and audience for
+ * scheduled discovery (ATLAS_MACHINE_TRUSTED_ISSUERS).
+ */
+function schedulerOidcFlags() {
   return [
-    "Content-Type=application/json",
-    `X-Atlas-Internal-Secret=${requiredEnv("ATLAS_AUTH_INTERNAL_SECRET")}`,
-    `X-Atlas-Actor-Id=${SCHEDULER_ACTOR_ID}`,
-    `X-Atlas-Actor-Email=${SCHEDULER_ACTOR_EMAIL}`,
-  ].join(",");
+    "--oidc-service-account-email",
+    requiredEnv("SCHEDULER_SERVICE_ACCOUNT"),
+    "--oidc-token-audience",
+    requiredEnv("SCHEDULER_AUDIENCE"),
+  ];
 }
 
 function ensureSchedulerJob() {
@@ -165,8 +187,8 @@ function ensureSchedulerJob() {
       serviceUrl("/api/discovery-runs/scheduled"),
       "--http-method",
       "POST",
-      schedulerHeaderFlag(operation),
-      schedulerHeaders(),
+      ...schedulerHeaderFlags(operation),
+      ...schedulerOidcFlags(),
       "--schedule",
       "0 2 * * *",
       "--time-zone",

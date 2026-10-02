@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi.routing import APIRoute
 
-from atlas.platform.authz import Action, ActionGuard
+from atlas.platform.authz import Action, ActionGuard, MachineActionGuard
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -33,10 +33,10 @@ class RouteDeclaration:
 
 
 def _declared_actions(dependant: Any) -> frozenset[Action]:
-    """Collect the actions declared by ``ActionGuard`` dependencies at any depth."""
+    """Collect the actions declared by person and machine guards at any depth."""
     actions: set[Action] = set()
     for dependency in dependant.dependencies:
-        if isinstance(dependency.call, ActionGuard):
+        if isinstance(dependency.call, ActionGuard | MachineActionGuard):
             actions.add(dependency.call.authz_action)
         actions |= _declared_actions(dependency)
     return frozenset(actions)

@@ -39,6 +39,12 @@ EXPECTED_ACTIONS: dict[tuple[str, str], Action] = {
     ("GET", "/api/admin/verifications"): Action.DISCOUNTS_REVIEW,
     ("PATCH", "/api/admin/verifications/{verification_id}"): Action.DISCOUNTS_REVIEW,
     ("GET", "/api/admin/cloud-costs"): Action.COSTS_VIEW,
+    ("POST", "/api/discovery-runs/scheduled"): Action.TRIGGER_SCHEDULED_RUNS,
+    (
+        "POST",
+        "/api/internal/firehose/observations/{observation_id}/signals",
+    ): Action.DELIVER_FIREHOSE_OBSERVATIONS,
+    ("POST", "/api/internal/firehose/observation-deliveries"): Action.DELIVER_FIREHOSE_OBSERVATIONS,
 }
 
 

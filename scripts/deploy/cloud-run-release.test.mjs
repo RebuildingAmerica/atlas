@@ -10,10 +10,16 @@ const releaseScript = path.join(
   rootDir,
   "scripts/deploy/cloud-run-release.mjs",
 );
-const authHeaderEnvName = "ATLAS_AUTH_INTERNAL_" + "SECRET";
+const SCHEDULER_ENV = {
+  API_URL: "https://atlas-api.example.test",
+  GCP_REGION: "us-central1",
+  JOB_NAME: "atlas-discovery-scheduled",
+  SCHEDULER_AUDIENCE: "https://atlas.example.test/api/discovery-runs/scheduled",
+  SCHEDULER_SERVICE_ACCOUNT: "atlas-scheduler@atlas-test.iam.gserviceaccount.com",
+};
 
 void describe("cloud-run release scheduler", () => {
-  void it("sends trusted internal actor headers to the scheduled discovery endpoint", () => {
+  void it("signs scheduled discovery calls with the scheduler's Google ID token", () => {
     const tempDir = mkdtempSync(path.join(tmpdir(), "atlas-scheduler-test-"));
     const logPath = path.join(tempDir, "gcloud-args.log");
     const gcloudPath = path.join(tempDir, "gcloud");
@@ -37,27 +43,30 @@ void describe("cloud-run release scheduler", () => {
       env: {
         ...process.env,
         PATH: `${tempDir}:${process.env.PATH ?? ""}`,
-        API_URL: "https://atlas-api.example.test",
-        [authHeaderEnvName]: "scheduler-header-value",
-        GCP_REGION: "us-central1",
-        JOB_NAME: "atlas-discovery-scheduled",
+        ...SCHEDULER_ENV,
       },
     });
 
     assert.equal(result.status, 0, result.stderr);
     const calls = readFileSync(logPath, "utf8");
     assert.match(calls, /scheduler jobs create http atlas-discovery-scheduled/);
+    assert.match(calls, /--headers Content-Type=application\/json /);
     assert.match(
       calls,
-      /Content-Type=application\/json,X-Atlas-Internal-Secret=scheduler-header-value,X-Atlas-Actor-Id=atlas-scheduler,X-Atlas-Actor-Email=scheduler@atlas\.rebuildingus\.org/,
+      /--oidc-service-account-email atlas-scheduler@atlas-test\.iam\.gserviceaccount\.com/,
+    );
+    assert.match(
+      calls,
+      /--oidc-token-audience https:\/\/atlas\.example\.test\/api\/discovery-runs\/scheduled/,
     );
     assert.match(
       calls,
       /--uri https:\/\/atlas-api\.example\.test\/api\/discovery-runs\/scheduled/,
     );
+    assert.doesNotMatch(calls, /X-Atlas-Internal-Secret=/);
   });
 
-  void it("keeps trusted internal actor headers when updating an existing scheduler job", () => {
+  void it("removes the retired shared-secret headers when updating an existing job", () => {
     const tempDir = mkdtempSync(path.join(tmpdir(), "atlas-scheduler-test-"));
     const logPath = path.join(tempDir, "gcloud-args.log");
     const gcloudPath = path.join(tempDir, "gcloud");
@@ -78,10 +87,7 @@ void describe("cloud-run release scheduler", () => {
       env: {
         ...process.env,
         PATH: `${tempDir}:${process.env.PATH ?? ""}`,
-        API_URL: "https://atlas-api.example.test",
-        [authHeaderEnvName]: "scheduler-header-value",
-        GCP_REGION: "us-central1",
-        JOB_NAME: "atlas-discovery-scheduled",
+        ...SCHEDULER_ENV,
       },
     });
 
@@ -90,8 +96,29 @@ void describe("cloud-run release scheduler", () => {
     assert.match(calls, /scheduler jobs update http atlas-discovery-scheduled/);
     assert.match(
       calls,
-      /--update-headers Content-Type=application\/json,X-Atlas-Internal-Secret=scheduler-header-value,X-Atlas-Actor-Id=atlas-scheduler,X-Atlas-Actor-Email=scheduler@atlas\.rebuildingus\.org/,
+      /--remove-headers X-Atlas-Internal-Secret,X-Atlas-Actor-Id,X-Atlas-Actor-Email/,
     );
+    assert.match(calls, /--oidc-service-account-email atlas-scheduler@/);
+  });
+
+  void it("refuses to configure the job without the scheduler identity", () => {
+    const tempDir = mkdtempSync(path.join(tmpdir(), "atlas-scheduler-test-"));
+    const gcloudPath = path.join(tempDir, "gcloud");
+    writeFileSync(gcloudPath, ["#!/bin/sh", "exit 0", ""].join("\n"), { mode: 0o755 });
+    const { SCHEDULER_SERVICE_ACCOUNT: _omitted, ...withoutAccount } = SCHEDULER_ENV;
+
+    const result = spawnSync("node", [releaseScript, "ensure-scheduler"], {
+      cwd: rootDir,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PATH: `${tempDir}:${process.env.PATH ?? ""}`,
+        ...withoutAccount,
+      },
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /SCHEDULER_SERVICE_ACCOUNT/);
   });
 });
 

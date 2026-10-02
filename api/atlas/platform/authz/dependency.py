@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from functools import cache
 
 from fastapi import Depends, HTTPException, Request, status
 
 from atlas.domains.access.dependencies import require_actor
+from atlas.domains.access.machine import (
+    MachineIssuer,
+    MachinePrincipal,
+    parse_machine_issuers,
+    verify_machine_token,
+)
 from atlas.domains.access.principals import (
     AuthenticatedActor,  # noqa: TC001 - FastAPI resolves this annotation at runtime
 )
@@ -14,9 +22,9 @@ from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import get_db_connection
 from atlas.platform.observability import current_request_id
 
-from .actions import Action  # noqa: TC001 - kept as a runtime attribute for route inventories
-from .audit import AuditLogCRUD, AuditRecord, actor_plane
-from .policy import Decision, authorize
+from .actions import Action
+from .audit import AuditLogCRUD, AuditRecord, Plane, actor_plane
+from .policy import Decision, authorize, authorize_machine
 
 logger = logging.getLogger(__name__)
 
@@ -51,20 +59,69 @@ def route_template(request: Request) -> str:
     return "/".join(path.split("/")[: prefix_length + 1]) + template
 
 
-async def _record_decision(
-    request: Request,
-    actor: AuthenticatedActor,
-    action: Action,
-    decision: Decision,
-    settings: Settings,
-) -> None:
-    """Append the decision to the audit log, refusing the change if that fails."""
-    route = route_template(request)
-    record = AuditRecord(
+@dataclass(frozen=True, slots=True)
+class AuditIdentity:
+    """Who an audit record names: the plane, the actor and how they signed in."""
+
+    plane: Plane
+    actor_id: str
+    actor_email: str | None
+    auth_type: str
+
+
+def _person_identity(actor: AuthenticatedActor) -> AuditIdentity:
+    return AuditIdentity(
         plane=actor_plane(actor),
         actor_id=actor.user_id,
         actor_email=actor.email or None,
         auth_type=actor.auth_type,
+    )
+
+
+def _machine_identity(principal: MachinePrincipal) -> AuditIdentity:
+    return AuditIdentity(
+        plane="machine",
+        actor_id=f"{principal.issuer_name}:{principal.subject}",
+        actor_email=principal.acting_for,
+        auth_type=f"machine:{principal.kind}",
+    )
+
+
+async def record_decision(
+    request: Request,
+    identity: AuditIdentity,
+    action: Action,
+    decision: Decision,
+    settings: Settings,
+) -> None:
+    """Append the decision to the audit log, refusing the change if that fails.
+
+    Parameters
+    ----------
+    request : Request
+        The incoming request; safe methods are not recorded.
+    identity : AuditIdentity
+        Who made the decision.
+    action : Action
+        The operation attempted.
+    decision : Decision
+        The outcome; a 404 is not recorded, because the surface does not exist.
+    settings : Settings
+        Runtime settings carrying the database location.
+
+    Raises
+    ------
+    HTTPException
+        503 when the record cannot be written, so the change is not made.
+    """
+    if request.method in _SAFE_METHODS or decision.status_code == status.HTTP_404_NOT_FOUND:
+        return
+    route = route_template(request)
+    record = AuditRecord(
+        plane=identity.plane,
+        actor_id=identity.actor_id,
+        actor_email=identity.actor_email,
+        auth_type=identity.auth_type,
         action=action,
         allowed=decision.allowed,
         status_code=decision.status_code,
@@ -129,14 +186,134 @@ class ActionGuard:
             proceed, or 503 when a change cannot be recorded.
         """
         decision = authorize(actor, self.authz_action, settings)
-        if (
-            request.method not in _SAFE_METHODS
-            and decision.status_code != status.HTTP_404_NOT_FOUND
-        ):
-            await _record_decision(request, actor, self.authz_action, decision, settings)
+        await record_decision(
+            request, _person_identity(actor), self.authz_action, decision, settings
+        )
         if not decision.allowed:
             raise HTTPException(status_code=decision.status_code, detail=decision.detail)
         return actor
+
+
+LOCAL_MACHINE = MachinePrincipal(
+    issuer_name="local",
+    kind="local",
+    subject="local",
+    actions=frozenset(action.value for action in Action if action.is_machine),
+    acting_for=None,
+)
+"""Single-user mode runs its own scheduled work; there is no one else to trust."""
+
+UNTRUSTED_MACHINE_DETAIL = "A trusted machine credential is required."
+
+
+@cache
+def trusted_issuers(raw: str) -> list[MachineIssuer]:
+    """Return the parsed ``ATLAS_MACHINE_TRUSTED_ISSUERS``, parsed once per value.
+
+    Parameters
+    ----------
+    raw : str
+        The setting's JSON text.
+
+    Returns
+    -------
+    list[MachineIssuer]
+        The declared issuers.
+    """
+    return parse_machine_issuers(raw)
+
+
+def bearer_token(request: Request) -> str | None:
+    """Return the request's bearer credential, if it sends one.
+
+    Parameters
+    ----------
+    request : Request
+        The incoming request.
+
+    Returns
+    -------
+    str | None
+        The credential after ``Bearer``, or ``None``.
+    """
+    authorization = request.headers.get("authorization", "")
+    scheme, _, token = authorization.partition(" ")
+    return token.strip() or None if scheme.lower() == "bearer" else None
+
+
+class MachineActionGuard:
+    """Refuse the request unless a trusted machine credential grants ``authz_action``.
+
+    People never pass this guard, whatever they hold: a route that only a
+    scheduler or an internal app should call takes a machine credential from
+    ``ATLAS_MACHINE_TRUSTED_ISSUERS`` and nothing else.
+    """
+
+    def __init__(self, action: Action) -> None:
+        self.authz_action = action
+
+    async def __call__(
+        self,
+        request: Request,
+        settings: Settings = Depends(get_settings),
+    ) -> MachinePrincipal:
+        """Return the verified machine when it may perform the action.
+
+        Parameters
+        ----------
+        request : Request
+            The incoming request carrying ``Authorization: Bearer <credential>``.
+        settings : Settings
+            Runtime settings carrying the trusted issuers.
+
+        Returns
+        -------
+        MachinePrincipal
+            The verified machine.
+
+        Raises
+        ------
+        HTTPException
+            401 without a trusted credential, 403 when the credential is not
+            trusted for this action, 404 for a platform action outside a
+            managed deployment, or 503 when a change cannot be recorded.
+        """
+        if not settings.multi_user:
+            return LOCAL_MACHINE
+        token = bearer_token(request)
+        principal = (
+            verify_machine_token(token, trusted_issuers(settings.machine_trusted_issuers))
+            if token
+            else None
+        )
+        if principal is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=UNTRUSTED_MACHINE_DETAIL,
+            )
+        decision = authorize_machine(principal, self.authz_action, settings)
+        await record_decision(
+            request, _machine_identity(principal), self.authz_action, decision, settings
+        )
+        if not decision.allowed:
+            raise HTTPException(status_code=decision.status_code, detail=decision.detail)
+        return principal
+
+
+def require_machine_action(action: Action) -> MachineActionGuard:
+    """Create the dependency that admits only a machine trusted for one action.
+
+    Parameters
+    ----------
+    action : Action
+        The machine or platform operation the route performs.
+
+    Returns
+    -------
+    MachineActionGuard
+        A FastAPI dependency yielding the verified machine.
+    """
+    return MachineActionGuard(action)
 
 
 def require_action(action: Action) -> ActionGuard:

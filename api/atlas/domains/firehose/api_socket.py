@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from fastapi import WebSocket, WebSocketException, status
 
 from atlas.domains.access import AuthenticatedActor
-from atlas.domains.access.internal import build_local_actor, verify_internal_actor
+from atlas.domains.access.internal import build_local_actor
 from atlas.domains.access.permissions import require_permission
 
 if TYPE_CHECKING:
@@ -33,18 +33,6 @@ async def _websocket_actor(websocket: WebSocket, settings: Settings) -> Authenti
 
     if not settings.multi_user:
         return build_local_actor()
-
-    trusted_actor = verify_internal_actor(
-        settings,
-        websocket.headers.get("x-atlas-internal-secret"),
-        websocket.headers.get("x-atlas-actor-id"),
-        websocket.headers.get("x-atlas-actor-email"),
-        org_id=websocket.headers.get("x-atlas-organization-id"),
-    )
-    if trusted_actor is not None:
-        if trusted_actor.org_id is None:
-            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-        return trusted_actor
 
     api_key = websocket.headers.get("x-api-key")
     if api_key:
