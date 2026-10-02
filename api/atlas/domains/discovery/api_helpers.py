@@ -14,12 +14,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
+    RunVisibility,
 )
 from atlas.domains.discovery.schemas import (
     DiscoveryJobQueueItemResponse,
     DiscoveryWorkerJobResponse,
 )
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, get_db_connection
+from atlas.platform.authz import Action, is_granted
 from atlas.platform.config import Settings, get_settings
 from atlas.schemas import (
     DiscoveryRunResponse,
@@ -111,6 +113,27 @@ async def _ensure_workspace_run_ownership(
         visibility="private",
         created_by=actor.user_id,
     )
+
+
+def run_visibility_for(actor: AuthenticatedActor, settings: Settings) -> RunVisibility:
+    """Return whose privately synced runs this caller may read.
+
+    Parameters
+    ----------
+    actor : AuthenticatedActor
+        The authenticated caller.
+    settings : Settings
+        Runtime settings carrying the operator allowlist.
+
+    Returns
+    -------
+    RunVisibility
+        Every workspace's runs for Atlas staff; otherwise public runs plus the
+        caller's own workspace's private runs.
+    """
+    if is_granted(actor, Action.RUNS_VIEW_ALL, settings):
+        return RunVisibility.staff()
+    return RunVisibility.workspace(actor.org_id)
 
 
 def _entry_profile_path(*, entry_type: str, slug: str | None) -> str | None:

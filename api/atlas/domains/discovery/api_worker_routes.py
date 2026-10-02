@@ -38,6 +38,7 @@ from .api_helpers import (
     _require_worker_job,
     _worker_job_to_response,
     get_db,
+    run_visibility_for,
 )
 
 if TYPE_CHECKING:
@@ -197,13 +198,15 @@ async def claim_discovery_job(
 async def get_discovery_job(
     job_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_action(Action.RUNS_INSPECT)),
+    actor: AuthenticatedActor = Depends(require_actor_permission("discovery", "read")),
+    settings: Settings = Depends(get_settings),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryJobResponse:
-    """Get a job by ID."""
-    _ = actor
+    """Get a job by ID unless its run is private to another workspace."""
     job = await DiscoveryJobCRUD.get_by_id(db, job_id)
-    if not job:
+    if not job or not await DiscoveryRunCRUD.get_visible(
+        db, job.run_id, visibility=run_visibility_for(actor, settings)
+    ):
         raise HTTPException(status_code=404, detail="Job not found")
     apply_no_store_headers(response)
     return DiscoveryJobResponse(

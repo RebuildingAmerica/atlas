@@ -30,7 +30,6 @@ STAFF_ONLY_ROUTES = (
     ("PATCH", "/api/discovery-schedules/missing", {"enabled": False}, HTTP_NOT_FOUND),
     ("DELETE", "/api/discovery-schedules/missing", None, HTTP_NOT_FOUND),
     ("POST", "/api/discovery-runs/missing/cancel", None, HTTP_NOT_FOUND),
-    ("GET", "/api/discovery-runs/jobs/missing", None, HTTP_NOT_FOUND),
     ("GET", "/api/discovery-runs/summary", None, HTTP_OK),
 )
 
@@ -114,3 +113,36 @@ async def test_private_research_runs_stay_inside_their_workspace(
 
         detail = await test_client.get(f"/api/discovery-runs/{private_run}", headers=viewer)
         assert detail.status_code == (HTTP_OK if sees_private else HTTP_NOT_FOUND), detail.text
+
+
+@pytest.mark.asyncio
+async def test_scout_volunteers_follow_jobs_they_can_see_but_not_private_ones(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    """A volunteer watching a queued job sees it; another workspace's private job stays hidden."""
+    from atlas.domains.discovery.models import DiscoveryJobCRUD
+
+    headers = enable_staff_auth(test_settings)
+    public_run = await DiscoveryRunCRUD.create(
+        test_db, location_query="Reno, NV", state="NV", issue_areas=["public_transit"]
+    )
+    public_job = await DiscoveryJobCRUD.create(test_db, run_id=public_run)
+    private_job = await DiscoveryJobCRUD.create(
+        test_db, run_id=await _private_run(test_db, org_id="org_owner")
+    )
+    outsider = {**headers.ordinary, "X-Atlas-Organization-Id": "org_other"}
+    member = {**headers.ordinary, "X-Atlas-Organization-Id": "org_owner"}
+
+    visible = await test_client.get(f"/api/discovery-runs/jobs/{public_job}", headers=outsider)
+    hidden = await test_client.get(f"/api/discovery-runs/jobs/{private_job}", headers=outsider)
+    own = await test_client.get(f"/api/discovery-runs/jobs/{private_job}", headers=member)
+    staff = await test_client.get(f"/api/discovery-runs/jobs/{private_job}", headers=headers.staff)
+    missing = await test_client.get("/api/discovery-runs/jobs/missing", headers=outsider)
+
+    assert visible.status_code == HTTP_OK, visible.text
+    assert hidden.status_code == HTTP_NOT_FOUND, hidden.text
+    assert own.status_code == HTTP_OK, own.text
+    assert staff.status_code == HTTP_OK, staff.text
+    assert missing.status_code == HTTP_NOT_FOUND
