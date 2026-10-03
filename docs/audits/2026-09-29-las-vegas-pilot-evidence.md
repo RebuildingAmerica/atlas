@@ -46,6 +46,14 @@ gate would normally need a second person, the row says how it was handled.
 
 Newest first. Each entry: date · release · actor · observation · result.
 
+- 2026-10-02 · `v2026.10.02-2` · Operator and Claude · The operator granted
+  `roles/logging.configWriter` to the deploy account from Cloud Shell; the next
+  `error-alerting.yml` run created the "Atlas API errors" and "Atlas visitor
+  reports" log-based policies on the operator's email channel. · Alerts
+  provisioned. Delivery is unproven until the operator accepts Google's channel
+  confirmation and a test error and a test report each produce an email (Task
+  4.2).
+
 - 2026-10-02 · `v2026.10.02-2` · Claude · `deploy-production.yml` run
   37053223990 passed every job, including hosted smoke, hosted checkout, and
   hosted identity. Readback: API `/health`, app `/`, `/browse`, and proxied
