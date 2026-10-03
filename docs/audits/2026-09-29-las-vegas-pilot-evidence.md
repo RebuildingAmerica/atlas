@@ -46,6 +46,18 @@ gate would normally need a second person, the row says how it was handled.
 
 Newest first. Each entry: date · release · actor · observation · result.
 
+- 2026-10-03 · `v2026.10.02-2` · Claude · For the synthetic rehearsal report
+  `47f2dd0d…` (found through the production log, 00:31:27 UTC), the anonymous
+  `GET /api/entity-flags/{id}/status` returns 200 with `cache-control: no-store`
+  and exactly `id`, `status: resolved`, `created_at`, and `reviewed_at`
+  (2026-10-03 18:15:55 UTC), the time of the operator's dismissal. The
+  `/reports/{id}` page answers 200 and its HTML does not contain the reporter's
+  note. · Corrections chain observed end to end: hosted report → operator email
+  alert → operator disposition → reporter-visible status with no private text.
+  Still to observe: a signed-in non-operator account refused (403) on the review
+  pages, and the reviewer address recorded on the flag. The gate stays NO-GO
+  until those are seen.
+
 - 2026-10-03 · `v2026.10.02-2` · Operator · The operator reported resolving the
   synthetic rehearsal report in `/admin/corrections`. · Disposition done as
   reported by the operator. Still to observe: the reporter-visible status page
