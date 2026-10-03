@@ -46,6 +46,12 @@ gate would normally need a second person, the row says how it was handled.
 
 Newest first. Each entry: date · release · actor · observation · result.
 
+- 2026-10-03 · `v2026.10.02-2` · Operator · The operator reported resolving the
+  synthetic rehearsal report in `/admin/corrections`. · Disposition done as
+  reported by the operator. Still to observe: the reporter-visible status page
+  for this report (needs the `/reports/<id>` link from the receipt), and the
+  reviewer and review time recorded on the flag.
+
 - 2026-10-03 · `v2026.10.02-2` · Operator and Claude · The operator submitted a
   synthetic report ("SYNTHETIC REHEARSAL – no change needed") from a signed-out
   browser on the NAACP Las Vegas Branch profile. Production logged "Visitor
