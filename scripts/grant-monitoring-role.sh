@@ -85,5 +85,5 @@ gh run watch "$RUN_ID" --exit-status
 
 step 7 "Confirm"
 echo "Alert policies 'Atlas API errors' and 'Atlas visitor reports' now notify $ALERT_EMAIL."
-echo "Google sends a confirmation email to that address. Accept it, or the"
-echo "channel stays unverified and delivers nothing."
+echo "Email channels need no confirmation; a real error or visitor report"
+echo "is the only way to prove delivery."

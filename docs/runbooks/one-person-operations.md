@@ -21,8 +21,8 @@ The Error Alerting workflow needs the deploy service account to hold
 `roles/monitoring.editor`, `roles/logging.configWriter` (every log-based alert
 owns a Cloud Logging notification rule), and `roles/logging.viewer`.
 `scripts/grant-monitoring-role.sh` grants them and dispatches the workflow with
-the operator's email. Accept Google's confirmation email afterwards, or the
-channel delivers nothing.
+the operator's email. Email channels need no confirmation; Cloud Monitoring has
+no test button, so a real error or report is what proves delivery.
 
 ## Response targets
 
