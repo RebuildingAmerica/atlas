@@ -70,7 +70,7 @@ jobs:
             --freshness="$FRESHNESS" \
             --limit="$LIMIT" \
             --order=desc \
-            --format='value(timestamp, textPayload, jsonPayload.message)' 2>&1)"
+            --format='value(timestamp, textPayload, jsonPayload.message, jsonPayload.flag_id, jsonPayload.kind)' 2>&1)"
           status=$?
 
           if [ $status -ne 0 ]; then
