@@ -46,6 +46,18 @@ gate would normally need a second person, the row says how it was handled.
 
 Newest first. Each entry: date · release · actor · observation · result.
 
+- 2026-10-03 · `v2026.10.02-2` · Operator and Claude · The operator submitted a
+  synthetic report ("SYNTHETIC REHEARSAL – no change needed") from a signed-out
+  browser on the NAACP Las Vegas Branch profile. Production logged "Visitor
+  report received" at 00:31:27 UTC, and Google Cloud Alerting emailed the
+  operator for policy "Atlas visitor reports" (revision `atlas-api-00133-rgb`)
+  with the link to `/admin/corrections`; the operator's screenshot shows the
+  alert at 00:31 UTC. · The report alert delivers, and the "operator alerted"
+  part of the Corrections gate is observed. Still to observe: the operator
+  dismissing the report in `/admin/corrections`, the reporter-visible status, a
+  signed-in non-operator account refused (403), and the "Atlas API errors"
+  policy firing on a real error. The gate stays NO-GO.
+
 - 2026-10-02 · `v2026.10.02-2` · Operator and Claude · The operator granted
   `roles/logging.configWriter` to the deploy account from Cloud Shell; the next
   `error-alerting.yml` run created the "Atlas API errors" and "Atlas visitor
