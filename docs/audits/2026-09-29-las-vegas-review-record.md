@@ -66,6 +66,28 @@ contact website or action URL; only `naacplasvegas.org` matched a linked source.
 
 ---
 
+## Checks cleared on October 2, 2026
+
+Claude rechecked every candidate against production `v2026.10.02-2` before the
+editor stages them. The editor still opens each source before ticking "sources
+checked".
+
+- **All candidates:** every source and action URL in this record answers 200.
+  Duplicate check 2: a production name search for each of the seven candidates
+  returns no existing record.
+- **Southern Nevada Bicycle Coalition:** the About page itself carries the
+  mission ("advocate for safer roadways, better trails, and more biking
+  opportunities"). The contact page shows no Las Vegas street address, so stage
+  it with the region only and no city.
+- **Nevada Housing Justice Alliance:** `/join-us` is a public sign-up for the
+  coalition's alerts, not a member-organization application, so "Join" is an
+  honest action.
+- **Legal Aid Center of Southern Nevada:** `/landlordtenant` redirects to an
+  Eventbrite page for Ask-A-Lawyer phone consultations, off the source's host.
+  Use the tenant-rights page
+  (`/practice-areas/consumer-rights-project/tenant-rights`) as the action so the
+  button stays on lacsn.org and does not depend on an event listing.
+
 ## 1. Las Vegans for Better Transit — new organization
 
 > **Reviewer interest:** the Atlas operator founded Las Vegans for Better
