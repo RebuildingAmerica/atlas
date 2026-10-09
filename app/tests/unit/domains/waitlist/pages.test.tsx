@@ -196,7 +196,7 @@ describe("waitlist screens", () => {
       .mockResolvedValueOnce({ ...waiting, status: "withdrawn" })
       .mockResolvedValueOnce(waiting);
     mount(<WaitlistRequestPanel initialRequest={waiting} token="private" kind="manage" />);
-    await userEvent.click(screen.getByText("Your details"));
+    await userEvent.click(screen.getByRole("button", { name: "Manage request" }));
     await userEvent.type(screen.getByLabelText("Name"), "New");
     await userEvent.type(screen.getByLabelText("Organization"), "Org");
     await userEvent.type(screen.getByLabelText("What would you use Atlas for?"), "Research");
@@ -204,6 +204,11 @@ describe("waitlist screens", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("could not be updated");
     await userEvent.click(screen.getByRole("button", { name: "Save details" }));
     expect(await screen.findByText("Details saved.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Manage request" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByLabelText("Name")).toHaveValue("New");
     await userEvent.click(screen.getByRole("button", { name: "Leave waitlist" }));
     await userEvent.click(screen.getByRole("button", { name: "Stay on waitlist" }));
     await userEvent.click(screen.getByRole("button", { name: "Leave waitlist" }));
@@ -303,5 +308,25 @@ describe("waitlist screens", () => {
     expect(screen.queryByText(/Your request.*is confirmed/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Confirm request" }));
     expect(await screen.findByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
+  });
+  it("keeps invitation management out of the checkout path without removing it", async () => {
+    mocks.session.mockReturnValue({
+      data: createAtlasSessionFixture({ user: { email: request.email } }),
+    });
+    mocks.change.mockResolvedValue({ ...request, status: "withdrawn" });
+    mount(
+      <WaitlistRequestPanel
+        initialRequest={{ ...request, status: "invited", confirmedAt: "2026-10-09" }}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Continue to checkout" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Decline invitation" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Manage invitation" }));
+    expect(screen.getByLabelText("Name")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Decline invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Keep invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Decline invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Yes, decline invitation" }));
+    expect(await screen.findByRole("heading", { name: "You’ve left the waitlist" })).toBeVisible();
   });
 });

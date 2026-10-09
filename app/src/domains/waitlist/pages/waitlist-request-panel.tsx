@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Mail, ChevronDown } from "lucide-react";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -15,10 +15,11 @@ import type { WaitlistLinkKind, WaitlistRequest } from "../contracts";
 import { updateWaitlistRequest, changeWaitlistRequest } from "../waitlist.functions";
 import {
   WaitlistError,
+  WaitlistFooter,
+  waitlistFooterActionClass,
   waitlistFieldClass,
   waitlistPrimaryLinkClass,
   waitlistTextLinkClass,
-  waitlistSummaryClass,
 } from "./waitlist-layout";
 
 export function WaitlistRequestPanel({
@@ -36,6 +37,7 @@ export function WaitlistRequestPanel({
   const [intendedUse, setIntendedUse] = useState(request.intendedUse);
   const [pending, setPending] = useState(false);
   const [withdrawConfirm, setWithdrawConfirm] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const session = useAtlasSession();
@@ -71,7 +73,11 @@ export function WaitlistRequestPanel({
           : await changeWaitlistRequest({ data: { ...data, action } });
       setRequest(result);
       setWithdrawConfirm(false);
-      setMessage(action === "update" ? "Details saved." : null);
+      if (action === "update") {
+        setMessage("Details saved.");
+      } else {
+        setManageOpen(false);
+      }
       await queryClient.invalidateQueries({ queryKey: ["waitlist", "access"] });
     } catch (error) {
       setError(userFacingErrorMessage(error, "Your request could not be updated. Try again."));
@@ -103,7 +109,15 @@ export function WaitlistRequestPanel({
                   ? `You’re invited to ${productLabel}`
                   : "You’re on the waitlist"}
         </h1>
-        <p className="type-body-small text-ink-muted break-all">{request.email}</p>
+        <div className="bg-surface-container-low flex min-w-0 items-center gap-3 rounded-xl px-4 py-3">
+          <Mail className="text-ink-muted h-4 w-4 shrink-0" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="type-label-small text-ink-muted">
+              {invited && !request.purchasedAt ? "Invitation for" : "Email address"}
+            </p>
+            <p className="type-body-medium text-ink-strong wrap-anywhere">{request.email}</p>
+          </div>
+        </div>
         {!closed && !invited && !needsConfirmation && !request.purchasedAt ? (
           <p className="type-body-large text-ink-soft">
             We’ll email you when you can sign up for {productLabel}. You can keep using Atlas for
@@ -206,14 +220,12 @@ export function WaitlistRequestPanel({
             <div className="space-y-3">
               {!session.data ? (
                 <p className="type-body-medium text-ink-soft">
-                  Use <strong className="break-all">{request.email}</strong> when you create your
-                  account.
+                  Use the email on your invitation when you create your account.
                 </p>
               ) : null}
               {session.data ? (
                 <p className="type-body-medium text-ink-soft">
-                  This invitation is for <strong className="break-all">{request.email}</strong>.
-                  Switch to that account to continue.
+                  Switch to the account on your invitation to continue.
                 </p>
               ) : null}
               <div className="flex flex-col gap-3">
@@ -261,9 +273,44 @@ export function WaitlistRequestPanel({
           {message}
         </p>
       ) : null}
-      {!closed ? (
-        <details className="border-border rounded-xl border p-4">
-          <summary className={waitlistSummaryClass}>Your details</summary>
+
+      {closed && !needsConfirmation ? (
+        <Button
+          variant="secondary"
+          disabled={pending}
+          onClick={() => {
+            void save("rejoin");
+          }}
+        >
+          Rejoin waitlist
+        </Button>
+      ) : null}
+      <WaitlistFooter>
+        {!closed ? (
+          <button
+            type="button"
+            className={waitlistFooterActionClass}
+            aria-expanded={manageOpen}
+            aria-controls="waitlist-management"
+            onClick={() => {
+              setManageOpen((open) => !open);
+            }}
+          >
+            {invited && !request.purchasedAt ? "Manage invitation" : "Manage request"}
+            <ChevronDown
+              aria-hidden="true"
+              className={`h-4 w-4 ${manageOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+        ) : (
+          <a className={waitlistFooterActionClass} href="mailto:hello@rebuildingus.org">
+            Contact support
+          </a>
+        )}
+      </WaitlistFooter>
+      {!closed && manageOpen ? (
+        <section id="waitlist-management" aria-label="Manage request" className="space-y-5">
+          <h2 className="type-title-medium text-ink-strong">Your details</h2>
           <form
             className="mt-4 space-y-4"
             onSubmit={(event) => {
@@ -315,64 +362,53 @@ export function WaitlistRequestPanel({
               Save details
             </Button>
           </form>
-        </details>
-      ) : null}
-      <div className="border-border flex flex-col items-start gap-3 border-t pt-4">
-        <Link to="/waitlist" className={waitlistTextLinkClass}>
-          Join another plan’s waitlist
-        </Link>
-        {closed && needsConfirmation ? null : closed ? (
-          <Button
-            variant="secondary"
-            disabled={pending}
-            onClick={() => {
-              void save("rejoin");
-            }}
-          >
-            Rejoin waitlist
-          </Button>
-        ) : withdrawConfirm ? (
-          <div className="space-y-3">
-            <p className="type-body-medium">
-              Leave the {productLabel} waitlist? You’ll need a new invitation to sign up later. Any
-              plan you already pay for will stay active.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                disabled={pending}
-                variant="secondary"
+          <div className="border-border flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-4">
+            <Link to="/waitlist" className={waitlistTextLinkClass}>
+              Request another plan
+            </Link>
+            {!withdrawConfirm ? (
+              <button
+                type="button"
+                className={waitlistTextLinkClass}
                 onClick={() => {
-                  void save("withdraw");
+                  setWithdrawConfirm(true);
                 }}
               >
-                Yes, leave waitlist
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setWithdrawConfirm(false);
-                }}
-              >
-                Stay on waitlist
-              </Button>
-            </div>
+                {invited && !request.purchasedAt ? "Decline invitation" : "Leave waitlist"}
+              </button>
+            ) : null}
           </div>
-        ) : (
-          <button
-            type="button"
-            className={`${waitlistTextLinkClass} text-ink-muted block`}
-            onClick={() => {
-              setWithdrawConfirm(true);
-            }}
-          >
-            Leave waitlist
-          </button>
-        )}
-      </div>
-      {closed ? (
-        <a className={waitlistTextLinkClass} href="mailto:hello@rebuildingus.org">
-          Contact support
-        </a>
+          {withdrawConfirm ? (
+            <div className="space-y-3">
+              <p className="type-body-medium text-ink-soft">
+                {invited && !request.purchasedAt
+                  ? "Decline this invitation? You can rejoin the waitlist if you change your mind. Any plan you already pay for will stay active."
+                  : "Leave this waitlist? You can rejoin at any time. Any plan you already pay for will stay active."}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  disabled={pending}
+                  variant="secondary"
+                  onClick={() => {
+                    void save("withdraw");
+                  }}
+                >
+                  {invited && !request.purchasedAt
+                    ? "Yes, decline invitation"
+                    : "Yes, leave waitlist"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setWithdrawConfirm(false);
+                  }}
+                >
+                  {invited && !request.purchasedAt ? "Keep invitation" : "Stay on waitlist"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </section>
       ) : null}
     </div>
   );

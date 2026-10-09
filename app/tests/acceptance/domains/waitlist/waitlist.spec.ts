@@ -9,7 +9,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   page,
   browser,
 }) => {
-  const email = `waitlist-${randomUUID()}@atlas.test`;
+  const email = `maya.${randomUUID().slice(0, 8)}@atlas.test`;
   await page.goto("/browse");
   await expect(page.getByRole("heading").first()).toBeVisible();
   await page.goto("/pricing");
@@ -59,6 +59,11 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expectNoAxeViolations(page, "mobile invitation");
   await page.screenshot({ path: "test-results/waitlist-invited-mobile.png", fullPage: true });
   await page.screenshot({ path: "test-results/waitlist-invited-mobile-screen.png" });
+  await page.getByRole("button", { name: "Manage invitation" }).click();
+  await expect(page.getByLabel("Name", { exact: true })).toBeVisible();
+  await expectNoAxeViolations(page, "mobile invitation management");
+  await page.getByRole("button", { name: "Manage invitation" }).click();
+  await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await expect(page.getByRole("heading", { name: "Choose workspace" })).toBeVisible();
@@ -95,6 +100,19 @@ test("mobile signup and expired-link recovery keep public browsing available", a
   expect(overflow).toBe(false);
   await page.screenshot({ path: "test-results/waitlist-mobile.png", fullPage: true });
   await page.screenshot({ path: "test-results/waitlist-mobile-screen.png" });
+  const longEmail = `community-research.${randomUUID()}@atlas.test`;
+  await page.getByLabel("Email", { exact: true }).fill(longEmail);
+  await page.getByRole("button", { name: "Join waitlist" }).click();
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+  await page.goto(extractFirstUrlFromEmail(await pollLatestMessage(longEmail)));
+  await page.getByRole("button", { name: "Confirm email" }).click();
+  await expect(page.getByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
+  await expect(page.getByText(longEmail, { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
+    false,
+  );
+  await expectNoAxeViolations(page, "long email address");
+  await page.screenshot({ path: "test-results/waitlist-long-email.png", fullPage: true });
   await page.goto("/waitlist/link?kind=invite&token=expired");
   await expect(page.getByRole("heading", { name: "This link no longer works" })).toBeVisible();
   await page.getByRole("link", { name: "Browse Atlas", exact: true }).click();

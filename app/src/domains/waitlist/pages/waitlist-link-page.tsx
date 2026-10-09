@@ -4,7 +4,12 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { WaitlistLinkKind } from "../contracts";
 import { loadWaitlistLink, confirmWaitlist, loadWaitlistRequest } from "../waitlist.functions";
-import { WaitlistLayout, WaitlistError, waitlistPrimaryLinkClass } from "./waitlist-layout";
+import {
+  WaitlistLayout,
+  WaitlistError,
+  waitlistPrimaryLinkClass,
+  WaitlistFooter,
+} from "./waitlist-layout";
 import { WaitlistRequestPanel } from "./waitlist-request-panel";
 
 export function WaitlistLinkPage({ token, kind }: { token: string; kind: WaitlistLinkKind }) {
@@ -23,7 +28,7 @@ export function WaitlistLinkPage({ token, kind }: { token: string; kind: Waitlis
     },
   });
   return (
-    <WaitlistLayout>
+    <WaitlistLayout showBrowseLink={false}>
       {query.isPending ? (
         <div className="h-24" aria-busy="true" />
       ) : query.isError ? (
@@ -51,6 +56,7 @@ export function WaitlistLinkPage({ token, kind }: { token: string; kind: Waitlis
           <WaitlistError
             message={confirm.isError ? "Your email could not be confirmed. Try again." : null}
           />
+          <WaitlistFooter />
         </div>
       ) : (
         <WaitlistRequestPanel
@@ -70,7 +76,7 @@ export function WaitlistRequestPage({ id }: { id: string }) {
     retry: false,
   });
   return (
-    <WaitlistLayout>
+    <WaitlistLayout showBrowseLink={false}>
       {query.isPending ? (
         <div className="h-24" aria-busy="true" />
       ) : query.isError ? (
@@ -98,6 +104,7 @@ function LinkUnavailable() {
       <Link to="/waitlist" className={waitlistPrimaryLinkClass}>
         Get a new link
       </Link>
+      <WaitlistFooter />
     </div>
   );
 }
