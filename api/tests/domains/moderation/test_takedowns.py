@@ -6,9 +6,11 @@ from http import HTTPStatus
 
 import pytest
 
+from atlas.domains.access.models.follows import FollowCRUD
+from atlas.domains.access.models.watch_events import OrgChangeEventCRUD, OrgChangeEventRecord
 from atlas.domains.moderation.review_queue import TAKEN_DOWN_DETAIL, ReviewQueueCRUD
-from atlas.domains.moderation.takedowns import EntryTakedownCRUD
-from atlas.models import EntryCRUD
+from atlas.domains.moderation.takedowns import EntryTakedownCRUD, TakedownConflictError
+from atlas.models import EntryCRUD, SourceCRUD
 from atlas.platform.authz import Action, AuditLogCRUD
 from tests.support.staff_auth import enable_staff_auth
 
@@ -69,7 +71,7 @@ async def test_taking_a_profile_down_hides_it_and_records_why(
     listed = await test_client.get("/api/takedowns", headers=headers.staff)
     assert [item["id"] for item in listed.json()["items"]] == [body["id"]]
     entries = await AuditLogCRUD.list_recent(test_db, limit=5, action=Action.ENTRIES_TAKEDOWN)
-    assert [((entry.actor_email or "").lower(), entry.allowed) for entry in entries] == [
+    assert [(entry.actor_email, entry.allowed) for entry in entries] == [
         ("editor@rebuildingus.org", True)
     ]
 
@@ -190,6 +192,89 @@ async def test_a_lifted_or_unknown_takedown_cannot_be_restored(
     assert again.status_code == HTTPStatus.CONFLICT
     assert again.json()["detail"] == "This takedown was already lifted."
     assert unknown.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_a_second_takedown_inserts_nothing_even_without_the_early_check(
+    test_db: object,
+) -> None:
+    """Two requests racing past each other still leave one standing takedown."""
+    _, slug = await _profile(test_db)
+    target = await EntryTakedownCRUD.find_target(test_db, slug)
+    assert target is not None
+    await EntryTakedownCRUD.take_down(
+        test_db, target, reason=REASON, taken_down_by="editor@rebuildingus.org"
+    )
+
+    with pytest.raises(TakedownConflictError):
+        await EntryTakedownCRUD.take_down(
+            test_db, target, reason=REASON, taken_down_by="other@rebuildingus.org"
+        )
+
+    standing = await EntryTakedownCRUD.list_standing(test_db, limit=5)
+    assert [item.taken_down_by for item in standing] == ["editor@rebuildingus.org"]
+
+
+@pytest.mark.asyncio
+async def test_a_taken_down_profile_leaves_follower_feeds_and_watch_digests(
+    test_client: object, test_db: object, test_settings: object
+) -> None:
+    entry_id, slug = await _profile(test_db)
+    source_id = await SourceCRUD.create(
+        test_db,
+        url="https://example.test/dana-profile",
+        source_type="news_article",
+        extraction_method="manual",
+        title="Dana organizes tenants",
+    )
+    await test_db.execute(
+        "INSERT INTO entry_sources (entry_id, source_id, created_at) VALUES (?, ?, ?)",
+        (entry_id, source_id, "2026-10-08T00:00:00Z"),
+    )
+    await test_db.execute(
+        "INSERT INTO org_watches (id, org_id, resource_type, resource_id, created_by)"
+        " VALUES ('watch-1', 'org-1', 'entry', ?, 'user_follower')",
+        (entry_id,),
+    )
+    await FollowCRUD.follow(test_db, user_id="user_follower", entry_id=entry_id)
+    await OrgChangeEventCRUD.record(
+        test_db,
+        OrgChangeEventRecord(
+            org_id="org-1",
+            resource_type="entry",
+            resource_id=entry_id,
+            event_type="new_source",
+            title="Dana Example has a new source",
+            summary="Dana organizes tenants",
+            source_id=source_id,
+            entry_id=entry_id,
+        ),
+    )
+    await test_db.commit()
+    assert await FollowCRUD.feed_updates(test_db, "user_follower")
+    assert await OrgChangeEventCRUD.list_digest(test_db, org_id="org-1", limit=10)
+    headers = enable_staff_auth(test_settings)
+
+    await test_client.post(
+        "/api/takedowns", json={"slug": slug, "reason": REASON}, headers=headers.staff
+    )
+
+    assert await FollowCRUD.feed_updates(test_db, "user_follower") == []
+    assert await OrgChangeEventCRUD.list_digest(test_db, org_id="org-1", limit=10) == []
+
+
+@pytest.mark.asyncio
+async def test_the_database_refuses_to_publish_a_taken_down_profile(test_db: object) -> None:
+    """A publish path that forgets the check still cannot bring the profile back."""
+    entry_id, slug = await _profile(test_db)
+    target = await EntryTakedownCRUD.find_target(test_db, slug)
+    assert target is not None
+    await EntryTakedownCRUD.take_down(
+        test_db, target, reason=REASON, taken_down_by="editor@rebuildingus.org"
+    )
+
+    with pytest.raises(Exception, match="entry is taken down"):
+        await test_db.execute("UPDATE entries SET active = TRUE WHERE id = ?", (entry_id,))
 
 
 @pytest.mark.asyncio

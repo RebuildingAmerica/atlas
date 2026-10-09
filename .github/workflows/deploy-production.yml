@@ -244,8 +244,11 @@ jobs:
           # The single operator allowlist was retired, and the app refuses to
           # start while it is set, so remove the project-level copy bootstrap
           # used to write before this deploy can pick it up.
-          if pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color 2>/dev/null \
-            | grep -qw ATLAS_OPERATOR_ALLOWED_EMAILS; then
+          if ! production_env="$(pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color)"; then
+            echo "::error title=Vercel env unreadable::Could not list the production Vercel variables, so the retired ATLAS_OPERATOR_ALLOWED_EMAILS could not be checked. The app refuses to start while it is set."
+            exit 1
+          fi
+          if printf '%s\n' "$production_env" | grep -qw ATLAS_OPERATOR_ALLOWED_EMAILS; then
             pnpm exec vercel env rm ATLAS_OPERATOR_ALLOWED_EMAILS production --yes --token "$VERCEL_TOKEN"
           fi
 

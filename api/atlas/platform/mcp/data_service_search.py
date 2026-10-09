@@ -12,6 +12,7 @@ from atlas.domains.catalog.schemas.public import (
     SourceCollectionResponse,
 )
 from atlas.domains.catalog.taxonomy import DOMAINS, ISSUE_AREAS_BY_DOMAIN, ISSUE_SEARCH_TERMS
+from atlas.domains.moderation.takedowns import not_taken_down
 from atlas.models import EntryCRUD, FlagCRUD
 from atlas.platform.mcp.pagination import decode_cursor
 
@@ -191,7 +192,9 @@ class AtlasDataServiceSearchMixin:
         validated_issue_areas = _validate_issue_areas(issue_areas)
         offset = decode_cursor(cursor)
 
-        clauses = ["1 = 1"]
+        # A source linked to a profile taken down at someone's request must not
+        # point back to that profile.
+        clauses = ["1 = 1", not_taken_down("e.id")]
         params: list[Any] = []
 
         _append_source_place_clauses(

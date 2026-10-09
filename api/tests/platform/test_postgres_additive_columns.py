@@ -29,6 +29,7 @@ LATE_ADDED_COLUMNS: dict[str, set[str]] = {
         "next_attempt_at",
         "execution_mode",
         "input_payload",
+        "claimed_by_user_id",
     },
 }
 

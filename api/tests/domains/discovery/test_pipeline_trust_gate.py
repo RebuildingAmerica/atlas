@@ -307,6 +307,35 @@ class TestTrustGateUpsert:
         assert len(await ReviewQueueCRUD.list_pending(test_db)) == 1
 
     @pytest.mark.asyncio
+    async def test_rediscovery_leaves_a_taken_down_profile_as_it_was(self, test_db: object) -> None:
+        """Facts written while it is hidden would go public unreviewed on restore."""
+        from atlas.domains.moderation.takedowns import EntryTakedownCRUD
+
+        runner_module = _load_runner_module()
+        existing_id = await EntryCRUD.create(
+            test_db,
+            entry_type="person",
+            name="Dana Example",
+            description="What the editor approved.",
+            city="KC",
+            state="MO",
+            geo_specificity="local",
+        )
+        target = await EntryTakedownCRUD.find_target(
+            test_db, (await EntryCRUD.get_by_id(test_db, existing_id)).slug
+        )
+        await EntryTakedownCRUD.take_down(
+            test_db, target, reason="Asked to be removed.", taken_down_by="editor@example.org"
+        )
+        entry = _make_deduped_entry(entry_type="person", name="Dana Example", city="KC", state="MO")
+
+        assert await runner_module._upsert_entry(test_db, entry) == existing_id  # noqa: SLF001
+
+        stored = await EntryCRUD.get_by_id(test_db, existing_id)
+        assert stored is not None
+        assert (stored.active, stored.description) == (False, "What the editor approved.")
+
+    @pytest.mark.asyncio
     async def test_published_contact_changes_are_staged_together(self, test_db: object) -> None:
         from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 

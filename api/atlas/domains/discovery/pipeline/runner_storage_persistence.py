@@ -17,6 +17,7 @@ from atlas.domains.catalog.geo import geocode_entry
 from atlas.domains.catalog.models.relationships import RelationshipCRUD
 from atlas.domains.discovery.trust_gate import evaluate_publication
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+from atlas.domains.moderation.takedowns import EntryTakedownCRUD
 from atlas.models import EntryCRUD, SourceCRUD
 from atlas.platform.database import db
 
@@ -141,6 +142,10 @@ async def _upsert_entry(
                 proposed_changes=proposed_changes,
                 source_urls=entry.source_urls,
             )
+    elif await EntryTakedownCRUD.is_taken_down(conn, str(match.id)):
+        # A taken-down profile keeps the facts it had. Writing new ones while
+        # it is hidden would republish them unreviewed the day it is restored.
+        coordinate_fields = {}
     else:
         coordinate_fields.update(material_fields)
     await EntryCRUD.update(

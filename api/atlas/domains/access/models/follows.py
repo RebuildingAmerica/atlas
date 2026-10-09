@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from atlas.domains.moderation.takedowns import not_taken_down
 from atlas.platform.database import db
 
 if TYPE_CHECKING:
@@ -120,7 +121,7 @@ class FollowCRUD:
         "source_publication", "ingested_at"}``.
         """
         cursor = await conn.execute(
-            """
+            f"""
             SELECT
                 e.id AS entry_id,
                 e.name AS entry_name,
@@ -135,7 +136,7 @@ class FollowCRUD:
             JOIN entry_sources es ON es.entry_id = pf.entry_id
             JOIN sources s ON s.id = es.source_id
             JOIN entries e ON e.id = pf.entry_id
-            WHERE pf.user_id = ?
+            WHERE pf.user_id = ? AND {not_taken_down("pf.entry_id")}
             ORDER BY s.ingested_at DESC
             LIMIT ?
             """,

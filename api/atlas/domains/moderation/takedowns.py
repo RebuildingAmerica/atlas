@@ -13,9 +13,35 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from atlas.platform.database import db
+from atlas.platform.dates import row_timestamp_string
 
 if TYPE_CHECKING:
     import aiosqlite
+
+
+def not_taken_down(entry_column: str) -> str:
+    """Return a SQL condition that is true unless a takedown stands for the entry.
+
+    Every read that shows an entry to people outside the editorial tools, such
+    as a follower's feed or a workspace's watch digest, adds this condition so
+    a profile taken down at someone's request disappears everywhere at once.
+
+    Parameters
+    ----------
+    entry_column : str
+        The column holding the entry id in the surrounding query, such as
+        ``e.id``. It is SQL, so pass only a fixed identifier, never input.
+
+    Returns
+    -------
+    str
+        A ``NOT EXISTS`` condition to add with ``AND``.
+    """
+    return (
+        "NOT EXISTS (SELECT 1 FROM entry_takedowns standing"
+        f" WHERE standing.entry_id = {entry_column} AND standing.restored_at IS NULL)"
+    )
+
 
 _COLUMNS = (
     "id, entry_id, entry_name, entry_slug, entry_type, reason, was_active, "
@@ -65,9 +91,9 @@ def _row_to_takedown(row: Any) -> EntryTakedown:
         reason=str(row[5]),
         was_active=bool(row[6]),
         taken_down_by=str(row[7]),
-        taken_down_at=str(row[8]),
+        taken_down_at=str(row_timestamp_string(row[8])),
         restored_by=str(row[9]) if row[9] is not None else None,
-        restored_at=str(row[10]) if row[10] is not None else None,
+        restored_at=row_timestamp_string(row[10]),
     )
 
 
@@ -156,14 +182,18 @@ class EntryTakedownCRUD:
         Raises
         ------
         TakedownConflictError
-            When a takedown already stands for the profile.
+            When a takedown already stands for the profile, including one made
+            a moment earlier by a concurrent request.
         """
-        if await EntryTakedownCRUD.is_taken_down(conn, target.id):
-            msg = "This profile is already taken down."
-            raise TakedownConflictError(msg)
         takedown_id = db.generate_uuid()
-        await conn.execute(
-            f"INSERT INTO entry_takedowns ({_COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        # The partial unique index allows one standing takedown per entry, so a
+        # second, even a concurrent one, inserts nothing rather than failing.
+        inserted = await conn.execute(
+            f"""
+            INSERT INTO entry_takedowns ({_COLUMNS})
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT DO NOTHING
+            """,
             (
                 takedown_id,
                 target.id,
@@ -178,6 +208,9 @@ class EntryTakedownCRUD:
                 None,
             ),
         )
+        if inserted.rowcount != 1:
+            msg = "This profile is already taken down."
+            raise TakedownConflictError(msg)
         await conn.execute("UPDATE entries SET active = FALSE WHERE id = ?", (target.id,))
         await conn.commit()
         takedown = await EntryTakedownCRUD.get_by_id(conn, takedown_id)

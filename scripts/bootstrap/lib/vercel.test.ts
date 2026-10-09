@@ -10,8 +10,26 @@ import {
 import {
   formatVercelSyncPreview,
   requiresProductionConfirmation,
+  retiredKeysToRemove,
   shouldAutoConfirmVercelSync,
 } from "./vercel-env.js";
+
+void describe("retired Vercel settings", () => {
+  void it("removes the retired operator allowlist only from the environments this sync owns", () => {
+    const existing = [
+      { key: "ATLAS_OPERATOR_ALLOWED_EMAILS", environment: "preview" as const },
+      {
+        key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        environment: "production" as const,
+      },
+      { key: "ATLAS_PUBLIC_URL", environment: "preview" as const },
+    ];
+
+    assert.deepEqual(retiredKeysToRemove(existing, ["preview"]), [
+      { key: "ATLAS_OPERATOR_ALLOWED_EMAILS", environment: "preview" },
+    ]);
+  });
+});
 
 void describe("Vercel env sync preview", () => {
   void it("summarizes project context and groups changes by environment", () => {

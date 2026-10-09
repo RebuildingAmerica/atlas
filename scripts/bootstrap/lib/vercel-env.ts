@@ -97,6 +97,70 @@ function addVercelEnvKey(
   existing.push({ environment: normalizedEnvironment, key });
 }
 
+/**
+ * Settings Atlas no longer reads and refuses to start with. Bootstrap removes
+ * any copy an earlier run left on the Vercel project.
+ */
+export const RETIRED_VERCEL_ENV_KEYS = [
+  "ATLAS_OPERATOR_ALLOWED_EMAILS",
+] as const;
+
+/**
+ * Picks the retired settings still present in the given environments.
+ *
+ * @param existingKeys - What the Vercel project holds now.
+ * @param environments - The environments this sync owns.
+ */
+export function retiredKeysToRemove(
+  existingKeys: readonly VercelEnvKey[],
+  environments: readonly VercelEnvironment[],
+): VercelEnvKey[] {
+  return existingKeys.filter(
+    (existing) =>
+      (RETIRED_VERCEL_ENV_KEYS as readonly string[]).includes(existing.key) &&
+      environments.includes(existing.environment),
+  );
+}
+
+/**
+ * Removes retired settings from the Vercel project so the app can start.
+ *
+ * @param environments - The environments this sync owns.
+ * @param scope - The Vercel team scope.
+ * @param options - Where the linked app lives.
+ * @returns The keys that could not be removed, as "KEY (environment)".
+ */
+export function removeRetiredVercelEnvVars(
+  environments: readonly VercelEnvironment[],
+  scope: string,
+  options: VercelSyncOptions = {},
+): string[] {
+  assertSafeCliArg(scope, "scope");
+  const failures: string[] = [];
+  for (const retired of retiredKeysToRemove(
+    fetchExistingKeys(scope, options),
+    environments,
+  )) {
+    const result = spawnSync(
+      "vercel",
+      [
+        "env",
+        "rm",
+        retired.key,
+        retired.environment,
+        "--scope",
+        scope,
+        "--yes",
+      ],
+      { cwd: options.cwd, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" },
+    );
+    if (result.error || result.status !== 0) {
+      failures.push(`${retired.key} (${retired.environment})`);
+    }
+  }
+  return failures;
+}
+
 export function hasVercelEnvKey(
   existingKeys: readonly VercelEnvKey[],
   key: string,
