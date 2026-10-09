@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator  # noqa: TC003
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -11,14 +10,13 @@ from pydantic import BaseModel, Field
 from atlas.domains.access import (
     AuthenticatedActor,  # noqa: TC001 - FastAPI resolves this annotation at runtime
 )
+from atlas.domains.moderation.api import get_db
 from atlas.domains.moderation.takedowns import (
     EntryTakedown,
     EntryTakedownCRUD,
     TakedownConflictError,
 )
-from atlas.models import get_db_connection
 from atlas.platform.authz import Action, require_action
-from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
@@ -64,17 +62,6 @@ class TakedownCollectionResponse(BaseModel):
     """The takedowns that stand."""
 
     items: list[TakedownResponse] = Field(..., description="Standing takedowns, newest first")
-
-
-async def get_db(
-    settings: Settings = Depends(get_settings),
-) -> AsyncGenerator[aiosqlite.Connection, None]:
-    """Dependency to get database connection."""
-    conn = await get_db_connection(settings.database_url, backend=settings.database_backend)
-    try:
-        yield conn
-    finally:
-        await conn.close()
 
 
 def _response(takedown: EntryTakedown) -> TakedownResponse:

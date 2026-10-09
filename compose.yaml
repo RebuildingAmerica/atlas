@@ -23,6 +23,10 @@ services:
       ATLAS_PUBLIC_URL: ${ATLAS_PUBLIC_URL}
       ATLAS_AUTH_JWT_AUDIENCES: ${ATLAS_AUTH_JWT_AUDIENCES}
       ATLAS_INSTANCE_OPERATOR_EMAILS: ${ATLAS_INSTANCE_OPERATOR_EMAILS}
+      # Retired, but still passed through: a .env that still sets it stops both
+      # services with a message naming its replacement, rather than starting
+      # with no editors.
+      ATLAS_OPERATOR_ALLOWED_EMAILS: ${ATLAS_OPERATOR_ALLOWED_EMAILS:-}
     healthcheck:
       test:
         [
@@ -49,6 +53,7 @@ services:
         condition: service_healthy
     environment:
       ATLAS_INSTANCE_OPERATOR_EMAILS: ${ATLAS_INSTANCE_OPERATOR_EMAILS}
+      ATLAS_OPERATOR_ALLOWED_EMAILS: ${ATLAS_OPERATOR_ALLOWED_EMAILS:-}
       ATLAS_AUTH_API_KEY_INTROSPECTION_URL: http://atlas-web:3000/api/auth/internal/api-key
       ATLAS_AUTH_BASE_PATH: /api/auth
       ATLAS_AUTH_DB_PATH: /app/data/auth/atlas-auth.sqlite

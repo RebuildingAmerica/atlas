@@ -206,8 +206,10 @@ async def test_an_operator_approval_through_the_api_leaves_an_entry(
     assert denied.status_code == HTTPStatus.FORBIDDEN
     assert attempted.status_code == HTTPStatus.NOT_FOUND
     entries = await AuditLogCRUD.list_recent(test_db, limit=10)
+    # The operator signed in as STAFF_EMAIL.upper(); the log spells them the one
+    # way the operator list and every editorial record do.
     assert [(entry.allowed, entry.actor_email) for entry in entries] == [
-        (True, STAFF_EMAIL.upper()),
+        (True, STAFF_EMAIL),
         (False, "visitor@example.org"),
     ]
     assert {entry.route for entry in entries} == {"/api/review-queue/{item_id}/approve"}

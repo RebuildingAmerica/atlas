@@ -8,10 +8,11 @@ import { generateSecret, isPlaceholder } from "../lib/secret.js";
 import { promptOrExit, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
 import { getVercelScope, detectAndLink } from "../lib/vercel.js";
-import { syncEnvVars } from "../lib/vercel-env.js";
+import { removeRetiredVercelEnvVars, syncEnvVars } from "../lib/vercel-env.js";
 import {
   buildVercelEnvVars,
   ensureProductionRoutingConfig,
+  vercelEnvironmentsForTarget,
   type HostedDeployTarget,
 } from "./env-routing.js";
 
@@ -394,6 +395,15 @@ export async function runEnvPhase(
         followUpItems.push(
           "Vercel env sync did not complete — run bootstrap again from a linked app/ directory",
         );
+      }
+      // The app refuses to start while a retired setting is still on the
+      // project, so a copy left by an earlier run must not survive this one.
+      for (const leftover of removeRetiredVercelEnvVars(
+        vercelEnvironmentsForTarget(hostedTarget),
+        scope,
+        { cwd: appDir },
+      )) {
+        followUpItems.push(`Remove the retired Vercel variable ${leftover}`);
       }
     } else {
       followUpItems.push(

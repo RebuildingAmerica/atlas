@@ -281,9 +281,12 @@ keeping them visible makes a wrong list or host easy to spot.
   the platform admin
 
 `ATLAS_OPERATOR_ALLOWED_EMAILS` is retired. The app and the API refuse to start
-while it is set. The API deploy removes it from Cloud Run and the production app
-deploy removes it from the Vercel project, but delete the old GitHub secret
-yourself.
+while it is set. The API deploy removes it from Cloud Run, the production app
+deploy removes it from the Vercel project's production environment, and
+`pnpm bootstrap --infra` removes it from the environments it syncs, including
+preview, which staging runs on. Delete the old GitHub secret yourself. The API
+deploy fails, naming the variable, while `ATLAS_INSTANCE_OPERATOR_EMAILS` is
+empty, so an instance never ships with no editors.
 
 The workflow passes the three shared secrets to both the API service and the
 Vercel app. The API deploy step fails before it builds anything if
