@@ -231,6 +231,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     touchPage.getByRole("link", { name: "Atlas", exact: true }),
     touchPage.getByRole("link", { name: "Pricing", exact: true }),
     touchPage.getByText("Student pricing", { exact: true }),
+    touchPage.locator("summary", { hasText: "What’s included" }),
   ]) {
     const target = await control.boundingBox();
     if (!target) throw new Error("A touch control must be visible.");
@@ -240,7 +241,24 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   const planDetails = touchPage
     .locator("details")
     .filter({ has: touchPage.locator("summary", { hasText: "What’s included" }) });
-  await planDetails.locator("summary").tap();
+  const summary = planDetails.locator("summary");
+  const row = await summary.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      border: style.borderTopStyle,
+      width: style.borderTopWidth,
+      decoration: style.textDecorationLine,
+      chevron: getComputedStyle(element, "::after").rotate,
+    };
+  });
+  expect(row.border).toBe("solid");
+  expect(row.width).toBe("1px");
+  expect(row.decoration).toBe("none");
+  expect(row.chevron).toBe("45deg");
+  await summary.tap();
+  expect(await summary.evaluate((element) => getComputedStyle(element, "::after").rotate)).toBe(
+    "225deg",
+  );
   await expect(planDetails.getByText(/API access with 1,000 requests per day/)).toBeVisible();
   await planDetails.locator("summary").tap();
   await expectNoAxeViolations(touchPage, "touch invitation");

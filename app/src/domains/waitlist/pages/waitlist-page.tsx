@@ -181,7 +181,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                 { value: "atlas_research_pass", label: "Atlas Research Pass" },
               ]}
             />
-            <details>
+            <details className="group">
               <summary className={waitlistSummaryClass}>About you (optional)</summary>
               <div className="mt-4 space-y-4">
                 <Input

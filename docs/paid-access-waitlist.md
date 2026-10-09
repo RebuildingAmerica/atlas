@@ -57,9 +57,11 @@ high-contrast civic focus ring. Buttons and navigation actions share Button
 styles. Editorial titles use the shared type scale. Native radio labels share
 selected, hover and pressed states, with keyboard focus around the whole hit
 target. The global focus fallback respects controls that delegate focus to a
-parent. Disclosures share focus and hover styles, navigation targets are at
-least 44 pixels, and mobile actions allow for the bottom safe area. Renewal
-terms have greater prominence than the secondary tax note.
+parent. Disclosures use full-width bordered rows with a trailing chevron that
+indicates expanded or collapsed state, plus shared focus and hover styles.
+Navigation targets are at least 44 pixels, and mobile actions allow for the
+bottom safe area. Renewal terms have greater prominence than the secondary tax
+note.
 
 Confirmation, withdrawal and rejoining focus the resulting heading so keyboard
 and screen reader users can follow the change. Ordinary refreshes preserve

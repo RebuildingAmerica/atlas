@@ -127,7 +127,7 @@ export function PaymentChoice({ product, interval, onChange }: PaymentChoiceProp
         {options.filter((option) => option.interval !== "four_month").map(renderOption)}
       </div>
       {product === "atlas_pro" ? (
-        <details open={interval === "four_month" ? true : undefined}>
+        <details className="group" open={interval === "four_month" ? true : undefined}>
           <summary className={disclosureSummaryClass}>Student pricing</summary>
           <div className="pt-2">
             {options.filter((option) => option.interval === "four_month").map(renderOption)}

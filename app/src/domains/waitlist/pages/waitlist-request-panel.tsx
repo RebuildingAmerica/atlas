@@ -183,7 +183,7 @@ export function WaitlistRequestPanel({
               <InvitationBenefits product={request.product} />
             </section>
             {request.product !== "atlas_research_pass" ? (
-              <details className="hidden lg:block">
+              <details className="group hidden lg:block">
                 <summary className={waitlistSummaryClass}>API and integrations</summary>
                 <p className="type-body-small text-ink-soft pt-3">
                   {INVITATION_INTEGRATIONS[request.product]}
@@ -235,7 +235,7 @@ export function WaitlistRequestPanel({
         <section className="lg:border-outline-variant flex flex-1 flex-col gap-6 lg:gap-8 lg:border-l lg:pl-16">
           <WaitlistError message={error} />
           <PaymentChoice product={request.product} interval={interval} onChange={setInterval} />
-          <details className="lg:hidden">
+          <details className="group lg:hidden">
             <summary className={waitlistSummaryClass}>What’s included</summary>
             <div className="space-y-4 pt-4">
               <InvitationBenefits product={request.product} />
