@@ -17,6 +17,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 type NitroRouteRules = NonNullable<NitroPluginConfig["routeRules"]>;
 
 export const PUBLIC_ATLAS_ENV_KEYS = [
+  "ATLAS_MANAGED",
+  "ATLAS_MULTI_USER",
   "ATLAS_PUBLIC_URL",
   "ATLAS_DOCS_URL",
   "ATLAS_AUTH_BASE_PATH",
@@ -98,7 +100,9 @@ export default defineConfig(({ mode }) => {
         },
         vercel: {
           functions: {
-            maxDuration: 30,
+            // A bounded 50-recipient invitation batch permits two 10-second
+            // attempts per recipient across ten workers, with provider pacing.
+            maxDuration: 180,
           },
           regions: ["cle1"],
         },

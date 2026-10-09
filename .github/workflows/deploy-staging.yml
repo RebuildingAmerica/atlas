@@ -205,6 +205,7 @@ jobs:
           # profile permits and the production profile forbids outright.
           export ATLAS_MANAGED=true
           export ATLAS_MULTI_USER=true
+          export ATLAS_PAID_ACCESS_MODE="${ATLAS_PAID_ACCESS_MODE:-waitlist}"
           export ATLAS_EMAIL_PROVIDER=resend
           export ATLAS_HOSTED_E2E_ENABLED=1
           export ATLAS_HOSTED_E2E_PRODUCTION_ENABLED=1

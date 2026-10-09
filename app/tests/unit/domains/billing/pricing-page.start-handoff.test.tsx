@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
+import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor } from "@testing-library/react";
@@ -13,10 +14,12 @@ import {
 
 const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
+  paidAccess: vi.fn(),
   loadCheckoutAvailability: vi.fn(),
   useAtlasSession: vi.fn(),
 }));
 
+vi.mock("@/domains/waitlist/waitlist.functions", () => ({ loadPaidAccess: mocks.paidAccess }));
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
   return harness.installRouterMocks();
@@ -43,6 +46,7 @@ import { PricingPage } from "@/domains/billing/pages/public/pricing-page";
 
 describe("PricingPage start handoff", () => {
   beforeEach(() => {
+    mocks.paidAccess.mockResolvedValue({ mode: "open", requests: [], admittedProducts: [] });
     mocks.confirm.mockReset();
     mocks.useAtlasSession.mockReset();
     resetRouterMocks();
@@ -82,11 +86,7 @@ describe("PricingPage start handoff", () => {
 
   it("routes signed-in but incomplete Pro buyers to purchase onboarding", async () => {
     mocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: false,
-        hasPasskey: false,
-        workspace: { activeOrganization: null },
-      },
+      data: createAtlasSessionFixture({ accountReady: false, hasPasskey: false }),
     });
     const user = userEvent.setup();
     render(<PricingPage />);
@@ -299,6 +299,107 @@ describe("PricingPage start handoff", () => {
     // The dangerous alternative is live buttons plus a silently dropped
     // intent on exactly the deployment whose server functions will refuse.
     expect(await screen.findByText("Paid plans are temporarily unavailable")).toBeInTheDocument();
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
+  });
+  it("routes a visitor to the waitlist while preserving the selected plan and interval", async () => {
+    mocks.paidAccess.mockResolvedValue({ mode: "waitlist", requests: [], admittedProducts: [] });
+    mocks.loadCheckoutAvailability.mockResolvedValue({ available: false, allowedOffers: [] });
+    render(<PricingPage />);
+    const [join] = await screen.findAllByRole("button", { name: "Join waitlist" });
+    if (!join) throw new Error("Expected join button");
+    await userEvent.click(join);
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
+      to: "/waitlist",
+      search: { product: "atlas_pro", interval: "monthly" },
+    });
+  });
+  it("routes confirmed applicants to their private request", async () => {
+    mocks.paidAccess.mockResolvedValue({
+      mode: "waitlist",
+      requests: [{ id: "private", product: "atlas_pro" }],
+      admittedProducts: [],
+    });
+    render(<PricingPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "View waitlist request" }));
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({
+      to: "/waitlist/request/$id",
+      params: { id: "private" },
+    });
+  });
+  it.each(["join", "request", "account"])("resumes a saved intent into %s", async (action) => {
+    mocks.paidAccess.mockResolvedValue({
+      mode: "waitlist",
+      requests: action === "request" ? [{ id: "private", product: "atlas_pro" }] : [],
+      admittedProducts: [],
+    });
+    if (action === "account")
+      mocks.useAtlasSession.mockReturnValue({
+        data: createAtlasSessionFixture({
+          workspace: { ...createAtlasSessionFixture().workspace, activeProducts: ["atlas_pro"] },
+        }),
+      });
+    render(<PricingPage intent="atlas_pro" interval="yearly" />);
+    await waitFor(() => {
+      expect(readRouterMocks().navigate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to:
+            action === "join"
+              ? "/waitlist"
+              : action === "request"
+                ? "/waitlist/request/$id"
+                : "/account",
+        }),
+      );
+    });
+  });
+  it("recovers a failed admission probe without enabling purchases", async () => {
+    mocks.paidAccess
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ mode: "waitlist", requests: [], admittedProducts: [] });
+    render(<PricingPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findAllByRole("button", { name: "Join waitlist" })).toHaveLength(4);
+  });
+
+  it("takes an existing paid customer directly to plan management", async () => {
+    mocks.useAtlasSession.mockReturnValue({
+      data: createAtlasSessionFixture({
+        workspace: { ...createAtlasSessionFixture().workspace, activeProducts: ["atlas_pro"] },
+      }),
+    });
+    render(<PricingPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Manage plan" }));
+    expect(readRouterMocks().navigate).toHaveBeenCalledWith({ to: "/account" });
+  });
+  it("waits for the customer session before resuming an intent when admission arrives first", async () => {
+    mocks.paidAccess.mockResolvedValue({ mode: "waitlist", requests: [], admittedProducts: [] });
+    mocks.useAtlasSession.mockReturnValue({ data: undefined });
+    const view = render(<PricingPage intent="atlas_pro" interval="monthly" />);
+    await screen.findByText(
+      "Paid plans are available by invitation. Joining the waitlist costs nothing.",
+    );
+    expect(readRouterMocks().navigate).not.toHaveBeenCalled();
+    mocks.useAtlasSession.mockReturnValue({
+      data: createAtlasSessionFixture({
+        workspace: { ...createAtlasSessionFixture().workspace, activeProducts: ["atlas_pro"] },
+      }),
+    });
+    view.rerender(
+      <QueryClientProvider client={view.queryClient}>
+        <PricingPage intent="atlas_pro" interval="monthly" />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(readRouterMocks().navigate).toHaveBeenCalledWith({ to: "/account" });
+    });
+  });
+
+  it("keeps a failed account query recoverable without resuming paid signup", async () => {
+    const refetch = vi.fn(() => Promise.resolve());
+    mocks.useAtlasSession.mockReturnValue({ data: undefined, isError: true, refetch });
+    render(<PricingPage intent="atlas_pro" interval="monthly" />);
+    await userEvent.click(screen.getByRole("button", { name: "Retry account" }));
+    expect(refetch).toHaveBeenCalled();
     expect(readRouterMocks().navigate).not.toHaveBeenCalled();
   });
 });

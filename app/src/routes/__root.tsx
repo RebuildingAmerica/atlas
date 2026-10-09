@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { NotFoundPage } from "@/platform/pages/not-found-page";
 import { ErrorPage } from "@/platform/pages/error-page";
 import "@/styles/app.css";
+import { excludePrivateAnalytics } from "@/platform/analytics/private-events";
 
 export interface AtlasRouterContext {
   queryClient: QueryClient;
@@ -34,8 +35,8 @@ function RootDocument() {
       <body className="bg-background text-on-surface flex min-h-screen flex-col">
         <Outlet />
         <Scripts />
-        <Analytics />
-        <SpeedInsights />
+        <Analytics beforeSend={excludePrivateAnalytics} />
+        <SpeedInsights beforeSend={excludePrivateAnalytics} />
       </body>
     </html>
   );

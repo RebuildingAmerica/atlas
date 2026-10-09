@@ -1,9 +1,12 @@
+import type { PaidPlanAction } from "@/domains/waitlist/pricing-access";
 import { Link } from "@tanstack/react-router";
 import { ctaLabel } from "./plan-card";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { checkoutKey, type PricingCheckoutInterval } from "../pricing-page-helpers";
 
 interface ResearchPassCardProps {
+  weeklyAction?: PaidPlanAction;
+  monthlyAction?: PaidPlanAction;
   pendingCheckoutKey: string | null;
   isCheckoutUnavailable: boolean;
   allowedOffers: readonly string[];
@@ -16,6 +19,8 @@ interface ResearchPassCardProps {
  * access for a fixed window without committing to a subscription.
  */
 export function PricingResearchPassCard({
+  weeklyAction,
+  monthlyAction,
   pendingCheckoutKey,
   isCheckoutUnavailable,
   allowedOffers,
@@ -23,8 +28,12 @@ export function PricingResearchPassCard({
 }: ResearchPassCardProps) {
   const weeklyKey = checkoutKey("atlas_research_pass", "weekly");
   const onceKey = checkoutKey("atlas_research_pass", "once");
-  const weeklyUnavailable = isCheckoutUnavailable || !allowedOffers.includes(weeklyKey);
-  const onceUnavailable = isCheckoutUnavailable || !allowedOffers.includes(onceKey);
+  const weeklyUnavailable = weeklyAction
+    ? weeklyAction.disabled
+    : isCheckoutUnavailable || !allowedOffers.includes(weeklyKey);
+  const onceUnavailable = monthlyAction
+    ? monthlyAction.disabled
+    : isCheckoutUnavailable || !allowedOffers.includes(onceKey);
   return (
     <div className="mb-10">
       <p className="type-label-medium text-ink-muted mb-4 tracking-wider uppercase">
@@ -47,7 +56,11 @@ export function PricingResearchPassCard({
             }}
             disabled={pendingCheckoutKey === weeklyKey || weeklyUnavailable}
           >
-            {ctaLabel("Get 7-day pass", pendingCheckoutKey === weeklyKey, weeklyUnavailable)}
+            {ctaLabel(
+              weeklyAction?.label ?? "Get 7-day pass",
+              pendingCheckoutKey === weeklyKey,
+              weeklyUnavailable,
+            )}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$4</p>
           <Button
@@ -57,7 +70,11 @@ export function PricingResearchPassCard({
             }}
             disabled={pendingCheckoutKey === onceKey || onceUnavailable}
           >
-            {ctaLabel("Get 30-day pass", pendingCheckoutKey === onceKey, onceUnavailable)}
+            {ctaLabel(
+              monthlyAction?.label ?? "Get 30-day pass",
+              pendingCheckoutKey === onceKey,
+              onceUnavailable,
+            )}
           </Button>
           <p className="type-body-small text-ink-soft text-center">$9</p>
         </div>

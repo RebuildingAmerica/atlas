@@ -10,12 +10,14 @@ import {
 import type { AdminDashboardSummary } from "./admin-dashboard.functions";
 
 interface AdminDashboardViewProps {
+  showWaitlist?: boolean;
   errorMessage?: string;
   isLoading?: boolean;
   summary?: AdminDashboardSummary;
 }
 
 export function AdminDashboardView({
+  showWaitlist = false,
   errorMessage,
   isLoading = false,
   summary,
@@ -50,6 +52,14 @@ export function AdminDashboardView({
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {showWaitlist ? (
+          <AdminActionLink
+            href="/admin/waitlist"
+            label="Review paid access waitlist"
+            detail="Review requests, invite people, and follow their signup."
+            tone="neutral"
+          />
+        ) : null}
         <AdminActionLink
           href="/admin/corrections"
           label="Review visitor corrections"

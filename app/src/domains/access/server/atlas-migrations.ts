@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type Database from "better-sqlite3";
+import { WAITLIST_SCHEMA } from "@/domains/waitlist/server/schema";
 import type { Pool } from "pg";
 
 export interface AtlasMigration {
@@ -391,6 +392,7 @@ function hasBetterAuthOAuthTables(db: Database.Database): boolean {
 }
 
 export const ATLAS_MIGRATIONS: AtlasMigration[] = [
+  { version: 9, name: "create_paid_access_waitlist", sqlite: WAITLIST_SCHEMA, pg: WAITLIST_SCHEMA },
   {
     version: 1,
     name: "create_workspace_products",

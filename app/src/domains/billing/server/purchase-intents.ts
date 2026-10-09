@@ -315,6 +315,8 @@ export async function markPurchaseIntentPaid({
         stripeCheckoutSessionId,
       ],
     );
+    const { recordWaitlistPurchase } = await import("@/domains/waitlist/server/purchases");
+    await recordWaitlistPurchase(id);
     return;
   }
 
@@ -341,6 +343,8 @@ export async function markPurchaseIntentPaid({
     workspaceId,
     stripeCheckoutSessionId,
   );
+  const { recordWaitlistPurchase } = await import("@/domains/waitlist/server/purchases");
+  await recordWaitlistPurchase(id);
 }
 
 async function updatePurchaseIntent({

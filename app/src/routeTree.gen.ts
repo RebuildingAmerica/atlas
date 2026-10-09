@@ -69,12 +69,15 @@ import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profil
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicReportsReportIdRouteImport } from './routes/_public/reports/$reportId'
+import { Route as PublicWaitlistIndexRouteImport } from './routes/_public/waitlist/index'
+import { Route as PublicWaitlistLinkRouteImport } from './routes/_public/waitlist/link'
 import { Route as WorkspaceAdminIndexRouteImport } from './routes/_workspace/admin/index'
 import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
 import { Route as WorkspaceAdminCorrectionsRouteImport } from './routes/_workspace/admin/corrections'
 import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
 import { Route as WorkspaceAdminDiscoveryReviewsRouteImport } from './routes/_workspace/admin/discovery-reviews'
 import { Route as WorkspaceAdminProfileClaimsRouteImport } from './routes/_workspace/admin/profile-claims'
+import { Route as WorkspaceAdminWaitlistRouteImport } from './routes/_workspace/admin/waitlist'
 import { Route as WorkspaceBriefsIndexRouteImport } from './routes/_workspace/briefs/index'
 import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/briefs/$briefId'
 import { Route as WorkspaceBriefsNewRouteImport } from './routes/_workspace/briefs/new'
@@ -102,6 +105,7 @@ import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations/$slug'
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
 import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people/$slug'
+import { Route as PublicWaitlistRequestIdRouteImport } from './routes/_public/waitlist/request/$id'
 import { Route as ApiAtprotoOauthCallbackRouteImport } from './routes/api/atproto/oauth/callback'
 import { Route as ApiAtprotoOauthClientMetadataDotjsonRouteImport } from './routes/api/atproto/oauth/client-metadata[.]json'
 import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
@@ -417,6 +421,16 @@ const PublicReportsReportIdRoute = PublicReportsReportIdRouteImport.update({
   path: '/reports/$reportId',
   getParentRoute: () => PublicRoute,
 } as any)
+const PublicWaitlistIndexRoute = PublicWaitlistIndexRouteImport.update({
+  id: '/waitlist/',
+  path: '/waitlist/',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicWaitlistLinkRoute = PublicWaitlistLinkRouteImport.update({
+  id: '/waitlist/link',
+  path: '/waitlist/link',
+  getParentRoute: () => PublicRoute,
+} as any)
 const WorkspaceAdminIndexRoute = WorkspaceAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
@@ -451,6 +465,11 @@ const WorkspaceAdminProfileClaimsRoute =
     path: '/admin/profile-claims',
     getParentRoute: () => WorkspaceRoute,
   } as any)
+const WorkspaceAdminWaitlistRoute = WorkspaceAdminWaitlistRouteImport.update({
+  id: '/admin/waitlist',
+  path: '/admin/waitlist',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceBriefsIndexRoute = WorkspaceBriefsIndexRouteImport.update({
   id: '/briefs/',
   path: '/briefs/',
@@ -604,6 +623,11 @@ const PublicProfilesPeopleSlugRoute =
     path: '/$slug',
     getParentRoute: () => PublicProfilesPeopleRoute,
   } as any)
+const PublicWaitlistRequestIdRoute = PublicWaitlistRequestIdRouteImport.update({
+  id: '/waitlist/request/$id',
+  path: '/waitlist/request/$id',
+  getParentRoute: () => PublicRoute,
+} as any)
 const ApiAtprotoOauthCallbackRoute = ApiAtprotoOauthCallbackRouteImport.update({
   id: '/api/atproto/oauth/callback',
   path: '/api/atproto/oauth/callback',
@@ -711,11 +735,13 @@ export interface FileRoutesByFullPath {
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/reports/$reportId': typeof PublicReportsReportIdRoute
+  '/waitlist/link': typeof PublicWaitlistLinkRoute
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
+  '/admin/waitlist': typeof WorkspaceAdminWaitlistRoute
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/briefs/new': typeof WorkspaceBriefsNewRoute
   '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
@@ -729,6 +755,7 @@ export interface FileRoutesByFullPath {
   '/device/': typeof AuthDeviceIndexRoute
   '/onboarding/': typeof OnboardingOnboardingIndexRoute
   '/profiles/': typeof PublicProfilesIndexRoute
+  '/waitlist/': typeof PublicWaitlistIndexRoute
   '/admin/': typeof WorkspaceAdminIndexRoute
   '/briefs/': typeof WorkspaceBriefsIndexRoute
   '/coverage/': typeof WorkspaceCoverageIndexRoute
@@ -747,6 +774,7 @@ export interface FileRoutesByFullPath {
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
+  '/waitlist/request/$id': typeof PublicWaitlistRequestIdRoute
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
@@ -807,11 +835,13 @@ export interface FileRoutesByTo {
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/reports/$reportId': typeof PublicReportsReportIdRoute
+  '/waitlist/link': typeof PublicWaitlistLinkRoute
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
+  '/admin/waitlist': typeof WorkspaceAdminWaitlistRoute
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/briefs/new': typeof WorkspaceBriefsNewRoute
   '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
@@ -825,6 +855,7 @@ export interface FileRoutesByTo {
   '/device': typeof AuthDeviceIndexRoute
   '/onboarding': typeof OnboardingOnboardingIndexRoute
   '/profiles': typeof PublicProfilesIndexRoute
+  '/waitlist': typeof PublicWaitlistIndexRoute
   '/admin': typeof WorkspaceAdminIndexRoute
   '/briefs': typeof WorkspaceBriefsIndexRoute
   '/coverage': typeof WorkspaceCoverageIndexRoute
@@ -843,6 +874,7 @@ export interface FileRoutesByTo {
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
+  '/waitlist/request/$id': typeof PublicWaitlistRequestIdRoute
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
@@ -913,11 +945,13 @@ export interface FileRoutesById {
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_public/reports/$reportId': typeof PublicReportsReportIdRoute
+  '/_public/waitlist/link': typeof PublicWaitlistLinkRoute
   '/_workspace/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/_workspace/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/_workspace/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/_workspace/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
+  '/_workspace/admin/waitlist': typeof WorkspaceAdminWaitlistRoute
   '/_workspace/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/_workspace/briefs/new': typeof WorkspaceBriefsNewRoute
   '/_workspace/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
@@ -931,6 +965,7 @@ export interface FileRoutesById {
   '/_auth/device/': typeof AuthDeviceIndexRoute
   '/_onboarding/onboarding/': typeof OnboardingOnboardingIndexRoute
   '/_public/profiles/': typeof PublicProfilesIndexRoute
+  '/_public/waitlist/': typeof PublicWaitlistIndexRoute
   '/_workspace/admin/': typeof WorkspaceAdminIndexRoute
   '/_workspace/briefs/': typeof WorkspaceBriefsIndexRoute
   '/_workspace/coverage/': typeof WorkspaceCoverageIndexRoute
@@ -949,6 +984,7 @@ export interface FileRoutesById {
   '/_public/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/_public/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/_public/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
+  '/_public/waitlist/request/$id': typeof PublicWaitlistRequestIdRoute
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
@@ -1016,11 +1052,13 @@ export interface FileRouteTypes {
     | '/profiles/organizations'
     | '/profiles/people'
     | '/reports/$reportId'
+    | '/waitlist/link'
     | '/admin/cloud-costs'
     | '/admin/corrections'
     | '/admin/discounts'
     | '/admin/discovery-reviews'
     | '/admin/profile-claims'
+    | '/admin/waitlist'
     | '/briefs/$briefId'
     | '/briefs/new'
     | '/coverage/$targetId'
@@ -1034,6 +1072,7 @@ export interface FileRouteTypes {
     | '/device/'
     | '/onboarding/'
     | '/profiles/'
+    | '/waitlist/'
     | '/admin/'
     | '/briefs/'
     | '/coverage/'
@@ -1052,6 +1091,7 @@ export interface FileRouteTypes {
     | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
+    | '/waitlist/request/$id'
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
@@ -1112,11 +1152,13 @@ export interface FileRouteTypes {
     | '/feedback/$slug'
     | '/places/$placeSlug'
     | '/reports/$reportId'
+    | '/waitlist/link'
     | '/admin/cloud-costs'
     | '/admin/corrections'
     | '/admin/discounts'
     | '/admin/discovery-reviews'
     | '/admin/profile-claims'
+    | '/admin/waitlist'
     | '/briefs/$briefId'
     | '/briefs/new'
     | '/coverage/$targetId'
@@ -1130,6 +1172,7 @@ export interface FileRouteTypes {
     | '/device'
     | '/onboarding'
     | '/profiles'
+    | '/waitlist'
     | '/admin'
     | '/briefs'
     | '/coverage'
@@ -1148,6 +1191,7 @@ export interface FileRouteTypes {
     | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
+    | '/waitlist/request/$id'
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
@@ -1217,11 +1261,13 @@ export interface FileRouteTypes {
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_public/reports/$reportId'
+    | '/_public/waitlist/link'
     | '/_workspace/admin/cloud-costs'
     | '/_workspace/admin/corrections'
     | '/_workspace/admin/discounts'
     | '/_workspace/admin/discovery-reviews'
     | '/_workspace/admin/profile-claims'
+    | '/_workspace/admin/waitlist'
     | '/_workspace/briefs/$briefId'
     | '/_workspace/briefs/new'
     | '/_workspace/coverage/$targetId'
@@ -1235,6 +1281,7 @@ export interface FileRouteTypes {
     | '/_auth/device/'
     | '/_onboarding/onboarding/'
     | '/_public/profiles/'
+    | '/_public/waitlist/'
     | '/_workspace/admin/'
     | '/_workspace/briefs/'
     | '/_workspace/coverage/'
@@ -1253,6 +1300,7 @@ export interface FileRouteTypes {
     | '/_public/profiles/initiatives/$slug'
     | '/_public/profiles/organizations/$slug'
     | '/_public/profiles/people/$slug'
+    | '/_public/waitlist/request/$id'
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
@@ -1727,6 +1775,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicReportsReportIdRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_public/waitlist/': {
+      id: '/_public/waitlist/'
+      path: '/waitlist'
+      fullPath: '/waitlist/'
+      preLoaderRoute: typeof PublicWaitlistIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/waitlist/link': {
+      id: '/_public/waitlist/link'
+      path: '/waitlist/link'
+      fullPath: '/waitlist/link'
+      preLoaderRoute: typeof PublicWaitlistLinkRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_workspace/admin/': {
       id: '/_workspace/admin/'
       path: '/admin'
@@ -1767,6 +1829,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/profile-claims'
       fullPath: '/admin/profile-claims'
       preLoaderRoute: typeof WorkspaceAdminProfileClaimsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
+    '/_workspace/admin/waitlist': {
+      id: '/_workspace/admin/waitlist'
+      path: '/admin/waitlist'
+      fullPath: '/admin/waitlist'
+      preLoaderRoute: typeof WorkspaceAdminWaitlistRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/_workspace/briefs/': {
@@ -1958,6 +2027,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicProfilesPeopleSlugRouteImport
       parentRoute: typeof PublicProfilesPeopleRoute
     }
+    '/_public/waitlist/request/$id': {
+      id: '/_public/waitlist/request/$id'
+      path: '/waitlist/request/$id'
+      fullPath: '/waitlist/request/$id'
+      preLoaderRoute: typeof PublicWaitlistRequestIdRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/api/atproto/oauth/callback': {
       id: '/api/atproto/oauth/callback'
       path: '/api/atproto/oauth/callback'
@@ -2139,7 +2215,9 @@ interface PublicRouteChildren {
   PublicProfilesOrganizationsRoute: typeof PublicProfilesOrganizationsRouteWithChildren
   PublicProfilesPeopleRoute: typeof PublicProfilesPeopleRouteWithChildren
   PublicReportsReportIdRoute: typeof PublicReportsReportIdRoute
+  PublicWaitlistLinkRoute: typeof PublicWaitlistLinkRoute
   PublicProfilesIndexRoute: typeof PublicProfilesIndexRoute
+  PublicWaitlistIndexRoute: typeof PublicWaitlistIndexRoute
   PublicPlacesBoroughsPlaceSlugRoute: typeof PublicPlacesBoroughsPlaceSlugRoute
   PublicPlacesCitiesPlaceSlugRoute: typeof PublicPlacesCitiesPlaceSlugRoute
   PublicPlacesCountiesPlaceSlugRoute: typeof PublicPlacesCountiesPlaceSlugRoute
@@ -2150,6 +2228,7 @@ interface PublicRouteChildren {
   PublicProfilesCampaignsSlugRoute: typeof PublicProfilesCampaignsSlugRoute
   PublicProfilesEventsSlugRoute: typeof PublicProfilesEventsSlugRoute
   PublicProfilesInitiativesSlugRoute: typeof PublicProfilesInitiativesSlugRoute
+  PublicWaitlistRequestIdRoute: typeof PublicWaitlistRequestIdRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
@@ -2172,7 +2251,9 @@ const PublicRouteChildren: PublicRouteChildren = {
     PublicProfilesOrganizationsRouteWithChildren,
   PublicProfilesPeopleRoute: PublicProfilesPeopleRouteWithChildren,
   PublicReportsReportIdRoute: PublicReportsReportIdRoute,
+  PublicWaitlistLinkRoute: PublicWaitlistLinkRoute,
   PublicProfilesIndexRoute: PublicProfilesIndexRoute,
+  PublicWaitlistIndexRoute: PublicWaitlistIndexRoute,
   PublicPlacesBoroughsPlaceSlugRoute: PublicPlacesBoroughsPlaceSlugRoute,
   PublicPlacesCitiesPlaceSlugRoute: PublicPlacesCitiesPlaceSlugRoute,
   PublicPlacesCountiesPlaceSlugRoute: PublicPlacesCountiesPlaceSlugRoute,
@@ -2184,6 +2265,7 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicProfilesCampaignsSlugRoute: PublicProfilesCampaignsSlugRoute,
   PublicProfilesEventsSlugRoute: PublicProfilesEventsSlugRoute,
   PublicProfilesInitiativesSlugRoute: PublicProfilesInitiativesSlugRoute,
+  PublicWaitlistRequestIdRoute: PublicWaitlistRequestIdRoute,
 }
 
 const PublicRouteWithChildren =
@@ -2217,6 +2299,7 @@ interface WorkspaceRouteChildren {
   WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
   WorkspaceAdminDiscoveryReviewsRoute: typeof WorkspaceAdminDiscoveryReviewsRoute
   WorkspaceAdminProfileClaimsRoute: typeof WorkspaceAdminProfileClaimsRoute
+  WorkspaceAdminWaitlistRoute: typeof WorkspaceAdminWaitlistRoute
   WorkspaceBriefsBriefIdRoute: typeof WorkspaceBriefsBriefIdRoute
   WorkspaceBriefsNewRoute: typeof WorkspaceBriefsNewRoute
   WorkspaceCoverageTargetIdRoute: typeof WorkspaceCoverageTargetIdRoute
@@ -2241,6 +2324,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
   WorkspaceAdminDiscoveryReviewsRoute: WorkspaceAdminDiscoveryReviewsRoute,
   WorkspaceAdminProfileClaimsRoute: WorkspaceAdminProfileClaimsRoute,
+  WorkspaceAdminWaitlistRoute: WorkspaceAdminWaitlistRoute,
   WorkspaceBriefsBriefIdRoute: WorkspaceBriefsBriefIdRoute,
   WorkspaceBriefsNewRoute: WorkspaceBriefsNewRoute,
   WorkspaceCoverageTargetIdRoute: WorkspaceCoverageTargetIdRoute,

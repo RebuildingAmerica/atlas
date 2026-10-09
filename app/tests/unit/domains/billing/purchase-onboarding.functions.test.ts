@@ -8,6 +8,7 @@ import {
 import type { CreateCheckoutOptions } from "@/domains/billing/server/checkout";
 
 const mocks = vi.hoisted(() => ({
+  assertPaidAdmission: vi.fn(),
   attachWorkspaceToPurchaseIntent: vi.fn(),
   createCheckoutSession: vi.fn(),
   ensureAuthReady: vi.fn(),
@@ -22,6 +23,10 @@ const mocks = vi.hoisted(() => ({
   requireAtlasSessionState: vi.fn(),
   requireReadyAtlasSessionState: vi.fn(),
   resolveCheckoutAvailability: vi.fn(),
+}));
+
+vi.mock("@/domains/waitlist/server/admission", () => ({
+  assertPaidAdmission: mocks.assertPaidAdmission,
 }));
 
 vi.mock("@tanstack/react-start", async () => {
@@ -79,6 +84,7 @@ describe("purchase onboarding functions", () => {
   };
 
   beforeEach(() => {
+    mocks.assertPaidAdmission.mockResolvedValue(undefined);
     vi.resetModules();
     vi.clearAllMocks();
     vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
@@ -461,5 +467,14 @@ describe("purchase onboarding functions", () => {
     expect(checkoutOptions?.cancelUrl).toBe(
       "https://atlas.test/onboarding?purchase=pi_pro&product=atlas_pro&interval=yearly&step=payment",
     );
+  });
+  it("refuses purchase intents before admission without creating a purchase", async () => {
+    mocks.assertPaidAdmission.mockRejectedValue(new Error("Invitation required"));
+    const { ensurePurchaseOnboarding } =
+      await import("@/domains/billing/purchase-onboarding.functions");
+    await expect(
+      ensurePurchaseOnboarding({ data: { product: "atlas_pro", interval: "monthly" } }),
+    ).rejects.toThrow("Invitation required");
+    expect(mocks.ensurePurchaseIntent).not.toHaveBeenCalled();
   });
 });

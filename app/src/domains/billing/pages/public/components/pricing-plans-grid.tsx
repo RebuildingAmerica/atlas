@@ -1,3 +1,4 @@
+import type { PaidPlanAction } from "@/domains/waitlist/pricing-access";
 import { Link } from "@tanstack/react-router";
 import { type BillingPeriod, PlanCard, type PlanCardLinkCta } from "./plan-card";
 import {
@@ -7,6 +8,7 @@ import {
 } from "../pricing-page-helpers";
 
 interface PricingPlansGridProps {
+  paidActions?: { atlas_pro: PaidPlanAction; atlas_team: PaidPlanAction };
   activeWorkspaceName: string | null;
   billing: BillingPeriod;
   freeCta: PlanCardLinkCta;
@@ -25,6 +27,7 @@ interface PricingPlansGridProps {
  * each card's price, feature list, and CTA wired up.
  */
 export function PricingPlansGrid({
+  paidActions,
   activeWorkspaceName,
   billing,
   freeCta,
@@ -151,14 +154,16 @@ export function PricingPlansGrid({
           }
           studentNote="80% of the annual rate, paid every 4 months"
           billing={billing}
-          ctaText="Get Atlas Pro"
+          ctaText={paidActions?.atlas_pro.label ?? "Get Atlas Pro"}
           ctaProduct="atlas_pro"
           ctaInterval={proCheckoutInterval}
           onCheckout={onCheckout}
           isPending={pendingCheckoutKey === checkoutKey("atlas_pro", proCheckoutInterval)}
           isUnavailable={
-            isCheckoutUnavailable ||
-            !allowedOffers.includes(checkoutKey("atlas_pro", proCheckoutInterval))
+            paidActions
+              ? paidActions.atlas_pro.disabled
+              : isCheckoutUnavailable ||
+                !allowedOffers.includes(checkoutKey("atlas_pro", proCheckoutInterval))
           }
           discountNote="Verified students pay $12.80 every 4 months; independent creators and journalists get 50% off individual Pro"
         />
@@ -194,14 +199,16 @@ export function PricingPlansGrid({
             </>
           }
           billing={billing}
-          ctaText="Get Atlas Team"
+          ctaText={paidActions?.atlas_team.label ?? "Get Atlas Team"}
           ctaProduct="atlas_team"
           ctaInterval={teamCheckoutInterval}
           onCheckout={onCheckout}
           isPending={pendingCheckoutKey === checkoutKey("atlas_team", teamCheckoutInterval)}
           isUnavailable={
-            isCheckoutUnavailable ||
-            !allowedOffers.includes(checkoutKey("atlas_team", teamCheckoutInterval))
+            paidActions
+              ? paidActions.atlas_team.disabled
+              : isCheckoutUnavailable ||
+                !allowedOffers.includes(checkoutKey("atlas_team", teamCheckoutInterval))
           }
           discountNote="Team is priced the same for every organization"
           isTeam

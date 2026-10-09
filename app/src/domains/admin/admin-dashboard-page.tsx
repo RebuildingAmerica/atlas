@@ -1,3 +1,4 @@
+import { parseEnvBoolean } from "@/platform/config/env-boolean";
 import { useQuery } from "@tanstack/react-query";
 import { useHydrated } from "@/platform/runtime/use-hydrated";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
@@ -22,6 +23,10 @@ export function AdminDashboardPage() {
 
   return (
     <AdminDashboardView
+      showWaitlist={
+        parseEnvBoolean(import.meta.env.ATLAS_MANAGED, false, "ATLAS_MANAGED") &&
+        parseEnvBoolean(import.meta.env.ATLAS_MULTI_USER, true, "ATLAS_MULTI_USER")
+      }
       errorMessage={errorMessage}
       isLoading={dashboardQuery.isPending}
       summary={dashboardQuery.data}

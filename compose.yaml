@@ -38,6 +38,9 @@ services:
     build:
       context: .
       dockerfile: app/Dockerfile
+      args:
+        ATLAS_MANAGED: ${ATLAS_MANAGED}
+        ATLAS_MULTI_USER: ${ATLAS_MULTI_USER}
     depends_on:
       atlas-api:
         condition: service_healthy
@@ -49,6 +52,7 @@ services:
       ATLAS_AUTH_INTERNAL_SECRET: ${ATLAS_AUTH_INTERNAL_SECRET}
       ATLAS_AUTH_JWT_AUDIENCES: ${ATLAS_AUTH_JWT_AUDIENCES}
       ATLAS_MANAGED: ${ATLAS_MANAGED}
+      ATLAS_PAID_ACCESS_MODE: ${ATLAS_PAID_ACCESS_MODE}
       ATLAS_MULTI_USER: ${ATLAS_MULTI_USER}
       ATLAS_EMAIL_FROM: ${ATLAS_EMAIL_FROM}
       ATLAS_EMAIL_PROVIDER: ${ATLAS_EMAIL_PROVIDER}

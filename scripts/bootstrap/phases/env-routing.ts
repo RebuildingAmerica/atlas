@@ -323,6 +323,7 @@ const VERCEL_HOSTED_ENV_FILE_SPECS: VercelEnvFileSpec[] = [
   { key: "ATLAS_SERVER_API_PROXY_TARGET" },
   { key: "ATLAS_AUTH_JWT_AUDIENCES" },
   { key: "ATLAS_EMAIL_PROVIDER", fallback: "resend" },
+  { key: "ATLAS_PAID_ACCESS_MODE", fallback: "waitlist" },
   { key: "ATLAS_AUTH_INTERNAL_SECRET" },
   { key: "ATLAS_EMAIL_RESEND_API_KEY" },
   { key: "ATLAS_EMAIL_FROM" },

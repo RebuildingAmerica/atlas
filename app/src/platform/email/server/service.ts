@@ -9,8 +9,14 @@ export interface EmailMessage {
   to: string;
 }
 
+export interface EmailSendOptions {
+  idempotencyKey: string;
+}
+
+export class EmailDeliveryRejected extends Error {}
+
 export interface EmailService {
-  send(message: EmailMessage): Promise<void>;
+  send(message: EmailMessage, options?: EmailSendOptions): Promise<string | undefined>;
 }
 
 class CaptureEmailService implements EmailService {
@@ -19,7 +25,7 @@ class CaptureEmailService implements EmailService {
     private readonly captureUrl: string,
   ) {}
 
-  async send(message: EmailMessage): Promise<void> {
+  async send(message: EmailMessage, options?: EmailSendOptions): Promise<undefined> {
     const response = await fetch(this.captureUrl, {
       body: JSON.stringify({
         from: this.from,
@@ -38,11 +44,11 @@ class CaptureEmailService implements EmailService {
       console.error(
         `[atlas/email] capture delivery failed — status=${response.status} body=${body}`,
       );
-      throw new Error("Email delivery failed.");
+      throw new EmailDeliveryRejected("Email delivery failed.");
     }
 
     const link = /https?:\/\/\S+/.exec(message.text)?.[0];
-    if (link) {
+    if (link && !options?.idempotencyKey.startsWith("waitlist/")) {
       console.warn(`\n[atlas/email] ✉  ${message.to}\n[atlas/email] →  ${link}\n`);
     }
   }
@@ -50,6 +56,7 @@ class CaptureEmailService implements EmailService {
 
 class ResendEmailService implements EmailService {
   private readonly client: Resend;
+  private nextWaitlistSendAt = 0;
 
   constructor(
     private readonly from: string,
@@ -58,19 +65,42 @@ class ResendEmailService implements EmailService {
     this.client = new Resend(apiKey);
   }
 
-  async send(message: EmailMessage): Promise<void> {
-    const response = await this.client.emails.send({
+  async send(message: EmailMessage, options?: EmailSendOptions): Promise<string | undefined> {
+    if (options?.idempotencyKey.startsWith("waitlist/")) {
+      const delay = Math.max(0, this.nextWaitlistSendAt - Date.now());
+      this.nextWaitlistSendAt = Date.now() + delay + 600;
+      if (delay > 0)
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, delay);
+        });
+    }
+    const payload = {
       from: this.from,
       html: message.html,
       subject: message.subject,
       text: message.text,
       to: message.to,
-    });
+    };
+    const response = options
+      ? await this.client.emails.send(payload, options)
+      : await this.client.emails.send(payload);
 
     if (response.error) {
       console.error(`[atlas/email] resend delivery failed — ${response.error.message}`);
+      const code = response.error.statusCode;
+      if (
+        typeof code === "number" &&
+        code >= 400 &&
+        code < 500 &&
+        code !== 408 &&
+        code !== 409 &&
+        code !== 429
+      )
+        throw new EmailDeliveryRejected("Email delivery failed.");
       throw new Error("Email delivery failed.");
     }
+    if (!response.data?.id) throw new Error("Email delivery could not be confirmed.");
+    return response.data.id;
   }
 }
 

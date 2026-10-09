@@ -26,6 +26,7 @@ export const SEEDED = {
 } as const;
 
 export const SCREENSHOT_ROUTES = [
+  { name: "waitlist", routeId: "/waitlist/", path: "/waitlist", mode: "session" },
   // ---------------------------------------------------------------- public
   { name: "home", routeId: "/", path: "/", mode: "local" },
   { name: "browse", routeId: "/browse", path: "/browse", mode: "local" },
@@ -332,6 +333,16 @@ export const SCREENSHOT_ROUTES = [
  * for the same URL; the index child is the one that renders.
  */
 export const EXCLUDED_ROUTES = {
+  "/waitlist/link": {
+    reason:
+      "Email bearer credentials and private signup details must not enter screenshot artifacts.",
+  },
+  "/waitlist/request/$id": {
+    reason: "Private waitlist details require a runtime request reference.",
+  },
+  "/admin/waitlist": {
+    reason: "Applicant emails and private context must not enter screenshot artifacts.",
+  },
   "/admin/corrections": {
     reason: "Private reporter notes and contact details must not enter screenshot artifacts.",
   },

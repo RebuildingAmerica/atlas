@@ -3,6 +3,8 @@ import { AlertCircle } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { loadPaidAccess } from "@/domains/waitlist/waitlist.functions";
+import { paidPlanAction } from "@/domains/waitlist/pricing-access";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { loadCheckoutAvailability } from "@/domains/billing/purchase-onboarding.functions";
 import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
@@ -59,6 +61,12 @@ const NO_ALLOWED_OFFERS: readonly string[] = [];
 export function PricingPage({ intent, interval: intentInterval }: PricingPageProps) {
   const navigate = useNavigate();
   const session = useAtlasSession();
+  const access = useQuery({
+    queryKey: ["waitlist", "access", session.data?.user.id],
+    queryFn: () => loadPaidAccess(),
+    retry: false,
+    staleTime: 30_000,
+  });
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [pendingCheckoutKey, setPendingCheckoutKey] = useState<string | null>(null);
   const availability = useQuery({
@@ -75,30 +83,61 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
   const isCheckoutConfirmedOpen = availability.data?.available === true;
   const allowedOffers = availability.data?.allowedOffers ?? NO_ALLOWED_OFFERS;
 
-  // No unavailability guard here: every CTA container takes a required
-  // isCheckoutUnavailable prop and disables its buttons, and the server
-  // functions refuse on their own. A guard in this handler would be
-  // unreachable and would only look like protection.
+  const activeProducts = session.data?.workspace.activeProducts ?? [];
+  const actionFor = (
+    product: PricingCheckoutParams["product"],
+    interval: PricingCheckoutInterval,
+  ) =>
+    paidPlanAction(
+      session.data === undefined ? undefined : access.data,
+      product,
+      isCheckoutConfirmedOpen && allowedOffers.includes(checkoutKey(product, interval)),
+      activeProducts,
+      interval,
+    );
+
   async function handleCheckout({ product, interval }: PricingCheckoutParams) {
+    const action = actionFor(product, interval);
     setPendingCheckoutKey(checkoutKey(product, interval));
     try {
-      await navigate({ to: "/onboarding", search: { product, interval } });
+      if (action.kind === "account") await navigate({ to: "/account" });
+      else if (action.kind === "request" && action.requestId)
+        await navigate({ to: "/waitlist/request/$id", params: { id: action.requestId } });
+      else if (action.kind === "join")
+        await navigate({ to: "/waitlist", search: { product, interval } });
+      else await navigate({ to: "/onboarding", search: { product, interval } });
     } finally {
       setPendingCheckoutKey(null);
     }
   }
 
   useEffect(() => {
-    if (
-      !intent ||
-      !intentInterval ||
-      !isCheckoutConfirmedOpen ||
-      !allowedOffers.includes(checkoutKey(intent, intentInterval))
-    ) {
+    if (!intent || !intentInterval || !access.data || session.data === undefined || session.isError)
       return;
-    }
-    void navigate({ to: "/onboarding", search: { product: intent, interval: intentInterval } });
-  }, [intent, intentInterval, isCheckoutConfirmedOpen, allowedOffers, navigate]);
+    const action = paidPlanAction(
+      access.data,
+      intent,
+      isCheckoutConfirmedOpen && allowedOffers.includes(checkoutKey(intent, intentInterval)),
+      session.data?.workspace.activeProducts ?? [],
+    );
+    if (action.disabled) return;
+    if (action.kind === "join")
+      void navigate({ to: "/waitlist", search: { product: intent, interval: intentInterval } });
+    else if (action.kind === "request" && action.requestId)
+      void navigate({ to: "/waitlist/request/$id", params: { id: action.requestId } });
+    else if (action.kind === "account") void navigate({ to: "/account" });
+    else
+      void navigate({ to: "/onboarding", search: { product: intent, interval: intentInterval } });
+  }, [
+    intent,
+    intentInterval,
+    access.data,
+    isCheckoutConfirmedOpen,
+    allowedOffers,
+    navigate,
+    session.data,
+    session.isError,
+  ]);
 
   const activeWorkspace = session.data?.workspace.activeOrganization ?? null;
   const isAuthed = Boolean(session.data);
@@ -138,7 +177,7 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           </div>
         </div>
 
-        {isCheckoutUnavailable && (
+        {isCheckoutUnavailable && access.data?.mode !== "waitlist" && (
           <div
             role="status"
             className="bg-error-container text-on-error-container mb-8 rounded-[1.4rem] px-4 py-6"
@@ -153,6 +192,39 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           </div>
         )}
 
+        {access.data?.mode === "waitlist" ? (
+          <p className="type-body-medium text-ink-soft mb-6">
+            Paid plans are available by invitation. Joining the waitlist costs nothing.
+          </p>
+        ) : null}
+        {session.isError ? (
+          <p role="status" className="type-body-medium text-ink-soft mb-6">
+            Your account could not load.{" "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                void session.refetch();
+              }}
+            >
+              Retry account
+            </button>
+          </p>
+        ) : null}
+        {access.isError ? (
+          <p role="status" className="type-body-medium text-ink-soft mb-6">
+            Paid plan availability could not load.{" "}
+            <button
+              type="button"
+              className="underline"
+              onClick={() => {
+                void access.refetch();
+              }}
+            >
+              Try again
+            </button>
+          </p>
+        ) : null}
         <p className="type-body-small text-ink-muted mb-6">
           Paid subscriptions help keep the public directory free.
         </p>
@@ -161,6 +233,10 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
           activeWorkspaceName={activeWorkspace?.name ?? null}
           billing={billing}
           freeCta={freeCta}
+          paidActions={{
+            atlas_pro: actionFor("atlas_pro", proCheckoutInterval),
+            atlas_team: actionFor("atlas_team", teamCheckoutInterval),
+          }}
           pendingCheckoutKey={pendingCheckoutKey}
           isCheckoutUnavailable={isCheckoutUnavailable}
           allowedOffers={allowedOffers}
@@ -171,6 +247,8 @@ export function PricingPage({ intent, interval: intentInterval }: PricingPagePro
         />
 
         <PricingResearchPassCard
+          weeklyAction={actionFor("atlas_research_pass", "weekly")}
+          monthlyAction={actionFor("atlas_research_pass", "once")}
           pendingCheckoutKey={pendingCheckoutKey}
           isCheckoutUnavailable={isCheckoutUnavailable}
           allowedOffers={allowedOffers}

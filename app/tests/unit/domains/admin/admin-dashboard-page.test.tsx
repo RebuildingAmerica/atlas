@@ -144,4 +144,19 @@ describe("AdminDashboardPage", () => {
 
     expect(await screen.findByText("Admin status could not load.")).toBeInTheDocument();
   });
+  it("keeps managed waitlist navigation available even if service status fails", async () => {
+    vi.stubEnv("ATLAS_MANAGED", "true");
+    vi.stubEnv("ATLAS_MULTI_USER", "true");
+    mocks.loadAdminDashboardSummary.mockRejectedValue(new Error("offline"));
+    renderAdminDashboardPage();
+    expect(screen.getByRole("link", { name: /Review paid access waitlist/ })).toBeVisible();
+    await screen.findByText("Admin status could not load.");
+  });
+  it("hides managed waitlist navigation on a self-hosted instance", () => {
+    vi.stubEnv("ATLAS_MANAGED", "false");
+    renderAdminDashboardPage();
+    expect(
+      screen.queryByRole("link", { name: /Review paid access waitlist/ }),
+    ).not.toBeInTheDocument();
+  });
 });

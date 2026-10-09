@@ -8,6 +8,8 @@ import {
 import type { CreateCheckoutOptions } from "@/domains/billing/server/checkout";
 
 const mocks = vi.hoisted(() => ({
+  resolveCheckoutAvailability: vi.fn(),
+  assertPaidAdmission: vi.fn(),
   createCheckoutSession: vi.fn(),
   ensureAuthReady: vi.fn(),
   ensureStripeCustomerForWorkspace: vi.fn(),
@@ -18,6 +20,12 @@ const mocks = vi.hoisted(() => ({
   requireAtlasSessionState: vi.fn(),
 }));
 
+vi.mock("@/domains/waitlist/server/admission", () => ({
+  assertPaidAdmission: mocks.assertPaidAdmission,
+}));
+vi.mock("@/domains/billing/server/checkout-availability", () => ({
+  resolveCheckoutAvailability: mocks.resolveCheckoutAvailability,
+}));
 vi.mock("@tanstack/react-start", async () => {
   const { createServerFnStub } = await import("../../../../../helpers/server-fn-stub");
   return { createServerFn: createServerFnStub() };
@@ -65,6 +73,9 @@ describe("checkout.functions pricing", () => {
     vi.resetModules();
     Object.values(mocks).forEach((mock) => mock.mockReset());
     Object.values(authApi).forEach((mock) => mock.mockReset());
+    mocks.resolveCheckoutAvailability.mockResolvedValue({ available: true });
+    mocks.assertPaidAdmission.mockResolvedValue(undefined);
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
 
     vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
 

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
+import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { PRICING_CHECKOUT_INTERVALS, type PricingCheckoutInterval } from "./checkout-intervals";
 import { getAtlasBillingProducts } from "./products";
@@ -123,6 +124,16 @@ export const startCheckout = createServerFn({ method: "POST" })
     if (!activeWorkspace) {
       throw new UserFacingError("Create a workspace before continuing to payment.");
     }
+
+    const membership = session.workspace.memberships.find((item) => item.id === activeWorkspace.id);
+    if (!membership || !canManageAtlasOrganizationRole(membership.role)) {
+      throw new UserFacingError("You do not have permission to manage billing for this workspace.");
+    }
+    const { assertPaidAdmission } = await import("@/domains/waitlist/server/admission");
+    await assertPaidAdmission(session, data.product, activeWorkspace.id);
+    const { resolveCheckoutAvailability } = await import("./server/checkout-availability");
+    if (!(await resolveCheckoutAvailability()).available)
+      throw new UserFacingError("Paid purchases are temporarily unavailable.");
 
     const auth = await ensureAuthReady();
     const headers = getBrowserSessionHeaders();

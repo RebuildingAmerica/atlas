@@ -8,6 +8,8 @@ import {
 import type { CreateCheckoutOptions } from "@/domains/billing/server/checkout";
 
 const mocks = vi.hoisted(() => ({
+  resolveCheckoutAvailability: vi.fn(),
+  assertPaidAdmission: vi.fn(),
   createCheckoutSession: vi.fn(),
   ensureAuthReady: vi.fn(),
   ensureStripeCustomerForWorkspace: vi.fn(),
@@ -18,6 +20,12 @@ const mocks = vi.hoisted(() => ({
   requireAtlasSessionState: vi.fn(),
 }));
 
+vi.mock("@/domains/waitlist/server/admission", () => ({
+  assertPaidAdmission: mocks.assertPaidAdmission,
+}));
+vi.mock("@/domains/billing/server/checkout-availability", () => ({
+  resolveCheckoutAvailability: mocks.resolveCheckoutAvailability,
+}));
 vi.mock("@tanstack/react-start", async () => {
   const { createServerFnStub } = await import("../../../../../helpers/server-fn-stub");
   return { createServerFn: createServerFnStub() };
@@ -65,6 +73,9 @@ describe("checkout.functions guards", () => {
     vi.resetModules();
     Object.values(mocks).forEach((mock) => mock.mockReset());
     Object.values(authApi).forEach((mock) => mock.mockReset());
+    mocks.resolveCheckoutAvailability.mockResolvedValue({ available: true });
+    mocks.assertPaidAdmission.mockResolvedValue(undefined);
+    mocks.requireAtlasSessionState.mockResolvedValue(createAtlasSessionFixture());
 
     vi.stubEnv(STRIPE_ATLAS_CATALOG_ENV_KEY, createStripeAtlasCatalogFixture());
 
@@ -197,5 +208,40 @@ describe("checkout.functions guards", () => {
     expect((response.error as Error).message).toBe(
       "Checkout server modules are only available on the server.",
     );
+  });
+  it("blocks the legacy checkout path without invitation", async () => {
+    mocks.assertPaidAdmission.mockRejectedValue(new Error("Invitation required"));
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    await expect(
+      startCheckout({ data: { product: "atlas_pro", interval: "monthly" } }),
+    ).rejects.toThrow("Invitation required");
+    expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+  });
+  it("refuses legacy checkout during a sales pause", async () => {
+    mocks.resolveCheckoutAvailability.mockResolvedValue({ available: false });
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    await expect(
+      startCheckout({ data: { product: "atlas_pro", interval: "monthly" } }),
+    ).rejects.toThrow("unavailable");
+    expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  it.each(["member", "missing"])("refuses workspace billing for a %s membership", async (role) => {
+    const session = createAtlasSessionFixture();
+    mocks.requireAtlasSessionState.mockResolvedValue({
+      ...session,
+      workspace: {
+        ...session.workspace,
+        memberships:
+          role === "missing"
+            ? []
+            : session.workspace.memberships.map((item) => ({ ...item, role: "member" })),
+      },
+    });
+    const { startCheckout } = await import("@/domains/billing/checkout.functions");
+    await expect(
+      startCheckout({ data: { product: "atlas_pro", interval: "monthly" } }),
+    ).rejects.toThrow("permission");
+    expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,8 @@ const DISALLOWED_PATHS = [
   "/onboarding",
   "/onboarding/complete",
   "/admin.discounts",
+  "/admin/waitlist",
+  "/waitlist",
   "/briefs",
   "/checkout-complete",
   "/coverage",

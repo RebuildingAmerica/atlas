@@ -214,6 +214,8 @@ export const ensurePurchaseOnboarding = createServerFn({ method: "POST" })
       await loadPurchaseServerModules();
     await assertCheckoutAvailable(checkoutAvailability);
     const session = await sessionState.requireAtlasSessionState();
+    const { assertPaidAdmission } = await import("@/domains/waitlist/server/admission");
+    await assertPaidAdmission(session, data.product);
     return purchaseIntents.ensurePurchaseIntent({
       interval: data.interval,
       product: data.product,
@@ -299,6 +301,8 @@ export const startPurchaseCheckout = createServerFn({ method: "POST" })
       throw new UserFacingError("Create a workspace before continuing to payment.");
     }
     requireManagedBillingWorkspace(session, intent.workspaceId);
+    const { assertPaidAdmission } = await import("@/domains/waitlist/server/admission");
+    await assertPaidAdmission(session, intent.product, intent.workspaceId);
 
     const discountSegment = await discountVerifications.getVerifiedDiscountSegmentForWorkspace(
       intent.workspaceId,

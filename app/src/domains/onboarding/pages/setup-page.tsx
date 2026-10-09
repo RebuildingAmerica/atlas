@@ -212,7 +212,10 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
           : "workspace";
   const alert = errorMessage ? (
     <p role="alert" className="type-body-medium bg-error-container rounded-2xl px-4 py-3">
-      {errorMessage}
+      {errorMessage}{" "}
+      <Link to="/pricing" className="underline">
+        Review plan access
+      </Link>
     </p>
   ) : null;
 

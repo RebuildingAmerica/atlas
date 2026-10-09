@@ -1,10 +1,14 @@
 FROM node:24-alpine AS builder
 
 ARG NITRO_PRESET=node-server
+ARG ATLAS_MANAGED=false
+ARG ATLAS_MULTI_USER=true
 
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
-    NITRO_PRESET=${NITRO_PRESET}
+    NITRO_PRESET=${NITRO_PRESET} \
+    ATLAS_MANAGED=${ATLAS_MANAGED} \
+    ATLAS_MULTI_USER=${ATLAS_MULTI_USER}
 
 RUN corepack enable
 
