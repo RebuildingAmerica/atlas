@@ -456,8 +456,9 @@ button:disabled,
   letter-spacing: -0.025em;
 }
 
-/* Visible keyboard focus uses civic navy across the public surface. */
-:focus-visible {
+/* Keep fallback focus visible. Compound controls put that outline around their
+   full label target instead of also outlining the small native input. */
+:focus-visible:not([data-focus-ring="parent"]) {
   outline: 2px solid var(--color-civic);
   outline-offset: 3px;
 }

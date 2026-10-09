@@ -12,7 +12,7 @@ describe("payment choices", () => {
     const student = screen.getByRole("radio", { name: "Student" });
     expect(student).toBeVisible();
     expect(student).toBeChecked();
-    expect(student).toHaveAccessibleDescription(/\$12.80.*4 months.*verification/);
+    expect(student).toHaveAccessibleDescription(/\$12.80.*4 months.*student status/);
   });
 
   it("exposes each Team price and the additional member cost before a selection", async () => {
@@ -31,20 +31,20 @@ describe("payment choices", () => {
 
 describe("payment commitment", () => {
   it.each([
-    ["atlas_pro", "monthly", "$5 per month", "Renews monthly until canceled"],
-    ["atlas_pro", "yearly", "$48 per year", "Renews annually until canceled"],
+    ["atlas_pro", "monthly", "$5 per month", "Renews monthly until you cancel"],
+    ["atlas_pro", "yearly", "$48 per year", "Renews annually until you cancel"],
     ["atlas_pro", "four_month", "$12.80 every four months", "Student verification is required"],
     [
       "atlas_team",
       "monthly",
       "$25 per month + $8 per additional member per month",
-      "Renews monthly until canceled",
+      "Renews monthly until you cancel",
     ],
     [
       "atlas_team",
       "yearly",
       "$250 per year + $80 per additional member per year",
-      "Renews annually until canceled",
+      "Renews annually until you cancel",
     ],
     ["atlas_research_pass", "weekly", "$4 for 7 days", "No automatic renewal"],
     ["atlas_research_pass", "once", "$9 for 30 days", "No automatic renewal"],
@@ -53,9 +53,7 @@ describe("payment commitment", () => {
     const summary = screen.getByRole("region", { name: "Payment summary" });
     expect(summary).toHaveTextContent(charge);
     expect(summary).toHaveTextContent(renewal);
-    expect(summary).toHaveTextContent(
-      "Any applicable tax is shown in the final total at checkout.",
-    );
+    expect(summary).toHaveTextContent("Any applicable tax is shown at checkout.");
   });
 
   it("rejects an unavailable interval instead of quoting a different price", () => {

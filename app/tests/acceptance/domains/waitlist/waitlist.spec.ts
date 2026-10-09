@@ -55,6 +55,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   page,
   browser,
 }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   const email = `maya.${randomUUID().slice(0, 8)}@atlas.test`;
   await page.goto("/browse");
   await expect(page.getByRole("heading").first()).toBeVisible();
@@ -89,25 +90,75 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   const invitationUrl = extractFirstUrlFromEmail(await pollLatestMessage(email));
   await page.goto(invitationUrl);
   await expect(page.getByRole("heading", { name: "You’re invited to Atlas Pro" })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Create a free account", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create account", exact: true })).toBeVisible();
   await page.getByRole("radio", { name: "Annual", exact: true }).click();
   const signupHref = await page
-    .getByRole("link", { name: "Create a free account", exact: true })
+    .getByRole("link", { name: "Create account", exact: true })
     .getAttribute("href");
   if (!signupHref) throw new Error("The invitation must offer account creation.");
   expect(new URL(signupHref, page.url()).searchParams.get("redirect")).toBe(
     "/onboarding?product=atlas_pro&interval=yearly",
   );
-  await page.screenshot({ path: "test-results/waitlist-invited-anonymous.png", fullPage: true });
+  await page.screenshot({
+    path: "test-results/waitlist-invited-anonymous-mobile.png",
+    fullPage: true,
+  });
   await performSignIn(page, { email, createWorkspace: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(invitationUrl);
   await expect(page.getByRole("group", { name: "Choose how to pay" })).toBeVisible();
+  const monthlyCard = page.getByRole("radio", { name: "Monthly", exact: true }).locator("..");
+  const annualRadio = page.getByRole("radio", { name: "Annual", exact: true });
+  const annualCard = annualRadio.locator("..");
+  const selectedBackground = await monthlyCard.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  await monthlyCard.hover();
+  await expect
+    .poll(() => monthlyCard.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .not.toBe(selectedBackground);
+  const restingBorder = await annualCard.evaluate(
+    (element) => getComputedStyle(element).borderColor,
+  );
+  await annualCard.hover();
+  await expect
+    .poll(() => annualCard.evaluate((element) => getComputedStyle(element).borderColor))
+    .not.toBe(restingBorder);
+  await page.getByRole("heading", { name: "You’re invited to Atlas Pro" }).hover();
   await page.getByRole("radio", { name: "Monthly", exact: true }).focus();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("radio", { name: "Annual", exact: true })).toBeChecked();
   await expect(page.getByRole("region", { name: "Payment summary" })).toContainText("$48 per year");
+  await expect
+    .poll(() => annualCard.evaluate((element) => getComputedStyle(element).outlineWidth))
+    .toBe("2px");
+  expect(await annualRadio.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe(
+    "none",
+  );
+  await page.emulateMedia({ forcedColors: "active" });
+  expect(await annualCard.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe(
+    "solid",
+  );
+  expect(await annualCard.evaluate((element) => getComputedStyle(element).outlineColor)).not.toBe(
+    "rgba(0, 0, 0, 0)",
+  );
+  await page.screenshot({
+    path: "test-results/waitlist-invited-high-contrast-focus.png",
+    fullPage: true,
+  });
+  await page.emulateMedia({ forcedColors: "none" });
+  await page.keyboard.press("Tab");
+  await expect(page.getByText("Student pricing", { exact: true })).toBeFocused();
+  expect(
+    await page
+      .getByText("Student pricing", { exact: true })
+      .evaluate((element) => getComputedStyle(element).boxShadow),
+  ).not.toBe("none");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("radio", { name: "Student", exact: true })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("radio", { name: "Student", exact: true })).toBeHidden();
+  await annualRadio.focus();
   await expectNoAxeViolations(page, "invited request");
   await expectInvitationSpacing(page, 80);
   await page.screenshot({ path: "test-results/waitlist-invited.png", fullPage: true });
@@ -143,6 +194,56 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await page.screenshot({ path: "test-results/waitlist-invited-short-mobile.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("heading", { name: "You’re invited to Atlas Pro" }).scrollIntoViewIfNeeded();
+  const touchContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    storageState: await page.context().storageState(),
+  });
+  const touchPage = await touchContext.newPage();
+  await touchPage.goto(invitationUrl);
+  expect(await touchPage.evaluate(() => window.innerWidth)).toBe(390);
+  expect(await touchPage.evaluate(() => window.matchMedia("(hover: none)").matches)).toBe(true);
+  const touchAnnual = touchPage.getByRole("radio", { name: "Annual", exact: true });
+  await touchAnnual.locator("..").tap({ position: { x: 12, y: 60 } });
+  await expect(touchAnnual).toBeChecked();
+  expect(await touchAnnual.evaluate((element) => element.matches(":focus-visible"))).toBe(false);
+  expect(
+    await touchAnnual.locator("..").evaluate((element) => getComputedStyle(element).outlineStyle),
+  ).toBe("none");
+  for (const control of [
+    touchPage.getByRole("link", { name: "Atlas", exact: true }),
+    touchPage.getByRole("link", { name: "Pricing", exact: true }),
+    touchPage.getByText("Student pricing", { exact: true }),
+  ]) {
+    const target = await control.boundingBox();
+    if (!target) throw new Error("A touch control must be visible.");
+    expect(target.height).toBeGreaterThanOrEqual(44);
+    expect(target.width).toBeGreaterThanOrEqual(44);
+  }
+  await touchPage.getByText("API and integrations", { exact: true }).tap();
+  await expect(touchPage.getByText(/API access with 1,000 requests per day/)).toBeVisible();
+  await touchPage.getByText("API and integrations", { exact: true }).tap();
+  await expectNoAxeViolations(touchPage, "touch invitation");
+  await touchPage.screenshot({
+    path: "test-results/waitlist-invited-touch-mobile.png",
+    fullPage: true,
+  });
+  await touchPage.getByText("Student pricing", { exact: true }).tap();
+  await touchPage.getByRole("radio", { name: "Student", exact: true }).locator("..").tap();
+  await expect(touchPage.getByRole("region", { name: "Payment summary" })).toContainText(
+    "$12.80 every four months",
+  );
+  await touchPage.setViewportSize({ width: 320, height: 568 });
+  expect(
+    await touchPage.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+  ).toBe(false);
+  await expectNoAxeViolations(touchPage, "narrow touch student invitation");
+  await touchPage.screenshot({
+    path: "test-results/waitlist-invited-touch-student.png",
+    fullPage: true,
+  });
+  await touchContext.close();
   await page.getByRole("link", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Choose workspace" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Use / })).toBeEnabled();

@@ -45,13 +45,18 @@ Invitation pages use the full page surface and left-aligned context. On desktop,
 plan benefits and payment choices occupy separate columns; on mobile, the
 choices follow the benefits and Continue sits at the bottom with room above it.
 Native radio choices show the full charge and billing period side by side.
-Student pricing and connected tools use optional disclosures. Invitees can
+Student pricing and API integrations use optional disclosures. Invitees can
 compare prices before creating an account, and the selected interval survives
 sign-in. A payment summary explains renewal, cancellation and tax before
 continuing and again before checkout, so the person knows the commitment before
 paying. Fields share the UI package's comfortable density, native validation,
 inset labels, and high-contrast civic focus ring. Buttons and navigation actions
-share Button styles. Editorial titles use the shared type scale.
+share Button styles. Editorial titles use the shared type scale. Native radio
+labels share selected, hover and pressed states, with keyboard focus around the
+whole hit target. The global focus fallback respects controls that delegate
+focus to a parent. Disclosures share focus and hover styles, navigation targets
+are at least 44 pixels, and mobile actions allow for the bottom safe area.
+Renewal terms have greater prominence than the secondary tax note.
 
 Confirmation, withdrawal and rejoining focus the resulting heading so keyboard
 and screen reader users can follow the change. Ordinary refreshes preserve

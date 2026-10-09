@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { cn } from "../utils";
-import { controlFocusClass } from "../styles/controls";
+import { controlGroupFocusClass } from "../styles/controls";
 
 interface RadioOptionProps {
   name: string;
@@ -26,14 +26,16 @@ export function RadioOption({
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-xl border p-4",
+        "active:bg-surface-container flex cursor-pointer touch-manipulation items-start gap-3 rounded-xl border p-4",
+        controlGroupFocusClass,
         checked
-          ? "border-civic bg-surface-container-low"
-          : "border-outline-variant hover:border-outline",
+          ? "border-civic bg-surface-container-low hover:bg-surface-container"
+          : "border-outline-variant hover:border-outline hover:bg-surface-container-low",
       )}
     >
       <input
         type="radio"
+        data-focus-ring="parent"
         name={name}
         value={value}
         checked={checked}
@@ -42,7 +44,7 @@ export function RadioOption({
         }}
         aria-labelledby={`${id}-label`}
         aria-describedby={`${id}-price ${id}-description`}
-        className={cn("accent-civic mt-1 size-4 shrink-0", controlFocusClass)}
+        className="accent-civic mt-1 size-4 shrink-0 outline-none"
       />
       <span className="min-w-0 flex-1 space-y-2">
         <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

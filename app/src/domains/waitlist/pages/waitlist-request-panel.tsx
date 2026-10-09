@@ -35,8 +35,8 @@ const INVITATION_DESCRIPTIONS: Record<WaitlistProduct, string> = {
 const INVITATION_BENEFITS: Record<WaitlistProduct, string[]> = {
   atlas_pro: [
     "Unlimited research requests on people and organizations",
-    "Notes and shortlists alongside the profiles you’re researching",
-    "Export profiles as CSV or JSON for spreadsheets and other tools",
+    "Organize your findings with notes and shortlists",
+    "Export profiles as CSV or JSON for your other tools",
   ],
   atlas_team: [
     "Unlimited research requests and exports",
@@ -172,9 +172,7 @@ export function WaitlistRequestPanel({
             </section>
             {request.product !== "atlas_research_pass" ? (
               <details>
-                <summary className={`${waitlistSummaryClass} text-ink-soft min-h-11 py-3`}>
-                  Connected tools
-                </summary>
+                <summary className={waitlistSummaryClass}>API and integrations</summary>
                 <p className="type-body-small text-ink-soft pt-3">
                   {request.product === "atlas_team"
                     ? "API, MCP and OAuth access, with SSO and SCIM for your team."
@@ -249,8 +247,8 @@ export function WaitlistRequestPanel({
               <div className="space-y-6">
                 <p className="type-body-small text-ink-soft">
                   {session.data
-                    ? "Switch to the account on your invitation to continue."
-                    : "Create an account with the email that received your invitation. Then choose your workspace and review the total before paying."}
+                    ? "Sign in with the email that received your invitation."
+                    : "Use the email that received your invitation. You’ll choose a workspace and review the total before paying."}
                 </p>
                 <div className="flex flex-col gap-4">
                   {session.data ? (
@@ -281,7 +279,7 @@ export function WaitlistRequestPanel({
                         search={{ redirect }}
                         className={`${waitlistPrimaryLinkClass} w-full`}
                       >
-                        Create a free account
+                        Create account
                       </Link>
                     </>
                   )}

@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { buttonStyles } from "@rebuildingamerica/atlas-ui/ui/button";
-import { controlFocusClass } from "@rebuildingamerica/atlas-ui/styles/controls";
+import {
+  controlFocusClass,
+  disclosureSummaryClass,
+} from "@rebuildingamerica/atlas-ui/styles/controls";
 import { editorialTitleClass } from "@rebuildingamerica/atlas-ui/styles/typography";
 
 interface WaitlistLayoutProps {
@@ -19,7 +22,7 @@ export const waitlistSecondaryActionClass = `type-label-medium text-ink-soft hov
 export const waitlistHeadingClass = editorialTitleClass;
 export const waitlistTextLinkClass = `type-label-large text-accent-deep hover:text-ink-strong inline-flex min-h-11 items-center rounded-sm underline underline-offset-4 ${controlFocusClass}`;
 export const waitlistPrimaryLinkClass = `${buttonStyles({ size: "lg" })} text-center`;
-export const waitlistSummaryClass = `type-label-large cursor-pointer rounded-sm ${controlFocusClass}`;
+export const waitlistSummaryClass = disclosureSummaryClass;
 export function WaitlistError({ message }: { message: string | null }) {
   return message ? (
     <p role="alert" className="type-body-medium text-ink-strong break-words">

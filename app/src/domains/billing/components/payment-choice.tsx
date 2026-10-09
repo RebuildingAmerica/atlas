@@ -1,5 +1,5 @@
 import { RadioOption } from "@rebuildingamerica/atlas-ui/ui/radio-option";
-import { controlFocusClass } from "@rebuildingamerica/atlas-ui/styles/controls";
+import { disclosureSummaryClass } from "@rebuildingamerica/atlas-ui/styles/controls";
 import type { AtlasSelfServeProduct } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import type { PricingCheckoutInterval } from "../checkout-intervals";
 
@@ -28,27 +28,27 @@ const OPTIONS: Record<AtlasSelfServeProduct, PaymentOption[]> = {
       label: "Monthly",
       price: "$5",
       cadence: "/month",
-      description: "Billed monthly.",
+      description: "Pay month to month.",
       commitment: "$5 per month",
-      renewal: "Renews monthly until canceled. Cancel from your account.",
+      renewal: "Renews monthly until you cancel. Cancel in your account.",
     },
     {
       interval: "yearly",
       label: "Annual",
       price: "$48",
       cadence: "/year",
-      description: "$4 per month, billed annually. Save 20% compared with monthly.",
+      description: "Pay for a year and save 20%.",
       commitment: "$48 per year",
-      renewal: "Renews annually until canceled. Cancel from your account.",
+      renewal: "Renews annually until you cancel. Cancel in your account.",
     },
     {
       interval: "four_month",
       label: "Student",
       price: "$12.80",
       cadence: "/4 months",
-      description: "Student verification is required before payment.",
+      description: "Verify your student status before checkout.",
       commitment: "$12.80 every four months",
-      renewal: "Student verification is required. Renews every four months until canceled.",
+      renewal: "Student verification is required. Renews every 4 months until you cancel.",
     },
   ],
   atlas_team: [
@@ -59,7 +59,7 @@ const OPTIONS: Record<AtlasSelfServeProduct, PaymentOption[]> = {
       cadence: "/month",
       description: "1 member included. $8 per additional member each month.",
       commitment: "$25 per month + $8 per additional member per month",
-      renewal: "Renews monthly until canceled. Cancel from your account.",
+      renewal: "Renews monthly until you cancel. Cancel in your account.",
     },
     {
       interval: "yearly",
@@ -68,7 +68,7 @@ const OPTIONS: Record<AtlasSelfServeProduct, PaymentOption[]> = {
       cadence: "/year",
       description: "1 member included. $80 per additional member each year.",
       commitment: "$250 per year + $80 per additional member per year",
-      renewal: "Renews annually until canceled. Cancel from your account.",
+      renewal: "Renews annually until you cancel. Cancel in your account.",
     },
   ],
   atlas_research_pass: [
@@ -128,11 +128,7 @@ export function PaymentChoice({ product, interval, onChange }: PaymentChoiceProp
       </div>
       {product === "atlas_pro" ? (
         <details open={interval === "four_month" ? true : undefined}>
-          <summary
-            className={`type-label-large text-ink-soft min-h-11 cursor-pointer py-3 ${controlFocusClass}`}
-          >
-            Student pricing
-          </summary>
+          <summary className={disclosureSummaryClass}>Student pricing</summary>
           <div className="pt-2">
             {options.filter((option) => option.interval === "four_month").map(renderOption)}
           </div>
@@ -146,11 +142,9 @@ export function PaymentCommitment({ product, interval }: PaymentSelectionProps) 
   const option = selectedOption(product, interval);
   return (
     <section aria-label="Payment summary" className="space-y-2">
-      <p className="type-title-medium text-ink-strong">{option.commitment}</p>
-      <p className="type-body-small text-ink-soft">{option.renewal}</p>
-      <p className="type-body-small text-ink-muted">
-        Any applicable tax is shown in the final total at checkout.
-      </p>
+      <p className="type-title-large text-ink-strong">{option.commitment}</p>
+      <p className="type-body-medium text-ink-soft">{option.renewal}</p>
+      <p className="type-body-small text-ink-muted">Any applicable tax is shown at checkout.</p>
     </section>
   );
 }

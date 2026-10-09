@@ -336,21 +336,21 @@ describe("waitlist screens", () => {
       "$5 per month",
     );
     expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
-      "Renews monthly until canceled",
+      "Renews monthly until you cancel",
     );
     await userEvent.click(screen.getByRole("radio", { name: "Annual" }));
     expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
       "$48 per year",
     );
     expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
-      "Renews annually until canceled",
+      "Renews annually until you cancel",
     );
     expect(
       screen.getByText("Next, choose your workspace. You’ll review the total before paying."),
     ).toBeVisible();
     const tools = screen.getByText(/API access with 1,000 requests per day/);
     expect(tools).not.toBeVisible();
-    await userEvent.click(screen.getByText("Connected tools"));
+    await userEvent.click(screen.getByText("API and integrations"));
     expect(tools).toBeVisible();
     await userEvent.click(screen.getByText("Student pricing"));
     await userEvent.click(screen.getByRole("radio", { name: "Student" }));
@@ -361,7 +361,7 @@ describe("waitlist screens", () => {
   it("offers a new account to anonymous invitees and a switch action for the wrong account", async () => {
     const invited: WaitlistRequest = { ...request, status: "invited", interval: "invalid" };
     const view = mount(<WaitlistRequestPanel initialRequest={invited} />);
-    expect(screen.getByRole("link", { name: "Create a free account" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Create account" })).toBeVisible();
     expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked();
     expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
       "$5 per month",
@@ -375,7 +375,7 @@ describe("waitlist screens", () => {
       return Promise.resolve();
     });
     mount(<WaitlistRequestPanel initialRequest={invited} />);
-    expect(screen.queryByRole("link", { name: "Create a free account" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Create account" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Switch account" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Sign out failed");
   });
