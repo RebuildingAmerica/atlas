@@ -166,7 +166,7 @@ function PublicNavigationMenu({ items, open, toggleMenu }: PublicNavigationMenuP
 
 function PublicPrimaryNav({ items }: PublicPrimaryNavProps) {
   return (
-    <div className="invisible flex max-w-0 shrink-0 -translate-y-1 items-center gap-1 overflow-hidden opacity-0 transition-[max-width,opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none md:visible md:max-w-[48rem] md:translate-y-0 md:opacity-100">
+    <div className="hidden shrink-0 items-center gap-1 md:flex">
       {items.map((item) => (
         <PublicActionLink key={item.to} item={item} />
       ))}
@@ -204,7 +204,7 @@ function PublicSessionArea({
   return (
     <div className="flex min-w-0 items-center gap-2">
       {showSearch ? (
-        <div className="invisible max-w-0 shrink-0 opacity-0 transition-[max-width,opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none xl:visible xl:max-w-56 xl:opacity-100 2xl:max-w-64">
+        <div className="hidden w-56 shrink-0 xl:block 2xl:w-64">
           <GlobalSearchForm className="w-full flex-none" />
         </div>
       ) : null}

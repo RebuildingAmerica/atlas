@@ -70,8 +70,8 @@ describe("staff waitlist screens", () => {
     await screen.findByRole("button", { name: request.email });
     await userEvent.click(screen.getByLabelText(`Select ${request.email}`));
     await userEvent.click(screen.getByLabelText(`Select ${request.email}`));
-    await userEvent.click(screen.getByRole("button", { name: "Select eligible requests" }));
-    await userEvent.click(screen.getByRole("button", { name: "Review 1 invitations" }));
+    await userEvent.click(screen.getByRole("button", { name: "Select up to 50" }));
+    await userEvent.click(screen.getByRole("button", { name: "Review 1 invitation" }));
     expect(screen.getByRole("region", { name: "Review invitations" })).toHaveTextContent(
       request.email,
     );
@@ -104,10 +104,10 @@ describe("staff waitlist screens", () => {
       availability: { available: false, allowedOffers: [] },
     });
     mount();
-    await screen.findByText("Paid purchases are paused. Invitations are unavailable.", {
+    await screen.findByText("New signups are paused.", {
       exact: false,
     });
-    expect(screen.getByRole("button", { name: "Select eligible requests" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Select up to 50" })).toBeDisabled();
     await userEvent.selectOptions(screen.getByLabelText("Status"), "purchased");
     expect(screen.getByRole("button", { name: "team@example.org" })).toBeVisible();
     await userEvent.selectOptions(screen.getByLabelText("Plan"), "atlas_team");
@@ -117,7 +117,7 @@ describe("staff waitlist screens", () => {
     await userEvent.selectOptions(screen.getByLabelText("Status"), "");
     await userEvent.selectOptions(screen.getByLabelText("Plan"), "");
     expect(screen.getByRole("button", { name: "Reporter" })).toBeVisible();
-    expect(screen.getByText("Email unconfirmed")).toBeVisible();
+    expect(screen.getAllByText("Email not confirmed").length).toBeGreaterThan(0);
     expect(screen.getByText(/Email failed/)).toBeVisible();
   });
   it("shows private context, delivery history and audit attribution, and reviews revocation", async () => {
@@ -136,16 +136,17 @@ describe("staff waitlist screens", () => {
     mount();
     await userEvent.selectOptions(screen.getByLabelText("Status"), "invited");
     await userEvent.click(await screen.findByRole("button", { name: request.email }));
-    const detail = await screen.findByRole("region", { name: "Request details" });
-    await within(detail).findByText(/invited.*staff/);
+    const detail = await screen.findByRole("dialog", { name: "Request details" });
+    expect(await within(detail).findByText("invited")).toBeVisible();
+    expect(within(detail).getByText("invited").closest("li")).toHaveTextContent("staff");
     expect(within(detail).getAllByText("Not provided")).toHaveLength(3);
-    await userEvent.click(screen.getByRole("button", { name: "Revoke purchase permission" }));
-    await userEvent.click(screen.getByRole("button", { name: "Keep permission" }));
-    await userEvent.click(screen.getByRole("button", { name: "Revoke purchase permission" }));
-    await userEvent.click(screen.getByRole("button", { name: "Confirm revocation" }));
-    expect(await screen.findByText("Purchase permission revoked.")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Withdraw invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Keep invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Withdraw invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm withdrawal" }));
+    expect(await screen.findByText("Invitation withdrawn.")).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Close details" }));
-    expect(screen.queryByRole("region", { name: "Request details" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Request details" })).not.toBeInTheDocument();
   });
   it("resends or retries an invitation without presenting unresolved email as sent", async () => {
     mocks.detail.mockResolvedValue({
@@ -166,7 +167,7 @@ describe("staff waitlist screens", () => {
     await userEvent.click(await screen.findByRole("button", { name: request.email }));
     await userEvent.click(await screen.findByRole("button", { name: "Resend invitation" }));
     expect(await screen.findByText("Invitation email needs attention.")).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Retry failed email" }));
+    await userEvent.click(screen.getByRole("button", { name: "Retry email" }));
     expect(await screen.findByText("Invitation sent.")).toBeVisible();
     expect(mocks.action).toHaveBeenLastCalledWith({
       data: { id: "first", action: "retry", deliveryId: "email" },
@@ -177,11 +178,12 @@ describe("staff waitlist screens", () => {
     mocks.invite.mockRejectedValueOnce(new Error("offline"));
     mount();
     await userEvent.click(await screen.findByRole("button", { name: request.email }));
-    expect(await screen.findByText("Request details could not load.")).toBeVisible();
+    expect(await screen.findByText("Request details couldn’t be loaded.")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Close details" }));
     await userEvent.click(screen.getByRole("button", { name: "Invite" }));
     await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
     await waitFor(() =>
-      expect(screen.getByText("Waitlist requests could not load. Try again.")).toBeVisible(),
+      expect(screen.getByText("Invitations couldn’t be sent. Try again.")).toBeVisible(),
     );
   });
   it("keeps historical failed invitations inactive after withdrawal and reports unmatched batch outcomes", async () => {
@@ -195,10 +197,42 @@ describe("staff waitlist screens", () => {
     });
     mount();
     await userEvent.click(await screen.findByRole("button", { name: request.email }));
-    await screen.findByText(/invite · failed/);
-    expect(screen.queryByRole("button", { name: "Retry failed email" })).not.toBeInTheDocument();
+    await screen.findByText(/Invitation · Failed/);
+    expect(screen.queryByRole("button", { name: "Retry email" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Close details" }));
     await userEvent.click(screen.getByRole("button", { name: "Invite" }));
     await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
     expect(await screen.findByText("Request: Could not invite.")).toBeVisible();
+  });
+  it("opens request details as a keyboard-dismissable dialog and retries in place", async () => {
+    mocks.detail.mockRejectedValueOnce(new Error("offline"));
+    mount();
+    const trigger = await screen.findByRole("button", { name: request.email });
+    await userEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog", { name: "Request details" });
+    await userEvent.click(await within(dialog).findByRole("button", { name: "Try again" }));
+    expect(await within(dialog).findByText("person@example.org")).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+  });
+  it("shows failed staff actions inside the open request and lets staff retry", async () => {
+    mocks.detail.mockResolvedValue({
+      request: { ...request, status: "invited" },
+      deliveries: [],
+      events: [],
+    });
+    mocks.action
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ delivery: { status: "sent" } });
+    mount();
+    await userEvent.click(await screen.findByRole("button", { name: request.email }));
+    const dialog = await screen.findByRole("dialog", { name: "Request details" });
+    await userEvent.click(await within(dialog).findByRole("button", { name: "Resend invitation" }));
+    expect(
+      await within(dialog).findByText("This change couldn’t be saved. Try again."),
+    ).toBeVisible();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Resend invitation" }));
+    expect(await within(dialog).findByText("Invitation sent.")).toBeVisible();
   });
 });

@@ -82,6 +82,7 @@ describe("waitlist screens", () => {
     await userEvent.type(screen.getByLabelText("Email"), "person@example.org");
     await userEvent.click(screen.getByRole("button", { name: "Join waitlist" }));
     expect(await screen.findByRole("heading", { name: "Check your email" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Check your email" })).toHaveFocus();
     expect(screen.getByText("person@example.org")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Browse Atlas" })).toHaveAttribute("href", "/browse");
   });
@@ -111,7 +112,7 @@ describe("waitlist screens", () => {
   it("offers a fresh email link when a link is expired", async () => {
     mocks.link.mockRejectedValue(new Error("expired"));
     mount(<WaitlistLinkPage token="expired" kind="invite" />);
-    expect(await screen.findByRole("link", { name: "Request a new email link" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Get a new link" })).toHaveAttribute(
       "href",
       "/waitlist",
     );
@@ -134,7 +135,7 @@ describe("waitlist screens", () => {
     expect(mocks.submit).not.toHaveBeenCalled();
     await userEvent.type(screen.getByLabelText("Email"), "person@example.org");
     await userEvent.selectOptions(screen.getByLabelText("Plan"), "atlas_team");
-    await userEvent.click(screen.getByText("Add context (optional)"));
+    await userEvent.click(screen.getByText("About you (optional)"));
     await userEvent.type(screen.getByLabelText("Name"), "Reporter");
     await userEvent.type(screen.getByLabelText("Organization"), "Newsroom");
     await userEvent.type(screen.getByLabelText("What would you use Atlas for?"), "Reporting");
@@ -184,7 +185,7 @@ describe("waitlist screens", () => {
     view.unmount();
     mocks.request.mockRejectedValue(new Error("unavailable"));
     mount(<WaitlistRequestPage id="other" />);
-    expect(await screen.findByRole("heading", { name: "Link unavailable" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "This link no longer works" })).toBeVisible();
   });
   it("edits details, reports a failure, withdraws with confirmation, and rejoins", async () => {
     const waiting: WaitlistRequest = { ...request, status: "waiting", confirmedAt: "2026-10-08" };
@@ -198,15 +199,15 @@ describe("waitlist screens", () => {
     await userEvent.click(screen.getByText("Your details"));
     await userEvent.type(screen.getByLabelText("Name"), "New");
     await userEvent.type(screen.getByLabelText("Organization"), "Org");
-    await userEvent.type(screen.getByLabelText("Intended use"), "Research");
+    await userEvent.type(screen.getByLabelText("What would you use Atlas for?"), "Research");
     await userEvent.click(screen.getByRole("button", { name: "Save details" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("could not be updated");
     await userEvent.click(screen.getByRole("button", { name: "Save details" }));
     expect(await screen.findByText("Details saved.")).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Withdraw request" }));
-    await userEvent.click(screen.getByRole("button", { name: "Keep request" }));
-    await userEvent.click(screen.getByRole("button", { name: "Withdraw request" }));
     await userEvent.click(screen.getByRole("button", { name: "Leave waitlist" }));
+    await userEvent.click(screen.getByRole("button", { name: "Stay on waitlist" }));
+    await userEvent.click(screen.getByRole("button", { name: "Leave waitlist" }));
+    await userEvent.click(screen.getByRole("button", { name: "Yes, leave waitlist" }));
     await screen.findByRole("heading", { name: "You’ve left the waitlist" });
     await userEvent.click(screen.getByRole("button", { name: "Rejoin waitlist" }));
     expect(await screen.findByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
@@ -228,10 +229,10 @@ describe("waitlist screens", () => {
         />,
       );
       await userEvent.selectOptions(
-        screen.getByLabelText("Billing interval"),
+        screen.getByLabelText("Payment option"),
         product === "atlas_research_pass" ? "once" : "yearly",
       );
-      expect(screen.getByRole("link", { name: "Continue to signup and payment" })).toHaveAttribute(
+      expect(screen.getByRole("link", { name: "Continue to checkout" })).toHaveAttribute(
         "href",
         "/onboarding",
       );
@@ -261,7 +262,7 @@ describe("waitlist screens", () => {
         initialRequest={{ ...request, status: "invited", purchasedAt: "2026-10-09" }}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Your signup is complete" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "You’re all set" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Open your account" })).toBeVisible();
     view.unmount();
     mount(
@@ -270,7 +271,7 @@ describe("waitlist screens", () => {
       />,
     );
     expect(
-      screen.getByRole("heading", { name: "This invitation is no longer available" }),
+      screen.getByRole("heading", { name: "This invitation has been withdrawn" }),
     ).toBeVisible();
   });
 
@@ -282,7 +283,7 @@ describe("waitlist screens", () => {
         <WaitlistLinkPage token="fresh" kind="invite" />
       </QueryClientProvider>,
     );
-    await screen.findByRole("heading", { name: "You can now sign up for Atlas Pro" });
+    await screen.findByRole("heading", { name: "You’re invited to Atlas Pro" });
     act(() => {
       client.setQueryData(["waitlist", "link", "fresh", "invite"], {
         ...request,
@@ -290,7 +291,7 @@ describe("waitlist screens", () => {
       });
     });
     expect(
-      await screen.findByRole("heading", { name: "This invitation is no longer available" }),
+      await screen.findByRole("heading", { name: "This invitation has been withdrawn" }),
     ).toBeVisible();
   });
   it("shows an unconfirmed private request honestly and allows explicit confirmation", async () => {

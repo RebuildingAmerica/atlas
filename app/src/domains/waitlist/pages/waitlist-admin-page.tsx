@@ -1,3 +1,4 @@
+import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,8 +18,33 @@ import {
   actOnWaitlistRequest,
 } from "../waitlist.functions";
 import type { StaffWaitlistAction } from "../waitlist.functions";
-import type { WaitlistRequest } from "../contracts";
-import { waitlistFieldClass } from "./waitlist-layout";
+import type {
+  WaitlistRequest,
+  WaitlistStatus,
+  WaitlistDeliveryStatus,
+  WaitlistLinkKind,
+} from "../contracts";
+import { waitlistFieldClass, waitlistTextLinkClass } from "./waitlist-layout";
+
+const requestStatusLabels: Record<WaitlistStatus, string> = {
+  unconfirmed: "Email not confirmed",
+  waiting: "Waiting",
+  invited: "Invited",
+  withdrawn: "Left waitlist",
+  revoked: "Invitation withdrawn",
+};
+const deliveryStatusLabels: Record<WaitlistDeliveryStatus, string> = {
+  pending: "Queued",
+  sending: "Sending",
+  sent: "Sent",
+  failed: "Failed",
+  unresolved: "Needs checking",
+};
+const deliveryKindLabels: Record<WaitlistLinkKind, string> = {
+  confirm: "Email confirmation",
+  invite: "Invitation",
+  manage: "Waitlist link",
+};
 
 export function WaitlistAdminPage() {
   const queryClient = useQueryClient();
@@ -34,7 +60,7 @@ export function WaitlistAdminPage() {
   const [review, setReview] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [revokeReview, setRevokeReview] = useState(false);
-  const [notice, setNotice] = useState<string | undefined>();
+  const [notice, setNotice] = useState<string[]>([]);
   const detailQueryId = detailId ?? "";
   const detail = useQuery({
     queryKey: ["admin", "waitlist-detail", detailId],
@@ -72,12 +98,10 @@ export function WaitlistAdminPage() {
       setReview(false);
       setSelected([]);
       setNotice(
-        response.results
-          .map(
-            (result) =>
-              `${records.find((item) => item.request.id === result.id)?.request.email ?? "Request"}: ${result.message}`,
-          )
-          .join(" "),
+        response.results.map(
+          (result) =>
+            `${records.find((item) => item.request.id === result.id)?.request.email ?? "Request"}: ${result.message}`,
+        ),
       );
       await refresh();
     },
@@ -86,25 +110,25 @@ export function WaitlistAdminPage() {
     mutationFn: (input: StaffWaitlistAction) => actOnWaitlistRequest({ data: input }),
     onSuccess: async (response) => {
       setRevokeReview(false);
-      setNotice(
+      setNotice([
         response.delivery
           ? response.delivery.status === "sent"
             ? "Invitation sent."
             : "Invitation email needs attention."
-          : "Purchase permission revoked.",
-      );
+          : "Invitation withdrawn.",
+      ]);
       await refresh();
     },
   });
   const pending = invite.isPending || action.isPending;
-  const error = queue.error ?? invite.error ?? action.error;
+  const error = queue.error ?? invite.error;
   const selectedRecords = records.filter((item) => selected.includes(item.request.id));
   return (
     <AdminPageShell>
       <AdminPageHeader
         badge="Paid access"
         title="Waitlist"
-        description="Review requests, invite people, and follow their signup."
+        description="Choose who to invite and see who has signed up."
       >
         <Link to="/admin" className="type-label-medium text-accent-deep underline">
           Admin home
@@ -128,24 +152,29 @@ export function WaitlistAdminPage() {
               ? "–"
               : String(records.filter((item) => item.request.status === "invited").length)
           }
-          detail="Permission to purchase"
+          detail="Can sign up for a plan"
           tone="neutral"
         />
         <AdminIndicatorCard
-          label="Purchased"
+          label="Signed up"
           value={
             queue.isPending
               ? "–"
               : String(records.filter((item) => item.request.purchasedAt).length)
           }
-          detail="Completed payment"
+          detail="Payment complete"
           tone="pass"
         />
       </section>
       <AdminInlineStatus
         message={
           error
-            ? userFacingErrorMessage(error, "Waitlist requests could not load. Try again.")
+            ? userFacingErrorMessage(
+                error,
+                queue.isError
+                  ? "Requests couldn’t be loaded. Try again."
+                  : "Invitations couldn’t be sent. Try again.",
+              )
             : undefined
         }
       />
@@ -159,12 +188,14 @@ export function WaitlistAdminPage() {
           Retry queue
         </Button>
       ) : null}
-      <AdminInlineStatus message={notice} />
+      {!detailId
+        ? notice.map((message) => <AdminInlineStatus key={message} message={message} />)
+        : null}
       {queue.data && !queue.data.availability.available ? (
         <p className="type-body-medium text-ink-soft">
-          Paid purchases are paused. Invitations are unavailable.{" "}
+          New signups are paused. You can send invitations when paid plans are available again.{" "}
           <Link to="/admin" className="text-accent-deep underline">
-            Review readiness
+            Review paid plans
           </Link>
         </p>
       ) : null}
@@ -173,6 +204,9 @@ export function WaitlistAdminPage() {
           <span>Search requests</span>
           <input
             type="search"
+            name="search"
+            autoComplete="off"
+            placeholder="Email, name, or organization…"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -183,6 +217,7 @@ export function WaitlistAdminPage() {
         <label className="type-label-medium block space-y-2">
           <span id="waitlist-plan-label">Plan</span>
           <select
+            name="plan"
             aria-labelledby="waitlist-plan-label"
             value={plan}
             onChange={(event) => {
@@ -199,6 +234,7 @@ export function WaitlistAdminPage() {
         <label className="type-label-medium block space-y-2">
           <span id="waitlist-status-label">Status</span>
           <select
+            name="status"
             aria-labelledby="waitlist-status-label"
             value={status}
             onChange={(event) => {
@@ -207,12 +243,12 @@ export function WaitlistAdminPage() {
             className={waitlistFieldClass}
           >
             <option value="">All requests</option>
-            <option value="unconfirmed">Unconfirmed</option>
+            <option value="unconfirmed">Email not confirmed</option>
             <option value="waiting">Waiting</option>
             <option value="invited">Invited</option>
-            <option value="purchased">Purchased</option>
-            <option value="withdrawn">Withdrawn</option>
-            <option value="revoked">Revoked</option>
+            <option value="purchased">Signed up</option>
+            <option value="withdrawn">Left waitlist</option>
+            <option value="revoked">Invitation withdrawn</option>
           </select>
         </label>
       </section>
@@ -229,7 +265,7 @@ export function WaitlistAdminPage() {
             );
           }}
         >
-          Select eligible requests
+          Select up to 50
         </Button>
         <Button
           disabled={pending || selected.length === 0}
@@ -237,7 +273,9 @@ export function WaitlistAdminPage() {
             setReview(true);
           }}
         >
-          Review {selected.length || "selected"} invitations
+          {selected.length === 1
+            ? "Review 1 invitation"
+            : `Review ${selected.length || "selected"} invitations`}
         </Button>
       </div>
       {review ? (
@@ -254,9 +292,10 @@ export function WaitlistAdminPage() {
             ))}
           </ul>
           <p className="type-body-small text-ink-soft">
-            Each person receives permission to purchase the listed plan and an invitation email.
+            Each person will get an email inviting them to sign up for their plan. They’ll choose a
+            payment option and pay at checkout.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button
               disabled={pending}
               onClick={() => {
@@ -278,35 +317,43 @@ export function WaitlistAdminPage() {
         </section>
       ) : null}
       <section aria-label="Waitlist requests" aria-busy={queue.isPending} className="space-y-3">
-        <h2 className="type-title-large text-ink-strong">Requests</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="type-title-large text-ink-strong">Requests</h2>
+          <p className="type-body-small text-ink-muted tabular-nums">
+            {selected.length} selected · 50 maximum
+          </p>
+        </div>
         {!queue.isPending && !queue.isError && !filtered.length ? (
           <p className="type-body-medium text-ink-soft">No requests.</p>
         ) : null}
         {filtered.map(({ request, deliveries }) => (
           <article
             key={request.id}
-            className="border-border bg-surface-container-lowest flex items-start gap-4 rounded-xl border p-4"
+            className="border-border bg-surface-container-lowest flex flex-wrap items-start gap-3 rounded-xl border p-4 sm:gap-4"
           >
-            <input
-              type="checkbox"
-              className="mt-1 h-5 w-5 shrink-0"
-              aria-label={`Select ${request.email}`}
-              disabled={pending || !canInvite(request)}
-              checked={selected.includes(request.id)}
-              onChange={(event) => {
-                setSelected((current) =>
-                  event.target.checked
-                    ? [...current, request.id].slice(0, 50)
-                    : current.filter((id) => id !== request.id),
-                );
-              }}
-            />
+            <label className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center">
+              <input
+                type="checkbox"
+                className="h-5 w-5"
+                aria-label={`Select ${request.email}`}
+                disabled={pending || !canInvite(request)}
+                checked={selected.includes(request.id)}
+                onChange={(event) => {
+                  setSelected((current) =>
+                    event.target.checked
+                      ? [...current, request.id].slice(0, 50)
+                      : current.filter((id) => id !== request.id),
+                  );
+                }}
+              />
+            </label>
             <div className="min-w-0 flex-1 space-y-1">
               <button
                 type="button"
-                className="type-label-large text-accent-deep text-left break-all underline"
+                className={`${waitlistTextLinkClass} min-h-0 text-left break-all`}
                 onClick={() => {
                   setDetailId(request.id);
+                  setNotice([]);
                   setRevokeReview(false);
                 }}
               >
@@ -317,13 +364,15 @@ export function WaitlistAdminPage() {
               ) : null}
               <p className="type-body-medium">
                 {PRODUCT_LABELS[request.product]} ·{" "}
-                {request.purchasedAt ? "Purchased" : request.status}
+                {request.purchasedAt ? "Signed up" : requestStatusLabels[request.status]}
               </p>
               <p className="type-body-small text-ink-muted">
                 {request.confirmedAt
                   ? `Confirmed ${new Date(request.confirmedAt).toLocaleDateString()}`
-                  : "Email unconfirmed"}
-                {deliveries[0] ? ` · Email ${deliveries[0].status}` : ""}
+                  : "Email not confirmed"}
+                {deliveries[0]
+                  ? ` · Email ${deliveryStatusLabels[deliveries[0].status].toLowerCase()}`
+                  : ""}
               </p>
             </div>
             {canInvite(request) ? (
@@ -342,139 +391,187 @@ export function WaitlistAdminPage() {
         ))}
       </section>
       {detailId ? (
-        <section
-          aria-label="Request details"
-          className="border-border bg-surface-container-lowest space-y-4 rounded-xl border p-5"
+        <Dialog
+          open
+          onClose={() => {
+            setDetailId(null);
+          }}
+          className="fixed inset-0 z-50"
         >
-          <div className="flex items-start justify-between gap-4">
-            <h2 className="type-title-large">Request details</h2>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setDetailId(null);
-              }}
-            >
-              Close details
-            </Button>
-          </div>
-          {detail.isError ? (
-            <AdminInlineStatus message="Request details could not load." />
-          ) : detail.data ? (
-            <>
-              <dl className="type-body-medium grid gap-3 sm:grid-cols-2">
-                <div>
-                  <dt className="text-ink-muted">Email</dt>
-                  <dd className="break-all">{detail.data.request.email}</dd>
+          <div className="fixed inset-0 bg-black/40" aria-hidden="true" />
+          <div className="fixed inset-0 overflow-y-auto overscroll-contain p-4 sm:p-8">
+            <div className="flex min-h-full items-center justify-center">
+              <DialogPanel className="border-border bg-surface-container-lowest w-full max-w-2xl space-y-6 rounded-2xl border p-5 shadow-xl sm:p-8">
+                <div className="flex items-start justify-between gap-4">
+                  <DialogTitle className="type-title-large">Request details</DialogTitle>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setDetailId(null);
+                    }}
+                  >
+                    Close details
+                  </Button>
                 </div>
-                <div>
-                  <dt className="text-ink-muted">Plan</dt>
-                  <dd>{PRODUCT_LABELS[detail.data.request.product]}</dd>
-                </div>
-                <div>
-                  <dt className="text-ink-muted">Name</dt>
-                  <dd>{detail.data.request.name || "Not provided"}</dd>
-                </div>
-                <div>
-                  <dt className="text-ink-muted">Organization</dt>
-                  <dd>{detail.data.request.organization || "Not provided"}</dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-ink-muted">Intended use</dt>
-                  <dd className="break-words whitespace-pre-wrap">
-                    {detail.data.request.intendedUse || "Not provided"}
-                  </dd>
-                </div>
-              </dl>
-              {detail.data.request.status === "invited" ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-3">
+                {notice.map((message) => (
+                  <AdminInlineStatus key={message} message={message} />
+                ))}
+                <AdminInlineStatus
+                  message={
+                    action.isError
+                      ? userFacingErrorMessage(
+                          action.error,
+                          "This change couldn’t be saved. Try again.",
+                        )
+                      : undefined
+                  }
+                />
+                {detail.isError ? (
+                  <div className="space-y-3">
+                    <AdminInlineStatus message="Request details couldn’t be loaded." />
                     <Button
                       variant="secondary"
-                      disabled={pending || !queue.data?.availability.available}
                       onClick={() => {
-                        action.mutate({ id: detailId, action: "resend" });
+                        void detail.refetch();
                       }}
                     >
-                      Resend invitation
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      disabled={pending}
-                      onClick={() => {
-                        setRevokeReview(true);
-                      }}
-                    >
-                      Revoke purchase permission
+                      Try again
                     </Button>
                   </div>
-                  {revokeReview ? (
-                    <div className="space-y-3">
-                      <p className="type-body-medium">
-                        Block future purchases with this invitation? Existing paid access continues.
-                      </p>
-                      <div className="flex gap-3">
-                        <Button
-                          disabled={pending}
-                          onClick={() => {
-                            action.mutate({ id: detailId, action: "revoke" });
-                          }}
-                        >
-                          Confirm revocation
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            setRevokeReview(false);
-                          }}
-                        >
-                          Keep permission
-                        </Button>
+                ) : detail.data ? (
+                  <>
+                    <dl className="type-body-medium grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <dt className="text-ink-muted">Email</dt>
+                        <dd className="break-all">{detail.data.request.email}</dd>
                       </div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              <h3 className="type-title-medium">Email history</h3>
-              <ul className="space-y-2">
-                {detail.data.deliveries.map((delivery) => (
-                  <li
-                    key={delivery.id}
-                    className="type-body-small flex flex-wrap items-center gap-3"
-                  >
-                    <span>
-                      {delivery.kind} · {delivery.status} ·{" "}
-                      {new Date(delivery.createdAt).toLocaleString()}
-                    </span>
-                    {delivery.kind === "invite" &&
-                    delivery.status !== "sent" &&
-                    detail.data.request.status === "invited" ? (
-                      <Button
-                        variant="secondary"
-                        disabled={pending || !queue.data?.availability.available}
-                        onClick={() => {
-                          action.mutate({ id: detailId, action: "retry", deliveryId: delivery.id });
-                        }}
-                      >
-                        Retry failed email
-                      </Button>
+                      <div>
+                        <dt className="text-ink-muted">Plan</dt>
+                        <dd>{PRODUCT_LABELS[detail.data.request.product]}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-ink-muted">Name</dt>
+                        <dd className="break-words">
+                          {detail.data.request.name || "Not provided"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-ink-muted">Organization</dt>
+                        <dd className="break-words">
+                          {detail.data.request.organization || "Not provided"}
+                        </dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-ink-muted">Intended use</dt>
+                        <dd className="break-words whitespace-pre-wrap">
+                          {detail.data.request.intendedUse || "Not provided"}
+                        </dd>
+                      </div>
+                    </dl>
+                    {detail.data.request.status === "invited" ? (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            variant="secondary"
+                            disabled={pending || !queue.data?.availability.available}
+                            onClick={() => {
+                              action.mutate({ id: detailId, action: "resend" });
+                            }}
+                          >
+                            Resend invitation
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={pending}
+                            onClick={() => {
+                              setRevokeReview(true);
+                            }}
+                          >
+                            Withdraw invitation
+                          </Button>
+                        </div>
+                        {revokeReview ? (
+                          <div className="space-y-3">
+                            <p className="type-body-medium">
+                              Withdraw this invitation? They won’t be able to start a new purchase
+                              with it. Any paid plan they already have will stay active.
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                              <Button
+                                disabled={pending}
+                                onClick={() => {
+                                  action.mutate({ id: detailId, action: "revoke" });
+                                }}
+                              >
+                                Confirm withdrawal
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setRevokeReview(false);
+                                }}
+                              >
+                                Keep invitation
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
-                  </li>
-                ))}
-              </ul>
-              <h3 className="type-title-medium">Activity</h3>
-              <ol className="type-body-small space-y-2">
-                {detail.data.events.map((event) => (
-                  <li key={event.id}>
-                    {event.action} · {new Date(event.createdAt).toLocaleString()}
-                    {event.actorId ? ` · ${event.actorId}` : ""}
-                  </li>
-                ))}
-              </ol>
-            </>
-          ) : (
-            <div className="h-12" aria-busy="true" />
-          )}
-        </section>
+                    <h3 className="type-title-medium">Email history</h3>
+                    <p className="type-body-small text-ink-soft">
+                      Sent means the email provider accepted the message. If an outcome needs
+                      checking, retry the email before sending a new invitation.
+                    </p>
+                    <ul className="space-y-2">
+                      {detail.data.deliveries.map((delivery) => (
+                        <li
+                          key={delivery.id}
+                          className="type-body-small flex flex-wrap items-center gap-3"
+                        >
+                          <span>
+                            {deliveryKindLabels[delivery.kind]} ·{" "}
+                            {deliveryStatusLabels[delivery.status]} ·{" "}
+                            {new Date(delivery.createdAt).toLocaleString()}
+                          </span>
+                          {delivery.kind === "invite" &&
+                          delivery.status !== "sent" &&
+                          detail.data.request.status === "invited" ? (
+                            <Button
+                              variant="secondary"
+                              disabled={pending || !queue.data?.availability.available}
+                              onClick={() => {
+                                action.mutate({
+                                  id: detailId,
+                                  action: "retry",
+                                  deliveryId: delivery.id,
+                                });
+                              }}
+                            >
+                              Retry email
+                            </Button>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                    <h3 className="type-title-medium">Activity</h3>
+                    <ol className="type-body-small space-y-2 break-words">
+                      {detail.data.events.map((event) => (
+                        <li key={event.id}>
+                          <span className="capitalize">{event.action.replaceAll("_", " ")}</span> ·{" "}
+                          {new Date(event.createdAt).toLocaleString()}
+                          {event.actorId ? ` · ${event.actorId}` : ""}
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                ) : (
+                  <div className="h-12" aria-busy="true" />
+                )}
+              </DialogPanel>
+            </div>
+          </div>
+        </Dialog>
       ) : null}
     </AdminPageShell>
   );

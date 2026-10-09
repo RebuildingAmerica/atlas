@@ -1,5 +1,6 @@
+import { Mail } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
@@ -7,7 +8,13 @@ import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { loadPaidAccess, submitWaitlist } from "../waitlist.functions";
 import type { WaitlistProduct } from "../contracts";
-import { WaitlistLayout, WaitlistError, waitlistFieldClass } from "./waitlist-layout";
+import {
+  WaitlistLayout,
+  WaitlistError,
+  waitlistFieldClass,
+  waitlistSummaryClass,
+  waitlistTextLinkClass,
+} from "./waitlist-layout";
 
 interface WaitlistPageProps {
   product?: WaitlistProduct;
@@ -22,6 +29,9 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
   const [intendedUse, setIntendedUse] = useState("");
   const [website, setWebsite] = useState("");
   const [sent, setSent] = useState(false);
+  const focusReceipt = useCallback((heading: HTMLHeadingElement | null) => {
+    heading?.focus();
+  }, []);
   const [cooldown, setCooldown] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,12 +83,21 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
     <WaitlistLayout>
       {sent ? (
         <div className="space-y-5">
-          <p className="type-label-medium text-ink-muted">Atlas waitlist</p>
-          <h1 className="type-display-small text-ink-strong">Check your email</h1>
+          <div className="bg-surface-container text-accent-deep flex h-12 w-12 items-center justify-center rounded-2xl">
+            <Mail className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <h1
+            ref={focusReceipt}
+            tabIndex={-1}
+            className="type-display-small text-ink-strong text-balance"
+          >
+            Check your email
+          </h1>
           <p className="type-body-large text-ink-soft">
-            A link for your Atlas request is on its way to{" "}
-            <strong className="break-all">{email}</strong>.
+            We’ve sent a link to <strong className="text-ink-strong break-all">{email}</strong>.
+            Open it to confirm or view your waitlist request.
           </p>
+          <p className="type-body-medium text-ink-soft">Can’t find it? Check your spam folder.</p>
           <WaitlistError message={error} />
           <div className="flex flex-wrap gap-3">
             <Button
@@ -100,18 +119,22 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
               Change email
             </Button>
           </div>
+          {cooldown ? (
+            <p role="status" className="type-body-small text-ink-muted">
+              You can resend the email in a minute.
+            </p>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-6">
           <header className="space-y-3">
             <p className="type-label-medium text-ink-muted">Paid Atlas plans</p>
-            <h1 className="type-display-small text-ink-strong">Join the waitlist</h1>
+            <h1 className="type-display-small text-ink-strong text-balance">Join the waitlist</h1>
             <p className="type-body-large text-ink-soft">
-              More research capacity for you. A shared workspace for your team.
+              We’ll email you when you can sign up for a paid plan.
             </p>
             <p className="type-body-medium text-ink-soft">
-              Paid plans are available by invitation. Joining costs nothing. Public Atlas and free
-              accounts remain open.
+              Joining is free. You can keep using Atlas while you wait.
             </p>
           </header>
           {access.data?.requests.length ? (
@@ -121,7 +144,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                   key={request.id}
                   to="/waitlist/request/$id"
                   params={{ id: request.id }}
-                  className="border-border text-accent-deep block rounded-xl border p-3 underline"
+                  className={`${waitlistTextLinkClass} border-border block rounded-xl border p-3`}
                 >
                   {PRODUCT_LABELS[request.product]} ·{" "}
                   {request.status === "invited" ? "Continue signup" : "View request"}
@@ -139,6 +162,8 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
               <span>Email</span>
               <input
                 type="email"
+                name="email"
+                spellCheck={false}
                 autoComplete="email"
                 required
                 maxLength={254}
@@ -153,6 +178,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
               <span id="waitlist-plan-label">Plan</span>
               <select
                 aria-labelledby="waitlist-plan-label"
+                name="product"
                 required
                 value={product}
                 onChange={(event) => {
@@ -167,11 +193,12 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
               </select>
             </label>
             <details className="border-border rounded-xl border p-4">
-              <summary className="type-label-large cursor-pointer">Add context (optional)</summary>
+              <summary className={waitlistSummaryClass}>About you (optional)</summary>
               <div className="mt-4 space-y-4">
                 <label className="type-label-large block space-y-2">
                   <span>Name</span>
                   <input
+                    name="name"
                     autoComplete="name"
                     maxLength={120}
                     value={name}
@@ -184,6 +211,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                 <label className="type-label-large block space-y-2">
                   <span>Organization</span>
                   <input
+                    name="organization"
                     autoComplete="organization"
                     maxLength={200}
                     value={organization}
@@ -196,6 +224,8 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                 <label className="type-label-large block space-y-2">
                   <span>What would you use Atlas for?</span>
                   <textarea
+                    name="intendedUse"
+                    autoComplete="off"
                     rows={3}
                     maxLength={2000}
                     value={intendedUse}
@@ -210,6 +240,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
             <label hidden aria-hidden="true">
               Website
               <input
+                name="website"
                 tabIndex={-1}
                 autoComplete="off"
                 value={website}
@@ -219,7 +250,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
               />
             </label>
             <p className="type-body-small text-ink-muted">
-              Emails about this request and your invitation only.{" "}
+              We’ll only email you about your waitlist request.{" "}
               <Link to="/privacy" className="underline">
                 Privacy
               </Link>
@@ -229,7 +260,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
               {pending ? "Sending…" : "Join waitlist"}
             </Button>
           </form>
-          <Link to="/pricing" className="type-label-medium text-accent-deep inline-block underline">
+          <Link to="/pricing" className={waitlistTextLinkClass}>
             Compare plans and pricing
           </Link>
         </div>

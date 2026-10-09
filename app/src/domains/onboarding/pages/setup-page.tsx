@@ -214,7 +214,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     <p role="alert" className="type-body-medium bg-error-container rounded-2xl px-4 py-3">
       {errorMessage}{" "}
       <Link to="/pricing" className="underline">
-        Review plan access
+        View plans
       </Link>
     </p>
   ) : null;

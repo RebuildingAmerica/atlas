@@ -10,20 +10,20 @@ export function waitlistEmailCopy(kind: WaitlistLinkKind, product: WaitlistProdu
     return {
       subject: "Confirm your Atlas waitlist signup",
       title: "Confirm your email",
-      body: `Join the waitlist for ${plan}. Joining costs nothing.`,
+      body: `Confirm your email to join the ${plan} waitlist. We’ll let you know when you can sign up.`,
       action: "Confirm email",
     };
   if (kind === "invite")
     return {
-      subject: `You can now sign up for ${plan}`,
-      title: `${plan} is available to you`,
-      body: "Choose a billing interval and finish signup. Payment is required for paid access. Public Atlas remains free.",
-      action: "Continue signup",
+      subject: `You’re invited to ${plan}`,
+      title: `You’re invited to ${plan}`,
+      body: `Thanks for waiting. You can now sign up for ${plan}.`,
+      action: `Sign up for ${plan}`,
     };
   return {
     subject: "Your Atlas waitlist link",
     title: "Your waitlist request",
-    body: `View or update your request for ${plan}.`,
+    body: `Check your ${plan} waitlist request or update your details.`,
     action: "View request",
   };
 }
@@ -38,14 +38,43 @@ export function WaitlistEmail({
 }) {
   const copy = waitlistEmailCopy(kind, product);
   return (
-    <html>
-      <head />
-      <body style={styles.body}>
-        <main style={styles.container}>
+    <html lang="en">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body style={{ ...styles.body, backgroundColor: "#f8f5ee" }}>
+        <div style={styles.preview}>{copy.subject}</div>
+        <main
+          style={{
+            ...styles.container,
+            borderColor: "#e5ddd0",
+            borderRadius: "20px",
+            padding: "32px 24px",
+          }}
+        >
+          <p
+            style={{
+              ...styles.paragraph,
+              color: "#76502e",
+              fontSize: "14px",
+              fontWeight: 600,
+              marginBottom: "24px",
+            }}
+          >
+            Atlas
+          </p>
           <h1 style={styles.heading}>{copy.title}</h1>
           <p style={styles.paragraph}>{copy.body}</p>
           <div style={styles.buttonSection}>
-            <a href={url} style={styles.button}>
+            <a
+              href={url}
+              style={{
+                ...styles.button,
+                backgroundColor: "#76502e",
+                borderRadius: "999px",
+                padding: "14px 28px",
+              }}
+            >
               {copy.action}
             </a>
           </div>
@@ -56,10 +85,12 @@ export function WaitlistEmail({
             </a>
           </p>
           <p style={styles.paragraph}>
-            This email link is valid for seven days. You can request a fresh link at any time.
+            This link expires in 7 days. You can request another from the waitlist page.
           </p>
           <hr style={styles.hr} />
-          <p style={styles.footer}>If you did not request this email, you can ignore it.</p>
+          <p style={{ ...styles.footer, color: "#625b52" }}>
+            If you didn’t ask for this email, you can ignore it.
+          </p>
         </main>
       </body>
     </html>
