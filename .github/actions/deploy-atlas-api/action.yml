@@ -219,6 +219,14 @@ runs:
       run: |
         set -euo pipefail
 
+        # A hosted deployment with nobody on the list has no editors at all.
+        # Fail here, naming the fix, instead of shipping an instance whose
+        # operator is refused at /editorial.
+        if [ -z "${INSTANCE_OPERATOR_EMAILS//[[:space:],]/}" ]; then
+          echo "::error title=No instance operators::Set the ATLAS_INSTANCE_OPERATOR_EMAILS variable on this GitHub Environment (pnpm bootstrap --infra writes it). It replaces the retired ATLAS_OPERATOR_ALLOWED_EMAILS secret."
+          exit 1
+        fi
+
         project_id="${DEPLOY_SERVICE_ACCOUNT#*@}"
         project_id="${project_id%.iam.gserviceaccount.com}"
         scheduler_sa="atlas-scheduler@${project_id}.iam.gserviceaccount.com"

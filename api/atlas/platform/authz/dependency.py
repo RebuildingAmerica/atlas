@@ -73,7 +73,9 @@ def _person_identity(actor: AuthenticatedActor) -> AuditIdentity:
     return AuditIdentity(
         plane=actor_plane(actor),
         actor_id=actor.user_id,
-        actor_email=actor.email or None,
+        # Spelled the way the operator list and every editorial record spell it,
+        # so one person reads as one person across the audit trail.
+        actor_email=actor.email.strip().lower() or None,
         auth_type=actor.auth_type,
     )
 

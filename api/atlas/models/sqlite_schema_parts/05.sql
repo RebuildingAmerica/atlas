@@ -60,3 +60,14 @@ CREATE TABLE IF NOT EXISTS entry_takedowns (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_entry_takedowns_standing
     ON entry_takedowns(entry_id) WHERE restored_at IS NULL;
+
+-- The promise holds at the bottom: no code path, present or future, can
+-- publish an entry while a takedown stands for it.
+CREATE TRIGGER IF NOT EXISTS entries_stay_down BEFORE UPDATE OF active ON entries
+WHEN NEW.active = 1 AND EXISTS (
+    SELECT 1 FROM entry_takedowns
+    WHERE entry_id = NEW.id AND restored_at IS NULL
+)
+BEGIN
+    SELECT RAISE(ABORT, 'entry is taken down');
+END;

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from atlas.domains.moderation.takedowns import not_taken_down
 from atlas.platform.database import db
 
 if TYPE_CHECKING:
@@ -294,7 +295,7 @@ class OrgChangeEventCRUD:
     ) -> list[dict[str, Any]]:
         """Return change events for resources the workspace currently watches."""
         cursor = await conn.execute(
-            """
+            f"""
             SELECT
                 oce.id,
                 oce.org_id,
@@ -322,7 +323,7 @@ class OrgChangeEventCRUD:
              AND ow.notification_preference <> 'muted'
             LEFT JOIN entries e ON e.id = oce.entry_id
             LEFT JOIN sources s ON s.id = oce.source_id
-            WHERE oce.org_id = ?
+            WHERE oce.org_id = ? AND {not_taken_down("oce.entry_id")}
             ORDER BY oce.created_at DESC, oce.id DESC
             LIMIT ?
             """,
