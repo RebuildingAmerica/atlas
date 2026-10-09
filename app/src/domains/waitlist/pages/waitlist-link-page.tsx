@@ -1,4 +1,3 @@
-import { Mail, Link2Off } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
@@ -35,9 +34,6 @@ export function WaitlistLinkPage({ token, kind }: { token: string; kind: Waitlis
         <LinkUnavailable />
       ) : kind === "confirm" && !query.data.confirmedAt ? (
         <div className="space-y-5">
-          <div className="bg-surface-container text-accent-deep flex h-12 w-12 items-center justify-center rounded-2xl">
-            <Mail className="h-6 w-6" aria-hidden="true" />
-          </div>
           <h1 className="type-display-small text-ink-strong text-balance">Confirm your email</h1>
           <p className="type-body-large text-ink-soft">
             Confirm <strong className="text-ink-strong break-all">{query.data.email}</strong> to
@@ -93,9 +89,6 @@ export function WaitlistRequestPage({ id }: { id: string }) {
 function LinkUnavailable() {
   return (
     <div className="space-y-5">
-      <div className="bg-surface-container text-accent-deep flex h-12 w-12 items-center justify-center rounded-2xl">
-        <Link2Off className="h-6 w-6" aria-hidden="true" />
-      </div>
       <h1 className="type-display-small text-ink-strong text-balance">This link no longer works</h1>
       <p className="type-body-large text-ink-soft">
         Request a fresh link with the email you used to join. Your place on the waitlist stays the

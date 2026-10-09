@@ -1,4 +1,3 @@
-import { Mail } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -83,9 +82,6 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
     <WaitlistLayout>
       {sent ? (
         <div className="space-y-5">
-          <div className="bg-surface-container text-accent-deep flex h-12 w-12 items-center justify-center rounded-2xl">
-            <Mail className="h-6 w-6" aria-hidden="true" />
-          </div>
           <h1
             ref={focusReceipt}
             tabIndex={-1}
@@ -128,13 +124,10 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
       ) : (
         <div className="space-y-6">
           <header className="space-y-3">
-            <p className="type-label-medium text-ink-muted">Paid Atlas plans</p>
             <h1 className="type-display-small text-ink-strong text-balance">Join the waitlist</h1>
             <p className="type-body-large text-ink-soft">
-              We’ll email you when you can sign up for a paid plan.
-            </p>
-            <p className="type-body-medium text-ink-soft">
-              Joining is free. You can keep using Atlas while you wait.
+              We’ll email you when you can sign up for a paid plan. Keep using Atlas for free while
+              you wait.
             </p>
           </header>
           {access.data?.requests.length ? (
@@ -192,7 +185,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                 <option value="atlas_research_pass">Atlas Research Pass</option>
               </select>
             </label>
-            <details className="border-border rounded-xl border p-4">
+            <details>
               <summary className={waitlistSummaryClass}>About you (optional)</summary>
               <div className="mt-4 space-y-4">
                 <label className="type-label-large block space-y-2">

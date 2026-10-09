@@ -1,4 +1,4 @@
-import { Check, Mail, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -88,11 +88,6 @@ export function WaitlistRequestPanel({
   return (
     <div className="space-y-6">
       <header className="space-y-3" aria-live="polite">
-        {!closed && !needsConfirmation ? (
-          <div className="bg-surface-container text-accent-deep mb-5 flex h-12 w-12 items-center justify-center rounded-2xl">
-            <Check className="h-6 w-6" aria-hidden="true" />
-          </div>
-        ) : null}
         {!invited || request.purchasedAt ? (
           <p className="type-label-medium text-ink-muted">{productLabel}</p>
         ) : null}
@@ -106,18 +101,10 @@ export function WaitlistRequestPanel({
               : request.purchasedAt
                 ? "You’re all set"
                 : invited
-                  ? `You’re invited to ${productLabel}`
+                  ? `Join ${productLabel}`
                   : "You’re on the waitlist"}
         </h1>
-        <div className="bg-surface-container-low flex min-w-0 items-center gap-3 rounded-xl px-4 py-3">
-          <Mail className="text-ink-muted h-4 w-4 shrink-0" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="type-label-small text-ink-muted">
-              {invited && !request.purchasedAt ? "Invitation for" : "Email address"}
-            </p>
-            <p className="type-body-medium text-ink-strong wrap-anywhere">{request.email}</p>
-          </div>
-        </div>
+        <p className="type-body-large text-ink-soft wrap-anywhere">{request.email}</p>
         {!closed && !invited && !needsConfirmation && !request.purchasedAt ? (
           <p className="type-body-large text-ink-soft">
             We’ll email you when you can sign up for {productLabel}. You can keep using Atlas for
@@ -159,11 +146,6 @@ export function WaitlistRequestPanel({
       ) : null}
       {invited && !request.purchasedAt ? (
         <section className="space-y-4">
-          <p className="type-body-medium text-ink-soft">
-            {sameEmail
-              ? "Choose a payment option. You’ll review the total at checkout."
-              : "Sign in or create an account to get started."}
-          </p>
           {sameEmail ? (
             <>
               <label className="type-label-large block space-y-2">
@@ -220,7 +202,7 @@ export function WaitlistRequestPanel({
             <div className="space-y-3">
               {!session.data ? (
                 <p className="type-body-medium text-ink-soft">
-                  Use the email on your invitation when you create your account.
+                  Create an account or sign in with this email.
                 </p>
               ) : null}
               {session.data ? (
