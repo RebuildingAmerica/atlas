@@ -24,7 +24,22 @@ describe("EditorialActivityView", () => {
     expect(screen.getByText("Removed a discovery schedule")).toBeInTheDocument();
     expect(screen.getByText("Refused")).toBeInTheDocument();
     expect(screen.getByText("This action requires Atlas staff.")).toBeInTheDocument();
+    expect(screen.queryByText(/^Reason:/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Show older" })).toBeNull();
+  });
+
+  it("shows why an editor made a decision", () => {
+    render(
+      <EditorialActivityView
+        hasMore={false}
+        isLoading={false}
+        isLoadingMore={false}
+        items={[{ ...APPROVAL, reason: "Matches the state filing." }]}
+        onLoadMore={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Reason: Matches the state filing.")).toBeInTheDocument();
   });
 
   it("loads older entries on request", () => {

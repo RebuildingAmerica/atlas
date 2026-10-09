@@ -31,10 +31,16 @@ export interface DiscoveryReviewPage {
 }
 
 const pageSchema = z.object({ offset: z.number().int().nonnegative() });
-const decisionSchema = z.object({
-  decision: z.enum(["approve", "reject"]),
-  itemId: z.string().uuid(),
-});
+const decisionSchema = z
+  .object({
+    decision: z.enum(["approve", "reject"]),
+    itemId: z.string().uuid(),
+    reason: z.string().trim().max(2000),
+  })
+  .refine(({ decision, reason }) => decision === "approve" || reason.length > 0, {
+    message: "Say why before rejecting.",
+    path: ["reason"],
+  });
 const editorialCandidateSchema = z.object({
   action_url: z.url(),
   city: z.string().nullable(),
@@ -92,7 +98,7 @@ export const decideDiscoveryReview = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const response = await requestAtlasApi<ReviewQueueItemResponse>(
       `/review-queue/${encodeURIComponent(data.itemId)}/${data.decision}`,
-      { method: "POST" },
+      { body: JSON.stringify({ reason: data.reason || null }), method: "POST" },
     );
     return { id: response.id, status: response.status };
   });

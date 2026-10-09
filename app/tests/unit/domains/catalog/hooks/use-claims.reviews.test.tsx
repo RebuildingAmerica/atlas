@@ -119,12 +119,12 @@ describe("profile claim, follow and saved-list hooks", () => {
 
       route("GET /api/profiles/claims/review", { body: { items: [], total: 0 } });
       await result.current.approve.mutateAsync({
-        body: { note: "verified by phone" },
+        body: { reason: "verified by phone" },
         claimId: "claim_1",
       });
 
       expect(requests().at(1)).toEqual({
-        body: { note: "verified by phone" },
+        body: { reason: "verified by phone" },
         method: "POST",
         target: "/api/profiles/claims/review/claim_1/approve",
       });
@@ -138,10 +138,10 @@ describe("profile claim, follow and saved-list hooks", () => {
       route("POST /api/profiles/claims/review/claim_1/reject", { body: claim() });
 
       const { result } = renderHook(() => useRejectProfileClaimReview(), { wrapper: Providers });
-      await result.current.mutateAsync({ body: { note: "no evidence" }, claimId: "claim_1" });
+      await result.current.mutateAsync({ body: { reason: "no evidence" }, claimId: "claim_1" });
 
       expect(requests().at(0)).toEqual({
-        body: { note: "no evidence" },
+        body: { reason: "no evidence" },
         method: "POST",
         target: "/api/profiles/claims/review/claim_1/reject",
       });

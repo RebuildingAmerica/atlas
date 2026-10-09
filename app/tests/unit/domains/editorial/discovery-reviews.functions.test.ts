@@ -231,14 +231,42 @@ describe("discovery review server functions", () => {
     const { decideDiscoveryReview } =
       await import("@/domains/editorial/discovery-reviews.functions");
     const result = await decideDiscoveryReview({
-      data: { decision: "approve", itemId: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e" },
+      data: { decision: "approve", itemId: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e", reason: "" },
     });
 
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
       "/review-queue/7cb2c69a-f22b-4f4e-ab83-16872c9fd59e/approve",
-      { method: "POST" },
+      { body: JSON.stringify({ reason: null }), method: "POST" },
     );
     expect(result).toEqual({ id: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e", status: "approved" });
+  });
+
+  it("sends the editor's reason with a rejection and refuses one without", async () => {
+    mocks.requestAtlasApi.mockResolvedValue({
+      id: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e",
+      status: "rejected",
+    });
+    const { decideDiscoveryReview } =
+      await import("@/domains/editorial/discovery-reviews.functions");
+
+    await expect(
+      decideDiscoveryReview({
+        data: { decision: "reject", itemId: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e", reason: "  " },
+      }),
+    ).rejects.toThrow("Say why before rejecting.");
+    await decideDiscoveryReview({
+      data: {
+        decision: "reject",
+        itemId: "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e",
+        reason: " Duplicate profile ",
+      },
+    });
+
+    expect(mocks.requestAtlasApi).toHaveBeenCalledTimes(1);
+    expect(mocks.requestAtlasApi).toHaveBeenCalledWith(
+      "/review-queue/7cb2c69a-f22b-4f4e-ab83-16872c9fd59e/reject",
+      { body: JSON.stringify({ reason: "Duplicate profile" }), method: "POST" },
+    );
   });
 
   it("requests review proposals for Las Vegas organization websites", async () => {

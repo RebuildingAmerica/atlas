@@ -165,7 +165,11 @@ class ProfileClaimVerifyRequest(BaseModel):
 class ProfileClaimReviewDecisionRequest(BaseModel):
     """Reviewer decision payload for a pending profile verification."""
 
-    note: str | None = None
+    reason: str | None = Field(
+        None,
+        max_length=2000,
+        description="Why the reviewer decided; kept with the proof and in the audit log",
+    )
 
 
 class ProfileClaimProofResponse(BaseModel):
