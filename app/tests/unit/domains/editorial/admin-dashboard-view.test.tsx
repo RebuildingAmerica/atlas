@@ -22,7 +22,7 @@ describe("AdminDashboardView", () => {
   }
 
   it("reads a healthy instance and links to its editorial queues", () => {
-    render(<AdminDashboardView summary={summary()} />);
+    render(<AdminDashboardView now={0} summary={summary()} />);
 
     expect(screen.getByText("Healthy")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Review discovered profiles" })).toHaveAttribute(
@@ -36,14 +36,14 @@ describe("AdminDashboardView", () => {
   });
 
   it("calls out a degraded API rather than a healthy one", () => {
-    render(<AdminDashboardView summary={summary({ api: { status: "degraded" } })} />);
+    render(<AdminDashboardView now={0} summary={summary({ api: { status: "degraded" } })} />);
 
     expect(screen.getByText("Degraded")).toBeInTheDocument();
     expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
   });
 
   it("leaves platform work to the platform admin", () => {
-    render(<AdminDashboardView summary={summary()} />);
+    render(<AdminDashboardView now={0} summary={summary()} />);
 
     expect(screen.queryByRole("link", { name: "Review discounts" })).not.toBeInTheDocument();
     expect(screen.queryByText(/cloud costs/i)).not.toBeInTheDocument();
