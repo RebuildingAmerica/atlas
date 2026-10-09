@@ -10,12 +10,15 @@ async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
     .boundingBox();
   const description = await page.getByText(/^Atlas Pro includes/).boundingBox();
   const payment = await page.getByLabel("Payment option").boundingBox();
+  const paymentLabel = await page.getByText("Payment option", { exact: true }).boundingBox();
   const action = await page.getByRole("link", { name: "Continue", exact: true }).boundingBox();
-  if (!heading || !description || !payment || !action) {
+  if (!heading || !description || !payment || !paymentLabel || !action) {
     throw new Error("Invitation content must be visible.");
   }
   expect(description.y - heading.y - heading.height).toBeGreaterThanOrEqual(24);
   expect(payment.y - description.y - description.height).toBeGreaterThanOrEqual(64);
+  expect(payment.y - paymentLabel.y - paymentLabel.height).toBeGreaterThanOrEqual(12);
+  expect(payment.height).toBeGreaterThanOrEqual(56);
   expect(action.y - payment.y - payment.height).toBeGreaterThanOrEqual(minimumActionGap);
   const viewportHeight = await page.evaluate(() => window.innerHeight);
   expect(viewportHeight - action.y - action.height).toBeGreaterThanOrEqual(31);

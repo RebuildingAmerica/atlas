@@ -159,7 +159,7 @@ export function WaitlistRequestPanel({
         <section className="flex flex-1 flex-col gap-8">
           {sameEmail ? (
             <>
-              <label className="type-label-large block space-y-3">
+              <label className="type-label-large flex flex-col gap-3">
                 <span id="waitlist-interval-label">Payment option</span>
                 <select
                   name="interval"
@@ -303,7 +303,7 @@ export function WaitlistRequestPanel({
               void save("update");
             }}
           >
-            <label className="type-label-large block space-y-2">
+            <label className="type-label-large flex flex-col gap-3">
               <span>Name</span>
               <input
                 name="name"
@@ -316,7 +316,7 @@ export function WaitlistRequestPanel({
                 className={waitlistFieldClass}
               />
             </label>
-            <label className="type-label-large block space-y-2">
+            <label className="type-label-large flex flex-col gap-3">
               <span>Organization</span>
               <input
                 name="organization"
@@ -329,7 +329,7 @@ export function WaitlistRequestPanel({
                 className={waitlistFieldClass}
               />
             </label>
-            <label className="type-label-large block space-y-2">
+            <label className="type-label-large flex flex-col gap-3">
               <span>What would you use Atlas for?</span>
               <textarea
                 name="intendedUse"

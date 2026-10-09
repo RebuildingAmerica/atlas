@@ -148,7 +148,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
             }}
             className="space-y-5"
           >
-            <label className="type-label-large block space-y-2">
+            <label className="type-label-large flex flex-col gap-3">
               <span>Email</span>
               <input
                 type="email"
@@ -164,7 +164,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                 className={waitlistFieldClass}
               />
             </label>
-            <label className="type-label-large block space-y-2">
+            <label className="type-label-large flex flex-col gap-3">
               <span id="waitlist-plan-label">Plan</span>
               <select
                 aria-labelledby="waitlist-plan-label"
@@ -185,7 +185,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
             <details>
               <summary className={waitlistSummaryClass}>About you (optional)</summary>
               <div className="mt-4 space-y-4">
-                <label className="type-label-large block space-y-2">
+                <label className="type-label-large flex flex-col gap-3">
                   <span>Name</span>
                   <input
                     name="name"
@@ -198,7 +198,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                     className={waitlistFieldClass}
                   />
                 </label>
-                <label className="type-label-large block space-y-2">
+                <label className="type-label-large flex flex-col gap-3">
                   <span>Organization</span>
                   <input
                     name="organization"
@@ -211,7 +211,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
                     className={waitlistFieldClass}
                   />
                 </label>
-                <label className="type-label-large block space-y-2">
+                <label className="type-label-large flex flex-col gap-3">
                   <span>What would you use Atlas for?</span>
                   <textarea
                     name="intendedUse"

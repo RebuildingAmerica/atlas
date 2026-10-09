@@ -17,7 +17,7 @@ export const waitlistPrimaryLinkClass =
 export const waitlistSummaryClass =
   "type-label-large focus-visible:ring-accent cursor-pointer rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-4";
 export const waitlistFieldClass =
-  "border-border bg-surface text-ink-strong focus-visible:ring-accent w-full rounded-xl border px-3 py-3 outline-none focus-visible:ring-2";
+  "type-body-large border-border bg-surface text-ink-strong focus-visible:ring-accent min-h-14 w-full rounded-xl border px-4 py-4 outline-none focus-visible:ring-2";
 export function WaitlistError({ message }: { message: string | null }) {
   return message ? (
     <p role="alert" className="type-body-medium text-ink-strong break-words">
