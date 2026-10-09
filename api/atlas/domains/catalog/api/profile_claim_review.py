@@ -135,7 +135,7 @@ async def reject_profile_claim_review(
 ) -> ProfileClaimResponse:
     """Reject a pending profile verification."""
     claim, entry = await _pending_claim_and_entry(db, claim_id)
-    reason = _review_note(payload) or "Reviewer could not confirm this representative."
+    reason = _review_reason(payload) or "Reviewer could not confirm this representative."
     rejected = await ProfileClaimCRUD.mark_rejected(db, claim.id, reason=reason)
     if rejected is None:
         raise HTTPException(status_code=500, detail="Failed to reject claim.")
@@ -180,17 +180,17 @@ def _review_metadata(
         "reviewer_email": actor.email,
         "reviewer_id": actor.user_id,
     }
-    note = _review_note(payload)
-    if note is not None:
-        metadata["note"] = note
+    reason = _review_reason(payload)
+    if reason is not None:
+        metadata["note"] = reason
     return metadata
 
 
-def _review_note(payload: ProfileClaimReviewDecisionRequest) -> str | None:
-    if payload.note is None:
+def _review_reason(payload: ProfileClaimReviewDecisionRequest) -> str | None:
+    if payload.reason is None:
         return None
-    note = payload.note.strip()
-    return note or None
+    reason = payload.reason.strip()
+    return reason or None
 
 
 async def _restore_entry_after_rejection(db: aiosqlite.Connection, entry_id: str) -> None:

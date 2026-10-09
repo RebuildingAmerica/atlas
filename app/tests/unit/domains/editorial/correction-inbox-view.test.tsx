@@ -42,9 +42,19 @@ describe("CorrectionInboxView", () => {
       "/profiles/organizations/las-vegas-civic-group",
     );
     fireEvent.click(screen.getByRole("button", { name: "Resolve Las Vegas Civic Group" }));
-    expect(onDecision).toHaveBeenCalledWith("report-1", "entity", "resolve");
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss Las Vegas Civic Group" }));
-    expect(onDecision).toHaveBeenCalledWith("report-1", "entity", "dismiss");
+    expect(onDecision).toHaveBeenCalledWith("report-1", "entity", "resolve", "");
+    const dismiss = screen.getByRole("button", { name: "Dismiss Las Vegas Civic Group" });
+    expect(dismiss).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Reason, required to dismiss"), {
+      target: { value: "  Already correct on the profile " },
+    });
+    fireEvent.click(dismiss);
+    expect(onDecision).toHaveBeenCalledWith(
+      "report-1",
+      "entity",
+      "dismiss",
+      "Already correct on the profile",
+    );
   });
 
   it("shows a source report in the same queue with a safe evidence link", () => {
@@ -97,7 +107,7 @@ describe("CorrectionInboxView", () => {
       "/profiles/organizations/las-vegas-civic-group",
     );
     fireEvent.click(screen.getByRole("button", { name: "Resolve Official housing source" }));
-    expect(onDecision).toHaveBeenCalledWith("source-report-1", "source", "resolve");
+    expect(onDecision).toHaveBeenCalledWith("source-report-1", "source", "resolve", "");
   });
 
   it("does not open an unsafe source URL from a report", () => {

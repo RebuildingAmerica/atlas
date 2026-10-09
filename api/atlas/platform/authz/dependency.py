@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from functools import cache
@@ -30,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 UNRECORDED_CHANGE_DETAIL = "This change could not be recorded, so it was not made."
+STATED_REASON_LIMIT = 2000
+"""The most of a stated reason the audit log keeps."""
 
 
 def route_template(request: Request) -> str:
@@ -89,6 +92,36 @@ def _machine_identity(principal: MachinePrincipal) -> AuditIdentity:
     )
 
 
+async def stated_reason(request: Request) -> str | None:
+    """Return the reason a change gave in its JSON body's ``reason`` field.
+
+    Every route that takes a reason names the field ``reason``, so the audit
+    log can say why a change was made without each route recording it.
+
+    Parameters
+    ----------
+    request : Request
+        The incoming request; its body is cached, so the route still reads it.
+
+    Returns
+    -------
+    str | None
+        The trimmed reason, cut to ``STATED_REASON_LIMIT`` characters, or None
+        when the body is not a JSON object carrying a non-blank ``reason``.
+    """
+    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip()
+    if content_type != "application/json":
+        return None
+    try:
+        body = json.loads(await request.body())
+    except ValueError:
+        return None
+    reason = body.get("reason") if isinstance(body, dict) else None
+    if not isinstance(reason, str) or not reason.strip():
+        return None
+    return reason.strip()[:STATED_REASON_LIMIT]
+
+
 async def record_decision(
     request: Request,
     identity: AuditIdentity,
@@ -130,7 +163,7 @@ async def record_decision(
         method=request.method,
         route=route,
         target={str(key): str(value) for key, value in request.path_params.items()},
-        reason=decision.detail or None,
+        reason=await stated_reason(request) if decision.allowed else decision.detail or None,
         request_id=current_request_id() or None,
     )
     try:

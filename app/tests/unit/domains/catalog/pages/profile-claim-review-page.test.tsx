@@ -61,7 +61,7 @@ describe("ProfileClaimReviewPage", () => {
     expect(screen.getByText("TXT value")).toBeInTheDocument();
     expect(screen.getByText("atlas-profile-claim=token")).toBeInTheDocument();
     expect(screen.getByText("Add the public ATProto account.")).toBeInTheDocument();
-    fireEvent.change(screen.getByRole("textbox", { name: "Reviewer note" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Reason" }), {
       target: { value: "Website, workspace, and social profile match." },
     });
     const claimReviewHooks = getClaimReviewHooks();
@@ -69,13 +69,13 @@ describe("ProfileClaimReviewPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve Mississippi Rising" }));
     expect(claimReviewHooks.approve).toHaveBeenCalledWith({
       claimId: "claim_1",
-      body: { note: "Website, workspace, and social profile match." },
+      body: { reason: "Website, workspace, and social profile match." },
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Reject Mississippi Rising" }));
     expect(claimReviewHooks.reject).toHaveBeenCalledWith({
       claimId: "claim_1",
-      body: { note: "Website, workspace, and social profile match." },
+      body: { reason: "Website, workspace, and social profile match." },
     });
   });
 

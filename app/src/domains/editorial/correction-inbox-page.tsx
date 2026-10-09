@@ -41,9 +41,9 @@ export function CorrectionInboxPage() {
       isLoading={reports.isPending}
       items={reports.data?.items ?? []}
       offset={offset}
-      onDecision={(reportId, targetType, selectedDecision) => {
+      onDecision={(reportId, targetType, selectedDecision, reason) => {
         decision.reset();
-        decision.mutate({ data: { decision: selectedDecision, reportId, targetType } });
+        decision.mutate({ data: { decision: selectedDecision, reason, reportId, targetType } });
       }}
       onPageChange={setOffset}
       pageSize={PAGE_SIZE}

@@ -66,7 +66,7 @@ describe("CorrectionInboxPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Resolve Las Vegas Civic Group" }));
     await waitFor(() => {
       expect(mocks.decideCorrectionReport.mock.calls[0]?.[0]).toEqual({
-        data: { decision: "resolve", reportId: "report-1", targetType: "entity" },
+        data: { decision: "resolve", reason: "", reportId: "report-1", targetType: "entity" },
       });
       expect(mocks.listCorrectionReports).toHaveBeenCalledTimes(2);
     });
@@ -81,8 +81,19 @@ describe("CorrectionInboxPage", () => {
     mocks.decideCorrectionReport.mockRejectedValue(new Error("API down"));
     renderPage();
     expect(await screen.findByText("Private correction")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Reason, required to dismiss"), {
+      target: { value: "Not a factual error" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Dismiss Las Vegas Civic Group" }));
     expect(await screen.findByText("Decision could not be saved.")).toBeInTheDocument();
+    expect(mocks.decideCorrectionReport.mock.calls[0]?.[0]).toEqual({
+      data: {
+        decision: "dismiss",
+        reason: "Not a factual error",
+        reportId: "report-1",
+        targetType: "entity",
+      },
+    });
     expect(screen.getByText("Private correction")).toBeInTheDocument();
   });
 
@@ -115,7 +126,12 @@ describe("CorrectionInboxPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Resolve Official source" }));
     await waitFor(() => {
       expect(mocks.decideCorrectionReport.mock.calls[0]?.[0]).toEqual({
-        data: { decision: "resolve", reportId: "source-report-1", targetType: "source" },
+        data: {
+          decision: "resolve",
+          reason: "",
+          reportId: "source-report-1",
+          targetType: "source",
+        },
       });
     });
   });
@@ -146,7 +162,11 @@ describe("CorrectionInboxPage", () => {
     mocks.listCorrectionReports.mockResolvedValue({ items: [oneReport], total: 1 });
     mocks.decideCorrectionReport.mockReturnValue(new Promise(() => undefined));
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Resolve Las Vegas Civic Group" }));
+    fireEvent.change(await screen.findByLabelText("Reason, required to dismiss"), {
+      target: { value: "Address fixed" },
+    });
+    expect(screen.getByRole("button", { name: "Dismiss Las Vegas Civic Group" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Resolve Las Vegas Civic Group" }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Dismiss Las Vegas Civic Group" })).toBeDisabled();
     });

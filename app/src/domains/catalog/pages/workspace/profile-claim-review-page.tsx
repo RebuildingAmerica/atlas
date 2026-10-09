@@ -26,21 +26,11 @@ export function ProfileClaimReviewPage() {
       claims={claims}
       errorMessage={errorMessage}
       isLoading={reviews.isPending}
-      onApprove={(claim, note) => {
-        approve.mutate({
-          claimId: claim.id,
-          body: {
-            note: reviewNote(note, "Reviewer approved from profile verification queue."),
-          },
-        });
+      onApprove={(claim, reason) => {
+        approve.mutate({ claimId: claim.id, body: { reason: reason || null } });
       }}
-      onReject={(claim, note) => {
-        reject.mutate({
-          claimId: claim.id,
-          body: {
-            note: reviewNote(note, "Reviewer could not confirm this representative."),
-          },
-        });
+      onReject={(claim, reason) => {
+        reject.mutate({ claimId: claim.id, body: { reason } });
       }}
       onRevalidateAtproto={() => {
         revalidateAtproto.mutate();
@@ -56,9 +46,4 @@ function atprotoRevalidationLabel(needsAttention: number | undefined): string {
   if (needsAttention === undefined) return "Not checked";
   if (needsAttention === 0) return "All current";
   return needsAttention === 1 ? "1 needs attention" : `${needsAttention} need attention`;
-}
-
-function reviewNote(note: string, fallback: string): string {
-  const trimmed = note.trim();
-  return trimmed || fallback;
 }

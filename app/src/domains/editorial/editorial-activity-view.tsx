@@ -89,8 +89,10 @@ function ActivityRow({ activity }: ActivityRowProps) {
           {targets.map(([key, value]) => `${key} ${value}`).join(" · ")}
         </p>
       ) : null}
-      {!activity.allowed && activity.reason ? (
-        <p className="type-body-small text-ink-strong">{activity.reason}</p>
+      {activity.reason ? (
+        <p className="type-body-small text-ink-strong break-words whitespace-pre-wrap">
+          {activity.allowed ? `Reason: ${activity.reason}` : activity.reason}
+        </p>
       ) : null}
     </li>
   );

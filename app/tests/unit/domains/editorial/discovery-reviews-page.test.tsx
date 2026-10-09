@@ -290,7 +290,7 @@ describe("DiscoveryReviewsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve Civic Group" }));
     await waitFor(() => {
       expect(mocks.decideDiscoveryReview.mock.calls[0]?.[0]).toEqual({
-        data: { decision: "approve", itemId: page.items[0]?.id },
+        data: { decision: "approve", itemId: page.items[0]?.id, reason: "" },
       });
     });
     fireEvent.click(screen.getByRole("button", { name: "Next reviews" }));
@@ -421,6 +421,9 @@ describe("DiscoveryReviewsPage", () => {
     mocks.decideDiscoveryReview.mockRejectedValue(new Error("Conflict"));
     renderPage();
     expect(await screen.findByText("Civic Group")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Reason, required to reject"), {
+      target: { value: "Duplicate profile" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Reject Civic Group" }));
     expect(
       await screen.findByText("Decision could not be saved. Reload and review the current facts."),
@@ -433,8 +436,12 @@ describe("DiscoveryReviewsPage", () => {
     mocks.decideDiscoveryReview.mockReturnValue(new Promise(() => undefined));
     renderPage();
     expect(await screen.findByText("Civic Group")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Reason, required to reject"), {
+      target: { value: "Duplicate profile" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Reject Civic Group" }));
     await waitFor(() => {
+      expect(mocks.decideDiscoveryReview).toHaveBeenCalledTimes(1);
       expect(screen.getByRole("button", { name: "Reject Civic Group" })).toBeDisabled();
     });
   });

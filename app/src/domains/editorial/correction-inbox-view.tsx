@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { CorrectionReport } from "./correction-inbox.functions";
+import { DecisionReasonField } from "./decision-reason-field";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import {
   AdminInlineStatus,
@@ -12,10 +14,12 @@ export interface CorrectionInboxViewProps {
   isLoading: boolean;
   items: CorrectionReport[];
   offset: number;
+  /** The reason is trimmed and may be empty when resolving, never when dismissing. */
   onDecision: (
     itemId: string,
     targetType: CorrectionReport["targetType"],
     decision: "resolve" | "dismiss",
+    reason: string,
   ) => void;
   onPageChange: (offset: number) => void;
   pageSize: number;
@@ -113,6 +117,7 @@ function ReportCard({
 }) {
   const targetUrl =
     item.targetType === "source" ? safeSourceUrl(item.sourceUrl) : publicProfileUrl(item);
+  const [reason, setReason] = useState("");
   return (
     <article className="border-border bg-surface-container-lowest space-y-4 rounded-lg border p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -138,7 +143,7 @@ function ReportCard({
             ariaLabel={`Resolve ${item.targetName}`}
             disabled={pending}
             onClick={() => {
-              onDecision(item.id, item.targetType, "resolve");
+              onDecision(item.id, item.targetType, "resolve", reason.trim());
             }}
             size="sm"
           >
@@ -146,9 +151,9 @@ function ReportCard({
           </Button>
           <Button
             ariaLabel={`Dismiss ${item.targetName}`}
-            disabled={pending}
+            disabled={pending || !reason.trim()}
             onClick={() => {
-              onDecision(item.id, item.targetType, "dismiss");
+              onDecision(item.id, item.targetType, "dismiss", reason.trim());
             }}
             size="sm"
             variant="secondary"
@@ -196,6 +201,11 @@ function ReportCard({
           )}
         </div>
       ) : null}
+      <DecisionReasonField
+        label="Reason, required to dismiss"
+        onChange={setReason}
+        value={reason}
+      />
       <p className="type-body-small text-ink-soft">
         Resolve after the correction is complete. Dismiss if no change is warranted.
       </p>

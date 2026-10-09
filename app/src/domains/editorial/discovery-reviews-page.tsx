@@ -140,9 +140,9 @@ export function DiscoveryReviewsPage() {
       }
       items={reviews.data?.items ?? []}
       isLoading={reviews.isPending}
-      onDecision={(itemId, selectedDecision) => {
+      onDecision={(itemId, selectedDecision, reason) => {
         decision.reset();
-        decision.mutate({ data: { decision: selectedDecision, itemId } });
+        decision.mutate({ data: { decision: selectedDecision, itemId, reason } });
       }}
       onPageChange={setOffset}
       onPrepareWebsiteReviews={() => {
