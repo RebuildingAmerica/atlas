@@ -90,7 +90,7 @@ class TestDiscoveryCRUDBranchHelpers:
         )
         assert claimed is not None
         assert claimed.id == job_id
-        assert await DiscoveryJobCRUD.release_worker_leases(test_db, "worker-1") == 1
+        assert await DiscoveryJobCRUD.release_worker_leases(test_db, "worker-1", user_id=None) == 1
         released = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
         assert released is not None
         assert released.status == "queued"

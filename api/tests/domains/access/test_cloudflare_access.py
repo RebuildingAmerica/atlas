@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -42,6 +43,8 @@ class _Certs:
     async def __call__(self, url: str) -> dict[str, Any]:
         assert url == f"https://{ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs"
         self.fetches += 1
+        # Yield like a real request, so concurrent verifies overlap the fetch.
+        await asyncio.sleep(0)
         if self.fail:
             msg = "certs unavailable"
             raise httpx.ConnectError(msg)
@@ -183,6 +186,33 @@ class TestKeyCache:
         certs.keys = ((ACCESS_KID, ACCESS_KEY), ("new-key", OTHER_KEY))
         clock.now += 61
         result = await verifier.verify(sign_access_token(kid="new-key", key=OTHER_KEY))
+
+        assert result.identity is not None
+        assert certs.fetches == 2
+
+    async def test_concurrent_requests_share_one_fetch(self) -> None:
+        certs = _Certs()
+        verifier = _verifier(certs)
+
+        results = await asyncio.gather(*(verifier.verify(sign_access_token()) for _ in range(5)))
+
+        assert all(result.identity is not None for result in results)
+        assert certs.fetches == 1
+
+    async def test_a_failed_fetch_is_not_retried_for_a_minute(self) -> None:
+        """An Access outage costs one fetch a minute, not one per request."""
+        certs, clock = _Certs(), _Clock()
+        certs.fail = True
+        verifier = _verifier(certs, clock)
+
+        assert (await verifier.verify(sign_access_token())).reason == "key_fetch_failed"
+        clock.now += 30
+        assert (await verifier.verify(sign_access_token())).reason == "key_fetch_failed"
+        assert certs.fetches == 1
+
+        certs.fail = False
+        clock.now += 31
+        result = await verifier.verify(sign_access_token(exp=int(clock.now) + 60))
 
         assert result.identity is not None
         assert certs.fetches == 2

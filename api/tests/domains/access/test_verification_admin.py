@@ -14,6 +14,7 @@ from atlas.config import Settings, get_settings
 from atlas.domains.access import discount_review_notice
 from atlas.domains.access.api import verification_admin
 from atlas.domains.access.api.verification_admin import (
+    ALREADY_DECIDED_DETAIL,
     UNSENT_RESULT_DETAIL,
     VerificationUpdateRequest,
     list_verifications,
@@ -283,9 +284,10 @@ async def test_update_verification_marks_record_verified(
     assert notices.sent == [("user-123", "independent_journalist", "verified")]
 
 
-async def test_a_decision_stays_saved_when_the_applicant_cannot_be_emailed(
+async def test_a_request_goes_back_to_pending_when_the_applicant_cannot_be_emailed(
     monkeypatch: pytest.MonkeyPatch, test_db: aiosqlite.Connection
 ) -> None:
+    """A decision nobody heard about would strand the applicant, so the operator decides again."""
     monkeypatch.setattr(verification_admin, "notify_discount_review_result", _Notices(fail=True))
     record_id = await _journalist_request(test_db)
 
@@ -293,7 +295,7 @@ async def test_a_decision_stays_saved_when_the_applicant_cannot_be_emailed(
         await update_verification(
             Response(),
             record_id,
-            VerificationUpdateRequest(status="rejected", notes="No byline"),
+            VerificationUpdateRequest(status="verified", notes="Byline confirmed"),
             test_db,
             platform_settings(),
         )
@@ -302,7 +304,49 @@ async def test_a_decision_stays_saved_when_the_applicant_cannot_be_emailed(
     assert exc_info.value.detail == UNSENT_RESULT_DETAIL
     saved = await DiscountVerificationCRUD.get_by_id(test_db, record_id)
     assert saved is not None
-    assert saved.status == "rejected"
+    assert (saved.status, saved.verified_at, saved.notes) == ("pending", None, "Pending review")
+
+    notices = _Notices()
+    monkeypatch.setattr(verification_admin, "notify_discount_review_result", notices)
+    retried = await update_verification(
+        Response(),
+        record_id,
+        VerificationUpdateRequest(status="verified", notes="Byline confirmed"),
+        test_db,
+        platform_settings(),
+    )
+
+    assert retried.status == "verified"
+    assert notices.sent == [("user-123", "independent_journalist", "verified")]
+
+
+async def test_a_decided_request_cannot_be_decided_again(
+    monkeypatch: pytest.MonkeyPatch, test_db: aiosqlite.Connection
+) -> None:
+    """Two reviews of one request must not send the applicant two different answers."""
+    notices = _Notices()
+    monkeypatch.setattr(verification_admin, "notify_discount_review_result", notices)
+    record_id = await _journalist_request(test_db)
+    await update_verification(
+        Response(),
+        record_id,
+        VerificationUpdateRequest(status="verified", notes="Byline confirmed"),
+        test_db,
+        platform_settings(),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_verification(
+            Response(),
+            record_id,
+            VerificationUpdateRequest(status="rejected", notes="Changed my mind"),
+            test_db,
+            platform_settings(),
+        )
+
+    assert exc_info.value.status_code == HTTPStatus.CONFLICT
+    assert exc_info.value.detail == ALREADY_DECIDED_DETAIL
+    assert notices.sent == [("user-123", "independent_journalist", "verified")]
 
 
 async def test_update_verification_returns_404_for_missing_record(

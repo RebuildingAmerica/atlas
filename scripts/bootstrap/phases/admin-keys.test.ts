@@ -24,7 +24,9 @@ const KEYS = { privateKeyPkcs8: "private-pkcs8", publicKeyRaw: "public-raw" };
 
 function fakeGh(
   existingKey: string,
-  answers: Partial<Record<"secret" | "variable-set", GhResult>> = {},
+  answers: Partial<
+    Record<"secret" | "variable-get" | "variable-set", GhResult>
+  > = {},
   confirmAnswer = false,
 ): FakeGh {
   const calls: GhCall[] = [];
@@ -34,7 +36,13 @@ function fakeGh(
       gh: (args, stdin) => {
         calls.push({ args, stdin });
         if (args[0] === "variable" && args[1] === "get") {
-          return { ok: existingKey !== "", output: existingKey };
+          if (answers["variable-get"]) return answers["variable-get"];
+          return existingKey === ""
+            ? {
+                ok: false,
+                output: `variable ${ADMIN_SIGNING_PUBLIC_KEY_VARIABLE} was not found`,
+              }
+            : { ok: true, output: existingKey };
         }
         if (args[0] === "secret")
           return answers.secret ?? { ok: true, output: "" };
@@ -193,6 +201,27 @@ void describe("admin signing keys", () => {
         (call) => call.args[1] === "get",
       ),
       true,
+    );
+  });
+
+  void it("changes nothing when the existing key cannot be read", async () => {
+    const gh = fakeGh("", {
+      "variable-get": { ok: false, output: "HTTP 401: Bad credentials" },
+    });
+
+    const result = await runAdminKeysPhase(
+      "rap/atlas",
+      "production",
+      false,
+      true,
+      gh.deps,
+    );
+
+    assert.equal(result.success, false);
+    assert.match(result.followUpItems[0] ?? "", /gh can read/);
+    assert.deepEqual(
+      gh.calls.map((call) => call.args.slice(0, 2)),
+      [["variable", "get"]],
     );
   });
 

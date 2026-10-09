@@ -22,6 +22,7 @@ class DiscoveryJobCRUDLifecycle:
         conn: aiosqlite.Connection,
         *,
         claimed_by: str,
+        claimed_by_user_id: str | None = None,
         lease_seconds: int = 900,
         search_key_configured: bool = True,
     ) -> DiscoveryJobModel | None:
@@ -40,6 +41,10 @@ class DiscoveryJobCRUDLifecycle:
             Database connection.
         claimed_by : str
             Identifier of the claiming worker.
+        claimed_by_user_id : str | None, optional
+            The account whose Scout worker claims the job, so only that owner
+            can release the lease by revoking the worker. ``None`` for the
+            API's own job worker.
         lease_seconds : int, optional
             Lease duration in seconds. Default is 900.
         search_key_configured : bool, optional
@@ -68,7 +73,8 @@ class DiscoveryJobCRUDLifecycle:
             cursor = await conn.execute(
                 f"""
                 UPDATE discovery_jobs SET status = 'claimed', claimed_by = ?,
-                    claimed_until = ?, started_at = COALESCE(started_at, ?)
+                    claimed_by_user_id = ?, claimed_until = ?,
+                    started_at = COALESCE(started_at, ?)
                 WHERE id = (
                     SELECT j.id FROM discovery_jobs j
                     JOIN discovery_runs r ON r.id = j.run_id
@@ -81,7 +87,7 @@ class DiscoveryJobCRUDLifecycle:
                 )
                 RETURNING *
                 """,
-                (claimed_by, lease_until, now, now, now),
+                (claimed_by, claimed_by_user_id, lease_until, now, now, now),
             )
             row = await cursor.fetchone()
             if row is None:
@@ -112,11 +118,11 @@ class DiscoveryJobCRUDLifecycle:
         update = await conn.execute(
             """
             UPDATE discovery_jobs
-            SET status = 'claimed', claimed_by = ?, claimed_until = ?,
-                started_at = COALESCE(started_at, ?)
+            SET status = 'claimed', claimed_by = ?, claimed_by_user_id = ?,
+                claimed_until = ?, started_at = COALESCE(started_at, ?)
             WHERE id = ? AND status = ?
             """,
-            (claimed_by, lease_until, now, job.id, job.status),
+            (claimed_by, claimed_by_user_id, lease_until, now, job.id, job.status),
         )
         await conn.commit()
         if getattr(update, "rowcount", 0) != 1:
@@ -221,20 +227,40 @@ class DiscoveryJobCRUDLifecycle:
         return False
 
     @staticmethod
-    async def release_worker_leases(conn: aiosqlite.Connection, worker_id: str) -> int:
+    async def release_worker_leases(
+        conn: aiosqlite.Connection, worker_id: str, *, user_id: str | None
+    ) -> int:
         """Release active leases held by one revoked Scout worker.
 
         Jobs return to ``queued`` without incrementing retries because the work
         itself did not fail; the trusted host relationship was revoked.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        worker_id : str
+            The revoked worker.
+        user_id : str | None
+            The worker's owner. Only leases that owner's worker claimed are
+            released, so naming someone else's worker id frees nothing. ``None``
+            only in local single-user mode, where every worker is the operator's.
+
+        Returns
+        -------
+        int
+            How many leases were released.
         """
+        owner_clause = "" if user_id is None else " AND claimed_by_user_id = ?"
+        owner_params: tuple[str, ...] = () if user_id is None else (user_id,)
         cursor = await conn.execute(
-            """
+            f"""
             UPDATE discovery_jobs
-            SET status = 'queued', claimed_by = NULL, claimed_until = NULL,
-                error_message = ?, next_attempt_at = NULL
-            WHERE claimed_by = ? AND status IN ('claimed', 'running')
+            SET status = 'queued', claimed_by = NULL, claimed_by_user_id = NULL,
+                claimed_until = NULL, error_message = ?, next_attempt_at = NULL
+            WHERE claimed_by = ? AND status IN ('claimed', 'running'){owner_clause}
             """,
-            ("worker revoked: lease released", worker_id),
+            ("worker revoked: lease released", worker_id, *owner_params),
         )
         await conn.commit()
         return int(getattr(cursor, "rowcount", 0))

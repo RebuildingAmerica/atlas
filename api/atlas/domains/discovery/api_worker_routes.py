@@ -186,6 +186,7 @@ async def claim_discovery_job(
     job = await DiscoveryJobCRUD.claim_next(
         db,
         claimed_by=req.worker_id,
+        claimed_by_user_id=None if actor.is_local else actor.user_id,
         lease_seconds=req.lease_seconds,
         search_key_configured=req.search_key_configured,
     )
@@ -333,12 +334,13 @@ async def release_worker_jobs(
     """Release a revoked Scout worker's leases and refuse its further claims.
 
     The app calls this when the signed-in owner revokes a worker device. The
-    revocation is recorded against the caller, so it binds only that owner's
-    worker: someone else naming the same worker id cannot lock it out.
+    revocation and the release are both scoped to the caller, so someone else
+    naming the same worker id can neither lock it out nor free its leases.
     """
-    if not actor.is_local:
-        await ScoutWorkerRevocationCRUD.revoke(db, worker_id=worker_id, user_id=actor.user_id)
-    released = await DiscoveryJobCRUD.release_worker_leases(db, worker_id)
+    owner = None if actor.is_local else actor.user_id
+    if owner is not None:
+        await ScoutWorkerRevocationCRUD.revoke(db, worker_id=worker_id, user_id=owner)
+    released = await DiscoveryJobCRUD.release_worker_leases(db, worker_id, user_id=owner)
     apply_no_store_headers(response)
     return DiscoveryWorkerReleaseResponse(worker_id=worker_id, jobs_released=released)
 

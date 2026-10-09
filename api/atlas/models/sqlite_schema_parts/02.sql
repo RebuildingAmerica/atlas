@@ -238,6 +238,7 @@ CREATE TABLE IF NOT EXISTS discovery_jobs (
     retry_count INTEGER NOT NULL DEFAULT 0,
     max_retries INTEGER NOT NULL DEFAULT 2,
     claimed_by TEXT,
+    claimed_by_user_id TEXT,
     claimed_until DATETIME,
     idempotency_key TEXT,
     next_attempt_at DATETIME,

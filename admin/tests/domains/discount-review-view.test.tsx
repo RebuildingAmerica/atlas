@@ -61,7 +61,7 @@ describe("DiscountReviewView", () => {
   it("counts requests by status and shows each one's evidence and outcome", () => {
     render(
       <DiscountReviewView
-        decisionMessage="The decision was saved, but the applicant could not be emailed."
+        decisionMessage="The applicant could not be emailed, so the request is still waiting. Decide it again."
         isLoading={false}
         onDecide={noop}
         records={[
@@ -82,7 +82,7 @@ describe("DiscountReviewView", () => {
 
     expect(
       screen.getByText(
-        "The decision was saved, but the applicant could not be emailed.",
+        "The applicant could not be emailed, so the request is still waiting. Decide it again.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Reason: Byline confirmed")).toBeInTheDocument();
