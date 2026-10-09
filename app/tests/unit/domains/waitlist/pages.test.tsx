@@ -244,13 +244,11 @@ describe("waitlist screens", () => {
       expect(
         await screen.findByRole("link", {
           name: purchasedAt ? "Open your account" : "Continue",
-          exact: true,
         }),
       ).toBeVisible();
       expect(
         screen.queryByRole("link", {
           name: purchasedAt ? "Continue" : "Open your account",
-          exact: true,
         }),
       ).not.toBeInTheDocument();
     },
@@ -309,18 +307,65 @@ describe("waitlist screens", () => {
           }}
         />,
       );
-      await userEvent.selectOptions(
-        screen.getByLabelText("Payment option"),
-        product === "atlas_research_pass" ? "once" : "yearly",
+      await userEvent.click(
+        screen.getByRole("radio", {
+          name: product === "atlas_research_pass" ? "30 days" : "Annual",
+        }),
       );
+      expect(
+        screen.getByRole("radio", {
+          name: product === "atlas_research_pass" ? "30 days" : "Annual",
+        }),
+      ).toBeChecked();
       expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute("href", "/onboarding");
       view.unmount();
     },
   );
+  it("explains the subscription before continuing and reveals student pricing on request", async () => {
+    mocks.session.mockReturnValue({
+      data: createAtlasSessionFixture({ user: { email: request.email } }),
+    });
+    mount(
+      <WaitlistRequestPanel
+        initialRequest={{ ...request, status: "invited", confirmedAt: "2026-10-09" }}
+      />,
+    );
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked();
+    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
+      "$5 per month",
+    );
+    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
+      "Renews monthly until canceled",
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Annual" }));
+    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
+      "$48 per year",
+    );
+    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
+      "Renews annually until canceled",
+    );
+    expect(
+      screen.getByText("Next, choose your workspace. You’ll review the total before paying."),
+    ).toBeVisible();
+    const tools = screen.getByText(/API access with 1,000 requests per day/);
+    expect(tools).not.toBeVisible();
+    await userEvent.click(screen.getByText("Connected tools"));
+    expect(tools).toBeVisible();
+    await userEvent.click(screen.getByText("Student pricing"));
+    await userEvent.click(screen.getByRole("radio", { name: "Student" }));
+    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
+      "Student verification is required",
+    );
+  });
   it("offers a new account to anonymous invitees and a switch action for the wrong account", async () => {
     const invited: WaitlistRequest = { ...request, status: "invited", interval: "invalid" };
     const view = mount(<WaitlistRequestPanel initialRequest={invited} />);
     expect(screen.getByRole("link", { name: "Create a free account" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked();
+    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
+      "$5 per month",
+    );
     view.unmount();
     mocks.session.mockReturnValue({
       data: createAtlasSessionFixture({ user: { email: "wrong@example.org" } }),

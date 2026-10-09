@@ -31,7 +31,7 @@ a customer workspace administrator does not grant staff access.
 | Confirmation email and link | Open a scoped link, then explicitly confirm the email. Opening a link alone does not change the request. A matching verified account can also explicitly confirm from its private request. Confirmation of a withdrawn request does not rejoin it; rejoining remains a separate action. |
 | Private request             | See the selected product and status, edit optional context, withdraw, or rejoin.                                                                                                                                                                                                        |
 | Staff waitlist              | Search and filter requests, inspect context and activity, select up to 50 eligible confirmed applicants, review exact recipients, and send invitations.                                                                                                                                 |
-| Invitation                  | Sign in or create a free account, switch accounts if needed, choose the product's billing interval, then continue to account security, workspace selection and payment.                                                                                                                 |
+| Invitation                  | Review plan benefits and full billing charges, select an interval, then sign in or create an account. Continue through account security and workspace selection to review the payment commitment before checkout.                                                                       |
 | Staff request detail        | Open keyboard-accessible request details without leaving the queue. Retry a failed detail load, inspect email outcomes, resend invitations, retry recent failed sends, or confirm withdrawal of an invitation.                                                                          |
 | Expired link                | Request a fresh email link. Temporary load failures offer a retry without claiming the link expired.                                                                                                                                                                                    |
 
@@ -42,11 +42,16 @@ requires its own request. Existing paid products, renewals, billing portals, and
 team membership continue through their existing paths.
 
 Invitation pages use the full page surface and left-aligned context. On desktop,
-context and payment controls occupy separate columns; on mobile, the controls
-follow the description and Continue sits at the bottom with room above it.
-Fields share the UI package's comfortable density, native validation, inset
-labels, and high-contrast civic focus ring. Buttons and navigation actions share
-Button styles. Editorial titles use the shared type scale.
+plan benefits and payment choices occupy separate columns; on mobile, the
+choices follow the benefits and Continue sits at the bottom with room above it.
+Native radio choices show the full charge and billing period side by side.
+Student pricing and connected tools use optional disclosures. Invitees can
+compare prices before creating an account, and the selected interval survives
+sign-in. A payment summary explains renewal, cancellation and tax before
+continuing and again before checkout, so the person knows the commitment before
+paying. Fields share the UI package's comfortable density, native validation,
+inset labels, and high-contrast civic focus ring. Buttons and navigation actions
+share Button styles. Editorial titles use the shared type scale.
 
 Confirmation, withdrawal and rejoining focus the resulting heading so keyboard
 and screen reader users can follow the change. Ordinary refreshes preserve

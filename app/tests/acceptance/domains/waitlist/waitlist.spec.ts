@@ -8,50 +8,44 @@ async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
   const heading = await page
     .getByRole("heading", { name: "You’re invited to Atlas Pro" })
     .boundingBox();
-  const description = await page.getByText(/^Atlas Pro includes/).boundingBox();
-  const payment = await page.getByLabel("Payment option").boundingBox();
-  const paymentLabel = await page.getByText("Payment option", { exact: true }).boundingBox();
+  const description = await page.getByText(/^Research the people and organizations/).boundingBox();
+  const payment = await page.getByRole("group", { name: "Choose how to pay" }).boundingBox();
   const action = await page.getByRole("link", { name: "Continue", exact: true }).boundingBox();
-  if (!heading || !description || !payment || !paymentLabel || !action) {
+  const monthly = await page
+    .getByRole("radio", { name: "Monthly", exact: true })
+    .locator("..")
+    .boundingBox();
+  const annual = await page
+    .getByRole("radio", { name: "Annual", exact: true })
+    .locator("..")
+    .boundingBox();
+  if (!heading || !description || !payment || !action || !monthly || !annual)
     throw new Error("Invitation content must be visible.");
-  }
   expect(description.y - heading.y - heading.height).toBeGreaterThanOrEqual(24);
-  const desktop = (page.viewportSize()?.width ?? 0) >= 1024;
-  if (desktop) {
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
     expect(payment.x).toBeGreaterThan(heading.x + heading.width);
-    expect(Math.abs(paymentLabel.y - heading.y)).toBeLessThanOrEqual(2);
+    expect(Math.abs(payment.y - heading.y)).toBeLessThanOrEqual(2);
     expect(Math.abs(action.x - payment.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(action.width - payment.width)).toBeLessThanOrEqual(1);
   } else {
     expect(payment.y - description.y - description.height).toBeGreaterThanOrEqual(64);
   }
-  expect(payment.y - paymentLabel.y - paymentLabel.height).toBeGreaterThanOrEqual(12);
-  expect(payment.height).toBeGreaterThanOrEqual(56);
-  const labelTextLeft = await page
-    .getByText("Payment option", { exact: true })
-    .evaluate((label) => {
-      const range = document.createRange();
-      range.selectNodeContents(label);
-      return range.getBoundingClientRect().left;
-    });
-  const textInset = await page.getByLabel("Payment option").evaluate((select) => {
-    const style = getComputedStyle(select);
-    return Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.borderLeftWidth);
-  });
-  expect(Math.abs(labelTextLeft - payment.x - textInset)).toBeLessThanOrEqual(1);
-  const arrow = await page.getByLabel("Payment option").locator("..").locator("svg").boundingBox();
-  if (!arrow) throw new Error("Payment option arrow must be visible.");
-  expect(
-    Math.abs(payment.x + payment.width - arrow.x - arrow.width - textInset),
-  ).toBeLessThanOrEqual(1);
-  expect(Math.abs(arrow.y + arrow.height / 2 - payment.y - payment.height / 2)).toBeLessThanOrEqual(
-    1,
-  );
+  expect(monthly.height).toBeGreaterThanOrEqual(80);
+  expect(annual.y - monthly.y - monthly.height).toBeGreaterThanOrEqual(12);
+  await expect(page.getByRole("region", { name: "Payment summary" })).toBeAttached();
+  await expect(page.getByRole("combobox")).toHaveCount(0);
 
   expect(action.y - payment.y - payment.height).toBeGreaterThanOrEqual(minimumActionGap);
-  const viewportHeight = await page.evaluate(() => window.innerHeight);
-  expect(viewportHeight - action.y - action.height).toBeGreaterThanOrEqual(31);
-  expect(viewportHeight - action.y - action.height).toBeLessThanOrEqual(33);
+  const bottomSpace = await page.evaluate(() => ({
+    height: Math.max(window.innerHeight, document.documentElement.scrollHeight),
+    scroll: window.scrollY,
+  }));
+  expect(bottomSpace.height - bottomSpace.scroll - action.y - action.height).toBeGreaterThanOrEqual(
+    31,
+  );
+  expect(bottomSpace.height - bottomSpace.scroll - action.y - action.height).toBeLessThanOrEqual(
+    33,
+  );
   await expect(page.getByRole("link", { name: "Privacy policy" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Terms of service" })).toHaveCount(0);
 }
@@ -98,9 +92,22 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expect(
     page.getByRole("link", { name: "Create a free account", exact: true }),
   ).toBeVisible();
+  await page.getByRole("radio", { name: "Annual", exact: true }).click();
+  const signupHref = await page
+    .getByRole("link", { name: "Create a free account", exact: true })
+    .getAttribute("href");
+  if (!signupHref) throw new Error("The invitation must offer account creation.");
+  expect(new URL(signupHref, page.url()).searchParams.get("redirect")).toBe(
+    "/onboarding?product=atlas_pro&interval=yearly",
+  );
+  await page.screenshot({ path: "test-results/waitlist-invited-anonymous.png", fullPage: true });
   await performSignIn(page, { email, createWorkspace: true });
   await page.goto(invitationUrl);
-  await expect(page.getByLabel("Payment option")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Choose how to pay" })).toBeVisible();
+  await page.getByRole("radio", { name: "Monthly", exact: true }).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("radio", { name: "Annual", exact: true })).toBeChecked();
+  await expect(page.getByRole("region", { name: "Payment summary" })).toContainText("$48 per year");
   await expectNoAxeViolations(page, "invited request");
   await expectInvitationSpacing(page, 80);
   await page.screenshot({ path: "test-results/waitlist-invited.png", fullPage: true });
@@ -143,6 +150,10 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await page.screenshot({ path: "test-results/waitlist-workspace-mobile-screen.png" });
   await page.getByRole("button", { name: /^Use / }).click();
   await expect(page.getByRole("heading", { name: "Continue to payment" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Payment summary" })).toContainText("$48 per year");
+  await expect(page.getByRole("region", { name: "Payment summary" })).toContainText(
+    "Renews annually",
+  );
   await expectNoAxeViolations(page, "mobile payment step");
   await page.screenshot({ path: "test-results/waitlist-payment-mobile-screen.png" });
   await adminPage.goto("/admin/waitlist");

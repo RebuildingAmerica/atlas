@@ -14,6 +14,7 @@ import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { PurchaseStepPanel } from "./setup-page-steps";
 import { Button, buttonStyles } from "@rebuildingamerica/atlas-ui/ui/button";
+import { PaymentCommitment } from "@/domains/billing/components/payment-choice";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import {
   DEFAULT_ONBOARDING_PRODUCT,
@@ -281,10 +282,11 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
   } else if (workspaceAttached) {
     panel = (
       <PurchaseStepPanel
-        description={`Stripe will handle the payment details for ${productLabel}.`}
+        description={`Review your ${productLabel} plan, then enter your payment details at checkout.`}
         title="Continue to payment"
       >
         {alert}
+        <PaymentCommitment product={selectedProduct} interval={selectedInterval} />
         <Button onClick={handleCheckout} disabled={isPending || !purchaseId} size="lg">
           {isPending ? "Opening Stripe..." : "Continue to Stripe"}
         </Button>

@@ -1,5 +1,6 @@
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
-import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
+import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
+import { PaymentChoice, PaymentCommitment } from "@/domains/billing/components/payment-choice";
 import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { Link } from "@tanstack/react-router";
@@ -10,6 +11,7 @@ import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import {
+  buildOnboardingStartRedirect,
   defaultOnboardingInterval,
   isValidOnboardingSelection,
 } from "@rebuildingamerica/atlas-access/onboarding/setup-state";
@@ -18,17 +20,34 @@ import { updateWaitlistRequest, changeWaitlistRequest } from "../waitlist.functi
 import {
   WaitlistError,
   waitlistSecondaryActionClass,
+  waitlistSummaryClass,
   waitlistHeadingClass,
   waitlistPrimaryLinkClass,
   waitlistTextLinkClass,
 } from "./waitlist-layout";
 
 const INVITATION_DESCRIPTIONS: Record<WaitlistProduct, string> = {
-  atlas_pro:
-    "Atlas Pro includes unlimited research requests, notes and shortlists, and CSV/JSON exports.",
-  atlas_team:
-    "Atlas Team includes a shared research workspace, notes and shortlists, watchlists, and monitoring.",
-  atlas_research_pass: "Get 7 or 30 days of research tools without a recurring subscription.",
+  atlas_pro: "Research the people and organizations working on the issues you care about.",
+  atlas_team: "A shared research workspace for your team.",
+  atlas_research_pass: "Research tools for a short project, with a single payment.",
+};
+
+const INVITATION_BENEFITS: Record<WaitlistProduct, string[]> = {
+  atlas_pro: [
+    "Unlimited research requests on people and organizations",
+    "Notes and shortlists alongside the profiles you’re researching",
+    "Export profiles as CSV or JSON for spreadsheets and other tools",
+  ],
+  atlas_team: [
+    "Unlimited research requests and exports",
+    "Shared notes and shortlists",
+    "Watchlists and monitoring for up to 50 members",
+  ],
+  atlas_research_pass: [
+    "Research tools for one person",
+    "Notes, shortlists, and exports",
+    "Your notes and shortlists stay readable after the pass ends",
+  ],
 };
 
 export function WaitlistRequestPanel({
@@ -70,17 +89,17 @@ export function WaitlistRequestPanel({
   const productLabel = PRODUCT_LABELS[request.product];
   const sameEmail =
     session.data?.user.emailVerified && session.data.user.email.toLowerCase() === request.email;
-  const redirect = `/waitlist/request/${request.id}`;
   const defaultInterval = defaultOnboardingInterval(request.product);
-  const [interval, setInterval] = useState(() =>
+  const [interval, setInterval] = useState<PricingCheckoutInterval>(() =>
     request.interval &&
     isValidOnboardingSelection(
       request.product,
       request.interval as "monthly" | "yearly" | "four_month" | "weekly" | "once",
     )
-      ? request.interval
+      ? (request.interval as PricingCheckoutInterval)
       : defaultInterval,
   );
+  const redirect = buildOnboardingStartRedirect(request.product, interval);
   async function save(action: "update" | "withdraw" | "rejoin" | "confirm") {
     setPending(true);
     setError(null);
@@ -134,9 +153,36 @@ export function WaitlistRequestPanel({
                   : "You’re on the waitlist"}
         </h1>
         {invited && !request.purchasedAt ? (
-          <p className="type-body-large text-ink-soft">
-            {INVITATION_DESCRIPTIONS[request.product]}
-          </p>
+          <div className="space-y-8">
+            <p className="type-body-large text-ink-soft">
+              {INVITATION_DESCRIPTIONS[request.product]}
+            </p>
+            <section aria-label="Included with your plan" className="space-y-4">
+              <h2 className="type-title-medium text-ink-strong">What’s included</h2>
+              <ul className="type-body-medium text-ink-soft space-y-4">
+                {INVITATION_BENEFITS[request.product].map((benefit) => (
+                  <li key={benefit} className="flex items-start gap-3">
+                    <span aria-hidden="true" className="text-civic">
+                      ✓
+                    </span>
+                    <span>{benefit}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            {request.product !== "atlas_research_pass" ? (
+              <details>
+                <summary className={`${waitlistSummaryClass} text-ink-soft min-h-11 py-3`}>
+                  Connected tools
+                </summary>
+                <p className="type-body-small text-ink-soft pt-3">
+                  {request.product === "atlas_team"
+                    ? "API, MCP and OAuth access, with SSO and SCIM for your team."
+                    : "API access with 1,000 requests per day, plus MCP and OAuth connections."}
+                </p>
+              </details>
+            ) : null}
+          </div>
         ) : null}
         {!closed && !invited && !needsConfirmation && !request.purchasedAt ? (
           <p className="type-body-large text-ink-soft">
@@ -180,95 +226,69 @@ export function WaitlistRequestPanel({
       {invited && !request.purchasedAt ? (
         <section className="lg:border-outline-variant flex flex-1 flex-col gap-8 lg:border-l lg:pl-16">
           <WaitlistError message={error} />
-          {sameEmail ? (
-            <>
-              <Select
-                label="Payment option"
-                name="interval"
-                density="comfortable"
-                value={interval}
-                onChange={setInterval}
-                options={
-                  request.product === "atlas_research_pass"
-                    ? [
-                        { value: "weekly", label: "7 days · $4, one payment" },
-                        { value: "once", label: "30 days · $9, one payment" },
-                      ]
-                    : [
-                        {
-                          value: "monthly",
-                          label: `Monthly · ${request.product === "atlas_pro" ? "$5/month" : "$25/month + $8/additional seat"}`,
-                        },
-                        {
-                          value: "yearly",
-                          label: `Annual · ${request.product === "atlas_pro" ? "$48/year" : "$250/year + $80/additional seat"}`,
-                        },
-                        ...(request.product === "atlas_pro"
-                          ? [
-                              {
-                                value: "four_month",
-                                label: "Student · $12.80/4 months, verification required",
-                              },
-                            ]
-                          : []),
-                      ]
-                }
-              />
-              <Link
-                to="/onboarding"
-                search={{
-                  product: request.product,
-                  interval: interval as "monthly" | "yearly" | "four_month" | "weekly" | "once",
-                }}
-                className={`${waitlistPrimaryLinkClass} mt-auto w-full`}
-              >
-                Continue
-              </Link>
-            </>
-          ) : (
-            <div className="flex flex-1 flex-col gap-8">
-              {!session.data ? (
-                <p className="type-body-medium text-ink-soft">
-                  Use the email address that received your invitation.
+          <PaymentChoice product={request.product} interval={interval} onChange={setInterval} />
+          <div className="mt-auto space-y-6">
+            <PaymentCommitment product={request.product} interval={interval} />
+            {sameEmail ? (
+              <>
+                <p className="type-body-small text-ink-soft">
+                  Next, choose your workspace. You’ll review the total before paying.
                 </p>
-              ) : null}
-              {session.data ? (
-                <p className="type-body-medium text-ink-soft">
-                  Switch to the account on your invitation to continue.
+                <Link
+                  to="/onboarding"
+                  search={{
+                    product: request.product,
+                    interval,
+                  }}
+                  className={`${waitlistPrimaryLinkClass} w-full`}
+                >
+                  Continue
+                </Link>
+              </>
+            ) : (
+              <div className="space-y-6">
+                <p className="type-body-small text-ink-soft">
+                  {session.data
+                    ? "Switch to the account on your invitation to continue."
+                    : "Create an account with the email that received your invitation. Then choose your workspace and review the total before paying."}
                 </p>
-              ) : null}
-              <div className="mt-auto flex flex-col gap-4">
-                {session.data ? (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      void signOutWithRedirect({
-                        redirectTo: `/sign-in?email=${encodeURIComponent(request.email)}&redirect=${encodeURIComponent(redirect)}`,
-                        onError: () => {
-                          setError("Sign out failed. Try again.");
-                        },
-                      });
-                    }}
-                  >
-                    Switch account
-                  </Button>
-                ) : (
-                  <Link
-                    to="/sign-in"
-                    search={{ redirect, email: request.email }}
-                    className={waitlistTextLinkClass}
-                  >
-                    Sign in
-                  </Link>
-                )}
-                {!session.data ? (
-                  <Link to="/sign-up" search={{ redirect }} className={waitlistPrimaryLinkClass}>
-                    Create a free account
-                  </Link>
-                ) : null}
+                <div className="flex flex-col gap-4">
+                  {session.data ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        void signOutWithRedirect({
+                          redirectTo: `/sign-in?email=${encodeURIComponent(request.email)}&redirect=${encodeURIComponent(redirect)}`,
+                          onError: () => {
+                            setError("Sign out failed. Try again.");
+                          },
+                        });
+                      }}
+                    >
+                      Switch account
+                    </Button>
+                  ) : (
+                    <>
+                      <Link
+                        to="/sign-in"
+                        search={{ redirect, email: request.email }}
+                        className={waitlistTextLinkClass}
+                      >
+                        Sign in
+                      </Link>
+                      <Link
+                        to="/sign-up"
+                        search={{ redirect }}
+                        className={`${waitlistPrimaryLinkClass} w-full`}
+                      >
+                        Create a free account
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       ) : null}
       {request.purchasedAt && !closed ? (
