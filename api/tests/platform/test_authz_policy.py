@@ -50,7 +50,7 @@ def test_every_action_is_an_instance_platform_or_machine_operation() -> None:
 
 @pytest.mark.parametrize("action", MACHINE_ACTIONS)
 def test_no_person_ever_holds_a_machine_action(test_settings: object, action: Action) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.managed = True
 
     for actor in (_actor(), _local_actor()):
@@ -66,7 +66,7 @@ def test_allowlisted_operator_may_perform_instance_actions(
     test_settings: object,
     action: Action,
 ) -> None:
-    test_settings.operator_allowed_emails = [f" {OPERATOR.upper()} ", ""]
+    test_settings.instance_operator_emails = [f" {OPERATOR.upper()} ", ""]
 
     decision = authorize(_actor(email=f"{OPERATOR} "), action, test_settings)
 
@@ -80,7 +80,7 @@ def test_customer_credentials_never_perform_instance_actions(
     action: Action,
     auth_type: str,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
 
     decision = authorize(_actor(auth_type=auth_type), action, test_settings)
 
@@ -93,7 +93,7 @@ def test_signed_in_account_outside_the_allowlist_is_refused(
     test_settings: object,
     action: Action,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
 
     decision = authorize(_actor(email="visitor@example.org"), action, test_settings)
 
@@ -107,7 +107,7 @@ def test_operator_without_a_passkey_ready_session_is_refused(
     action: Action,
 ) -> None:
     """A magic-link-only session proves a mailbox, not the operator, so it holds no authority."""
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.managed = True
 
     decision = authorize(_actor(account_ready=False), action, test_settings)
@@ -117,7 +117,7 @@ def test_operator_without_a_passkey_ready_session_is_refused(
 
 
 def test_empty_allowlist_refuses_every_signed_in_account(test_settings: object) -> None:
-    test_settings.operator_allowed_emails = []
+    test_settings.instance_operator_emails = []
 
     assert is_granted(_actor(), Action.REVIEW_QUEUE_DECIDE, test_settings) is False
 
@@ -127,7 +127,7 @@ def test_local_single_user_mode_may_perform_instance_actions(
     test_settings: object,
     action: Action,
 ) -> None:
-    test_settings.operator_allowed_emails = []
+    test_settings.instance_operator_emails = []
 
     assert is_granted(_local_actor(), action, test_settings) is True
 
@@ -156,7 +156,7 @@ def test_refusals_keep_the_wording_each_surface_already_shows(
     action: Action,
     detail: str,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.managed = True
 
     decision = authorize(_actor(email="visitor@example.org"), action, test_settings)
@@ -169,7 +169,7 @@ def test_platform_actions_do_not_exist_when_the_deployment_is_not_managed(
     test_settings: object,
     action: Action,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.managed = False
 
     for actor in (_actor(), _local_actor()):
@@ -186,7 +186,7 @@ def test_no_one_signed_in_to_the_atlas_app_holds_platform_actions(
     action: Action,
 ) -> None:
     """Platform work happens in the platform admin, behind Cloudflare Access."""
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.managed = True
 
     decision = authorize(_actor(), action, test_settings)
@@ -201,7 +201,7 @@ def test_local_single_user_mode_never_holds_platform_actions(
     test_settings: object,
     action: Action,
 ) -> None:
-    test_settings.operator_allowed_emails = []
+    test_settings.instance_operator_emails = []
     test_settings.managed = True
 
     decision = authorize(_local_actor(), action, test_settings)
@@ -212,7 +212,7 @@ def test_local_single_user_mode_never_holds_platform_actions(
 
 @pytest.mark.asyncio
 async def test_require_action_returns_the_actor_when_allowed(test_settings: object) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     actor = _actor()
 
     dependency = require_action(Action.SCHEDULES_WRITE)
@@ -222,7 +222,7 @@ async def test_require_action_returns_the_actor_when_allowed(test_settings: obje
 
 @pytest.mark.asyncio
 async def test_require_action_raises_the_decision_when_refused(test_settings: object) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
 
     dependency = require_action(Action.REVIEW_QUEUE_DECIDE)
 
@@ -241,7 +241,7 @@ async def test_require_action_raises_the_decision_when_refused(test_settings: ob
 async def test_require_action_reports_a_missing_platform_surface_as_not_found(
     test_settings: object,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.managed = False
 
     dependency = require_action(Action.DISCOUNTS_REVIEW)

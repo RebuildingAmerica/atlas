@@ -99,7 +99,7 @@ jobs:
           auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
-          operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          instance-operator-emails: ${{ vars.ATLAS_INSTANCE_OPERATOR_EMAILS }}
           scheduler-job-name: atlas-discovery-scheduled
           openstatus-api-key: ${{ secrets.OPENSTATUS_API_KEY }}
           admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
@@ -148,7 +148,8 @@ jobs:
           ATLAS_EDGE_ORIGIN_SECRET: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
           ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
-          ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          ATLAS_INSTANCE_OPERATOR_EMAILS: ${{ vars.ATLAS_INSTANCE_OPERATOR_EMAILS }}
+          ATLAS_PLATFORM_OPERATOR_EMAILS: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
           ATLAS_ADMIN_PUBLIC_URL: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
           ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -221,7 +222,9 @@ jobs:
           add_vercel_env ATLAS_HOSTED_E2E_ENABLED "1"
           add_vercel_env ATLAS_HOSTED_E2E_PRODUCTION_ENABLED "1"
           add_vercel_env ATLAS_HOSTED_E2E_SECRET "$ATLAS_HOSTED_E2E_SECRET"
-          add_vercel_env ATLAS_OPERATOR_ALLOWED_EMAILS "$ATLAS_OPERATOR_ALLOWED_EMAILS"
+          add_vercel_env ATLAS_INSTANCE_OPERATOR_EMAILS "$ATLAS_INSTANCE_OPERATOR_EMAILS"
+          # New discount requests are emailed to the platform operators.
+          add_vercel_env ATLAS_PLATFORM_OPERATOR_EMAILS "$ATLAS_PLATFORM_OPERATOR_EMAILS"
           # Discount-request emails link here, and the app's old /admin/discounts
           # and /admin/cloud-costs pages redirect here.
           add_vercel_env ATLAS_ADMIN_PUBLIC_URL "$ATLAS_ADMIN_PUBLIC_URL"
@@ -237,6 +240,14 @@ jobs:
           add_vercel_env ATLAS_BILLING_AUTOMATIC_TAX "${ATLAS_BILLING_AUTOMATIC_TAX:-true}"
 
           add_vercel_env ATLAS_BILLING_CHECKOUT_ENABLED "${ATLAS_BILLING_CHECKOUT_ENABLED:-false}"
+
+          # The single operator allowlist was retired, and the app refuses to
+          # start while it is set, so remove the project-level copy bootstrap
+          # used to write before this deploy can pick it up.
+          if pnpm exec vercel env ls production --token "$VERCEL_TOKEN" --no-color 2>/dev/null \
+            | grep -qw ATLAS_OPERATOR_ALLOWED_EMAILS; then
+            pnpm exec vercel env rm ATLAS_OPERATOR_ALLOWED_EMAILS production --yes --token "$VERCEL_TOKEN"
+          fi
 
           deployment_output="$(pnpm exec vercel "${vercel_args[@]}")"
           printf '%s\n' "$deployment_output"

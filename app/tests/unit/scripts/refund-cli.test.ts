@@ -22,7 +22,7 @@ describe("refund operator command", () => {
   beforeEach(() => {
     stdoutWrites.length = 0;
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      operatorAllowedEmails: new Set(["ops@atlas.test"]),
+      platformOperatorEmails: new Set(["ops@atlas.test"]),
     });
     mocks.previewOperatorRefund.mockResolvedValue({
       amount: 400,
@@ -69,7 +69,7 @@ describe("refund operator command", () => {
     [["--operator", "other@atlas.test", "--reason", "Customer request"], "wrong operator"],
   ])("refuses execution with %s (%s)", async (extra) => {
     await expect(runRefundCli(["--session", "cs_1", "--execute", ...extra])).rejects.toThrow(
-      "Execution requires an allowed operator email and a refund reason.",
+      "Execution requires a platform operator email and a refund reason.",
     );
     expect(mocks.executeOperatorRefund).not.toHaveBeenCalled();
   });

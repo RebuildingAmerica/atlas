@@ -68,7 +68,11 @@ than as repo-level fallbacks:
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
-- `ATLAS_OPERATOR_ALLOWED_EMAILS`
+
+and these variables, which `pnpm bootstrap --infra` writes from the env files:
+`ATLAS_INSTANCE_OPERATOR_EMAILS`, `ATLAS_PLATFORM_OPERATOR_EMAILS`, and the
+platform admin's `ATLAS_ADMIN_PUBLIC_URL`, `ATLAS_PLATFORM_API_URL`,
+`ATLAS_ACCESS_TEAM_DOMAIN`, `ATLAS_ACCESS_AUD` and `CLOUDFLARE_ACCOUNT_ID`.
 
 Set `ATLAS_PUBLIC_URL` to the staging app origin. Set `ATLAS_AUTH_JWT_AUDIENCES`
 to the staging resource URL list the API accepts, with the MCP resource first:

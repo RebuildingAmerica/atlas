@@ -425,7 +425,7 @@ async def test_only_allowlisted_editors_can_read_or_close_private_reports(
 @pytest.mark.asyncio
 async def test_discovery_api_key_cannot_become_a_moderation_editor(test_settings: object) -> None:
     """A scoped customer credential cannot read reporter notes even with an allowed email."""
-    test_settings.operator_allowed_emails = [" ", "editor@rebuildingus.org"]
+    test_settings.instance_operator_emails = [" ", "editor@rebuildingus.org"]
     actor = AuthenticatedActor(
         user_id="customer-key-user",
         email="editor@rebuildingus.org",

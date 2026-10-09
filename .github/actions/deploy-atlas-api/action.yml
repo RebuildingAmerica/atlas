@@ -62,8 +62,8 @@ inputs:
     description: Accepted OAuth audience values for this environment. Defaults to <atlas-public-url>/mcp when omitted.
     required: false
     default: ""
-  operator-allowed-emails:
-    description: Comma-separated operator email allowlist for hosted admin tools.
+  instance-operator-emails:
+    description: Comma-separated people who run this instance's editorial tools (ATLAS_INSTANCE_OPERATOR_EMAILS). Empty means nobody.
     required: false
     default: ""
   scheduler-job-name:
@@ -215,6 +215,7 @@ runs:
         ADMIN_PUBLIC_URL: ${{ inputs.admin-public-url }}
         ADMIN_SIGNING_PUBLIC_KEY: ${{ inputs.admin-signing-public-key }}
         PLATFORM_OPERATOR_EMAILS: ${{ inputs.platform-operator-emails }}
+        INSTANCE_OPERATOR_EMAILS: ${{ inputs.instance-operator-emails }}
       run: |
         set -euo pipefail
 
@@ -248,6 +249,7 @@ runs:
         {
           echo "issuers=${issuers//,/\\,}"
           echo "platform-operator-emails=${PLATFORM_OPERATOR_EMAILS//,/\\,}"
+          echo "instance-operator-emails=${INSTANCE_OPERATOR_EMAILS//,/\\,}"
           echo "scheduler-service-account=${scheduler_sa}"
           echo "scheduler-audience=${scheduler_audience}"
         } >> "${GITHUB_OUTPUT}"
@@ -271,7 +273,7 @@ runs:
           --timeout=900
           --concurrency=8
           --port=8000
-          --remove-env-vars=ATLAS_AUTH_ALLOWED_EMAILS,ATLAS_AUTH_INTERNAL_SECRET
+          --remove-env-vars=ATLAS_AUTH_ALLOWED_EMAILS,ATLAS_AUTH_INTERNAL_SECRET,ATLAS_OPERATOR_ALLOWED_EMAILS
         env_vars: |
           ATLAS_MANAGED=true
           ATLAS_MULTI_USER=true
@@ -291,7 +293,7 @@ runs:
           ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET=${{ inputs.auth-membership-protection-bypass-secret }}
           ATLAS_PUBLIC_URL=${{ inputs.atlas-public-url }}
           ATLAS_AUTH_JWT_AUDIENCES=${{ steps.hosted-auth.outputs.atlas-api-audience }}
-          ATLAS_OPERATOR_ALLOWED_EMAILS=${{ inputs.operator-allowed-emails }}
+          ATLAS_INSTANCE_OPERATOR_EMAILS=${{ steps.machine-issuers.outputs.instance-operator-emails }}
           ATLAS_ACCESS_TEAM_DOMAIN=${{ inputs.access-team-domain }}
           ATLAS_ACCESS_AUD=${{ inputs.access-aud }}
           ATLAS_PLATFORM_OPERATOR_EMAILS=${{ steps.machine-issuers.outputs.platform-operator-emails }}

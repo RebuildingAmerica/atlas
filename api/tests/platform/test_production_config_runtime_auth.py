@@ -64,6 +64,18 @@ class TestValidateRuntimeAuthConfig:
         with pytest.raises(RuntimeError, match="ATLAS_MACHINE_TRUSTED_ISSUERS must be a JSON list"):
             validate_runtime_auth_config(settings)
 
+    def test_the_retired_operator_allowlist_stops_startup_and_names_its_replacements(
+        self,
+    ) -> None:
+        """A deploy that still sets the old allowlist must not quietly leave editors locked out."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            multi_user=False,
+            retired_operator_allowed_emails="editor@rebuildingus.org",
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_INSTANCE_OPERATOR_EMAILS"):
+            validate_runtime_auth_config(settings)
+
     def test_half_set_cloudflare_access_settings_stop_startup(self) -> None:
         """The platform admin's gate must not run with only half of its settings."""
         settings = Settings(

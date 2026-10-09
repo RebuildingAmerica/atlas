@@ -124,7 +124,7 @@ async def test_an_allowed_change_is_recorded_before_it_runs(
     test_db: object,
     test_settings: object,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     request = guard_request(
         "POST", "/api/profiles/claims/review/claim_9/approve", {"claim_id": "claim_9"}
     )
@@ -148,7 +148,7 @@ async def test_a_refused_change_is_recorded_with_the_refusal(
     test_db: object,
     test_settings: object,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     request = guard_request("POST", "/api/review-queue/item_1/approve", {"item_id": "item_1"})
 
     with pytest.raises(HTTPException) as exc:
@@ -166,7 +166,7 @@ async def test_a_refused_change_is_recorded_with_the_refusal(
 
 @pytest.mark.asyncio
 async def test_reads_are_not_recorded(test_db: object, test_settings: object) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
 
     await require_action(Action.REVIEW_QUEUE_READ)(
         request=guard_request("GET", "/api/review-queue", {}),
@@ -179,7 +179,7 @@ async def test_reads_are_not_recorded(test_db: object, test_settings: object) ->
 
 @pytest.mark.asyncio
 async def test_a_change_that_cannot_be_recorded_does_not_run(test_settings: object) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.database_url = "sqlite:///nonexistent-directory/atlas.db"
 
     with pytest.raises(HTTPException) as exc:
@@ -219,7 +219,7 @@ async def test_a_missing_platform_surface_is_not_recorded(
     test_db: object,
     test_settings: object,
 ) -> None:
-    test_settings.operator_allowed_emails = [OPERATOR]
+    test_settings.instance_operator_emails = [OPERATOR]
     test_settings.managed = False
 
     with pytest.raises(HTTPException) as exc:

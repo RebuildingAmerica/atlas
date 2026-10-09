@@ -425,7 +425,7 @@ pnpm billing:refund --session cs_...
 
 Review the printed account mode, workspace, product, amount, currency, and
 subscription. Match them to the support request and original purchase. Then an
-operator whose email is in `ATLAS_OPERATOR_ALLOWED_EMAILS` can run:
+operator whose email is in `ATLAS_PLATFORM_OPERATOR_EMAILS` can run:
 
 ```bash
 pnpm billing:refund --session cs_... --operator operator@example.org --reason "Customer request" --execute
@@ -505,9 +505,15 @@ under the reviewer's email, and emails the applicant through the app. If that
 email fails, the decision stays saved and the admin says so. Setup is in
 [the platform admin runbook](../runbooks/platform-admin-access.md).
 
-The app still emails new requests to `ATLAS_OPERATOR_ALLOWED_EMAILS`, with a
-link built from `ATLAS_ADMIN_PUBLIC_URL`. The app refuses to send that email
-without `ATLAS_ADMIN_PUBLIC_URL`, rather than send a link to nowhere.
+The app emails new requests to `ATLAS_PLATFORM_OPERATOR_EMAILS`, with a link
+built from `ATLAS_ADMIN_PUBLIC_URL`. Without `ATLAS_ADMIN_PUBLIC_URL` it sends
+no email rather than a link to nowhere and logs why; the applicant still sees
+their request as received, because it is waiting in the platform admin either
+way.
+
+A decision is final once the applicant has been emailed. If the app cannot send
+that email, the request goes back to pending and the admin asks you to decide it
+again, so nobody is left with a decision they never heard about.
 
 ## Failure modes
 

@@ -28,7 +28,10 @@ export interface AuthRuntimeConfig {
   atprotoPdsInviteBrokerUrl: string | null;
   atprotoPdsUrl: string | null;
   anonymousRateLimit: AnonymousRateLimitConfig;
-  operatorAllowedEmails: Set<string>;
+  /** People who run this instance's editorial tools; they may always sign up. */
+  instanceOperatorEmails: Set<string>;
+  /** People who use the Atlas platform admin; they hear about new discount requests. */
+  platformOperatorEmails: Set<string>;
   apiBaseUrl: string | null;
   databaseUrl: string | null;
   localMode: boolean;
@@ -93,6 +96,16 @@ export function sanitizeBrowserSessionHeaders(headers: Headers): Headers {
 /**
  * Parses the optional allowlist env var into a normalized email set.
  */
+/**
+ * The single allowlist was split by job. Starting with it still set would
+ * quietly leave editors and the platform operator with no access, so the app
+ * refuses and names what replaces it. The API refuses the same way.
+ */
+export const RETIRED_OPERATOR_ALLOWLIST_MESSAGE =
+  "ATLAS_OPERATOR_ALLOWED_EMAILS is retired. Put this instance's editors in " +
+  "ATLAS_INSTANCE_OPERATOR_EMAILS (and, on a managed deployment, platform " +
+  "operators in ATLAS_PLATFORM_OPERATOR_EMAILS), then remove it.";
+
 function normalizeEmailList(value: string | undefined): Set<string> {
   return new Set(
     (value ?? "")
@@ -248,6 +261,9 @@ function resolveAtprotoPdsInviteBrokerUrl(env: NodeJS.ProcessEnv): string | null
  * Resolves auth runtime config from the process environment.
  */
 export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): AuthRuntimeConfig {
+  if (env.ATLAS_OPERATOR_ALLOWED_EMAILS?.trim()) {
+    throw new Error(RETIRED_OPERATOR_ALLOWLIST_MESSAGE);
+  }
   const configuredPublicUrl = env.ATLAS_PUBLIC_URL?.trim();
   if (!configuredPublicUrl) {
     throw new Error("ATLAS_PUBLIC_URL is required.");
@@ -277,7 +293,8 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     atprotoPdsInviteBrokerUrl: resolveAtprotoPdsInviteBrokerUrl(env),
     atprotoPdsUrl: resolveAtprotoPdsUrl(env),
     anonymousRateLimit: resolveAnonymousRateLimitConfig(env),
-    operatorAllowedEmails: normalizeEmailList(env.ATLAS_OPERATOR_ALLOWED_EMAILS),
+    instanceOperatorEmails: normalizeEmailList(env.ATLAS_INSTANCE_OPERATOR_EMAILS),
+    platformOperatorEmails: normalizeEmailList(env.ATLAS_PLATFORM_OPERATOR_EMAILS),
     databaseUrl,
     localMode,
     openRegistration: parseEnvBoolean(
@@ -383,19 +400,19 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
 }
 
 /**
- * Checks whether an email is permitted to bootstrap access through the
- * operator allowlist.
+ * Checks whether an email belongs to one of this instance's operators, who may
+ * always sign up so a closed instance can still be run.
  *
  * Existing workspace members and invited operators are handled by higher-level
- * auth checks, so an empty allowlist intentionally grants no bootstrap access.
+ * auth checks, so an empty list intentionally grants no bootstrap access.
  */
-export function isOperatorAllowedEmail(email: string): boolean {
-  const { operatorAllowedEmails } = getAuthRuntimeConfig();
-  if (operatorAllowedEmails.size === 0) {
+export function isInstanceOperatorEmail(email: string): boolean {
+  const { instanceOperatorEmails } = getAuthRuntimeConfig();
+  if (instanceOperatorEmails.size === 0) {
     return false;
   }
 
-  return operatorAllowedEmails.has(email.trim().toLowerCase());
+  return instanceOperatorEmails.has(email.trim().toLowerCase());
 }
 
 /**

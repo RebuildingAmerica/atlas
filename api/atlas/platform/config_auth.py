@@ -89,6 +89,33 @@ def _require_valid_access_config(settings: Settings) -> None:
         raise RuntimeError(str(exc)) from exc
 
 
+RETIRED_OPERATOR_ALLOWLIST_DETAIL = (
+    "ATLAS_OPERATOR_ALLOWED_EMAILS is retired. Put this instance's editors in "
+    "ATLAS_INSTANCE_OPERATOR_EMAILS (and, on a managed deployment, platform "
+    "operators in ATLAS_PLATFORM_OPERATOR_EMAILS), then remove it."
+)
+
+
+def _refuse_retired_operator_allowlist(settings: Settings) -> None:
+    """Refuse to start while the retired single allowlist is still set.
+
+    Starting anyway would silently leave editorial work with no operator, so
+    the deployment fails and says which settings replace it.
+
+    Parameters
+    ----------
+    settings
+        Loaded application settings.
+
+    Raises
+    ------
+    RuntimeError
+        If ``ATLAS_OPERATOR_ALLOWED_EMAILS`` has a value.
+    """
+    if settings.retired_operator_allowed_emails.strip():
+        raise RuntimeError(RETIRED_OPERATOR_ALLOWLIST_DETAIL)
+
+
 def validate_runtime_auth_config(settings: Settings) -> None:
     """Fail fast when an instance with accounts is missing required config.
 
@@ -111,6 +138,7 @@ def validate_runtime_auth_config(settings: Settings) -> None:
     _refuse_identity_harness_outside_staging(settings)
     _require_parseable_machine_issuers(settings)
     _require_valid_access_config(settings)
+    _refuse_retired_operator_allowlist(settings)
     if not settings.multi_user:
         return
     if not settings.auth_jwt_audience:
