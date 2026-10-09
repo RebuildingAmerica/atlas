@@ -33,7 +33,12 @@ ADMIN_AUDIENCE = "urn:atlas:platform-api"
 ACCESS_TEAM_DOMAIN = "atlas-test.cloudflareaccess.com"
 ACCESS_AUD = "ab" * 32
 ACCESS_KID = "access-test-key"
-PLATFORM_ACTIONS = ["platform.discounts.review", "platform.costs.view"]
+PLATFORM_ACTIONS = [
+    "platform.discounts.review",
+    "platform.costs.view",
+    "platform.switches.read",
+    "platform.switches.write",
+]
 
 ADMIN_KEY = Ed25519PrivateKey.generate()
 ADMIN_PUBLIC_KEY = base64.b64encode(

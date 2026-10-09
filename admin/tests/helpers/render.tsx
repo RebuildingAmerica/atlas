@@ -3,6 +3,7 @@ import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
+import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { getRouter } from "@/router";
 
 interface ProvidersProps {
@@ -23,7 +24,9 @@ export function renderWithQueries(ui: ReactNode) {
   });
   function Providers({ children }: ProvidersProps) {
     return (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}>
+        <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+      </QueryClientProvider>
     );
   }
   return render(ui, { wrapper: Providers });
@@ -31,7 +34,7 @@ export function renderWithQueries(ui: ReactNode) {
 
 /** Server-renders the whole admin at a path, as the Worker would. */
 export async function renderRoute(
-  path: "/" | "/discounts" | "/cloud-costs",
+  path: "/" | "/discounts" | "/cloud-costs" | "/switches",
 ): Promise<RenderedRoute> {
   const router = getRouter();
   router.update({

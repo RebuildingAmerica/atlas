@@ -25,6 +25,8 @@ PLATFORM_ROUTES: dict[tuple[str, str], Action] = {
         "/api/platform/discount-verifications/{verification_id}",
     ): Action.DISCOUNTS_REVIEW,
     ("GET", "/api/platform/cloud-costs"): Action.COSTS_VIEW,
+    ("GET", "/api/platform/switches"): Action.SWITCHES_READ,
+    ("PUT", "/api/platform/switches/{name}"): Action.SWITCHES_WRITE,
 }
 
 INSTANCE_AND_MACHINE_ROUTES: dict[tuple[str, str], Action] = {

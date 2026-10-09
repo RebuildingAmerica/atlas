@@ -11,6 +11,7 @@ which keeps it online for the people who depend on it.
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
+from atlas.domains.access.models.platform_switches import PlatformSwitchCRUD
 from atlas.platform.config import Settings
 from atlas.platform.database import db
 
@@ -190,8 +191,12 @@ async def assert_within_budget(conn: Any, *, run_id: str, settings: Settings) ->
         When the kill switch is on, the per-run ceiling is crossed, or the
         rolling-daily ceiling is crossed.
     """
+    # The env flag is the break-glass that works with the database down; the
+    # platform switch is the one the operator flips from the admin.
     if settings.discovery_cost_kill_switch:
         raise CostCeilingExceeded("kill_switch", "discovery cost kill switch is engaged")
+    if await PlatformSwitchCRUD.is_engaged(conn, "discovery_spend"):
+        raise CostCeilingExceeded("kill_switch", "the discovery spend switch is engaged")
 
     spent_for_run = await run_cost(conn, run_id)
     if spent_for_run >= settings.discovery_max_run_cost:

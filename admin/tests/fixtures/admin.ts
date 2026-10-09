@@ -1,7 +1,28 @@
 import type {
   CloudCostPostureResponse,
+  PlatformSwitchResponse,
   VerificationRecordResponse,
 } from "@/generated/platform-schemas";
+
+/** Discovery spend, never flipped, and checkout paused by the operator. */
+export function platformSwitches(): PlatformSwitchResponse[] {
+  return [
+    {
+      changed_at: null,
+      changed_by: null,
+      engaged: false,
+      name: "discovery_spend",
+      reason: null,
+    },
+    {
+      changed_at: "2026-10-09T18:00:00Z",
+      changed_by: "willie@rebuildingus.org",
+      engaged: true,
+      name: "checkout",
+      reason: "Stripe is double-charging.",
+    },
+  ];
+}
 
 /** The admin's production origin, as a deploy would set ATLAS_ADMIN_PUBLIC_URL. */
 export const ADMIN_PUBLIC_URL = "https://atlas-admin.rebuildingus.org";

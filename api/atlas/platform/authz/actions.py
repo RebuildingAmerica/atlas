@@ -39,6 +39,8 @@ class Action(StrEnum):
     RUNS_VIEW_ALL = "instance.runs.view_all"
     DISCOUNTS_REVIEW = "platform.discounts.review"
     COSTS_VIEW = "platform.costs.view"
+    SWITCHES_READ = "platform.switches.read"
+    SWITCHES_WRITE = "platform.switches.write"
     TRIGGER_SCHEDULED_RUNS = "machine.runs.trigger_scheduled"
     DELIVER_FIREHOSE_OBSERVATIONS = "machine.firehose.deliver"
 
@@ -69,6 +71,8 @@ _REFUSAL_DETAIL: dict[Action, str] = {
     Action.AUDIT_READ: EDITORIAL_REFUSAL_DETAIL,
     Action.DISCOUNTS_REVIEW: PLATFORM_ONLY_DETAIL,
     Action.COSTS_VIEW: PLATFORM_ONLY_DETAIL,
+    Action.SWITCHES_READ: PLATFORM_ONLY_DETAIL,
+    Action.SWITCHES_WRITE: PLATFORM_ONLY_DETAIL,
     Action.TRIGGER_SCHEDULED_RUNS: MACHINE_ONLY_DETAIL,
     Action.DELIVER_FIREHOSE_OBSERVATIONS: MACHINE_ONLY_DETAIL,
 }
