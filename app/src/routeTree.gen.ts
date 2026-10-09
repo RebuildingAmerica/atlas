@@ -72,6 +72,7 @@ import { Route as WorkspaceEditorialSchedulesRouteImport } from './routes/_works
 import { Route as WorkspaceEditorialProfileClaimsRouteImport } from './routes/_workspace/editorial/profile-claims'
 import { Route as WorkspaceEditorialDiscoveryReviewsRouteImport } from './routes/_workspace/editorial/discovery-reviews'
 import { Route as WorkspaceEditorialCorrectionsRouteImport } from './routes/_workspace/editorial/corrections'
+import { Route as WorkspaceEditorialActivityRouteImport } from './routes/_workspace/editorial/activity'
 import { Route as WorkspaceCoverageTargetIdRouteImport } from './routes/_workspace/coverage/$targetId'
 import { Route as WorkspaceBriefsNewRouteImport } from './routes/_workspace/briefs/new'
 import { Route as WorkspaceBriefsBriefIdRouteImport } from './routes/_workspace/briefs/$briefId'
@@ -437,6 +438,12 @@ const WorkspaceEditorialCorrectionsRoute =
     path: '/corrections',
     getParentRoute: () => WorkspaceEditorialRoute,
   } as any)
+const WorkspaceEditorialActivityRoute =
+  WorkspaceEditorialActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => WorkspaceEditorialRoute,
+  } as any)
 const WorkspaceCoverageTargetIdRoute =
   WorkspaceCoverageTargetIdRouteImport.update({
     id: '/coverage/$targetId',
@@ -729,6 +736,7 @@ export interface FileRoutesByFullPath {
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/briefs/new': typeof WorkspaceBriefsNewRoute
   '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
+  '/editorial/activity': typeof WorkspaceEditorialActivityRoute
   '/editorial/corrections': typeof WorkspaceEditorialCorrectionsRoute
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
@@ -826,6 +834,7 @@ export interface FileRoutesByTo {
   '/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/briefs/new': typeof WorkspaceBriefsNewRoute
   '/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
+  '/editorial/activity': typeof WorkspaceEditorialActivityRoute
   '/editorial/corrections': typeof WorkspaceEditorialCorrectionsRoute
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
@@ -934,6 +943,7 @@ export interface FileRoutesById {
   '/_workspace/briefs/$briefId': typeof WorkspaceBriefsBriefIdRoute
   '/_workspace/briefs/new': typeof WorkspaceBriefsNewRoute
   '/_workspace/coverage/$targetId': typeof WorkspaceCoverageTargetIdRoute
+  '/_workspace/editorial/activity': typeof WorkspaceEditorialActivityRoute
   '/_workspace/editorial/corrections': typeof WorkspaceEditorialCorrectionsRoute
   '/_workspace/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/_workspace/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
@@ -1039,6 +1049,7 @@ export interface FileRouteTypes {
     | '/briefs/$briefId'
     | '/briefs/new'
     | '/coverage/$targetId'
+    | '/editorial/activity'
     | '/editorial/corrections'
     | '/editorial/discovery-reviews'
     | '/editorial/profile-claims'
@@ -1136,6 +1147,7 @@ export interface FileRouteTypes {
     | '/briefs/$briefId'
     | '/briefs/new'
     | '/coverage/$targetId'
+    | '/editorial/activity'
     | '/editorial/corrections'
     | '/editorial/discovery-reviews'
     | '/editorial/profile-claims'
@@ -1243,6 +1255,7 @@ export interface FileRouteTypes {
     | '/_workspace/briefs/$briefId'
     | '/_workspace/briefs/new'
     | '/_workspace/coverage/$targetId'
+    | '/_workspace/editorial/activity'
     | '/_workspace/editorial/corrections'
     | '/_workspace/editorial/discovery-reviews'
     | '/_workspace/editorial/profile-claims'
@@ -1773,6 +1786,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceEditorialCorrectionsRouteImport
       parentRoute: typeof WorkspaceEditorialRoute
     }
+    '/_workspace/editorial/activity': {
+      id: '/_workspace/editorial/activity'
+      path: '/activity'
+      fullPath: '/editorial/activity'
+      preLoaderRoute: typeof WorkspaceEditorialActivityRouteImport
+      parentRoute: typeof WorkspaceEditorialRoute
+    }
     '/_workspace/coverage/$targetId': {
       id: '/_workspace/coverage/$targetId'
       path: '/coverage/$targetId'
@@ -2229,6 +2249,7 @@ const PublicRouteWithChildren =
   PublicRoute._addFileChildren(PublicRouteChildren)
 
 interface WorkspaceEditorialRouteChildren {
+  WorkspaceEditorialActivityRoute: typeof WorkspaceEditorialActivityRoute
   WorkspaceEditorialCorrectionsRoute: typeof WorkspaceEditorialCorrectionsRoute
   WorkspaceEditorialDiscoveryReviewsRoute: typeof WorkspaceEditorialDiscoveryReviewsRoute
   WorkspaceEditorialProfileClaimsRoute: typeof WorkspaceEditorialProfileClaimsRoute
@@ -2238,6 +2259,7 @@ interface WorkspaceEditorialRouteChildren {
 }
 
 const WorkspaceEditorialRouteChildren: WorkspaceEditorialRouteChildren = {
+  WorkspaceEditorialActivityRoute: WorkspaceEditorialActivityRoute,
   WorkspaceEditorialCorrectionsRoute: WorkspaceEditorialCorrectionsRoute,
   WorkspaceEditorialDiscoveryReviewsRoute:
     WorkspaceEditorialDiscoveryReviewsRoute,

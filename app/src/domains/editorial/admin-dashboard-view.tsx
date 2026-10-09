@@ -96,6 +96,12 @@ export function AdminDashboardView({
           label="Manage discovery schedules"
           detail="Choose which places and issues Atlas re-researches every night, and pause or remove them."
         />
+        <AdminActionLink
+          action="Read"
+          href="/editorial/activity"
+          label="Editorial activity"
+          detail="See every editorial change on this instance, who made it and when, including refused attempts."
+        />
       </section>
     </AdminPageShell>
   );
