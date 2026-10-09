@@ -237,10 +237,7 @@ describe("waitlist screens", () => {
         screen.getByLabelText("Payment option"),
         product === "atlas_research_pass" ? "once" : "yearly",
       );
-      expect(screen.getByRole("link", { name: "Continue to checkout" })).toHaveAttribute(
-        "href",
-        "/onboarding",
-      );
+      expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute("href", "/onboarding");
       view.unmount();
     },
   );
@@ -318,7 +315,9 @@ describe("waitlist screens", () => {
         initialRequest={{ ...request, status: "invited", confirmedAt: "2026-10-09" }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Continue to checkout" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Continue" })).toBeVisible();
+    expect(screen.getByRole("navigation", { name: "Signup progress" })).toBeVisible();
+    expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Plan");
     expect(screen.queryByRole("button", { name: "Decline invitation" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Manage invitation" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();

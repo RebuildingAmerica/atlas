@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { WaitlistLinkPage } from "@/domains/waitlist/pages/waitlist-link-page";
 
-export const Route = createFileRoute("/_public/waitlist/link")({
+export const Route = createFileRoute("/_onboarding/waitlist/link")({
   validateSearch: z.object({
     token: z.string().min(1).max(100),
     kind: z.enum(["confirm", "manage", "invite"]),

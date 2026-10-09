@@ -224,7 +224,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     panel = (
       <PurchaseStepPanel
         description={`That billing interval is not available for ${productLabel}.`}
-        eyebrow="Plan"
         title="Choose a billing option"
       >
         <Link to="/pricing" className="no-underline">
@@ -236,7 +235,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     panel = (
       <PurchaseStepPanel
         description="Checking your account and selected plan."
-        eyebrow="Account"
         title="Preparing your checkout"
       >
         <div className="bg-surface-container h-2 w-full overflow-hidden rounded-full">
@@ -248,7 +246,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     panel = (
       <PurchaseStepPanel
         description="Create or open your account. Your selected plan stays with you."
-        eyebrow="Step 1"
         title="Start with your account"
       >
         <div className="flex flex-wrap gap-3">
@@ -267,7 +264,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     panel = (
       <PurchaseStepPanel
         description="This purchase link has expired or is no longer available."
-        eyebrow="Plan"
         title="Purchase unavailable"
       >
         <Link to="/pricing" className="no-underline">
@@ -279,7 +275,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     panel = (
       <PurchaseStepPanel
         description="Add the required passkey, then continue to the workspace step."
-        eyebrow="Step 2"
         title="Secure your account"
       >
         <AccountSetupPage redirectTo={startRedirect} />
@@ -289,7 +284,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     panel = (
       <PurchaseStepPanel
         description={`Stripe will handle the payment details for ${productLabel}.`}
-        eyebrow="Step 4"
         title="Continue to payment"
       >
         {alert}
@@ -306,7 +300,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
             ? "Name the team workspace this subscription belongs to."
             : "Choose the workspace this purchase belongs to."
         }
-        eyebrow="Step 3"
         title={selectedProduct === "atlas_team" ? "Name your team workspace" : "Choose workspace"}
       >
         <div className="space-y-5">
@@ -341,10 +334,9 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(12rem,18rem)_1fr]">
+    <div className="mx-auto w-full max-w-lg space-y-6">
       <PurchaseStepRail
         activeStep={activeStep}
-        authenticated={Boolean(sessionData)}
         interval={selectedInterval}
         productLabel={productLabel}
       />

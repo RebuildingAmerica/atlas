@@ -6,6 +6,7 @@ import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
+import { PurchaseProgress } from "@/domains/onboarding/pages/setup-page-steps";
 import {
   defaultOnboardingInterval,
   isValidOnboardingSelection,
@@ -94,6 +95,7 @@ export function WaitlistRequestPanel({
   }
   return (
     <div className="space-y-6">
+      {invited && !request.purchasedAt ? <PurchaseProgress activeStep="plan" /> : null}
       <header className="space-y-3" aria-live="polite">
         {!invited || request.purchasedAt ? (
           <p className="type-label-medium text-ink-muted">{productLabel}</p>
@@ -210,7 +212,7 @@ export function WaitlistRequestPanel({
                 }}
                 className={`${waitlistPrimaryLinkClass} w-full`}
               >
-                Continue to checkout
+                Continue
               </Link>
             </>
           ) : (

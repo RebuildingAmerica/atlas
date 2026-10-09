@@ -1,158 +1,95 @@
-/**
- * The purchase step rail and the panel it frames.
- *
- * Both are presentational. They render whichever step the page is on and
- * say nothing about how the page got there.
- */
-
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { SetupInterval } from "@rebuildingamerica/atlas-access/onboarding/setup-state";
 
-export type PurchaseStepId = "account" | "security" | "workspace" | "payment";
+export type PurchaseStepId = "plan" | "account" | "security" | "workspace" | "payment";
 
-interface PurchaseStep {
-  description: string;
-  id: PurchaseStepId;
-  title: string;
-}
+const PURCHASE_STEPS = [
+  { id: "plan", title: "Plan" },
+  { id: "account", title: "Account" },
+  { id: "workspace", title: "Workspace" },
+  { id: "payment", title: "Payment" },
+] as const;
 
-const PURCHASE_STEPS: readonly PurchaseStep[] = [
-  {
-    description: "Create or open your account.",
-    id: "account",
-    title: "Account",
-  },
-  {
-    description: "Add the required passkey.",
-    id: "security",
-    title: "Security",
-  },
-  {
-    description: "Choose where the plan belongs.",
-    id: "workspace",
-    title: "Workspace",
-  },
-  {
-    description: "Finish with Stripe.",
-    id: "payment",
-    title: "Payment",
-  },
-];
+const BILLING_LABELS: Record<SetupInterval, string> = {
+  monthly: "Monthly",
+  yearly: "Annual",
+  four_month: "Every 4 months",
+  weekly: "7-day pass",
+  once: "30-day pass",
+};
 
 export function stepIndex(step: PurchaseStepId): number {
-  return PURCHASE_STEPS.findIndex((item) => item.id === step);
+  const visibleStep = step === "security" ? "account" : step;
+  return PURCHASE_STEPS.findIndex((item) => item.id === visibleStep);
+}
+
+export function PurchaseProgress({ activeStep }: { activeStep: PurchaseStepId }) {
+  const activeIndex = stepIndex(activeStep);
+  return (
+    <nav aria-label="Signup progress">
+      <ol className="grid grid-cols-4 gap-3">
+        {PURCHASE_STEPS.map((step, index) => (
+          <li key={step.id} aria-current={index === activeIndex ? "step" : undefined}>
+            <div
+              aria-hidden="true"
+              className={cn(
+                "mb-2 h-1 rounded-full",
+                index <= activeIndex ? "bg-accent-deep" : "bg-border-strong",
+              )}
+            />
+            <span
+              className={cn(
+                "type-label-medium block text-center",
+                index === activeIndex ? "text-ink-strong font-semibold" : "text-ink-muted",
+              )}
+            >
+              {step.title}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
 }
 
 export function PurchaseStepRail({
   activeStep,
-  authenticated,
   interval,
   productLabel,
 }: {
   activeStep: PurchaseStepId;
-  authenticated: boolean;
   interval: SetupInterval;
   productLabel: string;
 }) {
-  const activeIndex = stepIndex(activeStep);
   return (
-    <aside
-      className={cn(
-        "border-outline-variant bg-surface-container-lowest overflow-hidden rounded-3xl border transition-all duration-500 ease-out",
-        authenticated ? "lg:max-w-[16rem]" : "lg:max-w-[23rem]",
-      )}
-    >
-      <div
-        className={cn(
-          "space-y-6 p-5 transition-all duration-500",
-          authenticated ? "lg:p-4" : "lg:p-6",
-        )}
-      >
-        <div className="space-y-2">
-          <p className="type-label-medium text-outline">Selected plan</p>
-          <h1
-            className={cn(
-              "text-on-surface transition-all duration-500",
-              authenticated ? "type-title-large" : "type-display-small",
-            )}
-          >
-            {productLabel}
-          </h1>
-          <p className="type-body-medium text-outline">Billing: {interval}</p>
-        </div>
-
-        <ol className="space-y-3">
-          {PURCHASE_STEPS.map((step, index) => {
-            const complete = index < activeIndex;
-            const active = step.id === activeStep;
-            return (
-              <li
-                key={step.id}
-                className={cn(
-                  "rounded-2xl border px-3 py-3 transition-all duration-300",
-                  active
-                    ? "border-primary bg-primary-container text-on-primary-container"
-                    : "border-outline-variant bg-surface text-on-surface",
-                  complete && "bg-surface-container-low text-outline",
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={cn(
-                      "type-label-medium flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors",
-                      active
-                        ? "border-on-primary-container bg-on-primary-container text-primary-container"
-                        : complete
-                          ? "border-outline bg-outline text-surface"
-                          : "border-outline-variant text-outline",
-                    )}
-                    aria-hidden="true"
-                  >
-                    {complete ? "✓" : index + 1}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="type-label-large block">{step.title}</span>
-                    <span
-                      className={cn(
-                        "type-body-small text-outline block transition-opacity duration-300",
-                        authenticated && !active ? "lg:opacity-0" : "opacity-100",
-                      )}
-                    >
-                      {step.description}
-                    </span>
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-    </aside>
+    <div className="space-y-6">
+      <PurchaseProgress activeStep={activeStep} />
+      <p className="type-body-medium text-ink-muted">
+        {productLabel} · {BILLING_LABELS[interval]}
+      </p>
+    </div>
   );
 }
 
 export function PurchaseStepPanel({
   children,
   description,
-  eyebrow,
   title,
 }: {
   children: ReactNode;
   description: string;
-  eyebrow: string;
   title: string;
 }) {
   return (
-    <section className="border-outline-variant bg-surface-container-lowest min-h-[32rem] rounded-3xl border p-6 shadow-[0_24px_80px_rgba(26,22,18,0.08)] sm:p-8">
-      <div className="mx-auto flex min-h-[28rem] w-full max-w-2xl flex-col justify-center space-y-8">
-        <div className="space-y-3">
-          <p className="type-label-medium text-outline">{eyebrow}</p>
-          <h2 className="type-display-small text-on-surface">{title}</h2>
-          <p className="type-body-large text-outline">{description}</p>
-        </div>
-        {children}
+    <section className="space-y-6">
+      <div className="space-y-3">
+        <h1 className="text-ink-strong font-serif text-4xl leading-tight tracking-tight text-balance sm:text-5xl">
+          {title}
+        </h1>
+        <p className="type-body-large text-ink-soft">{description}</p>
       </div>
+      {children}
     </section>
   );
 }

@@ -25,7 +25,7 @@ function SetupLayout() {
         </div>
       </header>
 
-      <main className="flex flex-1 justify-center px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+      <main className="flex flex-1 items-center justify-center px-6 py-8 lg:px-8 lg:py-12">
         <div className="w-full max-w-6xl">
           <Outlet />
         </div>

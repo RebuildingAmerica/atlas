@@ -60,6 +60,8 @@ import { Route as AuthDeviceApprovedRouteImport } from './routes/_auth/device/ap
 import { Route as AuthOauthConsentRouteImport } from './routes/_auth/oauth/consent'
 import { Route as OnboardingOnboardingIndexRouteImport } from './routes/_onboarding/onboarding/index'
 import { Route as OnboardingOnboardingCompleteRouteImport } from './routes/_onboarding/onboarding/complete'
+import { Route as OnboardingWaitlistIndexRouteImport } from './routes/_onboarding/waitlist/index'
+import { Route as OnboardingWaitlistLinkRouteImport } from './routes/_onboarding/waitlist/link'
 import { Route as PublicClaimSlugRouteImport } from './routes/_public/claim/$slug'
 import { Route as PublicDirectoriesOrgIdRouteImport } from './routes/_public/directories/$orgId'
 import { Route as PublicEntriesEntryIdRouteImport } from './routes/_public/entries/$entryId'
@@ -69,8 +71,6 @@ import { Route as PublicProfilesIndexRouteImport } from './routes/_public/profil
 import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_public/profiles/organizations'
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicReportsReportIdRouteImport } from './routes/_public/reports/$reportId'
-import { Route as PublicWaitlistIndexRouteImport } from './routes/_public/waitlist/index'
-import { Route as PublicWaitlistLinkRouteImport } from './routes/_public/waitlist/link'
 import { Route as WorkspaceAdminIndexRouteImport } from './routes/_workspace/admin/index'
 import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
 import { Route as WorkspaceAdminCorrectionsRouteImport } from './routes/_workspace/admin/corrections'
@@ -91,6 +91,7 @@ import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspac
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
+import { Route as OnboardingWaitlistRequestIdRouteImport } from './routes/_onboarding/waitlist/request/$id'
 import { Route as PublicPlacesBoroughsPlaceSlugRouteImport } from './routes/_public/places/boroughs/$placeSlug'
 import { Route as PublicPlacesCitiesPlaceSlugRouteImport } from './routes/_public/places/cities/$placeSlug'
 import { Route as PublicPlacesCountiesPlaceSlugRouteImport } from './routes/_public/places/counties/$placeSlug'
@@ -105,7 +106,6 @@ import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_
 import { Route as PublicProfilesOrganizationsSlugRouteImport } from './routes/_public/profiles/organizations/$slug'
 import { Route as PublicProfilesPeopleIndexRouteImport } from './routes/_public/profiles/people/index'
 import { Route as PublicProfilesPeopleSlugRouteImport } from './routes/_public/profiles/people/$slug'
-import { Route as PublicWaitlistRequestIdRouteImport } from './routes/_public/waitlist/request/$id'
 import { Route as ApiAtprotoOauthCallbackRouteImport } from './routes/api/atproto/oauth/callback'
 import { Route as ApiAtprotoOauthClientMetadataDotjsonRouteImport } from './routes/api/atproto/oauth/client-metadata[.]json'
 import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
@@ -375,6 +375,16 @@ const OnboardingOnboardingCompleteRoute =
     path: '/complete',
     getParentRoute: () => OnboardingOnboardingRoute,
   } as any)
+const OnboardingWaitlistIndexRoute = OnboardingWaitlistIndexRouteImport.update({
+  id: '/waitlist/',
+  path: '/waitlist/',
+  getParentRoute: () => OnboardingRoute,
+} as any)
+const OnboardingWaitlistLinkRoute = OnboardingWaitlistLinkRouteImport.update({
+  id: '/waitlist/link',
+  path: '/waitlist/link',
+  getParentRoute: () => OnboardingRoute,
+} as any)
 const PublicClaimSlugRoute = PublicClaimSlugRouteImport.update({
   id: '/claim/$slug',
   path: '/claim/$slug',
@@ -419,16 +429,6 @@ const PublicProfilesPeopleRoute = PublicProfilesPeopleRouteImport.update({
 const PublicReportsReportIdRoute = PublicReportsReportIdRouteImport.update({
   id: '/reports/$reportId',
   path: '/reports/$reportId',
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicWaitlistIndexRoute = PublicWaitlistIndexRouteImport.update({
-  id: '/waitlist/',
-  path: '/waitlist/',
-  getParentRoute: () => PublicRoute,
-} as any)
-const PublicWaitlistLinkRoute = PublicWaitlistLinkRouteImport.update({
-  id: '/waitlist/link',
-  path: '/waitlist/link',
   getParentRoute: () => PublicRoute,
 } as any)
 const WorkspaceAdminIndexRoute = WorkspaceAdminIndexRouteImport.update({
@@ -539,6 +539,12 @@ const DotwellKnownOauthAuthorizationServerApiAuthRoute =
     path: '/.well-known/oauth-authorization-server/api/auth',
     getParentRoute: () => rootRouteImport,
   } as any)
+const OnboardingWaitlistRequestIdRoute =
+  OnboardingWaitlistRequestIdRouteImport.update({
+    id: '/waitlist/request/$id',
+    path: '/waitlist/request/$id',
+    getParentRoute: () => OnboardingRoute,
+  } as any)
 const PublicPlacesBoroughsPlaceSlugRoute =
   PublicPlacesBoroughsPlaceSlugRouteImport.update({
     id: '/places/boroughs/$placeSlug',
@@ -623,11 +629,6 @@ const PublicProfilesPeopleSlugRoute =
     path: '/$slug',
     getParentRoute: () => PublicProfilesPeopleRoute,
   } as any)
-const PublicWaitlistRequestIdRoute = PublicWaitlistRequestIdRouteImport.update({
-  id: '/waitlist/request/$id',
-  path: '/waitlist/request/$id',
-  getParentRoute: () => PublicRoute,
-} as any)
 const ApiAtprotoOauthCallbackRoute = ApiAtprotoOauthCallbackRouteImport.update({
   id: '/api/atproto/oauth/callback',
   path: '/api/atproto/oauth/callback',
@@ -727,6 +728,7 @@ export interface FileRoutesByFullPath {
   '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/onboarding/complete': typeof OnboardingOnboardingCompleteRoute
+  '/waitlist/link': typeof OnboardingWaitlistLinkRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -735,7 +737,6 @@ export interface FileRoutesByFullPath {
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/reports/$reportId': typeof PublicReportsReportIdRoute
-  '/waitlist/link': typeof PublicWaitlistLinkRoute
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -754,14 +755,15 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/device/': typeof AuthDeviceIndexRoute
   '/onboarding/': typeof OnboardingOnboardingIndexRoute
+  '/waitlist/': typeof OnboardingWaitlistIndexRoute
   '/profiles/': typeof PublicProfilesIndexRoute
-  '/waitlist/': typeof PublicWaitlistIndexRoute
   '/admin/': typeof WorkspaceAdminIndexRoute
   '/briefs/': typeof WorkspaceBriefsIndexRoute
   '/coverage/': typeof WorkspaceCoverageIndexRoute
   '/lists/': typeof WorkspaceListsIndexRoute
   '/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/waitlist/request/$id': typeof OnboardingWaitlistRequestIdRoute
   '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
   '/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
   '/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
@@ -774,7 +776,6 @@ export interface FileRoutesByFullPath {
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
-  '/waitlist/request/$id': typeof PublicWaitlistRequestIdRoute
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
@@ -829,13 +830,13 @@ export interface FileRoutesByTo {
   '/device/approved': typeof AuthDeviceApprovedRoute
   '/oauth/consent': typeof AuthOauthConsentRoute
   '/onboarding/complete': typeof OnboardingOnboardingCompleteRoute
+  '/waitlist/link': typeof OnboardingWaitlistLinkRoute
   '/claim/$slug': typeof PublicClaimSlugRoute
   '/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/entries/$entryId': typeof PublicEntriesEntryIdRoute
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/reports/$reportId': typeof PublicReportsReportIdRoute
-  '/waitlist/link': typeof PublicWaitlistLinkRoute
   '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -854,14 +855,15 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/device': typeof AuthDeviceIndexRoute
   '/onboarding': typeof OnboardingOnboardingIndexRoute
+  '/waitlist': typeof OnboardingWaitlistIndexRoute
   '/profiles': typeof PublicProfilesIndexRoute
-  '/waitlist': typeof PublicWaitlistIndexRoute
   '/admin': typeof WorkspaceAdminIndexRoute
   '/briefs': typeof WorkspaceBriefsIndexRoute
   '/coverage': typeof WorkspaceCoverageIndexRoute
   '/lists': typeof WorkspaceListsIndexRoute
   '/organization': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/waitlist/request/$id': typeof OnboardingWaitlistRequestIdRoute
   '/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
   '/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
   '/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
@@ -874,7 +876,6 @@ export interface FileRoutesByTo {
   '/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
-  '/waitlist/request/$id': typeof PublicWaitlistRequestIdRoute
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
@@ -937,6 +938,7 @@ export interface FileRoutesById {
   '/_auth/device/approved': typeof AuthDeviceApprovedRoute
   '/_auth/oauth/consent': typeof AuthOauthConsentRoute
   '/_onboarding/onboarding/complete': typeof OnboardingOnboardingCompleteRoute
+  '/_onboarding/waitlist/link': typeof OnboardingWaitlistLinkRoute
   '/_public/claim/$slug': typeof PublicClaimSlugRoute
   '/_public/directories/$orgId': typeof PublicDirectoriesOrgIdRoute
   '/_public/entries/$entryId': typeof PublicEntriesEntryIdRoute
@@ -945,7 +947,6 @@ export interface FileRoutesById {
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_public/reports/$reportId': typeof PublicReportsReportIdRoute
-  '/_public/waitlist/link': typeof PublicWaitlistLinkRoute
   '/_workspace/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/_workspace/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
   '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
@@ -964,14 +965,15 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource/': typeof DotwellKnownOauthProtectedResourceIndexRoute
   '/_auth/device/': typeof AuthDeviceIndexRoute
   '/_onboarding/onboarding/': typeof OnboardingOnboardingIndexRoute
+  '/_onboarding/waitlist/': typeof OnboardingWaitlistIndexRoute
   '/_public/profiles/': typeof PublicProfilesIndexRoute
-  '/_public/waitlist/': typeof PublicWaitlistIndexRoute
   '/_workspace/admin/': typeof WorkspaceAdminIndexRoute
   '/_workspace/briefs/': typeof WorkspaceBriefsIndexRoute
   '/_workspace/coverage/': typeof WorkspaceCoverageIndexRoute
   '/_workspace/lists/': typeof WorkspaceListsIndexRoute
   '/_workspace/organization/': typeof WorkspaceOrganizationIndexRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/_onboarding/waitlist/request/$id': typeof OnboardingWaitlistRequestIdRoute
   '/_public/places/boroughs/$placeSlug': typeof PublicPlacesBoroughsPlaceSlugRoute
   '/_public/places/cities/$placeSlug': typeof PublicPlacesCitiesPlaceSlugRoute
   '/_public/places/counties/$placeSlug': typeof PublicPlacesCountiesPlaceSlugRoute
@@ -984,7 +986,6 @@ export interface FileRoutesById {
   '/_public/profiles/initiatives/$slug': typeof PublicProfilesInitiativesSlugRoute
   '/_public/profiles/organizations/$slug': typeof PublicProfilesOrganizationsSlugRoute
   '/_public/profiles/people/$slug': typeof PublicProfilesPeopleSlugRoute
-  '/_public/waitlist/request/$id': typeof PublicWaitlistRequestIdRoute
   '/api/atproto/oauth/callback': typeof ApiAtprotoOauthCallbackRoute
   '/api/atproto/oauth/client-metadata.json': typeof ApiAtprotoOauthClientMetadataDotjsonRoute
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
@@ -1044,6 +1045,7 @@ export interface FileRouteTypes {
     | '/device/approved'
     | '/oauth/consent'
     | '/onboarding/complete'
+    | '/waitlist/link'
     | '/claim/$slug'
     | '/directories/$orgId'
     | '/entries/$entryId'
@@ -1052,7 +1054,6 @@ export interface FileRouteTypes {
     | '/profiles/organizations'
     | '/profiles/people'
     | '/reports/$reportId'
-    | '/waitlist/link'
     | '/admin/cloud-costs'
     | '/admin/corrections'
     | '/admin/discounts'
@@ -1071,14 +1072,15 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource/'
     | '/device/'
     | '/onboarding/'
-    | '/profiles/'
     | '/waitlist/'
+    | '/profiles/'
     | '/admin/'
     | '/briefs/'
     | '/coverage/'
     | '/lists/'
     | '/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/waitlist/request/$id'
     | '/places/boroughs/$placeSlug'
     | '/places/cities/$placeSlug'
     | '/places/counties/$placeSlug'
@@ -1091,7 +1093,6 @@ export interface FileRouteTypes {
     | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
-    | '/waitlist/request/$id'
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
@@ -1146,13 +1147,13 @@ export interface FileRouteTypes {
     | '/device/approved'
     | '/oauth/consent'
     | '/onboarding/complete'
+    | '/waitlist/link'
     | '/claim/$slug'
     | '/directories/$orgId'
     | '/entries/$entryId'
     | '/feedback/$slug'
     | '/places/$placeSlug'
     | '/reports/$reportId'
-    | '/waitlist/link'
     | '/admin/cloud-costs'
     | '/admin/corrections'
     | '/admin/discounts'
@@ -1171,14 +1172,15 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/device'
     | '/onboarding'
-    | '/profiles'
     | '/waitlist'
+    | '/profiles'
     | '/admin'
     | '/briefs'
     | '/coverage'
     | '/lists'
     | '/organization'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/waitlist/request/$id'
     | '/places/boroughs/$placeSlug'
     | '/places/cities/$placeSlug'
     | '/places/counties/$placeSlug'
@@ -1191,7 +1193,6 @@ export interface FileRouteTypes {
     | '/profiles/initiatives/$slug'
     | '/profiles/organizations/$slug'
     | '/profiles/people/$slug'
-    | '/waitlist/request/$id'
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
@@ -1253,6 +1254,7 @@ export interface FileRouteTypes {
     | '/_auth/device/approved'
     | '/_auth/oauth/consent'
     | '/_onboarding/onboarding/complete'
+    | '/_onboarding/waitlist/link'
     | '/_public/claim/$slug'
     | '/_public/directories/$orgId'
     | '/_public/entries/$entryId'
@@ -1261,7 +1263,6 @@ export interface FileRouteTypes {
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_public/reports/$reportId'
-    | '/_public/waitlist/link'
     | '/_workspace/admin/cloud-costs'
     | '/_workspace/admin/corrections'
     | '/_workspace/admin/discounts'
@@ -1280,14 +1281,15 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource/'
     | '/_auth/device/'
     | '/_onboarding/onboarding/'
+    | '/_onboarding/waitlist/'
     | '/_public/profiles/'
-    | '/_public/waitlist/'
     | '/_workspace/admin/'
     | '/_workspace/briefs/'
     | '/_workspace/coverage/'
     | '/_workspace/lists/'
     | '/_workspace/organization/'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/_onboarding/waitlist/request/$id'
     | '/_public/places/boroughs/$placeSlug'
     | '/_public/places/cities/$placeSlug'
     | '/_public/places/counties/$placeSlug'
@@ -1300,7 +1302,6 @@ export interface FileRouteTypes {
     | '/_public/profiles/initiatives/$slug'
     | '/_public/profiles/organizations/$slug'
     | '/_public/profiles/people/$slug'
-    | '/_public/waitlist/request/$id'
     | '/api/atproto/oauth/callback'
     | '/api/atproto/oauth/client-metadata.json'
     | '/api/atproto/oauth/start'
@@ -1712,6 +1713,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingOnboardingCompleteRouteImport
       parentRoute: typeof OnboardingOnboardingRoute
     }
+    '/_onboarding/waitlist/': {
+      id: '/_onboarding/waitlist/'
+      path: '/waitlist'
+      fullPath: '/waitlist/'
+      preLoaderRoute: typeof OnboardingWaitlistIndexRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
+    '/_onboarding/waitlist/link': {
+      id: '/_onboarding/waitlist/link'
+      path: '/waitlist/link'
+      fullPath: '/waitlist/link'
+      preLoaderRoute: typeof OnboardingWaitlistLinkRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
     '/_public/claim/$slug': {
       id: '/_public/claim/$slug'
       path: '/claim/$slug'
@@ -1773,20 +1788,6 @@ declare module '@tanstack/react-router' {
       path: '/reports/$reportId'
       fullPath: '/reports/$reportId'
       preLoaderRoute: typeof PublicReportsReportIdRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/waitlist/': {
-      id: '/_public/waitlist/'
-      path: '/waitlist'
-      fullPath: '/waitlist/'
-      preLoaderRoute: typeof PublicWaitlistIndexRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_public/waitlist/link': {
-      id: '/_public/waitlist/link'
-      path: '/waitlist/link'
-      fullPath: '/waitlist/link'
-      preLoaderRoute: typeof PublicWaitlistLinkRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_workspace/admin/': {
@@ -1929,6 +1930,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_onboarding/waitlist/request/$id': {
+      id: '/_onboarding/waitlist/request/$id'
+      path: '/waitlist/request/$id'
+      fullPath: '/waitlist/request/$id'
+      preLoaderRoute: typeof OnboardingWaitlistRequestIdRouteImport
+      parentRoute: typeof OnboardingRoute
+    }
     '/_public/places/boroughs/$placeSlug': {
       id: '/_public/places/boroughs/$placeSlug'
       path: '/places/boroughs/$placeSlug'
@@ -2026,13 +2034,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/profiles/people/$slug'
       preLoaderRoute: typeof PublicProfilesPeopleSlugRouteImport
       parentRoute: typeof PublicProfilesPeopleRoute
-    }
-    '/_public/waitlist/request/$id': {
-      id: '/_public/waitlist/request/$id'
-      path: '/waitlist/request/$id'
-      fullPath: '/waitlist/request/$id'
-      preLoaderRoute: typeof PublicWaitlistRequestIdRouteImport
-      parentRoute: typeof PublicRoute
     }
     '/api/atproto/oauth/callback': {
       id: '/api/atproto/oauth/callback'
@@ -2156,10 +2157,16 @@ const OnboardingOnboardingRouteWithChildren =
 
 interface OnboardingRouteChildren {
   OnboardingOnboardingRoute: typeof OnboardingOnboardingRouteWithChildren
+  OnboardingWaitlistLinkRoute: typeof OnboardingWaitlistLinkRoute
+  OnboardingWaitlistIndexRoute: typeof OnboardingWaitlistIndexRoute
+  OnboardingWaitlistRequestIdRoute: typeof OnboardingWaitlistRequestIdRoute
 }
 
 const OnboardingRouteChildren: OnboardingRouteChildren = {
   OnboardingOnboardingRoute: OnboardingOnboardingRouteWithChildren,
+  OnboardingWaitlistLinkRoute: OnboardingWaitlistLinkRoute,
+  OnboardingWaitlistIndexRoute: OnboardingWaitlistIndexRoute,
+  OnboardingWaitlistRequestIdRoute: OnboardingWaitlistRequestIdRoute,
 }
 
 const OnboardingRouteWithChildren = OnboardingRoute._addFileChildren(
@@ -2215,9 +2222,7 @@ interface PublicRouteChildren {
   PublicProfilesOrganizationsRoute: typeof PublicProfilesOrganizationsRouteWithChildren
   PublicProfilesPeopleRoute: typeof PublicProfilesPeopleRouteWithChildren
   PublicReportsReportIdRoute: typeof PublicReportsReportIdRoute
-  PublicWaitlistLinkRoute: typeof PublicWaitlistLinkRoute
   PublicProfilesIndexRoute: typeof PublicProfilesIndexRoute
-  PublicWaitlistIndexRoute: typeof PublicWaitlistIndexRoute
   PublicPlacesBoroughsPlaceSlugRoute: typeof PublicPlacesBoroughsPlaceSlugRoute
   PublicPlacesCitiesPlaceSlugRoute: typeof PublicPlacesCitiesPlaceSlugRoute
   PublicPlacesCountiesPlaceSlugRoute: typeof PublicPlacesCountiesPlaceSlugRoute
@@ -2228,7 +2233,6 @@ interface PublicRouteChildren {
   PublicProfilesCampaignsSlugRoute: typeof PublicProfilesCampaignsSlugRoute
   PublicProfilesEventsSlugRoute: typeof PublicProfilesEventsSlugRoute
   PublicProfilesInitiativesSlugRoute: typeof PublicProfilesInitiativesSlugRoute
-  PublicWaitlistRequestIdRoute: typeof PublicWaitlistRequestIdRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
@@ -2251,9 +2255,7 @@ const PublicRouteChildren: PublicRouteChildren = {
     PublicProfilesOrganizationsRouteWithChildren,
   PublicProfilesPeopleRoute: PublicProfilesPeopleRouteWithChildren,
   PublicReportsReportIdRoute: PublicReportsReportIdRoute,
-  PublicWaitlistLinkRoute: PublicWaitlistLinkRoute,
   PublicProfilesIndexRoute: PublicProfilesIndexRoute,
-  PublicWaitlistIndexRoute: PublicWaitlistIndexRoute,
   PublicPlacesBoroughsPlaceSlugRoute: PublicPlacesBoroughsPlaceSlugRoute,
   PublicPlacesCitiesPlaceSlugRoute: PublicPlacesCitiesPlaceSlugRoute,
   PublicPlacesCountiesPlaceSlugRoute: PublicPlacesCountiesPlaceSlugRoute,
@@ -2265,7 +2267,6 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicProfilesCampaignsSlugRoute: PublicProfilesCampaignsSlugRoute,
   PublicProfilesEventsSlugRoute: PublicProfilesEventsSlugRoute,
   PublicProfilesInitiativesSlugRoute: PublicProfilesInitiativesSlugRoute,
-  PublicWaitlistRequestIdRoute: PublicWaitlistRequestIdRoute,
 }
 
 const PublicRouteWithChildren =

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { WaitlistRequestPage } from "@/domains/waitlist/pages/waitlist-link-page";
-export const Route = createFileRoute("/_public/waitlist/request/$id")({
+export const Route = createFileRoute("/_onboarding/waitlist/request/$id")({
   head: () => ({
     meta: [
       { title: "Your waitlist request | Atlas" },

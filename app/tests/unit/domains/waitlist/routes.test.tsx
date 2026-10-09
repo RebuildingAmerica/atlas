@@ -33,9 +33,9 @@ describe("waitlist route contracts", () => {
   it("keeps private pages unindexed, uncached and without a referrer", async () => {
     const { asRouteStub } = await import("../../../helpers/router-harness");
     const modules = await Promise.all([
-      import("@/routes/_public/waitlist/index"),
-      import("@/routes/_public/waitlist/link"),
-      import("@/routes/_public/waitlist/request/$id"),
+      import("@/routes/_onboarding/waitlist/index"),
+      import("@/routes/_onboarding/waitlist/link"),
+      import("@/routes/_onboarding/waitlist/request/$id"),
       import("@/routes/_workspace/admin/waitlist"),
     ]);
     for (const module of modules) {
@@ -55,20 +55,20 @@ describe("waitlist route contracts", () => {
   }
   it("passes selected products, scoped links and private request ids into screens", async () => {
     const { asRouteStub, readRouterMocks } = await import("../../../helpers/router-harness");
-    const signup = asRouteStub((await import("@/routes/_public/waitlist/index")).Route);
+    const signup = asRouteStub((await import("@/routes/_onboarding/waitlist/index")).Route);
     readRouterMocks().useSearch.mockReturnValue({ product: "atlas_team", interval: "yearly" });
     await signup.options.beforeLoad?.({});
     const Signup = required(signup.options.component);
     const first = render(<Signup />);
     expect(screen.getByText("atlas_team yearly")).toBeInTheDocument();
     first.unmount();
-    const link = asRouteStub((await import("@/routes/_public/waitlist/link")).Route);
+    const link = asRouteStub((await import("@/routes/_onboarding/waitlist/link")).Route);
     readRouterMocks().useSearch.mockReturnValue({ token: "private-token", kind: "invite" });
     const Link = required(link.options.component);
     const second = render(<Link />);
     expect(screen.getByText("private-token invite")).toBeInTheDocument();
     second.unmount();
-    const request = asRouteStub((await import("@/routes/_public/waitlist/request/$id")).Route);
+    const request = asRouteStub((await import("@/routes/_onboarding/waitlist/request/$id")).Route);
     readRouterMocks().useParams.mockReturnValue({ id: "private-id" });
     const Request = required(request.options.component);
     render(<Request />);

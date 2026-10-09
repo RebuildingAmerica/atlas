@@ -4,7 +4,7 @@ import { WaitlistPage } from "@/domains/waitlist/pages/waitlist-page";
 import { waitlistProductSchema } from "@/domains/waitlist/contracts";
 import { redirectIfLocalSession } from "@/domains/access/server";
 
-export const Route = createFileRoute("/_public/waitlist/")({
+export const Route = createFileRoute("/_onboarding/waitlist/")({
   beforeLoad: () => redirectIfLocalSession("/"),
   validateSearch: z.object({
     product: waitlistProductSchema.optional(),

@@ -63,7 +63,7 @@ describe("SetupPage", () => {
 
     render(<SetupPage product="atlas_research_pass" />);
 
-    expect(screen.getByText("Billing: once")).toBeInTheDocument();
+    expect(screen.getByText("Atlas Research Pass · 30-day pass")).toBeInTheDocument();
     await waitFor(() => {
       expect(mocks.ensurePurchaseOnboarding).toHaveBeenCalledWith({
         data: { product: "atlas_research_pass", interval: "once" },
@@ -110,9 +110,9 @@ describe("SetupPage", () => {
     render(<SetupPage purchase="pi_pro" step="payment" />);
 
     await waitFor(() => {
-      expect(screen.getByText("Atlas Pro")).toBeInTheDocument();
+      expect(screen.getByText("Atlas Pro · Annual")).toBeInTheDocument();
     });
-    expect(screen.getByText("Billing: yearly")).toBeInTheDocument();
+    expect(screen.getByText("Atlas Pro · Annual")).toBeInTheDocument();
     expect(mocks.ensurePurchaseOnboarding).not.toHaveBeenCalled();
   });
 
@@ -128,6 +128,7 @@ describe("SetupPage", () => {
     render(<SetupPage product="atlas_team" interval="monthly" step="payment" />);
 
     expect(await screen.findByLabelText(/Workspace name/)).toBeInTheDocument();
+    expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Workspace");
     expect(screen.queryByLabelText(/Workspace slug/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Stripe will handle/)).not.toBeInTheDocument();
   });
