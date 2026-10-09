@@ -249,7 +249,7 @@ runs:
           issuers="$(jq -c \
             --arg iss "${ADMIN_PUBLIC_URL%/}" \
             --arg key "${ADMIN_SIGNING_PUBLIC_KEY}" \
-            '. + [{kind: "ed25519_jwt", name: "atlas-admin", issuer: $iss, audience: "urn:atlas:platform-api", public_key: $key, actions: ["platform.discounts.review", "platform.costs.view"]}]' \
+            '. + [{kind: "ed25519_jwt", name: "atlas-admin", issuer: $iss, audience: "urn:atlas:platform-api", public_key: $key, actions: ["platform.discounts.review", "platform.costs.view", "platform.switches.read", "platform.switches.write"]}]' \
             <<<"${issuers}")"
         fi
 

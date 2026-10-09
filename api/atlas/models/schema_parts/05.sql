@@ -66,6 +66,17 @@ CREATE TABLE IF NOT EXISTS entry_takedowns (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_entry_takedowns_standing
     ON entry_takedowns(entry_id) WHERE restored_at IS NULL;
 
+-- Switches the platform operator flips in the platform admin to stop
+-- discovery spend or pause sales without a release. A missing row means the
+-- switch was never engaged.
+CREATE TABLE IF NOT EXISTS platform_switches (
+    name TEXT PRIMARY KEY,
+    engaged BOOLEAN NOT NULL,
+    reason TEXT NOT NULL,
+    changed_by TEXT NOT NULL,
+    changed_at TIMESTAMPTZ NOT NULL
+);
+
 -- The promise holds at the bottom: no code path, present or future, can
 -- publish an entry while a takedown stands for it.
 CREATE OR REPLACE FUNCTION entries_refuse_taken_down_publish() RETURNS trigger

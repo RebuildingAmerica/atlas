@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   getCloudCostPosture: vi.fn(),
+  listPlatformSwitches: vi.fn(),
   listVerifications: vi.fn(),
+  setPlatformSwitch: vi.fn(),
   updateVerification: vi.fn(),
 }));
 
@@ -58,5 +60,32 @@ describe("platform server functions", () => {
     api.getCloudCostPosture.mockResolvedValue({ posture: "pass" });
 
     expect(await loadCloudCostPosture()).toEqual({ posture: "pass" });
+  });
+
+  it("loads the switches and flips one with the operator's reason", async () => {
+    const { flipSwitch, loadSwitches } =
+      await import("@/domains/switches/switches.functions");
+    api.listPlatformSwitches.mockResolvedValue({ items: [] });
+    api.setPlatformSwitch.mockResolvedValue({ engaged: true });
+
+    expect(await loadSwitches()).toEqual({ items: [] });
+    await flipSwitch({
+      data: { engaged: true, name: "checkout", reason: " Stripe outage " },
+    });
+
+    expect(api.setPlatformSwitch).toHaveBeenCalledWith("checkout", {
+      engaged: true,
+      reason: "Stripe outage",
+    });
+  });
+
+  it("refuses to flip a switch without a reason", async () => {
+    const { flipSwitch } =
+      await import("@/domains/switches/switches.functions");
+
+    await expect(
+      flipSwitch({ data: { engaged: true, name: "checkout", reason: " " } }),
+    ).rejects.toThrow("Say why");
+    expect(api.setPlatformSwitch).not.toHaveBeenCalled();
   });
 });

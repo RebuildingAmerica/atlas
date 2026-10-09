@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { ConfirmDialogProvider } from "@rebuildingamerica/atlas-ui/ui/confirm-dialog";
 import { routeTree } from "./routeTree.gen";
 
 interface ProvidersProps {
@@ -20,7 +21,9 @@ export function getRouter() {
 
   function Providers({ children }: ProvidersProps) {
     return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+      </QueryClientProvider>
     );
   }
 

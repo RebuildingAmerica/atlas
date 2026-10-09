@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
 
 from atlas.domains.access.dependencies import get_usage_db
+from atlas.domains.access.models.platform_switches import PlatformSwitchCRUD
 from atlas.domains.discovery.cost import DAILY_WINDOW_HOURS, daily_cost
 from atlas.platform.authz import Action, PlatformOperator, require_platform_action
 from atlas.platform.config import Settings, get_settings
@@ -74,9 +75,9 @@ def _daily_spend_cutoff() -> str:
     return (datetime.now(UTC) - timedelta(hours=DAILY_WINDOW_HOURS)).isoformat()
 
 
-def _spend_posture(*, spent: float, settings: Settings) -> CloudCostPosture:
+def _spend_posture(*, spent: float, settings: Settings, switch_engaged: bool) -> CloudCostPosture:
     """Return a cost posture for current discovery spend."""
-    if settings.discovery_cost_kill_switch:
+    if settings.discovery_cost_kill_switch or switch_engaged:
         return "block"
     if spent >= settings.discovery_max_daily_cost:
         return "block"
@@ -169,11 +170,12 @@ async def get_cloud_cost_posture(
     """Return operator-only Atlas cloud-cost posture and guardrail status."""
     apply_no_store_headers(response)
     spent = await daily_cost(conn, since_iso=_daily_spend_cutoff())
+    switch_engaged = await PlatformSwitchCRUD.is_engaged(conn, "discovery_spend")
     discovery_spend = DiscoverySpendPosture(
         daily_ceiling_usd=settings.discovery_max_daily_cost,
         estimated_daily_usd=round(spent, 4),
-        kill_switch_enabled=settings.discovery_cost_kill_switch,
-        posture=_spend_posture(spent=spent, settings=settings),
+        kill_switch_enabled=settings.discovery_cost_kill_switch or switch_engaged,
+        posture=_spend_posture(spent=spent, settings=settings, switch_engaged=switch_engaged),
         run_ceiling_usd=settings.discovery_max_run_cost,
     )
     billing_export = _billing_export_posture()

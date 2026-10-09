@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { checkoutApi } from "../../../../helpers/billing/checkout-api";
 import { stubFetch } from "../../../../helpers/stub-fetch";
 
 vi.mock("@tanstack/react-start/server-only", () => ({}));
@@ -216,7 +217,7 @@ describe("checkout availability", () => {
 
     it("refuses when the catalog cannot serve results", async () => {
       vi.stubEnv("ATLAS_BILLING_CHECKOUT_ENABLED", "true");
-      stubFetch({ body: { items: [] } });
+      stubFetch(checkoutApi({ catalog: { body: { items: [] } } }));
       const { resolveCheckoutAvailability } =
         await import("@/domains/billing/server/checkout-availability");
       await expect(resolveCheckoutAvailability()).resolves.toEqual({
@@ -228,13 +229,46 @@ describe("checkout availability", () => {
 
     it("allows checkout when the switch is on and the catalog serves", async () => {
       vi.stubEnv("ATLAS_BILLING_CHECKOUT_ENABLED", "true");
-      stubFetch({ body: { items: [{ id: "e1" }] } });
+      stubFetch(checkoutApi());
       const { resolveCheckoutAvailability } =
         await import("@/domains/billing/server/checkout-availability");
       await expect(resolveCheckoutAvailability()).resolves.toMatchObject({
         available: true,
         reason: null,
       });
+    });
+
+    it.each([
+      ["the operator paused sales", { body: { checkout_open: false } }],
+      ["the switch cannot be read", { status: 503 }],
+      ["the answer is not the expected shape", { body: { checkout_open: "yes" } }],
+      ["the answer is empty", { body: null }],
+    ])("refuses as paused when %s", async (_label, serviceStatus) => {
+      vi.stubEnv("ATLAS_BILLING_CHECKOUT_ENABLED", "true");
+      stubFetch(checkoutApi({ serviceStatus }));
+      const { resolveCheckoutAvailability } =
+        await import("@/domains/billing/server/checkout-availability");
+      await expect(resolveCheckoutAvailability()).resolves.toEqual({
+        available: false,
+        reason: "paused",
+        allowedOffers: [],
+      });
+    });
+
+    it("asks the API about the switch once for concurrent buyers, then from cache", async () => {
+      vi.stubEnv("ATLAS_BILLING_CHECKOUT_ENABLED", "true");
+      const fetchStub = stubFetch(checkoutApi());
+      const { probeCheckoutOpen } = await import("@/domains/billing/server/checkout-availability");
+
+      await expect(Promise.all([probeCheckoutOpen(), probeCheckoutOpen()])).resolves.toEqual([
+        true,
+        true,
+      ]);
+      await expect(probeCheckoutOpen()).resolves.toBe(true);
+
+      expect(fetchStub.requests.map((request) => request.url)).toEqual([
+        "https://api.atlas.test/api/service-status",
+      ]);
     });
   });
 });

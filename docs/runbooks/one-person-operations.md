@@ -62,10 +62,13 @@ remembered.
 If the operator will be away longer than the 2-working-day targets, pause before
 leaving rather than letting promises lapse:
 
-1. **Stop selling.** Remove every offer from Vercel Production
-   `ATLAS_BILLING_ALLOWED_OFFERS`, set the repository variable
-   `ATLAS_BILLING_CHECKOUT_ENABLED=false`, and tag a release. Existing paid
-   access is not removed.
+1. **Stop selling.** In the platform admin, open Switches and engage Checkout
+   with the reason. Within a minute the pricing page says purchases are paused;
+   no release is needed and existing paid access is not removed. The Discovery
+   spend switch on the same page stops research spending the same way. The
+   environment settings (`ATLAS_BILLING_CHECKOUT_ENABLED`,
+   `DISCOVERY_COST_KILL_SWITCH`) still work as the break-glass when the admin or
+   the database is unavailable, but need a release.
 2. **Stop promoting.** Take down any pilot announcement or outreach that points
    people at Atlas as a Las Vegas resource.
 3. Leave corrections open. Reporters see "Waiting for an editor" until the

@@ -13200,6 +13200,21 @@
         "title": "ScheduledRunResult",
         "type": "object"
       },
+      "ServiceStatusResponse": {
+        "description": "Service state the app reads before offering checkout.",
+        "properties": {
+          "checkout_open": {
+            "description": "False while the platform operator has paused sales with the checkout switch.",
+            "title": "Checkout Open",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "checkout_open"
+        ],
+        "title": "ServiceStatusResponse",
+        "type": "object"
+      },
       "SourceCollectionResponse": {
         "description": "Collection response for sources.",
         "properties": {
@@ -25155,6 +25170,28 @@
         "summary": "Reject a discovery review item",
         "tags": [
           "moderation"
+        ]
+      }
+    },
+    "/api/service-status": {
+      "get": {
+        "description": "Whether checkout is open. Changes within a minute of the operator's switch.\n\nUse this access operation before relying on protected workflows. It explains or changes the caller's ability to use authenticated Atlas features, so integrations should surface authorization failures clearly instead of treating them as empty data.",
+        "operationId": "getServiceStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Service status",
+        "tags": [
+          "access"
         ]
       }
     },
