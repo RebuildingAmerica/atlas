@@ -8,7 +8,7 @@ export function baseRuntimeConfig(overrides: Record<string, unknown> = {}) {
       writesPerMinute: 10,
     },
     apiBaseUrl: "https://api.atlas.test",
-    edgeOriginSecret: "edge-test-secret",
+    edgeOriginSecret: "edge-test-secret", // pragma: allowlist secret
     internalSecret: "internal-test-secret",
     localMode: false,
     ...overrides,

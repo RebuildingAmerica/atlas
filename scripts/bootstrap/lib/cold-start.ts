@@ -24,6 +24,7 @@ export interface CliArgs {
   apiDomainOnly: boolean;
   apiEdgeOnly: boolean;
   accessGateOnly: boolean;
+  adminKeysOnly: boolean;
   apiDomainTarget: ApiDomainTarget;
   assumeYes: boolean;
   stripeTarget: StripeBootstrapTarget;
@@ -42,6 +43,7 @@ export function parseArgs(argv: string[]): CliArgs {
     argv.includes("--api-domain") ||
     argv.includes("--api-edge") ||
     argv.includes("--access-gate") ||
+    argv.includes("--admin-keys") ||
     argv.includes("--infra") ||
     argv.includes("--ci-cache");
   const defaultTarget = explicitLocalOnly || productOnly ? "local" : "prod";
@@ -69,6 +71,7 @@ export function parseArgs(argv: string[]): CliArgs {
     apiDomainOnly: argv.includes("--api-domain"),
     apiEdgeOnly: argv.includes("--api-edge"),
     accessGateOnly: argv.includes("--access-gate"),
+    adminKeysOnly: argv.includes("--admin-keys"),
     apiDomainTarget,
     assumeYes: argv.includes("--yes"),
     stripeTarget,

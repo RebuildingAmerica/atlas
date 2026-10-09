@@ -1,0 +1,32 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "api-client": {
+      "dependsOn": ["//#openapi"],
+      "inputs": [
+        "$TURBO_ROOT$/openapi/atlas-platform.openapi.json",
+        "orval.config.ts",
+        "src/server/platform-fetch.ts"
+      ],
+      "outputs": ["src/generated/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "lint": {
+      "dependsOn": ["api-client"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["api-client"],
+      "inputs": ["$TURBO_DEFAULT$", "!coverage/**"],
+      "outputs": []
+    },
+    "build": {
+      "dependsOn": ["api-client"],
+      "env": ["ATLAS_ADMIN_PUBLIC_URL"],
+      "outputs": [".cloudflare/output/**"]
+    }
+  }
+}

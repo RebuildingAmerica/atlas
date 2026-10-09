@@ -87,7 +87,7 @@ describe("api-keys.functions", () => {
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
       internalSecret: "internal-test-secret",
-      callbackSecret: "callback-test-secret",
+      callbackSecret: "callback-test-secret", // pragma: allowlist secret
       publicBaseUrl: "http://atlas.test",
     });
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
@@ -304,7 +304,7 @@ describe("api-keys.functions", () => {
       expect.objectContaining({
         headers: {
           "x-api-key": "atlas_secret_key_1234567890",
-          "x-atlas-callback-secret": "callback-test-secret",
+          "x-atlas-callback-secret": "callback-test-secret", // pragma: allowlist secret
         },
         method: "POST",
       }),
@@ -399,7 +399,7 @@ describe("api-keys.functions", () => {
       apiKeyIntrospectionUrl: null,
       localMode: false,
       internalSecret: "internal-test-secret",
-      callbackSecret: "callback-test-secret",
+      callbackSecret: "callback-test-secret", // pragma: allowlist secret
       publicBaseUrl: "http://atlas.test",
     });
     mocks.ensureReadyAtlasSession.mockResolvedValue(
@@ -435,7 +435,7 @@ describe("api-keys.functions", () => {
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       internalSecret: "internal-test-secret",
-      callbackSecret: "callback-test-secret",
+      callbackSecret: "callback-test-secret", // pragma: allowlist secret
       localMode: false,
       publicBaseUrl: "http://atlas.test",
     });

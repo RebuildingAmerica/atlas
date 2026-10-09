@@ -65,7 +65,38 @@ jobs:
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
+          admin-signing-public-key: ${{ vars.ATLAS_ADMIN_SIGNING_PUBLIC_KEY }}
+          access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
+          access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
+          platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
           atproto-oauth-e2e-harness: "1"
+
+  # The platform admin ships only where it is configured: a deployment
+  # without ATLAS_ADMIN_PUBLIC_URL has no platform admin at all.
+  deploy-admin:
+    needs:
+      - ci
+      - deploy-api
+    if: always() && needs.ci.result == 'success' && vars.ATLAS_ADMIN_PUBLIC_URL != '' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/deploy-atlas-admin
+        with:
+          environment-name: staging
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_ADMIN_DEPLOY_TOKEN }}
+          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
+          admin-signing-key: ${{ secrets.ATLAS_ADMIN_SIGNING_KEY }}
+          api-url: ${{ vars.ATLAS_PLATFORM_API_URL }}
+          access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
+          access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
+          platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
 
   deploy-pds:
     needs: ci

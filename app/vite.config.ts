@@ -38,10 +38,28 @@ function validateProductionPublicEnv(env: HostedAtlasEnv): void {
   validateHostedAtlasEnv(env);
 }
 
+/**
+ * Pages that moved to the Atlas platform admin. An old bookmark or email link
+ * lands on the admin's own page instead of a 404.
+ */
+const PLATFORM_ADMIN_PAGES: Record<string, string> = {
+  "/admin/cloud-costs": "/cloud-costs",
+  "/admin/discounts": "/discounts",
+};
+
 export function buildHostedProxyRouteRules(env: HostedAtlasEnv): NitroRouteRules {
   const docsOrigin = normalizeDocsOrigin(env.ATLAS_DOCS_URL);
   const apiOrigin = normalizeApiProxyOrigin(env);
+  const adminOrigin = env.ATLAS_ADMIN_PUBLIC_URL?.trim()
+    ? new URL(env.ATLAS_ADMIN_PUBLIC_URL.trim()).origin
+    : null;
   const rules: NitroRouteRules = {};
+
+  if (adminOrigin) {
+    for (const [from, to] of Object.entries(PLATFORM_ADMIN_PAGES)) {
+      rules[from] = { redirect: { to: `${adminOrigin}${to}`, status: 308 } };
+    }
+  }
 
   if (docsOrigin) {
     rules["/docs"] = {

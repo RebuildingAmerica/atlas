@@ -24,6 +24,18 @@ test("test graph contains only runnable package tasks", () => {
   assert.deepEqual(missing, []);
 });
 
+test("the platform admin is tested with everything else and never depends on the Atlas app", () => {
+  const graph = dryRun("test");
+  const adminTest = graph.tasks.find(
+    (task) => task.taskId === "@rebuildingamerica/atlas-admin#test",
+  );
+
+  assert.ok(adminTest, "the platform admin must be in the standard test graph");
+  const build = dryRun("@rebuildingamerica/atlas-admin#build");
+  const reachesApp = build.tasks.some((task) => task.package === "@rebuildingamerica/atlas-app");
+  assert.equal(reachesApp, false, "the platform admin must build without the Atlas app");
+});
+
 test("app remains in the standard test graph", () => {
   const graph = dryRun("test");
 

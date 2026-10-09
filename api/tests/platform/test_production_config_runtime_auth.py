@@ -64,6 +64,17 @@ class TestValidateRuntimeAuthConfig:
         with pytest.raises(RuntimeError, match="ATLAS_MACHINE_TRUSTED_ISSUERS must be a JSON list"):
             validate_runtime_auth_config(settings)
 
+    def test_half_set_cloudflare_access_settings_stop_startup(self) -> None:
+        """The platform admin's gate must not run with only half of its settings."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            multi_user=False,
+            access_team_domain="atlas-test.cloudflareaccess.com",
+            access_aud="",
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_ACCESS_AUD is required"):
+            validate_runtime_auth_config(settings)
+
     def test_multi_user_requires_callback_secret(self) -> None:
         """The API needs its own secret to call back into the app for memberships and keys."""
         settings = Settings(

@@ -10,6 +10,7 @@ import { log, note, outro } from "@clack/prompts";
 import { describePhase, formatFollowUpNote } from "./lib/cold-start.js";
 import type { HostedDeployTarget } from "./lib/hosted-target.js";
 import { runAccessGatePhase } from "./phases/access-gate.js";
+import { detectGithubRepo, runAdminKeysPhase } from "./phases/admin-keys.js";
 import { runApiDomainPhase } from "./phases/api-domain.js";
 import { runApiEdgePhase } from "./phases/api-edge.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
@@ -132,6 +133,39 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
       },
       successMessage: `atlas-api ${args.apiDomainTarget} edge protection ready.`,
       failureMessage: "API edge protection had issues.",
+    };
+  }
+  if (args.adminKeysOnly) {
+    return {
+      announcement: `Running the platform admin signing key only (target=${hostedApiTarget}).`,
+      phaseLabel: "Platform Admin Signing Key",
+      run: async () => {
+        const repo = detectGithubRepo();
+        if (!repo) {
+          return {
+            success: false,
+            followUpItems: [
+              "Sign in with `gh auth login` in this repository, then run again",
+            ],
+          };
+        }
+        return runAdminKeysPhase(
+          repo,
+          hostedApiTarget,
+          args.doctorMode,
+          args.assumeYes,
+        );
+      },
+      record: (result) => {
+        markTargetPhase(
+          state,
+          "admin-keys",
+          hostedApiTarget,
+          reportedPhaseStatus(result),
+        );
+      },
+      successMessage: `The ${hostedApiTarget} platform admin signing key is ready.`,
+      failureMessage: "The platform admin signing key had issues.",
     };
   }
   if (args.accessGateOnly) {

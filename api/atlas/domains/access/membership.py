@@ -28,7 +28,19 @@ class MembershipResult:
     verified_sso_domains: list[str] = field(default_factory=list)
 
 
-def _membership_request_headers(settings: Settings) -> dict[str, str]:
+def app_callback_headers(settings: Settings) -> dict[str, str]:
+    """Return the headers the API sends when it calls back into the app.
+
+    Parameters
+    ----------
+    settings : Settings
+        Runtime settings carrying the callback secret and any edge bypass.
+
+    Returns
+    -------
+    dict[str, str]
+        The callback secret, plus Vercel's protection bypass when configured.
+    """
     headers = {
         "X-Atlas-Callback-Secret": settings.auth_callback_secret,
     }
@@ -56,7 +68,7 @@ async def verify_org_membership(
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 url,
-                headers=_membership_request_headers(settings),
+                headers=app_callback_headers(settings),
             )
     except Exception:
         logger.exception(

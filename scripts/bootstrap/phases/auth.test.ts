@@ -42,8 +42,8 @@ void describe("bootstrap auth identity parsing", () => {
         "deploy-cf",
         JSON.stringify({
           accounts: [
-            { id: "0123456789abcdef0123456789abcdef", name: "Atlas Cloud" },
-            { id: "fedcba9876543210fedcba9876543210", name: "Side Project" },
+            { id: "0123456789abcdef0123456789abcdef", name: "Atlas Cloud" }, // pragma: allowlist secret
+            { id: "fedcba9876543210fedcba9876543210", name: "Side Project" }, // pragma: allowlist secret
           ],
           authenticated: true,
           email: "operator@example.test",

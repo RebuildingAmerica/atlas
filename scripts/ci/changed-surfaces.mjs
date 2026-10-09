@@ -74,8 +74,11 @@ const API_PATHS = [
   /^openapi\//,
 ];
 
+// The platform admin is a separate deploy unit, but it shares the app's
+// toolchain and packages, so the same test job covers it.
 const APP_PATHS = [
   /^app\//,
+  /^admin\//,
   /^packages\/atlas-access\//,
   /^packages\/atlas-api-client\//,
   /^packages\/atlas-catalog\//,

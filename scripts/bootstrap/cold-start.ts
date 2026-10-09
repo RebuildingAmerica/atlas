@@ -29,6 +29,7 @@
  * | `pnpm bootstrap --api-edge --target staging`              | Enables staging Cloudflare proxy and API rate limits. |
  * | `pnpm bootstrap --access-gate`                            | Puts Cloudflare Access (Google Workspace) in front of the platform admin. |
  * | `pnpm bootstrap --access-gate --doctor`                   | Reports how the live Access gate differs, changing nothing. |
+ * | `pnpm bootstrap --admin-keys --target staging`            | Creates or rotates the staging platform admin's signing key. |
  * | `pnpm bootstrap --target prod --live`                     | Runs explicit production setup. |
  */
 
@@ -99,7 +100,8 @@ async function main(): Promise<void> {
     !args.ciCacheOnly &&
     !args.apiDomainOnly &&
     !args.apiEdgeOnly &&
-    !args.accessGateOnly
+    !args.accessGateOnly &&
+    !args.adminKeysOnly
   ) {
     note(
       renderSetupGuide(args.localOnly ? "local" : args.stripeTarget),

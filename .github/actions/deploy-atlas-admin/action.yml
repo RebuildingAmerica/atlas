@@ -1,0 +1,114 @@
+name: Deploy Atlas platform admin
+description: Build and deploy the platform admin Worker with cf, uploading its settings as Worker secrets.
+
+inputs:
+  environment-name:
+    description: Atlas environment name, used in messages.
+    required: true
+  cloudflare-api-token:
+    description: Cloudflare API token scoped to Workers Scripts Edit and Workers Routes Edit for the admin's account and zone.
+    required: true
+  cloudflare-account-id:
+    description: Cloudflare account that holds the admin's hostname. Passed explicitly so a token for another account cannot deploy elsewhere.
+    required: true
+  admin-public-url:
+    description: The admin's https origin (ATLAS_ADMIN_PUBLIC_URL); the Worker is published to this hostname only.
+    required: true
+  admin-signing-key:
+    description: Base64 PKCS#8 Ed25519 private key the admin signs API calls with (ATLAS_ADMIN_SIGNING_KEY).
+    required: true
+  api-url:
+    description: The Atlas API origin the platform routes live on (ATLAS_API_URL for the Worker).
+    required: true
+  access-team-domain:
+    description: Cloudflare Access team host (ATLAS_ACCESS_TEAM_DOMAIN).
+    required: true
+  access-aud:
+    description: Audience tag of the admin's Access application (ATLAS_ACCESS_AUD).
+    required: true
+  platform-operator-emails:
+    description: Comma-separated platform operators (ATLAS_PLATFORM_OPERATOR_EMAILS).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Composite actions do not enforce `required: true`. A Worker deployed
+    # without one of these refuses every request, so fail before deploying and
+    # name what is missing.
+    - name: Verify admin deploy settings
+      shell: bash
+      env:
+        ENVIRONMENT_NAME: ${{ inputs.environment-name }}
+        CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
+        ATLAS_ADMIN_PUBLIC_URL: ${{ inputs.admin-public-url }}
+        ATLAS_ADMIN_SIGNING_KEY: ${{ inputs.admin-signing-key }}
+        ATLAS_API_URL: ${{ inputs.api-url }}
+        ATLAS_ACCESS_TEAM_DOMAIN: ${{ inputs.access-team-domain }}
+        ATLAS_ACCESS_AUD: ${{ inputs.access-aud }}
+        ATLAS_PLATFORM_OPERATOR_EMAILS: ${{ inputs.platform-operator-emails }}
+      run: |
+        set -euo pipefail
+
+        missing=0
+        for key in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID ATLAS_ADMIN_PUBLIC_URL ATLAS_ADMIN_SIGNING_KEY ATLAS_API_URL ATLAS_ACCESS_TEAM_DOMAIN ATLAS_ACCESS_AUD ATLAS_PLATFORM_OPERATOR_EMAILS; do
+          if [ -z "${!key}" ]; then
+            echo "::error title=Missing ${key}::${key} is empty for the ${ENVIRONMENT_NAME} platform admin deploy. See docs/runbooks/platform-admin-access.md."
+            missing=1
+          fi
+        done
+        exit "${missing}"
+
+    - uses: ./.github/actions/setup-toolchain
+      with:
+        python: "false"
+
+    - name: Write the Worker's secrets file
+      id: secrets
+      shell: bash
+      env:
+        ATLAS_ADMIN_PUBLIC_URL: ${{ inputs.admin-public-url }}
+        ATLAS_ADMIN_SIGNING_KEY: ${{ inputs.admin-signing-key }}
+        ATLAS_API_URL: ${{ inputs.api-url }}
+        ATLAS_ACCESS_TEAM_DOMAIN: ${{ inputs.access-team-domain }}
+        ATLAS_ACCESS_AUD: ${{ inputs.access-aud }}
+        ATLAS_PLATFORM_OPERATOR_EMAILS: ${{ inputs.platform-operator-emails }}
+      run: |
+        set -euo pipefail
+        secrets_file="${RUNNER_TEMP}/atlas-admin-secrets.json"
+        umask 077
+        jq -n \
+          '{ATLAS_ADMIN_PUBLIC_URL: env.ATLAS_ADMIN_PUBLIC_URL,
+            ATLAS_ADMIN_SIGNING_KEY: env.ATLAS_ADMIN_SIGNING_KEY,
+            ATLAS_API_URL: env.ATLAS_API_URL,
+            ATLAS_ACCESS_TEAM_DOMAIN: env.ATLAS_ACCESS_TEAM_DOMAIN,
+            ATLAS_ACCESS_AUD: env.ATLAS_ACCESS_AUD,
+            ATLAS_PLATFORM_OPERATOR_EMAILS: env.ATLAS_PLATFORM_OPERATOR_EMAILS}' \
+          > "${secrets_file}"
+        echo "path=${secrets_file}" >> "${GITHUB_OUTPUT}"
+
+    - name: Deploy with cf
+      shell: bash
+      working-directory: admin
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-api-token }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
+        ATLAS_ADMIN_PUBLIC_URL: ${{ inputs.admin-public-url }}
+        SECRETS_FILE: ${{ steps.secrets.outputs.path }}
+        ENVIRONMENT_NAME: ${{ inputs.environment-name }}
+      run: |
+        set -euo pipefail
+        pnpm run api-client
+        pnpm exec cf deploy \
+          --secrets-file "${SECRETS_FILE}" \
+          --tag "${GITHUB_SHA::12}" \
+          --message "${ENVIRONMENT_NAME} ${GITHUB_SHA::12}"
+
+    - name: Remove the secrets file
+      if: always()
+      shell: bash
+      env:
+        SECRETS_FILE: ${{ steps.secrets.outputs.path }}
+      run: |
+        if [ -n "${SECRETS_FILE}" ]; then rm -f "${SECRETS_FILE}"; fi

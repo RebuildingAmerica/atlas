@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter
 
-from atlas.domains.access.api.cloud_cost_admin import router as cloud_cost_admin_router
 from atlas.domains.access.api.health import router as auth_health_router
 from atlas.domains.access.api.lists import router as lists_router
 from atlas.domains.access.api.mcp_elicitations import router as mcp_elicitations_router
@@ -10,7 +9,6 @@ from atlas.domains.access.api.org_usage import router as org_usage_router
 from atlas.domains.access.api.org_watch_digest import router as org_watch_digest_router
 from atlas.domains.access.api.org_watches import router as org_watches_router
 from atlas.domains.access.api.verification import router as verification_router
-from atlas.domains.access.api.verification_admin import router as verification_admin_router
 from atlas.domains.catalog.api.atproto_identities import router as atproto_identities_router
 from atlas.domains.catalog.api.entries import router as entries_router
 from atlas.domains.catalog.api.feed import router as feed_router
@@ -30,13 +28,20 @@ from atlas.domains.discovery.api_org_coverage_reports import router as org_cover
 from atlas.domains.discovery.api_org_quality import router as org_quality_router
 from atlas.domains.firehose import router as firehose_router
 from atlas.domains.moderation.api import router as flags_router
+from atlas.platform.http.platform_router import create_platform_router
 
 __all__ = ["create_router"]
 
 
-def create_router() -> APIRouter:
+def create_router(*, managed: bool) -> APIRouter:
     """
     Create the main API router with all sub-routers.
+
+    Parameters
+    ----------
+    managed : bool
+        Whether the Rebuilding America Project runs this deployment. Platform
+        routes are mounted only then, and never in the public OpenAPI document.
 
     Returns
     -------
@@ -51,8 +56,8 @@ def create_router() -> APIRouter:
     # Include sub-routers
     router.include_router(auth_health_router, prefix="/api")
     router.include_router(verification_router, prefix="")
-    router.include_router(verification_admin_router, prefix="")
-    router.include_router(cloud_cost_admin_router, prefix="")
+    if managed:
+        router.include_router(create_platform_router(), include_in_schema=False)
     router.include_router(entries_router, prefix="/api/entities")
     router.include_router(atproto_identities_router, prefix="/api/atproto/identities")
     router.include_router(discovery_router, prefix="/api/discovery-runs")
