@@ -41,8 +41,9 @@ A report's reporter can see its status at `/reports/<reference>`.
 
 ## Weekly routine (30 minutes)
 
-1. Open `/editorial/corrections`. Close or act on everything older than its
-   target.
+1. Open `/editorial`. Its Needs you section lists each review queue with how
+   long its oldest item has waited, longest first; work through any queue past
+   its target, starting with `/editorial/corrections`.
 2. Check the Stripe dashboard for failed webhook deliveries and open disputes.
 3. Check the last seven `production-canary.yml` runs.
 4. Open two promoted Las Vegas profiles on a phone and follow their official
@@ -92,6 +93,11 @@ Reverse both steps on return, after clearing the correction inbox.
 - **Wrong data is shown confidently on a promoted profile:** stage a correction
   in `/editorial/discovery-reviews` and approve it, or reject the record's
   public change. Note it in the pilot evidence board.
+- **One actor appears as two profiles:** merge the duplicate into the profile to
+  keep at `/editorial/merges`. Check the merge first; it lists what moves and
+  refuses when either profile is taken down, private, or the duplicate has a
+  representative. A merge cannot be undone, so say in the reason how you know
+  they are the same.
 - **A payment went wrong:** preview the refund with
   `cd app && pnpm billing:refund --session <cs_…>`, then run it with
   `--operator <email> --reason "<why>" --execute`. Confirm access was revoked.
