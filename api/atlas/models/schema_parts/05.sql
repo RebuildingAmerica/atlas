@@ -77,6 +77,42 @@ CREATE TABLE IF NOT EXISTS platform_switches (
     changed_at TIMESTAMPTZ NOT NULL
 );
 
+-- Duplicate profiles an editor folded into the profile to keep. The duplicate
+-- stays in entries, unpublished, so its old address can open the kept profile
+-- and discovery that finds it again lands on the kept one. Each entry can be
+-- merged away once; the row is the record of what moved and why.
+CREATE TABLE IF NOT EXISTS entry_merges (
+    id TEXT PRIMARY KEY,
+    kept_entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    duplicate_entry_id TEXT NOT NULL UNIQUE REFERENCES entries(id) ON DELETE CASCADE,
+    kept_name TEXT NOT NULL,
+    kept_slug TEXT,
+    duplicate_name TEXT NOT NULL,
+    duplicate_slug TEXT,
+    reason TEXT NOT NULL,
+    merged_by TEXT NOT NULL,
+    merged_at TIMESTAMPTZ NOT NULL,
+    moved_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_entry_merges_merged_at ON entry_merges(merged_at);
+
+-- A merged duplicate is never published again, whatever path tries.
+CREATE OR REPLACE FUNCTION entries_refuse_merged_publish() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF NEW.active AND EXISTS (
+        SELECT 1 FROM entry_merges WHERE duplicate_entry_id = NEW.id
+    ) THEN
+        RAISE EXCEPTION 'entry was merged into another profile';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER entries_stay_merged
+    BEFORE UPDATE OF active ON entries
+    FOR EACH ROW EXECUTE FUNCTION entries_refuse_merged_publish();
+
 -- The promise holds at the bottom: no code path, present or future, can
 -- publish an entry while a takedown stands for it.
 CREATE OR REPLACE FUNCTION entries_refuse_taken_down_publish() RETURNS trigger

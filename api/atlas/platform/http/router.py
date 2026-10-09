@@ -30,6 +30,7 @@ from atlas.domains.discovery.api_org_quality import router as org_quality_router
 from atlas.domains.firehose import router as firehose_router
 from atlas.domains.moderation.activity_api import router as activity_router
 from atlas.domains.moderation.api import router as flags_router
+from atlas.domains.moderation.merge_api import router as merge_router
 from atlas.domains.moderation.takedown_api import router as takedown_router
 from atlas.platform.http.platform_router import create_platform_router
 
@@ -68,6 +69,7 @@ def create_router(*, managed: bool) -> APIRouter:
     router.include_router(schedule_router, prefix="/api/discovery-schedules")
     router.include_router(flags_router, prefix="/api")
     router.include_router(takedown_router, prefix="/api")
+    router.include_router(merge_router, prefix="/api")
     router.include_router(activity_router, prefix="/api")
     router.include_router(taxonomy_router, prefix="/api")
     router.include_router(public_router, prefix="/api")

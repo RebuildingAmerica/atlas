@@ -198,6 +198,13 @@ class TestPostgresConnection:
         mock_conn.commit.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_rollback(self) -> None:
+        mock_conn = AsyncMock()
+        wrapper = PostgresConnection(mock_conn)
+        await wrapper.rollback()
+        mock_conn.rollback.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_close(self) -> None:
         mock_conn = AsyncMock()
         wrapper = PostgresConnection(mock_conn)

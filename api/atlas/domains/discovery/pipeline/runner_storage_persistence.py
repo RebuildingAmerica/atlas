@@ -16,6 +16,7 @@ from atlas_shared import (
 from atlas.domains.catalog.geo import geocode_entry
 from atlas.domains.catalog.models.relationships import RelationshipCRUD
 from atlas.domains.discovery.trust_gate import evaluate_publication
+from atlas.domains.moderation.merges import EntryMergeCRUD
 from atlas.domains.moderation.review_queue import ReviewQueueCRUD
 from atlas.domains.moderation.takedowns import EntryTakedownCRUD
 from atlas.models import EntryCRUD, SourceCRUD
@@ -170,6 +171,11 @@ async def _find_existing_entry(
         city=entry.city,
     )
     if exact_match is not None:
+        # A mention of a merged duplicate's name belongs to the profile it
+        # was folded into, not to the retired duplicate.
+        surviving_id = await EntryMergeCRUD.surviving_entry_id(conn, str(exact_match.id))
+        if surviving_id is not None:
+            return await EntryCRUD.get_by_id(conn, surviving_id)
         return exact_match
 
     if not entry.website:

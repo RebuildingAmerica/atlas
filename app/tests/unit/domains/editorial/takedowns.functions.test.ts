@@ -42,7 +42,7 @@ describe("takedown server functions", () => {
   });
 
   it("refuses an address that names no profile", async () => {
-    const { profileSlugFrom } = await import("@/domains/editorial/takedowns.functions");
+    const { profileSlugFrom } = await import("@/domains/editorial/profile-address");
 
     expect(() => profileSlugFrom("https://atlas.rebuildingus.org/")).toThrow(
       "Paste the profile's address or slug.",

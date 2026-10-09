@@ -41,6 +41,7 @@ const ACTIVITY_LABELS: readonly ActivityLabelRule[] = [
   { action: "instance.claims.review", label: "Rechecked profile verifications" },
   { action: "instance.entries.takedown", label: "Restored a profile", routeEnds: "/restore" },
   { action: "instance.entries.takedown", label: "Took a profile down" },
+  { action: "instance.entries.merge", label: "Merged duplicate profiles" },
   { action: "instance.schedules.write", label: "Added a discovery schedule", method: "POST" },
   { action: "instance.schedules.write", label: "Changed a discovery schedule", method: "PATCH" },
   { action: "instance.schedules.write", label: "Removed a discovery schedule", method: "DELETE" },

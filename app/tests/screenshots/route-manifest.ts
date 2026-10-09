@@ -334,6 +334,9 @@ export const EXCLUDED_ROUTES = {
   "/editorial/activity": {
     reason: "The audit log names the people who acted and must not enter screenshots.",
   },
+  "/editorial/merges": {
+    reason: "Merge reasons and past merges name editors and must not enter screenshots.",
+  },
   "/dashboard": { reason: "Pure redirect to /home." },
   "/reports/$reportId": { reason: "Needs a report reference created at runtime." },
   "/entries/$entryId": { reason: "Pure redirect to the canonical profile URL." },
