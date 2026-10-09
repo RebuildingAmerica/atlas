@@ -95,12 +95,26 @@ describe("correction inbox server functions", () => {
     const { decideCorrectionReport } =
       await import("@/domains/editorial/correction-inbox.functions");
     const result = await decideCorrectionReport({
-      data: { decision: "resolve", reportId, targetType: "source" },
+      data: { decision: "resolve", reason: "Fixed the address", reportId, targetType: "source" },
     });
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith(`/source-flags/${reportId}/resolve`, {
+      body: JSON.stringify({ reason: "Fixed the address" }),
       method: "POST",
     });
     expect(result).toEqual({ id: reportId, status: "resolved" });
+  });
+
+  it("refuses to dismiss a report without saying why", async () => {
+    const reportId = "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e";
+    const { decideCorrectionReport } =
+      await import("@/domains/editorial/correction-inbox.functions");
+
+    await expect(
+      decideCorrectionReport({
+        data: { decision: "dismiss", reason: "", reportId, targetType: "entity" },
+      }),
+    ).rejects.toThrow("Say why before dismissing.");
+    expect(mocks.requestAtlasApi).not.toHaveBeenCalled();
   });
 
   it("routes a profile decision to its own flag", async () => {
@@ -109,9 +123,10 @@ describe("correction inbox server functions", () => {
     const { decideCorrectionReport } =
       await import("@/domains/editorial/correction-inbox.functions");
     const result = await decideCorrectionReport({
-      data: { decision: "resolve", reportId, targetType: "entity" },
+      data: { decision: "resolve", reason: "", reportId, targetType: "entity" },
     });
     expect(mocks.requestAtlasApi).toHaveBeenCalledWith(`/entity-flags/${reportId}/resolve`, {
+      body: JSON.stringify({ reason: null }),
       method: "POST",
     });
     expect(result).toEqual({ id: reportId, status: "resolved" });

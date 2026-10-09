@@ -6,6 +6,7 @@ import {
   AdminPageShell,
   AdminStatusBadge,
 } from "@rebuildingamerica/atlas-ui/layout/admin-portal";
+import { DecisionReasonField } from "./decision-reason-field";
 import type { DiscoveryReview } from "./discovery-reviews.functions";
 
 type ReviewDecision = "approve" | "reject";
@@ -17,7 +18,8 @@ interface DiscoveryReviewsViewProps {
   isLoading: boolean;
   items: DiscoveryReview[];
   offset: number;
-  onDecision: (itemId: string, decision: ReviewDecision) => void;
+  /** The reason is trimmed and may be empty for an approval, never for a rejection. */
+  onDecision: (itemId: string, decision: ReviewDecision, reason: string) => void;
   onPageChange: (offset: number) => void;
   onPrepareWebsiteReviews?: () => void;
   pageSize: number;
@@ -159,6 +161,7 @@ function ReviewCard({
   const name = item.entityName;
   const actionUrl = item.entityWebsite ? safeSourceUrl(item.entityWebsite) : null;
   const [sourcesChecked, setSourcesChecked] = useState(false);
+  const [reason, setReason] = useState("");
 
   return (
     <article className="border-border bg-surface-container-lowest space-y-5 rounded-lg border p-5">
@@ -185,7 +188,7 @@ function ReviewCard({
             ariaLabel={`Approve ${name}`}
             disabled={pending || sources.length === 0 || !sourcesChecked}
             onClick={() => {
-              onDecision(item.id, "approve");
+              onDecision(item.id, "approve", reason.trim());
             }}
             size="sm"
           >
@@ -193,9 +196,9 @@ function ReviewCard({
           </Button>
           <Button
             ariaLabel={`Reject ${name}`}
-            disabled={pending}
+            disabled={pending || !reason.trim()}
             onClick={() => {
-              onDecision(item.id, "reject");
+              onDecision(item.id, "reject", reason.trim());
             }}
             size="sm"
             variant="secondary"
@@ -299,6 +302,7 @@ function ReviewCard({
           </label>
         ) : null}
       </section>
+      <DecisionReasonField label="Reason, required to reject" onChange={setReason} value={reason} />
     </article>
   );
 }

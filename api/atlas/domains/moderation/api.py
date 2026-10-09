@@ -61,6 +61,18 @@ class WebsiteCandidateScanResponse(BaseModel):
     review_item_ids: list[str] = Field(default_factory=list)
 
 
+class EditorialDecisionRequest(BaseModel):
+    """Why an editor approved, rejected, resolved, or dismissed something.
+
+    The audit log records the reason with the decision, so the route itself
+    does not store it.
+    """
+
+    reason: str | None = Field(
+        None, max_length=2000, description="Why the editor decided; shown in editorial activity"
+    )
+
+
 class FlagReceipt(BaseModel):
     """Public confirmation that excludes the private report contents."""
 
@@ -304,10 +316,12 @@ async def _update_entity_flag_status(
 async def resolve_entity_flag(
     flag_id: str,
     response: Response,
+    payload: EditorialDecisionRequest | None = None,
     actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one entity flag resolved."""
+    _ = payload  # the audit log keeps the stated reason
     flag = await _update_entity_flag_status(db, flag_id, status="resolved", actor=actor)
     apply_no_store_headers(response)
     return flag
@@ -325,10 +339,12 @@ async def resolve_entity_flag(
 async def dismiss_entity_flag(
     flag_id: str,
     response: Response,
+    payload: EditorialDecisionRequest | None = None,
     actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one entity flag dismissed."""
+    _ = payload  # the audit log keeps the stated reason
     flag = await _update_entity_flag_status(db, flag_id, status="reviewed", actor=actor)
     apply_no_store_headers(response)
     return flag
@@ -421,10 +437,12 @@ async def _update_source_flag_status(
 async def resolve_source_flag(
     flag_id: str,
     response: Response,
+    payload: EditorialDecisionRequest | None = None,
     actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one source flag resolved."""
+    _ = payload  # the audit log keeps the stated reason
     flag = await _update_source_flag_status(db, flag_id, status="resolved", actor=actor)
     apply_no_store_headers(response)
     return flag
@@ -442,10 +460,12 @@ async def resolve_source_flag(
 async def dismiss_source_flag(
     flag_id: str,
     response: Response,
+    payload: EditorialDecisionRequest | None = None,
     actor: AuthenticatedActor = Depends(require_action(Action.FLAGS_RESOLVE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> FlagResponse:
     """Mark one source flag dismissed."""
+    _ = payload  # the audit log keeps the stated reason
     flag = await _update_source_flag_status(db, flag_id, status="reviewed", actor=actor)
     apply_no_store_headers(response)
     return flag
@@ -591,10 +611,12 @@ async def scan_website_candidates(
 async def approve_review_queue_item(
     item_id: str,
     response: Response,
+    payload: EditorialDecisionRequest | None = None,
     actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_DECIDE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ReviewQueueItemResponse:
     """Approve a held record and publish its entry."""
+    _ = payload  # the audit log keeps the stated reason
     if await ReviewQueueCRUD.get_by_id(db, item_id) is None:
         raise HTTPException(status_code=404, detail="Review item not found")
     try:
@@ -619,10 +641,12 @@ async def approve_review_queue_item(
 async def reject_review_queue_item(
     item_id: str,
     response: Response,
+    payload: EditorialDecisionRequest | None = None,
     actor: AuthenticatedActor = Depends(require_action(Action.REVIEW_QUEUE_DECIDE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ReviewQueueItemResponse:
     """Reject a held record and keep its entry inactive."""
+    _ = payload  # the audit log keeps the stated reason
     if await ReviewQueueCRUD.get_by_id(db, item_id) is None:
         raise HTTPException(status_code=404, detail="Review item not found")
     await ReviewQueueCRUD.reject(db, item_id, reviewed_by=actor.email)

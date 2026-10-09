@@ -4966,6 +4966,26 @@
         "title": "EditorialCandidateCreateResponse",
         "type": "object"
       },
+      "EditorialDecisionRequest": {
+        "description": "Why an editor approved, rejected, resolved, or dismissed something.\n\nThe audit log records the reason with the decision, so the route itself\ndoes not store it.",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the editor decided; shown in editorial activity",
+            "title": "Reason"
+          }
+        },
+        "title": "EditorialDecisionRequest",
+        "type": "object"
+      },
       "EntityCollectionResponse": {
         "description": "Collection response for entities.",
         "properties": {
@@ -11091,17 +11111,18 @@
       "ProfileClaimReviewDecisionRequest": {
         "description": "Reviewer decision payload for a pending profile verification.",
         "properties": {
-          "note": {
+          "reason": {
             "anyOf": [
               {
+                "maxLength": 2000,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "note for this profile claim review decision.",
-            "title": "Note"
+            "description": "Why the reviewer decided; kept with the proof and in the audit log",
+            "title": "Reason"
           }
         },
         "title": "ProfileClaimReviewDecisionRequest",
@@ -17195,6 +17216,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditorialDecisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -17254,6 +17292,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditorialDecisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -25086,6 +25141,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditorialDecisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -25145,6 +25217,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditorialDecisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -25353,6 +25442,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditorialDecisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -25412,6 +25518,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditorialDecisionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

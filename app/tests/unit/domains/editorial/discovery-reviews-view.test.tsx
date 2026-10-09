@@ -51,17 +51,33 @@ describe("DiscoveryReviewsView", () => {
     expect(approve).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox", { name: /I checked these sources/ }));
     expect(approve).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("Reason, required to reject"), {
+      target: { value: " Matches the filing " },
+    });
     fireEvent.click(approve);
-    expect(onDecision).toHaveBeenCalledWith("7cb2c69a-f22b-4f4e-ab83-16872c9fd59e", "approve");
+    expect(onDecision).toHaveBeenCalledWith(
+      "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e",
+      "approve",
+      "Matches the filing",
+    );
   });
 
-  it("does not offer approval without a usable source", () => {
+  it("does not offer approval without a usable source, nor rejection without a reason", () => {
     const onDecision = renderQueue([review({ sourceUrls: ["javascript:alert(1)"] })]);
 
     expect(screen.queryByRole("link", { name: /javascript:/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve Civic Group" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Reject Civic Group" }));
-    expect(onDecision).toHaveBeenCalledWith("7cb2c69a-f22b-4f4e-ab83-16872c9fd59e", "reject");
+    const reject = screen.getByRole("button", { name: "Reject Civic Group" });
+    expect(reject).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Reason, required to reject"), {
+      target: { value: "No usable source" },
+    });
+    fireEvent.click(reject);
+    expect(onDecision).toHaveBeenCalledWith(
+      "7cb2c69a-f22b-4f4e-ab83-16872c9fd59e",
+      "reject",
+      "No usable source",
+    );
   });
 
   it("keeps unsupported links and held records out of the approval path", () => {

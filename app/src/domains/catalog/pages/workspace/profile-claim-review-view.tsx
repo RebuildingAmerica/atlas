@@ -24,8 +24,9 @@ interface ProfileClaimReviewViewProps {
   claims: ProfileClaimResponse[];
   errorMessage?: string;
   isLoading?: boolean;
-  onApprove: (claim: ProfileClaimResponse, note: string) => void;
-  onReject: (claim: ProfileClaimResponse, note: string) => void;
+  /** The reason is trimmed and may be empty for an approval, never for a rejection. */
+  onApprove: (claim: ProfileClaimResponse, reason: string) => void;
+  onReject: (claim: ProfileClaimResponse, reason: string) => void;
   onRevalidateAtproto: () => void;
   revalidatingAtproto: boolean;
   rejecting: boolean;
@@ -108,8 +109,8 @@ export function ProfileClaimReviewView({
 interface ReviewCardProps {
   approving: boolean;
   claim: ProfileClaimResponse;
-  onApprove: (claim: ProfileClaimResponse, note: string) => void;
-  onReject: (claim: ProfileClaimResponse, note: string) => void;
+  onApprove: ProfileClaimReviewViewProps["onApprove"];
+  onReject: ProfileClaimReviewViewProps["onReject"];
   rejecting: boolean;
 }
 
@@ -117,7 +118,7 @@ function ReviewCard({ approving, claim, onApprove, onReject, rejecting }: Review
   const proofs = (claim.proofs ?? []).map((proof) => proofDetail(proof)).filter(isPresent);
   const evidence = evidenceDetails(claim.evidence);
   const warnings = reviewWarnings(proofs);
-  const [reviewerNote, setReviewerNote] = useState("");
+  const [reason, setReason] = useState("");
 
   return (
     <article className="border-border bg-surface-container-lowest rounded-lg border p-5">
@@ -145,7 +146,7 @@ function ReviewCard({ approving, claim, onApprove, onReject, rejecting }: Review
           <Button
             ariaLabel={`Approve ${claim.entry_name}`}
             onClick={() => {
-              onApprove(claim, reviewerNote);
+              onApprove(claim, reason.trim());
             }}
             disabled={approving || rejecting}
           >
@@ -155,9 +156,9 @@ function ReviewCard({ approving, claim, onApprove, onReject, rejecting }: Review
           <Button
             ariaLabel={`Reject ${claim.entry_name}`}
             onClick={() => {
-              onReject(claim, reviewerNote);
+              onReject(claim, reason.trim());
             }}
-            disabled={approving || rejecting}
+            disabled={approving || rejecting || !reason.trim()}
             variant="secondary"
           >
             <X className="mr-2 inline h-4 w-4" aria-hidden />
@@ -204,14 +205,15 @@ function ReviewCard({ approving, claim, onApprove, onReject, rejecting }: Review
         </section>
       </div>
       <label className="mt-4 block space-y-2">
-        <span className="type-label-medium text-ink-strong">Reviewer note</span>
+        <span className="type-label-medium text-ink-strong">Reason, required to reject</span>
         <textarea
-          aria-label="Reviewer note"
+          aria-label="Reason"
           className="border-outline-variant focus:ring-accent bg-surface-container-lowest text-on-surface w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
+          placeholder="Kept with the verification and shown in editorial activity"
           rows={3}
-          value={reviewerNote}
+          value={reason}
           onChange={(event) => {
-            setReviewerNote(event.target.value);
+            setReason(event.target.value);
           }}
         />
       </label>

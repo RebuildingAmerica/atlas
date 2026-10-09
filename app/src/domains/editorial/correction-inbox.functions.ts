@@ -41,11 +41,17 @@ interface ApiCorrectionInbox {
 }
 
 const pageSchema = z.object({ offset: z.number().int().nonnegative() });
-const decisionSchema = z.object({
-  decision: z.enum(["resolve", "dismiss"]),
-  reportId: z.string().uuid(),
-  targetType: z.enum(["entity", "source"]),
-});
+const decisionSchema = z
+  .object({
+    decision: z.enum(["resolve", "dismiss"]),
+    reason: z.string().trim().max(2000),
+    reportId: z.string().uuid(),
+    targetType: z.enum(["entity", "source"]),
+  })
+  .refine(({ decision, reason }) => decision === "resolve" || reason.length > 0, {
+    message: "Say why before dismissing.",
+    path: ["reason"],
+  });
 
 export const listCorrectionReports = createServerFn({ method: "POST" })
   .validator(pageSchema)
@@ -76,7 +82,7 @@ export const decideCorrectionReport = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const response = await requestAtlasApi<{ id: string; status: string }>(
       `/${data.targetType}-flags/${encodeURIComponent(data.reportId)}/${data.decision}`,
-      { method: "POST" },
+      { body: JSON.stringify({ reason: data.reason || null }), method: "POST" },
     );
     return { id: response.id, status: response.status };
   });

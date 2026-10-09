@@ -120,7 +120,7 @@ describe("ProfileClaimReviewPage", () => {
     expect(await screen.findByText("Profile verifications could not load.")).toBeInTheDocument();
   });
 
-  it("approves a claim with the reviewer's own note", async () => {
+  it("approves a claim with the reviewer's own reason", async () => {
     const user = userEvent.setup();
     serveQueue([claim()]);
     routes.set("POST /api/profiles/claims/review/claim_1/approve", { body: claim() });
@@ -128,19 +128,19 @@ describe("ProfileClaimReviewPage", () => {
     renderWithProviders(<ProfileClaimReviewPage />);
     await screen.findByText("Mississippi Rising");
 
-    await user.type(screen.getByRole("textbox", { name: "Reviewer note" }), "  Called the org.  ");
+    await user.type(screen.getByRole("textbox", { name: "Reason" }), "  Called the org.  ");
     await user.click(screen.getByRole("button", { name: "Approve Mississippi Rising" }));
 
     await waitFor(() => {
       expect(requests().find((request) => request.path.endsWith("/approve"))).toEqual({
-        body: { note: "Called the org." },
+        body: { reason: "Called the org." },
         method: "POST",
         path: "/api/profiles/claims/review/claim_1/approve",
       });
     });
   });
 
-  it("records why a claim was approved even when the reviewer wrote nothing", async () => {
+  it("approves without a reason when the reviewer wrote nothing", async () => {
     const user = userEvent.setup();
     serveQueue([claim()]);
     routes.set("POST /api/profiles/claims/review/claim_1/approve", { body: claim() });
@@ -152,12 +152,12 @@ describe("ProfileClaimReviewPage", () => {
 
     await waitFor(() => {
       expect(requests().find((request) => request.path.endsWith("/approve"))?.body).toEqual({
-        note: "Reviewer approved from profile verification queue.",
+        reason: null,
       });
     });
   });
 
-  it("records why a claim was rejected even when the reviewer wrote nothing", async () => {
+  it("rejects only once the reviewer says why", async () => {
     const user = userEvent.setup();
     serveQueue([claim()]);
     routes.set("POST /api/profiles/claims/review/claim_1/reject", { body: claim() });
@@ -165,32 +165,14 @@ describe("ProfileClaimReviewPage", () => {
     renderWithProviders(<ProfileClaimReviewPage />);
     await screen.findByText("Mississippi Rising");
 
-    await user.click(screen.getByRole("button", { name: "Reject Mississippi Rising" }));
+    const reject = screen.getByRole("button", { name: "Reject Mississippi Rising" });
+    expect(reject).toBeDisabled();
+    await user.type(screen.getByRole("textbox", { name: "Reason" }), "No public evidence found.");
+    await user.click(reject);
 
     await waitFor(() => {
       expect(requests().find((request) => request.path.endsWith("/reject"))?.body).toEqual({
-        note: "Reviewer could not confirm this representative.",
-      });
-    });
-  });
-
-  it("carries the reviewer's note through a rejection", async () => {
-    const user = userEvent.setup();
-    serveQueue([claim()]);
-    routes.set("POST /api/profiles/claims/review/claim_1/reject", { body: claim() });
-
-    renderWithProviders(<ProfileClaimReviewPage />);
-    await screen.findByText("Mississippi Rising");
-
-    await user.type(
-      screen.getByRole("textbox", { name: "Reviewer note" }),
-      "No public evidence found.",
-    );
-    await user.click(screen.getByRole("button", { name: "Reject Mississippi Rising" }));
-
-    await waitFor(() => {
-      expect(requests().find((request) => request.path.endsWith("/reject"))?.body).toEqual({
-        note: "No public evidence found.",
+        reason: "No public evidence found.",
       });
     });
   });

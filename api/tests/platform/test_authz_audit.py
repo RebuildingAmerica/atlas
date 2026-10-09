@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.models.database import _load_postgres_schema, _load_sqlite_schema
 from atlas.platform.authz import Action, AuditLogCRUD, AuditRecord, actor_plane, require_action
+from atlas.platform.authz.dependency import STATED_REASON_LIMIT, stated_reason
 from tests.support.app_assertions import sign_app_assertion
 from tests.support.authz_requests import guard_request
 from tests.support.staff_auth import STAFF_EMAIL, enable_staff_auth
@@ -165,6 +166,85 @@ async def test_a_refused_change_is_recorded_with_the_refusal(
 
 
 @pytest.mark.asyncio
+async def test_an_allowed_change_keeps_the_reason_the_editor_gave(
+    test_db: object,
+    test_settings: object,
+) -> None:
+    test_settings.instance_operator_emails = [OPERATOR]
+    request = guard_request(
+        "POST",
+        "/api/review-queue/item_1/reject",
+        {"item_id": "item_1"},
+        body=json.dumps({"reason": "  Source is a press release, not a filing.  "}).encode(),
+        content_type="application/json; charset=utf-8",
+    )
+
+    await require_action(Action.REVIEW_QUEUE_DECIDE)(
+        request=request, actor=_actor(), settings=test_settings
+    )
+
+    [entry] = await AuditLogCRUD.list_recent(test_db, limit=10)
+    assert entry.reason == "Source is a press release, not a filing."
+
+
+@pytest.mark.asyncio
+async def test_a_refusal_keeps_the_refusal_not_the_stated_reason(
+    test_db: object,
+    test_settings: object,
+) -> None:
+    test_settings.instance_operator_emails = [OPERATOR]
+    request = guard_request(
+        "POST",
+        "/api/review-queue/item_1/approve",
+        {"item_id": "item_1"},
+        body=b'{"reason": "Looks fine to me"}',
+        content_type="application/json",
+    )
+
+    with pytest.raises(HTTPException):
+        await require_action(Action.REVIEW_QUEUE_DECIDE)(
+            request=request, actor=_actor(email="visitor@example.org"), settings=test_settings
+        )
+
+    [entry] = await AuditLogCRUD.list_recent(test_db, limit=10)
+    assert entry.reason == "Editorial review requires Atlas staff."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("body", "content_type"),
+    [
+        (b'{"reason": "A form post"}', "application/x-www-form-urlencoded"),
+        (b'{"reason": "No header"}', None),
+        (b"not json", "application/json"),
+        (b'["reason"]', "application/json"),
+        (b'{"reason": 42}', "application/json"),
+        (b'{"reason": "   "}', "application/json"),
+        (b"", "application/json"),
+    ],
+)
+async def test_no_reason_is_read_from_a_body_that_does_not_state_one(
+    body: bytes, content_type: str | None
+) -> None:
+    request = guard_request("POST", "/api/x", body=body, content_type=content_type)
+
+    assert await stated_reason(request) is None
+
+
+@pytest.mark.asyncio
+async def test_a_long_reason_is_kept_up_to_the_limit() -> None:
+    reason = "x" * (STATED_REASON_LIMIT + 50)
+    request = guard_request(
+        "POST",
+        "/api/x",
+        body=json.dumps({"reason": reason}).encode(),
+        content_type="application/json",
+    )
+
+    assert await stated_reason(request) == "x" * STATED_REASON_LIMIT
+
+
+@pytest.mark.asyncio
 async def test_reads_are_not_recorded(test_db: object, test_settings: object) -> None:
     test_settings.instance_operator_emails = [OPERATOR]
 
@@ -214,6 +294,32 @@ async def test_an_operator_approval_through_the_api_leaves_an_entry(
     ]
     assert {entry.route for entry in entries} == {"/api/review-queue/{item_id}/approve"}
     assert json.loads(json.dumps(entries[0].target)) == {"item_id": "missing"}
+
+
+@pytest.mark.asyncio
+async def test_a_reason_sent_to_the_api_reaches_the_log_and_the_route(
+    test_client: object,
+    test_db: object,
+    test_settings: object,
+) -> None:
+    headers = enable_staff_auth(test_settings)
+
+    too_long = await test_client.post(
+        "/api/review-queue/missing/reject",
+        headers=headers.staff,
+        json={"reason": "x" * 2001},
+    )
+    rejected = await test_client.post(
+        "/api/review-queue/missing/reject",
+        headers=headers.staff,
+        json={"reason": "Duplicate of an existing profile."},
+    )
+
+    # The route still validated the body the guard had already read.
+    assert too_long.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert rejected.status_code == HTTPStatus.NOT_FOUND
+    [entry, *_] = await AuditLogCRUD.list_recent(test_db, limit=10)
+    assert entry.reason == "Duplicate of an existing profile."
 
 
 @pytest.mark.asyncio

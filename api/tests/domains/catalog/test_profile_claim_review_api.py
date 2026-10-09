@@ -145,7 +145,7 @@ async def test_reviewer_approval_verifies_claim_and_links_pending_atproto_proof(
 
     response = await test_client.post(
         f"/api/profiles/claims/review/{claim_id}/approve",
-        json={"note": "Website and social profile match."},
+        json={"reason": "Website and social profile match."},
     )
 
     assert response.status_code == status.HTTP_200_OK, response.text
@@ -179,7 +179,7 @@ async def test_reviewer_rejection_returns_profile_to_unclaimed_state(
 
     response = await test_client.post(
         f"/api/profiles/claims/review/{claim_id}/reject",
-        json={"note": "Evidence does not identify the requester."},
+        json={"reason": "Evidence does not identify the requester."},
     )
 
     assert response.status_code == status.HTTP_200_OK, response.text
@@ -215,7 +215,7 @@ async def test_reviewer_rejection_preserves_another_pending_claim(
 
     response = await test_client.post(
         f"/api/profiles/claims/review/{first_claim_id}/reject",
-        json={"note": "Evidence does not identify the requester."},
+        json={"reason": "Evidence does not identify the requester."},
     )
 
     assert response.status_code == status.HTTP_200_OK, response.text
@@ -253,7 +253,7 @@ async def test_reviewer_decision_rejects_missing_claim(
 ) -> None:
     response = await test_client.post(
         "/api/profiles/claims/review/missing-claim/reject",
-        json={"note": "No claim."},
+        json={"reason": "No claim."},
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -279,7 +279,7 @@ async def test_reviewer_decision_rejects_non_pending_claim(
 
     response = await test_client.post(
         f"/api/profiles/claims/review/{claim.id}/reject",
-        json={"note": "No longer pending."},
+        json={"reason": "No longer pending."},
     )
 
     assert response.status_code == status.HTTP_409_CONFLICT
@@ -306,7 +306,7 @@ async def test_reviewer_decision_rejects_claim_without_profile(
     try:
         response = await test_client.post(
             f"/api/profiles/claims/review/{claim_id}/approve",
-            json={"note": "Profile disappeared."},
+            json={"reason": "Profile disappeared."},
         )
     finally:
         monkeypatch.undo()
@@ -340,7 +340,7 @@ async def test_reviewer_approval_reports_profile_deleted_after_verification(
 
     response = await test_client.post(
         f"/api/profiles/claims/review/{claim_id}/approve",
-        json={"note": "Verified."},
+        json={"reason": "Verified."},
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -372,7 +372,7 @@ async def test_reviewer_rejection_reports_profile_deleted_after_decision(
 
     response = await test_client.post(
         f"/api/profiles/claims/review/{claim_id}/reject",
-        json={"note": "Rejected."},
+        json={"reason": "Rejected."},
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -400,7 +400,7 @@ async def test_reviewer_rejection_reports_vanished_claim(
 
     response = await test_client.post(
         f"/api/profiles/claims/review/{claim_id}/reject",
-        json={"note": "Evidence does not identify the requester."},
+        json={"reason": "Evidence does not identify the requester."},
     )
 
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
