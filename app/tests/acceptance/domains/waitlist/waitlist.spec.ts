@@ -42,7 +42,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expect(adminPage.getByText(`${email}: Invitation sent.`, { exact: true })).toBeVisible();
   const invitationUrl = extractFirstUrlFromEmail(await pollLatestMessage(email));
   await page.goto(invitationUrl);
-  await expect(page.getByRole("heading", { name: "Join Atlas Pro" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You’re invited to Atlas Pro" })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Create a free account", exact: true }),
   ).toBeVisible();

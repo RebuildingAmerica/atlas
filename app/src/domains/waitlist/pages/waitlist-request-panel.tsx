@@ -10,7 +10,7 @@ import {
   defaultOnboardingInterval,
   isValidOnboardingSelection,
 } from "@rebuildingamerica/atlas-access/onboarding/setup-state";
-import type { WaitlistLinkKind, WaitlistRequest } from "../contracts";
+import type { WaitlistLinkKind, WaitlistProduct, WaitlistRequest } from "../contracts";
 import { updateWaitlistRequest, changeWaitlistRequest } from "../waitlist.functions";
 import {
   WaitlistError,
@@ -20,6 +20,14 @@ import {
   waitlistPrimaryLinkClass,
   waitlistTextLinkClass,
 } from "./waitlist-layout";
+
+const INVITATION_DESCRIPTIONS: Record<WaitlistProduct, string> = {
+  atlas_pro:
+    "Atlas Pro includes unlimited research requests, notes and shortlists, and CSV/JSON exports.",
+  atlas_team:
+    "Atlas Team includes a shared research workspace, notes and shortlists, watchlists, and monitoring.",
+  atlas_research_pass: "Get 7 or 30 days of research tools without a recurring subscription.",
+};
 
 export function WaitlistRequestPanel({
   initialRequest,
@@ -100,10 +108,18 @@ export function WaitlistRequestPanel({
               : request.purchasedAt
                 ? "You’re all set"
                 : invited
-                  ? `Join ${productLabel}`
+                  ? `You’re invited to ${productLabel}`
                   : "You’re on the waitlist"}
         </h1>
-        <p className="type-body-large text-ink-soft wrap-anywhere">{request.email}</p>
+        {invited && !request.purchasedAt ? (
+          <p className="type-body-large text-ink-soft">
+            {INVITATION_DESCRIPTIONS[request.product]}
+          </p>
+        ) : null}
+        <div className="space-y-1 pt-2">
+          <p className="type-label-medium text-ink-muted">Email address</p>
+          <p className="type-body-large text-ink-strong wrap-anywhere">{request.email}</p>
+        </div>
         {!closed && !invited && !needsConfirmation && !request.purchasedAt ? (
           <p className="type-body-large text-ink-soft">
             We’ll email you when you can sign up for {productLabel}. You can keep using Atlas for

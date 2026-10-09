@@ -6,7 +6,7 @@ interface WaitlistLayoutProps {
 }
 export function WaitlistLayout({ children }: WaitlistLayoutProps) {
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="bg-surface flex flex-1 flex-col">
       <PageLayout className="min-h-[calc(100svh-5rem)] py-10 sm:py-16">
         <div className="mx-auto w-full max-w-lg space-y-6">{children}</div>
       </PageLayout>

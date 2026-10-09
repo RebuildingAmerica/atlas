@@ -288,7 +288,7 @@ describe("waitlist screens", () => {
         <WaitlistLinkPage token="fresh" kind="invite" />
       </QueryClientProvider>,
     );
-    await screen.findByRole("heading", { name: "Join Atlas Pro" });
+    await screen.findByRole("heading", { name: "You’re invited to Atlas Pro" });
     act(() => {
       client.setQueryData(["waitlist", "link", "fresh", "invite"], {
         ...request,
