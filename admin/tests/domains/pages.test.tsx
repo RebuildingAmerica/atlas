@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
+  accountLookup,
   discountRequest,
   passingPosture,
   platformSwitches,
@@ -11,6 +12,7 @@ import { renderWithQueries } from "../helpers/render";
 import { reasonBox } from "../helpers/switches";
 
 const functions = vi.hoisted(() => ({
+  findAccount: vi.fn(),
   flipSwitch: vi.fn(),
   loadCloudCostPosture: vi.fn(),
   loadDiscountRequests: vi.fn(),
@@ -18,6 +20,9 @@ const functions = vi.hoisted(() => ({
   reviewDiscountRequest: vi.fn(),
 }));
 
+vi.mock("@/domains/accounts/accounts.functions", () => ({
+  findAccount: functions.findAccount,
+}));
 vi.mock("@/domains/switches/switches.functions", () => ({
   flipSwitch: functions.flipSwitch,
   loadSwitches: functions.loadSwitches,
@@ -92,6 +97,33 @@ describe("DiscountReviewPage", () => {
 
     expect(
       await screen.findByText("Discount requests could not load."),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("AccountsPage", () => {
+  it("looks up what was typed and shows the result or why it failed", async () => {
+    const { AccountsPage } = await import("@/domains/accounts/accounts-page");
+    functions.findAccount
+      .mockResolvedValueOnce(accountLookup())
+      .mockRejectedValueOnce(new Error("The Atlas app could not be asked."));
+    renderWithQueries(<AccountsPage />);
+
+    await userEvent.type(
+      screen.getByLabelText("Email or workspace slug"),
+      "dana@example.org",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Look up" }));
+    expect(
+      await screen.findByRole("heading", { name: "Dana · dana@example.org" }),
+    ).toBeInTheDocument();
+    expect(functions.findAccount).toHaveBeenCalledWith({
+      data: { query: "dana@example.org" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Look up" }));
+    expect(
+      await screen.findByText("The Atlas app could not be asked."),
     ).toBeInTheDocument();
   });
 });

@@ -11,7 +11,7 @@ export const Route = createFileRoute("/")({
 interface Destination {
   description: string;
   label: string;
-  to: "/discounts" | "/cloud-costs" | "/switches";
+  to: "/discounts" | "/cloud-costs" | "/switches" | "/accounts";
 }
 
 const DESTINATIONS: readonly Destination[] = [
@@ -32,6 +32,12 @@ const DESTINATIONS: readonly Destination[] = [
     description:
       "Stop discovery spend or pause sales in under a minute, without a release.",
     to: "/switches",
+  },
+  {
+    label: "Accounts",
+    description:
+      "Find an account or workspace and see what it holds and why, without production SQL.",
+    to: "/accounts",
   },
 ];
 

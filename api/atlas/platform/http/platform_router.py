@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import APIRouter
 from fastapi.openapi.utils import get_openapi
 
+from atlas.domains.access.api.account_lookup_admin import router as account_lookup_router
 from atlas.domains.access.api.cloud_cost_admin import router as cloud_cost_admin_router
 from atlas.domains.access.api.platform_switches_admin import router as switches_admin_router
 from atlas.domains.access.api.verification_admin import router as verification_admin_router
@@ -42,6 +43,7 @@ def create_platform_router() -> APIRouter:
     router.include_router(verification_admin_router)
     router.include_router(cloud_cost_admin_router)
     router.include_router(switches_admin_router)
+    router.include_router(account_lookup_router)
     return router
 
 

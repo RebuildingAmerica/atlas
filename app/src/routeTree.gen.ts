@@ -94,6 +94,7 @@ import { Route as PublicProfilesOrganizationsIndexRouteImport } from './routes/_
 import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
 import { Route as ApiE2eHostedIdentityRouteImport } from './routes/api/e2e/hosted/identity'
 import { Route as ApiE2eHostedBillingInventoryRouteImport } from './routes/api/e2e/hosted/billing-inventory'
+import { Route as ApiAuthInternalPlatformLookupRouteImport } from './routes/api/auth/internal/platform-lookup'
 import { Route as ApiAuthInternalDiscountReviewResultsRouteImport } from './routes/api/auth/internal/discount-review-results'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/sign-in/start'
@@ -557,6 +558,12 @@ const ApiE2eHostedBillingInventoryRoute =
     path: '/api/e2e/hosted/billing-inventory',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAuthInternalPlatformLookupRoute =
+  ApiAuthInternalPlatformLookupRouteImport.update({
+    id: '/api/auth/internal/platform-lookup',
+    path: '/api/auth/internal/platform-lookup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthInternalDiscountReviewResultsRoute =
   ApiAuthInternalDiscountReviewResultsRouteImport.update({
     id: '/api/auth/internal/discount-review-results',
@@ -776,6 +783,7 @@ export interface FileRoutesByFullPath {
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
+  '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -874,6 +882,7 @@ export interface FileRoutesByTo {
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
+  '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -983,6 +992,7 @@ export interface FileRoutesById {
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
+  '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -1089,6 +1099,7 @@ export interface FileRouteTypes {
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/discount-review-results'
+    | '/api/auth/internal/platform-lookup'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1187,6 +1198,7 @@ export interface FileRouteTypes {
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/discount-review-results'
+    | '/api/auth/internal/platform-lookup'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1295,6 +1307,7 @@ export interface FileRouteTypes {
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/discount-review-results'
+    | '/api/auth/internal/platform-lookup'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1336,6 +1349,7 @@ export interface RootRouteChildren {
   ApiAtprotoSignInStartRoute: typeof ApiAtprotoSignInStartRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
   ApiAuthInternalDiscountReviewResultsRoute: typeof ApiAuthInternalDiscountReviewResultsRoute
+  ApiAuthInternalPlatformLookupRoute: typeof ApiAuthInternalPlatformLookupRoute
   ApiE2eHostedBillingInventoryRoute: typeof ApiE2eHostedBillingInventoryRoute
   ApiE2eHostedIdentityRoute: typeof ApiE2eHostedIdentityRoute
   ApiE2eWorkspaceMemberRoute: typeof ApiE2eWorkspaceMemberRoute
@@ -1940,6 +1954,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiE2eHostedBillingInventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/internal/platform-lookup': {
+      id: '/api/auth/internal/platform-lookup'
+      path: '/api/auth/internal/platform-lookup'
+      fullPath: '/api/auth/internal/platform-lookup'
+      preLoaderRoute: typeof ApiAuthInternalPlatformLookupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/internal/discount-review-results': {
       id: '/api/auth/internal/discount-review-results'
       path: '/api/auth/internal/discount-review-results'
@@ -2377,6 +2398,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
   ApiAuthInternalDiscountReviewResultsRoute:
     ApiAuthInternalDiscountReviewResultsRoute,
+  ApiAuthInternalPlatformLookupRoute: ApiAuthInternalPlatformLookupRoute,
   ApiE2eHostedBillingInventoryRoute: ApiE2eHostedBillingInventoryRoute,
   ApiE2eHostedIdentityRoute: ApiE2eHostedIdentityRoute,
   ApiE2eWorkspaceMemberRoute: ApiE2eWorkspaceMemberRoute,

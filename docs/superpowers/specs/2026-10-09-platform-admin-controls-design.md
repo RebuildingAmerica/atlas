@@ -1,8 +1,9 @@
 # Platform admin controls: switches, account lookup, rollout
 
-Status: design, 2026-10-09. Covers the three platform features left in I7 of the
-admin separation plan. Editorial features (takedowns, activity, schedules)
-shipped in the end app.
+Status, 2026-10-09: switches and read-only lookup are built. Grants wait for the
+written policy below; rollout waits for its first feature. Covers the three
+platform features left in I7 of the admin separation plan. Editorial features
+(takedowns, activity, schedules) shipped in the end app.
 
 ## Why these exist
 
