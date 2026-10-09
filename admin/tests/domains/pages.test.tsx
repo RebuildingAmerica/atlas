@@ -57,7 +57,7 @@ describe("DiscountReviewPage", () => {
     });
     functions.reviewDiscountRequest.mockRejectedValue(
       new Error(
-        "The decision was saved, but the applicant could not be emailed.",
+        "The applicant could not be emailed, so the request is still waiting. Decide it again.",
       ),
     );
     renderWithQueries(<DiscountReviewPage />);
@@ -67,7 +67,7 @@ describe("DiscountReviewPage", () => {
 
     expect(
       await screen.findByText(
-        "The decision was saved, but the applicant could not be emailed.",
+        "The applicant could not be emailed, so the request is still waiting. Decide it again.",
       ),
     ).toBeInTheDocument();
   });

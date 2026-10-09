@@ -102,6 +102,20 @@ export async function runAdminKeysPhase(
     "--env",
     target,
   ]);
+  const missing = !existing.ok && /was not found/i.test(existing.output);
+  if (!existing.ok && !missing) {
+    // An unreadable variable is not a missing one: treating it as missing would
+    // replace a working key without asking.
+    log.error(
+      `Could not read ${ADMIN_SIGNING_PUBLIC_KEY_VARIABLE}: ${existing.output}`,
+    );
+    return {
+      success: false,
+      followUpItems: [
+        `Check that gh can read the GitHub "${target}" Environment, then run this again`,
+      ],
+    };
+  }
   const hasKey = existing.ok && existing.output.length > 0;
 
   if (doctorMode) {

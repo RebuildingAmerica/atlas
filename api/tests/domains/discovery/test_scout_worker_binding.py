@@ -116,6 +116,37 @@ async def test_someone_else_cannot_revoke_your_worker(test_db: object) -> None:
 
 
 @pytest.mark.asyncio
+async def test_someone_else_naming_your_worker_frees_none_of_its_leases(test_db: object) -> None:
+    """A worker id shown on a job is not enough to throw a volunteer's work back in the queue."""
+    job_id = await _queued_job(test_db)
+    await _claim(test_db, _scout())
+
+    released = await discovery_api.release_worker_jobs(
+        WORKER, response=None, actor=_app_session("stranger"), db=test_db
+    )
+
+    assert released.jobs_released == 0
+    job = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
+    assert job is not None
+    assert (job.status, job.claimed_by) == ("claimed", WORKER)
+
+
+@pytest.mark.asyncio
+async def test_revoking_your_worker_returns_its_leases_to_the_queue(test_db: object) -> None:
+    job_id = await _queued_job(test_db)
+    await _claim(test_db, _scout())
+
+    released = await discovery_api.release_worker_jobs(
+        WORKER, response=None, actor=_app_session(), db=test_db
+    )
+
+    assert released.jobs_released == 1
+    job = await DiscoveryJobCRUD.get_by_id(test_db, job_id)
+    assert job is not None
+    assert (job.status, job.claimed_by) == ("queued", None)
+
+
+@pytest.mark.asyncio
 async def test_revocation_is_recorded_once_per_owner(test_db: object) -> None:
     await ScoutWorkerRevocationCRUD.revoke(test_db, worker_id=WORKER, user_id="volunteer-1")
     await ScoutWorkerRevocationCRUD.revoke(test_db, worker_id=WORKER, user_id="volunteer-1")

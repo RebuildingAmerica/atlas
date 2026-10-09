@@ -42,6 +42,11 @@ function importSigningKey(pkcs8Base64: string): Promise<CryptoKey> {
     key = crypto.subtle.importKey("pkcs8", der, { name: "Ed25519" }, false, [
       "sign",
     ]);
+    // A failed import is not kept, so the next call tries again instead of
+    // failing for the life of the isolate.
+    void key.catch(() => {
+      keys.delete(pkcs8Base64);
+    });
     keys.set(pkcs8Base64, key);
   }
   return key;

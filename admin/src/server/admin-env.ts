@@ -60,6 +60,34 @@ function httpsOrigin(value: string, key: string, development: boolean): string {
   return url.origin;
 }
 
+/** The DER prefix every PKCS#8-wrapped Ed25519 private key starts with. */
+const ED25519_PKCS8_PREFIX = [
+  0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04,
+  0x22, 0x04, 0x20,
+];
+const ED25519_PKCS8_LENGTH = 48;
+
+/**
+ * Checks the signing key's shape up front, so a mangled secret refuses every
+ * request with the gate's 503 instead of failing inside each API call.
+ */
+function signingKey(value: string): string {
+  const invalid = new Error(
+    "ATLAS_ADMIN_SIGNING_KEY must be a base64 PKCS#8 Ed25519 private key.",
+  );
+  let der: Uint8Array;
+  try {
+    der = Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+  } catch {
+    throw invalid;
+  }
+  const prefixMatches = ED25519_PKCS8_PREFIX.every(
+    (byte, index) => der[index] === byte,
+  );
+  if (der.length !== ED25519_PKCS8_LENGTH || !prefixMatches) throw invalid;
+  return value;
+}
+
 function operatorList(value: string): ReadonlySet<string> {
   const emails = value
     .split(",")
@@ -102,6 +130,6 @@ export function readAdminEnv(
     ),
     devOperatorEmail,
     operators: operatorList(required(source, "ATLAS_PLATFORM_OPERATOR_EMAILS")),
-    signingKey: required(source, "ATLAS_ADMIN_SIGNING_KEY"),
+    signingKey: signingKey(required(source, "ATLAS_ADMIN_SIGNING_KEY")),
   };
 }

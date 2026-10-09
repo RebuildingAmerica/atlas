@@ -249,15 +249,45 @@ class DiscountVerificationCRUD:
         status: Literal["verified", "rejected"],
         notes: str | None,
     ) -> DiscountVerificationModel | None:
-        """Update a verification review status and return the stored record."""
+        """Decide a pending request and return the stored record.
+
+        Only a pending request is decided, so two reviews racing on one request
+        cannot both email the applicant.
+
+        Returns
+        -------
+        DiscountVerificationModel | None
+            The decided record, or ``None`` when no pending request has this id.
+        """
         verified_at = db.now_iso() if status == "verified" else None
-        await conn.execute(
+        cursor = await conn.execute(
             """
             UPDATE discount_verifications
             SET status = ?, verified_at = ?, notes = ?
-            WHERE id = ?
+            WHERE id = ? AND status = 'pending'
             """,
             (status, verified_at, notes, verification_id),
         )
         await conn.commit()
+        if getattr(cursor, "rowcount", 0) != 1:
+            return None
         return await DiscountVerificationCRUD.get_by_id(conn, verification_id)
+
+    @staticmethod
+    async def reopen(
+        conn: aiosqlite.Connection, verification_id: str, *, notes: str | None
+    ) -> None:
+        """Put a decided request back to pending, with the notes it had before.
+
+        Used when the applicant could not be told the decision, so the operator
+        can decide it again rather than leave a decision nobody heard about.
+        """
+        await conn.execute(
+            """
+            UPDATE discount_verifications
+            SET status = 'pending', verified_at = NULL, notes = ?
+            WHERE id = ?
+            """,
+            (notes, verification_id),
+        )
+        await conn.commit()

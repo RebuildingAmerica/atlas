@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS discovery_jobs (
     retry_count INTEGER NOT NULL DEFAULT 0,
     max_retries INTEGER NOT NULL DEFAULT 2,
     claimed_by TEXT,
+    claimed_by_user_id TEXT,
     claimed_until TIMESTAMPTZ,
     idempotency_key TEXT,
     next_attempt_at TIMESTAMPTZ,
@@ -64,6 +65,7 @@ ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
 ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ;
 ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS execution_mode TEXT NOT NULL DEFAULT 'search';
 ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS input_payload JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE discovery_jobs ADD COLUMN IF NOT EXISTS claimed_by_user_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_status ON discovery_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_run_id ON discovery_jobs(run_id);
 CREATE INDEX IF NOT EXISTS idx_discovery_jobs_claimed_until ON discovery_jobs(claimed_until);

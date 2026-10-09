@@ -62,11 +62,21 @@ export const submitDiscountVerification = createServerFn({ method: "POST" })
       },
     );
 
-    await sendDiscountRequestOperatorNotification({
-      organizationId: data.organizationId,
-      segment: data.segment,
-      verificationId: response.id,
-    });
+    // The request is saved and waiting in the platform admin's queue whether or
+    // not the heads-up email goes out, so a mail failure must not tell the
+    // applicant their request failed and send them to file it twice.
+    try {
+      await sendDiscountRequestOperatorNotification({
+        organizationId: data.organizationId,
+        segment: data.segment,
+        verificationId: response.id,
+      });
+    } catch (error) {
+      console.error("Discount request operator email was not sent", {
+        error: error instanceof Error ? error.message : String(error),
+        verificationId: response.id,
+      });
+    }
 
     return response;
   });

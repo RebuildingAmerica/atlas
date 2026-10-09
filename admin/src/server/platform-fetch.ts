@@ -26,6 +26,13 @@ interface ApiErrorBody {
 
 const SIGN_IN_AGAIN = "Sign in again through Cloudflare Access.";
 
+const NOT_JSON = "The Atlas API answered with something other than JSON.";
+
+/**
+ * Reads the API's JSON body. An error body that is not JSON reads as nothing,
+ * so the status still explains it; a success body that is not JSON throws,
+ * because showing it as empty data would hide a misrouted API.
+ */
 async function readBody(response: Response): Promise<unknown> {
   if (response.status === 204) return undefined;
   const text = await response.text();
@@ -33,7 +40,8 @@ async function readBody(response: Response): Promise<unknown> {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return undefined;
+    if (!response.ok) return undefined;
+    throw new PlatformApiError(response.status, NOT_JSON);
   }
 }
 

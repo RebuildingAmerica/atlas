@@ -21,6 +21,11 @@ export const ADMIN_ORIGIN = "https://atlas-admin.example.test";
 export const API_ORIGIN = "https://atlas-api.example.test";
 export { TEST_OPERATOR };
 
+/** A well-formed signing key, for tests that do not check signatures. */
+export const TEST_SIGNING_KEY = generateKeyPairSync("ed25519")
+  .privateKey.export({ format: "der", type: "pkcs8" })
+  .toString("base64");
+
 export interface SigningKeyPair {
   pkcs8: string;
   publicKey: CryptoKey;
@@ -48,7 +53,7 @@ export async function makeSigningKey(): Promise<SigningKeyPair> {
 /** Settings for a correctly configured admin, with any value changed. */
 export function adminSource(
   overrides: AdminEnvSource = {},
-  signingKey = "test-signing-key",
+  signingKey = TEST_SIGNING_KEY,
 ): AdminEnvSource {
   return {
     ATLAS_ACCESS_AUD: TEST_AUDIENCE,

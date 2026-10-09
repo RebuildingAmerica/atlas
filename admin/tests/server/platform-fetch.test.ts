@@ -100,7 +100,7 @@ describe("calling the platform API", () => {
       Response.json(
         {
           detail:
-            "The decision was saved, but the applicant could not be emailed.",
+            "The applicant could not be emailed, so the request is still waiting. Decide it again.",
         },
         { status: 502 },
       ),
@@ -110,7 +110,7 @@ describe("calling the platform API", () => {
       platformFetch("/api/platform/discount-verifications/v-1"),
     ).rejects.toMatchObject({
       message:
-        "The decision was saved, but the applicant could not be emailed.",
+        "The applicant could not be emailed, so the request is still waiting. Decide it again.",
       name: "PlatformApiError",
       status: 502,
     });
@@ -135,6 +135,20 @@ describe("calling the platform API", () => {
       platformFetch("/api/platform/cloud-costs"),
     ).rejects.toMatchObject({
       message: `The Atlas API answered ${String(response.status)}.`,
+    });
+  });
+
+  it("refuses a successful answer that is not JSON instead of showing it as empty", async () => {
+    const { platformFetch } = await import("@/server/platform-fetch");
+    await signInOperator(state);
+    stubFetch(new Response("<html>sign in</html>", { status: 200 }));
+
+    await expect(
+      platformFetch("/api/platform/cloud-costs"),
+    ).rejects.toMatchObject({
+      message: "The Atlas API answered with something other than JSON.",
+      name: "PlatformApiError",
+      status: 200,
     });
   });
 });

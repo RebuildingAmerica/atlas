@@ -25,7 +25,11 @@ from atlas.platform.http.cache import apply_no_store_headers
 if TYPE_CHECKING:
     import aiosqlite
 
-UNSENT_RESULT_DETAIL = "The decision was saved, but the applicant could not be emailed."
+UNSENT_RESULT_DETAIL = (
+    "The applicant could not be emailed, so the request is still waiting. Decide it again."
+)
+ALREADY_DECIDED_DETAIL = "This request was already decided."
+MISSING_RECORD_DETAIL = "Verification record not found"
 
 router = APIRouter(tags=["platform"])
 
@@ -135,8 +139,9 @@ async def list_verifications(
     operation_id="updateVerification",
     summary="Update discount verification",
     description=(
-        "Record the review decision for a discount request, then email the applicant "
-        "through the app. A 502 means the decision was saved but the email was not sent."
+        "Decide a pending discount request, then email the applicant through the app. "
+        "A 409 means it was already decided. A 502 means the email was not sent, so the "
+        "request was put back to pending to be decided again."
     ),
 )
 async def update_verification(
@@ -147,8 +152,15 @@ async def update_verification(
     settings: Settings = Depends(get_settings),
     _operator: PlatformOperator = Depends(require_platform_action(Action.DISCOUNTS_REVIEW)),
 ) -> VerificationUpdateResponse:
-    """Record the review decision, then have the app email the applicant."""
+    """Decide a pending request and have the app email the applicant.
+
+    A decision the applicant was never told about is worse than none, so when
+    the email cannot be sent the request goes back to pending for another try.
+    """
     apply_no_store_headers(response)
+    previous = await DiscountVerificationCRUD.get_by_id(conn, verification_id)
+    if previous is None:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail=MISSING_RECORD_DETAIL)
     record = await DiscountVerificationCRUD.update_status(
         conn,
         verification_id,
@@ -156,7 +168,7 @@ async def update_verification(
         notes=request.notes,
     )
     if record is None:
-        raise HTTPException(status_code=404, detail="Verification record not found")
+        raise HTTPException(status_code=HTTPStatus.CONFLICT, detail=ALREADY_DECIDED_DETAIL)
 
     try:
         await notify_discount_review_result(
@@ -166,6 +178,7 @@ async def update_verification(
             status=request.status,
         )
     except httpx.HTTPError as exc:
+        await DiscountVerificationCRUD.reopen(conn, verification_id, notes=previous.notes)
         raise HTTPException(
             status_code=HTTPStatus.BAD_GATEWAY, detail=UNSENT_RESULT_DETAIL
         ) from exc
