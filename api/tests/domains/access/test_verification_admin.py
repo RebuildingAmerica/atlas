@@ -70,7 +70,7 @@ async def test_an_atlas_app_operator_cannot_review_discounts(
     monkeypatch: pytest.MonkeyPatch, db_url: str
 ) -> None:
     """Signing in to the Atlas app, even as the instance operator, grants no platform action."""
-    settings = platform_settings(db_url, operator_allowed_emails=[OPERATOR_EMAIL])
+    settings = platform_settings(db_url, instance_operator_emails=[OPERATOR_EMAIL])
     app = managed_app(monkeypatch, settings)
     assertion = sign_app_assertion(
         user_id="operator-user",

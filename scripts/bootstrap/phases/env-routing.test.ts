@@ -48,16 +48,18 @@ void describe("hosted routing prompts", () => {
   void it("only builds production vars for a production-targeted sync, never preview", () => {
     const vars = buildVercelEnvVars(
       "production",
-      new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "prod-operator@example.org"]]),
       new Map([
-        ["ATLAS_OPERATOR_ALLOWED_EMAILS", "staging-operator@example.org"],
+        ["ATLAS_INSTANCE_OPERATOR_EMAILS", "prod-operator@example.org"],
+      ]),
+      new Map([
+        ["ATLAS_INSTANCE_OPERATOR_EMAILS", "staging-operator@example.org"],
       ]),
     );
 
     assert.deepEqual(
-      vars.find((item) => item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS"),
+      vars.find((item) => item.key === "ATLAS_INSTANCE_OPERATOR_EMAILS"),
       {
-        key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        key: "ATLAS_INSTANCE_OPERATOR_EMAILS",
         value: "prod-operator@example.org",
         environments: ["production"],
       },
@@ -71,16 +73,18 @@ void describe("hosted routing prompts", () => {
   void it("only builds preview vars for a staging-targeted sync, never production", () => {
     const vars = buildVercelEnvVars(
       "staging",
-      new Map([["ATLAS_OPERATOR_ALLOWED_EMAILS", "prod-operator@example.org"]]),
       new Map([
-        ["ATLAS_OPERATOR_ALLOWED_EMAILS", "staging-operator@example.org"],
+        ["ATLAS_INSTANCE_OPERATOR_EMAILS", "prod-operator@example.org"],
+      ]),
+      new Map([
+        ["ATLAS_INSTANCE_OPERATOR_EMAILS", "staging-operator@example.org"],
       ]),
     );
 
     assert.deepEqual(
-      vars.find((item) => item.key === "ATLAS_OPERATOR_ALLOWED_EMAILS"),
+      vars.find((item) => item.key === "ATLAS_INSTANCE_OPERATOR_EMAILS"),
       {
-        key: "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        key: "ATLAS_INSTANCE_OPERATOR_EMAILS",
         value: "staging-operator@example.org",
         environments: ["preview"],
       },

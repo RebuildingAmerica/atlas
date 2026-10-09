@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  isOperatorAllowedEmail,
+  isInstanceOperatorEmail,
   resolveAuthRuntimeConfig,
+  RETIRED_OPERATOR_ALLOWLIST_MESSAGE,
   validateAuthRuntimeConfig,
 } from "@/domains/access/server/runtime";
 
@@ -64,7 +65,8 @@ describe("runtime additional branches", () => {
         atprotoPdsInviteBrokerSecret: null,
         atprotoPdsInviteBrokerUrl: null,
         atprotoPdsUrl: null,
-        operatorAllowedEmails: new Set(),
+        instanceOperatorEmails: new Set(),
+        platformOperatorEmails: new Set(),
         anonymousRateLimit: {
           enabled: true,
           readsPerMinute: 30,
@@ -95,20 +97,48 @@ describe("runtime additional branches", () => {
     }).not.toThrow();
   });
 
-  describe("when the operator allowlist is empty", () => {
+  describe("when no instance operator is listed", () => {
     afterEach(() => {
       vi.unstubAllEnvs();
     });
 
     it("blocks bootstrap access", () => {
       vi.stubEnv("ATLAS_PUBLIC_URL", "https://atlas.test");
-      vi.stubEnv("ATLAS_OPERATOR_ALLOWED_EMAILS", "");
+      vi.stubEnv("ATLAS_INSTANCE_OPERATOR_EMAILS", "");
 
-      expect(isOperatorAllowedEmail("anyone@atlas.test")).toBe(false);
+      expect(isInstanceOperatorEmail("anyone@atlas.test")).toBe(false);
     });
   });
 
-  describe("operator allowlist with entries", () => {
+  describe("the retired single allowlist", () => {
+    it("stops the app and names the settings that replace it", () => {
+      expect(() =>
+        resolveAuthRuntimeConfig(
+          {
+            ATLAS_OPERATOR_ALLOWED_EMAILS: "editor@atlas.test",
+            ATLAS_PUBLIC_URL: "https://atlas.test",
+          },
+          "/srv/atlas",
+        ),
+      ).toThrow(RETIRED_OPERATOR_ALLOWLIST_MESSAGE);
+    });
+
+    it("is ignored when set but empty", () => {
+      const runtime = resolveAuthRuntimeConfig(
+        {
+          ATLAS_OPERATOR_ALLOWED_EMAILS: " ",
+          ATLAS_PLATFORM_OPERATOR_EMAILS: "Platform@Atlas.test",
+          ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
+        },
+        "/srv/atlas",
+      );
+
+      expect([...runtime.platformOperatorEmails]).toEqual(["platform@atlas.test"]);
+      expect(runtime.instanceOperatorEmails.size).toBe(0);
+    });
+  });
+
+  describe("instance operators with entries", () => {
     afterEach(() => {
       vi.unstubAllEnvs();
     });
@@ -119,12 +149,12 @@ describe("runtime additional branches", () => {
         ATLAS_AUTH_INTERNAL_SECRET: "internal", // pragma: allowlist secret
         ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
         ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
-        ATLAS_OPERATOR_ALLOWED_EMAILS: "ops@atlas.test, ROOT@atlas.test",
+        ATLAS_INSTANCE_OPERATOR_EMAILS: "ops@atlas.test, ROOT@atlas.test",
       });
 
-      expect(runtime.isOperatorAllowedEmail("ops@atlas.test")).toBe(true);
-      expect(runtime.isOperatorAllowedEmail(" Root@Atlas.Test ")).toBe(true);
-      expect(runtime.isOperatorAllowedEmail("intruder@atlas.test")).toBe(false);
+      expect(runtime.isInstanceOperatorEmail("ops@atlas.test")).toBe(true);
+      expect(runtime.isInstanceOperatorEmail(" Root@Atlas.Test ")).toBe(true);
+      expect(runtime.isInstanceOperatorEmail("intruder@atlas.test")).toBe(false);
     });
   });
 

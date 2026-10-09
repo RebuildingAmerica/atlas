@@ -91,7 +91,8 @@ describe("resolveAuthRuntimeConfig", () => {
         ATLAS_EMAIL_CAPTURE_URL: "http://127.0.0.1:8025/messages",
         ATLAS_EMAIL_FROM: "Atlas Ops <auth@atlas.example.com>",
         ATLAS_EMAIL_PROVIDER: "capture",
-        ATLAS_OPERATOR_ALLOWED_EMAILS: "operator@example.com, editor@example.com ",
+        ATLAS_INSTANCE_OPERATOR_EMAILS: "operator@example.com, editor@example.com ",
+        ATLAS_PLATFORM_OPERATOR_EMAILS: " Platform@Example.com",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
         ATLAS_AUTH_DB_PATH: "/srv/atlas/auth/atlas.sqlite",
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
@@ -112,7 +113,8 @@ describe("resolveAuthRuntimeConfig", () => {
       "/workspace/atlas/app",
     );
 
-    expect(runtime.operatorAllowedEmails).toEqual(
+    expect(runtime.platformOperatorEmails).toEqual(new Set(["platform@example.com"]));
+    expect(runtime.instanceOperatorEmails).toEqual(
       new Set(["operator@example.com", "editor@example.com"]),
     );
     expect(runtime.anonymousRateLimit).toEqual({

@@ -32,7 +32,7 @@ export interface DeployConfig {
   edgeOriginSecret: string;
   publicUrl: string;
   authJwtAudiences: string;
-  operatorAllowedEmails: string;
+  instanceOperatorEmails: string;
   machineTrustedIssuers: string;
 }
 
@@ -46,7 +46,7 @@ interface AtlasApiCloudRunEnvConfig {
   edgeOriginSecret: string;
   publicUrl: string;
   authJwtAudiences: string;
-  operatorAllowedEmails: string;
+  instanceOperatorEmails: string;
   machineTrustedIssuers: string;
 }
 
@@ -102,7 +102,7 @@ export function buildAtlasApiCloudRunEnvVars(
     ATLAS_EDGE_ORIGIN_SECRET: config.edgeOriginSecret,
     ATLAS_PUBLIC_URL: config.publicUrl,
     ATLAS_AUTH_JWT_AUDIENCES: config.authJwtAudiences,
-    ATLAS_OPERATOR_ALLOWED_EMAILS: config.operatorAllowedEmails,
+    ATLAS_INSTANCE_OPERATOR_EMAILS: config.instanceOperatorEmails,
     ATLAS_MACHINE_TRUSTED_ISSUERS: config.machineTrustedIssuers,
   };
 }
@@ -204,7 +204,7 @@ export function readDeployConfig(
     edgeOriginSecret,
     publicUrl,
     authJwtAudiences,
-    operatorAllowedEmails: resolve("ATLAS_OPERATOR_ALLOWED_EMAILS"),
+    instanceOperatorEmails: resolve("ATLAS_INSTANCE_OPERATOR_EMAILS"),
     machineTrustedIssuers: buildHostedMachineIssuers(projectId, publicUrl),
   };
 }

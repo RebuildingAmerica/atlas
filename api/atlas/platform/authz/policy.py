@@ -34,7 +34,7 @@ def _is_instance_operator(actor: AuthenticatedActor, settings: Settings) -> bool
     actor : AuthenticatedActor
         The authenticated caller.
     settings : Settings
-        Runtime settings carrying ``operator_allowed_emails``.
+        Runtime settings carrying ``instance_operator_emails``.
 
     Returns
     -------
@@ -47,7 +47,9 @@ def _is_instance_operator(actor: AuthenticatedActor, settings: Settings) -> bool
     """
     if actor.is_local:
         return True
-    allowed = {email.strip().lower() for email in settings.operator_allowed_emails if email.strip()}
+    allowed = {
+        email.strip().lower() for email in settings.instance_operator_emails if email.strip()
+    }
     return (
         actor.auth_type == "internal"
         and actor.account_ready

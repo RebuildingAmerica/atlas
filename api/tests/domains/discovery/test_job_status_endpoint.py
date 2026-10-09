@@ -12,7 +12,7 @@ from atlas.domains.discovery.models import DiscoveryJobCRUD, DiscoveryRunCRUD
 from tests.domains.discovery.schedule_support import EXPECTED_NOT_FOUND
 
 # The test actor is not staff, so only public runs' jobs are visible.
-_NO_OPERATORS = SimpleNamespace(operator_allowed_emails=[])
+_NO_OPERATORS = SimpleNamespace(instance_operator_emails=[])
 
 
 class TestJobStatusEndpoint:

@@ -12,7 +12,7 @@ interface SentEmail {
 
 interface EmailRuntimeOptions {
   adminPublicUrl?: string | null;
-  operatorAllowedEmails?: string[];
+  platformOperatorEmails?: string[];
 }
 
 const mocks = vi.hoisted(() => ({
@@ -55,7 +55,7 @@ const stubEmailRuntime = (options: EmailRuntimeOptions = {}): void => {
     captureUrl: "http://127.0.0.1:8025/messages",
     emailFrom: "Atlas <hello@atlas.test>",
     emailProvider: "capture",
-    operatorAllowedEmails: new Set(options.operatorAllowedEmails ?? ["ops@rebuildingus.org"]),
+    platformOperatorEmails: new Set(options.platformOperatorEmails ?? ["ops@rebuildingus.org"]),
     publicBaseUrl: "https://atlas.test",
     resendApiKey: null,
   });
@@ -91,7 +91,7 @@ describe("discount verification emails", () => {
       captureUrl: "http://127.0.0.1:8025/messages",
       emailFrom: "Atlas <hello@atlas.test>",
       emailProvider: "capture",
-      operatorAllowedEmails: new Set(["ops@rebuildingus.org", "reviewer@rebuildingus.org"]),
+      platformOperatorEmails: new Set(["ops@rebuildingus.org", "reviewer@rebuildingus.org"]),
       publicBaseUrl: "https://atlas.test",
       resendApiKey: null,
     });
@@ -123,7 +123,7 @@ describe("discount verification emails", () => {
       captureUrl: "http://127.0.0.1:8025/messages",
       emailFrom: "Atlas <hello@atlas.test>",
       emailProvider: "capture",
-      operatorAllowedEmails: new Set(["ops@rebuildingus.org"]),
+      platformOperatorEmails: new Set(["ops@rebuildingus.org"]),
       publicBaseUrl: "https://atlas.test",
       resendApiKey: null,
     });
@@ -158,7 +158,7 @@ describe("discount verification emails", () => {
   });
 
   it("sends nothing when no operator review recipients are configured", async () => {
-    stubEmailRuntime({ operatorAllowedEmails: [] });
+    stubEmailRuntime({ platformOperatorEmails: [] });
 
     const { sendDiscountRequestOperatorNotification } =
       await import("@/domains/billing/server/discount-verification-emails");

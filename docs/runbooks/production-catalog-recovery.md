@@ -87,10 +87,10 @@ restored. The recovery is complete when `/api/entities?limit=1` returns
 
 Create schedule targets only after the place and issue scope is approved.
 Schedule changes are staff-only: `ATLAS_OPERATOR_EMAIL` must be an address on
-the production `ATLAS_OPERATOR_ALLOWED_EMAILS` secret, or the API answers 403.
-The `X-Atlas-Actor-Account-Ready` header asserts the operator signed in with a
-passkey; send it only when acting as yourself. Every schedule change is written
-to the append-only `audit_log` table under your email.
+the production `ATLAS_INSTANCE_OPERATOR_EMAILS` variable, or the API
+answers 403. The `X-Atlas-Actor-Account-Ready` header asserts the operator
+signed in with a passkey; send it only when acting as yourself. Every schedule
+change is written to the append-only `audit_log` table under your email.
 
 ```bash
 curl -X POST "https://atlas-api.rebuildingus.org/api/discovery-schedules" \

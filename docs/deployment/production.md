@@ -95,13 +95,14 @@ Then fill in the real values.
 
 ### Auth
 
-| Variable                               | Required                                     | Description                                                                                                                                                                                                                                                                                 |
-| -------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ATLAS_AUTH_INTERNAL_SECRET`           | Yes                                          | Shared secret between the app and API services. The app uses it as Better Auth's signing secret, and the API accepts it from system callers such as the discovery scheduler. `make setup` generates this automatically.                                                                     |
-| `ATLAS_AUTH_CALLBACK_SECRET`           | Yes when `ATLAS_MULTI_USER` is `true`        | Secret the API sends in `X-Atlas-Callback-Secret` when it calls back into the app for membership checks and API-key introspection. The app and API must hold the same value, and both refuse to start with accounts enabled without it. `make setup` generates this automatically.          |
-| `ATLAS_AUTH_API_KEY_INTROSPECTION_URL` | Yes when `ATLAS_MULTI_USER` is `true`        | Internal URL Atlas uses to validate API keys from the app server. In a Compose deployment, set this to `http://atlas-web:3000/api/auth/internal/api-key`. In a hosted app deployment, set it to the app's public auth route, such as `https://atlas.example.com/api/auth/internal/api-key`. |
-| `ATLAS_AUTH_DB_PATH`                   | Yes                                          | Path to the Better Auth SQLite database. Must point at persistent storage that survives container restarts.                                                                                                                                                                                 |
-| `ATLAS_OPERATOR_ALLOWED_EMAILS`        | Yes for hosted editorial and discount review | Comma-separated allowlist for first owners and private operator access. Hosted profile-correction, discovery-review, and discount reviewers must be signed in with an email in this list before their admin screens can load or change records.                                             |
+| Variable                               | Required                              | Description                                                                                                                                                                                                                                                                                 |
+| -------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ATLAS_AUTH_INTERNAL_SECRET`           | Yes                                   | Shared secret between the app and API services. The app uses it as Better Auth's signing secret, and the API accepts it from system callers such as the discovery scheduler. `make setup` generates this automatically.                                                                     |
+| `ATLAS_AUTH_CALLBACK_SECRET`           | Yes when `ATLAS_MULTI_USER` is `true` | Secret the API sends in `X-Atlas-Callback-Secret` when it calls back into the app for membership checks and API-key introspection. The app and API must hold the same value, and both refuse to start with accounts enabled without it. `make setup` generates this automatically.          |
+| `ATLAS_AUTH_API_KEY_INTROSPECTION_URL` | Yes when `ATLAS_MULTI_USER` is `true` | Internal URL Atlas uses to validate API keys from the app server. In a Compose deployment, set this to `http://atlas-web:3000/api/auth/internal/api-key`. In a hosted app deployment, set it to the app's public auth route, such as `https://atlas.example.com/api/auth/internal/api-key`. |
+| `ATLAS_AUTH_DB_PATH`                   | Yes                                   | Path to the Better Auth SQLite database. Must point at persistent storage that survives container restarts.                                                                                                                                                                                 |
+| `ATLAS_INSTANCE_OPERATOR_EMAILS`       | Yes for editorial work                | Comma-separated people who run this instance's editorial tools under `/editorial` (claim review, corrections, discovery review, schedules), always from a passkey-ready session. They may sign up even when registration is closed. Set it on the app and the API. Empty means nobody.      |
+| `ATLAS_PLATFORM_OPERATOR_EMAILS`       | Managed deployments only              | Comma-separated people who use the Atlas platform admin. The app emails them new discount requests; the refund command requires one of them. Set it on the app, the API and the admin Worker.                                                                                               |
 
 ### OAuth and MCP
 
@@ -211,7 +212,8 @@ Set these auth values in Vercel as well:
 - `ATLAS_AUTH_INTERNAL_SECRET=<same shared secret used by the API service>`
 - `ATLAS_AUTH_CALLBACK_SECRET=<same callback secret used by the API service>`
 - `ATLAS_EDGE_ORIGIN_SECRET=<same edge origin secret used by the API service>`
-- `ATLAS_OPERATOR_ALLOWED_EMAILS=<optional bootstrap allowlist for first owners>`
+- `ATLAS_INSTANCE_OPERATOR_EMAILS=<people who run editorial work>`
+- `ATLAS_PLATFORM_OPERATOR_EMAILS=<people who use the platform admin>`
 - `ATLAS_EMAIL_PROVIDER=resend`
 - `ATLAS_EMAIL_FROM=Atlas <hello@atlas-mail.example.com>`
 - `ATLAS_EMAIL_RESEND_API_KEY=<your Resend API key>`
@@ -265,9 +267,23 @@ accidentally inherit production URLs or databases:
 - `ATLAS_PUBLIC_URL`
 - `ATLAS_API_URL`
 - `ATLAS_AUTH_JWT_AUDIENCES`
-- `ATLAS_OPERATOR_ALLOWED_EMAILS`
 - `VERCEL_TOKEN` for the Vercel CLI production app deploy
 - `OPENSTATUS_API_KEY` when synthetics should run
+
+Configure these as variables on the same environment. None is secret, and
+keeping them visible makes a wrong list or host easy to spot.
+`pnpm bootstrap --infra` writes them from the env files:
+
+- `ATLAS_INSTANCE_OPERATOR_EMAILS`
+- `ATLAS_PLATFORM_OPERATOR_EMAILS`
+- `ATLAS_ADMIN_PUBLIC_URL`, `ATLAS_PLATFORM_API_URL`,
+  `ATLAS_ACCESS_TEAM_DOMAIN`, `ATLAS_ACCESS_AUD` and `CLOUDFLARE_ACCOUNT_ID` for
+  the platform admin
+
+`ATLAS_OPERATOR_ALLOWED_EMAILS` is retired. The app and the API refuse to start
+while it is set. The API deploy removes it from Cloud Run and the production app
+deploy removes it from the Vercel project, but delete the old GitHub secret
+yourself.
 
 The workflow passes the three shared secrets to both the API service and the
 Vercel app. The API deploy step fails before it builds anything if

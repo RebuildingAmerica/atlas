@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   sqliteGet: vi.fn(),
   sqlitePrepare: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
-  isOperatorAllowedEmail: vi.fn(),
+  isInstanceOperatorEmail: vi.fn(),
   listUserInvitations: vi.fn(),
   emailSend: vi.fn(),
   createEmailService: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock("better-sqlite3", () => {
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
-  isOperatorAllowedEmail: mocks.isOperatorAllowedEmail,
+  isInstanceOperatorEmail: mocks.isInstanceOperatorEmail,
   validateAuthRuntimeConfig: vi.fn(),
 }));
 
@@ -73,18 +73,18 @@ describe("canEmailAccessAtlas", () => {
     mocks.sqliteGet.mockReset();
     mocks.sqlitePrepare.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
-    mocks.isOperatorAllowedEmail.mockReset();
+    mocks.isInstanceOperatorEmail.mockReset();
     mocks.listUserInvitations.mockReset();
     vi.mocked(ensureAuthReady).mockClear();
 
     mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: false });
-    mocks.isOperatorAllowedEmail.mockReturnValue(false);
+    mocks.isInstanceOperatorEmail.mockReturnValue(false);
 
     mocks.sqlitePrepare.mockReturnValue({ get: mocks.sqliteGet });
   });
 
   it("grants access to allowed bootstrap emails", async () => {
-    mocks.isOperatorAllowedEmail.mockReturnValue(true);
+    mocks.isInstanceOperatorEmail.mockReturnValue(true);
     expect(await canEmailAccessAtlas("allowed@atlas.test")).toBe(true);
   });
 
@@ -144,7 +144,7 @@ describe("canEmailAccessAtlas", () => {
 describe("createMagicLinkSender", () => {
   it("delivers magic links for allowed emails", async () => {
     const deliverMagicLink = vi.fn().mockResolvedValue(undefined);
-    mocks.isOperatorAllowedEmail.mockReturnValue(true);
+    mocks.isInstanceOperatorEmail.mockReturnValue(true);
 
     await createMagicLinkSender(deliverMagicLink)({
       email: "allowed@atlas.test",
@@ -159,7 +159,7 @@ describe("createMagicLinkSender", () => {
 
   it("silently ignores unapproved emails", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({ localMode: true });
-    mocks.isOperatorAllowedEmail.mockReturnValue(false);
+    mocks.isInstanceOperatorEmail.mockReturnValue(false);
     const deliverMagicLink = vi.fn().mockResolvedValue(undefined);
 
     await createMagicLinkSender(deliverMagicLink)({

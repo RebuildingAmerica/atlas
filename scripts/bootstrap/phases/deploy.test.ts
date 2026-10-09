@@ -218,7 +218,7 @@ void describe("deploy resilience", () => {
       edgeOriginSecret: "edge-value", // pragma: allowlist secret
       publicUrl: "https://atlas.example.org",
       authJwtAudiences: "https://atlas.example.org/mcp",
-      operatorAllowedEmails: "",
+      instanceOperatorEmails: "",
       machineTrustedIssuers: "[]",
     });
 
