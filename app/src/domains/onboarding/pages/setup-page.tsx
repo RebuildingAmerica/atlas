@@ -12,7 +12,7 @@ import {
 } from "@/domains/billing/purchase-onboarding.functions";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
-import { PurchaseStepPanel, PurchaseStepRail, type PurchaseStepId } from "./setup-page-steps";
+import { PurchaseStepPanel } from "./setup-page-steps";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import {
@@ -202,14 +202,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
           void openStripeCheckout(purchaseId);
         };
 
-  const activeStep: PurchaseStepId =
-    sessionData === null || sessionData === undefined || purchaseLookupPending
-      ? "account"
-      : !isReady
-        ? "security"
-        : workspaceAttached
-          ? "payment"
-          : "workspace";
   const alert = errorMessage ? (
     <p role="alert" className="type-body-medium bg-error-container rounded-2xl px-4 py-3">
       {errorMessage}{" "}
@@ -297,8 +289,8 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
       <PurchaseStepPanel
         description={
           selectedProduct === "atlas_team"
-            ? "Name the team workspace this subscription belongs to."
-            : "Choose the workspace this purchase belongs to."
+            ? `Name the team workspace for ${productLabel}.`
+            : `Choose a workspace for ${productLabel}.`
         }
         title={selectedProduct === "atlas_team" ? "Name your team workspace" : "Choose workspace"}
       >
@@ -333,14 +325,5 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     );
   }
 
-  return (
-    <div className="mx-auto w-full max-w-lg space-y-6">
-      <PurchaseStepRail
-        activeStep={activeStep}
-        interval={selectedInterval}
-        productLabel={productLabel}
-      />
-      {panel}
-    </div>
-  );
+  return <div className="w-full max-w-lg space-y-6">{panel}</div>;
 }

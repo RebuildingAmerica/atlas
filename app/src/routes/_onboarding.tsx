@@ -15,7 +15,7 @@ function SetupLayout() {
   return (
     <div className="bg-surface flex min-h-screen flex-col">
       <header className="border-outline-variant bg-surface-container-lowest/90 border-b backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10 lg:px-16">
           <Link to="/" className="type-label-large text-on-surface no-underline">
             Atlas
           </Link>
@@ -25,13 +25,11 @@ function SetupLayout() {
         </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-6 py-8 lg:px-8 lg:py-12">
-        <div className="w-full max-w-6xl">
-          <Outlet />
-        </div>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10 sm:px-10 sm:py-14 lg:px-16 lg:py-16">
+        <Outlet />
       </main>
 
-      <footer className="flex items-center justify-center gap-4 px-6 pb-8">
+      <footer className="mx-auto flex w-full max-w-6xl items-center gap-4 px-6 pb-8 sm:px-10 lg:px-16">
         <Link to="/privacy" className="type-body-small text-ink-muted hover:text-ink">
           Privacy policy
         </Link>

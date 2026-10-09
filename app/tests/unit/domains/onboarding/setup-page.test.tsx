@@ -63,7 +63,7 @@ describe("SetupPage", () => {
 
     render(<SetupPage product="atlas_research_pass" />);
 
-    expect(screen.getByText("Atlas Research Pass · 30-day pass")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Secure your account" })).toBeInTheDocument();
     await waitFor(() => {
       expect(mocks.ensurePurchaseOnboarding).toHaveBeenCalledWith({
         data: { product: "atlas_research_pass", interval: "once" },
@@ -89,7 +89,7 @@ describe("SetupPage", () => {
     expect(mocks.ensurePurchaseOnboarding).not.toHaveBeenCalled();
   });
 
-  it("loads purchase intent details so Stripe cancel returns to the selected plan", async () => {
+  it("does not resume a checkout-created purchase as workspace setup", async () => {
     mocks.useAtlasSession.mockReturnValue({
       data: {
         accountReady: true,
@@ -110,9 +110,9 @@ describe("SetupPage", () => {
     render(<SetupPage purchase="pi_pro" step="payment" />);
 
     await waitFor(() => {
-      expect(screen.getByText("Atlas Pro · Annual")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Purchase unavailable" })).toBeInTheDocument();
     });
-    expect(screen.getByText("Atlas Pro · Annual")).toBeInTheDocument();
+    expect(mocks.loadPurchaseOnboarding).toHaveBeenCalledWith({ data: { purchaseId: "pi_pro" } });
     expect(mocks.ensurePurchaseOnboarding).not.toHaveBeenCalled();
   });
 
@@ -128,7 +128,6 @@ describe("SetupPage", () => {
     render(<SetupPage product="atlas_team" interval="monthly" step="payment" />);
 
     expect(await screen.findByLabelText(/Workspace name/)).toBeInTheDocument();
-    expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Workspace");
     expect(screen.queryByLabelText(/Workspace slug/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Stripe will handle/)).not.toBeInTheDocument();
   });

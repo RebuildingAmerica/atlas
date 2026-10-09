@@ -57,7 +57,8 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     .toBe(false);
 
   await expectNoAxeViolations(page, "mobile invitation");
-  await expect(page.locator('[aria-current="step"]')).toHaveText("Plan");
+  await expect(page.getByRole("navigation", { name: "Signup progress" })).toHaveCount(0);
+  await expect(page.getByText(email, { exact: true })).toHaveCount(0);
   await page.screenshot({ path: "test-results/waitlist-invited-mobile.png", fullPage: true });
   await page.screenshot({ path: "test-results/waitlist-invited-mobile-screen.png" });
   await expect(page.getByRole("button", { name: "Manage invitation" })).toHaveCount(0);
@@ -65,13 +66,11 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Choose workspace" })).toBeVisible();
-  await expect(page.locator('[aria-current="step"]')).toHaveText("Workspace");
   await expect(page.getByRole("button", { name: /^Use / })).toBeEnabled();
   await expectNoAxeViolations(page, "mobile workspace step");
   await page.screenshot({ path: "test-results/waitlist-workspace-mobile-screen.png" });
   await page.getByRole("button", { name: /^Use / }).click();
   await expect(page.getByRole("heading", { name: "Continue to payment" })).toBeVisible();
-  await expect(page.locator('[aria-current="step"]')).toHaveText("Payment");
   await expectNoAxeViolations(page, "mobile payment step");
   await page.screenshot({ path: "test-results/waitlist-payment-mobile-screen.png" });
   await adminPage.goto("/admin/waitlist");
@@ -111,14 +110,16 @@ test("mobile signup and expired-link recovery keep public browsing available", a
   await page.getByRole("button", { name: "Join waitlist" }).click();
   await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
   await page.goto(extractFirstUrlFromEmail(await pollLatestMessage(longEmail)));
-  await page.getByRole("button", { name: "Confirm email" }).click();
-  await expect(page.getByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
   await expect(page.getByText(longEmail, { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
     false,
   );
   await expectNoAxeViolations(page, "long email address");
   await page.screenshot({ path: "test-results/waitlist-long-email.png", fullPage: true });
+  await page.getByRole("button", { name: "Confirm email" }).click();
+  await expect(page.getByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
+  await expect(page.getByText(longEmail, { exact: true })).toHaveCount(0);
+  await expectNoAxeViolations(page, "mobile confirmed request");
   await page.goto("/waitlist/link?kind=invite&token=expired");
   await expect(page.getByRole("heading", { name: "This link no longer works" })).toBeVisible();
   await page.getByRole("link", { name: "Atlas", exact: true }).click();

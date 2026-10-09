@@ -316,8 +316,8 @@ describe("waitlist screens", () => {
       />,
     );
     expect(screen.getByRole("link", { name: "Continue" })).toBeVisible();
-    expect(screen.getByRole("navigation", { name: "Signup progress" })).toBeVisible();
-    expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Plan");
+    expect(screen.queryByRole("navigation", { name: "Signup progress" })).not.toBeInTheDocument();
+    expect(screen.queryByText(request.email)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Decline invitation" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Manage invitation" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();

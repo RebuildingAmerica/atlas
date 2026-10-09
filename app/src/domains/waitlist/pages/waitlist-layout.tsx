@@ -4,7 +4,7 @@ interface WaitlistLayoutProps {
   children: ReactNode;
 }
 export function WaitlistLayout({ children }: WaitlistLayoutProps) {
-  return <div className="mx-auto w-full max-w-lg space-y-6">{children}</div>;
+  return <div className="w-full max-w-lg space-y-6">{children}</div>;
 }
 export const waitlistSecondaryActionClass =
   "type-label-medium text-ink-soft hover:text-ink-strong focus-visible:ring-accent inline-flex min-h-11 items-center gap-2 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-offset-4";
