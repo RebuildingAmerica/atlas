@@ -1,3 +1,5 @@
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -24,7 +26,7 @@ import type {
   WaitlistDeliveryStatus,
   WaitlistLinkKind,
 } from "../contracts";
-import { waitlistFieldClass, waitlistTextLinkClass } from "./waitlist-layout";
+import { waitlistTextLinkClass } from "./waitlist-layout";
 
 const requestStatusLabels: Record<WaitlistStatus, string> = {
   unconfirmed: "Email not confirmed",
@@ -200,57 +202,47 @@ export function WaitlistAdminPage() {
         </p>
       ) : null}
       <section aria-label="Waitlist filters" className="grid gap-4 sm:grid-cols-3">
-        <label className="type-label-medium block space-y-2">
-          <span>Search requests</span>
-          <input
-            type="search"
-            name="search"
-            autoComplete="off"
-            placeholder="Email, name, or organization…"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-            }}
-            className={waitlistFieldClass}
-          />
-        </label>
-        <label className="type-label-medium block space-y-2">
-          <span id="waitlist-plan-label">Plan</span>
-          <select
-            name="plan"
-            aria-labelledby="waitlist-plan-label"
-            value={plan}
-            onChange={(event) => {
-              setPlan(event.target.value);
-            }}
-            className={waitlistFieldClass}
-          >
-            <option value="">All plans</option>
-            <option value="atlas_pro">Atlas Pro</option>
-            <option value="atlas_team">Atlas Team</option>
-            <option value="atlas_research_pass">Atlas Research Pass</option>
-          </select>
-        </label>
-        <label className="type-label-medium block space-y-2">
-          <span id="waitlist-status-label">Status</span>
-          <select
-            name="status"
-            aria-labelledby="waitlist-status-label"
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value);
-            }}
-            className={waitlistFieldClass}
-          >
-            <option value="">All requests</option>
-            <option value="unconfirmed">Email not confirmed</option>
-            <option value="waiting">Waiting</option>
-            <option value="invited">Invited</option>
-            <option value="purchased">Signed up</option>
-            <option value="withdrawn">Left waitlist</option>
-            <option value="revoked">Invitation withdrawn</option>
-          </select>
-        </label>
+        <Input
+          label="Search requests"
+          type="search"
+          name="search"
+          autoComplete="off"
+          placeholder="Email, name, or organization…"
+          value={search}
+          onChange={setSearch}
+          density="comfortable"
+        />
+        <Select
+          label="Plan"
+          name="plan"
+
+          value={plan}
+          density="comfortable"
+          onChange={setPlan}
+          options={[
+            { value: "", label: "All plans" },
+            { value: "atlas_pro", label: "Atlas Pro" },
+            { value: "atlas_team", label: "Atlas Team" },
+            { value: "atlas_research_pass", label: "Atlas Research Pass" },
+          ]}
+        />
+        <Select
+          label="Status"
+          name="status"
+
+          value={status}
+          density="comfortable"
+          onChange={setStatus}
+          options={[
+            { value: "", label: "All requests" },
+            { value: "unconfirmed", label: "Email not confirmed" },
+            { value: "waiting", label: "Waiting" },
+            { value: "invited", label: "Invited" },
+            { value: "purchased", label: "Signed up" },
+            { value: "withdrawn", label: "Left waitlist" },
+            { value: "revoked", label: "Invitation withdrawn" },
+          ]}
+        />
       </section>
       <div className="flex flex-wrap items-center gap-3">
         <Button

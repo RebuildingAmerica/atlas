@@ -5,7 +5,7 @@ import { z } from "zod";
 import { atlasSessionQueryKey, useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { loadPurchaseOnboarding } from "@/domains/billing/purchase-onboarding.functions";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
-import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Button, buttonStyles } from "@rebuildingamerica/atlas-ui/ui/button";
 import type { PurchaseIntentRecord } from "@/domains/billing/server/purchase-intents";
 
 export const setupCompleteSearchSchema = z.object({
@@ -89,8 +89,8 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
         <p className="type-body-large text-outline">
           This payment link is missing purchase details.
         </p>
-        <Link to="/pricing" className="no-underline">
-          <Button>View pricing</Button>
+        <Link to="/pricing" className={buttonStyles({})}>
+          View pricing
         </Link>
       </div>
     );
@@ -113,17 +113,20 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
         </div>
         <div className="flex flex-wrap gap-3">
           {isTeam ? (
-            <Link to="/organization" className="no-underline">
-              <Button>Invite teammates</Button>
+            <Link to="/organization" className={buttonStyles({})}>
+              Invite teammates
             </Link>
           ) : null}
           {isTeam ? (
-            <Link to="/organization/sso" className="no-underline">
-              <Button variant="secondary">Set up SSO</Button>
+            <Link to="/organization/sso" className={buttonStyles({ variant: "secondary" })}>
+              Set up SSO
             </Link>
           ) : null}
-          <Link to="/discovery" className="no-underline">
-            <Button variant={isTeam ? "secondary" : "primary"}>Open workspace</Button>
+          <Link
+            to="/discovery"
+            className={buttonStyles({ variant: isTeam ? "secondary" : "primary" })}
+          >
+            Open workspace
           </Link>
         </div>
       </div>
@@ -152,9 +155,9 @@ export function SetupCompletePage({ purchase }: SetupCompletePageProps) {
           </Button>
           <a
             href="mailto:hello@rebuildingus.org?subject=Atlas%20payment%20help"
-            className="no-underline"
+            className={buttonStyles({ variant: "secondary" })}
           >
-            <Button variant="secondary">Contact support</Button>
+            Contact support
           </a>
         </div>
       ) : null}

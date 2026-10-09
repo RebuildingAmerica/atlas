@@ -73,7 +73,7 @@ export const hr: React.CSSProperties = {
 };
 
 export const footer: React.CSSProperties = {
-  color: "#9b9b9b",
+  color: fallback.color,
   fontSize: "12px",
   lineHeight: "1.5",
 };

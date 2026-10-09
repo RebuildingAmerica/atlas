@@ -42,39 +42,14 @@ export function WaitlistEmail({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body style={{ ...styles.body, backgroundColor: "#f8f5ee" }}>
+      <body style={styles.body}>
         <div style={styles.preview}>{copy.subject}</div>
-        <main
-          style={{
-            ...styles.container,
-            borderColor: "#e5ddd0",
-            borderRadius: "20px",
-            padding: "32px 24px",
-          }}
-        >
-          <p
-            style={{
-              ...styles.paragraph,
-              color: "#76502e",
-              fontSize: "14px",
-              fontWeight: 600,
-              marginBottom: "24px",
-            }}
-          >
-            Atlas
-          </p>
+        <main style={styles.container}>
+          <p style={styles.paragraph}>Atlas</p>
           <h1 style={styles.heading}>{copy.title}</h1>
           <p style={styles.paragraph}>{copy.body}</p>
           <div style={styles.buttonSection}>
-            <a
-              href={url}
-              style={{
-                ...styles.button,
-                backgroundColor: "#76502e",
-                borderRadius: "999px",
-                padding: "14px 28px",
-              }}
-            >
+            <a href={url} style={styles.button}>
               {copy.action}
             </a>
           </div>
@@ -88,9 +63,7 @@ export function WaitlistEmail({
             This link expires in 7 days. You can request another from the waitlist page.
           </p>
           <hr style={styles.hr} />
-          <p style={{ ...styles.footer, color: "#625b52" }}>
-            If you didn’t ask for this email, you can ignore it.
-          </p>
+          <p style={styles.footer}>If you didn’t ask for this email, you can ignore it.</p>
         </main>
       </body>
     </html>

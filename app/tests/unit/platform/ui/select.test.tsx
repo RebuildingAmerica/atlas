@@ -15,6 +15,29 @@ describe("Select", () => {
     cleanup();
   });
 
+  it("enforces the required native field constraint", () => {
+    render(<Select label="Plan" required options={[{ value: "", label: "Choose" }]} />);
+    const control = screen.getByRole("combobox");
+    expect(control).toBeRequired();
+    expect(control).toBeInvalid();
+  });
+  it("preserves native accessible names and constraint attributes", () => {
+    render(
+      <Select
+        id="plan-native"
+        name="plan"
+        aria-label="Payment plan"
+        aria-invalid="true"
+        aria-describedby="plan-help"
+        options={options}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: "Payment plan" });
+    expect(select).toHaveAttribute("id", "plan-native");
+    expect(select).toHaveAttribute("name", "plan");
+    expect(select).toHaveAttribute("aria-invalid", "true");
+    expect(select).toHaveAttribute("aria-describedby", "plan-help");
+  });
   it("renders with label and required marker", () => {
     render(<Select label="Choice" required={true} options={options} />);
     expect(screen.getByText("Choice")).toBeInTheDocument();

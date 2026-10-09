@@ -1,97 +1,77 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, type ComponentPropsWithoutRef } from "react";
 import { cn } from "../utils";
+import { FormField, fieldControlClass, type FieldDensity } from "./form-field";
 
-interface TextareaProps {
-  autoComplete?: string;
-  /**
-   * When true, the textarea grows with its content up to `maxRows`.  Useful
-   * for long pastes — PEM certs, IdP metadata XML — so the operator does not
-   * have to scroll inside a tiny rectangle.
-   */
+interface TextareaProps extends Omit<
+  ComponentPropsWithoutRef<"textarea">,
+  "onChange" | "value"
+> {
   autoExpand?: boolean;
-  className?: string;
-  disabled?: boolean;
   error?: string;
   label?: string;
   maxRows?: number;
   onChange?: (value: string) => void;
-  placeholder?: string;
-  required?: boolean;
-  rows?: number;
   value?: string;
+  density?: FieldDensity;
 }
-
 const LINE_HEIGHT_PX = 24;
-const VERTICAL_PADDING_PX = 24;
 
 export function Textarea({
-  autoComplete,
   autoExpand = false,
   className,
-  disabled = false,
   error,
   label,
   maxRows = 24,
   onChange,
-  placeholder,
   required = false,
   rows = 6,
   value,
+  density = "default",
+  id,
+  ...nativeProps
 }: TextareaProps) {
-  const textareaId = useId();
-  const errorId = error ? `${textareaId}-error` : undefined;
+  const generatedId = useId();
+  const textareaId = id ?? generatedId;
   const ref = useRef<HTMLTextAreaElement | null>(null);
-
   useEffect(() => {
-    if (!autoExpand || !ref.current) {
-      return;
-    }
+    if (!autoExpand || !ref.current) return;
     const node = ref.current;
     node.style.height = "auto";
-    const maxPx = maxRows * LINE_HEIGHT_PX + VERTICAL_PADDING_PX;
+    const maxPx =
+      maxRows * LINE_HEIGHT_PX + (density === "comfortable" ? 32 : 24);
     node.style.height = `${Math.min(node.scrollHeight, maxPx).toString()}px`;
     node.style.overflowY = node.scrollHeight > maxPx ? "auto" : "hidden";
-  }, [autoExpand, maxRows, value]);
-
+  }, [autoExpand, maxRows, value, density]);
   return (
-    <div className="space-y-1">
-      {label ? (
-        <label
-          htmlFor={textareaId}
-          className="type-label-large text-ink-soft block"
-        >
-          {label}
-          {required ? <span className="text-on-error-container">*</span> : null}
-        </label>
-      ) : null}
+    <FormField
+      id={textareaId}
+      label={label}
+      required={required}
+      error={error}
+      density={density}
+    >
       <textarea
+        {...nativeProps}
         id={textareaId}
         ref={ref}
         value={value}
         rows={rows}
-        onChange={(event) => {
-          onChange?.(event.target.value);
-        }}
-        placeholder={placeholder}
-        disabled={disabled}
-        autoComplete={autoComplete}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={errorId}
+        required={required}
+        onChange={(event) => onChange?.(event.target.value)}
+        aria-invalid={error ? true : nativeProps["aria-invalid"]}
+        aria-describedby={
+          error ? `${textareaId}-error` : nativeProps["aria-describedby"]
+        }
         className={cn(
-          "type-body-large border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft disabled:bg-surface-container w-full rounded-2xl border px-4 py-3 focus:ring-2 disabled:cursor-not-allowed",
-          error ? "border-on-error-container" : null,
+          "type-body-large px-4",
+          fieldControlClass,
+          density === "comfortable"
+            ? "min-h-14 rounded-xl py-4"
+            : "rounded-2xl py-3",
+          error && "border-on-error-container",
           className,
         )}
       />
-      {error ? (
-        <span
-          id={errorId}
-          role="alert"
-          className="type-body-small text-on-error-container"
-        >
-          {error}
-        </span>
-      ) : null}
-    </div>
+    </FormField>
   );
 }

@@ -66,3 +66,7 @@ export type TypographyRole = keyof typeof typographyScale;
 export function getTypographyClass(role: TypographyRole): string {
   return typographyScale[role].className;
 }
+
+/** Editorial page titles share Atlas’s serif face and theme type sizes. */
+export const editorialTitleClass =
+  "text-ink-strong font-serif text-4xl leading-tight tracking-tight text-balance sm:text-5xl";

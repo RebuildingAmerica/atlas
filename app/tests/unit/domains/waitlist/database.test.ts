@@ -27,9 +27,12 @@ describe("waitlist database portability", () => {
     ).toEqual([{ id: "result" }]);
     expect(query).toHaveBeenCalledWith("SELECT $1 AS id, $2 AS email", ["id", "email"]);
     expect(query).toHaveBeenCalledWith("COMMIT");
-    await expect(adapter.transaction(() => Promise.reject(new Error("failure")))).rejects.toThrow(
-      "failure",
-    );
+    await expect(
+      adapter.transaction(function* (db) {
+        yield* db.query("SELECT 1");
+        throw new Error("failure");
+      }),
+    ).rejects.toThrow("failure");
     expect(query).toHaveBeenCalledWith("ROLLBACK");
     expect(release).toHaveBeenCalledTimes(2);
   });
@@ -40,16 +43,44 @@ describe("waitlist database portability", () => {
     expect(await getWaitlistDatabase().transaction((db) => db.query("SELECT 1 AS value"))).toEqual([
       { value: 1 },
     ]);
+    sqlite.exec("CREATE TABLE rollback_probe (id TEXT)");
     const adapter = sqliteWaitlistDatabase(sqlite);
     await expect(
-      adapter.transaction(() => Promise.reject(new Error("rollback"))),
+      adapter.transaction(function* (db) {
+        yield* db.query("INSERT INTO rollback_probe VALUES (?)", ["not saved"]);
+        throw new Error("rollback");
+      }),
     ).rejects.toThrow();
     expect(await adapter.transaction((db) => db.query("SELECT 2 AS value"))).toEqual([
       { value: 2 },
     ]);
+    expect(sqlite.prepare("SELECT * FROM rollback_probe").all()).toEqual([]);
     sqlite.close();
     mocks.sqlite.mockReturnValue(null);
     expect(getWaitlistDatabase).toThrow("unavailable");
+  });
+  it("does not roll back an unrelated auth write when a waitlist rate limit rejects", async () => {
+    const sqlite = new Database(":memory:");
+    try {
+      sqlite.exec(WAITLIST_SCHEMA);
+      sqlite.exec("CREATE TABLE unrelated_auth_write (id TEXT)");
+      const store = new WaitlistStore(sqliteWaitlistDatabase(sqlite));
+      await store.rateLimit("person", 1, 60_000);
+      const blocked = store.rateLimit("person", 1, 60_000).catch((error: unknown) => error);
+      const authWrite = Promise.resolve().then(() =>
+        Promise.resolve().then(() => {
+          sqlite.prepare("INSERT INTO unrelated_auth_write VALUES (?)").run("session-success");
+        }),
+      );
+      const [rejection] = await Promise.all([blocked, authWrite]);
+      expect(rejection).toMatchObject({ message: "Too many requests. Try again later." });
+      expect(sqlite.prepare("SELECT id FROM unrelated_auth_write").all()).toEqual([
+        { id: "session-success" },
+      ]);
+      expect(await store.isAdmitted("person@example.org", "atlas_pro")).toBe(false);
+    } finally {
+      sqlite.close();
+    }
   });
   it.skipIf(!process.env.ATLAS_WAITLIST_TEST_POSTGRES_URL)(
     "persists concurrent invitations in a real PostgreSQL database",

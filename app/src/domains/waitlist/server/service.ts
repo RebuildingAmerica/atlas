@@ -21,6 +21,8 @@ import {
   requireWaitlistStaff,
 } from "./runtime";
 
+import { WaitlistLinkUnavailable } from "./store";
+
 function privateResponse() {
   setResponseHeader("Cache-Control", "no-store");
 }
@@ -64,7 +66,12 @@ export async function loadAccess(): Promise<PaidAccessDecision> {
 }
 export async function loadLink(token: string, kind: WaitlistLinkKind) {
   privateResponse();
-  return (await getWaitlistStore()).readLink(token, kind);
+  try {
+    return await (await getWaitlistStore()).readLink(token, kind);
+  } catch (error) {
+    if (error instanceof WaitlistLinkUnavailable) return null;
+    throw error;
+  }
 }
 export async function confirmRequest(token: string) {
   privateResponse();

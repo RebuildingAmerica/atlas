@@ -12,7 +12,8 @@
     "./hooks/use-dirty-form-guard": "./src/hooks/use-dirty-form-guard.ts",
     "./styles/typography": "./src/styles/typography.ts",
     "./hooks/use-hydrated": "./src/hooks/use-hydrated.ts",
-    "./format/date-time": "./src/format/date-time.ts"
+    "./format/date-time": "./src/format/date-time.ts",
+    "./styles/controls": "./src/styles/controls.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

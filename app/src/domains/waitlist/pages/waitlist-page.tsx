@@ -1,3 +1,6 @@
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
+import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +13,6 @@ import type { WaitlistProduct } from "../contracts";
 import {
   WaitlistLayout,
   WaitlistError,
-  waitlistFieldClass,
   waitlistSummaryClass,
   waitlistTextLinkClass,
   waitlistHeadingClass,
@@ -29,6 +31,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
   const [intendedUse, setIntendedUse] = useState("");
   const [website, setWebsite] = useState("");
   const [sent, setSent] = useState(false);
+  const [focusEmail, setFocusEmail] = useState(false);
   const focusReceipt = useCallback((heading: HTMLHeadingElement | null) => {
     heading?.focus();
   }, []);
@@ -105,6 +108,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
             <Button
               variant="ghost"
               onClick={() => {
+                setFocusEmail(true);
                 setSent(false);
                 setError(null);
               }}
@@ -148,83 +152,66 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
             }}
             className="space-y-5"
           >
-            <label className="type-label-large flex flex-col gap-3">
-              <span>Email</span>
-              <input
-                type="email"
-                name="email"
-                spellCheck={false}
-                autoComplete="email"
-                required
-                maxLength={254}
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                }}
-                className={waitlistFieldClass}
-              />
-            </label>
-            <label className="type-label-large flex flex-col gap-3">
-              <span id="waitlist-plan-label">Plan</span>
-              <select
-                aria-labelledby="waitlist-plan-label"
-                name="product"
-                required
-                value={product}
-                onChange={(event) => {
-                  setProduct(event.target.value as WaitlistProduct | "");
-                }}
-                className={waitlistFieldClass}
-              >
-                <option value="">Choose a plan</option>
-                <option value="atlas_pro">Atlas Pro</option>
-                <option value="atlas_team">Atlas Team</option>
-                <option value="atlas_research_pass">Atlas Research Pass</option>
-              </select>
-            </label>
+            <Input
+              label="Email"
+              autoFocus={focusEmail}
+              type="email"
+              name="email"
+              spellCheck={false}
+              autoComplete="email"
+              required
+              maxLength={254}
+              value={email}
+              onChange={setEmail}
+              density="comfortable"
+            />
+            <Select
+              label="Plan"
+              name="product"
+              required
+              value={product}
+              density="comfortable"
+              onChange={(value) => {
+                setProduct(value as WaitlistProduct | "");
+              }}
+              options={[
+                { value: "", label: "Choose a plan" },
+                { value: "atlas_pro", label: "Atlas Pro" },
+                { value: "atlas_team", label: "Atlas Team" },
+                { value: "atlas_research_pass", label: "Atlas Research Pass" },
+              ]}
+            />
             <details>
               <summary className={waitlistSummaryClass}>About you (optional)</summary>
               <div className="mt-4 space-y-4">
-                <label className="type-label-large flex flex-col gap-3">
-                  <span>Name</span>
-                  <input
-                    name="name"
-                    autoComplete="name"
-                    maxLength={120}
-                    value={name}
-                    onChange={(event) => {
-                      setName(event.target.value);
-                    }}
-                    className={waitlistFieldClass}
-                  />
-                </label>
-                <label className="type-label-large flex flex-col gap-3">
-                  <span>Organization</span>
-                  <input
-                    name="organization"
-                    autoComplete="organization"
-                    maxLength={200}
-                    value={organization}
-                    onChange={(event) => {
-                      setOrganization(event.target.value);
-                    }}
-                    className={waitlistFieldClass}
-                  />
-                </label>
-                <label className="type-label-large flex flex-col gap-3">
-                  <span>What would you use Atlas for?</span>
-                  <textarea
-                    name="intendedUse"
-                    autoComplete="off"
-                    rows={3}
-                    maxLength={2000}
-                    value={intendedUse}
-                    onChange={(event) => {
-                      setIntendedUse(event.target.value);
-                    }}
-                    className={waitlistFieldClass}
-                  />
-                </label>
+                <Input
+                  label="Name"
+                  name="name"
+                  autoComplete="name"
+                  maxLength={120}
+                  value={name}
+                  onChange={setName}
+                  density="comfortable"
+                />
+                <Input
+                  label="Organization"
+                  name="organization"
+                  autoComplete="organization"
+                  maxLength={200}
+                  value={organization}
+                  onChange={setOrganization}
+                  density="comfortable"
+                />
+                <Textarea
+                  label="What would you use Atlas for?"
+                  name="intendedUse"
+                  autoComplete="off"
+                  rows={3}
+                  maxLength={2000}
+                  value={intendedUse}
+                  onChange={setIntendedUse}
+                  density="comfortable"
+                />
               </div>
             </details>
             <label hidden aria-hidden="true">

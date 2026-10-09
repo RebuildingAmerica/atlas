@@ -10,7 +10,9 @@ import type {
   WaitlistSignup,
 } from "../contracts";
 import { waitlistSignupSchema } from "../contracts";
-import type { WaitlistConnection, WaitlistDatabase } from "./database";
+import type { WaitlistConnection, WaitlistDatabase, WaitlistTransaction } from "./database";
+
+export class WaitlistLinkUnavailable extends UserFacingError {}
 
 interface RequestRow {
   id: string;
@@ -42,33 +44,39 @@ const map = (row: RequestRow): WaitlistRequest => ({
   invitedAt: row.invited_at,
   purchasedAt: row.purchased_at,
 });
-async function get(db: WaitlistConnection, id: string): Promise<WaitlistRequest> {
-  const [row] = await db.query<RequestRow>(
+function* get(db: WaitlistConnection, id: string): WaitlistTransaction<WaitlistRequest> {
+  const [row] = yield* db.query<RequestRow>(
     `SELECT * FROM waitlist_requests WHERE id = ?${db.lock}`,
     [id],
   );
   if (!row) throw new UserFacingError("This waitlist request is unavailable.");
   return map(row);
 }
-async function event(
+function* event(
   db: WaitlistConnection,
   requestId: string,
   action: string,
   actorId: string | null = null,
-) {
-  await db.query(
+): WaitlistTransaction<void> {
+  yield* db.query(
     "INSERT INTO waitlist_events(id, request_id, action, actor_id, created_at, row_number) SELECT ?, ?, ?, ?, ?, COALESCE(MAX(row_number), 0) + 1 FROM waitlist_events WHERE request_id = ?",
     [randomUUID(), requestId, action, actorId, now(), requestId],
   );
 }
-async function readLink(db: WaitlistConnection, token: string, kind: WaitlistLinkKind) {
-  const [link] = await db.query<{ request_id: string }>(
+function* readLink(
+  db: WaitlistConnection,
+  token: string,
+  kind: WaitlistLinkKind,
+): WaitlistTransaction<WaitlistRequest> {
+  const [link] = yield* db.query<{ request_id: string }>(
     "SELECT request_id FROM waitlist_links WHERE digest = ? AND kind = ? AND expires_at > ?",
     [digest(token), kind, now()],
   );
   if (!link)
-    throw new UserFacingError("This link has expired or is unavailable. Request a new email link.");
-  return get(db, link.request_id);
+    throw new WaitlistLinkUnavailable(
+      "This link has expired or is unavailable. Request a new email link.",
+    );
+  return yield* get(db, link.request_id);
 }
 
 /** Owns admission separately from payment so being invited never grants paid features. */
@@ -76,9 +84,9 @@ export class WaitlistStore {
   constructor(readonly database: WaitlistDatabase) {}
   async submit(input: WaitlistSignup): Promise<WaitlistRequest> {
     const data = waitlistSignupSchema.parse(input);
-    return this.database.transaction(async (db) => {
+    return this.database.transaction(function* (db) {
       const id = randomUUID();
-      const inserted = await db.query<RequestRow>(
+      const inserted = yield* db.query<RequestRow>(
         `INSERT INTO waitlist_requests
         (id, email, product, interval, name, organization, intended_use, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, 'unconfirmed', ?) ON CONFLICT(email, product) DO NOTHING RETURNING *`,
@@ -94,10 +102,10 @@ export class WaitlistStore {
         ],
       );
       if (inserted[0]) {
-        await event(db, id, "submitted");
+        yield* event(db, id, "submitted");
         return map(inserted[0]);
       }
-      const [existing] = await db.query<RequestRow>(
+      const [existing] = yield* db.query<RequestRow>(
         "SELECT * FROM waitlist_requests WHERE email = ? AND product = ?",
         [data.email, data.product],
       );
@@ -109,21 +117,19 @@ export class WaitlistStore {
     return this.database.transaction((db) => get(db, id));
   }
   list(email?: string): Promise<WaitlistRequest[]> {
-    return this.database.transaction(async (db) =>
-      (
-        await db.query<RequestRow>(
-          `SELECT * FROM waitlist_requests${email ? " WHERE email = ?" : ""} ORDER BY created_at, id`,
-          email ? [email.toLowerCase()] : [],
-        )
-      ).map(map),
-    );
+    return this.database.transaction(function* (db) {
+      return (yield* db.query<RequestRow>(
+        `SELECT * FROM waitlist_requests${email ? " WHERE email = ?" : ""} ORDER BY created_at, id`,
+        email ? [email.toLowerCase()] : [],
+      )).map(map);
+    });
   }
   async createLink(id: string, kind: WaitlistLinkKind): Promise<string> {
-    return this.database.transaction(async (db) => {
-      await get(db, id);
+    return this.database.transaction(function* (db) {
+      yield* get(db, id);
       const token = randomBytes(32).toString("base64url");
-      await db.query("DELETE FROM waitlist_links WHERE expires_at <= ?", [now()]);
-      await db.query(
+      yield* db.query("DELETE FROM waitlist_links WHERE expires_at <= ?", [now()]);
+      yield* db.query(
         "INSERT INTO waitlist_links(digest, request_id, kind, expires_at) VALUES (?, ?, ?, ?)",
         [digest(token), id, kind, new Date(Date.now() + 7 * 86400_000).toISOString()],
       );
@@ -134,45 +140,44 @@ export class WaitlistStore {
     return this.database.transaction((db) => readLink(db, token, kind));
   }
   async confirm(token: string): Promise<WaitlistRequest> {
-    return this.database.transaction(async (db) => {
-      const request = await readLink(db, token, "confirm");
+    return this.database.transaction(function* (db) {
+      const request = yield* readLink(db, token, "confirm");
       if (!request.confirmedAt) {
-        await db.query("UPDATE waitlist_requests SET status = ?, confirmed_at = ? WHERE id = ?", [
+        yield* db.query("UPDATE waitlist_requests SET status = ?, confirmed_at = ? WHERE id = ?", [
           request.status === "unconfirmed" ? "waiting" : request.status,
           now(),
           request.id,
         ]);
-        await event(db, request.id, "confirmed");
+        yield* event(db, request.id, "confirmed");
       }
-      return get(db, request.id);
+      return yield* get(db, request.id);
     });
   }
   async invite(id: string, actorId: string): Promise<WaitlistRequest> {
-    return this.database.transaction(async (db) => {
-      const request = await get(db, id);
+    return this.database.transaction(function* (db) {
+      const request = yield* get(db, id);
       if (!request.confirmedAt) throw new UserFacingError("Confirm this email before inviting.");
       if (request.status !== "waiting" && request.status !== "invited")
         throw new UserFacingError("This request is not waiting for an invitation.");
       if (request.status !== "invited") {
-        await db.query(
+        yield* db.query(
           "UPDATE waitlist_requests SET status = 'invited', invited_at = ? WHERE id = ?",
           [now(), id],
         );
-        await event(db, id, "invited", actorId);
+        yield* event(db, id, "invited", actorId);
       }
-      return get(db, id);
+      return yield* get(db, id);
     });
   }
   async isAdmitted(email: string, product: WaitlistProduct): Promise<boolean> {
-    return this.database.transaction(
-      async (db) =>
-        (
-          await db.query(
-            "SELECT id FROM waitlist_requests WHERE email = ? AND product = ? AND status = 'invited'",
-            [email.toLowerCase(), product],
-          )
-        ).length > 0,
-    );
+    return this.database.transaction(function* (db) {
+      return (
+        (yield* db.query(
+          "SELECT id FROM waitlist_requests WHERE email = ? AND product = ? AND status = 'invited'",
+          [email.toLowerCase(), product],
+        )).length > 0
+      );
+    });
   }
   async revoke(id: string, actorId: string) {
     return this.changeStatus(id, "revoked", actorId);
@@ -188,72 +193,70 @@ export class WaitlistStore {
     status: "revoked" | "withdrawn" | "waiting",
     actorId: string | null,
   ) {
-    return this.database.transaction(async (db) => {
-      const request = await get(db, id);
+    return this.database.transaction(function* (db) {
+      const request = yield* get(db, id);
       if (status === "waiting" && !request.confirmedAt)
         throw new UserFacingError("Confirm your email first.");
       if (request.status !== status) {
-        await db.query("UPDATE waitlist_requests SET status = ? WHERE id = ?", [status, id]);
-        await event(db, id, status === "waiting" ? "rejoined" : status, actorId);
+        yield* db.query("UPDATE waitlist_requests SET status = ? WHERE id = ?", [status, id]);
+        yield* event(db, id, status === "waiting" ? "rejoined" : status, actorId);
       }
-      return get(db, id);
+      return yield* get(db, id);
     });
   }
   async update(id: string, details: WaitlistDetails) {
-    return this.database.transaction(async (db) => {
-      await get(db, id);
-      await db.query(
+    return this.database.transaction(function* (db) {
+      yield* get(db, id);
+      yield* db.query(
         "UPDATE waitlist_requests SET name = ?, organization = ?, intended_use = ? WHERE id = ?",
         [details.name, details.organization, details.intendedUse, id],
       );
-      await event(db, id, "updated");
-      return get(db, id);
+      yield* event(db, id, "updated");
+      return yield* get(db, id);
     });
   }
   async markPurchased(email: string, product: WaitlistProduct) {
-    return this.database.transaction(async (db) => {
-      const [request] = await db.query<RequestRow>(
+    return this.database.transaction(function* (db) {
+      const [request] = yield* db.query<RequestRow>(
         "UPDATE waitlist_requests SET purchased_at = ? WHERE email = ? AND product = ? AND purchased_at IS NULL RETURNING *",
         [now(), email.toLowerCase(), product],
       );
-      if (request) await event(db, request.id, "purchased");
+      if (request) yield* event(db, request.id, "purchased");
     });
   }
   recordEvent(id: string, action: "email_retried" | "email_resent", actorId: string) {
-    return this.database.transaction(async (db) => {
-      await get(db, id);
-      await event(db, id, action, actorId);
+    return this.database.transaction(function* (db) {
+      yield* get(db, id);
+      yield* event(db, id, action, actorId);
     });
   }
   events(id: string): Promise<WaitlistEvent[]> {
-    return this.database.transaction(async (db) =>
-      (
-        await db.query<{
-          id: string;
-          request_id: string;
-          action: string;
-          actor_id: string | null;
-          created_at: string;
-        }>("SELECT * FROM waitlist_events WHERE request_id = ? ORDER BY created_at, row_number", [
-          id,
-        ])
-      ).map((row) => ({
+    return this.database.transaction(function* (db) {
+      return (yield* db.query<{
+        id: string;
+        request_id: string;
+        action: string;
+        actor_id: string | null;
+        created_at: string;
+      }>("SELECT * FROM waitlist_events WHERE request_id = ? ORDER BY created_at, row_number", [
+        id,
+      ])).map((row) => ({
         id: row.id,
         requestId: row.request_id,
         action: row.action,
         actorId: row.actor_id,
         createdAt: row.created_at,
-      })),
-    );
+      }));
+    });
   }
   async rateLimit(key: string, limit: number, duration: number) {
-    return this.database.transaction(async (db) => {
+    return this.database.transaction(function* (db) {
       const hashed = digest(key);
       const start = new Date(Date.now() - duration).toISOString();
-      await db.query("DELETE FROM waitlist_rate_limits WHERE started_at <= ?", [
+      yield* db.query("DELETE FROM waitlist_rate_limits WHERE started_at <= ?", [
         new Date(Date.now() - 86400_000).toISOString(),
       ]);
-      const [record] = await db.query<{ count: number }>(
+      const [record] = yield* db.query<{ count: number }>(
         `INSERT INTO waitlist_rate_limits(key, started_at, count) VALUES (?, ?, 1)
         ON CONFLICT(key) DO UPDATE SET count = CASE WHEN waitlist_rate_limits.started_at <= ? THEN 1 ELSE waitlist_rate_limits.count + 1 END,
         started_at = CASE WHEN waitlist_rate_limits.started_at <= ? THEN excluded.started_at ELSE waitlist_rate_limits.started_at END RETURNING count`,

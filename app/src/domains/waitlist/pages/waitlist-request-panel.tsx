@@ -1,7 +1,9 @@
+import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
+import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
@@ -17,7 +19,6 @@ import {
   WaitlistError,
   waitlistSecondaryActionClass,
   waitlistHeadingClass,
-  waitlistFieldClass,
   waitlistPrimaryLinkClass,
   waitlistTextLinkClass,
 } from "./waitlist-layout";
@@ -34,12 +35,25 @@ export function WaitlistRequestPanel({
   initialRequest,
   token,
   kind,
+  focusOnMount = false,
 }: {
   initialRequest: WaitlistRequest;
   token?: string;
   kind?: WaitlistLinkKind;
+  focusOnMount?: boolean;
 }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const focusNextState = useRef(false);
   const [request, setRequest] = useState(initialRequest);
+  useEffect(() => {
+    if (focusOnMount) heading.current?.focus();
+  }, [focusOnMount]);
+  useEffect(() => {
+    if (focusNextState.current) {
+      heading.current?.focus();
+      focusNextState.current = false;
+    }
+  }, [request]);
   const [name, setName] = useState(request.name);
   const [organization, setOrganization] = useState(request.organization);
   const [intendedUse, setIntendedUse] = useState(request.intendedUse);
@@ -79,6 +93,7 @@ export function WaitlistRequestPanel({
               data: { ...data, details: { name, organization, intendedUse } },
             })
           : await changeWaitlistRequest({ data: { ...data, action } });
+      focusNextState.current = action !== "update";
       setRequest(result);
       setWithdrawConfirm(false);
       if (action === "update") {
@@ -94,12 +109,18 @@ export function WaitlistRequestPanel({
     }
   }
   return (
-    <div className={invited && !request.purchasedAt ? "flex flex-1 flex-col gap-12" : "space-y-8"}>
-      <header className="space-y-6" aria-live="polite">
+    <div
+      className={
+        invited && !request.purchasedAt
+          ? "flex flex-1 flex-col gap-12 lg:grid lg:grid-cols-2 lg:gap-16"
+          : "space-y-8"
+      }
+    >
+      <header className="space-y-6">
         {!invited || request.purchasedAt ? (
           <p className="type-label-medium text-ink-muted">{productLabel}</p>
         ) : null}
-        <h1 className={waitlistHeadingClass}>
+        <h1 ref={heading} tabIndex={-1} className={waitlistHeadingClass}>
           {request.status === "unconfirmed"
             ? "Confirm your email"
             : closed
@@ -157,55 +178,42 @@ export function WaitlistRequestPanel({
         </section>
       ) : null}
       {invited && !request.purchasedAt ? (
-        <section className="flex flex-1 flex-col gap-8">
+        <section className="lg:border-outline-variant flex flex-1 flex-col gap-8 lg:border-l lg:pl-16">
+          <WaitlistError message={error} />
           {sameEmail ? (
             <>
-              <label className="type-label-large flex flex-col gap-3">
-                <span id="waitlist-interval-label" className="px-4">
-                  Payment option
-                </span>
-                <span className="relative block">
-                  <select
-                    name="interval"
-                    aria-labelledby="waitlist-interval-label"
-                    value={interval}
-                    onChange={(event) => {
-                      setInterval(event.target.value);
-                    }}
-                    className={`${waitlistFieldClass} block appearance-none pr-12`}
-                  >
-                    {request.product === "atlas_research_pass" ? (
-                      <>
-                        <option value="weekly">7 days · $4, one payment</option>
-                        <option value="once">30 days · $9, one payment</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="monthly">
-                          Monthly ·{" "}
-                          {request.product === "atlas_pro"
-                            ? "$5/month"
-                            : "$25/month + $8/additional seat"}
-                        </option>
-                        <option value="yearly">
-                          Annual ·{" "}
-                          {request.product === "atlas_pro"
-                            ? "$48/year"
-                            : "$250/year + $80/additional seat"}
-                        </option>
-                        {request.product === "atlas_pro" ? (
-                          <option value="four_month">
-                            Student · $12.80/4 months, verification required
-                          </option>
-                        ) : null}
-                      </>
-                    )}
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                    <ChevronDown aria-hidden="true" className="text-ink-muted size-4" />
-                  </span>
-                </span>
-              </label>
+              <Select
+                label="Payment option"
+                name="interval"
+                density="comfortable"
+                value={interval}
+                onChange={setInterval}
+                options={
+                  request.product === "atlas_research_pass"
+                    ? [
+                        { value: "weekly", label: "7 days · $4, one payment" },
+                        { value: "once", label: "30 days · $9, one payment" },
+                      ]
+                    : [
+                        {
+                          value: "monthly",
+                          label: `Monthly · ${request.product === "atlas_pro" ? "$5/month" : "$25/month + $8/additional seat"}`,
+                        },
+                        {
+                          value: "yearly",
+                          label: `Annual · ${request.product === "atlas_pro" ? "$48/year" : "$250/year + $80/additional seat"}`,
+                        },
+                        ...(request.product === "atlas_pro"
+                          ? [
+                              {
+                                value: "four_month",
+                                label: "Student · $12.80/4 months, verification required",
+                              },
+                            ]
+                          : []),
+                      ]
+                }
+              />
               <Link
                 to="/onboarding"
                 search={{
@@ -268,7 +276,7 @@ export function WaitlistRequestPanel({
           Open your account
         </Link>
       ) : null}
-      <WaitlistError message={error} />
+      {!invited || request.purchasedAt ? <WaitlistError message={error} /> : null}
       {message ? (
         <p role="status" className="type-body-small text-ink-soft">
           {message}
@@ -311,46 +319,34 @@ export function WaitlistRequestPanel({
               void save("update");
             }}
           >
-            <label className="type-label-large flex flex-col gap-3">
-              <span>Name</span>
-              <input
-                name="name"
-                autoComplete="name"
-                maxLength={120}
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                }}
-                className={waitlistFieldClass}
-              />
-            </label>
-            <label className="type-label-large flex flex-col gap-3">
-              <span>Organization</span>
-              <input
-                name="organization"
-                autoComplete="organization"
-                maxLength={200}
-                value={organization}
-                onChange={(event) => {
-                  setOrganization(event.target.value);
-                }}
-                className={waitlistFieldClass}
-              />
-            </label>
-            <label className="type-label-large flex flex-col gap-3">
-              <span>What would you use Atlas for?</span>
-              <textarea
-                name="intendedUse"
-                autoComplete="off"
-                rows={3}
-                maxLength={2000}
-                value={intendedUse}
-                onChange={(event) => {
-                  setIntendedUse(event.target.value);
-                }}
-                className={waitlistFieldClass}
-              />
-            </label>
+            <Input
+              label="Name"
+              name="name"
+              autoComplete="name"
+              maxLength={120}
+              value={name}
+              onChange={setName}
+              density="comfortable"
+            />
+            <Input
+              label="Organization"
+              name="organization"
+              autoComplete="organization"
+              maxLength={200}
+              value={organization}
+              onChange={setOrganization}
+              density="comfortable"
+            />
+            <Textarea
+              label="What would you use Atlas for?"
+              name="intendedUse"
+              autoComplete="off"
+              rows={3}
+              maxLength={2000}
+              value={intendedUse}
+              onChange={setIntendedUse}
+              density="comfortable"
+            />
             <Button disabled={pending} type="submit" variant="secondary">
               Save details
             </Button>

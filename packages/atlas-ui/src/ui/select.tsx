@@ -1,26 +1,26 @@
-import { useId } from "react";
-import { ChevronDown } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useId, type ComponentPropsWithoutRef } from "react";
+import { ChevronDown, type LucideIcon } from "lucide-react";
 import { cn } from "../utils";
+import { FormField, fieldControlClass, type FieldDensity } from "./form-field";
 
 interface Option {
   value: string;
   label: string;
 }
-
-interface SelectProps {
+interface SelectProps extends Omit<
+  ComponentPropsWithoutRef<"select">,
+  "onChange" | "value" | "size"
+> {
   options: Option[];
   ariaLabel?: string;
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   label?: string;
-  disabled?: boolean;
   error?: string;
   icon?: LucideIcon;
-  required?: boolean;
   size?: "default" | "compact";
-  className?: string;
+  density?: FieldDensity;
 }
 
 export function Select({
@@ -30,48 +30,53 @@ export function Select({
   onChange,
   placeholder,
   label,
-  disabled = false,
   error,
   icon: Icon,
   required = false,
   size = "default",
+  density = "default",
   className,
+  id,
+  ...nativeProps
 }: SelectProps) {
   const generatedId = useId();
-  const selectId = label ? `select-${generatedId}` : undefined;
-  const errorId = error ? `select-${generatedId}-error` : undefined;
-
+  const selectId = id ?? `select-${generatedId}`;
   return (
-    <div className="space-y-1">
-      {label && (
-        <label
-          htmlFor={selectId}
-          className="type-label-large text-ink-soft block"
-        >
-          {label}
-          {required && <span className="text-on-error-container">*</span>}
-        </label>
-      )}
+    <FormField
+      id={selectId}
+      label={label}
+      required={required}
+      error={error}
+      density={density}
+    >
       <div className="relative">
-        {Icon ? (
+        {Icon && (
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
             <Icon className="text-ink-muted h-4 w-4" aria-hidden />
           </span>
-        ) : null}
+        )}
         <select
+          {...nativeProps}
           id={selectId}
-          aria-label={label ? undefined : ariaLabel}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={errorId}
+          aria-label={
+            label ? undefined : (ariaLabel ?? nativeProps["aria-label"])
+          }
+          aria-invalid={error ? true : nativeProps["aria-invalid"]}
+          aria-describedby={
+            error ? `${selectId}-error` : nativeProps["aria-describedby"]
+          }
           data-size={size}
-          value={value || ""}
+          value={value ?? ""}
+          required={required}
           onChange={(e) => onChange?.(e.target.value)}
-          disabled={disabled}
           className={cn(
-            "border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft disabled:bg-surface-container w-full appearance-none border pr-10 focus:ring-2 disabled:cursor-not-allowed",
-            size === "compact"
-              ? "type-body-medium min-h-10 rounded-lg py-2"
-              : "type-body-large rounded-2xl py-3",
+            fieldControlClass,
+            "block appearance-none",
+            density === "comfortable"
+              ? "type-body-large min-h-14 rounded-xl py-4 pr-12"
+              : size === "compact"
+                ? "type-body-medium min-h-10 rounded-lg py-2 pr-10"
+                : "type-body-large rounded-2xl py-3 pr-10",
             Icon ? "pl-10" : "pl-4",
             error && "border-on-error-container",
             className,
@@ -84,19 +89,15 @@ export function Select({
             </option>
           ))}
         </select>
-        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+        <span
+          className={cn(
+            "pointer-events-none absolute inset-y-0 flex items-center",
+            density === "comfortable" ? "right-4" : "right-3",
+          )}
+        >
           <ChevronDown className="text-ink-muted h-4 w-4" aria-hidden />
         </span>
       </div>
-      {error && (
-        <span
-          id={errorId}
-          role="alert"
-          className="type-body-small text-on-error-container"
-        >
-          {error}
-        </span>
-      )}
-    </div>
+    </FormField>
   );
 }

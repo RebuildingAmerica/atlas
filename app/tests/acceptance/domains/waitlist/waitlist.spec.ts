@@ -16,7 +16,15 @@ async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
     throw new Error("Invitation content must be visible.");
   }
   expect(description.y - heading.y - heading.height).toBeGreaterThanOrEqual(24);
-  expect(payment.y - description.y - description.height).toBeGreaterThanOrEqual(64);
+  const desktop = (page.viewportSize()?.width ?? 0) >= 1024;
+  if (desktop) {
+    expect(payment.x).toBeGreaterThan(heading.x + heading.width);
+    expect(Math.abs(paymentLabel.y - heading.y)).toBeLessThanOrEqual(2);
+    expect(Math.abs(action.x - payment.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(action.width - payment.width)).toBeLessThanOrEqual(1);
+  } else {
+    expect(payment.y - description.y - description.height).toBeGreaterThanOrEqual(64);
+  }
   expect(payment.y - paymentLabel.y - paymentLabel.height).toBeGreaterThanOrEqual(12);
   expect(payment.height).toBeGreaterThanOrEqual(56);
   const labelTextLeft = await page
@@ -96,6 +104,12 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expectNoAxeViolations(page, "invited request");
   await expectInvitationSpacing(page, 80);
   await page.screenshot({ path: "test-results/waitlist-invited.png", fullPage: true });
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await expectInvitationSpacing(page, 120);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
+    false,
+  );
+  await page.screenshot({ path: "test-results/waitlist-invited-tablet.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth))

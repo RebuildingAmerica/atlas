@@ -13,7 +13,7 @@ import {
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { PurchaseStepPanel } from "./setup-page-steps";
-import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
+import { Button, buttonStyles } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import {
   DEFAULT_ONBOARDING_PRODUCT,
@@ -218,8 +218,8 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         description={`That billing interval is not available for ${productLabel}.`}
         title="Choose a billing option"
       >
-        <Link to="/pricing" className="no-underline">
-          <Button>View pricing</Button>
+        <Link to="/pricing" className={buttonStyles({})}>
+          View pricing
         </Link>
       </PurchaseStepPanel>
     );
@@ -241,13 +241,19 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         title="Start with your account"
       >
         <div className="flex flex-wrap gap-3">
-          <Link to="/sign-up" search={{ redirect: startRedirect }} className="no-underline">
-            <Button size="lg">Create account</Button>
+          <Link
+            to="/sign-up"
+            search={{ redirect: startRedirect }}
+            className={buttonStyles({ size: "lg" })}
+          >
+            Create account
           </Link>
-          <Link to="/sign-in" search={{ redirect: startRedirect }} className="no-underline">
-            <Button variant="secondary" size="lg">
-              Sign in
-            </Button>
+          <Link
+            to="/sign-in"
+            search={{ redirect: startRedirect }}
+            className={buttonStyles({ variant: "secondary", size: "lg" })}
+          >
+            Sign in
           </Link>
         </div>
       </PurchaseStepPanel>
@@ -258,8 +264,8 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         description="This purchase link has expired or is no longer available."
         title="Purchase unavailable"
       >
-        <Link to="/pricing" className="no-underline">
-          <Button>View pricing</Button>
+        <Link to="/pricing" className={buttonStyles({})}>
+          View pricing
         </Link>
       </PurchaseStepPanel>
     );
@@ -312,6 +318,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
           <form className="space-y-4" onSubmit={handleCreateWorkspace}>
             <Input
               label="Workspace name"
+              density="comfortable"
               value={workspaceName}
               onChange={setWorkspaceName}
               required

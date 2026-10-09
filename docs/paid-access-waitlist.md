@@ -29,17 +29,30 @@ a customer workspace administrator does not grant staff access.
 | Pricing                     | Compare prices, browse public Atlas, create a free account, join a product waitlist, or return to an existing request. Existing paying customers can manage their plan.                                                                                                                 |
 | `/waitlist`                 | Choose a product and email; optionally provide name, organization and intended use. A receipt offers email correction and a resend after one minute.                                                                                                                                    |
 | Confirmation email and link | Open a scoped link, then explicitly confirm the email. Opening a link alone does not change the request. A matching verified account can also explicitly confirm from its private request. Confirmation of a withdrawn request does not rejoin it; rejoining remains a separate action. |
-| Private request             | See the selected product and status, edit optional context, withdraw, rejoin, request another product, or contact support.                                                                                                                                                              |
+| Private request             | See the selected product and status, edit optional context, withdraw, or rejoin.                                                                                                                                                                                                        |
 | Staff waitlist              | Search and filter requests, inspect context and activity, select up to 50 eligible confirmed applicants, review exact recipients, and send invitations.                                                                                                                                 |
 | Invitation                  | Sign in or create a free account, switch accounts if needed, choose the product's billing interval, then continue to account security, workspace selection and payment.                                                                                                                 |
 | Staff request detail        | Open keyboard-accessible request details without leaving the queue. Retry a failed detail load, inspect email outcomes, resend invitations, retry recent failed sends, or confirm withdrawal of an invitation.                                                                          |
-| Expired link                | Request a fresh email link and continue browsing Atlas.                                                                                                                                                                                                                                 |
+| Expired link                | Request a fresh email link. Temporary load failures offer a retry without claiming the link expired.                                                                                                                                                                                    |
 
 Permission is specific to an email and product and remains valid until withdrawn
 or revoked. It applies across workspaces the person may manage. Choosing another
 billing interval for that product needs no new approval. Another product
 requires its own request. Existing paid products, renewals, billing portals, and
 team membership continue through their existing paths.
+
+Invitation pages use the full page surface and left-aligned context. On desktop,
+context and payment controls occupy separate columns; on mobile, the controls
+follow the description and Continue sits at the bottom with room above it.
+Fields share the UI package's comfortable density, native validation, inset
+labels, and high-contrast civic focus ring. Buttons and navigation actions share
+Button styles. Editorial titles use the shared type scale.
+
+Confirmation, withdrawal and rejoining focus the resulting heading so keyboard
+and screen reader users can follow the change. Ordinary refreshes preserve
+focus. SQLite waitlist transactions run synchronously on the shared auth
+connection; rejected requests cannot roll back a sign-in or billing write that
+runs afterward. PostgreSQL retains transaction isolation and row locking.
 
 ## Inviting and recovery
 

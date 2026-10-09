@@ -81,13 +81,14 @@ export class WaitlistMailer {
     };
     const id = randomUUID();
     const time = new Date().toISOString();
-    const saved = await this.database.transaction(async (db) => {
-      await db.query(
+    const encryptedMessage = this.encrypt(message);
+    const saved = await this.database.transaction(function* (db) {
+      yield* db.query(
         `INSERT INTO waitlist_deliveries(id, request_id, kind, status, encrypted_message, dedupe_key, created_at, updated_at)
         VALUES (?, ?, ?, 'pending', ?, ?, ?, ?) ON CONFLICT(dedupe_key) DO NOTHING`,
-        [id, request.id, kind, this.encrypt(message), dedupeKey, time, time],
+        [id, request.id, kind, encryptedMessage, dedupeKey, time, time],
       );
-      const [row] = await db.query<DeliveryRow>(
+      const [row] = yield* db.query<DeliveryRow>(
         "SELECT * FROM waitlist_deliveries WHERE dedupe_key = ?",
         [dedupeKey],
       );
@@ -97,18 +98,16 @@ export class WaitlistMailer {
     return this.retry(saved.id);
   }
   list(requestId: string): Promise<WaitlistDelivery[]> {
-    return this.database.transaction(async (db) =>
-      (
-        await db.query<DeliveryRow>(
-          "SELECT * FROM waitlist_deliveries WHERE request_id = ? ORDER BY created_at DESC, id",
-          [requestId],
-        )
-      ).map(map),
-    );
+    return this.database.transaction(function* (db) {
+      return (yield* db.query<DeliveryRow>(
+        "SELECT * FROM waitlist_deliveries WHERE request_id = ? ORDER BY created_at DESC, id",
+        [requestId],
+      )).map(map);
+    });
   }
   async retry(id: string): Promise<WaitlistDelivery> {
-    const claimed = await this.database.transaction(async (db) => {
-      const [row] = await db.query<DeliveryRow>(
+    const claimed = await this.database.transaction(function* (db) {
+      const [row] = yield* db.query<DeliveryRow>(
         `SELECT * FROM waitlist_deliveries WHERE id = ?${db.lock}`,
         [id],
       );
@@ -120,7 +119,7 @@ export class WaitlistMailer {
         throw new UserFacingError(
           "This email needs an explicit resend. Retry is no longer available.",
         );
-      await db.query(
+      yield* db.query(
         "UPDATE waitlist_deliveries SET status = 'sending', attempts = attempts + 1, updated_at = ? WHERE id = ?",
         [new Date().toISOString(), id],
       );
@@ -158,14 +157,14 @@ export class WaitlistMailer {
     } catch {
       status = uncertain ? "unresolved" : "failed";
     }
-    return this.database.transaction(async (db) => {
-      const [updated] = await db.query<DeliveryRow>(
+    return this.database.transaction(function* (db) {
+      const [updated] = yield* db.query<DeliveryRow>(
         "UPDATE waitlist_deliveries SET status = ?, provider_id = ?, updated_at = ? WHERE id = ? AND status = 'sending' AND attempts = ? RETURNING *",
         [status, providerId, new Date().toISOString(), id, claimed.row.attempts + 1],
       );
       const current =
         updated ??
-        (await db.query<DeliveryRow>("SELECT * FROM waitlist_deliveries WHERE id = ?", [id]))[0];
+        (yield* db.query<DeliveryRow>("SELECT * FROM waitlist_deliveries WHERE id = ?", [id]))[0];
       if (!current) throw new Error("Email delivery record is unavailable.");
       return map(current);
     });

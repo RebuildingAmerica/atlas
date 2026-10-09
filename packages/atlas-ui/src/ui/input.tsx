@@ -1,89 +1,74 @@
-import { useId, type ReactNode } from "react";
+import { useId, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { cn } from "../utils";
+import { FormField, fieldControlClass, type FieldDensity } from "./form-field";
 
-interface InputProps {
+interface InputProps extends Omit<
+  ComponentPropsWithoutRef<"input">,
+  "onChange" | "value"
+> {
   value?: string;
   onChange?: (value: string) => void;
-  placeholder?: string;
   label?: string;
   labelAdornment?: ReactNode;
-  type?: string;
-  disabled?: boolean;
   error?: string;
-  required?: boolean;
-  className?: string;
   icon?: ReactNode;
-  min?: string | number;
-  max?: string | number;
-  autoComplete?: string;
+  density?: FieldDensity;
 }
 
 export function Input({
   value,
   onChange,
-  placeholder,
   label,
   labelAdornment,
   type = "text",
-  disabled = false,
   error,
   required = false,
   className,
   icon,
-  min,
-  max,
-  autoComplete,
+  density = "default",
+  id,
+  ...nativeProps
 }: InputProps) {
-  const inputId = useId();
-  const errorId = error ? `${inputId}-error` : undefined;
-
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
   return (
-    <div className="space-y-1">
-      {label && (
-        <div className="flex items-center gap-2">
-          <label
-            htmlFor={inputId}
-            className="type-label-large text-ink-soft block"
-          >
-            {label}
-            {required && <span className="text-on-error-container">*</span>}
-          </label>
-          {labelAdornment}
-        </div>
-      )}
+    <FormField
+      id={inputId}
+      label={label}
+      labelAdornment={labelAdornment}
+      required={required}
+      error={error}
+      density={density}
+    >
       <div className="relative">
         {icon && (
-          <div className="text-ink-muted absolute top-3 left-3">{icon}</div>
+          <div className="text-ink-muted absolute inset-y-0 left-3 flex items-center">
+            {icon}
+          </div>
         )}
         <input
+          {...nativeProps}
           id={inputId}
           type={type}
           value={value}
+          required={required}
           onChange={(e) => onChange?.(e.target.value)}
-          placeholder={placeholder}
-          disabled={disabled}
-          min={min}
-          max={max}
-          autoComplete={autoComplete}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={errorId}
+          aria-invalid={error ? true : nativeProps["aria-invalid"]}
+          aria-describedby={
+            error ? `${inputId}-error` : nativeProps["aria-describedby"]
+          }
           className={cn(
-            "type-body-large border-border bg-surface text-ink-strong focus:border-border-strong focus:ring-accent-soft disabled:bg-surface-container w-full rounded-2xl border px-4 py-3 focus:ring-2 disabled:cursor-not-allowed",
+            "type-body-large px-4",
+            fieldControlClass,
+            density === "comfortable"
+              ? "min-h-14 rounded-xl py-4"
+              : "rounded-2xl py-3",
             icon && "pl-10",
             error && "border-on-error-container",
             className,
           )}
         />
       </div>
-      {error && (
-        <span
-          id={errorId}
-          role="alert"
-          className="type-body-small text-on-error-container"
-        >
-          {error}
-        </span>
-      )}
-    </div>
+    </FormField>
   );
 }

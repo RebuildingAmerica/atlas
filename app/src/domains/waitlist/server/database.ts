@@ -4,43 +4,50 @@ import type { Pool } from "pg";
 import { getAuthDatabase, getAuthPgPool } from "@/domains/access/server/auth-db";
 
 export type WaitlistValue = string | number | null;
+interface WaitlistStatement {
+  sql: string;
+  values: WaitlistValue[];
+}
+export type WaitlistTransaction<T> = Generator<WaitlistStatement, T, unknown>;
 export interface WaitlistConnection {
   lock: string;
-  query<T>(sql: string, values?: WaitlistValue[]): Promise<T[]>;
+  query<T>(sql: string, values?: WaitlistValue[]): WaitlistTransaction<T[]>;
 }
 export interface WaitlistDatabase {
-  transaction<T>(work: (connection: WaitlistConnection) => Promise<T>): Promise<T>;
+  transaction<T>(work: (connection: WaitlistConnection) => WaitlistTransaction<T>): Promise<T>;
 }
-const sqliteQueues = new WeakMap<Database.Database, Promise<unknown>>();
+function connection(lock: string): WaitlistConnection {
+  return {
+    lock,
+    *query<T>(sql: string, values: WaitlistValue[] = []): WaitlistTransaction<T[]> {
+      return (yield { sql, values }) as T[];
+    },
+  };
+}
 
-/** Serializes SQLite transactions so concurrent invitations cannot duplicate grants. */
+/** Keeps SQLite work synchronous so failed invitations cannot roll back auth or payment writes. */
 export function sqliteWaitlistDatabase(database: Database.Database): WaitlistDatabase {
   return {
-    async transaction(work) {
-      const prior = sqliteQueues.get(database) ?? Promise.resolve();
-      const result = prior
-        .catch(() => undefined)
-        .then(async () => {
-          database.exec("BEGIN IMMEDIATE");
-          try {
-            const result = await work({
-              lock: "",
-              query<T>(sql: string, values: WaitlistValue[] = []): Promise<T[]> {
-                const statement = database.prepare(sql);
-                if (statement.reader) return Promise.resolve(statement.all(...values) as T[]);
-                statement.run(...values);
-                return Promise.resolve([]);
-              },
-            });
-            database.exec("COMMIT");
-            return result;
-          } catch (error) {
-            database.exec("ROLLBACK");
-            throw error;
-          }
-        });
-      sqliteQueues.set(database, result);
-      return result;
+    transaction(work) {
+      // The executor completes before returning, keeping other account writes outside this transaction.
+      return new Promise((resolve) => {
+        resolve(
+          database
+            .transaction(() => {
+              const transaction = work(connection(""));
+              let step = transaction.next();
+              while (!step.done) {
+                const statement = database.prepare(step.value.sql);
+                let rows: unknown[] = [];
+                if (statement.reader) rows = statement.all(...step.value.values);
+                else statement.run(...step.value.values);
+                step = transaction.next(rows);
+              }
+              return step.value;
+            })
+            .immediate(),
+        );
+      });
     },
   };
 }
@@ -51,19 +58,18 @@ export function postgresWaitlistDatabase(pool: Pool): WaitlistDatabase {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        const result = await work({
-          lock: " FOR UPDATE",
-          async query<T>(sql: string, values: WaitlistValue[] = []): Promise<T[]> {
-            let index = 0;
-            const result = await client.query(
-              sql.replace(/\?/g, () => `$${++index}`),
-              values,
-            );
-            return result.rows as T[];
-          },
-        });
+        const transaction = work(connection(" FOR UPDATE"));
+        let step = transaction.next();
+        while (!step.done) {
+          let index = 0;
+          const result = await client.query(
+            step.value.sql.replace(/\?/g, () => `$${++index}`),
+            step.value.values,
+          );
+          step = transaction.next(result.rows);
+        }
         await client.query("COMMIT");
-        return result;
+        return step.value;
       } catch (error) {
         await client.query("ROLLBACK");
         throw error;

@@ -9,6 +9,31 @@ describe("Input", () => {
     cleanup();
   });
 
+  it("preserves native field metadata and accessibility", () => {
+    render(
+      <Input
+        id="native-field"
+        name="notes"
+        aria-label="Research notes"
+        aria-invalid="true"
+        aria-describedby="notes-help"
+        maxLength={120}
+        spellCheck={false}
+      />,
+    );
+    const control = screen.getByRole("textbox", { name: "Research notes" });
+    expect(control).toHaveAttribute("id", "native-field");
+    expect(control).toHaveAttribute("name", "notes");
+    expect(control).toHaveAttribute("maxlength", "120");
+    expect(control).toHaveAttribute("aria-invalid", "true");
+    expect(control).toHaveAttribute("aria-describedby", "notes-help");
+  });
+  it("enforces the required native field constraint", () => {
+    render(<Input label="Email" required />);
+    const control = screen.getByRole("textbox");
+    expect(control).toBeRequired();
+    expect(control).toBeInvalid();
+  });
   it("renders with label and required marker", () => {
     render(<Input label="Username" required={true} />);
     expect(screen.getByLabelText(/Username/i)).toBeInTheDocument();

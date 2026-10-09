@@ -6,8 +6,8 @@ import { waitlistProductSchema } from "../contracts";
 export async function recordWaitlistPurchase(purchaseId: string): Promise<void> {
   if (!isManagedWaitlist()) return;
   const store = await getWaitlistStore();
-  const buyer = await store.database.transaction(async (db) => {
-    const [row] = await db.query<{ email: string; product: string }>(
+  const buyer = await store.database.transaction(function* (db) {
+    const [row] = yield* db.query<{ email: string; product: string }>(
       `SELECT u.email, p.product FROM purchase_intents p INNER JOIN "user" u ON u.id = p.user_id WHERE p.id = ? AND p.status = 'paid'`,
       [purchaseId],
     );

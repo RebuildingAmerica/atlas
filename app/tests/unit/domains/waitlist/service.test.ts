@@ -111,6 +111,23 @@ describe("waitlist server contracts", () => {
       functions.submitWaitlist({ data: { email: "person@example.org", product: "atlas_pro" } }),
     ).rejects.toThrow("Try again");
   });
+  it("distinguishes unavailable email links from temporary storage failures", async () => {
+    await expect(
+      functions.loadWaitlistLink({ data: { token: "expired", kind: "invite" } }),
+    ).resolves.toBeNull();
+    const request = await store.submit({ email: "person@example.org", product: "atlas_pro" });
+    const token = await store.createLink(request.id, "invite");
+    db.exec("UPDATE waitlist_links SET expires_at = '2000-01-01'");
+    await expect(
+      functions.loadWaitlistLink({ data: { token, kind: "invite" } }),
+    ).resolves.toBeNull();
+    vi.spyOn(WaitlistStore.prototype, "readLink").mockRejectedValueOnce(
+      new Error("Database offline"),
+    );
+    await expect(functions.loadWaitlistLink({ data: { token, kind: "invite" } })).rejects.toThrow(
+      "Database offline",
+    );
+  });
   it("gives bots the same receipt without sending mail and retains signup on email failure", async () => {
     await expect(
       functions.submitWaitlist({

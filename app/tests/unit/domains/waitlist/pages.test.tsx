@@ -106,11 +106,27 @@ describe("waitlist screens", () => {
     expect(mocks.confirm).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Confirm email" }));
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "You’re on the waitlist" })).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "You’re on the waitlist" })).toHaveFocus(),
     );
   });
+  it("retries a temporary link failure without calling the invitation expired", async () => {
+    mocks.link
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({ ...request, status: "invited", confirmedAt: "2026-10-09" });
+    mount(<WaitlistLinkPage token="valid-token" kind="invite" />);
+    expect(
+      await screen.findByRole("heading", { name: "This request could not be opened" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "This link no longer works" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByRole("heading", { name: "You’re invited to Atlas Pro" }),
+    ).toHaveFocus();
+  });
   it("offers a fresh email link when a link is expired", async () => {
-    mocks.link.mockRejectedValue(new Error("expired"));
+    mocks.link.mockResolvedValue(null);
     mount(<WaitlistLinkPage token="expired" kind="invite" />);
     expect(await screen.findByRole("link", { name: "Get a new link" })).toHaveAttribute(
       "href",
@@ -146,6 +162,7 @@ describe("waitlist screens", () => {
       data: { name: "Reporter", product: "atlas_team", intendedUse: "Reporting" },
     });
     await userEvent.click(screen.getByRole("button", { name: "Change email" }));
+    expect(screen.getByLabelText("Email", { exact: true })).toHaveFocus();
     expect(screen.getByLabelText("Email")).toHaveValue("person@example.org");
   });
   it("allows resending after the cooldown", async () => {
@@ -171,6 +188,26 @@ describe("waitlist screens", () => {
     expect(mocks.submit).toHaveBeenCalledTimes(2);
     vi.restoreAllMocks();
   });
+  it("keeps a repeated temporary failure focused and retryable", async () => {
+    mocks.link.mockRejectedValue(new Error("offline"));
+    mount(<WaitlistLinkPage token="retry-failed" kind="invite" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(
+      await screen.findByRole("heading", { name: "This request could not be opened" }),
+    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+  });
+  it.each([
+    ["unconfirmed", "Confirm your email"],
+    ["unavailable", "This link no longer works"],
+  ] as const)("focuses the %s result after a successful retry", async (result, heading) => {
+    mocks.link
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(result === "unavailable" ? null : request);
+    mount(<WaitlistLinkPage token="retry-confirm" kind="confirm" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: heading })).toHaveFocus();
+  });
   it("keeps a failed confirmation actionable", async () => {
     mocks.link.mockResolvedValue(request);
     mocks.confirm.mockRejectedValue(new Error("offline"));
@@ -185,7 +222,46 @@ describe("waitlist screens", () => {
     view.unmount();
     mocks.request.mockRejectedValue(new Error("unavailable"));
     mount(<WaitlistRequestPage id="other" />);
-    expect(await screen.findByRole("heading", { name: "This link no longer works" })).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { name: "This request could not be opened" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Sign in" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Get a new link" })).toBeVisible();
+  });
+  it.each([null, "2026-10-09"])(
+    "offers the correct private invitation action after purchase %s",
+    async (purchasedAt) => {
+      mocks.session.mockReturnValue({
+        data: createAtlasSessionFixture({ user: { email: request.email } }),
+      });
+      mocks.request.mockResolvedValue({
+        ...request,
+        status: "invited",
+        confirmedAt: "2026-10-08",
+        purchasedAt,
+      });
+      mount(<WaitlistRequestPage id="private-invitation" />);
+      expect(
+        await screen.findByRole("link", {
+          name: purchasedAt ? "Open your account" : "Continue",
+          exact: true,
+        }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("link", {
+          name: purchasedAt ? "Continue" : "Open your account",
+          exact: true,
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it("retries a private request without losing keyboard focus", async () => {
+    mocks.request
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({ ...request, status: "waiting", confirmedAt: "2026-10-09" });
+    mount(<WaitlistRequestPage id="retry-private" />);
+    await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "You’re on the waitlist" })).toHaveFocus();
   });
   it("edits details, reports a failure, withdraws with confirmation, and rejoins", async () => {
     const waiting: WaitlistRequest = { ...request, status: "waiting", confirmedAt: "2026-10-08" };
@@ -213,9 +289,9 @@ describe("waitlist screens", () => {
     await userEvent.click(screen.getByRole("button", { name: "Stay on waitlist" }));
     await userEvent.click(screen.getByRole("button", { name: "Leave waitlist" }));
     await userEvent.click(screen.getByRole("button", { name: "Yes, leave waitlist" }));
-    await screen.findByRole("heading", { name: "You’ve left the waitlist" });
+    expect(await screen.findByRole("heading", { name: "You’ve left the waitlist" })).toHaveFocus();
     await userEvent.click(screen.getByRole("button", { name: "Rejoin waitlist" }));
-    expect(await screen.findByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "You’re on the waitlist" })).toHaveFocus();
   });
   it.each(["atlas_pro", "atlas_team", "atlas_research_pass"] as const)(
     "offers the approved %s intervals to the matching verified account",
