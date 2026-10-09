@@ -17,6 +17,7 @@ https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/v
 
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 from dataclasses import dataclass
@@ -227,6 +228,8 @@ class CloudflareAccessVerifier:
         self._clock = clock
         self._keys: dict[str, Any] = {}
         self._fetched_at: float | None = None
+        self._failed_at: float | None = None
+        self._refresh_lock = asyncio.Lock()
 
     async def verify(self, token: str) -> AccessResult:
         """Return the person the token names, or why it was refused.
@@ -277,8 +280,7 @@ class CloudflareAccessVerifier:
             return "unknown_key"
         return None if _signature_valid(token, key) else "bad_signature"
 
-    async def _key_for(self, kid: str) -> Any:
-        now = self._clock()
+    def _needs_refresh(self, kid: str, now: float) -> bool:
         fetched_at = self._fetched_at
         stale = fetched_at is None or now - fetched_at > _KEYS_FOR_SECONDS
         unknown = (
@@ -286,8 +288,29 @@ class CloudflareAccessVerifier:
             and kid not in self._keys
             and now - fetched_at > _REFETCH_AFTER_SECONDS
         )
-        if stale or unknown:
-            await self._refresh(now)
+        return stale or unknown
+
+    async def _key_for(self, kid: str) -> Any:
+        """Return the team's key named ``kid``, refreshing the keys when due.
+
+        One request refreshes while the rest wait for it, and after a failed
+        fetch nobody tries again for a minute, so an Access outage costs one
+        fetch a minute rather than one per request.
+        """
+        if self._needs_refresh(kid, self._clock()):
+            async with self._refresh_lock:
+                now = self._clock()
+                if self._needs_refresh(kid, now):
+                    failed_at = self._failed_at
+                    if failed_at is not None and now - failed_at <= _REFETCH_AFTER_SECONDS:
+                        msg = "The team's keys could not be fetched a moment ago."
+                        raise RuntimeError(msg)
+                    try:
+                        await self._refresh(now)
+                    except Exception:
+                        self._failed_at = now
+                        raise
+                    self._failed_at = None
         return self._keys.get(kid)
 
     async def _refresh(self, now: float) -> None:

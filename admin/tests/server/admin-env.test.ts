@@ -5,6 +5,7 @@ import {
   API_ORIGIN,
   adminSource,
   TEST_OPERATOR,
+  TEST_SIGNING_KEY,
 } from "../helpers/admin-fixtures";
 
 describe("admin settings", () => {
@@ -20,7 +21,21 @@ describe("admin settings", () => {
     expect(env.apiOrigin).toBe(API_ORIGIN);
     expect(env.devOperatorEmail).toBeNull();
     expect([...env.operators]).toEqual([TEST_OPERATOR, "other@example.test"]);
-    expect(env.signingKey).toBe("test-signing-key");
+    expect(env.signingKey).toBe(TEST_SIGNING_KEY);
+  });
+
+  it.each([
+    ["text that is not base64", "not base64!"],
+    ["a key of the wrong length", btoa("too short")],
+    ["a 48-byte value that is not an Ed25519 key", btoa("x".repeat(48))],
+  ])("refuses a signing key that is %s", (_label, value) => {
+    expect(() =>
+      readAdminEnv(adminSource({ ATLAS_ADMIN_SIGNING_KEY: value }), {
+        development: false,
+      }),
+    ).toThrow(
+      "ATLAS_ADMIN_SIGNING_KEY must be a base64 PKCS#8 Ed25519 private key.",
+    );
   });
 
   it.each([

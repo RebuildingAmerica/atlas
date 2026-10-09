@@ -69,6 +69,37 @@ describe("discount verification server functions", () => {
     });
   });
 
+  it.each([
+    ["an error", new Error("ATLAS_ADMIN_PUBLIC_URL is required")],
+    ["a non-error value", "mail provider down"],
+  ])(
+    "still confirms a saved request when the operator email fails with %s",
+    async (_label, failure) => {
+      const saved = { id: "verif_789", status: "pending" };
+      mocks.requestAtlasApi.mockResolvedValue(saved);
+      mocks.sendDiscountRequestOperatorNotification.mockRejectedValue(failure);
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+      const { submitDiscountVerification } =
+        await import("@/domains/billing/discount-verifications.functions");
+
+      const result = await submitDiscountVerification({
+        data: {
+          organizationId: "org_123",
+          segment: "student",
+          submission: { schoolEmail: "student@example.edu" },
+        },
+      });
+
+      expect(result).toBe(saved);
+      expect(consoleError).toHaveBeenCalledWith(
+        "Discount request operator email was not sent",
+        expect.objectContaining({ verificationId: "verif_789" }),
+      );
+      consoleError.mockRestore();
+    },
+  );
+
   it("reads the current workspace's verification status", async () => {
     const status = {
       record: {

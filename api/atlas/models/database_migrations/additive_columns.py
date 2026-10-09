@@ -107,6 +107,7 @@ async def _ensure_discovery_job_columns(conn: Any) -> None:
             "input_payload",
             "ALTER TABLE discovery_jobs ADD COLUMN input_payload TEXT NOT NULL DEFAULT '{}'",
         ),
+        ("claimed_by_user_id", "ALTER TABLE discovery_jobs ADD COLUMN claimed_by_user_id TEXT"),
     )
     for column, ddl in additive_columns:
         if column not in existing_columns:

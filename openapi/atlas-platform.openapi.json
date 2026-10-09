@@ -569,7 +569,7 @@
     },
     "/api/platform/discount-verifications/{verification_id}": {
       "patch": {
-        "description": "Record the review decision for a discount request, then email the applicant through the app. A 502 means the decision was saved but the email was not sent.",
+        "description": "Decide a pending discount request, then email the applicant through the app. A 409 means it was already decided. A 502 means the email was not sent, so the request was put back to pending to be decided again.",
         "operationId": "updateVerification",
         "parameters": [
           {

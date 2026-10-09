@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PLATFORM_API_AUDIENCE } from "@/server/admin-env";
 import {
   ADMIN_TOKEN_LIFETIME_SECONDS,
@@ -49,5 +49,23 @@ describe("the admin app's token", () => {
     const second = await signAdminToken(settings, TEST_OPERATOR, 1_000);
 
     expect(second).toBe(first);
+  });
+
+  it("tries a failed key import again rather than keeping the failure", async () => {
+    const importKey = vi.spyOn(crypto.subtle, "importKey");
+    const settings = {
+      adminOrigin: ADMIN_ORIGIN,
+      signingKey: btoa("x".repeat(48)),
+    };
+
+    await expect(
+      signAdminToken(settings, TEST_OPERATOR, 1_000),
+    ).rejects.toThrow();
+    await expect(
+      signAdminToken(settings, TEST_OPERATOR, 1_000),
+    ).rejects.toThrow();
+
+    expect(importKey).toHaveBeenCalledTimes(2);
+    importKey.mockRestore();
   });
 });
