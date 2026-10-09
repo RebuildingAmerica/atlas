@@ -4,15 +4,17 @@ import { performSignIn, pollLatestMessage } from "../../helpers/auth";
 import { extractFirstUrlFromEmail } from "../../helpers/email";
 import { expectNoAxeViolations } from "../../helpers/accessibility";
 
-async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
+async function expectInvitationSpacing(page: Page) {
   const heading = await page
     .getByRole("heading", { name: "You’re invited to Atlas Pro" })
     .boundingBox();
   const description = await page
     .getByText(/^Unlimited research, notes and shortlists/)
     .boundingBox();
-  const payment = await page.getByRole("group", { name: "Choose how to pay" }).boundingBox();
-  const action = await page.getByRole("link", { name: "Continue", exact: true }).boundingBox();
+  const payment = await page.getByRole("group", { name: "Billing period" }).boundingBox();
+  const action = await page
+    .getByRole("link", { name: "Choose workspace", exact: true })
+    .boundingBox();
   const monthly = await page
     .getByRole("radio", { name: "Monthly", exact: true })
     .locator("..")
@@ -30,36 +32,41 @@ async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
     expect(Math.abs(action.x - payment.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(action.width - payment.width)).toBeLessThanOrEqual(1);
   } else {
-    const gap = payment.y - description.y - description.height;
-    expect(gap).toBeGreaterThanOrEqual(32);
-    expect(gap).toBeLessThanOrEqual(33);
     const details = page
       .locator("details")
       .filter({ has: page.locator("summary", { hasText: "What’s included" }) });
+    const detailBox = await details.boundingBox();
+    if (!detailBox) throw new Error("Plan details must accompany the introduction.");
+    expect(detailBox.y - description.y - description.height).toBeGreaterThanOrEqual(24);
+    expect(payment.y - detailBox.y - detailBox.height).toBeGreaterThanOrEqual(32);
+    expect(payment.y - detailBox.y - detailBox.height).toBeLessThanOrEqual(33);
     await expect(details).not.toHaveAttribute("open", "");
     await expect(
       details.getByText("Unlimited research requests on people and organizations"),
     ).toBeHidden();
     if (page.viewportSize()?.width === 390) {
       expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(
-        1000,
+        844,
       );
     }
   }
-  expect(monthly.height).toBeGreaterThanOrEqual(80);
+  expect(monthly.height).toBeGreaterThanOrEqual(64);
   expect(annual.y - monthly.y - monthly.height).toBeGreaterThanOrEqual(12);
-  await expect(page.getByRole("region", { name: "Payment summary" })).toBeAttached();
+  await expect(page.getByRole("region", { name: "Renewal terms" })).toBeAttached();
+  await expect(page.getByRole("region", { name: "Payment summary" })).toHaveCount(0);
   await expect(page.getByRole("combobox")).toHaveCount(0);
 
-  expect(action.y - payment.y - payment.height).toBeGreaterThanOrEqual(minimumActionGap);
+  const footer = await page.getByRole("region", { name: "Next step" }).boundingBox();
+  if (!footer) throw new Error("The next action must be visible.");
+  expect(footer.y - payment.y - payment.height).toBeGreaterThanOrEqual(24);
   const bottomSpace = await page.evaluate(() => ({
     height: Math.max(window.innerHeight, document.documentElement.scrollHeight),
     scroll: window.scrollY,
   }));
-  expect(bottomSpace.height - bottomSpace.scroll - action.y - action.height).toBeGreaterThanOrEqual(
+  expect(bottomSpace.height - bottomSpace.scroll - footer.y - footer.height).toBeGreaterThanOrEqual(
     31,
   );
-  expect(bottomSpace.height - bottomSpace.scroll - action.y - action.height).toBeLessThanOrEqual(
+  expect(bottomSpace.height - bottomSpace.scroll - footer.y - footer.height).toBeLessThanOrEqual(
     33,
   );
   await expect(page.getByRole("link", { name: "Privacy policy" })).toHaveCount(0);
@@ -122,7 +129,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await performSignIn(page, { email, createWorkspace: true });
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(invitationUrl);
-  await expect(page.getByRole("group", { name: "Choose how to pay" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Billing period" })).toBeVisible();
   const monthlyCard = page.getByRole("radio", { name: "Monthly", exact: true }).locator("..");
   const annualRadio = page.getByRole("radio", { name: "Annual", exact: true });
   const annualCard = annualRadio.locator("..");
@@ -144,7 +151,9 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await page.getByRole("radio", { name: "Monthly", exact: true }).focus();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("radio", { name: "Annual", exact: true })).toBeChecked();
-  await expect(page.getByRole("region", { name: "Payment summary" })).toContainText("$48 per year");
+  await expect(page.getByRole("region", { name: "Renewal terms" })).toContainText(
+    "Renews annually",
+  );
   await expect
     .poll(() => annualCard.evaluate((element) => getComputedStyle(element).outlineWidth))
     .toBe("2px");
@@ -164,10 +173,10 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   });
   await page.emulateMedia({ forcedColors: "none" });
   await page.keyboard.press("Tab");
-  await expect(page.getByText("Student pricing", { exact: true })).toBeFocused();
+  await expect(page.locator("summary", { hasText: "Student pricing" })).toBeFocused();
   expect(
     await page
-      .getByText("Student pricing", { exact: true })
+      .locator("summary", { hasText: "Student pricing" })
       .evaluate((element) => getComputedStyle(element).boxShadow),
   ).not.toBe("none");
   await page.keyboard.press("Enter");
@@ -176,10 +185,10 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expect(page.getByRole("radio", { name: "Student", exact: true })).toBeHidden();
   await annualRadio.focus();
   await expectNoAxeViolations(page, "invited request");
-  await expectInvitationSpacing(page, 80);
+  await expectInvitationSpacing(page);
   await page.screenshot({ path: "test-results/waitlist-invited.png", fullPage: true });
   await page.setViewportSize({ width: 768, height: 1024 });
-  await expectInvitationSpacing(page, 120);
+  await expectInvitationSpacing(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
     false,
   );
@@ -189,7 +198,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth))
     .toBe(false);
 
-  await expectInvitationSpacing(page, 120);
+  await expectInvitationSpacing(page);
   await expectNoAxeViolations(page, "mobile invitation");
   await expect(page.getByRole("navigation", { name: "Signup progress" })).toHaveCount(0);
   await expect(page.getByText(email, { exact: true })).toHaveCount(0);
@@ -199,11 +208,11 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expect(page.getByRole("link", { name: "Browse Atlas", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.getByRole("link", { name: "Continue", exact: true }).scrollIntoViewIfNeeded();
+  await page.getByRole("link", { name: "Choose workspace", exact: true }).scrollIntoViewIfNeeded();
   await page.evaluate(() => {
     window.scrollTo(0, document.documentElement.scrollHeight);
   });
-  await expectInvitationSpacing(page, 32);
+  await expectInvitationSpacing(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
     false,
   );
@@ -230,7 +239,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   for (const control of [
     touchPage.getByRole("link", { name: "Atlas", exact: true }),
     touchPage.getByRole("link", { name: "Pricing", exact: true }),
-    touchPage.getByText("Student pricing", { exact: true }),
+    touchPage.locator("summary", { hasText: "Student pricing" }),
     touchPage.locator("summary", { hasText: "What’s included" }),
   ]) {
     const target = await control.boundingBox();
@@ -246,12 +255,14 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     const style = getComputedStyle(element);
     return {
       border: style.borderTopStyle,
+      sideBorderWidth: style.borderLeftWidth,
       width: style.borderTopWidth,
       decoration: style.textDecorationLine,
       chevron: getComputedStyle(element, "::after").rotate,
     };
   });
   expect(row.border).toBe("solid");
+  expect(row.sideBorderWidth).toBe("0px");
   expect(row.width).toBe("1px");
   expect(row.decoration).toBe("none");
   expect(row.chevron).toBe("45deg");
@@ -266,11 +277,14 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     path: "test-results/waitlist-invited-touch-mobile.png",
     fullPage: true,
   });
-  await touchPage.getByText("Student pricing", { exact: true }).tap();
+  await touchPage.locator("summary", { hasText: "Student pricing" }).tap();
   await touchPage.getByRole("radio", { name: "Student", exact: true }).locator("..").tap();
-  await expect(touchPage.getByRole("region", { name: "Payment summary" })).toContainText(
-    "$12.80 every four months",
+  await expect(touchPage.getByRole("region", { name: "Renewal terms" })).toContainText(
+    "Renews every 4 months",
   );
+  await expect(
+    touchPage.getByRole("radio", { name: "Student", exact: true }),
+  ).toHaveAccessibleDescription(/\$12.80.*4 months/);
   await touchPage.setViewportSize({ width: 320, height: 568 });
   expect(
     await touchPage.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
@@ -281,7 +295,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     fullPage: true,
   });
   await touchContext.close();
-  await page.getByRole("link", { name: "Continue" }).click();
+  await page.getByRole("link", { name: "Choose workspace" }).click();
   await expect(page.getByRole("heading", { name: "Choose workspace" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Use / })).toBeEnabled();
   await expectNoAxeViolations(page, "mobile workspace step");

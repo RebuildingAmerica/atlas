@@ -42,26 +42,24 @@ requires its own request. Existing paid products, renewals, billing portals, and
 team membership continue through their existing paths.
 
 Invitation pages use the full page surface and left-aligned context. On desktop,
-plan benefits and payment choices occupy separate columns; on mobile, the
-choices follow a concise plan introduction, with detailed benefits in a native
-“What’s included” disclosure below the choices. This keeps the payment decision
-close to the invitation without removing plan context. Continue sits at the
-bottom, grouped with renewal terms and the next step. Native radio choices show
-the full charge and billing period side by side. Student pricing and API
-integrations use optional disclosures. Invitees can compare prices before
-creating an account, and the selected interval survives sign-in. A payment
-summary explains renewal, cancellation and tax before continuing and again
-before checkout, so the person knows the commitment before paying. Fields share
-the UI package's comfortable density, native validation, inset labels, and
-high-contrast civic focus ring. Buttons and navigation actions share Button
-styles. Editorial titles use the shared type scale. Native radio labels share
-selected, hover and pressed states, with keyboard focus around the whole hit
-target. The global focus fallback respects controls that delegate focus to a
-parent. Disclosures use full-width bordered rows with a trailing chevron that
-indicates expanded or collapsed state, plus shared focus and hover styles.
-Navigation targets are at least 44 pixels, and mobile actions allow for the
-bottom safe area. Renewal terms have greater prominence than the secondary tax
-note.
+plan benefits and payment choices occupy separate columns. On mobile, a concise
+introduction and optional “What’s included” disclosure precede billing. Price
+cards show the full charge and billing period, with a savings label for annual
+Pro billing. Student pricing shows its price before expansion; verification
+details remain within the disclosure. These use shared divider rows and
+chevrons, visually distinct from selectable price cards, with full-width touch
+targets and civic keyboard focus.
+
+Renewal and cancellation terms stay next to the action without repeating the
+price. “Choose workspace” names the next step for signed-in invitees, followed
+by a short reminder that payment comes after a total review. Anonymous invitees
+can compare prices before creating an account, and the selected interval
+survives sign-in. The final payment review shows the selected charge, renewal,
+cancellation and tax information before Stripe checkout. The action group stays
+at the bottom when the viewport permits and scrolls naturally on short screens,
+allowing for the phone safe area. Fields, buttons, typography, radio states and
+disclosure states reuse shared UI components and tokens. Navigation targets are
+at least 44 pixels.
 
 Confirmation, withdrawal and rejoining focus the resulting heading so keyboard
 and screen reader users can follow the change. Ordinary refreshes preserve

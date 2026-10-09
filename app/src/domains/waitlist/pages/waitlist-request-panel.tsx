@@ -1,6 +1,6 @@
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
-import { PaymentChoice, PaymentCommitment } from "@/domains/billing/components/payment-choice";
+import { PaymentChoice, PaymentTerms } from "@/domains/billing/components/payment-choice";
 import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { Link } from "@tanstack/react-router";
@@ -174,10 +174,21 @@ export function WaitlistRequestPanel({
                   : "You’re on the waitlist"}
         </h1>
         {invited && !request.purchasedAt ? (
-          <div className="lg:space-y-8">
+          <div className="flex flex-col gap-6 lg:gap-8">
             <p className="type-body-large text-ink-soft">
               {INVITATION_DESCRIPTIONS[request.product]}
             </p>
+            <details className="group lg:hidden">
+              <summary className={waitlistSummaryClass}>What’s included</summary>
+              <div className="space-y-4 pt-4">
+                <InvitationBenefits product={request.product} />
+                {request.product !== "atlas_research_pass" ? (
+                  <p className="type-body-small text-ink-soft">
+                    {INVITATION_INTEGRATIONS[request.product]}
+                  </p>
+                ) : null}
+              </div>
+            </details>
             <section aria-label="Included with your plan" className="hidden space-y-4 lg:block">
               <h2 className="type-title-medium text-ink-strong">What’s included</h2>
               <InvitationBenefits product={request.product} />
@@ -235,24 +246,10 @@ export function WaitlistRequestPanel({
         <section className="lg:border-outline-variant flex flex-1 flex-col gap-6 lg:gap-8 lg:border-l lg:pl-16">
           <WaitlistError message={error} />
           <PaymentChoice product={request.product} interval={interval} onChange={setInterval} />
-          <details className="group lg:hidden">
-            <summary className={waitlistSummaryClass}>What’s included</summary>
-            <div className="space-y-4 pt-4">
-              <InvitationBenefits product={request.product} />
-              {request.product !== "atlas_research_pass" ? (
-                <p className="type-body-small text-ink-soft">
-                  {INVITATION_INTEGRATIONS[request.product]}
-                </p>
-              ) : null}
-            </div>
-          </details>
-          <div className="mt-auto space-y-4 lg:space-y-6">
-            <PaymentCommitment product={request.product} interval={interval} />
+          <section aria-label="Next step" className="mt-auto space-y-4">
+            <PaymentTerms product={request.product} interval={interval} />
             {sameEmail ? (
               <>
-                <p className="type-body-small text-ink-soft">
-                  Next, choose your workspace. You’ll review the total before paying.
-                </p>
                 <Link
                   to="/onboarding"
                   search={{
@@ -261,15 +258,16 @@ export function WaitlistRequestPanel({
                   }}
                   className={`${waitlistPrimaryLinkClass} w-full`}
                 >
-                  Continue
+                  Choose workspace
                 </Link>
+                <p className="type-body-small text-ink-soft">Review your total before payment.</p>
               </>
             ) : (
               <div className="space-y-6">
                 <p className="type-body-small text-ink-soft">
                   {session.data
                     ? "Sign in with the email that received your invitation."
-                    : "Use the email that received your invitation. You’ll choose a workspace and review the total before paying."}
+                    : "Create an account or sign in with the email that received your invitation."}
                 </p>
                 <div className="flex flex-col gap-4">
                   {session.data ? (
@@ -307,7 +305,7 @@ export function WaitlistRequestPanel({
                 </div>
               </div>
             )}
-          </div>
+          </section>
         </section>
       ) : null}
       {request.purchasedAt && !closed ? (

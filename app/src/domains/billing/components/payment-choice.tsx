@@ -8,7 +8,8 @@ interface PaymentOption {
   label: string;
   price: string;
   cadence: string;
-  description: string;
+  description?: string;
+  savings?: string;
   commitment: string;
   renewal: string;
 }
@@ -28,18 +29,17 @@ const OPTIONS: Record<AtlasSelfServeProduct, PaymentOption[]> = {
       label: "Monthly",
       price: "$5",
       cadence: "/month",
-      description: "Pay month to month.",
       commitment: "$5 per month",
-      renewal: "Renews monthly until you cancel. Cancel in your account.",
+      renewal: "Renews monthly. Cancel in your account.",
     },
     {
       interval: "yearly",
       label: "Annual",
       price: "$48",
       cadence: "/year",
-      description: "Pay for a year and save 20%.",
+      savings: "Save 20%",
       commitment: "$48 per year",
-      renewal: "Renews annually until you cancel. Cancel in your account.",
+      renewal: "Renews annually. Cancel in your account.",
     },
     {
       interval: "four_month",
@@ -48,7 +48,7 @@ const OPTIONS: Record<AtlasSelfServeProduct, PaymentOption[]> = {
       cadence: "/4 months",
       description: "Verify your student status before checkout.",
       commitment: "$12.80 every four months",
-      renewal: "Student verification is required. Renews every 4 months until you cancel.",
+      renewal: "Student verification is required. Renews every 4 months. Cancel in your account.",
     },
   ],
   atlas_team: [
@@ -59,7 +59,7 @@ const OPTIONS: Record<AtlasSelfServeProduct, PaymentOption[]> = {
       cadence: "/month",
       description: "1 member included. $8 per additional member each month.",
       commitment: "$25 per month + $8 per additional member per month",
-      renewal: "Renews monthly until you cancel. Cancel in your account.",
+      renewal: "Renews monthly. Cancel in your account.",
     },
     {
       interval: "yearly",
@@ -68,7 +68,7 @@ const OPTIONS: Record<AtlasSelfServeProduct, PaymentOption[]> = {
       cadence: "/year",
       description: "1 member included. $80 per additional member each year.",
       commitment: "$250 per year + $80 per additional member per year",
-      renewal: "Renews annually until you cancel. Cancel in your account.",
+      renewal: "Renews annually. Cancel in your account.",
     },
   ],
   atlas_research_pass: [
@@ -101,6 +101,7 @@ function selectedOption(product: AtlasSelfServeProduct, interval: string): Payme
 
 export function PaymentChoice({ product, interval, onChange }: PaymentChoiceProps) {
   const options = OPTIONS[product];
+  const studentOption = product === "atlas_pro" ? selectedOption(product, "four_month") : null;
   const renderOption = (option: PaymentOption) => (
     <RadioOption
       key={option.interval}
@@ -108,6 +109,7 @@ export function PaymentChoice({ product, interval, onChange }: PaymentChoiceProp
       value={option.interval}
       label={option.label}
       description={option.description}
+      badge={option.savings}
       trailing={
         <>
           {option.price}
@@ -122,19 +124,30 @@ export function PaymentChoice({ product, interval, onChange }: PaymentChoiceProp
   );
   return (
     <fieldset className="space-y-4">
-      <legend className="type-title-large text-ink-strong mb-4">Choose how to pay</legend>
+      <legend className="type-title-large text-ink-strong mb-4">Billing period</legend>
       <div className="space-y-3">
         {options.filter((option) => option.interval !== "four_month").map(renderOption)}
       </div>
-      {product === "atlas_pro" ? (
+      {studentOption ? (
         <details className="group" open={interval === "four_month" ? true : undefined}>
-          <summary className={disclosureSummaryClass}>Student pricing</summary>
+          <summary className={disclosureSummaryClass}>
+            Student pricing · {studentOption.price} {studentOption.cadence}
+          </summary>
           <div className="pt-2">
             {options.filter((option) => option.interval === "four_month").map(renderOption)}
           </div>
         </details>
       ) : null}
     </fieldset>
+  );
+}
+
+/** Renewal terms stay near the next action without repeating the selected price. */
+export function PaymentTerms({ product, interval }: PaymentSelectionProps) {
+  return (
+    <section aria-label="Renewal terms">
+      <p className="type-body-medium text-ink-soft">{selectedOption(product, interval).renewal}</p>
+    </section>
   );
 }
 

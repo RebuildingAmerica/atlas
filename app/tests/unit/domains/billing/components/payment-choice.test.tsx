@@ -7,6 +7,15 @@ import { PaymentChoice, PaymentCommitment } from "@/domains/billing/components/p
 afterEach(cleanup);
 
 describe("payment choices", () => {
+  it("shows annual savings and the student price before opening optional details", () => {
+    render(<PaymentChoice product="atlas_pro" interval="monthly" onChange={vi.fn()} />);
+    expect(screen.getByRole("group", { name: "Billing period" })).toBeInTheDocument();
+    expect(screen.queryByText("Pay month to month.")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Annual" })).toHaveAccessibleDescription(/Save 20%/);
+    const student = screen.getByText(/^Student pricing/);
+    expect(student).toHaveTextContent("$12.80 /4 months");
+    expect(student.closest("details")).not.toHaveAttribute("open");
+  });
   it("opens a saved student selection and describes its full charge and verification requirement", () => {
     render(<PaymentChoice product="atlas_pro" interval="four_month" onChange={vi.fn()} />);
     const student = screen.getByRole("radio", { name: "Student" });
@@ -31,20 +40,20 @@ describe("payment choices", () => {
 
 describe("payment commitment", () => {
   it.each([
-    ["atlas_pro", "monthly", "$5 per month", "Renews monthly until you cancel"],
-    ["atlas_pro", "yearly", "$48 per year", "Renews annually until you cancel"],
+    ["atlas_pro", "monthly", "$5 per month", "Renews monthly. Cancel in your account."],
+    ["atlas_pro", "yearly", "$48 per year", "Renews annually. Cancel in your account."],
     ["atlas_pro", "four_month", "$12.80 every four months", "Student verification is required"],
     [
       "atlas_team",
       "monthly",
       "$25 per month + $8 per additional member per month",
-      "Renews monthly until you cancel",
+      "Renews monthly. Cancel in your account.",
     ],
     [
       "atlas_team",
       "yearly",
       "$250 per year + $80 per additional member per year",
-      "Renews annually until you cancel",
+      "Renews annually. Cancel in your account.",
     ],
     ["atlas_research_pass", "weekly", "$4 for 7 days", "No automatic renewal"],
     ["atlas_research_pass", "once", "$9 for 30 days", "No automatic renewal"],

@@ -243,12 +243,12 @@ describe("waitlist screens", () => {
       mount(<WaitlistRequestPage id="private-invitation" />);
       expect(
         await screen.findByRole("link", {
-          name: purchasedAt ? "Open your account" : "Continue",
+          name: purchasedAt ? "Open your account" : "Choose workspace",
         }),
       ).toBeVisible();
       expect(
         screen.queryByRole("link", {
-          name: purchasedAt ? "Continue" : "Open your account",
+          name: purchasedAt ? "Choose workspace" : "Open your account",
         }),
       ).not.toBeInTheDocument();
     },
@@ -317,7 +317,10 @@ describe("waitlist screens", () => {
           name: product === "atlas_research_pass" ? "30 days" : "Annual",
         }),
       ).toBeChecked();
-      expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute("href", "/onboarding");
+      expect(screen.getByRole("link", { name: "Choose workspace" })).toHaveAttribute(
+        "href",
+        "/onboarding",
+      );
       view.unmount();
     },
   );
@@ -332,35 +335,34 @@ describe("waitlist screens", () => {
     );
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked();
-    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
-      "$5 per month",
+    expect(screen.getByRole("radio", { name: "Monthly" })).toHaveAccessibleDescription(
+      /\$5.*month/,
     );
-    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
-      "Renews monthly until you cancel",
+    expect(screen.getByRole("region", { name: "Renewal terms" })).toHaveTextContent(
+      "Renews monthly. Cancel in your account.",
     );
     await userEvent.click(screen.getByRole("radio", { name: "Annual" }));
-    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
-      "$48 per year",
+    expect(screen.getByRole("radio", { name: "Annual" })).toHaveAccessibleDescription(/\$48.*year/);
+    expect(screen.getByRole("region", { name: "Renewal terms" })).toHaveTextContent(
+      "Renews annually. Cancel in your account.",
     );
-    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
-      "Renews annually until you cancel",
-    );
-    expect(
-      screen.getByText("Next, choose your workspace. You’ll review the total before paying."),
-    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Choose workspace" })).toBeVisible();
+    expect(screen.getByText("Review your total before payment.")).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Payment summary" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Any applicable tax is shown at checkout.")).not.toBeInTheDocument();
     const integrationDetails = screen.getByText("API and integrations").closest("details");
     if (!integrationDetails) throw new Error("Expected integration disclosure");
     const tools = within(integrationDetails).getByText(/API access with 1,000 requests per day/);
     expect(tools).not.toBeVisible();
     await userEvent.click(screen.getByText("API and integrations"));
     expect(tools).toBeVisible();
-    await userEvent.click(screen.getByText("Student pricing"));
+    await userEvent.click(screen.getByText(/^Student pricing/));
     await userEvent.click(screen.getByRole("radio", { name: "Student" }));
-    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
+    expect(screen.getByRole("region", { name: "Renewal terms" })).toHaveTextContent(
       "Student verification is required",
     );
   });
-  it("keeps mobile plan details optional and follows payment choices with the disclosure", async () => {
+  it("keeps optional mobile plan details with the introduction before billing", async () => {
     mount(<WaitlistRequestPanel initialRequest={{ ...request, status: "invited" }} />);
     const summary = screen.getByText("What’s included", { selector: "summary" });
     const details = summary.closest("details");
@@ -370,8 +372,8 @@ describe("waitlist screens", () => {
     );
     expect(benefit).not.toBeVisible();
     expect(
-      screen.getByRole("group", { name: "Choose how to pay" }).compareDocumentPosition(details),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      screen.getByRole("group", { name: "Billing period" }).compareDocumentPosition(details),
+    ).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     await userEvent.click(summary);
     expect(benefit).toBeVisible();
     expect(within(details).getByText(/API access with 1,000 requests per day/)).toBeVisible();
@@ -381,8 +383,8 @@ describe("waitlist screens", () => {
     const view = mount(<WaitlistRequestPanel initialRequest={invited} />);
     expect(screen.getByRole("link", { name: "Create account" })).toBeVisible();
     expect(screen.getByRole("radio", { name: "Monthly" })).toBeChecked();
-    expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
-      "$5 per month",
+    expect(screen.getByRole("radio", { name: "Monthly" })).toHaveAccessibleDescription(
+      /\$5.*month/,
     );
     view.unmount();
     mocks.session.mockReturnValue({
@@ -454,7 +456,7 @@ describe("waitlist screens", () => {
         initialRequest={{ ...request, status: "invited", confirmedAt: "2026-10-09" }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Continue" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Choose workspace" })).toBeVisible();
     expect(screen.queryByRole("navigation", { name: "Signup progress" })).not.toBeInTheDocument();
     expect(screen.queryByText(request.email)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Decline invitation" })).not.toBeInTheDocument();

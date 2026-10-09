@@ -6,7 +6,8 @@ interface RadioOptionProps {
   name: string;
   value: string;
   label: string;
-  description: string;
+  description?: string;
+  badge?: string;
   trailing: ReactNode;
   checked: boolean;
   onChange: (value: string) => void;
@@ -18,6 +19,7 @@ export function RadioOption({
   value,
   label,
   description,
+  badge,
   trailing,
   checked,
   onChange,
@@ -26,8 +28,9 @@ export function RadioOption({
   return (
     <label
       className={cn(
-        "active:bg-surface-container flex cursor-pointer touch-manipulation items-start gap-3 rounded-xl border p-4",
+        "active:bg-surface-container flex min-h-16 cursor-pointer touch-manipulation gap-3 rounded-xl border p-4",
         controlGroupFocusClass,
+        description ? "items-start" : "items-center",
         checked
           ? "border-civic bg-surface-container-low hover:bg-surface-container"
           : "border-outline-variant hover:border-outline hover:bg-surface-container-low",
@@ -43,13 +46,29 @@ export function RadioOption({
           onChange(value);
         }}
         aria-labelledby={`${id}-label`}
-        aria-describedby={`${id}-price ${id}-description`}
-        className="accent-civic mt-1 size-4 shrink-0 outline-none"
+        aria-describedby={`${id}-price${badge ? ` ${id}-badge` : ""}${description ? ` ${id}-description` : ""}`}
+        className={cn(
+          "accent-civic size-4 shrink-0 outline-none",
+          description && "mt-1",
+        )}
       />
       <span className="min-w-0 flex-1 space-y-2">
         <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <span id={`${id}-label`} className="type-title-small text-ink-strong">
-            {label}
+          <span className="flex flex-wrap items-center gap-2">
+            <span
+              id={`${id}-label`}
+              className="type-title-small text-ink-strong"
+            >
+              {label}
+            </span>
+            {badge ? (
+              <span
+                id={`${id}-badge`}
+                className="type-label-small bg-civic/10 text-civic rounded-md px-2 py-1"
+              >
+                {badge}
+              </span>
+            ) : null}
           </span>
           <span
             id={`${id}-price`}
@@ -58,12 +77,14 @@ export function RadioOption({
             {trailing}
           </span>
         </span>
-        <span
-          id={`${id}-description`}
-          className="type-body-small text-ink-soft block"
-        >
-          {description}
-        </span>
+        {description ? (
+          <span
+            id={`${id}-description`}
+            className="type-body-small text-ink-soft block"
+          >
+            {description}
+          </span>
+        ) : null}
       </span>
     </label>
   );
