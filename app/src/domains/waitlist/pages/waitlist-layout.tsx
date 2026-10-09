@@ -1,35 +1,22 @@
 import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
 import { PageLayout } from "@rebuildingamerica/atlas-ui/layout/page-layout";
 
 interface WaitlistLayoutProps {
   children: ReactNode;
-  showBrowseLink?: boolean;
 }
-export function WaitlistLayout({ children, showBrowseLink = true }: WaitlistLayoutProps) {
+export function WaitlistLayout({ children }: WaitlistLayoutProps) {
   return (
-    <div className="bg-surface-container-lowest flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col">
       <PageLayout className="min-h-[calc(100svh-5rem)] py-10 sm:py-16">
-        <div className="mx-auto w-full max-w-lg space-y-6">
-          {children}
-          {showBrowseLink ? <WaitlistFooter /> : null}
-        </div>
+        <div className="mx-auto w-full max-w-lg space-y-6">{children}</div>
       </PageLayout>
     </div>
   );
 }
-export const waitlistFooterActionClass =
+export const waitlistSecondaryActionClass =
   "type-label-medium text-ink-soft hover:text-ink-strong focus-visible:ring-accent inline-flex min-h-11 items-center gap-2 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-offset-4";
-export function WaitlistFooter({ children }: { children?: ReactNode }) {
-  return (
-    <footer className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-      <Link to="/browse" className={waitlistFooterActionClass}>
-        Browse Atlas
-      </Link>
-      {children}
-    </footer>
-  );
-}
+export const waitlistHeadingClass =
+  "text-ink-strong font-serif text-4xl leading-tight tracking-tight text-balance sm:text-5xl";
 export const waitlistTextLinkClass =
   "type-label-large text-accent-deep hover:text-ink-strong focus-visible:ring-accent inline-flex min-h-11 items-center rounded-sm underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-offset-4";
 export const waitlistPrimaryLinkClass =

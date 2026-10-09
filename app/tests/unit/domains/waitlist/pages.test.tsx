@@ -84,7 +84,7 @@ describe("waitlist screens", () => {
     expect(await screen.findByRole("heading", { name: "Check your email" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Check your email" })).toHaveFocus();
     expect(screen.getByText("person@example.org")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Browse Atlas" })).toHaveAttribute("href", "/browse");
+    expect(screen.queryByRole("link", { name: "Browse Atlas" })).not.toBeInTheDocument();
   });
   it("retains entered values when sending fails", async () => {
     mocks.submit.mockRejectedValue(new Error("offline"));
@@ -196,7 +196,7 @@ describe("waitlist screens", () => {
       .mockResolvedValueOnce({ ...waiting, status: "withdrawn" })
       .mockResolvedValueOnce(waiting);
     mount(<WaitlistRequestPanel initialRequest={waiting} token="private" kind="manage" />);
-    await userEvent.click(screen.getByRole("button", { name: "Manage request" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit details" }));
     await userEvent.type(screen.getByLabelText("Name"), "New");
     await userEvent.type(screen.getByLabelText("Organization"), "Org");
     await userEvent.type(screen.getByLabelText("What would you use Atlas for?"), "Research");
@@ -204,7 +204,7 @@ describe("waitlist screens", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("could not be updated");
     await userEvent.click(screen.getByRole("button", { name: "Save details" }));
     expect(await screen.findByText("Details saved.")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Manage request" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Edit details" })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
@@ -309,11 +309,10 @@ describe("waitlist screens", () => {
     await userEvent.click(screen.getByRole("button", { name: "Confirm request" }));
     expect(await screen.findByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
   });
-  it("keeps invitation management out of the checkout path without removing it", async () => {
+  it("gives invitees a direct path to checkout without request-management controls", () => {
     mocks.session.mockReturnValue({
       data: createAtlasSessionFixture({ user: { email: request.email } }),
     });
-    mocks.change.mockResolvedValue({ ...request, status: "withdrawn" });
     mount(
       <WaitlistRequestPanel
         initialRequest={{ ...request, status: "invited", confirmedAt: "2026-10-09" }}
@@ -321,12 +320,8 @@ describe("waitlist screens", () => {
     );
     expect(screen.getByRole("link", { name: "Continue to checkout" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Decline invitation" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Manage invitation" }));
-    expect(screen.getByLabelText("Name")).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Decline invitation" }));
-    await userEvent.click(screen.getByRole("button", { name: "Keep invitation" }));
-    await userEvent.click(screen.getByRole("button", { name: "Decline invitation" }));
-    await userEvent.click(screen.getByRole("button", { name: "Yes, decline invitation" }));
-    expect(await screen.findByRole("heading", { name: "You’ve left the waitlist" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Manage invitation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Browse Atlas" })).not.toBeInTheDocument();
   });
 });

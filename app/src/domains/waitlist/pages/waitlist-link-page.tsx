@@ -7,7 +7,7 @@ import {
   WaitlistLayout,
   WaitlistError,
   waitlistPrimaryLinkClass,
-  WaitlistFooter,
+  waitlistHeadingClass,
 } from "./waitlist-layout";
 import { WaitlistRequestPanel } from "./waitlist-request-panel";
 
@@ -27,14 +27,14 @@ export function WaitlistLinkPage({ token, kind }: { token: string; kind: Waitlis
     },
   });
   return (
-    <WaitlistLayout showBrowseLink={false}>
+    <WaitlistLayout>
       {query.isPending ? (
         <div className="h-24" aria-busy="true" />
       ) : query.isError ? (
         <LinkUnavailable />
       ) : kind === "confirm" && !query.data.confirmedAt ? (
         <div className="space-y-5">
-          <h1 className="type-display-small text-ink-strong text-balance">Confirm your email</h1>
+          <h1 className={waitlistHeadingClass}>Confirm your email</h1>
           <p className="type-body-large text-ink-soft">
             Confirm <strong className="text-ink-strong break-all">{query.data.email}</strong> to
             join the waitlist. We’ll send your invitation to this address.
@@ -52,7 +52,6 @@ export function WaitlistLinkPage({ token, kind }: { token: string; kind: Waitlis
           <WaitlistError
             message={confirm.isError ? "Your email could not be confirmed. Try again." : null}
           />
-          <WaitlistFooter />
         </div>
       ) : (
         <WaitlistRequestPanel
@@ -72,7 +71,7 @@ export function WaitlistRequestPage({ id }: { id: string }) {
     retry: false,
   });
   return (
-    <WaitlistLayout showBrowseLink={false}>
+    <WaitlistLayout>
       {query.isPending ? (
         <div className="h-24" aria-busy="true" />
       ) : query.isError ? (
@@ -89,7 +88,7 @@ export function WaitlistRequestPage({ id }: { id: string }) {
 function LinkUnavailable() {
   return (
     <div className="space-y-5">
-      <h1 className="type-display-small text-ink-strong text-balance">This link no longer works</h1>
+      <h1 className={waitlistHeadingClass}>This link no longer works</h1>
       <p className="type-body-large text-ink-soft">
         Request a fresh link with the email you used to join. Your place on the waitlist stays the
         same.
@@ -97,7 +96,6 @@ function LinkUnavailable() {
       <Link to="/waitlist" className={waitlistPrimaryLinkClass}>
         Get a new link
       </Link>
-      <WaitlistFooter />
     </div>
   );
 }

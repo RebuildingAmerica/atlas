@@ -1,4 +1,3 @@
-import { ChevronDown } from "lucide-react";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -15,8 +14,8 @@ import type { WaitlistLinkKind, WaitlistRequest } from "../contracts";
 import { updateWaitlistRequest, changeWaitlistRequest } from "../waitlist.functions";
 import {
   WaitlistError,
-  WaitlistFooter,
-  waitlistFooterActionClass,
+  waitlistSecondaryActionClass,
+  waitlistHeadingClass,
   waitlistFieldClass,
   waitlistPrimaryLinkClass,
   waitlistTextLinkClass,
@@ -91,7 +90,7 @@ export function WaitlistRequestPanel({
         {!invited || request.purchasedAt ? (
           <p className="type-label-medium text-ink-muted">{productLabel}</p>
         ) : null}
-        <h1 className="type-display-small text-ink-strong text-balance">
+        <h1 className={waitlistHeadingClass}>
           {request.status === "unconfirmed"
             ? "Confirm your email"
             : closed
@@ -267,31 +266,23 @@ export function WaitlistRequestPanel({
           Rejoin waitlist
         </Button>
       ) : null}
-      <WaitlistFooter>
-        {!closed ? (
+      {!closed && !invited && !request.purchasedAt ? (
+        <div>
           <button
             type="button"
-            className={waitlistFooterActionClass}
+            className={waitlistSecondaryActionClass}
             aria-expanded={manageOpen}
             aria-controls="waitlist-management"
             onClick={() => {
               setManageOpen((open) => !open);
             }}
           >
-            {invited && !request.purchasedAt ? "Manage invitation" : "Manage request"}
-            <ChevronDown
-              aria-hidden="true"
-              className={`h-4 w-4 ${manageOpen ? "rotate-180" : ""}`}
-            />
+            Edit details
           </button>
-        ) : (
-          <a className={waitlistFooterActionClass} href="mailto:hello@rebuildingus.org">
-            Contact support
-          </a>
-        )}
-      </WaitlistFooter>
-      {!closed && manageOpen ? (
-        <section id="waitlist-management" aria-label="Manage request" className="space-y-5">
+        </div>
+      ) : null}
+      {!closed && !invited && !request.purchasedAt && manageOpen ? (
+        <section id="waitlist-management" aria-label="Edit details" className="space-y-5">
           <h2 className="type-title-medium text-ink-strong">Your details</h2>
           <form
             className="mt-4 space-y-4"
@@ -345,9 +336,6 @@ export function WaitlistRequestPanel({
             </Button>
           </form>
           <div className="border-border flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-4">
-            <Link to="/waitlist" className={waitlistTextLinkClass}>
-              Request another plan
-            </Link>
             {!withdrawConfirm ? (
               <button
                 type="button"
@@ -356,16 +344,15 @@ export function WaitlistRequestPanel({
                   setWithdrawConfirm(true);
                 }}
               >
-                {invited && !request.purchasedAt ? "Decline invitation" : "Leave waitlist"}
+                Leave waitlist
               </button>
             ) : null}
           </div>
           {withdrawConfirm ? (
             <div className="space-y-3">
               <p className="type-body-medium text-ink-soft">
-                {invited && !request.purchasedAt
-                  ? "Decline this invitation? You can rejoin the waitlist if you change your mind. Any plan you already pay for will stay active."
-                  : "Leave this waitlist? You can rejoin at any time. Any plan you already pay for will stay active."}
+                Leave this waitlist? You can rejoin at any time. Any plan you already pay for will
+                stay active.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button
@@ -375,9 +362,7 @@ export function WaitlistRequestPanel({
                     void save("withdraw");
                   }}
                 >
-                  {invited && !request.purchasedAt
-                    ? "Yes, decline invitation"
-                    : "Yes, leave waitlist"}
+                  Yes, leave waitlist
                 </Button>
                 <Button
                   variant="ghost"
@@ -385,7 +370,7 @@ export function WaitlistRequestPanel({
                     setWithdrawConfirm(false);
                   }}
                 >
-                  {invited && !request.purchasedAt ? "Keep invitation" : "Stay on waitlist"}
+                  Stay on waitlist
                 </Button>
               </div>
             </div>

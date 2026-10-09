@@ -59,10 +59,8 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expectNoAxeViolations(page, "mobile invitation");
   await page.screenshot({ path: "test-results/waitlist-invited-mobile.png", fullPage: true });
   await page.screenshot({ path: "test-results/waitlist-invited-mobile-screen.png" });
-  await page.getByRole("button", { name: "Manage invitation" }).click();
-  await expect(page.getByLabel("Name", { exact: true })).toBeVisible();
-  await expectNoAxeViolations(page, "mobile invitation management");
-  await page.getByRole("button", { name: "Manage invitation" }).click();
+  await expect(page.getByRole("button", { name: "Manage invitation" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Browse Atlas", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole("link", { name: "Continue to checkout" }).click();
@@ -115,6 +113,10 @@ test("mobile signup and expired-link recovery keep public browsing available", a
   await page.screenshot({ path: "test-results/waitlist-long-email.png", fullPage: true });
   await page.goto("/waitlist/link?kind=invite&token=expired");
   await expect(page.getByRole("heading", { name: "This link no longer works" })).toBeVisible();
-  await page.getByRole("link", { name: "Browse Atlas", exact: true }).click();
+  await page.getByRole("button", { name: "More navigation", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Public navigation menu" })
+    .getByRole("link", { name: "Explore", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/browse$/);
 });

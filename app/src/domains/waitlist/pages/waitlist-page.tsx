@@ -13,6 +13,7 @@ import {
   waitlistFieldClass,
   waitlistSummaryClass,
   waitlistTextLinkClass,
+  waitlistHeadingClass,
 } from "./waitlist-layout";
 
 interface WaitlistPageProps {
@@ -82,11 +83,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
     <WaitlistLayout>
       {sent ? (
         <div className="space-y-5">
-          <h1
-            ref={focusReceipt}
-            tabIndex={-1}
-            className="type-display-small text-ink-strong text-balance"
-          >
+          <h1 ref={focusReceipt} tabIndex={-1} className={waitlistHeadingClass}>
             Check your email
           </h1>
           <p className="type-body-large text-ink-soft">
@@ -124,7 +121,7 @@ export function WaitlistPage({ product: selectedProduct, interval }: WaitlistPag
       ) : (
         <div className="space-y-6">
           <header className="space-y-3">
-            <h1 className="type-display-small text-ink-strong text-balance">Join the waitlist</h1>
+            <h1 className={waitlistHeadingClass}>Join the waitlist</h1>
             <p className="type-body-large text-ink-soft">
               We’ll email you when you can sign up for a paid plan. Keep using Atlas for free while
               you wait.
