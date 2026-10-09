@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -348,7 +348,9 @@ describe("waitlist screens", () => {
     expect(
       screen.getByText("Next, choose your workspace. You’ll review the total before paying."),
     ).toBeVisible();
-    const tools = screen.getByText(/API access with 1,000 requests per day/);
+    const integrationDetails = screen.getByText("API and integrations").closest("details");
+    if (!integrationDetails) throw new Error("Expected integration disclosure");
+    const tools = within(integrationDetails).getByText(/API access with 1,000 requests per day/);
     expect(tools).not.toBeVisible();
     await userEvent.click(screen.getByText("API and integrations"));
     expect(tools).toBeVisible();
@@ -357,6 +359,22 @@ describe("waitlist screens", () => {
     expect(screen.getByRole("region", { name: "Payment summary" })).toHaveTextContent(
       "Student verification is required",
     );
+  });
+  it("keeps mobile plan details optional and follows payment choices with the disclosure", async () => {
+    mount(<WaitlistRequestPanel initialRequest={{ ...request, status: "invited" }} />);
+    const summary = screen.getByText("What’s included", { selector: "summary" });
+    const details = summary.closest("details");
+    if (!details) throw new Error("Expected plan disclosure");
+    const benefit = within(details).getByText(
+      "Unlimited research requests on people and organizations",
+    );
+    expect(benefit).not.toBeVisible();
+    expect(
+      screen.getByRole("group", { name: "Choose how to pay" }).compareDocumentPosition(details),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    await userEvent.click(summary);
+    expect(benefit).toBeVisible();
+    expect(within(details).getByText(/API access with 1,000 requests per day/)).toBeVisible();
   });
   it("offers a new account to anonymous invitees and a switch action for the wrong account", async () => {
     const invited: WaitlistRequest = { ...request, status: "invited", interval: "invalid" };

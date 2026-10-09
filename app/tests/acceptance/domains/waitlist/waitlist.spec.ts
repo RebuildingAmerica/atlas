@@ -8,7 +8,9 @@ async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
   const heading = await page
     .getByRole("heading", { name: "You’re invited to Atlas Pro" })
     .boundingBox();
-  const description = await page.getByText(/^Research the people and organizations/).boundingBox();
+  const description = await page
+    .getByText(/^Unlimited research, notes and shortlists/)
+    .boundingBox();
   const payment = await page.getByRole("group", { name: "Choose how to pay" }).boundingBox();
   const action = await page.getByRole("link", { name: "Continue", exact: true }).boundingBox();
   const monthly = await page
@@ -28,7 +30,21 @@ async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
     expect(Math.abs(action.x - payment.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(action.width - payment.width)).toBeLessThanOrEqual(1);
   } else {
-    expect(payment.y - description.y - description.height).toBeGreaterThanOrEqual(64);
+    const gap = payment.y - description.y - description.height;
+    expect(gap).toBeGreaterThanOrEqual(32);
+    expect(gap).toBeLessThanOrEqual(33);
+    const details = page
+      .locator("details")
+      .filter({ has: page.locator("summary", { hasText: "What’s included" }) });
+    await expect(details).not.toHaveAttribute("open", "");
+    await expect(
+      details.getByText("Unlimited research requests on people and organizations"),
+    ).toBeHidden();
+    if (page.viewportSize()?.width === 390) {
+      expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(
+        1000,
+      );
+    }
   }
   expect(monthly.height).toBeGreaterThanOrEqual(80);
   expect(annual.y - monthly.y - monthly.height).toBeGreaterThanOrEqual(12);
@@ -221,9 +237,12 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     expect(target.height).toBeGreaterThanOrEqual(44);
     expect(target.width).toBeGreaterThanOrEqual(44);
   }
-  await touchPage.getByText("API and integrations", { exact: true }).tap();
-  await expect(touchPage.getByText(/API access with 1,000 requests per day/)).toBeVisible();
-  await touchPage.getByText("API and integrations", { exact: true }).tap();
+  const planDetails = touchPage
+    .locator("details")
+    .filter({ has: touchPage.locator("summary", { hasText: "What’s included" }) });
+  await planDetails.locator("summary").tap();
+  await expect(planDetails.getByText(/API access with 1,000 requests per day/)).toBeVisible();
+  await planDetails.locator("summary").tap();
   await expectNoAxeViolations(touchPage, "touch invitation");
   await touchPage.screenshot({
     path: "test-results/waitlist-invited-touch-mobile.png",

@@ -27,9 +27,10 @@ import {
 } from "./waitlist-layout";
 
 const INVITATION_DESCRIPTIONS: Record<WaitlistProduct, string> = {
-  atlas_pro: "Research the people and organizations working on the issues you care about.",
-  atlas_team: "A shared research workspace for your team.",
-  atlas_research_pass: "Research tools for a short project, with a single payment.",
+  atlas_pro: "Unlimited research, notes and shortlists, and profile exports.",
+  atlas_team: "Shared research, notes and shortlists, with watchlists for your team.",
+  atlas_research_pass:
+    "Research, notes and exports for a short project. One payment, no subscription.",
 };
 
 const INVITATION_BENEFITS: Record<WaitlistProduct, string[]> = {
@@ -49,6 +50,26 @@ const INVITATION_BENEFITS: Record<WaitlistProduct, string[]> = {
     "Your notes and shortlists stay readable after the pass ends",
   ],
 };
+
+const INVITATION_INTEGRATIONS: Record<Exclude<WaitlistProduct, "atlas_research_pass">, string> = {
+  atlas_pro: "API access with 1,000 requests per day, plus MCP and OAuth connections.",
+  atlas_team: "API, MCP and OAuth access, with SSO and SCIM for your team.",
+};
+
+function InvitationBenefits({ product }: { product: WaitlistProduct }) {
+  return (
+    <ul className="type-body-medium text-ink-soft space-y-4">
+      {INVITATION_BENEFITS[product].map((benefit) => (
+        <li key={benefit} className="flex items-start gap-3">
+          <span aria-hidden="true" className="text-civic">
+            ✓
+          </span>
+          <span>{benefit}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function WaitlistRequestPanel({
   initialRequest,
@@ -131,7 +152,7 @@ export function WaitlistRequestPanel({
     <div
       className={
         invited && !request.purchasedAt
-          ? "flex flex-1 flex-col gap-12 lg:grid lg:grid-cols-2 lg:gap-16"
+          ? "flex flex-1 flex-col gap-8 lg:grid lg:grid-cols-2 lg:gap-16"
           : "space-y-8"
       }
     >
@@ -153,30 +174,19 @@ export function WaitlistRequestPanel({
                   : "You’re on the waitlist"}
         </h1>
         {invited && !request.purchasedAt ? (
-          <div className="space-y-8">
+          <div className="lg:space-y-8">
             <p className="type-body-large text-ink-soft">
               {INVITATION_DESCRIPTIONS[request.product]}
             </p>
-            <section aria-label="Included with your plan" className="space-y-4">
+            <section aria-label="Included with your plan" className="hidden space-y-4 lg:block">
               <h2 className="type-title-medium text-ink-strong">What’s included</h2>
-              <ul className="type-body-medium text-ink-soft space-y-4">
-                {INVITATION_BENEFITS[request.product].map((benefit) => (
-                  <li key={benefit} className="flex items-start gap-3">
-                    <span aria-hidden="true" className="text-civic">
-                      ✓
-                    </span>
-                    <span>{benefit}</span>
-                  </li>
-                ))}
-              </ul>
+              <InvitationBenefits product={request.product} />
             </section>
             {request.product !== "atlas_research_pass" ? (
-              <details>
+              <details className="hidden lg:block">
                 <summary className={waitlistSummaryClass}>API and integrations</summary>
                 <p className="type-body-small text-ink-soft pt-3">
-                  {request.product === "atlas_team"
-                    ? "API, MCP and OAuth access, with SSO and SCIM for your team."
-                    : "API access with 1,000 requests per day, plus MCP and OAuth connections."}
+                  {INVITATION_INTEGRATIONS[request.product]}
                 </p>
               </details>
             ) : null}
@@ -222,10 +232,21 @@ export function WaitlistRequestPanel({
         </section>
       ) : null}
       {invited && !request.purchasedAt ? (
-        <section className="lg:border-outline-variant flex flex-1 flex-col gap-8 lg:border-l lg:pl-16">
+        <section className="lg:border-outline-variant flex flex-1 flex-col gap-6 lg:gap-8 lg:border-l lg:pl-16">
           <WaitlistError message={error} />
           <PaymentChoice product={request.product} interval={interval} onChange={setInterval} />
-          <div className="mt-auto space-y-6">
+          <details className="lg:hidden">
+            <summary className={waitlistSummaryClass}>What’s included</summary>
+            <div className="space-y-4 pt-4">
+              <InvitationBenefits product={request.product} />
+              {request.product !== "atlas_research_pass" ? (
+                <p className="type-body-small text-ink-soft">
+                  {INVITATION_INTEGRATIONS[request.product]}
+                </p>
+              ) : null}
+            </div>
+          </details>
+          <div className="mt-auto space-y-4 lg:space-y-6">
             <PaymentCommitment product={request.product} interval={interval} />
             {sameEmail ? (
               <>
