@@ -254,16 +254,14 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   const row = await summary.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
-      border: style.borderTopStyle,
       sideBorderWidth: style.borderLeftWidth,
       width: style.borderTopWidth,
       decoration: style.textDecorationLine,
       chevron: getComputedStyle(element, "::after").rotate,
     };
   });
-  expect(row.border).toBe("solid");
   expect(row.sideBorderWidth).toBe("0px");
-  expect(row.width).toBe("1px");
+  expect(row.width).toBe("0px");
   expect(row.decoration).toBe("none");
   expect(row.chevron).toBe("45deg");
   await summary.tap();

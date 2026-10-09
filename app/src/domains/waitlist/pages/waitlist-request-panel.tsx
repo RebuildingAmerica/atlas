@@ -260,7 +260,6 @@ export function WaitlistRequestPanel({
                 >
                   Choose workspace
                 </Link>
-                <p className="type-body-small text-ink-soft">Review your total before payment.</p>
               </>
             ) : (
               <div className="space-y-6">

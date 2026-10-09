@@ -46,20 +46,19 @@ plan benefits and payment choices occupy separate columns. On mobile, a concise
 introduction and optional “What’s included” disclosure precede billing. Price
 cards show the full charge and billing period, with a savings label for annual
 Pro billing. Student pricing shows its price before expansion; verification
-details remain within the disclosure. These use shared divider rows and
-chevrons, visually distinct from selectable price cards, with full-width touch
-targets and civic keyboard focus.
+details remain within the disclosure. Shared soft surfaces and chevrons
+distinguish these from selectable price cards without separator lines. They
+retain full-width touch targets and civic keyboard focus.
 
 Renewal and cancellation terms stay next to the action without repeating the
-price. “Choose workspace” names the next step for signed-in invitees, followed
-by a short reminder that payment comes after a total review. Anonymous invitees
-can compare prices before creating an account, and the selected interval
-survives sign-in. The final payment review shows the selected charge, renewal,
-cancellation and tax information before Stripe checkout. The action group stays
-at the bottom when the viewport permits and scrolls naturally on short screens,
-allowing for the phone safe area. Fields, buttons, typography, radio states and
-disclosure states reuse shared UI components and tokens. Navigation targets are
-at least 44 pixels.
+price. “Choose workspace” names the next step for signed-in invitees. Anonymous
+invitees can compare prices before creating an account, and the selected
+interval survives sign-in. The final payment review shows the selected charge,
+renewal, cancellation and tax information before Stripe checkout. The action
+group stays at the bottom when the viewport permits and scrolls naturally on
+short screens, allowing for the phone safe area. Fields, buttons, typography,
+radio states and disclosure states reuse shared UI components and tokens.
+Navigation targets are at least 44 pixels.
 
 Confirmation, withdrawal and rejoining focus the resulting heading so keyboard
 and screen reader users can follow the change. Ordinary refreshes preserve

@@ -347,7 +347,7 @@ describe("waitlist screens", () => {
       "Renews annually. Cancel in your account.",
     );
     expect(screen.getByRole("link", { name: "Choose workspace" })).toBeVisible();
-    expect(screen.getByText("Review your total before payment.")).toBeVisible();
+    expect(screen.queryByText("Review your total before payment.")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Payment summary" })).not.toBeInTheDocument();
     expect(screen.queryByText("Any applicable tax is shown at checkout.")).not.toBeInTheDocument();
     const integrationDetails = screen.getByText("API and integrations").closest("details");
