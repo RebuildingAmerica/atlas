@@ -67,7 +67,7 @@ def enable_staff_auth(settings: Settings) -> StaffAuthHeaders:
         passkey-ready sessions.
     """
     settings.multi_user = True
-    settings.operator_allowed_emails = [STAFF_EMAIL]
+    settings.instance_operator_emails = [STAFF_EMAIL]
     configure_test_app_issuer(settings)
     return StaffAuthHeaders(
         ordinary=_assertion_headers("user_visitor", VISITOR_EMAIL),

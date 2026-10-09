@@ -34,7 +34,7 @@ from tests.domains.discovery.api_edges_support import (
 
 
 # A local actor is always staff, so the operator allowlist is never read.
-_LOCAL_SETTINGS = SimpleNamespace(operator_allowed_emails=[])
+_LOCAL_SETTINGS = SimpleNamespace(instance_operator_emails=[])
 
 
 @pytest.mark.asyncio

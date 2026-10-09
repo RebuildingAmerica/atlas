@@ -72,7 +72,8 @@ export async function sendDiscountRequestOperatorNotification({
   verificationId,
 }: DiscountRequestOperatorNotification): Promise<void> {
   const runtime = getAuthRuntimeConfig();
-  const recipients = [...runtime.operatorAllowedEmails].sort();
+  // The people who decide discount requests in the platform admin.
+  const recipients = [...runtime.platformOperatorEmails].sort();
   if (recipients.length === 0) {
     return;
   }

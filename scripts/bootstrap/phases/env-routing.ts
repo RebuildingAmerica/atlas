@@ -329,7 +329,11 @@ const VERCEL_HOSTED_ENV_FILE_SPECS: VercelEnvFileSpec[] = [
   { key: "ATLAS_EDGE_ORIGIN_SECRET" },
   { key: "ATLAS_EMAIL_RESEND_API_KEY" },
   { key: "ATLAS_EMAIL_FROM" },
-  { key: "ATLAS_OPERATOR_ALLOWED_EMAILS" },
+  { key: "ATLAS_INSTANCE_OPERATOR_EMAILS" },
+  // New discount requests are emailed to platform operators, and link to the
+  // platform admin, whose old /admin/* pages the app redirects to.
+  { key: "ATLAS_PLATFORM_OPERATOR_EMAILS" },
+  { key: "ATLAS_ADMIN_PUBLIC_URL" },
   { key: "ATLAS_AUTH_API_KEY_INTROSPECTION_URL" },
   { key: "ATLAS_AUTH_MEMBERSHIP_URL" },
 ];

@@ -70,7 +70,7 @@ const callbackSecret = createHash("sha256")
 const edgeOriginSecret = createHash("sha256")
   .update("atlas-screenshots-harness-edge-origin")
   .digest("hex");
-const operatorAllowedEmails = "person@atlas.test";
+const instanceOperatorEmails = "person@atlas.test";
 
 delete process.env.NO_COLOR;
 delete process.env.FORCE_COLOR;
@@ -100,7 +100,7 @@ const apiWebServer = {
     ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
     ATLAS_DEPLOY_MODE: deployMode,
     ATLAS_EDGE_ORIGIN_SECRET: edgeOriginSecret,
-    ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
+    ATLAS_INSTANCE_OPERATOR_EMAILS: instanceOperatorEmails,
     ATLAS_PUBLIC_URL: appUrl,
     CORS_ORIGINS: `["${appUrl}"]`,
     DATABASE_URL: `sqlite:///${apiDbPath}`,
@@ -135,7 +135,7 @@ const appWebServer = {
     ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
     ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
     ATLAS_EMAIL_PROVIDER: "capture",
-    ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
+    ATLAS_INSTANCE_OPERATOR_EMAILS: instanceOperatorEmails,
     ATLAS_PUBLIC_URL: appUrl,
     ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
     NODE_ENV: "development",

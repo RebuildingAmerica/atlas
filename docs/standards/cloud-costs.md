@@ -70,8 +70,8 @@ The page shows:
 - Cloud Billing export connection state;
 - external fixed-cost accounting state.
 
-The page is operator-only through the same `ATLAS_OPERATOR_ALLOWED_EMAILS`
-access model as hosted review queues.
+The page lives in the platform admin, behind Cloudflare Access, and only people
+on `ATLAS_PLATFORM_OPERATOR_EMAILS` can open it.
 
 ## BigQuery
 

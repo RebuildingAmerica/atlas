@@ -139,11 +139,20 @@ class Settings(BaseSettings):
     ``tools/list`` call before negotiating up via step-up authorization.
     """
 
-    operator_allowed_emails: Annotated[list[str], NoDecode] = Field(
+    instance_operator_emails: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
-        validation_alias="ATLAS_OPERATOR_ALLOWED_EMAILS",
+        validation_alias="ATLAS_INSTANCE_OPERATOR_EMAILS",
     )
-    """Operator emails allowed to access Atlas-maintained review surfaces."""
+    """People who run this instance's editorial tools, from a passkey-ready session.
+
+    Empty means nobody. Every deployment has this role, self-hosted ones too;
+    it never grants a platform action.
+    """
+
+    retired_operator_allowed_emails: str = Field(
+        default="", validation_alias="ATLAS_OPERATOR_ALLOWED_EMAILS"
+    )
+    """The retired single allowlist, read only so startup can refuse it by name."""
 
     platform_operator_emails: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
@@ -162,7 +171,7 @@ class Settings(BaseSettings):
     """Audience tag of the platform admin's Cloudflare Access application."""
 
     @field_validator(
-        "operator_allowed_emails",
+        "instance_operator_emails",
         "platform_operator_emails",
         "auth_jwt_audience",
         "auth_jwt_default_scope",

@@ -35,7 +35,7 @@ const mocks = vi.hoisted(() => ({
       mocks.databaseInstances.push(this);
     }
   },
-  isOperatorAllowedEmail: vi.fn(),
+  isInstanceOperatorEmail: vi.fn(),
   deviceAuthorization: vi.fn((options: Record<string, unknown>) => ({
     kind: "device-authorization",
     options,
@@ -137,7 +137,7 @@ vi.mock("@/domains/access/server/workspace-lookup", () => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
-  isOperatorAllowedEmail: mocks.isOperatorAllowedEmail,
+  isInstanceOperatorEmail: mocks.isInstanceOperatorEmail,
   validateAuthRuntimeConfig: mocks.validateAuthRuntimeConfig,
 }));
 
@@ -153,7 +153,7 @@ describe("auth runtime wiring", () => {
     mocks.emailSend.mockResolvedValue(undefined);
     mocks.databaseInstances.length = 0;
     mocks.getAuthRuntimeConfig.mockReset();
-    mocks.isOperatorAllowedEmail.mockReset();
+    mocks.isInstanceOperatorEmail.mockReset();
     mocks.deviceAuthorization.mockClear();
     mocks.jwt.mockClear();
     mocks.magicLink.mockClear();
@@ -170,7 +170,7 @@ describe("auth runtime wiring", () => {
     mocks.tanstackStartCookies.mockClear();
     mocks.validateAuthRuntimeConfig.mockReset();
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      operatorAllowedEmails: new Set(["operator@atlas.test"]),
+      instanceOperatorEmails: new Set(["operator@atlas.test"]),
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
       captureUrl: "http://127.0.0.1:8025/messages",
@@ -197,7 +197,7 @@ describe("auth runtime wiring", () => {
 
   it("forwards configured API audiences and maps access-token scope claims", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      operatorAllowedEmails: new Set(["operator@atlas.test"]),
+      instanceOperatorEmails: new Set(["operator@atlas.test"]),
       authJwtAudience: "https://atlas.test/mcp",
       authJwtAudiences: ["https://atlas.test/mcp", "https://atlas.test/api"],
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
@@ -251,7 +251,7 @@ describe("auth runtime wiring", () => {
 
   it("binds the access token aud to the resource parameter when supplied (RFC 8707)", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      operatorAllowedEmails: new Set(["operator@atlas.test"]),
+      instanceOperatorEmails: new Set(["operator@atlas.test"]),
       authJwtAudience: "atlas-api",
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
@@ -306,7 +306,7 @@ describe("auth runtime wiring", () => {
 
   it("stamps the signed-in workspace and API audience into the JWT", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      operatorAllowedEmails: new Set(["operator@atlas.test"]),
+      instanceOperatorEmails: new Set(["operator@atlas.test"]),
       authJwtAudience: "https://atlas.test/mcp",
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,

@@ -33,6 +33,37 @@ export function resolveGithubSecretValue(
   return undefined;
 }
 
+/**
+ * Settings the deploy workflows read as GitHub Environment variables rather
+ * than secrets: none of them is secret, and keeping them visible makes a wrong
+ * operator list or admin host easy to spot.
+ */
+export const GITHUB_VARIABLE_KEYS = [
+  "ATLAS_INSTANCE_OPERATOR_EMAILS",
+  "ATLAS_PLATFORM_OPERATOR_EMAILS",
+  "ATLAS_ADMIN_PUBLIC_URL",
+  "ATLAS_PLATFORM_API_URL",
+  "ATLAS_ACCESS_TEAM_DOMAIN",
+  "ATLAS_ACCESS_AUD",
+  "CLOUDFLARE_ACCOUNT_ID",
+] as const;
+
+/**
+ * The GitHub Environment variables bootstrap writes, from the same env files
+ * and with the same precedence as secrets.
+ */
+export function githubVariablesFor(
+  hostedEnv: Map<string, string>,
+  rootEnv: Map<string, string>,
+): Map<string, string> {
+  const variables = new Map<string, string>();
+  for (const key of GITHUB_VARIABLE_KEYS) {
+    const value = resolveGithubSecretValue(key, hostedEnv, rootEnv);
+    if (value) variables.set(key, value);
+  }
+  return variables;
+}
+
 export async function setGithubSecrets(
   githubRepo: string,
   target: HostedDeployTarget,
@@ -93,7 +124,6 @@ export async function setGithubSecrets(
     "ATLAS_AUTH_INTERNAL_SECRET",
     "ATLAS_AUTH_CALLBACK_SECRET",
     "ATLAS_EDGE_ORIGIN_SECRET",
-    "ATLAS_OPERATOR_ALLOWED_EMAILS",
     "ATLAS_EMAIL_RESEND_API_KEY",
     "OPENSTATUS_API_KEY",
     "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
@@ -131,5 +161,14 @@ export async function setGithubSecrets(
     s.stop(
       `GitHub "${environmentName}" Environment secrets configured (${secrets.size} total)`,
     );
+  }
+
+  for (const [key, value] of githubVariablesFor(hostedEnv, rootEnv)) {
+    const result = runCommand(
+      `gh variable set "${key}" --body "${value}" --repo "${githubRepo}" --env "${environmentName}"`,
+    );
+    if (!result.ok) {
+      followUpItems.push(`Set GitHub variable: ${key} (${environmentName})`);
+    }
   }
 }

@@ -36,9 +36,11 @@ export async function runRefundCli(argv: string[]): Promise<void> {
   const args = parseRefundArgs(argv);
   if (args.execute) {
     const operator = args.operator?.trim().toLowerCase();
-    const allowed = getAuthRuntimeConfig().operatorAllowedEmails;
+    // Refunds are platform work: the person must be a platform operator, not
+    // merely someone who runs this instance's editorial tools.
+    const allowed = getAuthRuntimeConfig().platformOperatorEmails;
     if (!operator || !args.reason?.trim() || !allowed.has(operator)) {
-      throw new Error("Execution requires an allowed operator email and a refund reason.");
+      throw new Error("Execution requires a platform operator email and a refund reason.");
     }
     const outcome = await executeOperatorRefund(args.sessionId, operator, args.reason);
     process.stdout.write(

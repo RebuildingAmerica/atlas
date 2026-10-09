@@ -64,7 +64,7 @@ jobs:
           auth-membership-protection-bypass-secret: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
           atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
           atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
-          operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          instance-operator-emails: ${{ vars.ATLAS_INSTANCE_OPERATOR_EMAILS }}
           admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
           admin-signing-public-key: ${{ vars.ATLAS_ADMIN_SIGNING_PUBLIC_KEY }}
           access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
@@ -219,7 +219,7 @@ jobs:
           ATLAS_EDGE_ORIGIN_SECRET: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
           ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
-          ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          ATLAS_INSTANCE_OPERATOR_EMAILS: ${{ vars.ATLAS_INSTANCE_OPERATOR_EMAILS }}
           ATLAS_PUBLIC_URL: http://127.0.0.1:3100
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
