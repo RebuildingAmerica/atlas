@@ -86,6 +86,12 @@ export function AdminDashboardView({
         />
         <AdminActionLink
           action="Manage"
+          href="/editorial/takedowns"
+          label="Take down a profile"
+          detail="Hide a profile when the person asks, and keep it hidden until you restore it."
+        />
+        <AdminActionLink
+          action="Manage"
           href="/editorial/schedules"
           label="Manage discovery schedules"
           detail="Choose which places and issues Atlas re-researches every night, and pause or remove them."

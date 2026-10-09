@@ -67,6 +67,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as WorkspaceOrganizationSsoRouteImport } from './routes/_workspace/organization/sso'
 import { Route as WorkspaceManageSlugRouteImport } from './routes/_workspace/manage/$slug'
 import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists/$id'
+import { Route as WorkspaceEditorialTakedownsRouteImport } from './routes/_workspace/editorial/takedowns'
 import { Route as WorkspaceEditorialSchedulesRouteImport } from './routes/_workspace/editorial/schedules'
 import { Route as WorkspaceEditorialProfileClaimsRouteImport } from './routes/_workspace/editorial/profile-claims'
 import { Route as WorkspaceEditorialDiscoveryReviewsRouteImport } from './routes/_workspace/editorial/discovery-reviews'
@@ -406,6 +407,12 @@ const WorkspaceListsIdRoute = WorkspaceListsIdRouteImport.update({
   path: '/lists/$id',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceEditorialTakedownsRoute =
+  WorkspaceEditorialTakedownsRouteImport.update({
+    id: '/takedowns',
+    path: '/takedowns',
+    getParentRoute: () => WorkspaceEditorialRoute,
+  } as any)
 const WorkspaceEditorialSchedulesRoute =
   WorkspaceEditorialSchedulesRouteImport.update({
     id: '/schedules',
@@ -726,6 +733,7 @@ export interface FileRoutesByFullPath {
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
+  '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -822,6 +830,7 @@ export interface FileRoutesByTo {
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
+  '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -929,6 +938,7 @@ export interface FileRoutesById {
   '/_workspace/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/_workspace/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/_workspace/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
+  '/_workspace/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
   '/_workspace/lists/$id': typeof WorkspaceListsIdRoute
   '/_workspace/manage/$slug': typeof WorkspaceManageSlugRoute
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -1033,6 +1043,7 @@ export interface FileRouteTypes {
     | '/editorial/discovery-reviews'
     | '/editorial/profile-claims'
     | '/editorial/schedules'
+    | '/editorial/takedowns'
     | '/lists/$id'
     | '/manage/$slug'
     | '/organization/sso'
@@ -1129,6 +1140,7 @@ export interface FileRouteTypes {
     | '/editorial/discovery-reviews'
     | '/editorial/profile-claims'
     | '/editorial/schedules'
+    | '/editorial/takedowns'
     | '/lists/$id'
     | '/manage/$slug'
     | '/organization/sso'
@@ -1235,6 +1247,7 @@ export interface FileRouteTypes {
     | '/_workspace/editorial/discovery-reviews'
     | '/_workspace/editorial/profile-claims'
     | '/_workspace/editorial/schedules'
+    | '/_workspace/editorial/takedowns'
     | '/_workspace/lists/$id'
     | '/_workspace/manage/$slug'
     | '/_workspace/organization/sso'
@@ -1725,6 +1738,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceListsIdRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/editorial/takedowns': {
+      id: '/_workspace/editorial/takedowns'
+      path: '/takedowns'
+      fullPath: '/editorial/takedowns'
+      preLoaderRoute: typeof WorkspaceEditorialTakedownsRouteImport
+      parentRoute: typeof WorkspaceEditorialRoute
+    }
     '/_workspace/editorial/schedules': {
       id: '/_workspace/editorial/schedules'
       path: '/schedules'
@@ -2213,6 +2233,7 @@ interface WorkspaceEditorialRouteChildren {
   WorkspaceEditorialDiscoveryReviewsRoute: typeof WorkspaceEditorialDiscoveryReviewsRoute
   WorkspaceEditorialProfileClaimsRoute: typeof WorkspaceEditorialProfileClaimsRoute
   WorkspaceEditorialSchedulesRoute: typeof WorkspaceEditorialSchedulesRoute
+  WorkspaceEditorialTakedownsRoute: typeof WorkspaceEditorialTakedownsRoute
   WorkspaceEditorialIndexRoute: typeof WorkspaceEditorialIndexRoute
 }
 
@@ -2222,6 +2243,7 @@ const WorkspaceEditorialRouteChildren: WorkspaceEditorialRouteChildren = {
     WorkspaceEditorialDiscoveryReviewsRoute,
   WorkspaceEditorialProfileClaimsRoute: WorkspaceEditorialProfileClaimsRoute,
   WorkspaceEditorialSchedulesRoute: WorkspaceEditorialSchedulesRoute,
+  WorkspaceEditorialTakedownsRoute: WorkspaceEditorialTakedownsRoute,
   WorkspaceEditorialIndexRoute: WorkspaceEditorialIndexRoute,
 }
 

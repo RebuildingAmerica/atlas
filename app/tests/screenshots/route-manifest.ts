@@ -328,6 +328,9 @@ export const EXCLUDED_ROUTES = {
   "/editorial/corrections": {
     reason: "Private reporter notes and contact details must not enter screenshot artifacts.",
   },
+  "/editorial/takedowns": {
+    reason: "Takedown reasons can name the person who asked and must not enter screenshots.",
+  },
   "/dashboard": { reason: "Pure redirect to /home." },
   "/reports/$reportId": { reason: "Needs a report reference created at runtime." },
   "/entries/$entryId": { reason: "Pure redirect to the canonical profile URL." },
