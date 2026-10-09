@@ -1,8 +1,28 @@
 import { randomUUID } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { performSignIn, pollLatestMessage } from "../../helpers/auth";
 import { extractFirstUrlFromEmail } from "../../helpers/email";
 import { expectNoAxeViolations } from "../../helpers/accessibility";
+
+async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
+  const heading = await page
+    .getByRole("heading", { name: "You’re invited to Atlas Pro" })
+    .boundingBox();
+  const description = await page.getByText(/^Atlas Pro includes/).boundingBox();
+  const payment = await page.getByLabel("Payment option").boundingBox();
+  const action = await page.getByRole("link", { name: "Continue", exact: true }).boundingBox();
+  if (!heading || !description || !payment || !action) {
+    throw new Error("Invitation content must be visible.");
+  }
+  expect(description.y - heading.y - heading.height).toBeGreaterThanOrEqual(24);
+  expect(payment.y - description.y - description.height).toBeGreaterThanOrEqual(64);
+  expect(action.y - payment.y - payment.height).toBeGreaterThanOrEqual(minimumActionGap);
+  const viewportHeight = await page.evaluate(() => window.innerHeight);
+  expect(viewportHeight - action.y - action.height).toBeGreaterThanOrEqual(31);
+  expect(viewportHeight - action.y - action.height).toBeLessThanOrEqual(33);
+  await expect(page.getByRole("link", { name: "Privacy policy" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Terms of service" })).toHaveCount(0);
+}
 
 test.describe.configure({ mode: "serial" });
 test("public signup, email confirmation, staff invitation and paid onboarding", async ({
@@ -50,12 +70,14 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await page.goto(invitationUrl);
   await expect(page.getByLabel("Payment option")).toBeVisible();
   await expectNoAxeViolations(page, "invited request");
+  await expectInvitationSpacing(page, 80);
   await page.screenshot({ path: "test-results/waitlist-invited.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth))
     .toBe(false);
 
+  await expectInvitationSpacing(page, 120);
   await expectNoAxeViolations(page, "mobile invitation");
   await expect(page.getByRole("navigation", { name: "Signup progress" })).toHaveCount(0);
   await expect(page.getByText(email, { exact: true })).toHaveCount(0);
@@ -64,6 +86,18 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await expect(page.getByRole("button", { name: "Manage invitation" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Browse Atlas", exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.getByRole("link", { name: "Continue", exact: true }).scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+  await expectInvitationSpacing(page, 32);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
+    false,
+  );
+  await page.screenshot({ path: "test-results/waitlist-invited-short-mobile.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("heading", { name: "You’re invited to Atlas Pro" }).scrollIntoViewIfNeeded();
   await page.getByRole("link", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Choose workspace" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Use / })).toBeEnabled();

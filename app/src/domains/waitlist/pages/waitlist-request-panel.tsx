@@ -93,8 +93,8 @@ export function WaitlistRequestPanel({
     }
   }
   return (
-    <div className="space-y-6">
-      <header className="space-y-3" aria-live="polite">
+    <div className={invited && !request.purchasedAt ? "flex flex-1 flex-col gap-12" : "space-y-8"}>
+      <header className="space-y-6" aria-live="polite">
         {!invited || request.purchasedAt ? (
           <p className="type-label-medium text-ink-muted">{productLabel}</p>
         ) : null}
@@ -156,10 +156,10 @@ export function WaitlistRequestPanel({
         </section>
       ) : null}
       {invited && !request.purchasedAt ? (
-        <section className="space-y-4">
+        <section className="flex flex-1 flex-col gap-8">
           {sameEmail ? (
             <>
-              <label className="type-label-large block space-y-2">
+              <label className="type-label-large block space-y-3">
                 <span id="waitlist-interval-label">Payment option</span>
                 <select
                   name="interval"
@@ -204,13 +204,13 @@ export function WaitlistRequestPanel({
                   product: request.product,
                   interval: interval as "monthly" | "yearly" | "four_month" | "weekly" | "once",
                 }}
-                className={`${waitlistPrimaryLinkClass} w-full`}
+                className={`${waitlistPrimaryLinkClass} mt-auto w-full`}
               >
                 Continue
               </Link>
             </>
           ) : (
-            <div className="space-y-3">
+            <div className="flex flex-1 flex-col gap-8">
               {!session.data ? (
                 <p className="type-body-medium text-ink-soft">
                   Use the email address that received your invitation.
@@ -221,7 +221,7 @@ export function WaitlistRequestPanel({
                   Switch to the account on your invitation to continue.
                 </p>
               ) : null}
-              <div className="flex flex-col gap-3">
+              <div className="mt-auto flex flex-col gap-4">
                 {session.data ? (
                   <Button
                     variant="secondary"

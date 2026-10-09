@@ -27,7 +27,7 @@ describe("routes/_onboarding layout", () => {
     ]);
   });
 
-  it("wraps each setup step with a way home and the legal links", async () => {
+  it("keeps setup navigation focused on Atlas and pricing", async () => {
     const routeModule = await import("@/routes/_onboarding");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Component = asRouteStub(routeModule.Route).options.component;
@@ -38,13 +38,7 @@ describe("routes/_onboarding layout", () => {
     expect(screen.getByRole("link", { name: "Atlas" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/pricing");
     expect(screen.getByTestId("router-outlet")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Privacy policy" })).toHaveAttribute(
-      "href",
-      "/privacy",
-    );
-    expect(screen.getByRole("link", { name: "Terms of service" })).toHaveAttribute(
-      "href",
-      "/terms",
-    );
+    expect(screen.queryByRole("link", { name: "Privacy policy" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Terms of service" })).not.toBeInTheDocument();
   });
 });
