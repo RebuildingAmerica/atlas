@@ -1,6 +1,7 @@
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
@@ -160,43 +161,50 @@ export function WaitlistRequestPanel({
           {sameEmail ? (
             <>
               <label className="type-label-large flex flex-col gap-3">
-                <span id="waitlist-interval-label">Payment option</span>
-                <select
-                  name="interval"
-                  aria-labelledby="waitlist-interval-label"
-                  value={interval}
-                  onChange={(event) => {
-                    setInterval(event.target.value);
-                  }}
-                  className={waitlistFieldClass}
-                >
-                  {request.product === "atlas_research_pass" ? (
-                    <>
-                      <option value="weekly">7 days · $4, one payment</option>
-                      <option value="once">30 days · $9, one payment</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="monthly">
-                        Monthly ·{" "}
-                        {request.product === "atlas_pro"
-                          ? "$5/month"
-                          : "$25/month + $8/additional seat"}
-                      </option>
-                      <option value="yearly">
-                        Annual ·{" "}
-                        {request.product === "atlas_pro"
-                          ? "$48/year"
-                          : "$250/year + $80/additional seat"}
-                      </option>
-                      {request.product === "atlas_pro" ? (
-                        <option value="four_month">
-                          Student · $12.80/4 months, verification required
+                <span id="waitlist-interval-label" className="px-4">
+                  Payment option
+                </span>
+                <span className="relative block">
+                  <select
+                    name="interval"
+                    aria-labelledby="waitlist-interval-label"
+                    value={interval}
+                    onChange={(event) => {
+                      setInterval(event.target.value);
+                    }}
+                    className={`${waitlistFieldClass} block appearance-none pr-12`}
+                  >
+                    {request.product === "atlas_research_pass" ? (
+                      <>
+                        <option value="weekly">7 days · $4, one payment</option>
+                        <option value="once">30 days · $9, one payment</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="monthly">
+                          Monthly ·{" "}
+                          {request.product === "atlas_pro"
+                            ? "$5/month"
+                            : "$25/month + $8/additional seat"}
                         </option>
-                      ) : null}
-                    </>
-                  )}
-                </select>
+                        <option value="yearly">
+                          Annual ·{" "}
+                          {request.product === "atlas_pro"
+                            ? "$48/year"
+                            : "$250/year + $80/additional seat"}
+                        </option>
+                        {request.product === "atlas_pro" ? (
+                          <option value="four_month">
+                            Student · $12.80/4 months, verification required
+                          </option>
+                        ) : null}
+                      </>
+                    )}
+                  </select>
+                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                    <ChevronDown aria-hidden="true" className="text-ink-muted size-4" />
+                  </span>
+                </span>
               </label>
               <Link
                 to="/onboarding"

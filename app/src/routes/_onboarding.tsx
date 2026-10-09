@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_onboarding")({
 function SetupLayout() {
   return (
     <div className="bg-surface flex min-h-dvh flex-col">
-      <header className="border-outline-variant bg-surface-container-lowest/90 border-b backdrop-blur">
+      <header className="border-outline-variant bg-surface border-b">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-10 lg:px-16">
           <Link to="/" className="type-label-large text-on-surface no-underline">
             Atlas

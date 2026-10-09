@@ -19,6 +19,27 @@ async function expectInvitationSpacing(page: Page, minimumActionGap: number) {
   expect(payment.y - description.y - description.height).toBeGreaterThanOrEqual(64);
   expect(payment.y - paymentLabel.y - paymentLabel.height).toBeGreaterThanOrEqual(12);
   expect(payment.height).toBeGreaterThanOrEqual(56);
+  const labelTextLeft = await page
+    .getByText("Payment option", { exact: true })
+    .evaluate((label) => {
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      return range.getBoundingClientRect().left;
+    });
+  const textInset = await page.getByLabel("Payment option").evaluate((select) => {
+    const style = getComputedStyle(select);
+    return Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.borderLeftWidth);
+  });
+  expect(Math.abs(labelTextLeft - payment.x - textInset)).toBeLessThanOrEqual(1);
+  const arrow = await page.getByLabel("Payment option").locator("..").locator("svg").boundingBox();
+  if (!arrow) throw new Error("Payment option arrow must be visible.");
+  expect(
+    Math.abs(payment.x + payment.width - arrow.x - arrow.width - textInset),
+  ).toBeLessThanOrEqual(1);
+  expect(Math.abs(arrow.y + arrow.height / 2 - payment.y - payment.height / 2)).toBeLessThanOrEqual(
+    1,
+  );
+
   expect(action.y - payment.y - payment.height).toBeGreaterThanOrEqual(minimumActionGap);
   const viewportHeight = await page.evaluate(() => window.innerHeight);
   expect(viewportHeight - action.y - action.height).toBeGreaterThanOrEqual(31);
