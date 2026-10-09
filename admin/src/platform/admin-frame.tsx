@@ -7,13 +7,14 @@ interface AdminFrameProps {
 
 interface NavItem {
   label: string;
-  to: "/" | "/discounts" | "/cloud-costs";
+  to: "/" | "/discounts" | "/cloud-costs" | "/switches";
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
   { label: "Overview", to: "/" },
   { label: "Discounts", to: "/discounts" },
   { label: "Cloud costs", to: "/cloud-costs" },
+  { label: "Switches", to: "/switches" },
 ];
 
 /**

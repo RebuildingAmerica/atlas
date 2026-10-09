@@ -1,14 +1,26 @@
 // @vitest-environment jsdom
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { discountRequest, passingPosture } from "../fixtures/admin";
+import {
+  discountRequest,
+  passingPosture,
+  platformSwitches,
+} from "../fixtures/admin";
 import { renderWithQueries } from "../helpers/render";
+import { reasonBox } from "../helpers/switches";
 
 const functions = vi.hoisted(() => ({
+  flipSwitch: vi.fn(),
   loadCloudCostPosture: vi.fn(),
   loadDiscountRequests: vi.fn(),
+  loadSwitches: vi.fn(),
   reviewDiscountRequest: vi.fn(),
+}));
+
+vi.mock("@/domains/switches/switches.functions", () => ({
+  flipSwitch: functions.flipSwitch,
+  loadSwitches: functions.loadSwitches,
 }));
 
 vi.mock("@/domains/discounts/discounts.functions", () => ({
@@ -80,6 +92,92 @@ describe("DiscountReviewPage", () => {
 
     expect(
       await screen.findByText("Discount requests could not load."),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("SwitchesPage", () => {
+  it("engages a switch only after the operator confirms, then reloads", async () => {
+    const { SwitchesPage } = await import("@/domains/switches/switches-page");
+    functions.loadSwitches.mockResolvedValue({ items: platformSwitches() });
+    functions.flipSwitch.mockResolvedValue({ engaged: true });
+    renderWithQueries(<SwitchesPage />);
+
+    await screen.findAllByRole("textbox");
+    await userEvent.type(reasonBox(0), "Runaway bill");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Stop discovery spend" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    expect(functions.flipSwitch).not.toHaveBeenCalled();
+    expect(reasonBox(0)).toHaveValue("Runaway bill");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Stop discovery spend" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Engage",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(functions.loadSwitches).toHaveBeenCalledTimes(2);
+    });
+    expect(functions.flipSwitch).toHaveBeenCalledWith({
+      data: { engaged: true, name: "discovery_spend", reason: "Runaway bill" },
+    });
+  });
+
+  it("releases after confirmation and says when the change failed", async () => {
+    const { SwitchesPage } = await import("@/domains/switches/switches-page");
+    functions.loadSwitches.mockResolvedValue({ items: platformSwitches() });
+    functions.flipSwitch.mockRejectedValue(new Error("API down"));
+    renderWithQueries(<SwitchesPage />);
+
+    await screen.findAllByRole("textbox");
+    await userEvent.type(reasonBox(1), "Stripe fixed it");
+    await userEvent.click(screen.getByRole("button", { name: "Reopen sales" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Release",
+      }),
+    );
+
+    expect(await screen.findByText("API down")).toBeInTheDocument();
+  });
+
+  it("holds a switch while its change is saving", async () => {
+    const { SwitchesPage } = await import("@/domains/switches/switches-page");
+    functions.loadSwitches.mockResolvedValue({ items: platformSwitches() });
+    functions.flipSwitch.mockReturnValue(new Promise(() => undefined));
+    renderWithQueries(<SwitchesPage />);
+
+    await screen.findAllByRole("textbox");
+    await userEvent.type(reasonBox(1), "Stripe fixed it");
+    await userEvent.click(screen.getByRole("button", { name: "Reopen sales" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Release",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(reasonBox(1)).toBeDisabled();
+    });
+  });
+
+  it("says when the switches cannot load", async () => {
+    const { SwitchesPage } = await import("@/domains/switches/switches-page");
+    functions.loadSwitches.mockRejectedValue("down");
+    renderWithQueries(<SwitchesPage />);
+
+    expect(
+      await screen.findByText("Switches could not load."),
     ).toBeInTheDocument();
   });
 });

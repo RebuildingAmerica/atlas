@@ -37,4 +37,11 @@ describe("admin routes", () => {
     expect(html).toContain("Cloud costs");
     expect(pageTitle(router)).toBe("Cloud costs | Atlas platform admin");
   });
+
+  it("renders the switches page", async () => {
+    const { html, router } = await renderRoute("/switches");
+
+    expect(html).toContain("Switches");
+    expect(pageTitle(router)).toBe("Switches | Atlas platform admin");
+  });
 });

@@ -8,6 +8,7 @@ from atlas.domains.access.api.mcp_elicitations import router as mcp_elicitations
 from atlas.domains.access.api.org_usage import router as org_usage_router
 from atlas.domains.access.api.org_watch_digest import router as org_watch_digest_router
 from atlas.domains.access.api.org_watches import router as org_watches_router
+from atlas.domains.access.api.service_status import router as service_status_router
 from atlas.domains.access.api.verification import router as verification_router
 from atlas.domains.catalog.api.atproto_identities import router as atproto_identities_router
 from atlas.domains.catalog.api.entries import router as entries_router
@@ -57,6 +58,7 @@ def create_router(*, managed: bool) -> APIRouter:
 
     # Include sub-routers
     router.include_router(auth_health_router, prefix="/api")
+    router.include_router(service_status_router, prefix="/api")
     router.include_router(verification_router, prefix="")
     if managed:
         router.include_router(create_platform_router(), include_in_schema=False)

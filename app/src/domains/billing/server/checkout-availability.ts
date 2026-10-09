@@ -7,11 +7,13 @@ import { getAllowedBillingOffers } from "./billing-offers";
 /**
  * Why a checkout attempt was refused, or `null` when checkout may proceed.
  *
- * `disabled` means an operator turned the funnel off. `catalog_unavailable`
- * means the Atlas API could not serve directory results, so a buyer would pay
- * for a product that cannot answer a query.
+ * `disabled` means an operator turned the funnel off in the deployment's
+ * settings. `paused` means the platform operator paused sales with the
+ * checkout switch. `catalog_unavailable` means the Atlas API could not serve
+ * directory results, so a buyer would pay for a product that cannot answer a
+ * query.
  */
-export type CheckoutBlockReason = "disabled" | "catalog_unavailable";
+export type CheckoutBlockReason = "disabled" | "paused" | "catalog_unavailable";
 
 export interface CheckoutAvailability {
   available: boolean;
@@ -24,7 +26,14 @@ interface CachedProbe {
   expiresAt: number;
 }
 
+interface CachedCheck {
+  /** Returns the cached answer, or asks the API once for every waiting caller. */
+  read: () => Promise<boolean>;
+  reset: () => void;
+}
+
 const PROBE_PATH = "/entities?limit=1";
+const SERVICE_STATUS_PATH = "/service-status";
 const PROBE_TIMEOUT_MS = 2500;
 const HEALTHY_CACHE_MS = 30_000;
 // A negative answer expires sooner than a positive one. One slow cold start
@@ -32,10 +41,45 @@ const HEALTHY_CACHE_MS = 30_000;
 // gets re-probed cheaply.
 const UNHEALTHY_CACHE_MS = 5_000;
 
-let cachedProbe: CachedProbe | null = null;
-// Concurrent callers share one probe. Without this a slow API gets a probe
-// per request from the busiest anonymous route on the site.
-let inFlightProbe: Promise<boolean> | null = null;
+/**
+ * Wraps an API check in the cache every checkout probe needs.
+ *
+ * Concurrent callers share one request. Without this a slow API gets a probe
+ * per request from the busiest anonymous route on the site.
+ */
+function cachedCheck(run: () => Promise<boolean>): CachedCheck {
+  let cached: CachedProbe | null = null;
+  let inFlight: Promise<boolean> | null = null;
+  return {
+    read() {
+      if (cached && cached.expiresAt > Date.now()) {
+        return Promise.resolve(cached.healthy);
+      }
+      if (inFlight) {
+        return inFlight;
+      }
+      inFlight = run()
+        .then((healthy) => {
+          // Sampled after the request, not before it, so a 2.5s probe does not
+          // spend a tenth of its own cache window waiting.
+          const ttl = healthy ? HEALTHY_CACHE_MS : UNHEALTHY_CACHE_MS;
+          cached = { healthy, expiresAt: Date.now() + ttl };
+          return healthy;
+        })
+        .finally(() => {
+          inFlight = null;
+        });
+      return inFlight;
+    },
+    reset() {
+      cached = null;
+      inFlight = null;
+    },
+  };
+}
+
+const catalogCheck = cachedCheck(runCatalogProbe);
+const checkoutSwitchCheck = cachedCheck(runCheckoutSwitchProbe);
 
 /**
  * Returns whether an operator has enabled the paid checkout funnel.
@@ -50,14 +94,14 @@ export function isCheckoutEnabled(): boolean {
 }
 
 /**
- * Clears the memoized catalog probe.
+ * Clears the memoized checkout probes.
  *
  * Exported for tests and for callers that need a probe after a known
- * deploy transition rather than up to PROBE_CACHE_MS later.
+ * deploy transition rather than up to HEALTHY_CACHE_MS later.
  */
 export function resetCatalogProbeCache(): void {
-  cachedProbe = null;
-  inFlightProbe = null;
+  catalogCheck.reset();
+  checkoutSwitchCheck.reset();
 }
 
 /**
@@ -69,30 +113,35 @@ export function resetCatalogProbeCache(): void {
  *
  * @returns True when the API returned at least one catalog entry.
  */
-export async function probeCatalogHealth(): Promise<boolean> {
-  if (cachedProbe && cachedProbe.expiresAt > Date.now()) {
-    return cachedProbe.healthy;
-  }
-  if (inFlightProbe) {
-    return inFlightProbe;
-  }
-
-  inFlightProbe = runCatalogProbe()
-    .then((healthy) => {
-      // Sampled after the request, not before it, so a 2.5s probe does not
-      // spend a tenth of its own cache window waiting.
-      const ttl = healthy ? HEALTHY_CACHE_MS : UNHEALTHY_CACHE_MS;
-      cachedProbe = { healthy, expiresAt: Date.now() + ttl };
-      return healthy;
-    })
-    .finally(() => {
-      inFlightProbe = null;
-    });
-
-  return inFlightProbe;
+export function probeCatalogHealth(): Promise<boolean> {
+  return catalogCheck.read();
 }
 
-async function runCatalogProbe(): Promise<boolean> {
+/**
+ * Asks the Atlas API whether the platform operator has paused sales.
+ *
+ * Any failure counts as paused: selling while the switch cannot be read
+ * could take money the operator meant to stop.
+ *
+ * @returns True when checkout is open.
+ */
+export function probeCheckoutOpen(): Promise<boolean> {
+  return checkoutSwitchCheck.read();
+}
+
+function runCatalogProbe(): Promise<boolean> {
+  return runApiProbe(PROBE_PATH, "catalog", hasAtLeastOneEntry);
+}
+
+function runCheckoutSwitchProbe(): Promise<boolean> {
+  return runApiProbe(SERVICE_STATUS_PATH, "checkout switch", isCheckoutOpen);
+}
+
+async function runApiProbe(
+  path: string,
+  label: string,
+  accepts: (payload: unknown) => boolean,
+): Promise<boolean> {
   let probeUrl: string;
   try {
     // Resolved outside the request try/catch. A missing
@@ -102,9 +151,9 @@ async function runCatalogProbe(): Promise<boolean> {
     probeUrl = `${getServerApiBaseUrl({
       ATLAS_PUBLIC_URL: process.env.ATLAS_PUBLIC_URL,
       ATLAS_SERVER_API_PROXY_TARGET: process.env.ATLAS_SERVER_API_PROXY_TARGET,
-    })}${PROBE_PATH}`;
+    })}${path}`;
   } catch (error) {
-    console.error("Atlas checkout catalog probe is misconfigured.", error);
+    console.error(`Atlas checkout ${label} probe is misconfigured.`, error);
     return false;
   }
 
@@ -121,16 +170,25 @@ async function runCatalogProbe(): Promise<boolean> {
       return false;
     }
     const payload: unknown = await response.json();
-    return hasAtLeastOneEntry(payload);
+    return accepts(payload);
   } catch (error) {
     // Failing closed is right; failing closed silently is not. Atlas has no
     // error reporting, so without this line "why can nobody buy" has no
     // answer anywhere.
-    console.error("Atlas checkout catalog probe failed.", error);
+    console.error(`Atlas checkout ${label} probe failed.`, error);
     return false;
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isCheckoutOpen(payload: unknown): boolean {
+  return (
+    payload !== null &&
+    typeof payload === "object" &&
+    "checkout_open" in payload &&
+    payload.checkout_open === true
+  );
 }
 
 function hasAtLeastOneEntry(payload: unknown): boolean {
@@ -160,7 +218,14 @@ export async function resolveCheckoutAvailability(): Promise<CheckoutAvailabilit
   if (allowedOffers.length === 0) {
     return { available: false, reason: "disabled", allowedOffers: [] };
   }
-  if (!(await probeCatalogHealth())) {
+  const [checkoutOpen, catalogHealthy] = await Promise.all([
+    probeCheckoutOpen(),
+    probeCatalogHealth(),
+  ]);
+  if (!checkoutOpen) {
+    return { available: false, reason: "paused", allowedOffers: [] };
+  }
+  if (!catalogHealthy) {
     return { available: false, reason: "catalog_unavailable", allowedOffers: [] };
   }
   return { available: true, reason: null, allowedOffers };

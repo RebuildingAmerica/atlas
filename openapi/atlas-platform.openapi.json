@@ -180,6 +180,105 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "PlatformSwitchCollectionResponse": {
+        "description": "Every platform switch.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformSwitchResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PlatformSwitchCollectionResponse",
+        "type": "object"
+      },
+      "PlatformSwitchResponse": {
+        "description": "One switch and its last change.",
+        "properties": {
+          "changed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it last changed",
+            "title": "Changed At"
+          },
+          "changed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who last changed it",
+            "title": "Changed By"
+          },
+          "engaged": {
+            "description": "Whether the switch is engaged",
+            "title": "Engaged",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "discovery_spend or checkout",
+            "enum": [
+              "discovery_spend",
+              "checkout"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it last changed; null if never flipped",
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "name",
+          "engaged"
+        ],
+        "title": "PlatformSwitchResponse",
+        "type": "object"
+      },
+      "PlatformSwitchUpdateRequest": {
+        "description": "The new state of a switch, and why.",
+        "properties": {
+          "engaged": {
+            "title": "Engaged",
+            "type": "boolean"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "engaged",
+          "reason"
+        ],
+        "title": "PlatformSwitchUpdateRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -615,6 +714,85 @@
           }
         },
         "summary": "Update discount verification",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/platform/switches": {
+      "get": {
+        "description": "Return every switch, its state, and who last changed it and why.",
+        "operationId": "listPlatformSwitches",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSwitchCollectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List platform switches",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/platform/switches/{name}": {
+      "put": {
+        "description": "Engage or release one switch. discovery_spend stops every discovery run from spending; checkout stops the pricing page from selling. Takes effect within a minute.",
+        "operationId": "setPlatformSwitch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "enum": [
+                "discovery_spend",
+                "checkout"
+              ],
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlatformSwitchUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSwitchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Engage or release a platform switch",
         "tags": [
           "platform"
         ]

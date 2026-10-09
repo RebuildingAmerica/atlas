@@ -157,6 +157,8 @@ export const CHECKOUT_UNAVAILABLE_FALLBACK = "Atlas is not accepting payments ri
 
 const CHECKOUT_BLOCK_MESSAGES: Record<CheckoutBlockReason, string> = {
   disabled: "Atlas is not selling subscriptions right now.",
+  paused:
+    "Atlas has paused new purchases for a short while. Anything you have already bought keeps working.",
   catalog_unavailable:
     "Atlas cannot reach the civic directory right now, so checkout is paused. Nobody should pay for a directory that cannot answer a query.",
 };
