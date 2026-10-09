@@ -3,6 +3,7 @@ import {
   redirectIfLocalSession,
   requireAtlasSession,
   requireIncompleteAtlasSession,
+  requireInstanceOperatorSession,
   requireReadyAtlasSession,
 } from "@/domains/access/server/route-guard";
 import { readRouterMocks } from "@/../tests/helpers/router-harness";
@@ -168,6 +169,40 @@ describe("route-guard", () => {
     expect(readRouterMocks().redirect).toHaveBeenCalledWith(
       expect.objectContaining({ to: "/account" }),
     );
+  });
+
+  describe("requireInstanceOperatorSession", () => {
+    it("lets a ready instance operator through", async () => {
+      const session = { accountReady: true, hasPasskey: true, isInstanceOperator: true };
+      mocks.getAtlasSession.mockResolvedValue(session);
+
+      await expect(requireInstanceOperatorSession("/editorial")).resolves.toBe(session);
+    });
+
+    it("shows anyone else the not-found page, so editorial tools do not advertise themselves", async () => {
+      mocks.getAtlasSession.mockResolvedValue({
+        accountReady: true,
+        hasPasskey: true,
+        isInstanceOperator: false,
+      });
+
+      await expect(requireInstanceOperatorSession("/editorial")).rejects.toMatchObject({
+        isNotFound: true,
+      });
+    });
+
+    it("sends an operator without a passkey to setup first", async () => {
+      mocks.getAtlasSession.mockResolvedValue({
+        accountReady: false,
+        hasPasskey: false,
+        isInstanceOperator: true,
+      });
+
+      await expect(requireInstanceOperatorSession("/editorial")).rejects.toThrow("Redirect");
+      expect(readRouterMocks().redirect).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/setup" }),
+      );
+    });
   });
 
   describe("redirectIfLocalSession", () => {

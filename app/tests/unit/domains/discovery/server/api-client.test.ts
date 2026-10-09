@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
-import { requestAtlasApi, requestAtlasService } from "@/domains/discovery/server/api-client";
+import {
+  requestAtlasApi,
+  requestAtlasApiWithoutBody,
+  requestAtlasService,
+} from "@/domains/discovery/server/api-client";
 
 const mocks = vi.hoisted(() => ({
   requireReadyAtlasSessionState: vi.fn(),
@@ -118,6 +122,24 @@ describe("api-client", () => {
         },
       }),
     );
+  });
+
+  it("calls a route that answers with no body without reading one", async () => {
+    vi.stubEnv("ATLAS_MULTI_USER", "false");
+    mocks.requireReadyAtlasSessionState.mockResolvedValue({});
+    mocks.getServerApiBaseUrl.mockReturnValue("https://api.atlas.test");
+    const json = vi.fn();
+    fetchSpy.mockResolvedValue({ ok: true, status: 204, json } as unknown as Response);
+
+    await expect(
+      requestAtlasApiWithoutBody("/discovery-schedules/s-1", { method: "DELETE" }),
+    ).resolves.toBeUndefined();
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://api.atlas.test/discovery-schedules/s-1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(json).not.toHaveBeenCalled();
   });
 
   it("throws a classifiable generic error for an unexpected non-ok status", async () => {

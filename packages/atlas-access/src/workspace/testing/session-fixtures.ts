@@ -61,6 +61,7 @@ export function createAtlasSessionFixture(
   return {
     accountReady: true,
     hasPasskey: true,
+    isInstanceOperator: false,
     isLocal: false,
     passkeyCount: 1,
     session: { id: "session_123" },

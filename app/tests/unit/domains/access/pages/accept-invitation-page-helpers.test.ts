@@ -30,6 +30,7 @@ describe("resolveInvitationDecision", () => {
       accountReady: true,
       hasPasskey: true,
       isLocal: false,
+      isInstanceOperator: false,
       passkeyCount: 1,
       session: { id: "sess_1" },
       user: {

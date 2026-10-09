@@ -85,6 +85,7 @@ export const buildController = (overrides = {}): OrganizationPageController => {
       accountReady: true,
       hasPasskey: true,
       isLocal: false,
+      isInstanceOperator: false,
       passkeyCount: 1,
       session: { id: "session_1" },
       user: {

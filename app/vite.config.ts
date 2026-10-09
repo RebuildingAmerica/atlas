@@ -47,17 +47,28 @@ const PLATFORM_ADMIN_PAGES: Record<string, string> = {
   "/admin/discounts": "/discounts",
 };
 
+/**
+ * Every old /admin address lands somewhere real. The instance's editorial
+ * pages moved to /editorial, so "admin" can mean only the platform admin;
+ * the more specific platform rules win over this catch-all.
+ */
+const EDITORIAL_REDIRECTS: NitroRouteRules = {
+  "/admin": { redirect: { to: "/editorial", status: 308 } },
+  "/admin/**": { redirect: { to: "/editorial/**", status: 308 } },
+};
+
 export function buildHostedProxyRouteRules(env: HostedAtlasEnv): NitroRouteRules {
   const docsOrigin = normalizeDocsOrigin(env.ATLAS_DOCS_URL);
   const apiOrigin = normalizeApiProxyOrigin(env);
   const adminOrigin = env.ATLAS_ADMIN_PUBLIC_URL?.trim()
     ? new URL(env.ATLAS_ADMIN_PUBLIC_URL.trim()).origin
     : null;
-  const rules: NitroRouteRules = {};
+  const rules: NitroRouteRules = { ...EDITORIAL_REDIRECTS };
 
   if (adminOrigin) {
     for (const [from, to] of Object.entries(PLATFORM_ADMIN_PAGES)) {
       rules[from] = { redirect: { to: `${adminOrigin}${to}`, status: 308 } };
+      rules[`${from}/**`] = { redirect: { to: `${adminOrigin}${to}/**`, status: 308 } };
     }
   }
 

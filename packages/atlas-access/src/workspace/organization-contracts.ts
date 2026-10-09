@@ -66,6 +66,12 @@ export interface AtlasWorkspaceState {
  */
 export interface AtlasSessionPayload {
   isLocal: boolean;
+  /**
+   * Whether this person runs the instance's editorial tools: always in local
+   * mode, otherwise when their email is on ATLAS_INSTANCE_OPERATOR_EMAILS. It
+   * decides what the app shows; the API checks the same list on every call.
+   */
+  isInstanceOperator: boolean;
   accountReady: boolean;
   hasPasskey: boolean;
   passkeyCount: number;

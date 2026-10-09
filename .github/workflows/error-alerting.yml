@@ -150,7 +150,7 @@ jobs:
             '{
               displayName: "Atlas visitor reports",
               documentation: {
-                content: "A visitor reported a profile or source. Review it in the correction inbox: https://atlas.rebuildingus.org/admin/corrections",
+                content: "A visitor reported a profile or source. Review it in the correction inbox: https://atlas.rebuildingus.org/editorial/corrections",
                 mimeType: "text/markdown"
               },
               conditions: [{

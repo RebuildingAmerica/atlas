@@ -22,6 +22,7 @@ describe("routes/robots.txt", () => {
     expect(body).toContain("Disallow: /api/");
     expect(body).toContain("Disallow: /sign-in");
     expect(body).toContain("Disallow: /account");
+    expect(body).toContain("Disallow: /editorial");
     expect(body).toContain("Sitemap: https://preview.atlas.example/sitemap.xml");
     expect(body).not.toContain("https://atlas.rebuildingus.org/sitemap.xml");
   });

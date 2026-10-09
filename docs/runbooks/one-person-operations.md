@@ -10,12 +10,12 @@ Every target below is sized to one person's capacity.
 
 ## What reaches the operator without anyone watching
 
-| Signal                                                       | How it arrives                                                  | Set up by                                               |
-| ------------------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------- |
-| The API logs an error                                        | Email, at most every 5 minutes                                  | Error Alerting workflow, "Atlas API errors" policy      |
-| A visitor reports a profile or source                        | Email, at most every 5 minutes, linking to `/admin/corrections` | Error Alerting workflow, "Atlas visitor reports" policy |
-| The public site, sitemap, catalog, or search stops answering | Failed hourly run notification from GitHub                      | `production-canary.yml`                                 |
-| A Stripe webhook keeps failing, or a dispute opens           | Stripe's own email to the account owner                         | Stripe account notification settings                    |
+| Signal                                                       | How it arrives                                                      | Set up by                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------- |
+| The API logs an error                                        | Email, at most every 5 minutes                                      | Error Alerting workflow, "Atlas API errors" policy      |
+| A visitor reports a profile or source                        | Email, at most every 5 minutes, linking to `/editorial/corrections` | Error Alerting workflow, "Atlas visitor reports" policy |
+| The public site, sitemap, catalog, or search stops answering | Failed hourly run notification from GitHub                          | `production-canary.yml`                                 |
+| A Stripe webhook keeps failing, or a dispute opens           | Stripe's own email to the account owner                             | Stripe account notification settings                    |
 
 The Error Alerting workflow needs the deploy service account to hold the
 monitoring roles. `scripts/grant-monitoring-role.sh` grants them and dispatches
@@ -38,7 +38,8 @@ A report's reporter can see its status at `/reports/<reference>`.
 
 ## Weekly routine (30 minutes)
 
-1. Open `/admin/corrections`. Close or act on everything older than its target.
+1. Open `/editorial/corrections`. Close or act on everything older than its
+   target.
 2. Check the Stripe dashboard for failed webhook deliveries and open disputes.
 3. Check the last seven `production-canary.yml` runs.
 4. Open two promoted Las Vegas profiles on a phone and follow their official
@@ -77,8 +78,8 @@ Reverse both steps on return, after clearing the correction inbox.
 - **A release hurts visitors:** roll back with the Roll Back Production
   workflow; see `docs/runbooks/vercel-incident-response.md`.
 - **Wrong data is shown confidently on a promoted profile:** stage a correction
-  in `/admin/discovery-reviews` and approve it, or reject the record's public
-  change. Note it in the pilot evidence board.
+  in `/editorial/discovery-reviews` and approve it, or reject the record's
+  public change. Note it in the pilot evidence board.
 - **A payment went wrong:** preview the refund with
   `cd app && pnpm billing:refund --session <cs_…>`, then run it with
   `--operator <email> --reason "<why>" --execute`. Confirm access was revoked.

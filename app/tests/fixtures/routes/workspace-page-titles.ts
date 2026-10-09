@@ -12,21 +12,26 @@ export interface StaticRouteHead {
 // Every workspace page names itself, so a browser tab and a screen reader
 // announce where the organizer is instead of an empty title.
 export const WORKSPACE_PAGE_TITLES: [string, () => Promise<RouteWithHead>, string][] = [
-  ["admin", () => import("@/routes/_workspace/admin/index"), "Admin | Atlas"],
+  ["editorial", () => import("@/routes/_workspace/editorial/index"), "Editorial | Atlas"],
   [
-    "admin corrections",
-    () => import("@/routes/_workspace/admin/corrections"),
-    "Correction inbox | Atlas admin",
+    "editorial corrections",
+    () => import("@/routes/_workspace/editorial/corrections"),
+    "Correction inbox | Atlas editorial",
   ],
   [
-    "admin editorial review",
-    () => import("@/routes/_workspace/admin/discovery-reviews"),
-    "Editorial review | Atlas admin",
+    "editorial discovery review",
+    () => import("@/routes/_workspace/editorial/discovery-reviews"),
+    "Discovery review | Atlas editorial",
   ],
   [
-    "admin profile claims",
-    () => import("@/routes/_workspace/admin/profile-claims"),
-    "Profile claims | Atlas admin",
+    "editorial profile claims",
+    () => import("@/routes/_workspace/editorial/profile-claims"),
+    "Profile claims | Atlas editorial",
+  ],
+  [
+    "editorial schedules",
+    () => import("@/routes/_workspace/editorial/schedules"),
+    "Discovery schedules | Atlas editorial",
   ],
   ["feed", () => import("@/routes/_workspace/feed"), "Feed | Atlas"],
   ["research lists", () => import("@/routes/_workspace/lists/index"), "Research lists | Atlas"],
