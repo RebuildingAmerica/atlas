@@ -23,6 +23,14 @@ vi.mock("@/domains/catalog/pages/profiles/detail/person-profile-page", () => ({
   ),
 }));
 
+// A person route never renders these; mocking them keeps the cold import small.
+vi.mock("@/domains/catalog/pages/profiles/detail/org-profile-page", () => ({
+  OrgProfilePage: () => null,
+}));
+vi.mock("@/domains/catalog/pages/profiles/detail/non-actor-profile-page", () => ({
+  NonActorProfilePage: () => null,
+}));
+
 vi.mock("@/domains/catalog/server/profiles/profile-loaders", () => ({
   loadProfileBySlug: vi.fn(),
   loadProfileConnections: vi.fn(),

@@ -16,6 +16,14 @@ vi.mock("@/domains/catalog/components/entries/entry-detail", () => ({
   ),
 }));
 
+// A non-actor route never renders these; mocking them keeps the cold import small.
+vi.mock("@/domains/catalog/pages/profiles/detail/person-profile-page", () => ({
+  PersonProfilePage: () => null,
+}));
+vi.mock("@/domains/catalog/pages/profiles/detail/org-profile-page", () => ({
+  OrgProfilePage: () => null,
+}));
+
 vi.mock("@/domains/catalog/server/profiles/profile-loaders", () => ({
   loadProfileBySlug: vi.fn(),
 }));
