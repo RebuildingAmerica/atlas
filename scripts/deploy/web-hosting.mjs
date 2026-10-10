@@ -18,6 +18,10 @@ import {
 } from "./web-release.mjs";
 
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
+import {
+  inspectGoogleBilling,
+  bootstrapGoogleBilling,
+} from "./web-google-cloud.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 function run(binary, args, options = {}) {
@@ -71,6 +75,11 @@ export async function doctor({
     return { accountId: account, workersPlan: "free" };
   });
   await check("google-cloud", async () => {
+    const billing = inspectGoogleBilling({
+      project: required("GCP_PROJECT_ID"),
+      account: process.env.ATLAS_GCP_ACCOUNT,
+      tool,
+    });
     const args = [
       "run",
       "services",
@@ -81,7 +90,10 @@ export async function doctor({
     ];
     if (process.env.ATLAS_GCP_ACCOUNT)
       args.push(`--account=${process.env.ATLAS_GCP_ACCOUNT}`);
-    return { services: tool("gcloud", args).split("\n").filter(Boolean) };
+    return {
+      ...billing,
+      services: tool("gcloud", args).split("\n").filter(Boolean),
+    };
   });
   await check("vercel-inventory", async () => {
     required("VERCEL_ORG_ID");
@@ -218,6 +230,18 @@ async function main() {
     const result = await doctor({ target });
     console.log(JSON.stringify(result, null, 2));
     if (result.status !== "pass") process.exitCode = 1;
+  } else if (command === "bootstrap-google-billing") {
+    console.log(
+      JSON.stringify(
+        bootstrapGoogleBilling({
+          project: required("GCP_PROJECT_ID"),
+          account: required("ATLAS_GCP_ACCOUNT"),
+          tool: run,
+        }),
+        null,
+        2,
+      ),
+    );
   } else if (command === "prepare") prepare(args, target);
   else if (command === "assess") {
     const file = argument(args, "--evidence");
@@ -226,7 +250,10 @@ async function main() {
     const result = assessMigration(JSON.parse(readFileSync(file, "utf8")));
     console.log(JSON.stringify(result, null, 2));
     if (!result.selected) process.exitCode = 1;
-  } else throw new Error("Use doctor, prepare, or assess.");
+  } else
+    throw new Error(
+      "Use doctor, prepare, assess, or bootstrap-google-billing.",
+    );
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
   main().catch((error) => {

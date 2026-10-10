@@ -26,6 +26,7 @@ import {
 
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
 import { prepareCloudflareOutput } from "./web-cloudflare-output.mjs";
+import { inspectGoogleBilling } from "./web-google-cloud.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
@@ -420,6 +421,12 @@ async function publish(directory, target, architecture) {
     readFileSync(required("ATLAS_WEB_EVIDENCE_FILE"), "utf8"),
   );
   assertCandidateBudget(evidence, architecture);
+  if (architecture === "hybrid")
+    inspectGoogleBilling({
+      project: required("GCP_PROJECT_ID"),
+      account: process.env.ATLAS_GCP_ACCOUNT,
+      tool,
+    });
   if (evidence.cloudflare.accountId !== required("CLOUDFLARE_ACCOUNT_ID"))
     throw new Error(
       "Quota evidence belongs to a different Cloudflare account.",

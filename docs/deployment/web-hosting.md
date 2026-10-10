@@ -114,12 +114,29 @@ Read-only provider inventory on 2026-10-10 established:
   account contains the unrelated `curfew-sync-staging` Worker. Hyperdrive has no
   configurations; a SQL API query returned zero Hyperdrive queries over the same
   14-day window. The account-wide billing usage endpoint returns HTTP 403 for
-  this OAuth profile. Workers account usage and scoped CI credentials are still
-  required; authentication does not establish access to billing usage.
+  this OAuth profile. The **Rebuilding America Chrome profile** can read the
+  dashboard: it reports zero account requests, CPU time, observability events
+  and Workers build minutes for October 1–10, with zero requests today against
+  the 100,000 daily limit. This is a month-to-date dashboard observation, not a
+  complete 14-day daily export. The existing Worker's selected September 26–
+  October 10 UTC chart says zero invocations and “No data”; that empty chart
+  does not independently prove daily zeros. The account also contains the
+  unrelated `lvbt-website` Pages project. Its latest production deployment has
+  `uses_functions: false`, confirmed through `cf pages list`. Preserve both
+  unrelated applications. Scoped CI credentials and repeatable quota telemetry
+  are still required.
 - Four Google Cloud projects share Atlas's billing account. Their usage must be
   included when determining remaining free allowances. The existing `atlas-web`
   Cloud Run service predates this migration; the publisher uses separate target
-  services.
+  services. The linked billing account now reports **`open: false`**. Although
+  the project reports `billingEnabled: true`, Artifact Registry rejects reads
+  with `BILLING_DISABLED`. Hybrid provisioning is blocked. `web:doctor` and the
+  hybrid publisher now inspect the linked account itself, without changing the
+  CLI's global account or project. Restoring billing is an operator action;
+  these commands never reopen or relink billing accounts.
+- Two read-only requests to the existing production API's `/health` endpoint
+  returned HTTP 500 and 503. The cause has not been established; successful API
+  operation is required before either candidate can pass hosted journeys.
 
 The required request/response workload baseline, shared account cost/quota
 measurements and deployed acceptance remain release blockers. Provider login
@@ -136,7 +153,7 @@ observation window, production cutover, rollback readiness or subscription
 cancellation is claimed.
 
 The final app suite passed 4,167 tests with 100% statement, branch, function and
-line coverage. All 22 repository lint/type-check tasks, 127 deployment tests and
+line coverage. All 22 repository lint/type-check tasks, 135 deployment tests and
 159 bootstrap tests passed without changing coverage thresholds. These are local
 checks; no remote CI run or hosted acceptance has been completed for this
 branch.
@@ -184,6 +201,7 @@ remaining acceptance gates still apply.
 
 ```sh
 pnpm web:doctor --target staging
+pnpm web:bootstrap-google-billing --target staging
 pnpm web:baseline --scope <team> --project <project> --since <ISO> --until <ISO> --output .atlas/web/baseline.json
 pnpm web:types
 pnpm web:types --check
@@ -229,7 +247,29 @@ and production candidates only from release tags. Pull requests never receive
 deployment secrets. Existing GitHub Actions dependency/build caches remain in
 use.
 
-First synchronize the trusted verifier's Access service credentials:
+For hybrid, after the operator restores the existing Google billing account,
+prepare the existing `atlas-deploy` identity for the account-status check:
+
+```sh
+pnpm web:bootstrap-google-billing --target staging
+```
+
+This requires explicit `GCP_PROJECT_ID` and `ATLAS_GCP_ACCOUNT`. It verifies the
+project's linked account is open, discovers that account's organization, and
+creates/reuses `atlasWebBillingStatusReader` with exactly
+`billing.accounts.get`. It binds that custom role only on the linked billing
+account and only to `atlas-deploy@<project>.iam.gserviceaccount.com`, then
+verifies the role and binding. It never grants billing management, payment
+information or account-wide cost-reading permissions. A broader existing role,
+closed account, absent organization, missing deployment identity or insufficient
+operator permissions blocks setup explicitly. Google requires
+[organization-level custom roles for billing accounts](https://docs.cloud.google.com/billing/docs/how-to/custom-roles);
+project-level roles cannot satisfy this guard. This setup is idempotent, and CI
+then reads status through its existing workload identity. Effective CI access
+still needs a real trusted workflow run; local command tests do not establish
+remote permissions.
+
+Synchronize the trusted verifier's Access service credentials:
 
 ```sh
 pnpm web:bootstrap-access --target staging
