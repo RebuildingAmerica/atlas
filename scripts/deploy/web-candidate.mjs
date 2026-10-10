@@ -27,6 +27,7 @@ import {
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
 import { prepareCloudflareOutput } from "./web-cloudflare-output.mjs";
 import { inspectGoogleBilling } from "./web-google-cloud.mjs";
+import { assertWebObserverConfiguration } from "./web-observe.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
@@ -417,6 +418,11 @@ async function bootstrapAccess(target) {
 
 async function publish(directory, target, architecture) {
   const runtime = loadWebRuntime(runtimeInput());
+  assertWebObserverConfiguration(runtime, {
+    clientId: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
+    clientSecret: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
+    hostedSecret: process.env.ATLAS_HOSTED_E2E_SECRET,
+  });
   const evidence = JSON.parse(
     readFileSync(required("ATLAS_WEB_EVIDENCE_FILE"), "utf8"),
   );

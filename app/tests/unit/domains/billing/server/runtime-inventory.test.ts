@@ -113,6 +113,24 @@ describe("read-only billing inventory in the deployed runtime", () => {
     expect(JSON.stringify(checks)).not.toContain("whsec_example_credential");
   });
 
+  test("a protected hosting candidate inspects the preserved canonical webhook without creating another endpoint", async () => {
+    const checks = await inspectRuntimeBilling(provider(), {
+      ...runtime,
+      ATLAS_PUBLIC_URL: "https://candidate.atlas.example.test",
+      ATLAS_WEB_CANONICAL_URL: runtime.ATLAS_PUBLIC_URL,
+    });
+    expect(checks).toContainEqual({ name: "Webhook endpoint metadata", status: "pass" });
+    const invalid = await inspectRuntimeBilling(provider(), {
+      ...runtime,
+      ATLAS_WEB_CANONICAL_URL: "invalid",
+    });
+    expect(invalid).toContainEqual({
+      name: "Webhook endpoint metadata",
+      status: "fail",
+      reasonCodes: ["webhook_public_url_invalid"],
+    });
+  });
+
   test("fails closed when the account cannot charge or the portal cannot cancel", async () => {
     const checks = await inspectRuntimeBilling(
       provider({ chargesEnabled: false, portalCancel: false }),

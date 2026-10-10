@@ -92,7 +92,12 @@ async function inspectWebhook(
   const reasonCodes: string[] = [];
   let endpointUrl: string | undefined;
   try {
-    endpointUrl = new URL("/api/stripe/webhook", env.ATLAS_PUBLIC_URL).toString();
+    // Hosting candidates preserve the canonical webhook so existing paid
+    // workspaces keep receiving updates during evaluation and rollback.
+    endpointUrl = new URL(
+      "/api/stripe/webhook",
+      env.ATLAS_WEB_CANONICAL_URL ?? env.ATLAS_PUBLIC_URL,
+    ).toString();
   } catch {
     reasonCodes.push("webhook_public_url_invalid");
   }

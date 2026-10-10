@@ -63,6 +63,7 @@ jobs:
       ATLAS_CF_ACCESS_SERVICE_TOKEN_ID: ${{ secrets.ATLAS_CF_ACCESS_SERVICE_TOKEN_ID }}
       ATLAS_HOSTED_CF_ACCESS_CLIENT_ID: ${{ secrets.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID }}
       ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET: ${{ secrets.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET }}
+      ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
       ATLAS_WEB_EVIDENCE_FILE: .atlas/web/evidence.json
       ATLAS_WEB_RUNTIME_FILE: .atlas/web/runtime.json
       TARGET: ${{ inputs.target }}
@@ -77,8 +78,14 @@ jobs:
           node --input-type=module - <<'JS'
           import {mkdirSync,writeFileSync} from 'node:fs';
           import {assertCandidateBudget,loadWebRuntime} from './scripts/deploy/web-candidate.mjs';
+          import {assertWebObserverConfiguration} from './scripts/deploy/web-observe.mjs';
           const evidence=JSON.parse(process.env.ATLAS_WEB_EVIDENCE_JSON || '{}');
-          loadWebRuntime(process.env.ATLAS_WEB_RUNTIME_ENV_JSON || '{}');
+          const runtime=loadWebRuntime(process.env.ATLAS_WEB_RUNTIME_ENV_JSON || '{}');
+          assertWebObserverConfiguration(runtime,{
+            clientId:process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
+            clientSecret:process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
+            hostedSecret:process.env.ATLAS_HOSTED_E2E_SECRET,
+          });
           assertCandidateBudget(evidence,process.env.ARCHITECTURE);
           mkdirSync('.atlas/web',{recursive:true});
           writeFileSync(process.env.ATLAS_WEB_EVIDENCE_FILE,JSON.stringify(evidence));
@@ -106,6 +113,8 @@ jobs:
         run: node scripts/deploy/web-runtime-command.mjs -- pnpm web:migrate-auth
       - name: Publish isolated protected candidate
         run: pnpm web:publish-candidate --target "$TARGET" --architecture "$ARCHITECTURE" --directory ".atlas/web/$TARGET/$GITHUB_SHA/$ARCHITECTURE"
+      - name: Observe the deployed release and required public services
+        run: pnpm web:observe --target "$TARGET" --deployment ".atlas/web/$TARGET/$GITHUB_SHA/$ARCHITECTURE/deployment.json" --journal ".atlas/web/$TARGET/$GITHUB_SHA/$ARCHITECTURE/observations.jsonl"
       - name: Retain redacted release identity
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -114,5 +123,6 @@ jobs:
           path: |
             .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/manifest.json
             .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/deployment.json
+            .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/observations.jsonl
           if-no-files-found: ignore
           retention-days: 30

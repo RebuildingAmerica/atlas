@@ -349,6 +349,57 @@ cleanup across them.
 A published candidate is **not** a promotion. The workflow does not fabricate
 journey/performance results or switch the canonical domain.
 
+## Deployed observations
+
+Candidate publication is followed by `web:observe` against its actual protected
+URL. Before provisioning, the publisher verifies that the runtime already
+contains the enabled protected hosted verifier and that its secret matches the
+trusted workflow's `ATLAS_HOSTED_E2E_SECRET`. It also requires the Access
+credential pair. It never enables test routes or replaces identity secrets.
+
+The observer checks public SSR pages, published person and organization pages,
+external links in profile HTML, catalog reads, API health, a private anonymous
+session response, docs, both MCP OAuth challenges and the existing Stripe
+runtime inventory from the exact commit. Stripe inventory checks the preserved
+canonical webhook metadata; it does not establish webhook delivery to the
+candidate. Every sample reads the active Worker version through `cf` and matches
+the artifact and asset digests. For hybrid, it also reads the Cloud Run revision
+tag, image digest and readiness. It checks Access denial and direct-origin
+rejection. Access credentials only follow redirects within the candidate origin;
+the hosted verifier secret is sent only to its inventory endpoint. Journals
+contain fixed check names, status and duration, never response bodies, cookies,
+user identities, credentials or raw provider diagnostics.
+
+Run one observation, or keep collecting every five minutes:
+
+```sh
+pnpm web:observe --target staging \
+  --deployment .atlas/web/staging/<commit>/workers/deployment.json \
+  --journal .atlas/web/staging/<commit>/workers/observations.jsonl
+
+pnpm web:observe --target staging \
+  --deployment .atlas/web/staging/<commit>/workers/deployment.json \
+  --journal .atlas/web/staging/<commit>/workers/observations.jsonl --watch
+```
+
+The watcher runs locally and adds no separately hosted monitoring service. Keep
+the process and private journal available throughout the observation period;
+stopping it for more than ten minutes resets the continuous window. Failures
+also reset the window. Mixed origins, commits, targets, architectures, Worker
+versions, artifact digests or hybrid revision identities and out-of-order or
+future timestamps are rejected. `--summary-only` reads the existing journal
+without credentials or network requests and exits nonzero until a fresh
+continuous 24-hour window passes. `--hours 72` applies the longer observation
+requirement; it does not prove that production routing changed.
+
+These probes are ongoing operational evidence, not complete product acceptance.
+They do not establish real email/passkey/OAuth/SSO sign-in, paid checkout,
+signed webhook delivery, invitation batches, concurrent-user isolation, mobile
+interaction, Worker CPU or cold-start performance. Those release gates remain
+separate. Request durations in the journal must not be relabeled as Worker CPU
+or a representative latency percentile. The candidate workflow retains its
+redacted first observation alongside the release identity.
+
 ## Evidence and selection
 
 Start from
@@ -387,10 +438,11 @@ yet:
    links, mobile navigation and failure-state checks on each candidate. Verify
    email, existing/new passkeys, recovery, invitations, ATProto/OAuth,
    configured SSO, Stripe test checkout/webhook delivery and entitlement
-   readbacks. External callbacks/webhooks must hit the candidate itself; a
-   successful request to the current Vercel host is not candidate evidence.
-   Verify canonical JWT acceptance by the unchanged API using tokens issued by
-   the candidate.
+   readbacks. External callbacks must hit the candidate itself. Exercise signed
+   Stripe webhook handling against the candidate with Stripe test events while
+   preserving the canonical endpoint. Canonical endpoint metadata alone does not
+   establish candidate webhook handling or entitlement updates. Verify canonical
+   JWT acceptance by the unchanged API using tokens issued by the candidate.
 2. Measure representative cold/warm/load traffic, p99 CPU, quotas and existing
    account usage. Verify unauthenticated Access denial, public metadata access,
    origin rejection, spoofed headers, session continuity after redeploy and
