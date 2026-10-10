@@ -172,3 +172,70 @@ test("missing identity, short, stale or future windows fail before provider call
       }),
     );
 });
+
+test("a null percentile is not applicable only when the matching measured daily invocation count is zero", () => {
+  for (const count of [0, 1, null, undefined]) {
+    const report = collectVercelBaseline({
+      ...input,
+      runner(_binary, args) {
+        const data = response(args);
+        const key = args[3].replaceAll(".", "_") + "_" + data.query.aggregation;
+        if (args.includes("function_start_type")) {
+          data.summary.forEach((row) => {
+            row.function_start_type = "cold";
+          });
+          data.data.forEach((row) => {
+            row.function_start_type = "cold";
+          });
+          if (args.includes("--filter")) {
+            if (data.query.aggregation === "sum") data.data[0][key] = count;
+            else data.data[0][key] = null;
+          }
+        }
+        return { status: 0, stdout: JSON.stringify(data) };
+      },
+    });
+    const percentile = report.measurements.find(
+      (m) => m.name === "production-ttfb-p95-ms",
+    );
+    assert.equal(report.complete, count === 0);
+    assert.equal(percentile.status, count === 0 ? "measured" : "partial");
+    assert.equal(
+      percentile.data[0].vercel_function_invocation_ttfb_ms_p95,
+      null,
+    );
+    assert.equal(percentile.notApplicable?.length ?? 0, count === 0 ? 1 : 0);
+    if (count === 0)
+      assert.deepEqual(percentile.notApplicable[0], {
+        timestamp: new Date(input.since).toISOString(),
+        functionStartType: "cold",
+        reason: "Matching production invocation count is zero.",
+      });
+  }
+});
+
+test("a different start category or day cannot explain a null percentile", () => {
+  const report = collectVercelBaseline({
+    ...input,
+    runner(_binary, args) {
+      const data = response(args);
+      if (args.includes("function_start_type")) {
+        data.data.forEach((row) => {
+          row.function_start_type =
+            data.query.aggregation === "sum" ? "hot" : "cold";
+        });
+        if (data.query.aggregation !== "sum") {
+          data.data[0][
+            args[3].replaceAll(".", "_") + "_" + data.query.aggregation
+          ] = null;
+        }
+      }
+      return { status: 0, stdout: JSON.stringify(data) };
+    },
+  });
+  assert.equal(report.complete, false);
+  assert.equal(
+    report.measurements.find((m) => m.name === "production-ttfb-p95-ms").status,
+    "partial",
+  );
+});

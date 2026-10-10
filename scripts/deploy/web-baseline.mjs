@@ -141,6 +141,7 @@ export function collectVercelBaseline({
     throw new Error(
       "The baseline must end within the last 48 hours, never in the future.",
     );
+  let productionStarts = [];
   const measurements = QUERIES.map(
     ({ name, metric, aggregation, groupBy = [], production = false }) => {
       const args = [
@@ -226,22 +227,53 @@ export function collectVercelBaseline({
         const truncated =
           groupBy.length > 0 &&
           [...buckets.values()].some((count) => count >= 100);
+        const notApplicable = value.data.filter((row) => {
+          if (
+            aggregation === "sum" ||
+            !production ||
+            row[key] !== null ||
+            typeof row.function_start_type !== "string"
+          )
+            return false;
+          const counts = productionStarts.filter(
+            (count) =>
+              count.timestamp === row.timestamp &&
+              count.function_start_type === row.function_start_type,
+          );
+          return (
+            counts.length === 1 &&
+            counts[0].vercel_function_invocation_count_sum === 0
+          );
+        });
         const incomplete =
           buckets.size !== 14 ||
           (!groupBy.length &&
             [...buckets.values()].some((count) => count !== 1)) ||
-          value.data.some(
-            (row) =>
-              typeof row[key] !== "number" ||
-              !Number.isFinite(row[key]) ||
-              row[key] < 0,
-          );
+          value.data
+            .filter((row) => !notApplicable.includes(row))
+            .some(
+              (row) =>
+                typeof row[key] !== "number" ||
+                !Number.isFinite(row[key]) ||
+                row[key] < 0,
+            );
+        if (name === "production-function-starts" && !truncated && !incomplete)
+          productionStarts = value.data;
         return {
           ...description,
           status: truncated || incomplete ? "partial" : "measured",
           query: value.query,
           summary: value.summary,
           data: value.data,
+          ...(notApplicable.length
+            ? {
+                notApplicable: notApplicable.map((row) => ({
+                  timestamp: row.timestamp,
+                  functionStartType: row.function_start_type,
+                  reason: "Matching production invocation count is zero.",
+                })),
+              }
+            : {}),
         };
       } catch {
         return { ...description, status: "unavailable" };

@@ -9,15 +9,12 @@ hosting fee. Both hosting candidates are implemented for evaluation using `cf`.
 production.** There is no automatic paid Cloudflare fallback and no capability
 may be removed to meet a limit.
 
-The operator explicitly chose to **keep Google billing closed** on 2026-10-10.
-Do not reopen or relink billing, or provision the Cloud Run candidate under
-another billing account. The hybrid candidate is unavailable under this
-constraint. The Workers candidate still depends on the existing API and
-PostgreSQL; moving the web runtime does not replace those services. With the
-existing API returning HTTP 503 and hosted Workers acceptance unmeasured, retain
-Vercel. Successful search, profile rendering, sign-in and workspace journeys
-remain required before any cutover. Keep the candidate implementations available
-for evaluation without changing existing infrastructure or removing features.
+The operator requested that implementation continue assuming Google billing will
+be available. Do not reopen or relink billing accounts. Continue building and
+validating both deployment paths; actual provider checks and hosted journeys
+must still pass before deployment and cutover. The Workers candidate also
+depends on the existing API and PostgreSQL; moving the web runtime does not
+replace those services.
 
 ## Required Cloudflare CLI
 
@@ -166,9 +163,9 @@ Read-only provider inventory on 2026-10-10 established:
   gates protect sign-in, searchable profiles and workspace operations during the
   move; provider authentication alone does not prove those experiences.
 
-The required request/response workload baseline, shared account cost/quota
-measurements and deployed acceptance remain release blockers. Provider login
-alone does not satisfy those gates.
+The 14-day request/response workload baseline is complete. Shared account
+cost/quota measurements and deployed acceptance remain release blockers.
+Provider login alone does not satisfy those gates.
 
 Documentation retrieval has a separate limitation:
 
@@ -176,9 +173,8 @@ Documentation retrieval has a separate limitation:
   `npx ctx7@latest login` or `CONTEXT7_API_KEY`. Official Cloudflare
   documentation was used for this implementation.
 
-No complete traffic baseline, operating-cost estimate, architecture selection,
-observation window, production cutover, rollback readiness or subscription
-cancellation is claimed.
+No complete operating-cost estimate, architecture selection, observation window,
+production cutover, rollback readiness or subscription cancellation is claimed.
 
 The final app suite passed 4,167 tests with 100% statement, branch, function and
 line coverage. All 22 repository lint/type-check tasks, 135 deployment tests and
@@ -204,11 +200,15 @@ external requests, bot classifications, response sizes, server CPU/duration and
 warm/cold starts. All byte and compute totals use explicit sums. Daily buckets
 use UTC; changing the window changes the totals. `function_start_type` values
 come from Vercel (`hot`, `cold`, `prewarmed`), without treating prewarmed
-traffic as warm traffic. Missing values remain unknown. Failed queries, missing
-daily observations, null daily values, mismatched query readbacks or a grouped
-bucket reaching its 100-group cap make collection incomplete and exit nonzero.
-Valid aggregate summaries remain available when daily observations are partial.
-Reports stay under ignored `.atlas/` paths with mode-600 permissions.
+traffic as warm traffic. Missing values remain unknown. A null daily percentile
+is explicitly not applicable only when the matching production invocation count
+for that exact day and start category is measured as zero. The raw null stays in
+the report with its explanation; it never becomes a zero-millisecond latency.
+Failed queries, missing daily observations, unexplained null values, mismatched
+query readbacks or a grouped bucket reaching its 100-group cap make collection
+incomplete and exit nonzero. Valid aggregate summaries remain available when
+daily observations are partial. Reports stay under ignored `.atlas/` paths with
+mode-600 permissions.
 
 The UTC window above measured 33,070 requests (32,286 production), 174,737,080
 response bytes, and a peak of 11,426 requests in one day across environments.
@@ -217,8 +217,9 @@ Production server invocations had p95 time to first byte of about 1,200 ms for
 server journeys; they are not an SSR-only comparison. Warm production p99 CPU
 was about 600 ms on Vercel, a significant compatibility risk for Workers Free,
 not a measurement of Workers execution. Source data is retained locally in the
-report. The live run reports partial percentile measurements because some daily
-values are null; it preserves the aggregate summaries above and exits nonzero.
+report. The refreshed live run completed all 18 measurements. Three October 4
+cold-start percentiles are not applicable: the matching count is zero. This
+cross-check removes a false missing-data blocker without changing measurements.
 
 Collection success only means the requested Vercel queries returned usable
 results. This report is not migration approval or a completed evidence file:
