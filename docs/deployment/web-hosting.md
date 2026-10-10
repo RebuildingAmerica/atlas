@@ -349,6 +349,70 @@ cleanup across them.
 A published candidate is **not** a promotion. The workflow does not fabricate
 journey/performance results or switch the canonical domain.
 
+## Runtime synchronization
+
+`web:sync-runtime` reads the exact Vercel environment inventory and preserves
+every configured application value, including optional enterprise identity,
+email and billing settings. Production uses Vercel's production target; staging
+requires its explicit custom environment ID. It ignores provider-only build
+settings and explicitly enables the managed account/workspace mode required by
+this migration, including for older deployments where it was implicit. It
+rejects an explicitly disabled account/workspace mode. It never creates or
+rotates signing keys, database credentials or payment secrets.
+
+```sh
+pnpm web:sync-runtime --target production \
+  --project prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3 \
+  --team team_IA08hNlo8bXnaFX10JyZbNVz \
+  --output .atlas/web/production-runtime.json --doctor
+```
+
+Supply the existing `VERCEL_TOKEN` through the process environment. The doctor
+reads and validates without writing files or GitHub secrets. Remove `--doctor`
+to save the canonical runtime with owner-only permissions under ignored
+`.atlas/`. Add `--sync-github` to synchronize `ATLAS_WEB_RUNTIME_ENV_JSON` to
+the matching GitHub environment using stdin, with provider output suppressed.
+
+Vercel's write-only variables cannot be recovered through its API. Supply those
+unchanged values from the existing secret store using
+`--existing-runtime <private-json-file>`. This file can contain only the missing
+values or the complete existing runtime. Conflicting readable values, unknown
+keys, missing configured optional values and undecrypted ciphertext fail before
+replacing the runtime or updating GitHub. This is a recovery fallback for the
+provider restriction, not a requirement to copy credentials into chat.
+
+## Rollback preparation
+
+After candidate publication, `web:archive --directory <release-directory>`
+retains the exact server, assets, manifest and published deployment in
+`release.tar.gz`, with a SHA-256 readback in `archive.json`. It verifies both
+artifact digests, refuses symbolic links and checks for embedded runtime secret
+values before archiving. Private origin journals and runtime files are excluded.
+The candidate workflow retains the archive for 30 days, even if subsequent
+probes fail. This preserves older client assets with their matching server.
+
+Before changing the canonical domain, capture its current recovery point:
+
+```sh
+pnpm web:capture-rollback --target production \
+  --hostname atlas.rebuildingus.org --owner willie@rebuildingus.org \
+  --project prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3 \
+  --team team_IA08hNlo8bXnaFX10JyZbNVz \
+  --output .atlas/web/rollback-vercel-<timestamp>.json
+```
+
+The command uses the configured `cf` profile/token and explicit Cloudflare
+account/zone plus `VERCEL_TOKEN`. It reads the live Vercel alias, ready
+immutable deployment and DNS records without provider writes. The snapshot
+preserves the unproxied Vercel CNAME and coexisting mail/verification records,
+and records a digest of the deployment API's routing field. If that field is
+explicitly null, the snapshot records `routeInventory: provider-null` and a null
+route count; it does not invent a route export. Generated routing remains
+attached to the retained immutable Vercel deployment. It excludes route-header
+values, provider environment values and bypass credentials. Existing snapshot
+files cannot be overwritten. A snapshot and retained archive are preparation; a
+successful routing rollback still requires deployed verification.
+
 ## Deployed observations
 
 Candidate publication is followed by `web:observe` against its actual protected
@@ -429,10 +493,10 @@ alerts are warnings, not a spending cap.
 
 ## Remaining release work
 
-Provider access and measured evidence must be restored before architecture
-selection. The following approved requirements remain open; these commands do
-not implement production promotion, routing rollback or subscription retirement
-yet:
+Architecture selection still requires measured hosted evidence and the unchanged
+runtime values. The following approved requirements remain open; these commands
+do not implement production promotion, routing rollback or subscription
+retirement yet:
 
 1. Run actual hosted search, maps, profile SSR/source links, docs, MCP, deep
    links, mobile navigation and failure-state checks on each candidate. Verify

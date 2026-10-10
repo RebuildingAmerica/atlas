@@ -113,6 +113,8 @@ jobs:
         run: node scripts/deploy/web-runtime-command.mjs -- pnpm web:migrate-auth
       - name: Publish isolated protected candidate
         run: pnpm web:publish-candidate --target "$TARGET" --architecture "$ARCHITECTURE" --directory ".atlas/web/$TARGET/$GITHUB_SHA/$ARCHITECTURE"
+      - name: Preserve exact server and assets for rollback
+        run: pnpm web:archive --directory ".atlas/web/$TARGET/$GITHUB_SHA/$ARCHITECTURE"
       - name: Observe the deployed release and required public services
         run: pnpm web:observe --target "$TARGET" --deployment ".atlas/web/$TARGET/$GITHUB_SHA/$ARCHITECTURE/deployment.json" --journal ".atlas/web/$TARGET/$GITHUB_SHA/$ARCHITECTURE/observations.jsonl"
       - name: Retain redacted release identity
@@ -124,5 +126,7 @@ jobs:
             .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/manifest.json
             .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/deployment.json
             .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/observations.jsonl
+            .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/release.tar.gz
+            .atlas/web/${{ inputs.target }}/${{ github.sha }}/${{ inputs.architecture }}/archive.json
           if-no-files-found: ignore
           retention-days: 30
