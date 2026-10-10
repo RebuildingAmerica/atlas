@@ -8,7 +8,7 @@ interface RadioOptionProps {
   label: string;
   description?: string;
   badge?: string;
-  trailing: ReactNode;
+  trailing?: ReactNode;
   checked: boolean;
   onChange: (value: string) => void;
 }
@@ -25,10 +25,17 @@ export function RadioOption({
   onChange,
 }: RadioOptionProps) {
   const id = useId();
+  const descriptionIds = [
+    trailing != null ? `${id}-price` : null,
+    badge ? `${id}-badge` : null,
+    description ? `${id}-description` : null,
+  ]
+    .filter((value) => value !== null)
+    .join(" ");
   return (
     <label
       className={cn(
-        "active:bg-surface-container flex min-h-16 cursor-pointer touch-manipulation gap-3 rounded-xl border p-4",
+        "active:bg-surface-container flex min-h-16 cursor-pointer touch-manipulation gap-3 rounded-xl border p-4 has-[:disabled]:cursor-default has-[:disabled]:opacity-60",
         controlGroupFocusClass,
         description ? "items-start" : "items-center",
         checked
@@ -46,7 +53,7 @@ export function RadioOption({
           onChange(value);
         }}
         aria-labelledby={`${id}-label`}
-        aria-describedby={`${id}-price${badge ? ` ${id}-badge` : ""}${description ? ` ${id}-description` : ""}`}
+        aria-describedby={descriptionIds || undefined}
         className={cn(
           "accent-civic size-4 shrink-0 outline-none",
           description && "mt-1",
@@ -70,12 +77,14 @@ export function RadioOption({
               </span>
             ) : null}
           </span>
-          <span
-            id={`${id}-price`}
-            className="type-title-medium text-ink-strong tabular-nums"
-          >
-            {trailing}
-          </span>
+          {trailing != null ? (
+            <span
+              id={`${id}-price`}
+              className="type-title-medium text-ink-strong tabular-nums"
+            >
+              {trailing}
+            </span>
+          ) : null}
         </span>
         {description ? (
           <span

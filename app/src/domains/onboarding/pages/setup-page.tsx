@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { AccountSetupPage } from "@/domains/access";
@@ -15,7 +15,9 @@ import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { PurchaseStepPanel } from "./setup-page-steps";
 import { Button, buttonStyles } from "@rebuildingamerica/atlas-ui/ui/button";
 import { PaymentCommitment } from "@/domains/billing/components/payment-choice";
-import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
+import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access";
+import { WorkspaceStep, type WorkspaceSubmission } from "./workspace-step";
+import { PurchaseFlow, PurchaseFlowHeading } from "@/domains/billing/components/purchase-flow";
 import {
   DEFAULT_ONBOARDING_PRODUCT,
   buildOnboardingStartRedirect,
@@ -42,10 +44,6 @@ interface SetupPageProps {
   step?: SetupSearch["step"];
 }
 
-function initialWorkspaceName(): string {
-  return "Team Workspace";
-}
-
 export function SetupPage({ interval, product, purchase }: SetupPageProps) {
   const session = useAtlasSession();
   const [purchaseIntent, setPurchaseIntent] = useState<PurchaseOnboardingIntent | null>(null);
@@ -55,7 +53,6 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     purchaseIntent?.interval ?? interval ?? defaultOnboardingInterval(selectedProduct);
   const validSelection = isValidOnboardingSelection(selectedProduct, selectedInterval);
   const sessionData = session.data;
-  const [workspaceName, setWorkspaceName] = useState(initialWorkspaceName());
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -67,9 +64,18 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
   );
   const isReady = Boolean(sessionData?.accountReady && sessionData.hasPasskey);
   const activeWorkspace = sessionData?.workspace.activeOrganization ?? null;
-  const canUseActiveWorkspace =
-    Boolean(activeWorkspace) &&
-    (selectedProduct !== "atlas_team" || activeWorkspace?.workspaceType === "team");
+  const eligibleWorkspaces = sessionData
+    ? sessionData.workspace.memberships
+        .filter(
+          (workspace) =>
+            canManageAtlasOrganizationRole(workspace.role) &&
+            (selectedProduct !== "atlas_team" || workspace.workspaceType === "team"),
+        )
+        .sort(
+          (left, right) =>
+            Number(right.id === activeWorkspace?.id) - Number(left.id === activeWorkspace?.id),
+        )
+    : [];
   const workspaceAttached = Boolean(purchaseIntent?.workspaceId);
   const purchaseLookupPending = Boolean(purchase && !purchaseIntent && !purchaseLookupFailed);
   const purchaseUnavailable =
@@ -138,13 +144,13 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         data: { purchaseId: id, workspaceId },
       }).then(setPurchaseIntent);
     } catch {
-      setErrorMessage("Atlas could not attach that workspace. Try again.");
+      setErrorMessage("The workspace could not be selected. Try again.");
     } finally {
       setIsPending(false);
     }
   };
 
-  const createWorkspaceForPurchase = async (id: string) => {
+  const createWorkspaceForPurchase = async (id: string, workspaceName: string) => {
     setErrorMessage(null);
     setIsPending(true);
     try {
@@ -159,7 +165,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
         data: { purchaseId: id, workspaceId: created.id },
       }).then(setPurchaseIntent);
     } catch {
-      setErrorMessage("Atlas could not create that workspace. Try another name.");
+      setErrorMessage("The workspace could not be created. Try again.");
     } finally {
       setIsPending(false);
     }
@@ -181,19 +187,15 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
 
   // Every action needs a purchase to act on, so without one there is no
   // handler at all rather than a handler that silently declines.
-  const handleUseActiveWorkspace =
-    purchaseId === null || activeWorkspace === null
-      ? undefined
-      : () => {
-          void attachActiveWorkspace(purchaseId, activeWorkspace.id);
-        };
-
-  const handleCreateWorkspace =
+  const handleWorkspaceSelection =
     purchaseId === null
       ? undefined
-      : (event: FormEvent<HTMLFormElement>) => {
-          event.preventDefault();
-          void createWorkspaceForPurchase(purchaseId);
+      : (selection: WorkspaceSubmission) => {
+          if (selection.kind === "existing") {
+            void attachActiveWorkspace(purchaseId, selection.workspaceId);
+          } else {
+            void createWorkspaceForPurchase(purchaseId, selection.name);
+          }
         };
 
   const handleCheckout =
@@ -281,58 +283,40 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     );
   } else if (workspaceAttached) {
     panel = (
-      <PurchaseStepPanel
-        description={`Review your ${productLabel} plan, then enter your payment details at checkout.`}
-        title="Continue to payment"
+      <PurchaseFlow
+        header={
+          <PurchaseFlowHeading
+            productLabel={productLabel}
+            title="Review your plan"
+            description="Review the charge and renewal terms before payment."
+          />
+        }
+        action={
+          <Button
+            className="w-full"
+            onClick={handleCheckout}
+            disabled={isPending || !purchaseId}
+            size="lg"
+          >
+            {isPending ? "Opening checkout…" : "Continue to payment"}
+          </Button>
+        }
       >
         {alert}
         <PaymentCommitment product={selectedProduct} interval={selectedInterval} />
-        <Button onClick={handleCheckout} disabled={isPending || !purchaseId} size="lg">
-          {isPending ? "Opening Stripe..." : "Continue to Stripe"}
-        </Button>
-      </PurchaseStepPanel>
+      </PurchaseFlow>
     );
   } else {
     panel = (
-      <PurchaseStepPanel
-        description={
-          selectedProduct === "atlas_team"
-            ? `Name the team workspace for ${productLabel}.`
-            : `Choose a workspace for ${productLabel}.`
-        }
-        title={selectedProduct === "atlas_team" ? "Name your team workspace" : "Choose workspace"}
-      >
-        <div className="space-y-5">
-          {alert}
-
-          {canUseActiveWorkspace && activeWorkspace ? (
-            // The purchase intent arrives from an effect after this step
-            // renders, and the handler is undefined until it does.
-            <Button
-              onClick={handleUseActiveWorkspace}
-              disabled={isPending || !handleUseActiveWorkspace}
-              size="lg"
-            >
-              Use {activeWorkspace.name}
-            </Button>
-          ) : null}
-
-          <form className="space-y-4" onSubmit={handleCreateWorkspace}>
-            <Input
-              label="Workspace name"
-              density="comfortable"
-              value={workspaceName}
-              onChange={setWorkspaceName}
-              required
-            />
-            <Button type="submit" disabled={isPending || !purchaseId || !workspaceName.trim()}>
-              {isPending ? "Saving..." : "Continue to payment"}
-            </Button>
-          </form>
-        </div>
-      </PurchaseStepPanel>
+      <WorkspaceStep
+        workspaces={eligibleWorkspaces}
+        productLabel={productLabel}
+        pending={isPending}
+        error={alert}
+        onContinue={handleWorkspaceSelection}
+      />
     );
   }
 
-  return <div className="w-full max-w-lg space-y-6">{panel}</div>;
+  return <div className="flex w-full flex-1 flex-col">{panel}</div>;
 }

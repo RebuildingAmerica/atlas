@@ -57,7 +57,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: false,
         hasPasskey: false,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
 
@@ -76,7 +76,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
 
@@ -94,7 +94,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     mocks.loadPurchaseOnboarding.mockResolvedValue({
@@ -121,7 +121,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
 
@@ -154,7 +154,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     mocks.loadPurchaseOnboarding.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
@@ -173,7 +173,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     let resolveLookup: (value: unknown) => void = () => undefined;
@@ -202,7 +202,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     let rejectLookup: (reason: Error) => void = () => undefined;
@@ -231,7 +231,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     let resolveStart: (value: unknown) => void = () => undefined;

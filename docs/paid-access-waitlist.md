@@ -60,6 +60,17 @@ short screens, allowing for the phone safe area. Fields, buttons, typography,
 radio states and disclosure states reuse shared UI components and tokens.
 Navigation targets are at least 44 pixels.
 
+Invitation, workspace selection and payment review share the same responsive
+flow layout and bottom action group. Desktop uses separate context and decision
+columns; mobile keeps one full-width primary action at the bottom with the same
+safe-area spacing. Workspace selection offers only memberships the person can
+manage billing for, with only team workspaces available for Atlas Team. The
+current eligible workspace is selected initially; otherwise the first eligible
+workspace is selected, or a blank name field is shown when there are none.
+Selecting New workspace reveals the name field without losing it when switching
+choices. One Review plan action continues to the payment review, whose Continue
+to payment action opens checkout.
+
 Confirmation, withdrawal and rejoining focus the resulting heading so keyboard
 and screen reader users can follow the change. Ordinary refreshes preserve
 focus. SQLite waitlist transactions run synchronously on the shared auth

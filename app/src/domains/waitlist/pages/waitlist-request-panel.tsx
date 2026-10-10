@@ -1,3 +1,8 @@
+import {
+  purchaseFlowLayoutClass,
+  PurchaseFlowContent,
+  PurchaseFlowAction,
+} from "@/domains/billing/components/purchase-flow";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import type { PricingCheckoutInterval } from "@/domains/billing/checkout-intervals";
 import { PaymentChoice, PaymentTerms } from "@/domains/billing/components/payment-choice";
@@ -149,13 +154,7 @@ export function WaitlistRequestPanel({
     }
   }
   return (
-    <div
-      className={
-        invited && !request.purchasedAt
-          ? "flex flex-1 flex-col gap-8 lg:grid lg:grid-cols-2 lg:gap-16"
-          : "space-y-8"
-      }
-    >
+    <div className={invited && !request.purchasedAt ? purchaseFlowLayoutClass : "space-y-8"}>
       <header className="space-y-6">
         {!invited || request.purchasedAt ? (
           <p className="type-label-medium text-ink-muted">{productLabel}</p>
@@ -243,10 +242,10 @@ export function WaitlistRequestPanel({
         </section>
       ) : null}
       {invited && !request.purchasedAt ? (
-        <section className="lg:border-outline-variant flex flex-1 flex-col gap-6 lg:gap-8 lg:border-l lg:pl-16">
+        <PurchaseFlowContent>
           <WaitlistError message={error} />
           <PaymentChoice product={request.product} interval={interval} onChange={setInterval} />
-          <section aria-label="Next step" className="mt-auto space-y-4">
+          <PurchaseFlowAction>
             <PaymentTerms product={request.product} interval={interval} />
             {sameEmail ? (
               <>
@@ -304,8 +303,8 @@ export function WaitlistRequestPanel({
                 </div>
               </div>
             )}
-          </section>
-        </section>
+          </PurchaseFlowAction>
+        </PurchaseFlowContent>
       ) : null}
       {request.purchasedAt && !closed ? (
         <Link to="/account" className={waitlistPrimaryLinkClass}>

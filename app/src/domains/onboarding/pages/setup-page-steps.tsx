@@ -11,7 +11,7 @@ export function PurchaseStepPanel({
   title: string;
 }) {
   return (
-    <section className="space-y-6">
+    <section className="w-full max-w-lg space-y-6">
       <div className="space-y-3">
         <h1 className={editorialTitleClass}>{title}</h1>
         <p className="type-body-large text-ink-soft">{description}</p>

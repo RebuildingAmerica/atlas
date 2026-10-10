@@ -56,7 +56,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: "org_1" });
@@ -64,9 +64,9 @@ describe("SetupPage", () => {
 
     render(<SetupPage product="atlas_pro" interval="monthly" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to payment" }));
 
-    expect(await screen.findByRole("button", { name: "Opening Stripe..." })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Opening checkout…" })).toBeDisabled();
     expect(mocks.startPurchaseCheckout).toHaveBeenCalledWith({ data: { purchaseId: "pi_pro" } });
     expect(assign).not.toHaveBeenCalled();
   });
@@ -78,7 +78,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: "org_1" });
@@ -86,7 +86,7 @@ describe("SetupPage", () => {
 
     render(<SetupPage product="atlas_pro" interval="monthly" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to payment" }));
 
     await waitFor(() => {
       expect(assign).toHaveBeenCalledWith("https://checkout.stripe.test/cs_123");
@@ -98,7 +98,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: "org_1" });
@@ -106,13 +106,13 @@ describe("SetupPage", () => {
 
     render(<SetupPage product="atlas_pro" interval="monthly" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to payment" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Atlas could not open Stripe checkout. Try again.",
     );
     expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue to Stripe" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Continue to payment" })).toBeEnabled();
   });
 
   it("tells a buyer why checkout was refused when Atlas explains it", async () => {
@@ -120,7 +120,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
     mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_student", workspaceId: "org_1" });
@@ -132,12 +132,12 @@ describe("SetupPage", () => {
 
     render(<SetupPage product="atlas_pro" interval="four_month" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue to Stripe" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continue to payment" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "The student price needs a verified student discount on this workspace.",
     );
-    expect(screen.getByRole("button", { name: "Continue to Stripe" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Continue to payment" })).toBeEnabled();
   });
 
   it("shows why a purchase could not start when the funnel is closed", async () => {
@@ -151,7 +151,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
 
@@ -172,7 +172,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
 
@@ -188,7 +188,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
 
@@ -210,7 +210,7 @@ describe("SetupPage", () => {
       data: {
         accountReady: true,
         hasPasskey: true,
-        workspace: { activeOrganization: null },
+        workspace: { activeOrganization: null, memberships: [] },
       },
     });
 

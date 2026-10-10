@@ -73,6 +73,22 @@ async function expectInvitationSpacing(page: Page) {
   await expect(page.getByRole("link", { name: "Terms of service" })).toHaveCount(0);
 }
 
+async function expectFlowActionPosition(page: Page, label: string) {
+  const action = page.getByRole("button", { name: label, exact: true });
+  await action.scrollIntoViewIfNeeded();
+  const box = await action.boundingBox();
+  const footer = await page.getByRole("region", { name: "Next step" }).boundingBox();
+  if (!box || !footer) throw new Error("The flow action must be visible.");
+  expect(box.height).toBeGreaterThanOrEqual(48);
+  expect(Math.abs(box.x - footer.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.width - footer.width)).toBeLessThanOrEqual(1);
+  const height = await page.evaluate(
+    () => Math.max(window.innerHeight, document.documentElement.scrollHeight) - window.scrollY,
+  );
+  expect(height - box.y - box.height).toBeGreaterThanOrEqual(31);
+  expect(height - box.y - box.height).toBeLessThanOrEqual(33);
+}
+
 test.describe.configure({ mode: "serial" });
 test("public signup, email confirmation, staff invitation and paid onboarding", async ({
   page,
@@ -294,18 +310,56 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   });
   await touchContext.close();
   await page.getByRole("link", { name: "Choose workspace" }).click();
-  await expect(page.getByRole("heading", { name: "Choose workspace" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Use / })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "Choose a workspace" })).toBeVisible();
+  await expect(page.getByRole("radio", { name: "My Workspace", exact: true })).toBeChecked();
+  await expect(page.getByLabel("Workspace name", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Review plan", exact: true })).toBeEnabled();
+  await expectFlowActionPosition(page, "Review plan");
   await expectNoAxeViolations(page, "mobile workspace step");
-  await page.screenshot({ path: "test-results/waitlist-workspace-mobile-screen.png" });
-  await page.getByRole("button", { name: /^Use / }).click();
-  await expect(page.getByRole("heading", { name: "Continue to payment" })).toBeVisible();
+  await page.screenshot({
+    path: "test-results/waitlist-workspace-mobile-screen.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expectFlowActionPosition(page, "Review plan");
+  await page.screenshot({ path: "test-results/waitlist-workspace-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("radio", { name: "New workspace", exact: true }).click();
+  await expect(page.getByLabel("Workspace name", { exact: true })).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Review plan", exact: true })).toBeDisabled();
+  await page.getByLabel("Workspace name", { exact: true }).fill("Housing research");
+  await expectFlowActionPosition(page, "Review plan");
+  await expectNoAxeViolations(page, "new workspace selection");
+  await page.screenshot({
+    path: "test-results/waitlist-workspace-create-mobile.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 320, height: 568 });
+  await expectFlowActionPosition(page, "Review plan");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(
+    false,
+  );
+  await page.screenshot({
+    path: "test-results/waitlist-workspace-create-narrow.png",
+    fullPage: true,
+  });
+  await page.getByRole("radio", { name: "My Workspace", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Review plan", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Review your plan" })).toBeFocused();
   await expect(page.getByRole("region", { name: "Payment summary" })).toContainText("$48 per year");
   await expect(page.getByRole("region", { name: "Payment summary" })).toContainText(
     "Renews annually",
   );
+  await expectFlowActionPosition(page, "Continue to payment");
   await expectNoAxeViolations(page, "mobile payment step");
-  await page.screenshot({ path: "test-results/waitlist-payment-mobile-screen.png" });
+  await page.screenshot({
+    path: "test-results/waitlist-payment-mobile-screen.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expectFlowActionPosition(page, "Continue to payment");
+  await page.screenshot({ path: "test-results/waitlist-payment-desktop.png", fullPage: true });
   await adminPage.goto("/admin/waitlist");
   await adminPage.getByLabel("Status", { exact: true }).selectOption("invited");
   await adminPage.getByLabel("Search requests").fill(email);

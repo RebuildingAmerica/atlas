@@ -2,6 +2,11 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  createWorkspaceSession,
+  personal,
+  team,
+} from "../../../fixtures/onboarding/workspace-sessions";
 import { SetupPage } from "@/domains/onboarding/pages/setup-page";
 
 const mocks = vi.hoisted(() => ({
@@ -41,54 +46,98 @@ vi.mock("@/domains/billing/purchase-onboarding.functions", () => ({
   startPurchaseCheckout: mocks.startPurchaseCheckout,
 }));
 
-describe("SetupPage", () => {
+describe("workspace selection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_123" });
+    mocks.useAtlasSession.mockReturnValue(createWorkspaceSession([]));
+    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_123", workspaceId: null });
     mocks.loadPurchaseOnboarding.mockResolvedValue(null);
+    mocks.attachPurchaseWorkspace.mockResolvedValue({ id: "pi_123", workspaceId: "org_selected" });
+  });
+  afterEach(cleanup);
+
+  it("defaults to the current workspace and offers one action without a new-name form", async () => {
+    mocks.useAtlasSession.mockReturnValue(createWorkspaceSession([personal]));
+    render(<SetupPage product="atlas_pro" interval="monthly" />);
+    expect(screen.getByRole("radio", { name: "My Workspace" })).toBeChecked();
+    expect(screen.queryByLabelText(/Workspace name/)).not.toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Review plan" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(mocks.attachPurchaseWorkspace).toHaveBeenCalledWith({
+        data: { purchaseId: "pi_123", workspaceId: personal.id },
+      });
+    });
+    expect(mocks.createWorkspace).not.toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "Review your plan" })).toHaveFocus();
   });
 
-  afterEach(() => {
-    cleanup();
+  it("offers all manageable workspaces and never a member-only workspace", async () => {
+    mocks.useAtlasSession.mockReturnValue(
+      createWorkspaceSession(
+        [team, personal, { ...team, id: "member_only", name: "Other team", role: "member" }],
+        personal,
+      ),
+    );
+    render(<SetupPage product="atlas_pro" />);
+    expect(screen.getByRole("radio", { name: "My Workspace" })).toBeChecked();
+    expect(screen.queryByRole("radio", { name: "Other team" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Transit Coalition" }));
+    const button = screen.getByRole("button", { name: "Review plan" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(mocks.attachPurchaseWorkspace).toHaveBeenCalledWith({
+        data: { purchaseId: "pi_123", workspaceId: team.id },
+      });
+    });
   });
 
-  it("creates a team workspace from the visible name without asking for a slug", async () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: true,
-        hasPasskey: true,
-        workspace: { activeOrganization: null },
-      },
-    });
-    mocks.ensurePurchaseOnboarding.mockResolvedValue({
-      id: "pi_team",
-      interval: "monthly",
-      product: "atlas_team",
-      status: "started",
-      stripeCheckoutSessionId: null,
-      userId: "user_123",
-      workspaceId: null,
-    });
-    mocks.createWorkspace.mockResolvedValue({ id: "org_team", slug: "rebuilding-las-vegas" });
-    mocks.attachPurchaseWorkspace.mockResolvedValue({
-      id: "pi_team",
-      interval: "monthly",
-      product: "atlas_team",
-      status: "workspace_ready",
-      stripeCheckoutSessionId: null,
-      userId: "user_123",
-      workspaceId: "org_team",
-    });
+  it("only offers team workspaces for Atlas Team", () => {
+    mocks.useAtlasSession.mockReturnValue(createWorkspaceSession([personal, team], personal));
+    render(<SetupPage product="atlas_team" />);
+    expect(screen.queryByRole("radio", { name: "My Workspace" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Transit Coalition" })).toBeChecked();
+  });
 
-    render(<SetupPage product="atlas_team" interval="monthly" />);
+  it("shows a blank name only for a new workspace and preserves it while switching", async () => {
+    mocks.useAtlasSession.mockReturnValue(createWorkspaceSession([personal]));
+    render(<SetupPage product="atlas_pro" />);
+    fireEvent.click(screen.getByRole("radio", { name: "New workspace" }));
+    const input = screen.getByLabelText(/Workspace name/);
+    expect(input).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Review plan" })).toBeDisabled();
+    fireEvent.change(input, { target: { value: "Housing research" } });
+    fireEvent.click(screen.getByRole("radio", { name: "My Workspace" }));
+    expect(screen.queryByLabelText(/Workspace name/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "New workspace" }));
+    expect(screen.getByLabelText(/Workspace name/)).toHaveValue("Housing research");
+    mocks.createWorkspace.mockResolvedValue({ id: "org_new", slug: "housing-research" });
+    const button = screen.getByRole("button", { name: "Review plan" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(mocks.createWorkspace).toHaveBeenCalledWith({
+        data: { name: "Housing research", slug: "housing-research", workspaceType: "individual" },
+      });
+    });
+    expect(mocks.attachPurchaseWorkspace).toHaveBeenCalledWith({
+      data: { purchaseId: "pi_123", workspaceId: "org_new" },
+    });
+  });
 
-    const nameInput = await screen.findByLabelText(/Workspace name/);
+  it("creates a named team workspace without a slug field or an unnecessary selector", async () => {
+    render(<SetupPage product="atlas_team" />);
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Workspace slug/)).not.toBeInTheDocument();
-    fireEvent.change(nameInput, { target: { value: "Rebuilding Las Vegas!" } });
-    const continueButton = screen.getByRole("button", { name: "Continue to payment" });
-    await waitFor(() => expect(continueButton).toBeEnabled());
-    fireEvent.click(continueButton);
-
+    fireEvent.change(screen.getByLabelText(/Workspace name/), {
+      target: { value: "Rebuilding Las Vegas!" },
+    });
+    mocks.createWorkspace.mockResolvedValue({ id: "org_new" });
+    const button = screen.getByRole("button", { name: "Review plan" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
     await waitFor(() => {
       expect(mocks.createWorkspace).toHaveBeenCalledWith({
         data: {
@@ -98,158 +147,51 @@ describe("SetupPage", () => {
         },
       });
     });
-    expect(mocks.attachPurchaseWorkspace).toHaveBeenCalledWith({
-      data: { purchaseId: "pi_team", workspaceId: "org_team" },
-    });
   });
 
-  it("does not create a workspace when the purchase param cannot be loaded", async () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: true,
-        hasPasskey: true,
-        workspace: { activeOrganization: null },
-      },
-    });
-    mocks.loadPurchaseOnboarding.mockResolvedValue(null);
+  it("disables selection and continuation until the purchase is available", () => {
+    mocks.useAtlasSession.mockReturnValue(createWorkspaceSession([personal]));
+    mocks.ensurePurchaseOnboarding.mockReturnValue(new Promise(() => undefined));
+    render(<SetupPage product="atlas_pro" />);
+    expect(screen.getByRole("radio", { name: "My Workspace" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Review plan" })).toBeDisabled();
+    expect(mocks.attachPurchaseWorkspace).not.toHaveBeenCalled();
+  });
 
+  it("preserves the chosen workspace after attachment fails", async () => {
+    mocks.useAtlasSession.mockReturnValue(createWorkspaceSession([personal]));
+    mocks.attachPurchaseWorkspace.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+    render(<SetupPage product="atlas_pro" />);
+    const button = screen.getByRole("button", { name: "Review plan" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The workspace could not be selected. Try again.",
+    );
+    expect(screen.getByRole("radio", { name: "My Workspace" })).toBeChecked();
+    expect(button).toBeEnabled();
+  });
+
+  it("preserves the entered name after creation fails without blaming the name", async () => {
+    mocks.createWorkspace.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+    render(<SetupPage product="atlas_pro" />);
+    fireEvent.change(screen.getByLabelText(/Workspace name/), {
+      target: { value: "Housing research" },
+    });
+    const button = screen.getByRole("button", { name: "Review plan" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The workspace could not be created. Try again.",
+    );
+    expect(screen.getByLabelText(/Workspace name/)).toHaveValue("Housing research");
+    expect(mocks.attachPurchaseWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("does not create a workspace when the purchase link cannot be loaded", async () => {
     render(<SetupPage purchase="pi_missing" />);
-
-    await waitFor(() => {
-      expect(mocks.loadPurchaseOnboarding).toHaveBeenCalledWith({
-        data: { purchaseId: "pi_missing" },
-      });
-    });
+    await screen.findByRole("heading", { name: "Purchase unavailable" });
     expect(screen.queryByLabelText(/Workspace name/)).not.toBeInTheDocument();
     expect(mocks.createWorkspace).not.toHaveBeenCalled();
-  });
-
-  it("allows Pro purchases to use the automatic personal workspace", async () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: true,
-        hasPasskey: true,
-        workspace: {
-          activeOrganization: {
-            id: "org_personal",
-            name: "My Workspace",
-            workspaceType: "individual",
-          },
-        },
-      },
-    });
-    mocks.ensurePurchaseOnboarding.mockResolvedValue({
-      id: "pi_pro",
-      interval: "monthly",
-      product: "atlas_pro",
-      status: "started",
-      stripeCheckoutSessionId: null,
-      userId: "user_123",
-      workspaceId: null,
-    });
-    mocks.attachPurchaseWorkspace.mockResolvedValue({
-      id: "pi_pro",
-      interval: "monthly",
-      product: "atlas_pro",
-      status: "workspace_ready",
-      stripeCheckoutSessionId: null,
-      userId: "user_123",
-      workspaceId: "org_personal",
-    });
-
-    render(<SetupPage product="atlas_pro" interval="monthly" />);
-
-    const useWorkspaceButton = await screen.findByRole("button", { name: "Use My Workspace" });
-    await waitFor(() => expect(useWorkspaceButton).toBeEnabled());
-    fireEvent.click(useWorkspaceButton);
-
-    await waitFor(() => {
-      expect(mocks.attachPurchaseWorkspace).toHaveBeenCalledWith({
-        data: { purchaseId: "pi_pro", workspaceId: "org_personal" },
-      });
-    });
-    expect(mocks.createWorkspace).not.toHaveBeenCalled();
-  });
-
-  it("waits for the purchase intent before attaching or creating a workspace", async () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: true,
-        hasPasskey: true,
-        workspace: {
-          activeOrganization: { id: "org_personal", name: "My Workspace", workspaceType: "team" },
-        },
-      },
-    });
-    mocks.ensurePurchaseOnboarding.mockReturnValue(new Promise(() => undefined));
-
-    render(<SetupPage product="atlas_team" interval="monthly" />);
-
-    // Disabled, not merely inert: both handlers need a purchase id.
-    const useWorkspace = await screen.findByRole("button", { name: "Use My Workspace" });
-    expect(useWorkspace).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Continue to payment" })).toBeDisabled();
-
-    fireEvent.click(useWorkspace);
-    fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
-
-    expect(mocks.attachPurchaseWorkspace).not.toHaveBeenCalled();
-    expect(mocks.createWorkspace).not.toHaveBeenCalled();
-  });
-
-  it("keeps the visitor on the workspace step when attaching fails", async () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: true,
-        hasPasskey: true,
-        workspace: {
-          activeOrganization: {
-            id: "org_personal",
-            name: "My Workspace",
-            workspaceType: "individual",
-          },
-        },
-      },
-    });
-    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: null });
-    mocks.attachPurchaseWorkspace.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
-
-    render(<SetupPage product="atlas_pro" interval="monthly" />);
-
-    fireEvent.click(await screen.findByRole("button", { name: "Use My Workspace" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Atlas could not attach that workspace. Try again.",
-    );
-    expect(screen.queryByText(/ATLAS_API/)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/Workspace name/)).toBeInTheDocument();
-  });
-
-  it("asks for another workspace name when creation fails", async () => {
-    mocks.useAtlasSession.mockReturnValue({
-      data: {
-        accountReady: true,
-        hasPasskey: true,
-        workspace: { activeOrganization: null },
-      },
-    });
-    mocks.ensurePurchaseOnboarding.mockResolvedValue({ id: "pi_pro", workspaceId: null });
-    mocks.createWorkspace.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
-
-    render(<SetupPage product="atlas_pro" interval="monthly" />);
-
-    fireEvent.click(await screen.findByRole("button", { name: "Continue to payment" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Atlas could not create that workspace. Try another name.",
-    );
-    expect(mocks.createWorkspace).toHaveBeenCalledWith({
-      data: {
-        name: "Team Workspace",
-        slug: "team-workspace",
-        workspaceType: "individual",
-      },
-    });
-    expect(mocks.attachPurchaseWorkspace).not.toHaveBeenCalled();
   });
 });
