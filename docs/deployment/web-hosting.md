@@ -9,6 +9,16 @@ hosting fee. Both hosting candidates are implemented for evaluation using `cf`.
 production.** There is no automatic paid Cloudflare fallback and no capability
 may be removed to meet a limit.
 
+The operator explicitly chose to **keep Google billing closed** on 2026-10-10.
+Do not reopen or relink billing, or provision the Cloud Run candidate under
+another billing account. The hybrid candidate is unavailable under this
+constraint. The Workers candidate still depends on the existing API and
+PostgreSQL; moving the web runtime does not replace those services. With the
+existing API returning HTTP 503 and hosted Workers acceptance unmeasured, retain
+Vercel. Successful search, profile rendering, sign-in and workspace journeys
+remain required before any cutover. Keep the candidate implementations available
+for evaluation without changing existing infrastructure or removing features.
+
 ## Required Cloudflare CLI
 
 The migration uses the new `cf` CLI, pinned to `1.0.0-beta.14` in the
