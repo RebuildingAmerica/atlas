@@ -10,6 +10,36 @@ import {
 import { join, relative, sep } from "node:path";
 import { assessMigration } from "./web-migration.mjs";
 
+export const WEB_PUBLIC_ENV_KEYS = [
+  "ATLAS_MANAGED",
+  "ATLAS_MULTI_USER",
+  "ATLAS_PUBLIC_URL",
+  "ATLAS_WEB_CANONICAL_URL",
+  "ATLAS_DOCS_URL",
+  "ATLAS_AUTH_BASE_PATH",
+  "ATLAS_SERVER_API_PROXY_TARGET",
+  "ATLAS_AUTH_JWT_AUDIENCES",
+];
+
+/** Keep searchable URLs stable while the same bundles are tested on an isolated host. */
+export function webBuildEnvironment(runtime) {
+  return {
+    ...runtime,
+    ...(runtime.ATLAS_WEB_CANONICAL_URL
+      ? { ATLAS_PUBLIC_URL: runtime.ATLAS_WEB_CANONICAL_URL }
+      : {}),
+  };
+}
+
+function publicEnvironment(env) {
+  return Object.fromEntries(
+    WEB_PUBLIC_ENV_KEYS.filter((key) => env?.[key] !== undefined).map((key) => [
+      key,
+      env[key],
+    ]),
+  );
+}
+
 export function digestDirectory(directory) {
   const hash = createHash("sha256");
   function walk(path) {
@@ -50,18 +80,9 @@ export function createWebManifest(input) {
     artifactDigest: input.artifactDigest,
     assetsDigest: input.assetsDigest,
     authSchemaVersion: "atlas-web-2026-10-10",
-    publicEnv: Object.fromEntries(
-      [
-        "ATLAS_MANAGED",
-        "ATLAS_MULTI_USER",
-        "ATLAS_PUBLIC_URL",
-        "ATLAS_DOCS_URL",
-        "ATLAS_AUTH_BASE_PATH",
-        "ATLAS_SERVER_API_PROXY_TARGET",
-        "ATLAS_AUTH_JWT_AUDIENCES",
-      ]
-        .filter((key) => input.publicEnv?.[key] !== undefined)
-        .map((key) => [key, input.publicEnv[key]]),
+    publicEnv: publicEnvironment(input.publicEnv),
+    buildPublicEnv: publicEnvironment(
+      webBuildEnvironment(input.publicEnv ?? {}),
     ),
     ...(input.architecture === "hybrid"
       ? {
@@ -79,6 +100,12 @@ export function verifyWebManifest(manifest, observed) {
   const canonical = createWebManifest(manifest);
   if (canonical.workerName !== manifest.workerName)
     throw new Error("Worker name does not match the immutable release.");
+  if (
+    WEB_PUBLIC_ENV_KEYS.some(
+      (key) => manifest.buildPublicEnv?.[key] !== canonical.buildPublicEnv[key],
+    )
+  )
+    throw new Error("Release build-time public configuration mismatch.");
   for (const key of ["releaseSha", "artifactDigest", "assetsDigest"]) {
     const pattern = key === "releaseSha" ? /^[a-f0-9]{40}$/ : /^[a-f0-9]{64}$/;
     if (!pattern.test(manifest[key]) || manifest[key] !== observed[key])

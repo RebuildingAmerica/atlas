@@ -22,12 +22,14 @@ import {
   createWebManifest,
   digestDirectory,
   verifyWebManifest,
+  WEB_PUBLIC_ENV_KEYS,
 } from "./web-release.mjs";
 
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
 import { prepareCloudflareOutput } from "./web-cloudflare-output.mjs";
 import { inspectGoogleBilling } from "./web-google-cloud.mjs";
 import { assertWebObserverConfiguration } from "./web-observe.mjs";
+import { preserveRuntimeIdentity } from "./web-runtime-identity.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
@@ -51,15 +53,7 @@ export function runtimeInput() {
     : required("ATLAS_WEB_RUNTIME_ENV_JSON");
 }
 
-const PUBLIC_KEYS = [
-  "ATLAS_MANAGED",
-  "ATLAS_MULTI_USER",
-  "ATLAS_PUBLIC_URL",
-  "ATLAS_DOCS_URL",
-  "ATLAS_AUTH_BASE_PATH",
-  "ATLAS_SERVER_API_PROXY_TARGET",
-  "ATLAS_AUTH_JWT_AUDIENCES",
-];
+const PUBLIC_KEYS = WEB_PUBLIC_ENV_KEYS;
 function required(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required.`);
@@ -416,8 +410,20 @@ async function bootstrapAccess(target) {
   );
 }
 
-async function publish(directory, target, architecture) {
-  const runtime = loadWebRuntime(runtimeInput());
+export async function publishWebCandidate(
+  directory,
+  target,
+  architecture,
+  { promotion, runtime = loadWebRuntime(runtimeInput()) } = {},
+) {
+  if (
+    promotion &&
+    (target !== "production" ||
+      runtime.ATLAS_PUBLIC_URL !== runtime.ATLAS_WEB_CANONICAL_URL)
+  )
+    throw new Error(
+      "Production publication requires canonical runtime configuration.",
+    );
   assertWebObserverConfiguration(runtime, {
     clientId: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
     clientSecret: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
@@ -461,6 +467,18 @@ async function publish(directory, target, architecture) {
   for (const key of PUBLIC_KEYS)
     if ((manifest.publicEnv[key] ?? "") !== (runtime[key] ?? ""))
       throw new Error(`Candidate build-time ${key} differs from runtime.`);
+  const buildPublicEnv = createWebManifest({
+    ...manifest,
+    publicEnv: runtime,
+  }).buildPublicEnv;
+  if (
+    PUBLIC_KEYS.some(
+      (key) => manifest.buildPublicEnv?.[key] !== buildPublicEnv[key],
+    )
+  )
+    throw new Error(
+      "Prepared build-time public configuration differs from the release.",
+    );
   const zone = required("CLOUDFLARE_ZONE_ID");
   const zoneInfo = cloudflareCommand(["zones", "get", "--zone", zone]);
   const canonical = new URL(runtime.ATLAS_WEB_CANONICAL_URL ?? "");
@@ -468,11 +486,21 @@ async function publish(directory, target, architecture) {
   if (
     (canonical.hostname !== zoneInfo.name &&
       !canonical.hostname.endsWith("." + zoneInfo.name)) ||
-    runtime.ATLAS_PUBLIC_URL !== `https://${hostname}`
+    runtime.ATLAS_PUBLIC_URL !==
+      (promotion ? canonical.origin : `https://${hostname}`)
   )
     throw new Error(
       "Candidate runtime must match its isolated protected hostname.",
     );
+  const journalPath = join(directory, "private-journal.json");
+  const runtimeJournal = preserveRuntimeIdentity(
+    runtime,
+    manifest.releaseSha,
+    existsSync(journalPath)
+      ? JSON.parse(readFileSync(journalPath, "utf8"))
+      : undefined,
+  );
+  writeFileSync(journalPath, JSON.stringify(runtimeJournal), { mode: 0o600 });
   const accessAppId = await protectCandidate(hostname, manifest.workerName);
   await exposeAtprotoMetadata(hostname, manifest.workerName);
   const temp = mkdtempSync(join(tmpdir(), "atlas-web-release-"));
@@ -502,13 +530,11 @@ async function publish(directory, target, architecture) {
         id: await ensureHyperdrive(target, runtime),
       };
     } else {
-      const journalPath = join(directory, "private-journal.json");
-      const journal = existsSync(journalPath)
-        ? JSON.parse(readFileSync(journalPath, "utf8"))
-        : {
-            releaseSha: manifest.releaseSha,
-            originSecret: randomBytes(32).toString("base64url"),
-          };
+      const journal = {
+        ...runtimeJournal,
+        originSecret:
+          runtimeJournal.originSecret ?? randomBytes(32).toString("base64url"),
+      };
       if (journal.releaseSha !== manifest.releaseSha || !journal.originSecret)
         throw new Error(
           "Candidate recovery journal does not match this release.",
@@ -538,56 +564,64 @@ async function publish(directory, target, architecture) {
         throw new Error(
           "Existing image repository must have active cleanup policies before candidate creation.",
         );
-      cpSync(join(directory, "artifact"), join(temp, "image-context/.output"), {
-        recursive: true,
-      });
-      cpSync(
-        join(ROOT, "services/web-edge"),
-        join(temp, "image-context/web-origin"),
-        { recursive: true },
-      );
-      cpSync(
-        join(ROOT, "services/web-edge/Dockerfile"),
-        join(temp, "image-context/Dockerfile"),
-      );
-      tool("docker", [
-        "build",
-        "--platform=linux/amd64",
-        "-t",
-        image,
-        join(temp, "image-context"),
-      ]);
-      const container = tool("docker", ["create", image]);
-      try {
+      if (!promotion) {
+        cpSync(
+          join(directory, "artifact"),
+          join(temp, "image-context/.output"),
+          {
+            recursive: true,
+          },
+        );
+        cpSync(
+          join(ROOT, "services/web-edge"),
+          join(temp, "image-context/web-origin"),
+          { recursive: true },
+        );
+        cpSync(
+          join(ROOT, "services/web-edge/Dockerfile"),
+          join(temp, "image-context/Dockerfile"),
+        );
         tool("docker", [
-          "cp",
-          `${container}:/app/.output/.`,
-          join(temp, "image-output"),
+          "build",
+          "--platform=linux/amd64",
+          "-t",
+          image,
+          join(temp, "image-context"),
         ]);
-        if (
-          digestDirectory(join(temp, "image-output")) !==
-          manifest.artifactDigest
-        )
-          throw new Error(
-            "Container server differs from the prepared release.",
-          );
-        if (
-          digestDirectory(join(temp, "image-output/public")) !==
-          manifest.assetsDigest
-        )
-          throw new Error(
-            "Container assets differ from the prepared release; do not mix separately built artifacts.",
-          );
-      } finally {
-        tool("docker", ["rm", container]);
+        const container = tool("docker", ["create", image]);
+        try {
+          tool("docker", [
+            "cp",
+            `${container}:/app/.output/.`,
+            join(temp, "image-output"),
+          ]);
+          if (
+            digestDirectory(join(temp, "image-output")) !==
+            manifest.artifactDigest
+          )
+            throw new Error(
+              "Container server differs from the prepared release.",
+            );
+          if (
+            digestDirectory(join(temp, "image-output/public")) !==
+            manifest.assetsDigest
+          )
+            throw new Error(
+              "Container assets differ from the prepared release; do not mix separately built artifacts.",
+            );
+        } finally {
+          tool("docker", ["rm", container]);
+        }
+        tool("docker", ["push", image]);
       }
-      tool("docker", ["push", image]);
-      const imageDigest = tool("docker", [
-        "inspect",
-        "--format",
-        "{{index .RepoDigests 0}}",
-        image,
-      ]);
+      const imageDigest =
+        promotion?.imageDigest ??
+        tool("docker", [
+          "inspect",
+          "--format",
+          "{{index .RepoDigests 0}}",
+          image,
+        ]);
       const envFile = join(temp, "runtime.json");
       writeFileSync(
         envFile,
@@ -699,7 +733,17 @@ async function publish(directory, target, architecture) {
     );
     const deployment = {
       ...manifest,
+      runtimeIdentity: {
+        releaseSha: runtimeJournal.releaseSha,
+        runtimeSalt: runtimeJournal.runtimeSalt,
+        runtimeDigest: runtimeJournal.runtimeDigest,
+      },
       workerVersionId: versions[0].version_id,
+      accountId: required("CLOUDFLARE_ACCOUNT_ID"),
+      zoneId: zone,
+      ...(architecture === "workers"
+        ? { hyperdriveId: workerEnv.HYPERDRIVE.id }
+        : {}),
       candidateUrl: `https://${hostname}`,
       accessAppId,
       createdAt: new Date().toISOString(),
@@ -719,6 +763,7 @@ async function publish(directory, target, architecture) {
         2,
       ),
     );
+    return deployment;
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
@@ -751,7 +796,11 @@ async function main() {
     throw new Error(
       "Use publish --target ... --architecture ... --directory ... or bootstrap-access --target ...",
     );
-  await publish(resolve(value("--directory")), target, architecture);
+  await publishWebCandidate(
+    resolve(value("--directory")),
+    target,
+    architecture,
+  );
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
   main().catch((error) => {

@@ -1,6 +1,45 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { probeWebRelease, summarizeWebObservations } from "./web-observe.mjs";
+import {
+  probeWebRelease,
+  summarizeWebObservations,
+  webObservationSettings,
+} from "./web-observe.mjs";
+
+test("production observation follows the promoted canonical domain without Access credentials", () => {
+  const credentials = {
+    ATLAS_HOSTED_CF_ACCESS_CLIENT_ID: "private-id",
+    ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET: "private-secret",
+  };
+  const candidate = { candidateUrl: "https://candidate.atlas.example.com" };
+  assert.deepEqual(webObservationSettings(candidate, credentials), {
+    origin: candidate.candidateUrl,
+    clientId: "private-id",
+    clientSecret: "private-secret",
+  });
+  const production = {
+    ...candidate,
+    target: "production",
+    productionUrl: "https://atlas.example.com",
+    promotionState: "active",
+    publicEnv: { ATLAS_PUBLIC_URL: "https://atlas.example.com" },
+  };
+  assert.deepEqual(webObservationSettings(production, credentials), {
+    origin: production.productionUrl,
+  });
+  assert.throws(() =>
+    webObservationSettings(
+      { ...production, promotionState: "prepared" },
+      credentials,
+    ),
+  );
+  assert.throws(() =>
+    webObservationSettings(
+      { ...production, productionUrl: "https://unrelated.example.com" },
+      credentials,
+    ),
+  );
+});
 
 const sha = "a".repeat(40);
 const origin = "https://candidate.atlas.example.com";

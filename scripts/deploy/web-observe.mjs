@@ -489,6 +489,23 @@ export function summarizeWebObservations(records, options) {
   };
 }
 
+export function webObservationSettings(deployment, env = process.env) {
+  if (deployment.productionUrl) {
+    if (
+      deployment.target !== "production" ||
+      deployment.promotionState !== "active" ||
+      deployment.productionUrl !== deployment.publicEnv?.ATLAS_PUBLIC_URL
+    )
+      throw new Error("An active canonical production deployment is required.");
+    return { origin: cleanOrigin(deployment.productionUrl) };
+  }
+  return {
+    origin: deployment.candidateUrl,
+    clientId: env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
+    clientSecret: env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
+  };
+}
+
 async function main(args) {
   const value = (key) =>
     args.includes(key) ? args[args.indexOf(key) + 1] : undefined;
@@ -520,7 +537,7 @@ async function main(args) {
     );
   const identity = validateIdentity({
     ...deployment,
-    origin: deployment.candidateUrl,
+    ...webObservationSettings(deployment),
     target,
   });
   const records = existsSync(journalPath)
@@ -545,8 +562,7 @@ async function main(args) {
     ...identity,
     originUrl: deployment.originUrl,
     canonicalOrigin: audience ? new URL(audience).origin : undefined,
-    clientId: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
-    clientSecret: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
+    ...webObservationSettings(deployment),
     hostedSecret: process.env.ATLAS_HOSTED_E2E_SECRET,
   });
   mkdirSync(dirname(journalPath), { recursive: true, mode: 0o700 });

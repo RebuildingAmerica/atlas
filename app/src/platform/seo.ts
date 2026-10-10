@@ -6,6 +6,7 @@ const DEFAULT_SOCIAL_IMAGE_HEIGHT = "630";
 
 interface SeoEnv {
   ATLAS_PUBLIC_URL?: string;
+  ATLAS_WEB_CANONICAL_URL?: string;
 }
 
 export interface PageHeadInput {
@@ -49,7 +50,7 @@ function trimSlashes(value: string): string {
 }
 
 function configuredPublicOrigin(env: SeoEnv): string | null {
-  const publicUrl = env.ATLAS_PUBLIC_URL?.trim();
+  const publicUrl = (env.ATLAS_WEB_CANONICAL_URL ?? env.ATLAS_PUBLIC_URL)?.trim();
   if (!publicUrl) {
     return null;
   }

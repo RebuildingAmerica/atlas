@@ -16,6 +16,7 @@ import {
   assertPromotionReady,
   copyWebArtifact,
   digestDirectory,
+  webBuildEnvironment,
 } from "./web-release.mjs";
 const sha = "a".repeat(40);
 const digest = "b".repeat(64);
@@ -28,6 +29,50 @@ const manifest = () =>
     assetsDigest: digest,
     sourceDirty: false,
   });
+
+test("candidate artifacts use canonical build origins without changing runtime or identity secrets", () => {
+  const runtime = {
+    ATLAS_PUBLIC_URL: "https://candidate.atlas.example.com",
+    ATLAS_WEB_CANONICAL_URL: "https://atlas.example.com",
+    ATLAS_AUTH_INTERNAL_SECRET: "private-existing-secret",
+    ATLAS_AUTH_BASE_PATH: "/custom-auth",
+  };
+  const build = webBuildEnvironment(runtime);
+  assert.equal(build.ATLAS_PUBLIC_URL, runtime.ATLAS_WEB_CANONICAL_URL);
+  assert.equal(runtime.ATLAS_PUBLIC_URL, "https://candidate.atlas.example.com");
+  assert.equal(
+    build.ATLAS_AUTH_INTERNAL_SECRET,
+    runtime.ATLAS_AUTH_INTERNAL_SECRET,
+  );
+  const release = createWebManifest({ ...manifest(), publicEnv: runtime });
+  assert.equal(
+    release.buildPublicEnv.ATLAS_PUBLIC_URL,
+    runtime.ATLAS_WEB_CANONICAL_URL,
+  );
+  assert.equal(release.publicEnv.ATLAS_PUBLIC_URL, runtime.ATLAS_PUBLIC_URL);
+  assert.equal(
+    JSON.stringify(release).includes("private-existing-secret"),
+    false,
+  );
+  assert.throws(
+    () =>
+      verifyWebManifest(
+        {
+          ...release,
+          buildPublicEnv: {
+            ...release.buildPublicEnv,
+            ATLAS_PUBLIC_URL: runtime.ATLAS_PUBLIC_URL,
+          },
+        },
+        release,
+      ),
+    /build-time/,
+  );
+  assert.deepEqual(
+    webBuildEnvironment({ ATLAS_PUBLIC_URL: "https://selfhost.example" }),
+    { ATLAS_PUBLIC_URL: "https://selfhost.example" },
+  );
+});
 
 test("release metadata is fixed, contains no credentials, and pins source and assets", () => {
   const output = createWebManifest({

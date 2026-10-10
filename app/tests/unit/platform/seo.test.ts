@@ -2,6 +2,23 @@ import { describe, expect, it } from "vitest";
 import { buildCanonicalUrl, buildPageHead } from "@/platform/seo";
 
 describe("SEO helpers", () => {
+  it("keeps candidate canonical and social links on the public Atlas origin", () => {
+    const head = buildPageHead(
+      { title: "Jane", description: "Organizer", path: "/profiles/people/jane" },
+      {
+        ATLAS_PUBLIC_URL: "https://candidate.atlas.example.com",
+        ATLAS_WEB_CANONICAL_URL: "https://atlas.example.com",
+      },
+    );
+    expect(head.links).toContainEqual({
+      rel: "canonical",
+      href: "https://atlas.example.com/profiles/people/jane",
+    });
+    expect(head.meta).toContainEqual({
+      property: "og:image",
+      content: "https://atlas.example.com/social/atlas-card.png",
+    });
+  });
   it("builds canonical URLs from the production origin by default", () => {
     expect(buildCanonicalUrl("/profiles/people/jane")).toBe(
       "https://atlas.rebuildingus.org/profiles/people/jane",

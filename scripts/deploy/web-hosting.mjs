@@ -15,6 +15,7 @@ import {
   createWebManifest,
   digestDirectory,
   copyWebArtifact,
+  webBuildEnvironment,
 } from "./web-release.mjs";
 
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
@@ -147,7 +148,7 @@ function prepare(args, target) {
     ],
     {
       env: {
-        ...process.env,
+        ...webBuildEnvironment(process.env),
         ATLAS_WEB_RUNTIME: architecture === "workers" ? "workers" : "node",
         NITRO_PRESET: "node-server",
         ATLAS_RELEASE_SHA: releaseSha,
@@ -184,6 +185,7 @@ function prepare(args, target) {
       "ATLAS_MANAGED",
       "ATLAS_MULTI_USER",
       "ATLAS_PUBLIC_URL",
+      "ATLAS_WEB_CANONICAL_URL",
       "ATLAS_DOCS_URL",
       "ATLAS_AUTH_BASE_PATH",
       "ATLAS_SERVER_API_PROXY_TARGET",

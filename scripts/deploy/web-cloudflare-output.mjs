@@ -18,6 +18,7 @@ export async function prepareCloudflareOutput({
   workerName,
   workerEnv,
   hostname,
+  domains = [hostname],
 }) {
   const output = join(outputRoot, ".cloudflare/output/v0");
   mkdirSync(output, { recursive: true });
@@ -37,7 +38,12 @@ export async function prepareCloudflareOutput({
   worker.name = workerName;
   worker.workersDev = false;
   worker.previewUrls = false;
-  worker.domains = [hostname];
+  if (
+    !domains.length ||
+    domains.some((domain) => !/^[a-z0-9]+(?:[.-][a-z0-9]+)+$/.test(domain))
+  )
+    throw new Error("Explicit nonempty Worker domains are required.");
+  worker.domains = domains;
   worker.triggers = [];
   worker.assets = {
     htmlHandling: "none",

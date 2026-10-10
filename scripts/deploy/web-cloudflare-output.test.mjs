@@ -10,6 +10,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { prepareCloudflareOutput } from "./web-cloudflare-output.mjs";
+import { applyRecoveryDomains } from "./web-rollback.mjs";
+import { digestDirectory } from "./web-release.mjs";
 
 for (const architecture of ["workers", "hybrid"]) {
   test(`cf deploy consumes the verified ${architecture} bundle and exact assets without secret values`, async () => {
@@ -89,6 +91,45 @@ for (const architecture of ["workers", "hybrid"]) {
       assert.deepEqual(parsed.workers.default.config.env.SIGNING_SECRET, {
         type: "secret",
       });
+      const digest = digestDirectory(directory);
+      let invoked = false;
+      await applyRecoveryDomains({
+        directory,
+        deployment: {
+          architecture,
+          accountId: "account",
+          workerName: "release-worker",
+        },
+        domains: ["candidate.example.com"],
+        env: { ATLAS_CF_PROFILE: "atlas" },
+        runner: (binary, args, options) => {
+          invoked = true;
+          assert.equal(binary, process.execPath);
+          assert.deepEqual(args.slice(1, 5), [
+            "workers",
+            "triggers",
+            "deploy",
+            "--prebuilt",
+          ]);
+          const config = JSON.parse(
+            readFileSync(
+              join(
+                options.cwd,
+                ".cloudflare/output/v0/workers/default/worker.config.json",
+              ),
+              "utf8",
+            ),
+          );
+          assert.deepEqual(config.domains, ["candidate.example.com"]);
+          assert.deepEqual(config.env, { ASSETS: { type: "assets" } });
+          assert.equal(args.includes("--secrets-file"), false);
+          assert.deepEqual(args.slice(-2), ["--profile", "atlas"]);
+          assert.equal(args.includes("--mode"), architecture === "workers");
+          return { status: 0 };
+        },
+      });
+      assert.equal(invoked, true);
+      assert.equal(digestDirectory(directory), digest);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

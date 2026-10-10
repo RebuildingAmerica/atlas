@@ -322,6 +322,25 @@ separate public bypass: external ATProto authorization servers must fetch that
 public client metadata. Certificate issuance and Access path precedence still
 need deployed verification.
 
+Migration builds compile `ATLAS_PUBLIC_URL` to the canonical origin and expose
+the nonsecret `ATLAS_WEB_CANONICAL_URL` marker. The manifest records both
+`publicEnv` (runtime) and `buildPublicEnv` (compiled configuration). Search and
+social links retain the canonical profile URLs; browser API calls and custom
+sign-in paths use the current hostname. Server authentication still receives the
+candidate runtime origin for callbacks. This permits production to reuse the
+verified server and assets with canonical runtime bindings. Changing bindings
+creates a new provider version and requires fresh production probes; candidate
+observation journals cannot count as production observation.
+
+Publication records an opaque, salted commitment to the original runtime
+configuration. It contains no credential values and cannot authenticate to Atlas
+or a provider; it travels with the archived deployment metadata. Promotion
+checks it against the unchanged production runtime, including optional identity,
+email and Stripe settings. Candidate-only public and introspection URLs are
+excluded because the publisher deliberately changes them. Origin protection
+secrets remain in the private journal and never enter the archive. Older
+candidates without this commitment must be republished.
+
 The workflow runs these steps, with the prepared runtime passed to child
 commands:
 
@@ -412,6 +431,81 @@ attached to the retained immutable Vercel deployment. It excludes route-header
 values, provider environment values and bypass credentials. Existing snapshot
 files cannot be overwritten. A snapshot and retained archive are preparation; a
 successful routing rollback still requires deployed verification.
+
+`web:rollback-vercel` implements the initial migration's return to Vercel. Its
+default mode only checks readiness. It requires the published canonical
+production release, explicit provider identities, the retained Vercel snapshot,
+and matching portable artifacts:
+
+```sh
+pnpm web:rollback-vercel --target production \
+  --directory .atlas/web/production/<full-commit>/<architecture> \
+  --snapshot .atlas/web/rollback-vercel-<timestamp>.json \
+  --hostname atlas.rebuildingus.org --owner willie@rebuildingus.org \
+  --project prj_v1sY5KyDpC3vIWj11UMUjf4QKjH3 \
+  --team team_IA08hNlo8bXnaFX10JyZbNVz
+```
+
+Add `--apply` to restore routing. The command verifies the active Worker
+version, retained Vercel alias/deployment/routing and unchanged mail records
+before any mutation. `cf workers triggers deploy --prebuilt` removes only the
+canonical domain, retaining the protected candidate domain; it does not upload
+or rebuild code. The nonempty candidate domain is required because this CLI
+version skips custom-domain reconciliation when the desired list is empty. The
+command then restores the saved unproxied CNAME through `cf dns records batch`,
+checks DNS again, and leaves an atomic private recovery journal. An interrupted
+detach can resume only with that exact journal. Unknown routing records, changed
+mail or verification records, unexpected domains and changed releases fail
+explicitly. Immediate sign-in, profile, workspace and billing verification is
+required after routing restoration. This command does not cancel Vercel or
+implement rollback between replacement releases.
+
+## Production promotion
+
+`web:promote` checks the selected architecture, exact portable staging
+artifacts, compiled configuration, preserved runtime credentials and actual
+protected staging observation journal. It derives the 24-hour window from
+individual samples; a summary flag in the evidence file cannot replace those
+samples. The baseline must end within 48 hours and the latest successful sample
+must be within ten minutes. Its default mode performs local validation without
+writes:
+
+```sh
+pnpm web:promote --target production \
+  --source .atlas/web/staging/<full-commit>/<architecture> \
+  --journal .atlas/web/staging/<full-commit>/<architecture>/observations.jsonl \
+  --evidence .atlas/web/evidence.json
+```
+
+Supply the unchanged canonical production runtime through
+`ATLAS_WEB_RUNTIME_FILE` or `ATLAS_WEB_RUNTIME_ENV_JSON`, and the existing
+hosted verifier and Access credentials through the same trusted environment used
+for candidate publication. To perform cutover, add `--apply`, a separate
+`--directory .atlas/web/production/<full-commit>/<architecture>`, and the
+explicit `--hostname`, `--owner`, `--project` and `--team` inputs shown for
+rollback above. The configured Cloudflare account/zone must match the staged
+release. The publisher also requires the exact clean source commit.
+
+Promotion captures and saves the current Vercel recovery point, copies the
+verified bundles without rebuilding, and publishes canonical runtime bindings
+behind a protected candidate hostname first. Hybrid reuses the staged immutable
+image digest and creates a separate production revision. It archives the new
+release and rechecks staging freshness and rollback readiness before using
+`cf workers triggers deploy --prebuilt` to attach the canonical domain. It
+immediately runs production probes; routing or probe failure invokes the saved
+Vercel rollback. Failed recovery is reported explicitly with the retained
+snapshot and journal available for manual retry.
+
+The resulting deployment records the canonical `productionUrl` and a new Worker
+version. Continue `web:observe --target production --hours 72 --watch` with that
+deployment and the version-specific journal path printed by promotion.
+Production observation uses the public canonical domain without sending
+candidate Access credentials. A failed promotion cannot be observed as active
+production. These automated probes do not replace the required real sign-in,
+passkey, OAuth/SSO, checkout, webhook, workspace, mobile or rollback journeys.
+Keep the original host and all rollback resources during observation. Provider
+cutover and automatic recovery still require deployed verification; neither has
+been executed for this branch.
 
 ## Deployed observations
 
