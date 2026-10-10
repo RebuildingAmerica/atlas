@@ -84,6 +84,13 @@ untrusted forwarding headers.
 
 ## Current evidence and blockers
 
+The [hosted validation report](./web-hosting-validation.md) records the
+subsequent actual Workers deployment, PostgreSQL release migration, browser
+checks, native CPU measurements, version rollback and credential recovery. The
+current native build fails the approved CPU gate; Cloud Run deployment remains
+blocked by `BILLING_DISABLED`. The inventory below describes the earlier
+baseline, before diagnostic resources and traffic were created.
+
 Local verification on 2026-10-10 established (the `cf` conversion also passed
 both prebuilt deployment dry runs):
 
