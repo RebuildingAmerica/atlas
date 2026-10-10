@@ -101,10 +101,9 @@ Read-only provider inventory on 2026-10-10 established:
   cancellation. Atlas's production and staging domains, environment key names
   and current production deployment were captured locally under ignored
   `.atlas/` files, without environment values. Production remains on Vercel. The
-  metrics API reports 33,502 Atlas requests from September 26 through October 9,
-  across environments. Billing usage for the same window reports monetary units;
-  it cannot substitute for a complete request, response, latency and workload
-  mix baseline.
+  metrics API supplies the workload report below. Billing usage reports monetary
+  units; it cannot substitute for request, response, latency and workload mix
+  measurements.
 - The Atlas Google Cloud account (`willie@rebuildingus.org`, `rap-atlas-prod`)
   is authenticated again as of 2026-10-10. The default CLI project belongs to
   another project; deployment commands must always receive the explicit Atlas
@@ -137,15 +136,55 @@ observation window, production cutover, rollback readiness or subscription
 cancellation is claimed.
 
 The final app suite passed 4,167 tests with 100% statement, branch, function and
-line coverage. All 22 repository lint/type-check tasks, 122 deployment tests and
+line coverage. All 22 repository lint/type-check tasks, 127 deployment tests and
 159 bootstrap tests passed without changing coverage thresholds. These are local
 checks; no remote CI run or hosted acceptance has been completed for this
 branch.
+
+## Refresh the workload baseline
+
+Use the authenticated Vercel CLI session and explicitly select Atlas's team and
+project. The command only reads metrics. Supply 14 complete UTC days, with ISO
+timestamps at midnight UTC and an end within the last 48 hours:
+
+```sh
+pnpm web:baseline \
+  --scope rebuilding-america-project --project atlas \
+  --since 2026-09-26T00:00:00Z --until 2026-10-10T00:00:00Z \
+  --output .atlas/web/baseline-vercel-2026-10-10.json
+```
+
+The report separates production from preview, static assets from function and
+external requests, bot classifications, response sizes, server CPU/duration and
+warm/cold starts. All byte and compute totals use explicit sums. Daily buckets
+use UTC; changing the window changes the totals. `function_start_type` values
+come from Vercel (`hot`, `cold`, `prewarmed`), without treating prewarmed
+traffic as warm traffic. Missing values remain unknown. Failed queries, missing
+daily observations, null daily values, mismatched query readbacks or a grouped
+bucket reaching its 100-group cap make collection incomplete and exit nonzero.
+Valid aggregate summaries remain available when daily observations are partial.
+Reports stay under ignored `.atlas/` paths with mode-600 permissions.
+
+The UTC window above measured 33,070 requests (32,286 production), 174,737,080
+response bytes, and a peak of 11,426 requests in one day across environments.
+Production server invocations had p95 time to first byte of about 1,200 ms for
+`hot` starts and 13,906 ms for `cold` starts. These aggregate all application
+server journeys; they are not an SSR-only comparison. Warm production p99 CPU
+was about 600 ms on Vercel, a significant compatibility risk for Workers Free,
+not a measurement of Workers execution. Source data is retained locally in the
+report. The live run reports partial percentile measurements because some daily
+values are null; it preserves the aggregate summaries above and exits nonzero.
+
+Collection success only means the requested Vercel queries returned usable
+results. This report is not migration approval or a completed evidence file:
+account-wide quota and billing usage, representative hosted measurements and the
+remaining acceptance gates still apply.
 
 ## Repository commands
 
 ```sh
 pnpm web:doctor --target staging
+pnpm web:baseline --scope <team> --project <project> --since <ISO> --until <ISO> --output .atlas/web/baseline.json
 pnpm web:types
 pnpm web:types --check
 pnpm web:typecheck

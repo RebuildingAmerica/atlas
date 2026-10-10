@@ -65,6 +65,7 @@
     "stripe:listen": "tsx scripts/bootstrap/products/atlas/listen.ts",
     "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor",
     "web:doctor": "node scripts/deploy/web-hosting.mjs doctor",
+    "web:baseline": "node scripts/deploy/web-baseline.mjs",
     "web:prepare": "node scripts/deploy/web-hosting.mjs prepare",
     "web:assess": "node scripts/deploy/web-hosting.mjs assess",
     "web:types": "node scripts/deploy/web-types.mjs",
