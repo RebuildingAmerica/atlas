@@ -1,17 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { anonymousSessionResponse } from "@/domains/access/server/anonymous-session";
 
 async function loadAuthRouteModules() {
-  if (import.meta.env.SSR) {
-    const [auth, cimdHandler, oauthGuard, runtime] = await Promise.all([
-      import("@/domains/access/server/auth"),
-      import("@/domains/access/server/cimd-handler"),
-      import("@/domains/access/server/oauth-token-resource-guard"),
-      import("@/domains/access/server/runtime"),
-    ]);
-    return { auth, cimdHandler, oauthGuard, runtime };
-  }
-
-  throw new Error("Auth route handling is only available on the server.");
+  const [auth, cimdHandler, oauthGuard, runtime] = await Promise.all([
+    import("@/domains/access/server/auth"),
+    import("@/domains/access/server/cimd-handler"),
+    import("@/domains/access/server/oauth-token-resource-guard"),
+    import("@/domains/access/server/runtime"),
+  ]);
+  return { auth, cimdHandler, oauthGuard, runtime };
 }
 
 /**
@@ -24,9 +21,14 @@ async function loadAuthRouteModules() {
  * unauthenticated dynamic client registration phishing surface.
  */
 async function dispatch(request: Request): Promise<Response> {
+  if (!import.meta.env.SSR) {
+    throw new Error("Auth route handling is only available on the server.");
+  }
+  const anonymous = anonymousSessionResponse(request);
+  if (anonymous) return anonymous;
   const { auth: authModule, cimdHandler, oauthGuard, runtime } = await loadAuthRouteModules();
-  const scoutToken = await import("@/domains/access/server/scout-token");
   if (new URL(request.url).pathname === "/api/auth/scout/token") {
+    const scoutToken = await import("@/domains/access/server/scout-token");
     return scoutToken.issueScoutTokenRequest(request);
   }
   const { ensureAuthReady } = authModule;

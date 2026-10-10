@@ -26,6 +26,22 @@ vi.mock("@/domains/access/server/scout-token", () => ({
 }));
 
 describe("routes/api/auth/$ Better Auth dispatcher", () => {
+  it("answers a credential-free session read without initializing authentication", async () => {
+    const { ensureAuthReady } = await import("@/domains/access/server/auth");
+    const routeModule = await import("@/routes/api/auth/$");
+    const { callRouteGet } = await import("@/../tests/helpers/routes-server-handler");
+
+    const response = await callRouteGet(
+      routeModule.Route,
+      new Request("https://atlas.test/api/auth/get-session"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toBeNull();
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(ensureAuthReady).not.toHaveBeenCalled();
+  });
+
   it("returns the CIMD error response without invoking Better Auth", async () => {
     const { handleCimdRequest } = await import("@/domains/access/server/cimd-handler");
     const cimdResponse = new Response("cimd error", { status: 400 });

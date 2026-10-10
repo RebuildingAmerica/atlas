@@ -1,5 +1,3 @@
-import { ensureAuthReady } from "@/domains/access/server/auth";
-
 const BETTER_AUTH_DEVICE_BASE_PATH = "/api/auth/device" as const;
 
 type DeviceAuthAliasEndpoint = "approve" | "code" | "deny" | "status" | "token";
@@ -19,6 +17,8 @@ export async function handleDeviceAuthAlias(
   request: Request,
   endpoint: DeviceAuthAliasEndpoint,
 ): Promise<Response> {
+  // Public SSR must not load the authentication backend just to register device routes.
+  const { ensureAuthReady } = await import("@/domains/access/server/auth");
   const auth = await ensureAuthReady();
   return auth.handler(
     await rewriteDeviceAuthRequest(request, endpoint, internalDevicePath(endpoint)),

@@ -1,11 +1,30 @@
 import "reflect-metadata";
 import type { AtlasWorkerEnv } from "../worker-configuration";
+import type { Hyperdrive } from "@cloudflare/workers-types";
 import handler from "@tanstack/react-start/server-entry";
 import { runWorkerRequest } from "./request-scope";
 import { proxyHostedRequest } from "./hosted-proxy";
+import { anonymousSessionResponse } from "../src/domains/access/server/anonymous-session";
+
+// Scope the native binding type to this entrypoint; global Workers declarations
+// would replace DOM types in the browser application and its tests.
+interface WorkerRuntimeEnv extends Omit<AtlasWorkerEnv, "HYPERDRIVE"> {
+  HYPERDRIVE: Hyperdrive;
+}
+
+// Evaluate immutable modules during isolate startup, after the reflection
+// polyfill. Keep routers, query caches, auth instances, and clients request-scoped
+// so first-page latency improves without sharing anyone's identity or content.
+await Promise.all([
+  import("../src/router"),
+  import("../src/start"),
+  import("../src/domains/access/server/api-request-identity"),
+]);
 
 export default {
-  async fetch(request: Request, env: AtlasWorkerEnv): Promise<Response> {
+  async fetch(request: Request, env: WorkerRuntimeEnv): Promise<Response> {
+    const anonymous = anonymousSessionResponse(request);
+    if (anonymous) return anonymous;
     const url = new URL(request.url);
     const headers = new Headers(request.headers);
     for (const key of [...headers.keys()]) {

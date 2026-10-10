@@ -71,6 +71,24 @@ describe("session-state loading", () => {
     expect(mocks.isInstanceOperatorEmail).toHaveBeenCalledWith("operator@atlas.test");
   });
 
+  it("returns no session without starting authentication when no credentials were sent", async () => {
+    mocks.getBrowserSessionHeaders.mockReturnValue(new Headers());
+    const { loadAtlasSession } = await import("@/domains/access/server/session-state");
+
+    expect(await loadAtlasSession()).toBeNull();
+    expect(mocks.ensureAuthReady).not.toHaveBeenCalled();
+  });
+
+  it("still verifies a supplied bearer credential", async () => {
+    const headers = new Headers({ authorization: "Bearer supplied-session" });
+    mocks.getBrowserSessionHeaders.mockReturnValue(headers);
+    authApi.getSession.mockResolvedValue(null);
+    const { loadAtlasSession } = await import("@/domains/access/server/session-state");
+
+    expect(await loadAtlasSession()).toBeNull();
+    expect(authApi.getSession).toHaveBeenCalledWith({ headers });
+  });
+
   it("returns the local single-operator session when auth is disabled", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       localMode: true,

@@ -7,8 +7,8 @@ import {
   serializeResolvedCapabilities,
   type AtlasProduct,
 } from "@rebuildingamerica/atlas-access/workspace/capabilities";
-import { canEmailAccessAtlas, ensureAuthReady, type AtlasPasskeyAuth } from "./auth";
-import { loadAtlasWorkspaceState } from "./organization-session";
+import type { AtlasPasskeyAuth } from "./auth";
+import { hasSessionCredentials } from "./anonymous-session";
 import { getBrowserSessionHeaders } from "./request-headers";
 import {
   getAuthRuntimeConfig,
@@ -24,6 +24,11 @@ const LOCAL_WORKSPACE_ID = "local";
 // naming a paid tier here was standing in for a concept the code lacked, and it
 // made a self-hosted operator look like a paying Team customer.
 const LOCAL_ACTIVE_PRODUCTS: AtlasProduct[] = [];
+
+async function loadReadyAuth() {
+  const { ensureAuthReady } = await import("./auth");
+  return ensureAuthReady();
+}
 
 /**
  * Local-mode single-operator session used when auth is disabled entirely.
@@ -108,7 +113,12 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
   }
 
   const browserSessionHeaders = getBrowserSessionHeaders();
-  const auth = await ensureAuthReady();
+  // A visitor without credentials cannot own a session. Avoid loading every
+  // auth plugin and opening PostgreSQL merely to render anonymous navigation.
+  if (!hasSessionCredentials(browserSessionHeaders)) {
+    return null;
+  }
+  const auth = await loadReadyAuth();
   const sessionValue = await auth.api.getSession({
     headers: browserSessionHeaders,
   });
@@ -121,6 +131,7 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
   const passkeyCount = await getPasskeyCount(auth, browserSessionHeaders);
   const hasPasskey = passkeyCount > 0;
   const accountReady = session.user.emailVerified && hasPasskey;
+  const { loadAtlasWorkspaceState } = await import("./organization-session");
   const workspace = await loadAtlasWorkspaceState(auth, browserSessionHeaders, session, {
     ensurePersonalWorkspace: accountReady,
   });
@@ -204,12 +215,13 @@ export async function requestMagicLinkForEmail(data: {
     ? new URL("/messages", runtime.captureUrl).toString()
     : null;
 
+  const { canEmailAccessAtlas } = await import("./auth");
   const emailCanAccessAtlas = await canEmailAccessAtlas(data.email);
   if (!emailCanAccessAtlas) {
     return { ok: true, captureMailboxUrl };
   }
 
-  const auth = await ensureAuthReady();
+  const auth = await loadReadyAuth();
   try {
     await auth.api.signInMagicLink({
       body: {
@@ -245,7 +257,7 @@ export async function sendVerificationEmailForCurrentSession(): Promise<{ ok: tr
     };
   }
 
-  const auth = await ensureAuthReady();
+  const auth = await loadReadyAuth();
   try {
     await auth.api.sendVerificationEmail({
       body: {
