@@ -134,9 +134,27 @@ Read-only provider inventory on 2026-10-10 established:
   hybrid publisher now inspect the linked account itself, without changing the
   CLI's global account or project. Restoring billing is an operator action;
   these commands never reopen or relink billing accounts.
+- After browser identity verification, the Google billing account report for
+  October 1–10 (Pacific time) shows $3.11 net charges: $2.96 Compute Engine,
+  $0.10 Artifact Registry, $0.04 Cloud Run and
+  $0.01 Cloud Storage. Cloud Run
+  consumed 24,049.47 CPU-seconds, 9,566.1 GiB-seconds and 4,556 requests;
+  its reported compute charges were offset by credits. Its North America
+  internet transfer was 1.26 GiB ($0.03),
+  plus 0.5 GiB carrier peering
+  ($0.01).
+  Artifact Registry stored 1.53 GiB-month; Cloud Logging ingested 0.02 GiB.
+  Rounded charges and applied credits do not establish remaining free
+  allowances. The account's $13.95
+  month forecast describes existing usage, not the added cost of either
+  migration candidate. Redacted observations are retained under ignored
+  `.atlas/web/` files; no CSV export was obtained.
 - Two read-only requests to the existing production API's `/health` endpoint
   returned HTTP 500 and 503. The cause has not been established; successful API
-  operation is required before either candidate can pass hosted journeys.
+  operation is required before either candidate can pass hosted journeys. A
+  subsequent check after browser verification still returned HTTP 503. These
+  gates protect sign-in, searchable profiles and workspace operations during the
+  move; provider authentication alone does not prove those experiences.
 
 The required request/response workload baseline, shared account cost/quota
 measurements and deployed acceptance remain release blockers. Provider login
