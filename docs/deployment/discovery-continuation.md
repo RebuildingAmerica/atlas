@@ -56,3 +56,17 @@ helper commits, commit acknowledgement loss, concurrent retries, exact
 organization dependencies, changed inputs and ownership, expired leases, and
 preserved curator decisions. These checks are local implementation evidence, not
 hosted acceptance or cutover.
+
+`publish_web_entry` applies the existing web trust and duplicate gates in the
+same transaction as its receipt, source links, identity keys, and review hold.
+The original research date supplies missing observation dates. Its receipt binds
+the exact ranked candidate, source evidence, duplicate signal and date.
+
+`finalize_discovery_job` requires the exact web and registry publication
+receipts for the prepared bundle. It commits statistics, the existing
+source-linked research summary, cleared job ownership, completed queue status
+and a final receipt together. Lost final commit acknowledgements can be resolved
+by reading the matching terminal receipt; failed or cancelled jobs cannot be
+revived. Registry units use stable org:N/person:N keys in preparation order.
+These are opt-in primitives; existing Node and Scout execution remains
+unchanged.
