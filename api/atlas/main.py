@@ -16,7 +16,7 @@ from typing import Any
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 
 from atlas.config import get_settings, validate_runtime_auth_config
 from atlas.models import init_db
@@ -120,9 +120,23 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application shutting down")
 
 
-def create_app() -> FastAPI:
+def create_app(
+    *,
+    lifespan_override: Lifespan[FastAPI] | None = None,
+    mcp_asgi_app: ASGIApp | None = None,
+) -> FastAPI:
     """
     Create and configure the FastAPI application.
+
+    Parameters
+    ----------
+    lifespan_override
+        Explicit hosting lifecycle. Request-owned runtimes can keep migrations
+        and background workers out of browsing and sign-in requests.
+    mcp_asgi_app
+        Request-owned MCP transport, mounted inside the same auth-adjacent
+        rate limiting, CORS and logging middleware as the ordinary server.
+        Its caller owns the MCP session manager through response completion.
 
     Returns
     -------
@@ -154,7 +168,7 @@ def create_app() -> FastAPI:
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
-        lifespan=lifespan,
+        lifespan=lifespan if lifespan_override is None else lifespan_override,
     )
     install_openapi_enrichment(app)
 
@@ -262,7 +276,10 @@ def create_app() -> FastAPI:
     # issuer automatically) and CORS support onto the returned app. Passing
     # the `transport_security` computed above avoids deriving the same
     # allowlist from `settings` a second time.
-    app.mount("/mcp", get_mcp_asgi_app(transport_security))
+    app.mount(
+        "/mcp",
+        get_mcp_asgi_app(transport_security) if mcp_asgi_app is None else mcp_asgi_app,
+    )
 
     return app
 

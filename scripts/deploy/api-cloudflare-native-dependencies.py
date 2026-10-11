@@ -199,6 +199,12 @@ def install_native_packages(run_id: str, *, full_api: bool = False) -> None:
         check=True,
     )
     if full_api:
+        # MCP clients must retain the same usable profile widgets as Node hosts.
+        subprocess.run(
+            ["pnpm", "--filter", "@rebuildingamerica/entity-widgets-mcp", "build"],
+            cwd=ROOT,
+            check=True,
+        )
         for source, name in (
             (ROOT / "api/atlas", "atlas"),
             (ROOT / "libs/shared/src/atlas_shared", "atlas_shared"),
@@ -213,6 +219,10 @@ def install_native_packages(run_id: str, *, full_api: bool = False) -> None:
                 dirs_exist_ok=True,
                 ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
             )
+        shutil.copytree(
+            ROOT / "packages/entity-widgets-mcp/dist/widget",
+            vendor / "atlas/platform/mcp/_widget_assets",
+        )
         (vendor / "pyvenv.cfg").touch()
         subprocess.run(
             [

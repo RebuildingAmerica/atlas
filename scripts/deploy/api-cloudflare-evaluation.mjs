@@ -17,6 +17,7 @@ import {
   validateEvaluationDatabase,
 } from "./web-durable-evaluation.mjs";
 import { digestDirectory } from "./web-release.mjs";
+import { apiSettingsFromService } from "./api-cloudflare-settings.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const args = process.argv.slice(2);
@@ -48,6 +49,11 @@ const access = readJson(required("--access-file"));
 const hyperdriveId = required("--hyperdrive-id");
 const edge = args.includes("--edge");
 const discovery = args.includes("--discovery");
+const apiSettings = args.includes("--api-settings-file")
+  ? apiSettingsFromService(readJson(required("--api-settings-file")), runtime)
+  : undefined;
+if (apiSettings && (edge || discovery))
+  throw Error("Production API settings belong only to the API evaluation.");
 const workerName = edge
   ? "atlas-python-eval-edge"
   : discovery
@@ -148,6 +154,7 @@ else
     entrypoint: discovery ? "discovery_entry.py" : "entry.py",
     packagesAsset: args.includes("--packages-asset"),
     workerEnv: {
+      ...(apiSettings ? { ATLAS_API_SETTINGS: { type: "secret" } } : {}),
       HYPERDRIVE: { type: "hyperdrive", id: hyperdriveId },
       API_RUNTIME: {
         type: "durable-object",
@@ -167,6 +174,13 @@ writeFileSync(configFile, JSON.stringify(config));
 const artifactDigest = digestDirectory(
   join(destination, ".cloudflare/output/v0"),
 );
+const secretsFile = join(destination, "secrets-private.json");
+if (apiSettings)
+  writeFileSync(
+    secretsFile,
+    JSON.stringify({ ATLAS_API_SETTINGS: JSON.stringify(apiSettings) }),
+    { mode: 0o600 },
+  );
 const deployed = spawnSync(
   process.execPath,
   [
@@ -174,6 +188,7 @@ const deployed = spawnSync(
     "deploy",
     "--prebuilt",
     "--no-provision",
+    ...(apiSettings ? ["--secrets-file", secretsFile] : []),
     "--profile",
     process.env.ATLAS_CF_PROFILE ?? "atlas",
     "--mode",
