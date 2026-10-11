@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 import aiosqlite
 
+from atlas.platform.hosted_runtime import current_hosted_runtime
+
 from .database_migrations import (
     DatabaseManager,
     _ensure_discovery_job_columns,
@@ -215,6 +217,9 @@ async def get_db_connection(database_url: str, *, backend: str | None = None) ->
     -------
     Connection adapter (PostgresConnection or aiosqlite.Connection)
     """
+    runtime = current_hosted_runtime()
+    if runtime is not None:
+        return await runtime.connect(database_url, backend=backend)
     use_postgres = backend == "postgres" if backend else _is_postgres_url(database_url)
     if use_postgres:
         import psycopg

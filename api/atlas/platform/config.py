@@ -16,6 +16,7 @@ from atlas.platform.config_auth import (
     protected_resource_metadata_url,
     validate_runtime_auth_config,
 )
+from atlas.platform.hosted_runtime import current_hosted_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -468,6 +469,9 @@ def get_settings() -> Settings:
     Settings
         The loaded application settings.
     """
+    runtime = current_hosted_runtime()
+    if runtime is not None:
+        return runtime.settings
     return Settings(_env_file=API_ENV_FILE)
 
 
