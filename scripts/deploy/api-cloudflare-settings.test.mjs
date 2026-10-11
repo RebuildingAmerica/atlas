@@ -4,7 +4,9 @@ import { apiSettingsFromService } from "./api-cloudflare-settings.mjs";
 
 const web = {
   DATABASE_URL: "postgres://private-fixture/db",
-  ATLAS_AUTH_INTERNAL_SECRET: "private-fixture-secret",
+  ATLAS_AUTH_INTERNAL_SECRET: "private-app-signing-secret",
+  ATLAS_AUTH_CALLBACK_SECRET: "private-callback-secret",
+  ATLAS_EDGE_ORIGIN_SECRET: "private-origin-fixture",
   ATLAS_WEB_CANONICAL_URL: "https://atlas.example.org",
 };
 const values = {
@@ -13,7 +15,7 @@ const values = {
   DATABASE_URL: web.DATABASE_URL,
   ATLAS_MULTI_USER: "true",
   ATLAS_MANAGED: "true",
-  ATLAS_AUTH_INTERNAL_SECRET: web.ATLAS_AUTH_INTERNAL_SECRET,
+  ATLAS_AUTH_CALLBACK_SECRET: web.ATLAS_AUTH_CALLBACK_SECRET,
   ATLAS_PUBLIC_URL: web.ATLAS_WEB_CANONICAL_URL,
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
     "https://atlas.example.org/api/internal/auth",
@@ -61,4 +63,32 @@ test("unresolved secrets, duplicate variables and identity changes fail without 
       },
     );
   }
+});
+
+test("API exports refuse app signing keys, retired operators and mismatched low-privilege secrets", () => {
+  for (const entries of [
+    [...env(), { name: "ATLAS_AUTH_INTERNAL_SECRET", value: "" }],
+    [
+      ...env(),
+      {
+        name: "ATLAS_AUTH_INTERNAL_SECRET",
+        value: web.ATLAS_AUTH_INTERNAL_SECRET,
+      },
+    ],
+    [
+      ...env(),
+      { name: "ATLAS_OPERATOR_ALLOWED_EMAILS", value: "editor@example.org" },
+    ],
+    env().map((entry) =>
+      entry.name === "ATLAS_AUTH_CALLBACK_SECRET"
+        ? { ...entry, value: "wrong-callback" }
+        : entry,
+    ),
+    env().map((entry) =>
+      entry.name === "ATLAS_EDGE_ORIGIN_SECRET"
+        ? { ...entry, value: "wrong-edge" }
+        : entry,
+    ),
+  ])
+    assert.throws(() => apiSettingsFromService(service(entries), web));
 });

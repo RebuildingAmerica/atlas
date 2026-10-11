@@ -41,7 +41,11 @@ async def test_release_health_and_paused_alarm_do_not_start_research(monkeypatch
         await module.Default(None, env).fetch(make_request("/health"))
     ).status == 403
     response = await runtime.fetch(make_request("/__atlas/consumers"))
-    assert response.body == {"releaseSha": SHA, "enabled": False}
+    assert response.body == {
+        "releaseSha": SHA,
+        "activeReleaseSha": "",
+        "enabled": False,
+    }
     assert await runtime.alarm() is None
     packages.assert_not_awaited()
     assert not hasattr(runtime, "_discovery")
@@ -73,11 +77,8 @@ async def test_paused_real_adapter_retains_receipts_and_initial_enable_arms_hand
     await runtime.prepare_wake("rolled-back")
     await runtime.abort_wake("rolled-back")
     assert (await runtime._discovery_adapter()._state()).pending == []
-    response = await runtime.fetch(
-        make_request(
-            "/__atlas/consumers", "POST", body={"releaseSha": SHA, "enabled": True}
-        )
-    )
+    runtime.env.ATLAS_ACTIVE_RELEASE_SHA = SHA
+    response = await runtime.fetch(make_request("/__atlas/consumers"))
     assert response.body["enabled"] is True
     assert storage.alarm_at is not None
     connect.assert_not_awaited()
@@ -98,11 +99,8 @@ async def test_enabled_alarm_loads_packages_then_runs_one_unit_and_keeps_rescue(
     runtime = module.DiscoveryRuntime(SimpleNamespace(storage=storage), environment())
     adapter = SimpleNamespace(alarm=AsyncMock(return_value="one-turn"))
     monkeypatch.setattr(module, "create_discovery_alarm", lambda *_: adapter)
-    await runtime.fetch(
-        make_request(
-            "/__atlas/consumers", "POST", body={"releaseSha": SHA, "enabled": True}
-        )
-    )
+    runtime.env.ATLAS_ACTIVE_RELEASE_SHA = SHA
+    await runtime.fetch(make_request("/__atlas/consumers"))
     if failure:
         with pytest.raises(RuntimeError):
             await runtime.alarm()

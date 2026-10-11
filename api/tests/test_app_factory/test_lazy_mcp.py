@@ -30,7 +30,7 @@ settings = Settings(_env_file=None, environment="production", multi_user=True,
     cors_origins=["https://reader.example.com"],
     auth_jwt_issuer="https://atlas.example.com",
     auth_jwt_audience=["https://atlas.example.com/mcp", "https://api.example.com/api"],
-    auth_internal_secret="fake-internal-secret",
+    auth_callback_secret="fake-callback-secret",
     auth_api_key_introspection_url="https://atlas.example.com/api/auth/api-key/verify",
     auth_membership_verification_url="https://atlas.example.com/api/auth/membership")
 async def no_database(*args, **kwargs):

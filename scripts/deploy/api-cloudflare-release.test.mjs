@@ -82,6 +82,7 @@ function fixture() {
             exportName: "DiscoveryRuntime",
           },
           ATLAS_RELEASE_SHA: { type: "text", value: sha },
+          ATLAS_ACTIVE_RELEASE_SHA: { type: "text", value: "" },
           ATLAS_SCHEMA_RECEIPT_DIGEST: {
             type: "text",
             value: schemaResult.receiptDigest,
@@ -164,7 +165,10 @@ function fixture() {
         },
       };
     if (path === "/__atlas/consumers")
-      return { status: 200, body: { releaseSha, enabled: false } };
+      return {
+        status: 200,
+        body: { releaseSha, activeReleaseSha: "", enabled: false },
+      };
     return { status: 200, body: { status: "ok" } };
   };
   const input = {
@@ -520,4 +524,48 @@ test("concurrent provider replacement after preflight stops before an upload", (
       /readback/,
     );
     assert.equal(writes, 0);
+  }));
+
+test("publication refuses active binding artifacts before any provider operation", () =>
+  using(async (f) => {
+    const artifact = f.input.artifacts.api;
+    const file = join(
+      artifact.directory,
+      ".cloudflare/output/v0/workers/default/worker.config.json",
+    );
+    const config = JSON.parse(readFileSync(file));
+    config.env.ATLAS_ACTIVE_RELEASE_SHA.value = sha;
+    writeFileSync(file, JSON.stringify(config));
+    artifact.artifactDigest = digestDirectory(
+      join(artifact.directory, ".cloudflare/output/v0"),
+    );
+    await assert.rejects(
+      publishApiRelease({ ...f.input, apply: true }),
+      /artifact.*contract/,
+    );
+    assert.deepEqual(f.calls, []);
+    assert.deepEqual(f.journals, []);
+  }));
+
+test("stale active-release readback cannot verify a paused deployment", () =>
+  using(async (f) => {
+    await assert.rejects(
+      publishApiRelease({
+        ...f.input,
+        apply: true,
+        probe: async (q) =>
+          q.path === "/__atlas/consumers"
+            ? {
+                status: 200,
+                body: {
+                  releaseSha: sha,
+                  activeReleaseSha: "d".repeat(40),
+                  enabled: false,
+                },
+              }
+            : f.input.probe(q),
+      }),
+      /paused/,
+    );
+    assert.equal(f.journals.at(-1).phase, "verification-required");
   }));

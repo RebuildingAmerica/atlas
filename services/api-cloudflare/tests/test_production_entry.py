@@ -12,12 +12,13 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from test_consumer_control import DIGEST, SECRET, SHA, Storage, request
+from test_consumer_control import DIGEST, SHA, Storage, request
 
 
 def environment(inline=False):
     return SimpleNamespace(
         ATLAS_RELEASE_SHA=SHA,
+        ATLAS_ACTIVE_RELEASE_SHA="",
         ATLAS_SCHEMA_RECEIPT_DIGEST=DIGEST,
         ATLAS_API_SETTINGS=json.dumps(
             {
@@ -27,7 +28,7 @@ def environment(inline=False):
                 "ATLAS_MULTI_USER": "true",
                 "ATLAS_MANAGED": "true",
                 "ATLAS_PUBLIC_URL": "https://reader.example.com",
-                "ATLAS_AUTH_INTERNAL_SECRET": SECRET,
+                "ATLAS_AUTH_CALLBACK_SECRET": "callback-test-secret",
                 "ATLAS_AUTH_JWT_AUDIENCES": "https://reader.example.com/mcp,https://reader.example.com/api",
                 "ATLAS_AUTH_API_KEY_INTROSPECTION_URL": "https://reader.example.com/api/auth/api-key/verify",
                 "ATLAS_AUTH_MEMBERSHIP_URL": "https://reader.example.com/api/auth/membership",
@@ -237,14 +238,13 @@ async def test_paused_alarm_never_constructs_services_and_enabled_alarm_uses_gat
     packages.assert_not_awaited()
     assert not hasattr(runtime, "_firehose")
     control_response = await runtime.fetch(make_request("/__atlas/consumers"))
-    assert control_response.body == {"releaseSha": SHA, "enabled": False}
-    response = await runtime.fetch(
-        make_request(
-            "/__atlas/consumers",
-            "POST",
-            body={"releaseSha": SHA, "enabled": True},
-        )
-    )
+    assert control_response.body == {
+        "releaseSha": SHA,
+        "activeReleaseSha": "",
+        "enabled": False,
+    }
+    runtime.env.ATLAS_ACTIVE_RELEASE_SHA = SHA
+    response = await runtime.fetch(make_request("/__atlas/consumers"))
     assert response.body["enabled"] is True
     adapter = SimpleNamespace(alarm=AsyncMock())
     storage_owners = []
@@ -268,13 +268,8 @@ async def test_enabled_alarm_timer_failure_retains_rescue_without_constructing_a
 ):
     entry, _, _ = load_entry(monkeypatch, timer_ok=False)
     runtime = entry.ApiRuntime(SimpleNamespace(storage=Storage()), environment())
-    await runtime.fetch(
-        make_request(
-            "/__atlas/consumers",
-            "POST",
-            body={"releaseSha": SHA, "enabled": True},
-        )
-    )
+    runtime.env.ATLAS_ACTIVE_RELEASE_SHA = SHA
+    await runtime.fetch(make_request("/__atlas/consumers"))
     with pytest.raises(RuntimeError, match="selected hosted loop"):
         await runtime.alarm()
     assert runtime.ctx.storage.alarm_at is not None
@@ -376,8 +371,8 @@ async def main():
             confidence=0.8, sensitivity=0.1, payload={'title': 'New civic actor'}, evidence=[],
         ))
         runtime = entry.ApiRuntime(SimpleNamespace(storage=harness.Storage()), harness.environment())
-        await runtime.fetch(harness.make_request('/__atlas/consumers', 'POST',
-            body={'releaseSha': harness.SHA, 'enabled': True}))
+        runtime.env.ATLAS_ACTIVE_RELEASE_SHA = harness.SHA
+        await runtime.fetch(harness.make_request('/__atlas/consumers'))
         result = await runtime.alarm()
         assert (result.processed, result.delivered, result.failed) == (1, 1, 0)
         packages.assert_not_awaited()

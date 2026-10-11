@@ -8,6 +8,7 @@ from inspect import signature
 from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
 from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
 from database_adapter import connect_database
+from hosted_jwks import HostedJwksCache
 from public_source_transport import workers_public_source_fetch
 
 
@@ -30,6 +31,14 @@ def _settings(env):
     raw = json.loads(env.ATLAS_API_SETTINGS)
     if not isinstance(raw, dict) or any(not isinstance(key, str) for key in raw):
         raise ValueError("Settings must be an object")
+    retired = {
+        "ATLAS_AUTH_INTERNAL_SECRET",
+        "AUTH_INTERNAL_SECRET",
+        "ATLAS_OPERATOR_ALLOWED_EMAILS",
+        "OPERATOR_ALLOWED_EMAILS",
+    }
+    if any(key.upper() in retired for key in raw):
+        raise ValueError("Retired authority configuration is forbidden")
     names = {}
     for name, field in Settings.model_fields.items():
         names[name.upper()] = name
@@ -59,7 +68,10 @@ def _settings(env):
 
 def _hyperdrive_parameters(env):
     binding = env.HYPERDRIVE
-    parameters = {name: getattr(binding, name) for name in ("host", "user", "password", "database")}
+    parameters = {
+        name: getattr(binding, name)
+        for name in ("host", "user", "password", "database")
+    }
     if any(not isinstance(value, str) or not value for value in parameters.values()):
         raise ValueError("Hyperdrive binding is incomplete")
     if isinstance(binding.port, bool):
@@ -95,9 +107,6 @@ def _install_async_dependencies(app):
         firehose_http_context,
         firehose_json_http_context,
     )
-    from atlas.domains.firehose.observation_signals_api import (
-        require_internal_firehose_request,
-    )
 
     def adapt(call):
         @wraps(call)
@@ -119,7 +128,6 @@ def _install_async_dependencies(app):
         get_profile_claim_policy,
         firehose_http_context,
         firehose_json_http_context,
-        require_internal_firehose_request,
     ):
         app.dependency_overrides[call] = adapt(call)
 
@@ -153,12 +161,16 @@ def create_hosted_application(
             # explicit settings before importing; never populate os.environ.
             from atlas.main import create_app
 
-            app = create_app(lifespan_override=_http_lifespan, mcp_asgi_app=_request_mcp)
+            app = create_app(
+                lifespan_override=_http_lifespan, mcp_asgi_app=_request_mcp
+            )
 
         _install_async_dependencies(app)
     except Exception:
         # Pydantic/URL errors can include entire secret-bearing input values.
         raise RuntimeError("Invalid hosted API configuration.") from None
+
+    keys = HostedJwksCache(settings)
 
     async def hosted(scope, receive, send):
         connections = AsyncExitStack()
@@ -188,6 +200,7 @@ def create_hosted_application(
                 firehose_wake,
                 workers_public_source_fetch,
                 discovery_wake=discovery_wake,
+                jwks_documents=await keys.for_headers(scope.get("headers", [])),
             )
         ):
             try:

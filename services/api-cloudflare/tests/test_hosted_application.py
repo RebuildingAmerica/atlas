@@ -2,6 +2,7 @@
 
 import asyncio
 import importlib
+import hashlib
 import importlib.util
 import json
 from types import SimpleNamespace
@@ -26,7 +27,17 @@ def environment(label="reader", **overrides):
         "ATLAS_MULTI_USER": "true",
         "ATLAS_MANAGED": "true",
         "ATLAS_PUBLIC_URL": origin,
-        "ATLAS_AUTH_INTERNAL_SECRET": f"private-{label}-internal-secret",
+        "ATLAS_MACHINE_TRUSTED_ISSUERS": json.dumps(
+            [
+                {
+                    "kind": "static_key",
+                    "name": "delivery",
+                    "key_sha256": hashlib.sha256(b"delivery-test-token").hexdigest(),
+                    "actions": ["machine.firehose.deliver"],
+                }
+            ]
+        ),
+        "ATLAS_AUTH_CALLBACK_SECRET": f"private-{label}-internal-secret",
         "ATLAS_AUTH_JWT_AUDIENCES": f"{origin}/mcp,{origin}/api",
         "ATLAS_AUTH_API_KEY_INTROSPECTION_URL": f"{origin}/api/auth/api-key/verify",
         "ATLAS_AUTH_MEMBERSHIP_URL": f"{origin}/api/auth/membership",
@@ -45,11 +56,22 @@ def environment(label="reader", **overrides):
     )
 
 
+@pytest.fixture(autouse=True)
+def app_keys(monkeypatch):
+    from tests.support.app_assertions import trust_test_app_keys
+
+    trust_test_app_keys(monkeypatch)
+
+
 def headers(label, actor):
+    from tests.support.app_assertions import sign_app_assertion
+
     return {
-        "x-atlas-internal-secret": f"private-{label}-internal-secret",
-        "x-atlas-actor-id": actor,
-        "x-atlas-actor-email": f"{actor}@example.com",
+        "x-atlas-actor-assertion": sign_app_assertion(
+            user_id=actor,
+            email=f"{actor}@example.com",
+            issuer=f"https://{label}.example.com/api/auth",
+        ),
         "origin": f"https://{label}.example.com",
     }
 
@@ -65,7 +87,7 @@ async def test_hosted_dependency_adapters_keep_headers_factories_and_internal_gu
     from atlas.domains.catalog.api.profile_claim_helpers import get_profile_claim_policy
     from atlas.domains.firehose.http import firehose_json_http_context
     from atlas.domains.firehose.observation_signals_api import (
-        require_internal_firehose_request,
+        require_firehose_delivery,
     )
     from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
 
@@ -75,6 +97,7 @@ async def test_hosted_dependency_adapters_keep_headers_factories_and_internal_gu
     monkeypatch.setattr("anyio.to_thread.run_sync", forbidden_thread)
     app = FastAPI()
     module()._install_async_dependencies(app)
+    assert require_firehose_delivery not in app.dependency_overrides
 
     @app.post("/headers")
     async def read_headers(context=Depends(firehose_json_http_context)):
@@ -88,7 +111,7 @@ async def test_hosted_dependency_adapters_keep_headers_factories_and_internal_gu
         return [type(verifier).__name__, type(policy).__name__]
 
     @app.get("/internal")
-    async def internal(_guard=Depends(require_internal_firehose_request)):
+    async def internal(_guard=Depends(require_firehose_delivery)):
         return {"ok": True}
 
     async def forbidden_connect(*args, **kwargs):
@@ -97,7 +120,8 @@ async def test_hosted_dependency_adapters_keep_headers_factories_and_internal_gu
     runtime = HostedRuntime(module()._settings(environment()), forbidden_connect)
     with bind_hosted_runtime(runtime):
         async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="https://reader.example.com"
+            transport=httpx.ASGITransport(app=app),
+            base_url="https://reader.example.com",
         ) as client:
             response = await client.post(
                 "/headers",
@@ -118,12 +142,22 @@ async def test_hosted_dependency_adapters_keep_headers_factories_and_internal_gu
                 "DirectoryDomainVerificationService",
                 "ProfileClaimPolicy",
             ]
-            assert (await client.get("/internal")).status_code == 403
+            assert (await client.get("/internal")).status_code == 401
+            assert (
+                await client.get(
+                    "/internal",
+                    headers={
+                        "x-atlas-internal-secret": "private-reader-internal-secret"
+                    },
+                )
+            ).status_code == 401
             assert (
                 await client.get("/internal", headers=headers("wrong", "forged"))
-            ).status_code == 403
+            ).status_code == 401
             assert (
-                await client.get("/internal", headers=headers("reader", "trusted"))
+                await client.get(
+                    "/internal", headers={"Authorization": "Bearer delivery-test-token"}
+                )
             ).json() == {"ok": True}
 
 
@@ -164,9 +198,16 @@ async def test_real_health_and_private_routes_keep_auth_and_cors(monkeypatch):
         ):
             response = await client.get("/api/lists", headers=request_headers)
             assert response.status_code == 401
-            assert (
-                "oauth-protected-resource/mcp" in response.headers["www-authenticate"]
-            )
+            if "x-atlas-actor-assertion" in request_headers:
+                assert (
+                    response.json()["detail"]
+                    == "The app's identity assertion is not valid."
+                )
+            else:
+                assert (
+                    "oauth-protected-resource/mcp"
+                    in response.headers["www-authenticate"]
+                )
 
 
 @pytest.mark.asyncio
@@ -315,15 +356,15 @@ async def test_evaluation_prefix_is_explicit_and_boundary_limited():
 
 
 def test_settings_ignore_ambient_process_secrets_and_accept_field_names(monkeypatch):
-    monkeypatch.setenv("ATLAS_AUTH_INTERNAL_SECRET", "ambient-private-secret")
+    monkeypatch.setenv("ATLAS_AUTH_CALLBACK_SECRET", "ambient-private-secret")
     monkeypatch.setenv("ATLAS_MULTI_USER", "false")
     monkeypatch.setenv("ENVIRONMENT", "dev")
     env = environment()
     values = json.loads(env.ATLAS_API_SETTINGS)
-    values["auth_internal_secret"] = values.pop("ATLAS_AUTH_INTERNAL_SECRET")
+    values["auth_callback_secret"] = values.pop("ATLAS_AUTH_CALLBACK_SECRET")
     env.ATLAS_API_SETTINGS = json.dumps(values)
     assert module().create_hosted_application(env)[1] > 0
-    del values["auth_internal_secret"]
+    del values["auth_callback_secret"]
     env.ATLAS_API_SETTINGS = json.dumps(values)
     with pytest.raises(RuntimeError, match="configuration") as error:
         module().create_hosted_application(env)
@@ -334,15 +375,17 @@ def test_settings_ignore_ambient_process_secrets_and_accept_field_names(monkeypa
     "changes",
     [
         {"ENVIRONMENT": "dev"},
+        {"ATLAS_AUTH_INTERNAL_SECRET": "private-secret-signing-key"},
+        {"ATLAS_OPERATOR_ALLOWED_EMAILS": "private-secret@example.com"},
         {"DATABASE_BACKEND": "sqlite", "DATABASE_URL": "sqlite:///private-secret.db"},
         {"DATABASE_URL": "private-secret-invalid-url"},
         {"ATLAS_MULTI_USER": "false"},
-        {"ATLAS_AUTH_INTERNAL_SECRET": ""},
+        {"ATLAS_AUTH_CALLBACK_SECRET": ""},
         {"ATLAS_AUTH_JWT_AUDIENCES": "https://wrong.example.com/mcp"},
         {"CORS_ORIGINS": "private-secret-not-json"},
         {"CORS_ORIGINS": '["*"]'},
         {"CORS_ORIGINS": '"private-secret-not-list"'},
-        {"auth_internal_secret": "private-secret-conflicting-alias"},
+        {"auth_callback_secret": "private-secret-conflicting-alias"},
     ],
 )
 def test_invalid_production_configuration_is_sanitized(changes):

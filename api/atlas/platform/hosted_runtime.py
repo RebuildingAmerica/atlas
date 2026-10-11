@@ -39,6 +39,7 @@ class HostedRuntime:
     firehose_wake: FirehoseWake | None = None
     public_source_fetch: PublicSourceFetcher | None = None
     discovery_wake: FirehoseWake | None = None
+    jwks_documents: dict[str, dict[str, Any]] | None = None
 
 
 _runtime: ContextVar[HostedRuntime | None] = ContextVar("atlas_hosted_runtime", default=None)

@@ -1,4 +1,4 @@
-"""Production consumers remain paused until their exact release is enabled."""
+"""Deployment-bound consumers preserve receipts and drain work before pause readback."""
 
 import asyncio
 import copy
@@ -10,10 +10,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-
 SHA = "a" * 40
 DIGEST = "b" * 64
-SECRET = "internal-test-secret"
 
 
 class Storage:
@@ -37,12 +35,8 @@ class Storage:
         self.alarm_at = None
 
 
-def request(method="GET", *, secret=SECRET, body=None):
-    return SimpleNamespace(
-        method=method,
-        headers={"x-atlas-internal-secret": secret},
-        json=AsyncMock(return_value=body),
-    )
+def request(method="GET", *, body=None, **kwargs):
+    return SimpleNamespace(method=method, headers={}, json=AsyncMock(return_value=body))
 
 
 @pytest.fixture
@@ -57,45 +51,45 @@ def control_module(monkeypatch):
             )
         ),
     )
-    monkeypatch.setitem(
-        sys.modules,
-        "hosted_application",
-        SimpleNamespace(
-            _settings=lambda env: SimpleNamespace(auth_internal_secret=SECRET)
-        ),
-    )
     sys.modules.pop("consumer_control", None)
     yield importlib.import_module("consumer_control")
     sys.modules.pop("consumer_control", None)
 
 
-def make_control(module, storage=None, *, sha=SHA):
+def make_control(module, storage=None, *, sha=SHA, active=""):
     return module.ConsumerControl(
-        SimpleNamespace(ATLAS_RELEASE_SHA=sha, ATLAS_SCHEMA_RECEIPT_DIGEST=DIGEST),
+        SimpleNamespace(
+            ATLAS_RELEASE_SHA=sha,
+            ATLAS_ACTIVE_RELEASE_SHA=active,
+            ATLAS_SCHEMA_RECEIPT_DIGEST=DIGEST,
+        ),
         storage or Storage(),
         clock=lambda: 1000,
     )
 
 
+def readback(active="", enabled=False, sha=SHA):
+    return (200, {"releaseSha": sha, "activeReleaseSha": active, "enabled": enabled})
+
+
 @pytest.mark.asyncio
-async def test_fresh_restart_and_other_release_are_paused(control_module):
+async def test_fresh_restart_and_changed_release_are_paused(control_module):
     storage = Storage()
     first = make_control(control_module, storage)
+    assert await first.handle_request(request()) == readback()
     callback = AsyncMock()
-    assert await first.handle_request(request()) == (
-        200,
-        {"releaseSha": SHA, "enabled": False},
-    )
     await first.run_alarm(callback)
     callback.assert_not_awaited()
-    assert await first.handle_request(
-        request("POST", body={"releaseSha": SHA, "enabled": True})
-    ) == (200, {"releaseSha": SHA, "enabled": True})
+    active = make_control(control_module, storage, active=SHA)
+    assert await active.handle_request(request()) == readback(SHA, True)
     assert storage.alarm_at == 1000001
-    restarted = make_control(control_module, storage)
-    assert await restarted.is_enabled()
-    replacement = make_control(control_module, storage, sha="c" * 40)
-    assert not await replacement.is_enabled()
+    assert await make_control(control_module, storage, active=SHA).is_enabled()
+    # A retained old enable receipt cannot override the new deployment binding.
+    paused = make_control(control_module, storage)
+    assert not await paused.is_enabled()
+    assert await paused.handle_request(request()) == readback()
+    replacement = make_control(control_module, storage, sha="c" * 40, active=SHA)
+    assert await replacement.handle_request(request()) == readback(SHA, False, "c" * 40)
     await replacement.run_alarm(callback)
     callback.assert_not_awaited()
     assert storage.alarm_at is None
@@ -106,26 +100,23 @@ async def test_paused_producers_retain_receipts_without_arming(control_module):
     control = make_control(control_module)
     await control.gated_storage.put("wake-receipts", ["pending-observation"])
     await control.gated_storage.setAlarm(123)
-    assert await control.gated_storage.get("wake-receipts") == ["pending-observation"]
     assert await control.gated_storage.getAlarm() is None
-    await control.handle_request(
-        request("POST", body={"releaseSha": SHA, "enabled": True})
-    )
+    control.env.ATLAS_ACTIVE_RELEASE_SHA = SHA
+    await control.handle_request(request())
     await control.gated_storage.setAlarm(123)
     assert await control.gated_storage.getAlarm() == 123
-    await control.handle_request(
-        request("POST", body={"releaseSha": SHA, "enabled": False})
-    )
+    control.env.ATLAS_ACTIVE_RELEASE_SHA = ""
+    await control.handle_request(request())
     assert await control.gated_storage.get("wake-receipts") == ["pending-observation"]
     assert await control.gated_storage.getAlarm() is None
 
 
 @pytest.mark.asyncio
-async def test_pause_waits_for_entire_alarm_unit(control_module):
-    control = make_control(control_module)
-    await control.handle_request(
-        request("POST", body={"releaseSha": SHA, "enabled": True})
-    )
+async def test_pause_readback_waits_for_entire_alarm_and_blocks_new_arming(
+    control_module,
+):
+    control = make_control(control_module, active=SHA)
+    await control.handle_request(request())
     started, finish = asyncio.Event(), asyncio.Event()
 
     async def unit():
@@ -135,19 +126,16 @@ async def test_pause_waits_for_entire_alarm_unit(control_module):
 
     running = asyncio.create_task(control.run_alarm(unit))
     await started.wait()
-    pause = asyncio.create_task(
-        control.handle_request(
-            request("POST", body={"releaseSha": SHA, "enabled": False})
-        )
-    )
+    control.env.ATLAS_ACTIVE_RELEASE_SHA = ""
+    pause = asyncio.create_task(control.handle_request(request()))
     await asyncio.sleep(0)
     assert not pause.done()
-    assert await control.is_enabled()
-    # Producers remain responsive while the unit runs.
+    assert not await control.is_enabled()
+    # Producers remain responsive while readback waits for the running unit.
     await control.gated_storage.put("receipt", "committed")
     finish.set()
     await running
-    assert await pause == (200, {"releaseSha": SHA, "enabled": False})
+    assert await pause == readback()
     assert control.storage.alarm_at is None
     callback = AsyncMock()
     await control.run_alarm(callback)
@@ -155,11 +143,9 @@ async def test_pause_waits_for_entire_alarm_unit(control_module):
 
 
 @pytest.mark.asyncio
-async def test_cancelled_unit_retains_rescue_and_releases_pause_lock(control_module):
-    control = make_control(control_module)
-    await control.handle_request(
-        request("POST", body={"releaseSha": SHA, "enabled": True})
-    )
+async def test_cancelled_unit_retains_rescue_and_releases_readback_lock(control_module):
+    control = make_control(control_module, active=SHA)
+    await control.handle_request(request())
     started = asyncio.Event()
 
     async def unit():
@@ -172,20 +158,18 @@ async def test_cancelled_unit_retains_rescue_and_releases_pause_lock(control_mod
     running.cancel()
     with pytest.raises(asyncio.CancelledError):
         await running
-    await control.handle_request(
-        request("POST", body={"releaseSha": SHA, "enabled": False})
-    )
-    assert not await control.is_enabled()
+    control.env.ATLAS_ACTIVE_RELEASE_SHA = ""
+    assert await control.handle_request(request()) == readback()
     assert control.storage.alarm_at is None
 
 
 @pytest.mark.asyncio
-async def test_cancelled_pause_persists_disabled_before_alarm_deletion(control_module):
+async def test_cancelled_pause_readback_persists_disabled_before_alarm_deletion(
+    control_module,
+):
     storage = Storage()
-    control = make_control(control_module, storage)
-    await control.handle_request(
-        request("POST", body={"releaseSha": SHA, "enabled": True})
-    )
+    control = make_control(control_module, storage, active=SHA)
+    await control.handle_request(request())
     deleting = asyncio.Event()
 
     async def blocked_delete():
@@ -193,118 +177,80 @@ async def test_cancelled_pause_persists_disabled_before_alarm_deletion(control_m
         await asyncio.Event().wait()
 
     storage.deleteAlarm = blocked_delete
-    pause = asyncio.create_task(
-        control.handle_request(
-            request("POST", body={"releaseSha": SHA, "enabled": False})
-        )
-    )
+    control.env.ATLAS_ACTIVE_RELEASE_SHA = ""
+    pause = asyncio.create_task(control.handle_request(request()))
     await deleting.wait()
     pause.cancel()
     with pytest.raises(asyncio.CancelledError):
         await pause
+    assert storage.values[control_module._STATE_KEY]["enabled"] is False
     assert not await make_control(control_module, storage).is_enabled()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("secret", [None, "forged", "non-ascii-\u00e9"])
-async def test_forged_control_does_not_read_body_or_change_state(
-    control_module, secret
-):
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH"])
+async def test_http_mutations_never_read_body_or_change_state(control_module, method):
     control = make_control(control_module)
-    incoming = request("POST", secret=secret, body={"releaseSha": SHA, "enabled": True})
-    status, body = await control.handle_request(incoming)
-    assert status == 403
-    assert SECRET not in str(body)
+    incoming = request(method, body={"releaseSha": SHA, "enabled": True})
+    incoming.headers = {
+        "Authorization": "Bearer machine",
+        "x-atlas-internal-secret": "app-secret",
+    }
+    assert await control.handle_request(incoming) == (
+        405,
+        {"error": "Method not allowed"},
+    )
     incoming.json.assert_not_awaited()
-    assert not control.storage.values
+    assert control.storage.values == {}
     assert control.storage.alarm_at is None
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "body,status",
-    [
-        ({"releaseSha": "c" * 40, "enabled": True}, 409),
-        ({"releaseSha": SHA, "enabled": "true"}, 400),
-        ({"releaseSha": SHA, "enabled": 1}, 400),
-        ({"releaseSha": SHA, "enabled": True, "extra": "private"}, 400),
-        ([], 400),
-    ],
-)
-async def test_stale_or_invalid_control_is_rejected(control_module, body, status):
-    control = make_control(control_module)
-    response = await control.handle_request(request("POST", body=body))
-    assert response[0] == status
-    assert not control.storage.values
-
-
-@pytest.mark.asyncio
-async def test_failed_enable_never_persists_enabled(control_module):
-    control = make_control(control_module)
+async def test_failed_activation_never_persists_enabled(control_module):
+    control = make_control(control_module, active=SHA)
     control.storage.setAlarm = AsyncMock(side_effect=OSError("storage unavailable"))
     with pytest.raises(OSError):
-        await control.handle_request(
-            request("POST", body={"releaseSha": SHA, "enabled": True})
-        )
+        await control.handle_request(request())
     assert not await control.is_enabled()
 
 
-@pytest.mark.parametrize(
-    "name,value",
-    [
-        ("ATLAS_RELEASE_SHA", "invalid-private-value"),
-        ("ATLAS_SCHEMA_RECEIPT_DIGEST", "invalid-private-value"),
-    ],
-)
-def test_release_identity_requires_exact_bindings_without_disclosing_input(
-    control_module, name, value
-):
-    env = SimpleNamespace(ATLAS_RELEASE_SHA=SHA, ATLAS_SCHEMA_RECEIPT_DIGEST=DIGEST)
-    setattr(env, name, value)
-    with pytest.raises(RuntimeError) as error:
-        control_module.release_identity(env, "api")
-    assert value not in str(error.value)
-
-
-def test_release_identity_reports_only_exact_metadata(control_module):
-    control = make_control(control_module)
-    assert control_module.release_identity(control.env, "api") == {
-        "releaseSha": SHA,
-        "runtimeRole": "api",
-        "schemaReceiptDigest": DIGEST,
-    }
-
-
 @pytest.mark.asyncio
-async def test_cancelled_enable_leaves_alarm_unauthorized(control_module):
-    control = make_control(control_module)
+async def test_cancelled_activation_retries_only_under_exact_deployment_authority(
+    control_module,
+):
+    control = make_control(control_module, active=SHA)
     writing = asyncio.Event()
+    original = control.storage.put
 
     async def blocked_put(*_args):
         writing.set()
         await asyncio.Event().wait()
 
     control.storage.put = blocked_put
-    enable = asyncio.create_task(
-        control.handle_request(
-            request("POST", body={"releaseSha": SHA, "enabled": True})
-        )
-    )
+    activation = asyncio.create_task(control.handle_request(request()))
     await writing.wait()
     assert control.storage.alarm_at is not None
-    enable.cancel()
+    activation.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await enable
+        await activation
+    assert not await control.is_enabled()
+    # Re-deployment to paused cancels the incomplete activation without losing receipts.
+    control.storage.put = original
+    control.env.ATLAS_ACTIVE_RELEASE_SHA = ""
     callback = AsyncMock()
     await control.run_alarm(callback)
     callback.assert_not_awaited()
-    assert not await control.is_enabled()
     assert control.storage.alarm_at is None
+    # A new exact authorized activation recovers and schedules retained work.
+    control.env.ATLAS_ACTIVE_RELEASE_SHA = SHA
+    assert await control.handle_request(request()) == readback(SHA, True)
+    await control.run_alarm(callback)
+    callback.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_invalid_state_never_authorizes_alarm(control_module):
-    control = make_control(control_module)
+    control = make_control(control_module, active=SHA)
     control.storage.values[control_module._STATE_KEY] = {
         "releaseSha": SHA,
         "enabled": "true",
@@ -316,33 +262,30 @@ async def test_invalid_state_never_authorizes_alarm(control_module):
 
 
 @pytest.mark.asyncio
-async def test_invalid_json_and_methods_do_not_change_state(control_module):
-    control = make_control(control_module)
-    incoming = request("POST")
-    incoming.json.side_effect = ValueError("private input")
-    assert await control.handle_request(incoming) == (
-        400,
-        {"error": "Invalid consumer control"},
-    )
-    assert await control.handle_request(request("PUT")) == (
-        405,
-        {"error": "Method not allowed"},
-    )
-    assert not control.storage.values
-
-
-@pytest.mark.asyncio
-async def test_invalid_settings_error_never_discloses_input(
-    control_module, monkeypatch
-):
-    def invalid(_env):
-        raise ValueError("private-input-secret")
-
-    monkeypatch.setitem(
-        sys.modules, "hosted_application", SimpleNamespace(_settings=invalid)
-    )
-    control = make_control(control_module)
-    with pytest.raises(RuntimeError, match="Invalid hosted API configuration") as error:
+@pytest.mark.parametrize("active", [None, True, "invalid-private-value"])
+async def test_missing_or_invalid_active_binding_fails_closed(control_module, active):
+    control = make_control(control_module, active=active)
+    with pytest.raises(RuntimeError, match="activation binding") as error:
         await control.handle_request(request())
-    assert "private-input-secret" not in str(error.value)
-    assert error.value.__suppress_context__
+    assert "invalid-private-value" not in str(error.value)
+    assert control.storage.values == {}
+
+
+@pytest.mark.parametrize("name", ["ATLAS_RELEASE_SHA", "ATLAS_SCHEMA_RECEIPT_DIGEST"])
+def test_release_identity_requires_exact_bindings_without_disclosing_input(
+    control_module, name
+):
+    control = make_control(control_module)
+    setattr(control.env, name, "invalid-private-value")
+    with pytest.raises(RuntimeError) as error:
+        control_module.release_identity(control.env, "api")
+    assert "invalid-private-value" not in str(error.value)
+
+
+def test_release_identity_reports_only_exact_metadata(control_module):
+    control = make_control(control_module)
+    assert control_module.release_identity(control.env, "api") == {
+        "releaseSha": SHA,
+        "runtimeRole": "api",
+        "schemaReceiptDigest": DIGEST,
+    }

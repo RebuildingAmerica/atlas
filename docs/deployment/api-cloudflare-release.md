@@ -64,6 +64,28 @@ secret. All three files are owner-only. Hyperdrive must match that PostgreSQL
 origin with query caching disabled. The Cloudflare account must remain Workers
 Free.
 
+The retained API configuration must use distinct app-signing, callback and
+visitor-origin credentials. Only the callback and visitor-origin credentials
+belong in the API export; remove `ATLAS_AUTH_INTERNAL_SECRET` and the retired
+`ATLAS_OPERATOR_ALLOWED_EMAILS` there. Preserve the instance and platform
+operator lists and all declared machine issuers.
+
+Consumer authority comes from the deployment's explicit
+`ATLAS_ACTIVE_RELEASE_SHA` text binding. Publication always emits the empty
+string, which pauses the exact release regardless of previously enabled durable
+state. Activation is a separately gated Cloudflare deployment setting that
+binding to the exact release SHA. No API token, new issuer scope, shared signing
+secret, or HTTP mutation grants consumer authority.
+
+The binding-only `GET /__atlas/consumers` readback drains the complete current
+alarm unit, reconciles the deployment's desired state durably, then deletes a
+paused alarm or arms enabled retained receipts. Other methods return 405. The
+public Worker rejects all requests; the operations edge remains behind Access.
+Pause and activation deployments must retain their own exact Worker version,
+artifact and rollback identities, and reject readbacks for an older version.
+Real Durable Object rollout/cancellation proof remains a hosted acceptance gate;
+local lock tests do not establish provider update behavior.
+
 ```sh
 pnpm cf:session -- node scripts/deploy/api-cloudflare-release.mjs \
   --target staging \
@@ -136,14 +158,15 @@ there is no blind replay. Keep each release directory rather than overwriting an
 earlier journal.
 
 A successful result means `verified-paused`, not end-to-end production
-acceptance. The protected probes cover `/__atlas/release`, authenticated GET
-`/__atlas/consumers` and `/health` for both roles. Full directory/search/import,
-source provenance, MCP, bounded discovery/Firehose delivery, performance,
-provider memory outcomes and doubled shared-account quota checks remain the
-joint release gates. Only the separately authorized handoff action may POST
-`/__atlas/consumers` with the existing internal secret and exact release SHA,
-after legacy workers/schedulers have handed off ownership. Public web routing
-must reject all `/__atlas/*` control paths.
+acceptance. The protected probes cover `/__atlas/release`, Access-protected
+binding-only GET `/__atlas/consumers` and `/health` for both roles. Full
+directory/search/import, source provenance, MCP, bounded discovery/Firehose
+delivery, performance, provider memory outcomes and doubled shared-account quota
+checks remain the joint release gates. Only a separately authorized deployment
+may set the exact active release SHA, after legacy workers/schedulers have
+handed off ownership. Activation and pause require fresh exact-version readbacks
+and retained rollback identities. Public web routing must reject all
+`/__atlas/*` control paths.
 
 The reusable `publishApiRelease`, `verifyPausedApiRelease`, and
 `deployReleaseArtifact` APIs accept the caller's session environment. They never

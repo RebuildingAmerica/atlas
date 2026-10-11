@@ -18,19 +18,22 @@ https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/v
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
 from dataclasses import dataclass
 from functools import cache
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Literal, TypeGuard
 
 import httpx
-import jwt
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
 ACCESS_ASSERTION_HEADER = "Cf-Access-Jwt-Assertion"
+
+_MAX_CERTS_BYTES = 65536
 
 _KEYS_FOR_SECONDS = 3600
 """The team's keys are kept for an hour; Access rotates them every six weeks."""
@@ -141,6 +144,31 @@ def parse_access_config(team_domain: str, audience: str) -> AccessConfig | None:
 
 
 async def _fetch_certs(url: str) -> dict[str, Any]:
+    from atlas.platform.hosted_runtime import current_hosted_runtime
+
+    runtime = current_hosted_runtime()
+    if runtime is not None:
+        if runtime.public_source_fetch is None:
+            message = "Hosted key transport is unavailable"
+            raise RuntimeError(message)
+        async with asyncio.timeout(5):
+            async with runtime.public_source_fetch(
+                url, {"Accept": "application/json"}
+            ) as source_response:
+                if source_response.status_code != HTTPStatus.OK:
+                    message = "Access keys are unavailable"
+                    raise ValueError(message)
+                payload = bytearray()
+                async for chunk in source_response.body:
+                    payload.extend(chunk)
+                    if len(payload) > _MAX_CERTS_BYTES:
+                        message = "Access keys are too large"
+                        raise ValueError(message)
+        body = json.loads(payload)
+        if not isinstance(body, dict):
+            message = "Access certs were not a JSON object."
+            raise TypeError(message)
+        return body
     async with httpx.AsyncClient(timeout=5.0) as client:
         response = await client.get(url)
     response.raise_for_status()
@@ -163,6 +191,8 @@ def _is_number(value: object) -> TypeGuard[int | float]:
 
 def _unverified_parts(token: str) -> tuple[str, dict[str, Any]] | RefusalReason:
     """Return the key id and claims, read without verifying, or why they are unusable."""
+    import jwt
+
     try:
         header = jwt.get_unverified_header(token)
         claims = jwt.decode(token, options={"verify_signature": False})
@@ -195,6 +225,8 @@ def _person_refusal(claims: dict[str, Any]) -> RefusalReason | None:
 
 
 def _signature_valid(token: str, key: Any) -> bool:
+    import jwt
+
     try:
         jwt.decode(
             token,
@@ -314,6 +346,8 @@ class CloudflareAccessVerifier:
         return self._keys.get(kid)
 
     async def _refresh(self, now: float) -> None:
+        import jwt
+
         body = await self._fetch_certs(self._config.certs_url)
         keys: dict[str, Any] = {}
         for jwk in body.get("keys", []):

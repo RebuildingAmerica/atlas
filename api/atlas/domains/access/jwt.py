@@ -25,7 +25,22 @@ def get_jwks_client(jwks_url: str) -> PyJWKClient:
 
     Creates a new client when the URL changes or no client exists yet.
     """
-    from jwt import PyJWKClient
+    from jwt import PyJWKClient, PyJWKClientConnectionError
+
+    from atlas.platform.hosted_runtime import current_hosted_runtime
+
+    runtime = current_hosted_runtime()
+    if runtime is not None:
+        documents = runtime.jwks_documents or {}
+
+        class HostedJwksClient(PyJWKClient):
+            def fetch_data(self) -> dict[str, object]:
+                if jwks_url not in documents:
+                    message = "Hosted verification keys unavailable"
+                    raise PyJWKClientConnectionError(message)
+                return documents[jwks_url]
+
+        return HostedJwksClient(jwks_url, cache_jwk_set=False)
 
     global _jwks_client, _jwks_client_url  # noqa: PLW0603
     if _jwks_client is None or _jwks_client_url != jwks_url:

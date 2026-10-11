@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 
-import jwt
 from fastapi import HTTPException, status
 
 from .jwt import get_jwks_client
@@ -65,6 +64,8 @@ def verify_app_actor_assertion(token: str, *, issuer: str, jwks_url: str) -> Aut
         meant for another audience, or missing its subject or email. A present
         but invalid assertion is never ignored in favor of another credential.
     """
+    import jwt
+
     if not issuer or not jwks_url:
         raise _invalid_assertion(_UNCONFIGURED)
     try:

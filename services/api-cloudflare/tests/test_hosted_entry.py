@@ -22,7 +22,7 @@ def production_environment(inline=False):
                 "ATLAS_MULTI_USER": "true",
                 "ATLAS_MANAGED": "true",
                 "ATLAS_PUBLIC_URL": "https://reader.example.com",
-                "ATLAS_AUTH_INTERNAL_SECRET": "private-internal-secret",
+                "ATLAS_AUTH_CALLBACK_SECRET": "private-internal-secret",
                 "ATLAS_AUTH_JWT_AUDIENCES": "https://reader.example.com/mcp,https://reader.example.com/api",
                 "ATLAS_AUTH_API_KEY_INTROSPECTION_URL": "https://reader.example.com/api/auth/api-key/verify",
                 "ATLAS_AUTH_MEMBERSHIP_URL": "https://reader.example.com/api/auth/membership",

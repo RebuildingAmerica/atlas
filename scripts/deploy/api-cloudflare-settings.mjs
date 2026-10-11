@@ -24,12 +24,31 @@ export function apiSettingsFromService(service, webRuntime) {
   if (
     !settings.DATABASE_URL ||
     settings.DATABASE_URL !== webRuntime.DATABASE_URL ||
-    !settings.ATLAS_AUTH_INTERNAL_SECRET ||
-    settings.ATLAS_AUTH_INTERNAL_SECRET !==
-      webRuntime.ATLAS_AUTH_INTERNAL_SECRET
+    !settings.ATLAS_AUTH_CALLBACK_SECRET ||
+    settings.ATLAS_AUTH_CALLBACK_SECRET !==
+      webRuntime.ATLAS_AUTH_CALLBACK_SECRET ||
+    !settings.ATLAS_EDGE_ORIGIN_SECRET ||
+    settings.ATLAS_EDGE_ORIGIN_SECRET !== webRuntime.ATLAS_EDGE_ORIGIN_SECRET
   )
     throw Error(
       "API database and authentication must match the existing web service.",
+    );
+  if (
+    Object.hasOwn(settings, "ATLAS_AUTH_INTERNAL_SECRET") ||
+    Object.hasOwn(settings, "ATLAS_OPERATOR_ALLOWED_EMAILS")
+  )
+    throw Error(
+      "API signing secrets and the retired operator allowlist must be removed.",
+    );
+  if (
+    settings.ATLAS_AUTH_CALLBACK_SECRET ===
+      webRuntime.ATLAS_AUTH_INTERNAL_SECRET ||
+    settings.ATLAS_EDGE_ORIGIN_SECRET ===
+      webRuntime.ATLAS_AUTH_INTERNAL_SECRET ||
+    settings.ATLAS_EDGE_ORIGIN_SECRET === settings.ATLAS_AUTH_CALLBACK_SECRET
+  )
+    throw Error(
+      "Signing, callback and visitor-origin credentials must be distinct.",
     );
   const canonical =
     webRuntime.ATLAS_WEB_CANONICAL_URL ?? webRuntime.ATLAS_PUBLIC_URL;

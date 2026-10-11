@@ -139,6 +139,8 @@ function checkedArtifacts(
             : "production_discovery.py") ||
         c.exports?.[roleClass(role)]?.storage !== "sqlite" ||
         c.env?.ATLAS_RELEASE_SHA?.value !== releaseSha ||
+        c.env?.ATLAS_ACTIVE_RELEASE_SHA?.type !== "text" ||
+        c.env?.ATLAS_ACTIVE_RELEASE_SHA?.value !== "" ||
         c.env?.ATLAS_SCHEMA_RECEIPT_DIGEST?.value !== schemaReceiptDigest ||
         c.env?.HYPERDRIVE?.type !== "hyperdrive" ||
         !/^[a-f0-9]{32}$/.test(c.env?.HYPERDRIVE?.id ?? "") ||
@@ -182,7 +184,9 @@ async function probeRole(probe, role, releaseSha, schemaReceiptDigest) {
       throw Error("Hosted runtime release identity differs.");
     if (
       path === "/__atlas/consumers" &&
-      (r.body?.releaseSha !== releaseSha || r.body?.enabled !== false)
+      (r.body?.releaseSha !== releaseSha ||
+        r.body?.activeReleaseSha !== "" ||
+        r.body?.enabled !== false)
     )
       throw Error(
         "Runtime consumers must remain paused throughout publication.",
@@ -807,10 +811,7 @@ export async function releaseCli(
     const headers = {
       "CF-Access-Client-Id": access.client_id,
       "CF-Access-Client-Secret": access.client_secret,
-      "x-atlas-internal-secret": settings.ATLAS_AUTH_INTERNAL_SECRET,
     };
-    if (!headers["x-atlas-internal-secret"])
-      throw Error("Existing internal authentication secret required.");
     const denied = await fetch(`https://${hostname}/api/health`, {
       redirect: "manual",
       signal: AbortSignal.timeout(30000),
@@ -987,6 +988,7 @@ export async function releaseCli(
         ATLAS_API_SETTINGS: { type: "secret" },
         HYPERDRIVE: { type: "hyperdrive", id: hyperdriveId },
         ATLAS_RELEASE_SHA: { type: "text", value: releaseSha },
+        ATLAS_ACTIVE_RELEASE_SHA: { type: "text", value: "" },
         ATLAS_SCHEMA_RECEIPT_DIGEST: {
           type: "text",
           value: schemaReceiptDigest,
@@ -1037,10 +1039,7 @@ export async function releaseCli(
   const headers = {
     "CF-Access-Client-Id": access.client_id,
     "CF-Access-Client-Secret": access.client_secret,
-    "x-atlas-internal-secret": settings.ATLAS_AUTH_INTERNAL_SECRET,
   };
-  if (!headers["x-atlas-internal-secret"])
-    throw Error("The retained internal authentication secret is required.");
   const probe = async ({ role, path }) => {
     const r = await fetch(`https://${hostname}/${role}${path}`, {
       headers,

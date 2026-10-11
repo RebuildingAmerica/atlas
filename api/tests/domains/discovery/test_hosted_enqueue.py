@@ -113,3 +113,21 @@ async def test_hosted_search_requires_wake_but_scout_and_node_remain_available(t
     wake.prepare_wake.assert_not_awaited()
     node = await DiscoveryJobCRUD.create(test_db, run_id=run)
     assert (await DiscoveryJobCRUD.get_by_id(test_db, node)).execution_mode == "search"
+
+
+@pytest.mark.asyncio
+async def test_failed_enqueue_rolls_back_with_sql_only_connection(test_db) -> None:
+    run = await _run(test_db)
+    wake = _wake()
+
+    class SqlOnlyConnection(FailingConnection):
+        def __getattr__(self, name) -> object:
+            if name == "rollback":
+                raise AttributeError(name)
+            return super().__getattr__(name)
+
+    await test_db.execute("BEGIN")
+    with bind_hosted_runtime(_runtime(wake)), pytest.raises(ConnectionError):
+        await DiscoveryJobCRUD.create(SqlOnlyConnection(test_db, "insert"), run_id=run)
+    assert await DiscoveryJobCRUD.get_by_run_id(test_db, run) is None
+    wake.abort_wake.assert_awaited_once_with(wake.prepare_wake.await_args.args[0])

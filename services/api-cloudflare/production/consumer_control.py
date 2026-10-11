@@ -7,7 +7,6 @@ Producer receipts remain durable while work is paused.
 
 import asyncio
 import re
-from secrets import compare_digest
 from time import time
 
 from workers import Response
@@ -94,11 +93,17 @@ class ConsumerControl:
                 raise RuntimeError("Invalid hosted API configuration.") from None
         return self._settings
 
-    async def _enabled_unlocked(self):
+    def _desired_enabled(self):
+        active = getattr(self.env, "ATLAS_ACTIVE_RELEASE_SHA", None)
+        if not isinstance(active, str) or (
+            active and re.fullmatch("[a-f0-9]{40}", active) is None
+        ):
+            raise RuntimeError("Invalid consumer activation binding.")
+        return active == self.release_sha
+
+    async def _state_unlocked(self):
         state = await self.storage.get(_STATE_KEY)
-        if state is None:
-            return False
-        if (
+        if state is not None and (
             not isinstance(state, dict)
             or set(state) != {"releaseSha", "enabled"}
             or not isinstance(state["releaseSha"], str)
@@ -106,7 +111,29 @@ class ConsumerControl:
             or type(state["enabled"]) is not bool
         ):
             raise RuntimeError("Invalid durable consumer state.")
-        return state["releaseSha"] == self.release_sha and state["enabled"]
+        return state
+
+    async def _enabled_unlocked(self):
+        state = await self._state_unlocked()
+        return bool(
+            self._desired_enabled()
+            and state is not None
+            and state["releaseSha"] == self.release_sha
+            and state["enabled"]
+        )
+
+    async def _reconcile_unlocked(self):
+        desired = {"releaseSha": self.release_sha, "enabled": self._desired_enabled()}
+        if await self._state_unlocked() != desired:
+            if desired["enabled"]:
+                # The deployment authorizes activation. Arm first, then retain
+                # its receipt; interruption cannot run work before reconciliation.
+                await self.storage.setAlarm(int(self.clock() * 1000) + 1)
+            await self.storage.put(_STATE_KEY, desired)
+        if not desired["enabled"]:
+            # Persist the pause before deleting its alarm. A canceled readback
+            # leaves the deployment paused and retained receipts untouched.
+            await self.storage.deleteAlarm()
 
     async def is_enabled(self):
         async with self._state_gate:
@@ -116,49 +143,22 @@ class ConsumerControl:
         return Response.json(body, status=status, headers=_HEADERS)
 
     async def handle_request(self, request):
-        """Authenticate and report or change the exact release's durable state."""
-        supplied = request.headers.get("x-atlas-internal-secret")
-        expected = self.settings.auth_internal_secret
-        if (
-            not isinstance(supplied, str)
-            or not supplied
-            or not expected
-            or not compare_digest(supplied.encode("utf-8"), expected.encode("utf-8"))
-        ):
-            return self._response({"error": "Forbidden"}, 403)
-        if request.method == "GET":
-            return self._response(
-                {"releaseSha": self.release_sha, "enabled": await self.is_enabled()}
-            )
-        if request.method != "POST":
+        """Read deployment-authorized state after the entire alarm unit drains.
+
+        This endpoint is reachable only through bindings. The public Worker
+        refuses every request and the operations edge independently checks Access.
+        Consumer authority belongs to exact Cloudflare deployment configuration,
+        never to a header supplied by the visitor or an HTTP mutation.
+        """
+        if request.method != "GET":
             return self._response({"error": "Method not allowed"}, 405)
-        try:
-            body = await request.json()
-        except Exception:
-            return self._response({"error": "Invalid consumer control"}, 400)
-        if (
-            not isinstance(body, dict)
-            or set(body) != {"releaseSha", "enabled"}
-            or type(body["enabled"]) is not bool
-            or not isinstance(body["releaseSha"], str)
-        ):
-            return self._response({"error": "Invalid consumer control"}, 400)
-        if body["releaseSha"] != self.release_sha:
-            return self._response({"error": "Release does not match"}, 409)
         async with self._unit_gate:
             async with self._state_gate:
-                if body["enabled"]:
-                    # Arm first. Interruption before the durable write leaves a
-                    # paused alarm which cannot perform database work.
-                    await self.storage.setAlarm(int(self.clock() * 1000) + 1)
-                await self.storage.put(_STATE_KEY, body)
-                if not body["enabled"]:
-                    # Persist the stop before deleting the alarm. Cancellation
-                    # cannot leave a stale alarm authorized to claim work.
-                    await self.storage.deleteAlarm()
+                await self._reconcile_unlocked()
                 return self._response(
                     {
                         "releaseSha": self.release_sha,
+                        "activeReleaseSha": self.env.ATLAS_ACTIVE_RELEASE_SHA,
                         "enabled": await self._enabled_unlocked(),
                     }
                 )
@@ -167,6 +167,7 @@ class ConsumerControl:
         """Run one bounded unit only while this release is durably enabled."""
         async with self._unit_gate:
             async with self._state_gate:
+                await self._reconcile_unlocked()
                 if not await self._enabled_unlocked():
                     await self.storage.deleteAlarm()
                     return None

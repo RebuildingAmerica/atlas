@@ -28,12 +28,12 @@ import logging
 from dataclasses import dataclass
 from functools import cache
 from secrets import compare_digest
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
-import jwt
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from jwt import PyJWKClient
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
+
+if TYPE_CHECKING:
+    from jwt import PyJWKClient
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,8 @@ class Ed25519JwtIssuer(_IssuerBase):
     @field_validator("public_key")
     @classmethod
     def _ed25519_public_key(cls, value: str) -> str:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
         try:
             raw = base64.b64decode(value, validate=True)
             Ed25519PublicKey.from_public_bytes(raw)
@@ -167,6 +169,8 @@ def parse_machine_issuers(raw: str) -> list[MachineIssuer]:
 
 @cache
 def _google_jwks_client() -> PyJWKClient:
+    from jwt import PyJWKClient
+
     return PyJWKClient(_GOOGLE_CERTS_URL, cache_jwk_set=True, lifespan=3600)
 
 
@@ -191,8 +195,18 @@ def _verify_static(token: str, issuers: list[StaticKeyIssuer]) -> MachinePrincip
 
 
 def _verify_google(token: str, issuers: list[GoogleOidcIssuer]) -> MachinePrincipal | None:
+    import jwt
+
+    from atlas.domains.access.jwt import get_jwks_client
+    from atlas.platform.hosted_runtime import current_hosted_runtime
+
     try:
-        key = _google_jwks_client().get_signing_key_from_jwt(token).key
+        client = (
+            get_jwks_client(_GOOGLE_CERTS_URL)
+            if current_hosted_runtime() is not None
+            else _google_jwks_client()
+        )
+        key = client.get_signing_key_from_jwt(token).key
         audiences = [issuer.audience for issuer in issuers]
         claims = jwt.decode(
             token,
@@ -213,6 +227,9 @@ def _verify_google(token: str, issuers: list[GoogleOidcIssuer]) -> MachinePrinci
 
 
 def _verify_app_token(token: str, issuer: Ed25519JwtIssuer) -> MachinePrincipal | None:
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
     public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(issuer.public_key))
     try:
         claims = jwt.decode(
@@ -238,6 +255,8 @@ def _verify_app_token(token: str, issuer: Ed25519JwtIssuer) -> MachinePrincipal 
 
 
 def _unverified_issuer(token: str) -> str | None:
+    import jwt
+
     try:
         claims = jwt.decode(token, options={"verify_signature": False})
     except jwt.PyJWTError:
