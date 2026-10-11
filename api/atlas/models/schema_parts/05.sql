@@ -131,3 +131,12 @@ $$;
 CREATE OR REPLACE TRIGGER entries_stay_down
     BEFORE UPDATE OF active ON entries
     FOR EACH ROW EXECUTE FUNCTION entries_refuse_taken_down_publish();
+
+-- Internal run evidence survives worker replacement without exposing unfinished claims.
+CREATE TABLE IF NOT EXISTS discovery_web_checkpoints (
+    job_id TEXT NOT NULL REFERENCES discovery_jobs(id) ON DELETE CASCADE,
+    unit_key TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    result TEXT NOT NULL,
+    PRIMARY KEY (job_id, unit_key)
+);

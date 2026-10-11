@@ -110,3 +110,12 @@ WHEN NEW.active = 1 AND EXISTS (
 BEGIN
     SELECT RAISE(ABORT, 'entry is taken down');
 END;
+
+-- Internal run evidence survives worker replacement without exposing unfinished claims.
+CREATE TABLE IF NOT EXISTS discovery_web_checkpoints (
+    job_id TEXT NOT NULL REFERENCES discovery_jobs(id) ON DELETE CASCADE,
+    unit_key TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,
+    result TEXT NOT NULL,
+    PRIMARY KEY (job_id, unit_key)
+);

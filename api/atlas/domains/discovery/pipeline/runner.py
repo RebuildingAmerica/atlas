@@ -65,6 +65,8 @@ _LLM_PROVIDER_NAME = "anthropic"
 if TYPE_CHECKING:
     from aiosqlite import Connection
 
+    from .web_checkpoints import WebDiscovery
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -134,6 +136,7 @@ async def run_discovery_pipeline(  # noqa: PLR0915
     job: DiscoveryPipelineJob,
     credentials: DiscoveryPipelineCredentials | None = None,
     settings: Settings | None = None,
+    prepared_web: WebDiscovery | None = None,
 ) -> None:
     """Execute the full discovery pipeline for an existing run.
 
@@ -145,7 +148,12 @@ async def run_discovery_pipeline(  # noqa: PLR0915
     """
     active_credentials = credentials or DiscoveryPipelineCredentials()
     active_settings = settings or get_settings()
-    started_at = datetime.now(UTC)
+    if prepared_web is not None:
+        from .web_checkpoints import CheckpointInputsChangedError, web_checkpoint_fingerprint
+
+        if prepared_web.fingerprint != web_checkpoint_fingerprint(job, active_settings):
+            raise CheckpointInputsChangedError
+    started_at = prepared_web.started_at if prepared_web else datetime.now(UTC)
     run_id = job.run_id
     try:
         city = job.location_query.split(",", maxsplit=1)[0].strip()
@@ -167,21 +175,25 @@ async def run_discovery_pipeline(  # noqa: PLR0915
         )
 
         t0 = time.monotonic()
-        await assert_within_budget(conn, run_id=run_id, settings=active_settings)
-        search_provider = build_search_provider(active_credentials.search_api_key)
-        fetched_sources = await fetch_sources(queries, search_provider)
-        # Billed on queries sent, not sources kept. Counting sources booked
-        # zero spend for a run that issued 40 queries and fetched nothing,
-        # which also meant the per-run ceiling could never trip on search.
-        await record_cost(
-            conn,
-            run_id=run_id,
-            kind="search",
-            provider=_SEARCH_PROVIDER_NAME,
-            units=len(queries),
-            estimated_cost=estimate_search_cost(len(queries)),
-        )
-        search_failure = search_provider.last_failure_reason() if search_provider else None
+        if prepared_web is None:
+            await assert_within_budget(conn, run_id=run_id, settings=active_settings)
+            search_provider = build_search_provider(active_credentials.search_api_key)
+            fetched_sources = await fetch_sources(queries, search_provider)
+            # Billed on queries sent, not sources kept. Counting sources booked
+            # zero spend for a run that issued 40 queries and fetched nothing,
+            # which also meant the per-run ceiling could never trip on search.
+            await record_cost(
+                conn,
+                run_id=run_id,
+                kind="search",
+                provider=_SEARCH_PROVIDER_NAME,
+                units=len(queries),
+                estimated_cost=estimate_search_cost(len(queries)),
+            )
+            search_failure = search_provider.last_failure_reason() if search_provider else None
+        else:
+            fetched_sources = prepared_web.sources
+            search_failure = prepared_web.search_failure
         if not fetched_sources:
             # A completed run holding no sources is the pipeline's most common
             # and least legible outcome. Whatever the vendor said goes on the
@@ -205,8 +217,8 @@ async def run_discovery_pipeline(  # noqa: PLR0915
         )
 
         t0 = time.monotonic()
-        extracted_entries: list[dict[str, Any]] = []
-        for source in fetched_sources:
+        extracted_entries: list[dict[str, Any]] = list(prepared_web.entries) if prepared_web else []
+        for source in fetched_sources if prepared_web is None else []:
             await assert_within_budget(conn, run_id=run_id, settings=active_settings)
             source_entries = await extract_entries(
                 source.url,
