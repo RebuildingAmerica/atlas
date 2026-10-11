@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { generateKeyPairSync, privateDecrypt } from "node:crypto";
 import { test } from "node:test";
 
@@ -29,7 +30,15 @@ test("recovers only the existing broker setting into an encrypted artifact", () 
     env,
     run: (binary, args, options) => {
       command = { binary, args, options };
-      return { status: 0, stdout: Buffer.from(JSON.stringify(reply)) };
+      const program = args.at(-1).slice("sudo python3 -c '".length, -1);
+      const fixture = [
+        `ATLAS_PDS_PUBLIC_URL=${reply.origin}`,
+        `ATLAS_PDS_INVITE_BROKER_SECRET=${credential}`,
+        "PDS_ADMIN_PASSWORD=synthetic-unrelated-value", // pragma: allowlist secret - synthetic host fixture
+        "PDS_JWT_SECRET=synthetic-unrelated-value", // pragma: allowlist secret - synthetic host fixture
+      ].join("\n");
+      const driver = `from unittest.mock import patch\nwith patch("pathlib.Path.read_text", return_value=${JSON.stringify(fixture)}):\n    exec(${JSON.stringify(program)})`;
+      return { status: 0, stdout: execFileSync("python3", ["-c", driver]) };
     },
   });
   assert.equal(command.binary, "gcloud");
@@ -72,7 +81,7 @@ test("provider failures cannot echo secrets or produce an artifact", () => {
 test("rejects a wrong host, additional private fields, empty or oversized secrets", () => {
   for (const document of [
     { ...reply, origin: "https://other.atlas.example" },
-    { ...reply, adminPassword: "unrelated-value" },
+    { ...reply, adminPassword: "unrelated-value" }, // pragma: allowlist secret - synthetic rejected field
     { ...reply, brokerSecret: "" },
     { ...reply, brokerSecret: "x".repeat(257) },
   ]) {

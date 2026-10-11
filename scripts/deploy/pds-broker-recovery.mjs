@@ -8,7 +8,7 @@ import { pathToFileURL } from "node:url";
 // leave the host, so existing accounts keep their identity during migration.
 const remoteRead = `import json
 from pathlib import Path
-names = {"ATLAS_PDS_PUBLIC_URL": "origin", "ATLAS_PDS_INVITE_BROKER_SECRET": "brokerSecret"}
+names = {"ATLAS_PDS_PUBLIC_URL": "origin", "ATLAS_PDS_INVITE_BROKER_SECRET": "brokerSecret"} # pragma: allowlist secret - field names only
 result = {}
 for line in Path("/opt/atlas-pds/pds.env").read_text().splitlines():
     key, separator, value = line.partition("=")
@@ -86,7 +86,7 @@ export function recoverPdsBroker({ env = process.env, run = spawnSync } = {}) {
     if (
       Object.keys(document).sort().join(",") !== "brokerSecret,origin" ||
       document.origin !== origin ||
-      typeof document.brokerSecret !== "string" ||
+      typeof document.brokerSecret !== "string" || // pragma: allowlist secret - type name only
       !/^[A-Za-z0-9_+/=-]{16,256}$/.test(document.brokerSecret)
     )
       throw Error("Invalid broker response");
