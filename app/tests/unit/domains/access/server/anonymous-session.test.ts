@@ -11,10 +11,22 @@ describe("anonymous session reads", () => {
     expect(response?.headers.get("cache-control")).toBe("private, no-store");
   });
 
+  it("does not mistake Cloudflare Access's injected cookie for an Atlas session", async () => {
+    const response = anonymousSessionResponse(
+      new Request("https://atlas.test/api/auth/get-session", {
+        headers: { cookie: "CF_Authorization=access-service-token" },
+      }),
+    );
+    expect(await response?.json()).toBeNull();
+    expect(response?.status).toBe(200);
+  });
+
   it.each([
     ["cookie", "better-auth.session_token=existing"],
     ["cookie", "__Secure-better-auth.session_token=existing"],
     ["cookie", "unrecognized=value"],
+    ["cookie", "CF_Authorization=access; better-auth.session_token=existing"],
+    ["cookie", "CF_Authorization=access; unrecognized=value"],
     ["cookie", ""],
     ["authorization", "Bearer existing"],
     ["authorization", ""],

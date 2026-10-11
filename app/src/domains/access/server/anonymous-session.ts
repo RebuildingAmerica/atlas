@@ -1,6 +1,11 @@
-/** Any supplied cookie or authorization header must go through real authentication. */
+/** Only Cloudflare Access's cookie is unrelated to Atlas authentication. */
 export function hasSessionCredentials(headers: Headers): boolean {
-  return headers.has("cookie") || headers.has("authorization");
+  if (headers.has("authorization")) return true;
+  const cookies = headers.get("cookie");
+  if (cookies === null) return false;
+  // Access injects this even for service-token requests. Treat every other
+  // cookie, including unknown or malformed input, as requiring authentication.
+  return cookies.split(";").some((cookie) => !cookie.trim().startsWith("CF_Authorization="));
 }
 
 /**
