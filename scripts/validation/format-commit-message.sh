@@ -4,7 +4,7 @@
 # Usage:
 #   format-commit-message.sh <commit_msg_file>
 #
-# The title is left untouched. Plain body prose is wrapped to 72 columns.
+# The title is left untouched. Plain body paragraphs are reflowed to 72 columns.
 # Comments, trailers, blank lines, code fences, and structured lines are
 # preserved so the hook does not rewrite intentional message structure.
 
@@ -141,15 +141,26 @@ trap 'rm -f "$tmp_file"' EXIT
 
 printf '%s\n' "$title" > "$tmp_file"
 in_fence=0
+paragraph=""
+structured_line_re='^([-*+]|[0-9]+[.)])[[:space:]]'
+flush_paragraph() {
+    if [[ -n "$paragraph" ]]; then
+        printf '%s\n' "$paragraph" | wrap_text "$MAX_BODY_LINE_LENGTH" >> "$tmp_file"
+        paragraph=""
+    fi
+}
+
 for ((index = 1; index < ${#lines[@]}; index++)); do
     line="${lines[$index]}"
 
     if [[ $index -ge $footer_start ]]; then
+        flush_paragraph
         printf '%s\n' "$line" >> "$tmp_file"
         continue
     fi
 
     if is_fence_line "$line"; then
+        flush_paragraph
         printf '%s\n' "$line" >> "$tmp_file"
         if [[ $in_fence -eq 0 ]]; then
             in_fence=1
@@ -159,13 +170,21 @@ for ((index = 1; index < ${#lines[@]}; index++)); do
         continue
     fi
 
-    if [[ $in_fence -eq 1 || "$line" == \#* || -z "$line" ]]; then
+    if [[ $in_fence -eq 1 || "$line" == \#* || "$line" == \|* || "$line" == \>* || -z "$line" ]]; then
+        flush_paragraph
         printf '%s\n' "$line" >> "$tmp_file"
         continue
     fi
 
-    wrap_body_line "$line" >> "$tmp_file"
+    if is_footer_line "$line" || [[ "$line" =~ ^[[:space:]] || "$line" =~ $structured_line_re ]]; then
+        flush_paragraph
+        wrap_body_line "$line" >> "$tmp_file"
+        continue
+    fi
+
+    paragraph="${paragraph:+$paragraph }$line"
 done
+flush_paragraph
 
 if ! cmp -s "$message_file" "$tmp_file"; then
     cat "$tmp_file" > "$message_file"
