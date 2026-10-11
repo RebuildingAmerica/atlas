@@ -71,16 +71,19 @@ async def prepare_publication_plan(
         entries_after_dedup=len(deduped.entries) + registry.mention_count,
         entries_confirmed=len(ranked) + registry.mention_count,
     )
+    artifacts = _build_discovery_run_artifacts(
+        job=job,
+        started_at=web.started_at,
+        completed_at=datetime.now(UTC),
+        stats=stats,
+        raw_entries=web.entries,
+        ranked_entries=ranked,
+        sources=[_fetched_source_to_page_content(source) for source in web.sources],
+    )
+    if web.page_tasks is not None:
+        artifacts.page_tasks = web.page_tasks
     return PublicationPlan(
-        artifacts=_build_discovery_run_artifacts(
-            job=job,
-            started_at=web.started_at,
-            completed_at=datetime.now(UTC),
-            stats=stats,
-            raw_entries=web.entries,
-            ranked_entries=ranked,
-            sources=[_fetched_source_to_page_content(source) for source in web.sources],
-        ),
+        artifacts=artifacts,
         dedup_notes=[
             suspects.get((entry.entry.name.strip().lower(), entry.entry.city)) for entry in ranked
         ],

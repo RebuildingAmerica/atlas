@@ -5,8 +5,9 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass
-from urllib.parse import urldefrag, urlparse
 
+from atlas_discovery_engine.web_content import normalize_url as normalize_url
+from atlas_discovery_engine.web_content import same_domain as same_domain
 from atlas_shared import PageContent
 
 _CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*\n(.*?)```\s*$", re.DOTALL)
@@ -63,27 +64,6 @@ def merge_discovered_links(raw_links: object, page: object) -> list[str]:
     if isinstance(page, PageContent):
         _append(page.discovered_links)
     return merged
-
-
-def normalize_url(url: str) -> str:
-    """Normalize URLs for frontier dedupe."""
-    stripped = url.strip()
-    if not stripped:
-        return ""
-    normalized, _fragment = urldefrag(stripped)
-    parsed = urlparse(normalized)
-    if parsed.path == "/" and not parsed.params and not parsed.query:
-        normalized = parsed._replace(path="").geturl()
-    return normalized
-
-
-def same_domain(base_url: str, candidate_url: str) -> bool:
-    """Return True when two URLs share the same HTTP(S) host."""
-    base = urlparse(base_url)
-    candidate = urlparse(candidate_url)
-    if candidate.scheme not in {"http", "https"}:
-        return False
-    return base.netloc == candidate.netloc
 
 
 def parse_location(location: str) -> tuple[str, str]:

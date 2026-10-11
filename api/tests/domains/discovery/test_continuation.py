@@ -463,13 +463,16 @@ async def test_final_ack_loss_is_not_requeued_and_replays_terminal_receipt(
 
 
 @pytest.mark.asyncio
-async def test_direct_job_preserves_seed_evidence_without_search_or_registry(
+async def test_direct_job_preserves_seed_evidence_without_search_or_registry(  # noqa: PLR0915 - complete durable publication proof
     test_db, monkeypatch
 ) -> None:
+    from atlas_discovery_engine.web_content import ContentExtraction
+    from atlas_shared import PageContent
+
     from atlas.domains.discovery.pipeline import continuation
+    from atlas.domains.discovery.pipeline import crawl_checkpoints as crawl
     from atlas.domains.discovery.pipeline import web_checkpoints as web
     from atlas.domains.discovery.pipeline.runner import DiscoveryPipelineCredentials
-    from atlas.domains.discovery.pipeline.source_fetcher import FetchedSource
     from atlas.platform.database import db
 
     from .test_extraction_checkpoints import _client, _reply
@@ -485,14 +488,30 @@ async def test_direct_job_preserves_seed_evidence_without_search_or_registry(
         ),
     )
     await test_db.commit()
+    from datetime import UTC, datetime
+
     direct = AsyncMock(
-        return_value=FetchedSource(
-            "https://example.org/story", "Source", None, None, "Housing Trust helps", "report"
-        )
+        side_effect=[
+            ContentExtraction(
+                PageContent(
+                    url="https://example.org/story",
+                    title="Source",
+                    text="Housing Trust helps",
+                    source_type="report",
+                    publication="Council",
+                    published_date=datetime(2026, 1, 2, 12, tzinfo=UTC),
+                    structured_data={"jsonld": [{"@type": "Report"}]},
+                    discovered_links=["https://example.org/people"],
+                ),
+                None,
+                ["https://example.org/people"],
+            ),
+            ContentExtraction(None, "content_below_min_words", []),
+        ]
     )
     search = AsyncMock(side_effect=AssertionError("direct work must not search"))
     registry = AsyncMock(side_effect=AssertionError("direct work must not broaden its scope"))
-    monkeypatch.setattr(web, "fetch_direct_source", direct)
+    monkeypatch.setattr(crawl, "fetch_direct_page", direct)
     monkeypatch.setattr(web, "fetch_sources", search)
     monkeypatch.setattr(continuation, "advance_registry_discovery", registry)
     request, _, _ = _client(
@@ -502,7 +521,7 @@ async def test_direct_job_preserves_seed_evidence_without_search_or_registry(
             _reply('{"entries":[{"name":"Housing Trust","type":"organization"}]}'),
         ],
     )
-    for index in range(12):
+    for index in range(15):
         owner = f"direct-{index}"
         claimed = await DiscoveryJobCRUD.claim_next(
             test_db, claimed_by=owner, checkpointed=True, search_key_configured=False
@@ -519,14 +538,41 @@ async def test_direct_job_preserves_seed_evidence_without_search_or_registry(
             break
         assert result.status == "yielded"
     assert result.status == "completed"
-    assert direct.await_args.args == ("https://example.org/story",)
-    assert direct.await_count == 1
+    assert [call.args[0] for call in direct.await_args_list] == [
+        "https://example.org/story",
+        "https://example.org/people",
+    ]
+    assert direct.await_count == 2
     assert request.await_count == 2
     assert (await DiscoveryRunCRUD.get_by_id(test_db, run)).sources_processed == 1
     cursor = await test_db.execute("SELECT DISTINCT kind FROM cost_ledger WHERE run_id = ?", (run,))
     assert await cursor.fetchall() == [("llm",)]
     search.assert_not_awaited()
     registry.assert_not_awaited()
+
+    from atlas.domains.moderation.review_queue import ReviewQueueCRUD
+    from atlas.models import EntryCRUD
+
+    pending = await ReviewQueueCRUD.list_pending(test_db)
+    assert pending[0].hold_reason == "uncorroborated_web_only"
+    entry, sources = await EntryCRUD.get_with_sources(test_db, pending[0].entity_id)
+    assert not entry.active
+    assert entry.first_seen.isoformat() == "2026-01-02"
+    assert sources[0]["title"] == "Source"
+    cursor = await test_db.execute(
+        "SELECT result FROM discovery_web_checkpoints WHERE job_id = ? AND unit_key = 'continuation'",
+        (job,),
+    )
+    progress = continuation._Continuation.model_validate_json((await cursor.fetchone())[0])
+    artifacts = progress.plan.artifacts
+    assert [task.status for task in artifacts.page_tasks] == ["processed", "filtered"]
+    assert artifacts.page_tasks[0].entries_extracted == 1
+    assert artifacts.page_tasks[1].discovered_from == "https://example.org/story"
+    assert artifacts.page_tasks[1].seed_url == "https://example.org/story"
+    assert artifacts.sources[0].publication == "Council"
+    assert artifacts.sources[0].published_date == datetime(2026, 1, 2, 12, tzinfo=UTC)
+    assert artifacts.sources[0].structured_data == {"jsonld": [{"@type": "Report"}]}
+    assert artifacts.raw_entries[0].source_date.isoformat() == "2026-01-02"
 
 
 @pytest.mark.asyncio

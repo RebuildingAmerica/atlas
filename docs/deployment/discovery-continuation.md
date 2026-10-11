@@ -88,11 +88,12 @@ hosted alarm is enabled by these changes.
 
 The turn consumer accepts both declared queue modes: search and direct_url.
 Direct seeds are frozen into the checkpoint fingerprint, deduplicated after
-fragment removal, and fetched one per turn. They do not generate search queries
-or broaden the request into unrelated registry research. Empty-target search
-jobs (the existing queue's seeded/evidence capability) do not invent place
-queries. Canonical artifacts now allow that exact untargeted input while still
-requiring a complete location, state and issue list for targeted research.
+Scout URL normalization, and expanded one page per turn. They do not generate
+search queries or broaden the request into unrelated registry research.
+Empty-target search jobs (the existing queue's seeded/evidence capability) do
+not invent place queries. Canonical artifacts now allow that exact untargeted
+input while still requiring a complete location, state and issue list for
+targeted research.
 
 The hosted continuation separates source extraction into the existing identify
 and enrich passes. Each turn makes at most one model request, with SDK retries
@@ -129,8 +130,44 @@ also exclude Cloudflare IPs, so replacing HTTP fetch with raw sockets would lose
 legitimate sources. The ordinary Python path currently checks URL syntax and
 literals, and does not claim DNS pinning.
 
-This does not replace Scout's same-host crawl (depth 2, 20 pages per seed),
-structured/PDF parsing, or browser rendering. Those remain explicit
-feature-parity blockers; accepting a direct seed job locally is not evidence
-that all existing direct research behavior has migrated. No mode is removed from
-the public API or the existing Scout consumer.
+Direct jobs now retain a breadth-first same-host crawl in `crawl_checkpoints`.
+The defaults match Scout: depth 2 and 20 enqueued pages per seed, including the
+seed itself and failed/filtered pages. All roots are reserved before children;
+URL deduplication is global. Sparse pages still contribute their links. Every
+turn fetches at most one page, checks the existing budget/kill switch first, and
+commits page evidence and its updated frontier together under the active lease.
+It yields before any model call. Lost commit acknowledgements reuse the saved
+page; a replaced or cancelled owner cannot overwrite newer evidence.
+
+The shared `atlas_discovery_engine.web_content` rules now serve both Scout and
+the direct continuation. They preserve Scout's HTML link order, 50-word quality
+floor, login/paywall filter, tables, JSON-LD/OpenGraph metadata, source type,
+title, publication, and publication date. Page artifacts retain seed, parent,
+depth, stable URL task identity, filter/failure reasons and extraction counts.
+Original publication timestamps stay in source metadata; observation dates use
+the corresponding calendar date. Existing publication receipts and review holds
+still control whether discovered entries become visible. No schema change or new
+parser dependency is required.
+
+Local verification includes 242 shared-engine tests at 100% coverage, 77 Scout
+compatibility tests, and focused API coverage at 100% for crawl, direct
+transport and web checkpoints. SQLite and disposable PostgreSQL tests prove
+restart, concurrent lease replacement, cancellation, lost commit
+acknowledgement, depth, page-count and deduplication behavior. A complete direct
+job test verifies metadata/artifacts, model attempt charges and the existing
+uncorroborated-source review hold. These are local results, not hosted crawl
+acceptance.
+
+The continuation fingerprint changes with these semantics. Previously enrolled
+checkpoints cannot be silently reused under the new behavior; production jobs
+must not be enrolled until the exact consumer release is accepted. Ordinary Node
+and Scout execution retain their existing entry points. Search-query page
+fetching retains its existing API behavior; this change expands explicit direct
+seeds only.
+
+Structured-resource/PDF parsing, resource-index link discovery and browser
+rendering remain explicit feature-parity blockers. Page-count and byte limits
+also do not prove bounded synchronous HTML parsing CPU or aggregate checkpoint
+memory on Cloudflare. Provider egress, exact hosted resource usage, scheduling,
+and all remaining research modes still require acceptance before activation. No
+mode is removed from the public API or the existing Scout consumer.

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from html.parser import HTMLParser
 from typing import TYPE_CHECKING, Protocol
-from urllib.parse import urljoin, urlparse
 
-from atlas_scout.pipeline_support import normalize_url
+from atlas_discovery_engine.web_content import (
+    _LinkExtractor as _LinkExtractor,
+)
+from atlas_discovery_engine.web_content import (
+    extract_links as extract_links,
+)
 
 if TYPE_CHECKING:
     from atlas_shared import PageContent
@@ -17,49 +20,6 @@ class PageFetcher(Protocol):
 
     async def fetch(self, url: str) -> PageContent | None:
         """Fetch a page or return None when it cannot be read."""
-
-
-class _LinkExtractor(HTMLParser):
-    """Simple HTML parser that collects href values from anchor tags."""
-
-    def __init__(self) -> None:
-        """Initialize the parser with an empty link list."""
-        super().__init__()
-        self.links: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        """Collect href values from anchor tags."""
-        if tag == "a":
-            for name, value in attrs:
-                if name == "href" and value:
-                    self.links.append(value)
-
-
-def extract_links(html: str, base_url: str, same_domain: bool = True) -> list[str]:
-    """Extract absolute, deduplicated links from HTML.
-
-    Filters to same-domain links by default and strips URL fragments.
-    """
-    parser = _LinkExtractor()
-    parser.feed(html)
-
-    base_domain = urlparse(base_url).netloc
-    seen: set[str] = set()
-    result: list[str] = []
-
-    for raw in parser.links:
-        absolute = urljoin(base_url, raw)
-        parsed = urlparse(absolute)
-        if parsed.scheme not in ("http", "https"):
-            continue
-        if same_domain and parsed.netloc != base_domain:
-            continue
-        normalized = normalize_url(parsed._replace(fragment="").geturl())
-        if normalized not in seen:
-            seen.add(normalized)
-            result.append(normalized)
-
-    return result
 
 
 class LinkCrawler:

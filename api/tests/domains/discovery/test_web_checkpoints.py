@@ -366,8 +366,12 @@ async def test_direct_fetches_yield_replay_empty_pages_and_reject_changed_seeds(
     from atlas.domains.discovery.pipeline import web_checkpoints as web
 
     job_id, job = await _claim(test_db)
-    fetch = AsyncMock(return_value=None)
-    monkeypatch.setattr(web, "fetch_direct_source", fetch)
+    from atlas_discovery_engine.web_content import ContentExtraction
+
+    from atlas.domains.discovery.pipeline import crawl_checkpoints as crawl
+
+    fetch = AsyncMock(return_value=ContentExtraction(None, "empty_body", []))
+    monkeypatch.setattr(crawl, "fetch_direct_page", fetch)
     kwargs = {
         "job_id": job_id,
         "claimed_by": "alarm-1",
@@ -376,6 +380,7 @@ async def test_direct_fetches_yield_replay_empty_pages_and_reject_changed_seeds(
         "direct_urls": ["https://example.org/a", "https://example.org/b"],
         "bounded_extraction": True,
     }
+    assert await web.advance_web_discovery(test_db, **kwargs) is None
     assert await web.advance_web_discovery(test_db, **kwargs) is None
     result = await web.advance_web_discovery(test_db, **kwargs)
     assert result.sources == []
@@ -388,8 +393,9 @@ async def test_direct_fetches_yield_replay_empty_pages_and_reject_changed_seeds(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("bounded", [True, False])
 async def test_direct_kill_switch_prevents_fetch_and_leaves_no_transaction(
-    test_db, monkeypatch
+    test_db, monkeypatch, bounded
 ) -> None:
     from atlas.domains.discovery.cost import CostCeilingExceeded
     from atlas.domains.discovery.pipeline import web_checkpoints as web
@@ -405,7 +411,7 @@ async def test_direct_kill_switch_prevents_fetch_and_leaves_no_transaction(
             job=job,
             settings=_settings().model_copy(update={"discovery_cost_kill_switch": True}),
             direct_urls=["https://example.org"],
-            bounded_extraction=True,
+            bounded_extraction=bounded,
         )
     fetch.assert_not_awaited()
     # Another connection can cancel immediately: the budget failure released the fence.
@@ -425,5 +431,34 @@ async def test_direct_kill_switch_prevents_fetch_and_leaves_no_transaction(
             job=job,
             settings=_settings(),
             direct_urls=["https://example.org"],
-            bounded_extraction=True,
+            bounded_extraction=bounded,
         )
+
+
+@pytest.mark.asyncio
+async def test_legacy_direct_preparation_retains_single_source_behavior(
+    test_db, monkeypatch
+) -> None:
+    from atlas.domains.discovery.pipeline import web_checkpoints as web
+
+    job_id, job = await _claim(test_db)
+    source = FetchedSource("https://example.org/one", None, None, None, "Public text", "report")
+    fetch = AsyncMock(side_effect=[source, None])
+    extract = AsyncMock(return_value=[])
+    monkeypatch.setattr(web, "fetch_direct_source", fetch)
+    monkeypatch.setattr(web, "extract_entries", extract)
+    kwargs = {
+        "job_id": job_id,
+        "claimed_by": "alarm-1",
+        "job": job,
+        "settings": _settings(),
+        "direct_urls": [source.url, "https://example.org/two"],
+    }
+    assert await web.advance_web_discovery(test_db, **kwargs) is None
+    assert await web.advance_web_discovery(test_db, **kwargs) is None
+    result = await web.advance_web_discovery(test_db, **kwargs)
+    assert result.sources == [source]
+    assert result.page_tasks is None
+    assert await web.advance_web_discovery(test_db, **kwargs) == result
+    assert fetch.await_count == 2
+    assert extract.await_count == 1

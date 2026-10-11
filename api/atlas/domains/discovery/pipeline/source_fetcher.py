@@ -11,8 +11,9 @@ code.
 import asyncio
 import logging
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import httpx
 from atlas_discovery_engine import BraveSearchProvider, SearchProvider, SearchResult
@@ -72,6 +73,10 @@ class FetchedSource:
 
     source_type: str
     """Source type (news_article, op_ed, etc.)."""
+
+    task_id: str | None = None
+    discovered_links: list[str] = field(default_factory=list)
+    structured_data: dict[str, Any] = field(default_factory=dict)
 
 
 def build_search_provider(search_api_key: str | None) -> SearchProvider | None:

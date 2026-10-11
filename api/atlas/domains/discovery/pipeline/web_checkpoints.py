@@ -15,7 +15,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from atlas_shared import RawEntry
+from atlas_shared import PageTaskOutcome, RawEntry
 from pydantic import BaseModel, TypeAdapter
 
 from atlas.domains.discovery.cost import (
@@ -26,6 +26,7 @@ from atlas.domains.discovery.cost import (
 )
 from atlas.platform.database import db
 
+from .crawl_checkpoints import advance_crawl
 from .direct_sources import fetch_direct_source
 from .extraction_checkpoints import advance_source_extraction
 from .extractor import extract_entries
@@ -77,6 +78,7 @@ class WebDiscovery(BaseModel):
     search_failure: str | None
     started_at: datetime
     fingerprint: str
+    page_tasks: list[PageTaskOutcome] | None = None
 
 
 def web_checkpoint_fingerprint(
@@ -90,7 +92,7 @@ def web_checkpoint_fingerprint(
     return hashlib.sha256(
         json.dumps(
             {
-                "version": _VERSION + int(bounded_extraction),
+                "version": _VERSION + 2 * int(bounded_extraction),
                 "job": asdict(job),
                 "queries": settings.discovery_max_queries_per_run,
                 **({"direct_urls": direct_urls} if direct_urls is not None else {}),
@@ -251,7 +253,30 @@ async def advance_web_discovery(  # noqa: PLR0913, PLR0912, PLR0915 - explicit r
         for source in output.sources:
             sources.setdefault(source.url, source)
 
-    for index, url in enumerate(direct_urls or []):
+    page_tasks = None
+    if bounded_extraction and direct_urls is not None:
+        async with asyncio.timeout(_UNIT_TIMEOUT_SECONDS):
+            crawl = await advance_crawl(store, seeds=direct_urls, settings=settings)
+        if crawl is None:
+            return None
+        page_tasks = crawl.tasks
+        for page in crawl.pages:
+            sources.setdefault(
+                page.url,
+                FetchedSource(
+                    page.url,
+                    page.title,
+                    page.publication,
+                    page.published_date.isoformat() if page.published_date else None,
+                    page.text,
+                    page.source_type.value,
+                    page.task_id,
+                    page.discovered_links,
+                    page.structured_data,
+                ),
+            )
+
+    for index, url in enumerate([] if bounded_extraction else (direct_urls or [])):
         output = await store.load(f"direct:{index}", search_adapter)
         if output is None:
             if advanced:
@@ -309,13 +334,23 @@ async def advance_web_discovery(  # noqa: PLR0913, PLR0912, PLR0915 - explicit r
                     )
             await store.save(key, extracted, entry_adapter)
             advanced = True
+        if page_tasks is not None:
+            for task in page_tasks:
+                if task.url == source.url:
+                    task.status = "processed"
+                    task.entries_extracted = len(extracted)
+        source_date = (
+            datetime.fromisoformat(source.published_date).date().isoformat()
+            if source.published_date
+            else today
+        )
         for item in extracted:
             entry = item.model_dump(mode="json")
             entry.update(
                 source_urls=[source.url],
-                source_dates=[source.published_date or today],
+                source_dates=[source_date],
                 source_contexts={source.url: item.extraction_context},
-                last_seen=source.published_date or today,
+                last_seen=source_date,
             )
             entries.append(entry)
     return WebDiscovery(
@@ -325,4 +360,5 @@ async def advance_web_discovery(  # noqa: PLR0913, PLR0912, PLR0915 - explicit r
         search_failure=failure,
         started_at=manifest.started_at,
         fingerprint=fingerprint,
+        page_tasks=page_tasks,
     )

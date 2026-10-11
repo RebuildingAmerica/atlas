@@ -228,4 +228,7 @@ def _fetched_source_to_page_content(source: Any) -> PageContent:
         publication=source.publication,
         published_date=published_date,
         source_type=SourceType(source.source_type),
+        task_id=getattr(source, "task_id", None),
+        discovered_links=getattr(source, "discovered_links", []),
+        structured_data=getattr(source, "structured_data", {}),
     )

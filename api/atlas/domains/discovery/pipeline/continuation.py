@@ -85,7 +85,7 @@ def _fingerprint(
     return hashlib.sha256(
         json.dumps(
             {
-                "version": 3,
+                "version": 4,
                 "mode": mode,
                 "payload": payload,
                 "job": asdict(job),
