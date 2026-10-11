@@ -55,6 +55,7 @@ test("an admin invites a colleague who accepts and edits the same saved list", a
   await page.getByRole("button", { name: "New list" }).click();
   await page.getByPlaceholder("List name").fill("Transit research leads");
   await page.getByRole("button", { name: "Create list" }).click();
+  await expect(page.getByRole("link", { name: /Transit research leads/ })).toBeVisible();
 
   await page.goto("/profiles/people/maya-thompson", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -148,6 +149,7 @@ test("an organizer with Team access can retry failed exports and obtain sourced 
   await page.getByRole("button", { name: "New list" }).click();
   await page.getByPlaceholder("List name").fill("Transit research leads");
   await page.getByRole("button", { name: "Create list" }).click();
+  await expect(page.getByRole("link", { name: /Transit research leads/ })).toBeVisible();
 
   await page.goto("/profiles/people/maya-thompson", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Save", exact: true }).click();
