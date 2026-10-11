@@ -55,6 +55,79 @@ def headers(label, actor):
 
 
 @pytest.mark.asyncio
+async def test_hosted_dependency_adapters_keep_headers_factories_and_internal_guard(
+    monkeypatch,
+):
+    from fastapi import Depends, FastAPI
+    from atlas.domains.catalog.api.org_resources_support import (
+        get_directory_domain_verifier,
+    )
+    from atlas.domains.catalog.api.profile_claim_helpers import get_profile_claim_policy
+    from atlas.domains.firehose.http import firehose_json_http_context
+    from atlas.domains.firehose.observation_signals_api import (
+        require_internal_firehose_request,
+    )
+    from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
+
+    async def forbidden_thread(*args, **kwargs):
+        pytest.fail("Hosted dependencies attempted to create a worker thread")
+
+    monkeypatch.setattr("anyio.to_thread.run_sync", forbidden_thread)
+    app = FastAPI()
+    module()._install_async_dependencies(app)
+
+    @app.post("/headers")
+    async def read_headers(context=Depends(firehose_json_http_context)):
+        return context.model_dump()
+
+    @app.get("/factories")
+    async def read_factories(
+        verifier=Depends(get_directory_domain_verifier),
+        policy=Depends(get_profile_claim_policy),
+    ):
+        return [type(verifier).__name__, type(policy).__name__]
+
+    @app.get("/internal")
+    async def internal(_guard=Depends(require_internal_firehose_request)):
+        return {"ok": True}
+
+    async def forbidden_connect(*args, **kwargs):
+        pytest.fail("Dependency adaptation opened a database connection")
+
+    runtime = HostedRuntime(module()._settings(environment()), forbidden_connect)
+    with bind_hosted_runtime(runtime):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="https://reader.example.com"
+        ) as client:
+            response = await client.post(
+                "/headers",
+                headers={"x-request-id": "request-one", "prefer": "wait=2"},
+                json={},
+            )
+            assert response.status_code == 200
+            assert response.json()["request_id"] == "request-one"
+            assert response.json()["preferences"]["wait_seconds"] == 2
+            assert (
+                await client.post("/headers", headers={"content-type": "text/plain"})
+            ).status_code == 415
+            assert (
+                await client.post("/headers", headers={"accept": "text/html"})
+            ).status_code == 406
+            response = await client.get("/factories")
+            assert response.json() == [
+                "DirectoryDomainVerificationService",
+                "ProfileClaimPolicy",
+            ]
+            assert (await client.get("/internal")).status_code == 403
+            assert (
+                await client.get("/internal", headers=headers("wrong", "forged"))
+            ).status_code == 403
+            assert (
+                await client.get("/internal", headers=headers("reader", "trusted"))
+            ).json() == {"ok": True}
+
+
+@pytest.mark.asyncio
 async def test_real_health_and_private_routes_keep_auth_and_cors(monkeypatch):
     hosted = module()
     env = environment()

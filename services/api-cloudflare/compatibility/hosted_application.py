@@ -2,6 +2,8 @@
 
 import json
 from contextlib import AsyncExitStack, asynccontextmanager
+from functools import wraps
+from inspect import signature
 
 from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
 from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
@@ -86,6 +88,44 @@ async def _request_mcp(scope, receive, send):
         await transport(scope, receive, send)
 
 
+def _install_async_dependencies(app):
+    from atlas.domains.catalog.api.org_resources_support import (
+        get_directory_domain_verifier,
+    )
+    from atlas.domains.catalog.api.profile_claim_helpers import get_profile_claim_policy
+    from atlas.domains.firehose.http import (
+        firehose_http_context,
+        firehose_json_http_context,
+    )
+    from atlas.domains.firehose.observation_signals_api import (
+        require_internal_firehose_request,
+    )
+
+    def adapt(call):
+        @wraps(call)
+        async def dependency(*args, **kwargs):
+            return call(*args, **kwargs)
+
+        # Resolve annotations in the original module so FastAPI retains Header
+        # aliases, nested dependencies, and validation when inspecting a wrapper.
+        dependency.__signature__ = signature(call, eval_str=True)
+        return dependency
+
+    # These explicit dependencies only read request configuration, validate
+    # headers, or construct services; none performs blocking I/O. Keeping them
+    # async preserves claims, directory verification, and Firehose without a
+    # thread pool or changing the ordinary Node/self-hosted application.
+    for call in (
+        get_settings,
+        get_directory_domain_verifier,
+        get_profile_claim_policy,
+        firehose_http_context,
+        firehose_json_http_context,
+        require_internal_firehose_request,
+    ):
+        app.dependency_overrides[call] = adapt(call)
+
+
 def create_hosted_application(
     env, *, strip_evaluation_prefix=False, firehose_wake=None
 ):
@@ -113,13 +153,7 @@ def create_hosted_application(
                 lifespan_override=_http_lifespan, mcp_asgi_app=_request_mcp
             )
 
-        async def request_settings():
-            # FastAPI dispatches sync dependencies through a thread pool, which
-            # the hosted Python runtime cannot create. Keep settings resolution
-            # on this request's async context so browsing and sign-in work there.
-            return get_settings()
-
-        app.dependency_overrides[get_settings] = request_settings
+        _install_async_dependencies(app)
     except Exception:
         # Pydantic/URL errors can include entire secret-bearing input values.
         raise RuntimeError("Invalid hosted API configuration.") from None
