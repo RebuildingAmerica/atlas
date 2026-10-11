@@ -13494,6 +13494,142 @@
         "title": "SyncedEntryLink",
         "type": "object"
       },
+      "TakedownCollectionResponse": {
+        "description": "The takedowns that stand.",
+        "properties": {
+          "items": {
+            "description": "Standing takedowns, newest first",
+            "items": {
+              "$ref": "#/components/schemas/TakedownResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "TakedownCollectionResponse",
+        "type": "object"
+      },
+      "TakedownCreateRequest": {
+        "description": "Which profile to take down, and why.",
+        "properties": {
+          "reason": {
+            "description": "Why it comes down, kept for whoever restores it",
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The profile's slug",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "reason"
+        ],
+        "title": "TakedownCreateRequest",
+        "type": "object"
+      },
+      "TakedownResponse": {
+        "description": "One takedown, standing or lifted.",
+        "properties": {
+          "entry_id": {
+            "description": "The profile taken down",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "entry_name": {
+            "description": "The profile's name when it came down",
+            "title": "Entry Name",
+            "type": "string"
+          },
+          "entry_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The profile's slug when it came down",
+            "title": "Entry Slug"
+          },
+          "entry_type": {
+            "description": "person or organization",
+            "title": "Entry Type",
+            "type": "string"
+          },
+          "id": {
+            "description": "Takedown ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why it came down",
+            "title": "Reason",
+            "type": "string"
+          },
+          "restored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was restored",
+            "title": "Restored At"
+          },
+          "restored_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The editor who restored it",
+            "title": "Restored By"
+          },
+          "taken_down_at": {
+            "description": "When it came down",
+            "title": "Taken Down At",
+            "type": "string"
+          },
+          "taken_down_by": {
+            "description": "The editor who took it down",
+            "title": "Taken Down By",
+            "type": "string"
+          },
+          "was_active": {
+            "description": "Whether it was published when it came down",
+            "title": "Was Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "entry_id",
+          "entry_name",
+          "entry_type",
+          "reason",
+          "was_active",
+          "taken_down_by",
+          "taken_down_at"
+        ],
+        "title": "TakedownResponse",
+        "type": "object"
+      },
       "TrustInfo": {
         "description": "Identity verification and separately evaluated source details.",
         "properties": {
@@ -25064,6 +25200,185 @@
         "summary": "Resolve a source flag",
         "tags": [
           "flags"
+        ]
+      }
+    },
+    "/api/takedowns": {
+      "get": {
+        "description": "Profiles an editor took down and has not restored, newest first.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "listTakedowns",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TakedownCollectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List standing takedowns",
+        "tags": [
+          "moderation"
+        ]
+      },
+      "post": {
+        "description": "Hide a profile, published or waiting for review, and keep it hidden: no approval, registry match or later discovery run republishes it until it is restored.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "createTakedown",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TakedownCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TakedownResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Take a profile down",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/takedowns/{takedown_id}/restore": {
+      "post": {
+        "description": "Lift a takedown. A profile that was published before it came down is published again; one that was waiting for review goes back to waiting.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "restoreTakedown",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "takedown_id",
+            "required": true,
+            "schema": {
+              "title": "Takedown Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TakedownResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore a profile",
+        "tags": [
+          "moderation"
         ]
       }
     },

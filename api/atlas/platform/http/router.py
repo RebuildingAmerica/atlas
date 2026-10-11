@@ -28,6 +28,7 @@ from atlas.domains.discovery.api_org_coverage_reports import router as org_cover
 from atlas.domains.discovery.api_org_quality import router as org_quality_router
 from atlas.domains.firehose import router as firehose_router
 from atlas.domains.moderation.api import router as flags_router
+from atlas.domains.moderation.takedown_api import router as takedown_router
 from atlas.platform.http.platform_router import create_platform_router
 
 __all__ = ["create_router"]
@@ -63,6 +64,7 @@ def create_router(*, managed: bool) -> APIRouter:
     router.include_router(discovery_router, prefix="/api/discovery-runs")
     router.include_router(schedule_router, prefix="/api/discovery-schedules")
     router.include_router(flags_router, prefix="/api")
+    router.include_router(takedown_router, prefix="/api")
     router.include_router(taxonomy_router, prefix="/api")
     router.include_router(public_router, prefix="/api")
     router.include_router(mcp_elicitations_router, prefix="/api")
