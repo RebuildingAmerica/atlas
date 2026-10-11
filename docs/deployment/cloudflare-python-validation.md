@@ -59,25 +59,52 @@ the six nonblocking dependencies to async calls; the Node runtime keeps its
 existing behavior. The complete API suite passed 2,456 tests with 100% branch
 and statement coverage before subsequent discovery continuation changes.
 
-The hosted framework snapshot at `2026-10-11T06:05:31Z` uses version
-`c964d8a9-9641-4a95-8b32-155d13a9470e`, source `3beff384`. Health and the UTC
-database probe pass, and anonymous Access requests are rejected. Full
-application construction takes roughly 9.5 seconds, down from 12–14 seconds;
-empty search returns HTTP 200 and private lists reject unauthenticated requests
-with HTTP 401. Nonempty catalog search still returns HTTP 500. Its trace reaches
-asyncpg's named prepared-statement cleanup and reports
-`ConnectionDoesNotExistError`. This candidate has not passed search, private
-workspace or MCP acceptance, warm reuse, or performance gates.
+The hosted framework snapshot at `2026-10-11T06:39:31Z` uses version
+`e072d15b-f7ac-4d1d-800d-acc4841cc995`, source `99b6c798`. Health, UTC
+PostgreSQL conversion and connection closure pass; anonymous Access requests are
+rejected. Catalog listing, nonempty housing search and empty search now return
+HTTP 200. Both nonempty responses contain two complete entity records; entity
+detail and slug resolution identify the expected entity and retain its two
+linked sources. Private lists reject anonymous application requests with
+HTTP 401. This is API evidence, not acceptance of profile SSR, sign-in,
+workspaces or MCP.
 
-Sources `c3ca8902` and `b10cdc36` replace each request-owned query's named
-statement with an unnamed one, after materializing its result. Four real
-PostgreSQL tests preserve cursor shapes, transaction continuity, cancellation
-and cleanup, and verify zero named-statement resources. This change still needs
-hosted validation. A cryptography-only snapshot experiment was rejected with
-Cloudflare error 10021, `Top-level await in module is unsettled`; its failed
-deployment did not replace the live candidate. Source `b10cdc36` restores the
-validated Pydantic/FastAPI/HTTPX snapshot boundary. Cryptography remains
-available at request time; no product dependency was removed.
+The database fix uses unnamed prepared statements after materializing each
+result, avoiding the named-statement cleanup that previously closed the
+Hyperdrive connection during nonempty search. Four real PostgreSQL tests
+preserve cursor shapes, transactions, cancellation and cleanup while verifying
+zero named-statement resources. The deployed search results validate the fix
+through Hyperdrive too.
+
+JWT libraries now load only after a bearer token and configured audience are
+present; six focused helper tests and 211 access tests pass. The extraction SDK
+now loads only when extraction has a key and source content. Existing two-pass
+extraction, grounding and retries pass seven tests. Hosted application module
+count fell from 2,174 to 1,149, and application construction fell from 7.8 to
+6.4 seconds. Some requests retain the same application/object/isolate: one warm
+empty search took 478ms and an anonymous private-list check took 665ms. Other
+catalog/source requests still take roughly 9–10 seconds and show cold
+reconstruction. These observations do not pass the latency or quota gates.
+Provider logs record roughly 8.1–8.4 seconds of CPU for earlier catalog calls;
+they show successful outcomes, without an explicit memory-limit failure. Do not
+infer zero memory pressure from that absence.
+
+The cryptography preload experiment was rejected with error 10021,
+`Top-level await in module is unsettled`. After JWT imports became lazy, a full
+`atlas.main` snapshot was instead rejected with error 10027, exceeding the 64
+MiB uncompressed Worker size limit. Both rejected deployments left the then-live
+candidate unchanged. The deployed candidate retains the accepted
+Pydantic/FastAPI/HTTPX snapshot. DNS is bundled with core packages; extraction
+assets remain available but ordinary HTTP does not fetch them when configured
+inline discovery is disabled. No product dependency was removed.
+
+Sanitized probe evidence is retained in ignored
+`.atlas/python-smoke/unnamed-api-probe-results.json`,
+`.atlas/python-smoke/lazy-model-sdk-api-probe-results.json` and
+`.atlas/python-smoke/lazy-model-sdk-journeys.json`. Original responses and
+provider attributes remain private. Cloudflare operations use the new `cf` CLI
+with a single in-memory credential session; it does not repeatedly read macOS
+Keychain for every provider command.
 
 Twelve concurrent database adapter probes passed through the provider. Local
 PostgreSQL tests cover cursor shapes, dates, JSON, commit visibility, rollback
