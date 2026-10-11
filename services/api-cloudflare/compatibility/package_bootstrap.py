@@ -19,7 +19,7 @@ async def _load_package_archive(env):
         )
         if response.status != 200:
             raise RuntimeError("Immutable runtime package asset is unavailable.")
-        data = (await response.arrayBuffer()).to_bytes()
+        data = await response.bytes()
         if hashlib.sha256(data).hexdigest() != expected:
             raise RuntimeError("Runtime package asset does not match its release.")
         archive = Path("/tmp") / f"atlas-packages-{expected}.zip"

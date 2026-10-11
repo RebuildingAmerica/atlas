@@ -29,10 +29,7 @@ async def test_concurrent_package_loading_verifies_once_and_rejects_mismatched_d
     identity.write_text(json.dumps({"sha256": digest}))
     monkeypatch.setattr(MODULE, "__file__", str(tmp_path / "package_bootstrap.py"))
     monkeypatch.setattr(MODULE, "_archive_task", None)
-    response = SimpleNamespace(
-        status=200,
-        arrayBuffer=AsyncMock(return_value=SimpleNamespace(to_bytes=lambda: data)),
-    )
+    response = SimpleNamespace(status=200, bytes=AsyncMock(return_value=data))
     fetch = AsyncMock(return_value=response)
     env = SimpleNamespace(PACKAGE_ASSETS=SimpleNamespace(fetch=fetch))
     archive = Path("/tmp") / f"atlas-packages-{digest}.zip"
