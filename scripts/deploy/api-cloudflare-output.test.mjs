@@ -242,3 +242,70 @@ test("HTTP core is bundled for snapshots while deferred packages remain immutabl
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("production Python artifacts require exact role/target and merge helpers without collisions", async () => {
+  const root = mkdtempSync(join(tmpdir(), "atlas-production-output-"));
+  try {
+    const source = join(root, "shared"),
+      production = join(root, "production"),
+      vendor = join(root, "vendor");
+    for (const path of [source, production, vendor]) mkdirSync(path);
+    writeFileSync(join(source, "hosted_application.py"), "# shared helper\n");
+    writeFileSync(
+      join(production, "production_entry.py"),
+      "class ApiRuntime: pass\n",
+    );
+    writeFileSync(
+      join(production, "production_discovery.py"),
+      "class DiscoveryRuntime: pass\n",
+    );
+    writeFileSync(join(vendor, "pyvenv.cfg"), "");
+    const input = {
+      source,
+      additionalSources: [production],
+      vendor,
+      destination: join(root, "out"),
+      workerName: "atlas-api-staging",
+      accountId: "a".repeat(32),
+      durableExport: "ApiRuntime",
+      entrypoint: "production_entry.py",
+      releaseTarget: "staging",
+      workerRole: "api",
+    };
+    const output = await preparePythonOutput(input);
+    assert.equal(
+      output.workers.default.config.manifest.mainModule,
+      "production_entry.py",
+    );
+    assert.equal(
+      output.workers.default.config.manifest.modules["hosted_application.py"]
+        .type,
+      "python",
+    );
+    assert.equal(
+      output.workers.default.config.exports.ApiRuntime.storage,
+      "sqlite",
+    );
+    assert.deepEqual(output.workers.default.config.domains ?? [], []);
+    for (const patch of [
+      { workerName: "atlas-python-eval-api" },
+      { workerRole: "discovery" },
+      { entrypoint: "entry.py" },
+      { durableExport: "Default" },
+      { releaseTarget: "preview" },
+    ]) {
+      await assert.rejects(
+        preparePythonOutput({ ...input, ...patch }),
+        /production runtime/,
+      );
+    }
+    await assert.rejects(
+      preparePythonOutput({ ...input, releaseTarget: undefined }),
+      /evaluation Worker/,
+    );
+    writeFileSync(join(production, "hosted_application.py"), "# collision\n");
+    await assert.rejects(preparePythonOutput(input), /duplicate module/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -22,6 +22,9 @@ export async function preparePythonOutput({
   durableExport,
   entrypoint = "entry.py",
   packagesAsset = false,
+  additionalSources = [],
+  releaseTarget,
+  workerRole,
 }) {
   for (const [name, binding] of Object.entries(workerEnv ?? {})) {
     if (
@@ -34,7 +37,24 @@ export async function preparePythonOutput({
         "Build output must not contain credentials or secret values.",
       );
   }
-  if (
+  if (releaseTarget !== undefined) {
+    const role = {
+      api: ["production_entry.py", "ApiRuntime"],
+      discovery: ["production_discovery.py", "DiscoveryRuntime"],
+    }[workerRole];
+    if (
+      !["staging", "production"].includes(releaseTarget) ||
+      !role ||
+      entrypoint !== role[0] ||
+      durableExport !== role[1] ||
+      workerName !== `atlas-${workerRole}-${releaseTarget}` ||
+      !/^[a-f0-9]{32}$/.test(accountId ?? "") ||
+      additionalSources.length !== 1
+    )
+      throw new Error(
+        "An exact production runtime role, target, entrypoint and account are required.",
+      );
+  } else if (
     !/^atlas-python-eval(?:-[a-z0-9-]+)?$/.test(workerName) ||
     !/^[a-f0-9]{32}$/.test(accountId)
   )
@@ -69,6 +89,8 @@ export async function preparePythonOutput({
           throw new Error("Python artifacts require regular files.");
         if (/^\.env(?:\.|$)/.test(item.name))
           throw new Error("Python artifacts reject secret files.");
+        if (modules[name])
+          throw new Error("Python sources contain a duplicate module.");
         const target = join(bundle, name);
         mkdirSync(join(target, ".."), { recursive: true });
         cpSync(path, target);
@@ -85,6 +107,7 @@ export async function preparePythonOutput({
     }
   };
   copy(source, "", false);
+  for (const directory of additionalSources) copy(directory, "", false);
   copy(vendor, "python_modules", true);
   if (
     modules[entrypoint]?.type !== "python" ||

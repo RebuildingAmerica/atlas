@@ -42,6 +42,8 @@
     "release:homebrew:test": "sh scripts/release/tests/test-scout-homebrew.sh",
     "deploy:test": "node --test scripts/deploy/*.test.mjs scripts/ci/*.test.mjs",
     "cf:session": "node scripts/deploy/cloudflare-session.mjs",
+    "api:release-cloudflare": "node scripts/deploy/api-cloudflare-release.mjs",
+    "api:schema-release": "cd api && uv run --no-sync python ../scripts/deploy/api_schema_release.py",
     "actionlint": "if command -v actionlint >/dev/null 2>&1; then actionlint; else go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12; fi",
     "turbo:validate": "node ./scripts/validate-turbo-selectors.mjs",
     "e2e:api": "uv --directory ./api run python -m atlas.seed_profiles --database-url ${DATABASE_URL:-sqlite:///atlas.db} && uv --directory ./api run python -m atlas.main",
