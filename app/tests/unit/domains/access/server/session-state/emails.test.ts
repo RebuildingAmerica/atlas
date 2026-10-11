@@ -21,6 +21,7 @@ vi.mock("@/domains/access/server/request-headers", () => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+  isInstanceOperatorEmail: () => false,
   validateAuthRuntimeConfig: mocks.validateAuthRuntimeConfig,
 }));
 

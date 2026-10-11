@@ -6,9 +6,11 @@ quickly on desktop and mobile.
 
 Two operator surfaces exist and they stay separate:
 
-- **The Atlas app's admin portal** (`/admin`): running this instance. Editorial
-  review, corrections, profile verifications, discovery. Every deployment has
-  it, including self-hosted ones.
+- **The Atlas app's editorial pages** (`/editorial`): running this instance.
+  Editorial review, corrections, profile verifications and discovery schedules,
+  for the people on `ATLAS_INSTANCE_OPERATOR_EMAILS`. Every deployment has them,
+  including self-hosted ones. Old `/admin/*` addresses redirect here, except the
+  two pages that moved to the platform admin.
 - **The Atlas platform admin** (`admin/`, its own host behind Cloudflare
   Access): Atlas-owned administration of the managed service, such as discount
   requests and cloud costs. Only the managed deployment has it. See
@@ -18,7 +20,7 @@ Two operator surfaces exist and they stay separate:
 
 Every top-level admin page should use the same file shape:
 
-- `app/src/routes/_workspace/admin/<page>.tsx` (or
+- `app/src/routes/_workspace/editorial/<page>.tsx` (or
   `admin/src/routes/<page>.tsx`) only registers the route.
 - `<workspace>/src/domains/**/<page>-page.tsx` loads data, owns mutations, and
   renders loading, error, or empty states.
@@ -33,10 +35,10 @@ module or a colocated component module.
 
 ## Navigation
 
-The workspace rail should expose one top-level `Admin` destination. Detailed
-operator tasks live inside the admin portal as action links. This keeps the rail
-scannable on mobile and desktop and avoids adding a new rail item for every
-operator workflow.
+The workspace rail exposes one top-level `Editorial` destination, shown only to
+instance operators. Detailed operator tasks live inside it as action links. This
+keeps the rail scannable on mobile and desktop and avoids adding a new rail item
+for every operator workflow.
 
 ## Service Health
 

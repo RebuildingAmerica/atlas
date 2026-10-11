@@ -1,4 +1,4 @@
-import { redirect } from "@tanstack/react-router";
+import { notFound, redirect } from "@tanstack/react-router";
 import { sanitizeAtlasRedirectPath } from "@rebuildingamerica/atlas-access/redirect-paths";
 import { getAtlasDeployMode, getAtlasSession } from "../session.functions";
 
@@ -133,6 +133,23 @@ export async function requireReadyAtlasSession(locationHref: string) {
       to: "/setup",
       search: { redirect: locationHref },
     });
+  }
+
+  return session;
+}
+
+/**
+ * Protects the editorial pages: a ready account that runs this instance.
+ *
+ * Anyone else gets the same not-found page as for a path that does not exist,
+ * so the editorial tools do not advertise themselves. The API refuses their
+ * data to anyone off the list regardless; this keeps people from landing on
+ * pages that can only fail.
+ */
+export async function requireInstanceOperatorSession(locationHref: string) {
+  const session = await requireReadyAtlasSession(locationHref);
+  if (!session.isInstanceOperator) {
+    throw notFound();
   }
 
   return session;

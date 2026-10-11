@@ -171,8 +171,8 @@ async function readResults(): Promise<CaptureResult[]> {
 
 function areaOf(result: CaptureResult): string {
   const path = result.routeId;
-  if (path.startsWith("/admin")) {
-    return "Admin";
+  if (path.startsWith("/editorial")) {
+    return "Editorial";
   }
   if (
     ["/setup", "/sign-in", "/sign-up", "/device", "/oauth", "/accept-invitation"].some((p) =>

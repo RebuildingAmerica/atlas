@@ -10,7 +10,11 @@ import {
 import { canEmailAccessAtlas, ensureAuthReady, type AtlasPasskeyAuth } from "./auth";
 import { loadAtlasWorkspaceState } from "./organization-session";
 import { getBrowserSessionHeaders } from "./request-headers";
-import { getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
+import {
+  getAuthRuntimeConfig,
+  isInstanceOperatorEmail,
+  validateAuthRuntimeConfig,
+} from "./runtime";
 import { AtlasAuthError, AUTH_ERROR_CODE } from "@rebuildingamerica/atlas-access/auth-errors";
 import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 
@@ -29,6 +33,7 @@ function getLocalSession(): AtlasSessionPayload {
 
   return {
     isLocal: true,
+    isInstanceOperator: true,
     accountReady: true,
     hasPasskey: true,
     passkeyCount: 1,
@@ -122,6 +127,7 @@ export async function loadAtlasSession(): Promise<AtlasSessionPayload | null> {
 
   return {
     isLocal: false,
+    isInstanceOperator: isInstanceOperatorEmail(session.user.email),
     // accountReady gates resource creation and the workspace shell. Magic-link
     // sessions are recovery-only until the operator verifies email and enrolls
     // a passkey.

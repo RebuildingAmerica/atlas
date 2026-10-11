@@ -38,7 +38,25 @@ export async function requestAtlasService<T>(path: string, init?: RequestInit): 
   return await requestAtlasBase<T>(getServerServiceBaseUrl(), path, init);
 }
 
+/**
+ * Calls an Atlas API route that answers with no body, such as a delete.
+ *
+ * @throws AtlasApiError when the API refuses or fails.
+ */
+export async function requestAtlasApiWithoutBody(path: string, init?: RequestInit): Promise<void> {
+  await sendAtlasRequest(getServerApiBaseUrl(), path, init);
+}
+
 async function requestAtlasBase<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
+  const response = await sendAtlasRequest(baseUrl, path, init);
+  return (await response.json()) as T;
+}
+
+async function sendAtlasRequest(
+  baseUrl: string,
+  path: string,
+  init: RequestInit | undefined,
+): Promise<Response> {
   const localMode = isLocalMode();
   const session = await requireReadyAtlasSessionState();
   const headers = localMode
@@ -61,5 +79,5 @@ async function requestAtlasBase<T>(baseUrl: string, path: string, init?: Request
     throw new AtlasApiError(classifyAtlasApiStatus(response.status));
   }
 
-  return (await response.json()) as T;
+  return response;
 }

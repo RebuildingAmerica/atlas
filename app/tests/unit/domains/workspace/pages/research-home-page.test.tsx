@@ -147,6 +147,7 @@ describe("ResearchHomePage", () => {
 
     return {
       isLocal: overrides.isLocal ?? false,
+      isInstanceOperator: overrides.isLocal ?? false,
       accountReady: true,
       hasPasskey: false,
       passkeyCount: 0,

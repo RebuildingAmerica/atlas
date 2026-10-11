@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   ensureAuthReady: vi.fn(),
   getBrowserSessionHeaders: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
+  isInstanceOperatorEmail: vi.fn(),
   validateAuthRuntimeConfig: vi.fn(),
 }));
 
@@ -27,6 +28,7 @@ vi.mock("@/domains/access/server/request-headers", () => ({
 
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
+  isInstanceOperatorEmail: mocks.isInstanceOperatorEmail,
   validateAuthRuntimeConfig: mocks.validateAuthRuntimeConfig,
 }));
 
@@ -54,6 +56,19 @@ describe("session-state loading", () => {
       localMode: false,
     });
     mocks.validateAuthRuntimeConfig.mockReturnValue(undefined);
+    mocks.isInstanceOperatorEmail.mockReturnValue(false);
+  });
+
+  it("marks a signed-in person on the instance operator list", async () => {
+    authApi.getSession.mockResolvedValue(createBetterAuthSession());
+    authApi.listPasskeys.mockResolvedValue([{}]);
+    mocks.isInstanceOperatorEmail.mockReturnValue(true);
+
+    const { loadAtlasSession } = await import("@/domains/access/server/session-state");
+    const session = await loadAtlasSession();
+
+    expect(session?.isInstanceOperator).toBe(true);
+    expect(mocks.isInstanceOperatorEmail).toHaveBeenCalledWith("operator@atlas.test");
   });
 
   it("returns the local single-operator session when auth is disabled", async () => {

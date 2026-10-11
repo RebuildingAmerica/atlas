@@ -25,15 +25,28 @@ describe("hosted proxy route rules", () => {
     expect(rules["/admin/discounts"]).toEqual({
       redirect: { to: "https://atlas-admin.example.com/discounts", status: 308 },
     });
+    expect(rules["/admin/discounts/**"]).toEqual({
+      redirect: { to: "https://atlas-admin.example.com/discounts/**", status: 308 },
+    });
     expect(rules["/admin/cloud-costs"]).toEqual({
       redirect: { to: "https://atlas-admin.example.com/cloud-costs", status: 308 },
     });
-    expect(rules["/admin/corrections"]).toBeUndefined();
+    expect(rules["/admin/cloud-costs/**"]).toEqual({
+      redirect: { to: "https://atlas-admin.example.com/cloud-costs/**", status: 308 },
+    });
   });
 
-  it("has nothing to redirect on a deployment with no platform admin", () => {
+  it("sends every other old /admin address to the editorial pages", () => {
+    const rules = buildHostedProxyRouteRules({});
+
+    expect(rules["/admin"]).toEqual({ redirect: { to: "/editorial", status: 308 } });
+    expect(rules["/admin/**"]).toEqual({ redirect: { to: "/editorial/**", status: 308 } });
+  });
+
+  it("has no platform redirects on a deployment with no platform admin", () => {
     const rules = buildHostedProxyRouteRules({ ATLAS_ADMIN_PUBLIC_URL: "  " });
 
     expect(rules["/admin/discounts"]).toBeUndefined();
+    expect(rules["/admin/discounts/**"]).toBeUndefined();
   });
 });

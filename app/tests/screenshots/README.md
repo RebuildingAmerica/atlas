@@ -31,8 +31,8 @@ Single pass: `pnpm --filter @rebuildingamerica/atlas-app screenshots:local` (or
 `local` workspace, which is what makes the whole authenticated surface reachable
 without logging in. But `redirectIfLocalSession` bounces `/sign-in`, `/sign-up`,
 `/pricing`, `/account`, `/organization*`, `/checkout-complete`, `/onboarding*`
-and `/accept-invitation/*` in that mode, and `/admin/*` is gated on the operator
-email at the data layer rather than by a route guard.
+and `/accept-invitation/*` in that mode, and `/editorial/*` needs a signed-in
+email on `ATLAS_INSTANCE_OPERATOR_EMAILS`.
 
 So the audit boots the app twice:
 

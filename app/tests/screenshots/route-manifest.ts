@@ -297,18 +297,24 @@ export const SCREENSHOT_ROUTES = [
     note: "Unknown-client state. A valid consent screen needs a live authorization request.",
   },
 
-  // ----------------------------------------------------------------- admin
-  { name: "admin", routeId: "/admin/", path: "/admin", mode: "session" },
+  // ------------------------------------------------------------- editorial
+  { name: "editorial", routeId: "/editorial/", path: "/editorial", mode: "session" },
   {
-    name: "admin-discovery-reviews",
-    routeId: "/admin/discovery-reviews",
-    path: "/admin/discovery-reviews",
+    name: "editorial-discovery-reviews",
+    routeId: "/editorial/discovery-reviews",
+    path: "/editorial/discovery-reviews",
     mode: "session",
   },
   {
-    name: "admin-profile-claims",
-    routeId: "/admin/profile-claims",
-    path: "/admin/profile-claims",
+    name: "editorial-profile-claims",
+    routeId: "/editorial/profile-claims",
+    path: "/editorial/profile-claims",
+    mode: "session",
+  },
+  {
+    name: "editorial-schedules",
+    routeId: "/editorial/schedules",
+    path: "/editorial/schedules",
     mode: "session",
   },
 ] as const satisfies readonly ScreenshotRoute[];
@@ -327,10 +333,10 @@ export const EXCLUDED_ROUTES = {
   "/waitlist/request/$id": {
     reason: "Private waitlist details require a runtime request reference.",
   },
-  "/admin/waitlist": {
+  "/editorial/waitlist": {
     reason: "Applicant emails and private context must not enter screenshot artifacts.",
   },
-  "/admin/corrections": {
+  "/editorial/corrections": {
     reason: "Private reporter notes and contact details must not enter screenshot artifacts.",
   },
   "/dashboard": { reason: "Pure redirect to /home." },
@@ -340,6 +346,7 @@ export const EXCLUDED_ROUTES = {
   "/docs/$": { reason: "Redirect to the external Mintlify docs site." },
 
   "/device": { reason: "Layout route; /device/ renders this URL." },
+  "/editorial": { reason: "Layout route; /editorial/ renders this URL." },
   "/onboarding": { reason: "Layout route; /onboarding/ renders this URL." },
   "/organization": { reason: "Layout route; /organization/ renders this URL." },
   "/profiles/organizations": {
