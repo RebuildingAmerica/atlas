@@ -9,7 +9,10 @@ export interface AppNavItem {
   to: string;
 }
 
-type AppNavigationSession = Pick<AtlasSessionPayload, "isLocal" | "workspace">;
+type AppNavigationSession = Pick<
+  AtlasSessionPayload,
+  "isInstanceOperator" | "isLocal" | "workspace"
+>;
 
 const CORE_APP_NAV: AppNavItem[] = [
   { label: "Home", to: "/home" },
@@ -22,7 +25,8 @@ const CORE_APP_NAV: AppNavItem[] = [
   { label: "Activity", to: "/feed" },
 ];
 
-const LOCAL_REVIEW_NAV: AppNavItem[] = [{ label: "Admin", to: "/admin" }];
+/** Shown to the people who run this instance, including the local operator. */
+const EDITORIAL_NAV_ITEM: AppNavItem = { label: "Editorial", to: "/editorial" };
 
 /**
  * Returns whether the app shell should surface the organization tab for
@@ -54,10 +58,14 @@ export function buildAuthenticatedAppNav(
     return CORE_APP_NAV;
   }
   if (session.isLocal) {
-    return [...CORE_APP_NAV, ...LOCAL_REVIEW_NAV];
+    return [...CORE_APP_NAV, EDITORIAL_NAV_ITEM];
   }
 
   const items: AppNavItem[] = [...CORE_APP_NAV];
+
+  if (session.isInstanceOperator) {
+    items.push(EDITORIAL_NAV_ITEM);
+  }
 
   if (shouldShowOrganizationNav(session)) {
     items.push({ label: "Organization", to: "/organization" });

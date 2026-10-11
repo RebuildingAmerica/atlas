@@ -14,8 +14,8 @@ import { STORAGE_STATE, imagePath, writeCaptureResult } from "./capture-result";
 import { preparePage, settlePage } from "./prepare-page";
 
 /**
- * The operator address. It matches `ATLAS_OPERATOR_ALLOWED_EMAILS`, which is what unlocks the
- * `/admin/*` pages — those are gated at the data layer, not by a route guard.
+ * The operator address. It matches `ATLAS_INSTANCE_OPERATOR_EMAILS`, which is what unlocks the
+ * `/editorial/*` pages, both in the route guard and at the data layer.
  */
 const OPERATOR_EMAIL = "person@atlas.test";
 

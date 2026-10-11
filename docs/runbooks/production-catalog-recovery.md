@@ -85,21 +85,11 @@ restored. The recovery is complete when `/api/entities?limit=1` returns
 
 ## Add Future Schedule Targets
 
-Create schedule targets only after the place and issue scope is approved.
-Schedule changes are staff-only: `ATLAS_OPERATOR_EMAIL` must be an address on
-the production `ATLAS_INSTANCE_OPERATOR_EMAILS` variable, or the API
-answers 403. The `X-Atlas-Actor-Account-Ready` header asserts the operator
-signed in with a passkey; send it only when acting as yourself. Every schedule
-change is written to the append-only `audit_log` table under your email.
-
-```bash
-curl -X POST "https://atlas-api.rebuildingus.org/api/discovery-schedules" \
-  -H "X-Atlas-Internal-Secret: $ATLAS_AUTH_INTERNAL_SECRET" \
-  -H "X-Atlas-Actor-Id: atlas-operator" \
-  -H "X-Atlas-Actor-Email: $ATLAS_OPERATOR_EMAIL" \
-  -H "X-Atlas-Actor-Account-Ready: true" \
-  -H "Content-Type: application/json" \
-  --data '{"location_query":"Las Vegas, NV","state":"NV","issue_areas":["housing_affordability"],"search_depth":"standard"}'
-```
+Create schedule targets only after the place and issue scope is approved. Open
+`https://atlas.rebuildingus.org/editorial/schedules`, signed in with a passkey
+as an address on the production `ATLAS_INSTANCE_OPERATOR_EMAILS` variable. Name
+the place, its state, the issues and the search depth, then add it. Pause a
+target to skip it without losing it. Every schedule change is written to the
+append-only `audit_log` table under your email.
 
 Scheduled discovery creates jobs only for enabled rows in `discovery_schedules`.

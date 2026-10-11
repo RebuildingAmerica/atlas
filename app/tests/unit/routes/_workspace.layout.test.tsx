@@ -47,7 +47,7 @@ describe("routes/_workspace layout", () => {
       "Lists",
       "Watching",
       "Activity",
-      "Admin",
+      "Editorial",
     ]);
     expect(screen.getByTestId("identity-slot")).toBeEmptyDOMElement();
   });
