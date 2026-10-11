@@ -181,8 +181,18 @@ async def _extract_page_text(client: httpx.AsyncClient, url: str) -> str:
     # Browsing existing profiles does not need the document extraction runtime.
     import trafilatura
 
-    response = await client.get(url)
-    response.raise_for_status()
+    from atlas.platform.hosted_runtime import current_hosted_runtime
+
+    runtime = current_hosted_runtime()
+    if runtime is None:
+        response = await client.get(url)
+        response.raise_for_status()
+    else:
+        from .source_http import fetch_public_source
+
+        if runtime.public_source_fetch is None:
+            raise RuntimeError("Hosted public-source transport is not configured")  # noqa: TRY003
+        response = await fetch_public_source(url, runtime.public_source_fetch)
     extracted = trafilatura.extract(response.text, include_comments=False, include_tables=False)
     return extracted or ""
 

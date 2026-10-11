@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from atlas.domains.discovery.pipeline.source_http import PublicSourceFetcher
     from atlas.platform.config import Settings
 
 
@@ -36,6 +37,7 @@ class HostedRuntime:
     settings: Settings
     connect: DatabaseConnector
     firehose_wake: FirehoseWake | None = None
+    public_source_fetch: PublicSourceFetcher | None = None
 
 
 _runtime: ContextVar[HostedRuntime | None] = ContextVar("atlas_hosted_runtime", default=None)

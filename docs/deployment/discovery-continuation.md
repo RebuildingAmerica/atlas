@@ -103,12 +103,34 @@ the end of the turn. Unfinished attempts may be replayed after a lost response;
 the replay is charged independently. Changed ownership cannot publish a late
 model response.
 
-Direct seed transport validates URL schemes, credentials, local hostnames and
-private IP literals before the initial request and each redirect. This does not
-yet pin or validate DNS resolution for public-looking hostnames; DNS rebinding
-protection is required before hosted activation. It also does not replace
-Scout's same-host crawl (depth 2, 20 pages per seed), structured/PDF parsing, or
-browser rendering. Those remain explicit feature-parity blockers; accepting a
-direct seed job locally is not evidence that all existing direct research
-behavior has migrated. No mode is removed from the public API or the existing
-Scout consumer.
+Hosted source fetching uses `HostedRuntime.public_source_fetch`, an
+invocation-owned `PublicSourceFetcher`. Each call returns an async response
+context with its status, headers and a stream of decoded bytes. The provider
+must make one global public-egress request with manual redirects, and closing
+the context must release/cancel the underlying stream. Search-result pages and
+direct seeds both use this capability; a hosted runtime missing it fails
+explicitly before fetching. Ordinary Node source clients keep their existing
+path.
+
+Atlas validates every redirect, supplies only fresh source-fetch headers for
+each hop, and limits a source read to 8 MiB of decoded content, 20 redirects and
+20 seconds total. It rejects credentials, ambiguous URL characters, local
+hostnames, private/reserved address literals and disguised numeric hosts. Tests
+cover concurrent runtime isolation, redirects, body limits, cancellation,
+timeouts and closing each response. Syntax checks do not pin DNS.
+
+The provider wrapper and hosted public-egress proof remain required.
+Cloudflare's
+[strict-public global fetch flag](https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public)
+prevents same-zone origin/security bypass; that statement alone is not a test of
+all SSRF or DNS-rebinding cases. Its
+[TCP socket restrictions](https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/#troubleshooting)
+also exclude Cloudflare IPs, so replacing HTTP fetch with raw sockets would lose
+legitimate sources. The ordinary Python path currently checks URL syntax and
+literals, and does not claim DNS pinning.
+
+This does not replace Scout's same-host crawl (depth 2, 20 pages per seed),
+structured/PDF parsing, or browser rendering. Those remain explicit
+feature-parity blockers; accepting a direct seed job locally is not evidence
+that all existing direct research behavior has migrated. No mode is removed from
+the public API or the existing Scout consumer.

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from ipaddress import ip_address
-from urllib.parse import urlsplit
-
 import httpx
+
+from atlas.platform.hosted_runtime import current_hosted_runtime
 
 from .source_fetcher import (
     PAGE_FETCH_HEADERS,
@@ -13,21 +12,7 @@ from .source_fetcher import (
     _extract_page_text,
     _infer_source_type,
 )
-
-
-def _public_url(url: str) -> None:
-    parsed = urlsplit(url)
-    host = (parsed.hostname or "").rstrip(".").lower()
-    if parsed.scheme not in {"https", "http"} or parsed.username or parsed.password or not host:
-        raise ValueError("Direct discovery requires a public HTTP(S) URL")  # noqa: TRY003
-    try:
-        address = ip_address(host)
-    except ValueError:
-        if "." not in host or host.endswith((".localhost", ".local", ".internal")):
-            raise ValueError("Direct discovery requires a public host") from None  # noqa: TRY003
-    else:
-        if not address.is_global:
-            raise ValueError("Direct discovery requires a public address")  # noqa: TRY003
+from .source_http import validate_public_source_url
 
 
 async def fetch_direct_source(url: str) -> FetchedSource | None:
@@ -45,10 +30,13 @@ async def fetch_direct_source(url: str) -> FetchedSource | None:
         Extractable text, or None for an empty page or an HTTP failure. The
         supplied URL remains the evidence identity after a public redirect.
     """
-    _public_url(url)
+    validate_public_source_url(url)
+    runtime = current_hosted_runtime()
+    if runtime is not None and runtime.public_source_fetch is None:
+        raise RuntimeError("Hosted public-source transport is not configured")  # noqa: TRY003
 
     async def validate_redirect(request: httpx.Request) -> None:
-        _public_url(str(request.url))
+        validate_public_source_url(str(request.url))
 
     async with httpx.AsyncClient(
         follow_redirects=True,
