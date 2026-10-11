@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { cloudflareCommand } from "./cloudflare-cli.mjs";
+import * as cloudflareCli from "./cloudflare-cli.mjs";
+const { cloudflareCommand } = cloudflareCli;
 
 test("Cloudflare writes use cf and keep database credentials out of argv and diagnostics", () => {
   let bodyFile;
@@ -40,6 +41,55 @@ test("Cloudflare writes use cf and keep database credentials out of argv and dia
       !error.message.includes(secret) &&
       error.message.includes("cf hyperdrive create"),
   );
+});
+
+test("Cloudflare diagnostics identify credential formats without returning credential material", () => {
+  assert.equal(typeof cloudflareCli.cloudflareCredentialKind, "function");
+  const { cloudflareCredentialKind } = cloudflareCli;
+  assert.equal(
+    cloudflareCredentialKind(`cfat_${"x".repeat(48)}`),
+    "account-scannable",
+  );
+  assert.equal(
+    cloudflareCredentialKind(`cfut_${"x".repeat(48)}`),
+    "user-scannable",
+  );
+  assert.equal(
+    cloudflareCredentialKind(`cfut_${"x".repeat(35)}`),
+    "invalid-scannable",
+  );
+  assert.equal(cloudflareCredentialKind("legacy-token"), "legacy");
+  assert.equal(cloudflareCredentialKind(""), "missing");
+});
+
+test("Cloudflare failures distinguish process, HTTP, and JSON errors without exposing provider output", () => {
+  const secret = "private-provider-credential"; // pragma: allowlist secret -- dummy redaction fixture
+  const cases = [
+    [
+      {
+        error: Object.assign(new Error(secret), { code: "ENOENT" }),
+        status: null,
+      },
+      "executable-not-found",
+    ],
+    [{ status: 1, stderr: `Status code: 401 ${secret}` }, "authentication"],
+    [{ status: 1, stderr: `Status code: 403 ${secret}` }, "permission-denied"],
+    [{ status: 1, stderr: secret }, "nonzero-exit"],
+    [{ status: 0, stdout: secret }, "invalid-json"],
+  ];
+  for (const [result, failure] of cases) {
+    assert.throws(
+      () =>
+        cloudflareCommand(["hyperdrive", "get", secret], {
+          env: {
+            CLOUDFLARE_ACCOUNT_ID: "account",
+            CLOUDFLARE_API_TOKEN: secret,
+          },
+          runner: () => result,
+        }),
+      (error) => error.failure === failure && !error.message.includes(secret),
+    );
+  }
 });
 
 test("Cloudflare reads require an explicit account and credential and honor named cf profiles", () => {

@@ -16,7 +16,11 @@ import {
 import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertDurableBudget, sameRuntimeRelease } from "./web-assess.mjs";
-import { cloudflareCommand } from "./cloudflare-cli.mjs";
+import {
+  cloudflareCommand,
+  CloudflareCommandError,
+  cloudflareCredentialKind,
+} from "./cloudflare-cli.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const OPERATIONS = [
@@ -569,6 +573,7 @@ export async function publicationCli({
     checks.push({
       setting: "CLOUDFLARE_API_TOKEN",
       status: env.CLOUDFLARE_API_TOKEN?.trim() ? "pass" : "block",
+      credentialKind: cloudflareCredentialKind(env.CLOUDFLARE_API_TOKEN),
     });
     for (const args of [
       ["accounts", "subscriptions", "get"],
@@ -587,8 +592,13 @@ export async function publicationCli({
       try {
         cloudflareCommand(args, { env });
         checks.push({ command: `cf ${args.join(" ")}`, status: "pass" });
-      } catch {
-        checks.push({ command: `cf ${args.join(" ")}`, status: "block" });
+      } catch (error) {
+        checks.push({
+          command: `cf ${args.join(" ")}`,
+          status: "block",
+          failure:
+            error instanceof CloudflareCommandError ? error.failure : "unknown",
+        });
       }
     }
     const requiredSettings = [
