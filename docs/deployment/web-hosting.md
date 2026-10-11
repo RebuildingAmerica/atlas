@@ -4,10 +4,11 @@
 
 This work protects the experience of searching Atlas, reading source-linked
 profiles, signing in, and using paid workspaces while replacing the fixed Vercel
-hosting fee. Both hosting candidates are implemented for evaluation using `cf`.
-**Vercel remains the active host. Neither candidate is approved for
-production.** There is no automatic paid Cloudflare fallback and no capability
-may be removed to meet a limit.
+hosting fee. The approved destination is Cloudflare-only hosting using `cf`.
+**Atlas production remains on Vercel; its Cloudflare cutover is not complete.**
+The separate organization website has completed its move and Vercel retirement.
+There is no automatic paid Cloudflare fallback and no capability may be removed
+to meet a limit.
 
 The operator requires Google billing to remain closed. Do not reopen or relink
 billing accounts. On October 10, 2026, the operator authorized the
@@ -20,7 +21,10 @@ and complete product journeys remain release gates. Existing PostgreSQL, data,
 PDS identities, and public URLs must be preserved. The hybrid path is retained
 temporarily as historical implementation, not a selectable hosted target. Actual
 provider checks and hosted journeys must pass before cutover, including a
-working API for search and source-linked profiles.
+working API for search and source-linked profiles. The operator also authorized
+immediate cutover once those checks pass, waiving the original 24-hour staging
+and 72-hour production waits. Do not fabricate elapsed observation evidence to
+satisfy a command that still enforces the original windows.
 
 ## Required Cloudflare CLI
 
@@ -55,12 +59,19 @@ rebuilding and receives runtime secret values only through a temporary mode-600
 file. Mutation bodies containing database credentials also use mode-600 files,
 never command arguments. Those files are removed even when the command fails.
 
-## Implemented candidates
+## Implemented evaluation paths
 
 | Candidate | Build and runtime                                                                                                                                 | What remains to establish viability                                                         |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Workers   | TanStack Start with the Cloudflare Vite adapter, PostgreSQL through Hyperdrive with caching disabled                                              | Hosted request CPU, free quotas, memory/connections, complete identity and billing journeys |
 | Hybrid    | Exact verified Nitro output in a guarded Node container; Workers serves static assets and streams dynamic requests to a pinned Cloud Run revision | Hosted warm/cold latency, account-wide added cost, complete journeys                        |
+
+The table records the original direct-Worker and hybrid experiments. The active
+Cloudflare-only work evaluates the web runtime and the existing Python API in
+Durable Objects, with Hyperdrive to retained PostgreSQL. Its current hosted
+results and remaining limits are in
+[Cloudflare-only runtime validation](./cloudflare-python-validation.md). Hybrid
+is historical implementation and is not an authorized alternative.
 
 `ATLAS_WEB_RUNTIME=workers` enables the Cloudflare adapter and a request-scoped
 PostgreSQL implementation and per-dispatch authentication state. The auth
@@ -99,12 +110,31 @@ expected public host and replaces untrusted forwarding headers.
 
 ## Current evidence and blockers
 
-The [hosted validation report](./web-hosting-validation.md) records the
-subsequent actual Workers deployment, PostgreSQL release migration, browser
-checks, native CPU measurements, version rollback and credential recovery. The
-current native build fails the approved CPU gate; Cloud Run deployment remains
-blocked by `BILLING_DISABLED`. The inventory below describes the earlier
-baseline, before diagnostic resources and traffic were created.
+The [Cloudflare-only runtime report](./cloudflare-python-validation.md) records
+the current evidence:
+
+- The organization website is on Cloudflare, version prefix `0e132a50`, source
+  prefix `5fecdc0`;
+  [workflow 38115026693](https://github.com/RebuildingAmerica/website/actions/runs/38115026693)
+  passed. Its Vercel project is paused, Git-disconnected and has no domains.
+  Atlas remains the active dependency on the paid subscription.
+- The protected full API candidate, version prefix `44b88f`, source `234848ff`,
+  returned health HTTP 200 in roughly 14 seconds. Entities returned HTTP 500;
+  logs identify thread creation in a synchronous FastAPI dependency. Earlier
+  memory failures are not the established cause of this latest failure. Repeated
+  imports remain roughly 13 seconds; warm reuse is unproven.
+- The latest retained account dashboard snapshot reports 18,850 daily Workers
+  requests, 249 daily Durable Object GB-seconds, and 22.08k month-to-date
+  Workers requests. These readings do not replace a complete peak/load forecast.
+
+The [earlier hosted validation report](./web-hosting-validation.md) records the
+direct Worker experiment, PostgreSQL release migration, browser checks, CPU
+measurements, version rollback and credential recovery. That experiment failed
+its 8ms CPU gate; this does not measure the revised Durable Object architecture.
+Cloud Run remains blocked by `BILLING_DISABLED` and Google billing must remain
+closed. The inventory below is historical, from before diagnostic resources and
+traffic were created; current resource and usage observations above supersede
+it.
 
 Local verification on 2026-10-10 established (the `cf` conversion also passed
 both prebuilt deployment dry runs):
@@ -197,14 +227,18 @@ Documentation retrieval has a separate limitation:
   `npx ctx7@latest login` or `CONTEXT7_API_KEY`. Official Cloudflare
   documentation was used for this implementation.
 
-No complete operating-cost estimate, architecture selection, observation window,
-production cutover, rollback readiness or subscription cancellation is claimed.
+Cloudflare-only is the approved architecture direction. A complete
+operating-cost and quota forecast, Atlas production cutover, coordinated
+rollback readiness and shared subscription cancellation are not yet established.
+The observation-window waiver is not a claim that either elapsed window was
+measured.
 
-The final app suite passed 4,167 tests with 100% statement, branch, function and
-line coverage. All 22 repository lint/type-check tasks, 135 deployment tests and
-159 bootstrap tests passed without changing coverage thresholds. These are local
-checks; no remote CI run or hosted acceptance has been completed for this
-branch.
+At an earlier local checkpoint, the app suite passed 4,167 tests with 100%
+statement, branch, function and line coverage. All 22 repository lint/type-check
+tasks, 135 deployment tests and 159 bootstrap tests passed without changing
+coverage thresholds. These are local checks, not a current all-repository result
+or complete hosted acceptance. The current Python report distinguishes local
+checks from the deployed API probes.
 
 ## Refresh the workload baseline
 
@@ -300,8 +334,10 @@ and production candidates only from release tags. Pull requests never receive
 deployment secrets. Existing GitHub Actions dependency/build caches remain in
 use.
 
-For hybrid, after the operator restores the existing Google billing account,
-prepare the existing `atlas-deploy` identity for the account-status check:
+The following hybrid bootstrap documents the original implementation only.
+Google billing must remain closed, so it is not a migration step under the
+current authorization. Its original purpose was to prepare the existing
+`atlas-deploy` identity for account-status checks:
 
 ```sh
 pnpm web:bootstrap-google-billing --target staging
@@ -486,6 +522,12 @@ implement rollback between replacement releases.
 
 ## Production promotion
 
+This section describes the existing original-candidate command contract. The
+operator has since waived the 24/72-hour waits for the Cloudflare-only
+migration; these commands must not be represented as waiver-aware unless that
+behavior is implemented and tested. Their observation durations below describe
+the helper, not a renewed operator requirement.
+
 `web:promote` checks the selected architecture, exact portable staging
 artifacts, compiled configuration, preserved runtime credentials and actual
 protected staging observation journal. It derives the 24-hour window from
@@ -571,8 +613,9 @@ also reset the window. Mixed origins, commits, targets, architectures, Worker
 versions, artifact digests or hybrid revision identities and out-of-order or
 future timestamps are rejected. `--summary-only` reads the existing journal
 without credentials or network requests and exits nonzero until a fresh
-continuous 24-hour window passes. `--hours 72` applies the longer observation
-requirement; it does not prove that production routing changed.
+continuous 24-hour window passes. `--hours 72` applies the helper's original
+longer window; it does not prove that production routing changed or supersede
+the operator's waiver.
 
 These probes are ongoing operational evidence, not complete product acceptance.
 They do not establish real email/passkey/OAuth/SSO sign-in, paid checkout,
@@ -582,7 +625,12 @@ separate. Request durations in the journal must not be relabeled as Worker CPU
 or a representative latency percentile. The candidate workflow retains its
 redacted first observation alongside the release identity.
 
-## Evidence and selection
+## Original assessor and evidence model
+
+The original assessor below selects between direct Workers and hybrid. It does
+not select the currently approved Cloudflare-only Durable Object architecture.
+Retain its measured baseline and quota discipline, but evaluate each current
+runtime against its applicable limits and the unchanged product journeys.
 
 Start from
 [the incomplete evidence template](./web-hosting-evidence.example.json). Null
@@ -611,41 +659,42 @@ alerts are warnings, not a spending cap.
 
 ## Remaining release work
 
-Architecture selection still requires measured hosted evidence and the unchanged
-runtime values. The following approved requirements remain open; these commands
-do not implement production promotion, routing rollback or subscription
-retirement yet:
+The destination is Cloudflare-only. Existing promotion and Vercel rollback
+commands are implemented for the original candidate model; their presence does
+not prove the revised API/discovery architecture is ready or that Atlas has cut
+over. Complete these remaining requirements:
 
-1. Run actual hosted search, maps, profile SSR/source links, docs, MCP, deep
-   links, mobile navigation and failure-state checks on each candidate. Verify
-   email, existing/new passkeys, recovery, invitations, ATProto/OAuth,
-   configured SSO, Stripe test checkout/webhook delivery and entitlement
-   readbacks. External callbacks must hit the candidate itself. Exercise signed
-   Stripe webhook handling against the candidate with Stripe test events while
-   preserving the canonical endpoint. Canonical endpoint metadata alone does not
-   establish candidate webhook handling or entitlement updates. Verify canonical
-   JWT acceptance by the unchanged API using tokens issued by the candidate.
-2. Measure representative cold/warm/load traffic, p99 CPU, quotas and existing
-   account usage. Verify unauthenticated Access denial, public metadata access,
-   origin rejection, spoofed headers, session continuity after redeploy and
-   cross-user privacy in the deployed runtime.
-3. Select one architecture and complete its sole hosted deployment,
-   configuration synchronization, authenticated probes, redacted telemetry,
-   quota/cost alerts, durable rollback artifact retention and promotion/rollback
-   commands. Replace Vercel readiness, repair, bypass and deployment
-   integrations only after this.
-4. Require 24 hours of successful staging on the exact release. The release gate
-   helper checks commit, selected architecture, recent baseline and
-   observations; it does not collect or attest observations. Capture current
-   Vercel deployment, routes/domains and rollback ownership, then switch the
-   existing domain.
-5. Immediately verify production sign-in, SSR, workspaces and billing readbacks.
-   Roll back broken journeys, privacy failures or failed performance gates.
-   Retain Vercel for 72 hours. Remove SDKs/configuration and revoke obsolete
-   credentials after the selected replacement and rollback work in production.
-6. Clear other projects sharing the subscription, then cancel/downgrade and
-   confirm the recurring charge ended. Moving Atlas alone does not prove
-   savings.
+1. Make the full API work in the hosted runtime, then verify search, maps,
+   profile SSR/source links, docs, MCP, deep links, mobile navigation and
+   failure states. Verify email, existing/new passkeys, recovery, invitations,
+   ATProto/OAuth, configured SSO, Stripe test checkout and signed webhook
+   handling, entitlement readbacks and canonical JWT acceptance. Preserve the
+   existing canonical Stripe endpoint; its metadata does not prove candidate
+   webhook delivery.
+2. Verify bounded, resumable discovery and Firehose delivery through restart,
+   retry and cancellation. Activate existing outbox rows on one designated
+   object and hand off the old consumer safely. Local checkpoint and alarm tests
+   do not establish hosted execution or resource limits.
+3. Measure representative cold/warm/load traffic and shared Free usage against
+   the relevant Worker and Durable Object limits. Verify Access denial, public
+   metadata, spoofed-header rejection, session continuity and cross-user
+   privacy. A successful health probe does not establish latency, memory or
+   search acceptance.
+4. Complete configuration synchronization, authenticated probes, redacted
+   telemetry, quota alerts and exact rollback artifact retention for the current
+   architecture. Capture Vercel deployment, routes/domains and rollback
+   ownership before switching the existing Atlas domain. The operator waived the
+   24/72-hour waits; command support for that explicit waiver must not
+   substitute invented observation journals.
+5. Immediately verify production sign-in, SSR, workspaces, billing and API
+   journeys. Roll back broken journeys, privacy failures or failed performance
+   gates. Remove obsolete integrations and revoke credentials after the
+   replacement and rollback work in production; the waiver does not remove
+   recovery requirements.
+6. The organization website has already left active Vercel hosting. After Atlas
+   and any remaining subscription dependencies are verified clear, cancel or
+   downgrade the shared subscription and confirm the recurring charge ended.
+   Website retirement alone does not prove those savings.
 
 ## Local checks
 
