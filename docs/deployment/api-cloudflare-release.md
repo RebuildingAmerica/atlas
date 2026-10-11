@@ -174,3 +174,78 @@ load Keychain or refresh credentials. Use the
 [session wrapper](cloudflare-session.md) or a retained in-memory
 `createCloudflareSession()` session. Expiry requires an explicit new session;
 there is no automatic retry/refresh loop.
+
+## Deploy consumer activation and pause
+
+`pnpm api:consumers-cloudflare` changes only `ATLAS_ACTIVE_RELEASE_SHA` in
+retained Build Output artifacts. The pinned `cf` deployment preserves existing
+Worker secrets; this command accepts neither replacement settings nor a secret
+file. This keeps existing accounts and operator authority intact while handing
+background updates to Cloudflare.
+
+Start with a read-only identity check:
+
+```sh
+pnpm api:consumers-cloudflare --mode pause \
+  --manifest RELEASE/api-release.json \
+  --api-artifact RELEASE/api --discovery-artifact RELEASE/discovery \
+  --directory NEXT_TRANSITION
+```
+
+The command requires an explicit `CLOUDFLARE_ACCOUNT_ID` and an existing
+`CLOUDFLARE_API_TOKEN` supplied by the authorized deployment environment. It
+never opens Keychain, loads a CLI profile or starts authentication. Without
+`--apply`, it checks retained artifact bytes, exact active versions, annotations
+and SQLite namespaces without publishing, reconciling consumers or creating
+output directories.
+
+For a deployment, add
+`--apply --access-file ACCESS_FILE --operations-hostname HOSTNAME --zone-id ZONE_ID`.
+The Access file must be an owner-only regular file holding the existing scoped
+service credentials. The operations host and its exclusive Access policy must
+match the retained release; anonymous requests must be rejected before any
+runtime deployment.
+
+Private validation activation uses
+`--mode activate --preflight PREFLIGHT_JSON --ownership HANDOFF_JSON`. Preflight
+must pass the existing shared Free quota, baseline and cost checks for this
+account and release. The live API/discovery Workers must have no public domains
+or routes, and their operations host must remain protected by the existing
+exclusive Access service policy. Handoff evidence must name `accountId`,
+`releaseSha`, `verifiedAt`, `legacyWorkersStopped: true`,
+`legacySchedulersStopped: true` and an `evidenceReference`. It expires after ten
+minutes. These records document real verification; writing a record is not a
+substitute for stopping the legacy consumers or measuring the deployed
+application.
+
+Activation publishes API then discovery; pause publishes discovery then API.
+Each operation retains new artifacts, exact version identities, the original
+snapshot and a namespace-preserving rollback plan in `consumer-journal.json` and
+`api-release.json`. Both roles must return the exact desired release and
+consumer state through protected GET probes before `verified-active` or
+`verified-paused` is recorded. Activation does not claim production acceptance;
+the new exact versions still require hosted acceptance before public cutover.
+The sequence is paused publication, private routing/Access and rollback
+verification, legacy consumer handoff, private activation, then real discovery,
+product journeys, load and rollback measurements on the resulting active version
+pair. Those exact active versions must pass `assessWebRelease` and the existing
+promotion gates before public cutover. This ordering permits real alarm
+measurements without requiring a paused consumer to prove work it cannot
+execute.
+
+Do not replay a failed or interrupted transition. Its atomically replaced
+journal records confirmed partial writes and the uncertain upload intent before
+each provider write. Once provider reads work, reconcile uncertainty without
+deploying or activating anything:
+
+```sh
+pnpm api:consumers-cloudflare \
+  --reconcile-journal NEXT_TRANSITION/consumer-journal.json \
+  --output NEXT_TRANSITION/reconciled-for-rollback.json
+```
+
+Reconciliation verifies retained bytes and exact annotations, refusing unrelated
+versions. It produces a current rollback plan for
+[the existing joint rollback helper](api-runtime-rollback.md), while keeping
+status `verification-required`. Only real protected probes can prove that work
+has drained or that a production journey has recovered.

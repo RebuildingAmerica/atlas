@@ -43,6 +43,7 @@
     "deploy:test": "node --test scripts/deploy/*.test.mjs scripts/ci/*.test.mjs",
     "cf:session": "node scripts/deploy/cloudflare-session.mjs",
     "api:release-cloudflare": "node scripts/deploy/api-cloudflare-release.mjs",
+    "api:consumers-cloudflare": "node scripts/deploy/api-cloudflare-consumers.mjs",
     "api:schema-release": "cd api && uv run --no-sync python ../scripts/deploy/api_schema_release.py",
     "actionlint": "if command -v actionlint >/dev/null 2>&1; then actionlint; else go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12; fi",
     "turbo:validate": "node ./scripts/validate-turbo-selectors.mjs",
