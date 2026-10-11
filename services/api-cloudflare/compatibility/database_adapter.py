@@ -134,7 +134,11 @@ async def connect_database(
         password=password,
         database=database,
         ssl=False,
-        timeout=10,
+        # Cloudflare advances its frozen clock at I/O boundaries; cold Python
+        # initialization can become visible during the handshake. Preserve the
+        # bounded 30-second connection budget so search can reach the
+        # database. Separate hosted latency gates still reject slow releases.
+        timeout=30,
         command_timeout=30,
     )
     try:
