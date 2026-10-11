@@ -11,6 +11,18 @@ preload_core_packages()
 
 
 class ApiRuntime(DurableObject):
+    def _discovery_inline_enabled(self):
+        if not hasattr(self, "_discovery_inline"):
+            from hosted_application import _settings
+
+            try:
+                # Use the same explicit, typed production configuration as the
+                # application; bool("false") would incorrectly load assets.
+                self._discovery_inline = _settings(self.env).discovery_inline
+            except Exception:
+                raise RuntimeError("Invalid hosted API configuration.") from None
+        return self._discovery_inline
+
     def _firehose_adapter(self):
         if not hasattr(self, "_firehose"):
             from hosted_jobs import create_firehose_alarm
@@ -63,9 +75,15 @@ class ApiRuntime(DurableObject):
 
         if not install_timer_cleanup():
             raise RuntimeError("The selected hosted loop could not be adapted.")
-        with self._diagnostics.measure("packages"):
-            await ensure_package_archive(self.env)
-        if path == "/imports" or path == "/atlas" or path.startswith("/atlas/"):
+        application_request = (
+            path == "/imports" or path == "/atlas" or path.startswith("/atlas/")
+        )
+        # Profile browsing needs only bundled core code. Inline REST/MCP
+        # discovery retains all extraction resources before ASGI dispatch.
+        if not application_request or self._discovery_inline_enabled():
+            with self._diagnostics.measure("packages"):
+                await ensure_package_archive(self.env)
+        if application_request:
             if not hasattr(self, "_application"):
                 with self._diagnostics.measure("application"):
                     from hosted_application import create_hosted_application

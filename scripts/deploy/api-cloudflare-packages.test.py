@@ -18,13 +18,25 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+def archive_files(vendor):
+    files = {}
+    for archive in ("core.zip", "packages.zip"):
+        with zipfile.ZipFile(vendor / archive) as source:
+            files.update(
+                (item.filename, source.read(item))
+                for item in source.infolist()
+                if not item.is_dir()
+            )
+    return files
+
+
 class PackageArchiveTests(unittest.TestCase):
     def test_core_partition_retains_all_bytes_and_deferred_resources(self):
         digests = []
         for _ in range(2):
             with tempfile.TemporaryDirectory() as directory:
                 vendor = Path(directory)
-                for name in ("anthropic", "babel"):
+                for name in ("anthropic", "babel", "dns"):
                     package = vendor / name
                     package.mkdir()
                     (package / "__init__.py").write_text(
@@ -59,7 +71,19 @@ class PackageArchiveTests(unittest.TestCase):
                 self.assertEqual(set(core_files) & set(deferred_files), set())
                 self.assertEqual(core_files | deferred_files, before)
                 self.assertIn("anthropic/__init__.py", core_files)
+                self.assertIn("dns/__init__.py", core_files)
                 self.assertIn("babel/data.txt", deferred_files)
+                core_output = subprocess.check_output(
+                    [
+                        sys.executable,
+                        "-S",
+                        "-c",
+                        "import dns; print(dns.evidence())",
+                    ],
+                    cwd=directory,
+                    env={**os.environ, "PYTHONPATH": str(vendor / "core.zip")},
+                )
+                self.assertEqual(core_output.strip(), b"dns")
                 output = subprocess.check_output(
                     [
                         sys.executable,
@@ -77,6 +101,41 @@ class PackageArchiveTests(unittest.TestCase):
                 self.assertEqual(json.loads(output), ["anthropic", "babel", "1.0", 7])
                 digests.append(result)
         self.assertEqual(*digests)
+
+    def test_repartition_existing_pair_preserves_bytes_and_is_reproducible(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vendor = Path(directory)
+            for name in ("dns", "babel", "anthropic"):
+                package = vendor / name
+                package.mkdir()
+                (package / "__init__.py").write_text(f"VALUE = {name!r}\n")
+            MODULE.archive_packages(vendor)
+            with patch.object(MODULE, "CORE_PACKAGES", {"anthropic"}):
+                MODULE.partition_core_archive(vendor)
+            with zipfile.ZipFile(vendor / "packages.zip") as deferred:
+                self.assertIn("dns/__init__.py", deferred.namelist())
+            before = archive_files(vendor)
+            provenance = MODULE.partition_core_archive(vendor, repartition=True)
+            with zipfile.ZipFile(vendor / "core.zip") as core:
+                self.assertIn("dns/__init__.py", core.namelist())
+            after = archive_files(vendor)
+            self.assertEqual(before, after)
+            self.assertEqual(
+                MODULE.partition_core_archive(vendor, repartition=True), provenance
+            )
+
+    def test_failed_repartition_retains_existing_archives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vendor = Path(directory)
+            core = vendor / "core.zip"
+            with zipfile.ZipFile(core, "w") as archive:
+                archive.writestr("anthropic/__init__.py", b"VALUE = 7\n")
+            deferred = vendor / "packages.zip"
+            deferred.write_bytes(b"invalid archive")
+            before = (core.read_bytes(), deferred.read_bytes())
+            with self.assertRaises(zipfile.BadZipFile):
+                MODULE.partition_core_archive(vendor, repartition=True)
+            self.assertEqual((core.read_bytes(), deferred.read_bytes()), before)
 
     def test_import_resources_metadata_and_native_library_separation(self):
         digests = []

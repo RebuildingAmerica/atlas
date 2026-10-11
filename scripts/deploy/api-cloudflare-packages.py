@@ -7,6 +7,7 @@ import py_compile
 import shutil
 import sys
 import zipfile
+from contextlib import ExitStack
 from pathlib import Path
 
 # These packages use importlib.resources for bundled data or contain Python only.
@@ -42,6 +43,7 @@ CORE_PACKAGES = {
     "anyio",
     "attr",
     "attrs",
+    "dns",
     "fastapi",
     "httpcore",
     "httpx",
@@ -150,22 +152,38 @@ def archive_packages(vendor: Path) -> dict[str, object]:
     }
 
 
-def partition_core_archive(vendor: Path) -> dict[str, object]:
+def partition_core_archive(vendor: Path, *, repartition=False) -> dict[str, object]:
     """Split the verified archive without changing or duplicating package bytes."""
     archive = vendor / "packages.zip"
     core = vendor / "core.zip"
-    if core.exists():
+    if core.exists() and not repartition:
         raise ValueError("Core partition requires an unpartitioned package archive.")
+    if repartition and not core.is_file():
+        raise ValueError("Repartition requires the existing core archive.")
+    sources = [archive, core] if repartition else [archive]
+    next_core = vendor / "core-next.zip"
     deferred = vendor / "packages-deferred.zip"
     records = {"core": [], "deferred": []}
     written_directories = {"core": set(), "deferred": set()}
     try:
-        with (
-            zipfile.ZipFile(archive) as source,
-            zipfile.ZipFile(core, "w") as bundled,
-            zipfile.ZipFile(deferred, "w") as assets,
-        ):
-            for info in sorted(source.infolist(), key=lambda info: info.filename):
+        with ExitStack() as stack:
+            readers = [stack.enter_context(zipfile.ZipFile(path)) for path in sources]
+            bundled = stack.enter_context(zipfile.ZipFile(next_core, "w"))
+            assets = stack.enter_context(zipfile.ZipFile(deferred, "w"))
+            items = sorted(
+                (
+                    (info, source)
+                    for source in readers
+                    for info in source.infolist()
+                    if not info.is_dir()
+                ),
+                key=lambda item: item[0].filename,
+            )
+            written_files = set()
+            for info, source in items:
+                if info.filename in written_files:
+                    raise ValueError("Package archives contain duplicate files.")
+                written_files.add(info.filename)
                 package = info.filename.split("/", 1)[0]
                 is_core = package in CORE_PACKAGES or package.endswith(".dist-info")
                 destination = bundled if is_core else assets
@@ -188,14 +206,15 @@ def partition_core_archive(vendor: Path) -> dict[str, object]:
                     {"name": info.filename, "sha256": hashlib.sha256(data).hexdigest()}
                 )
         result = {
-            "coreSha256": hashlib.sha256(core.read_bytes()).hexdigest(),
+            "coreSha256": hashlib.sha256(next_core.read_bytes()).hexdigest(),
             "archiveSha256": hashlib.sha256(deferred.read_bytes()).hexdigest(),
             "files": records,
         }
+        next_core.replace(core)
         deferred.replace(archive)
         return result
     except BaseException:
-        core.unlink(missing_ok=True)
+        next_core.unlink(missing_ok=True)
         deferred.unlink(missing_ok=True)
         raise
 
@@ -206,10 +225,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vendor", required=True, type=Path)
     parser.add_argument("--provenance", required=True, type=Path)
-    parser.add_argument("--partition-existing", action="store_true")
+    existing = parser.add_mutually_exclusive_group()
+    existing.add_argument("--partition-existing", action="store_true")
+    existing.add_argument("--repartition-existing", action="store_true")
     args = parser.parse_args()
-    if not args.partition_existing:
+    if not args.partition_existing and not args.repartition_existing:
         archive_packages(args.vendor)
     args.provenance.write_text(
-        json.dumps(partition_core_archive(args.vendor), indent=2) + "\n"
+        json.dumps(
+            partition_core_archive(args.vendor, repartition=args.repartition_existing),
+            indent=2,
+        )
+        + "\n"
     )
