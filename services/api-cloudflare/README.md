@@ -43,6 +43,12 @@ documented driver support alone did not make that installed package usable. The
 Python edge forwarding path still needs measured CPU validation; use a
 JavaScript edge dispatcher if it cannot meet Workers Free's CPU limit.
 
+The first 20-request warm sample reached 11ms CPU at the Python edge. Repeat the
+same publication command with `--edge` to build the small JavaScript dispatcher,
+bound directly to the existing Python object. Its report records the observed
+Python deployment version as a dependency. This is a separate protected
+evaluation hostname and does not change production routing.
+
 The full discovery graph requires native `inflate64` and `python-crfsuite`
 packages, which lack compatible prebuilt wheels in the evaluated indexes.
 `Build Cloudflare Python wheels` cross-compiles their existing versions on

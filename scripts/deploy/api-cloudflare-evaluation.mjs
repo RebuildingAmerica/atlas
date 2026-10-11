@@ -3,7 +3,10 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { cloudflareCommand as cf } from "./cloudflare-cli.mjs";
-import { preparePythonOutput } from "./api-cloudflare-output.mjs";
+import {
+  preparePythonOutput,
+  preparePythonEdgeOutput,
+} from "./api-cloudflare-output.mjs";
 import {
   assertAccessPolicy,
   assertCandidateDomain,
@@ -43,7 +46,19 @@ const runtime = loadWebRuntime(
 );
 const access = readJson(required("--access-file"));
 const hyperdriveId = required("--hyperdrive-id");
-const workerName = "atlas-python-eval-api";
+const edge = args.includes("--edge");
+const workerName = edge ? "atlas-python-eval-edge" : "atlas-python-eval-api";
+const pythonVersionId = edge
+  ? assertEvaluationVersion(
+      cf([
+        "workers",
+        "deployments",
+        "list",
+        "--worker",
+        "atlas-python-eval-api",
+      ]),
+    )
+  : undefined;
 const hostname =
   workerName +
   "." +
@@ -89,24 +104,36 @@ const policy = cf([
   application.id,
 ]);
 assertAccessPolicy(policy, policy.policies, hostname, access.id);
-const destination = join(ROOT, ".atlas/python-evaluation", releaseSha);
+const destination = join(
+  ROOT,
+  ".atlas/python-evaluation",
+  releaseSha,
+  ...(edge ? ["edge"] : []),
+);
 mkdirSync(destination, { recursive: true });
-await preparePythonOutput({
-  source: join(ROOT, "services/api-cloudflare/compatibility"),
-  vendor: resolve(required("--vendor")),
-  destination,
-  workerName,
-  accountId,
-  durableExport: "ApiRuntime",
-  workerEnv: {
-    HYPERDRIVE: { type: "hyperdrive", id: hyperdriveId },
-    API_RUNTIME: {
-      type: "durable-object",
-      worker: workerName,
-      exportName: "ApiRuntime",
+if (edge)
+  await preparePythonEdgeOutput({
+    destination,
+    accountId,
+    pythonWorkerName: "atlas-python-eval-api",
+  });
+else
+  await preparePythonOutput({
+    source: join(ROOT, "services/api-cloudflare/compatibility"),
+    vendor: resolve(required("--vendor")),
+    destination,
+    workerName,
+    accountId,
+    durableExport: "ApiRuntime",
+    workerEnv: {
+      HYPERDRIVE: { type: "hyperdrive", id: hyperdriveId },
+      API_RUNTIME: {
+        type: "durable-object",
+        worker: workerName,
+        exportName: "ApiRuntime",
+      },
     },
-  },
-});
+  });
 // Access is read back before a route can be attached.
 const configFile = join(
   destination,
@@ -166,6 +193,7 @@ const report = {
   workerName,
   hostname,
   versionId,
+  ...(edge ? { pythonVersionId } : {}),
   accessAppId: application.id,
   deployedAt: new Date().toISOString(),
   checks: [],
