@@ -19,10 +19,11 @@ def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_p
     (tmp_path / "python_modules").mkdir()
     archive = tmp_path / "python_modules/core.zip"
     with zipfile.ZipFile(archive, "w") as core:
+        core.writestr("pydantic_core.py", "IMPORTED = True\n")
         core.writestr("atlas/__init__.py", "")
         core.writestr(
             "atlas/main.py",
-            'IMPORTED = True\ndef create_app():\n    raise AssertionError("Factory must remain request owned")\n',
+            'raise AssertionError("Full application graph is outside this boundary probe")\n',
         )
     (tmp_path / "core-identity.json").write_text(
         json.dumps(
@@ -39,8 +40,9 @@ module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
 module.__file__ = str(Path(sys.argv[2]) / "snapshot_bootstrap.py")
 assert "atlas.main" not in sys.modules
 assert module.preload_core_packages()
-import atlas.main
-print(json.dumps({"imported": atlas.main.IMPORTED, "paths": sys.path.count(str(Path(sys.argv[2]) / "python_modules/core.zip")), "repeated": module.preload_core_packages()}))
+import pydantic_core
+assert "atlas.main" not in sys.modules
+print(json.dumps({"imported": pydantic_core.IMPORTED, "paths": sys.path.count(str(Path(sys.argv[2]) / "python_modules/core.zip")), "repeated": module.preload_core_packages()}))
 """
     output = subprocess.check_output(
         [sys.executable, "-c", script, str(PATH), str(tmp_path)],
