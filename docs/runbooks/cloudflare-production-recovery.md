@@ -1,0 +1,106 @@
+# Cloudflare production recovery
+
+Recover the directory, customer accounts, purchases and protected platform
+administration using the existing PostgreSQL and PDS identities. A successful
+source build does not establish that production has recovered.
+
+## Authentication
+
+Run publication through the protected Deploy Production or Deploy Staging
+workflow. The Linux runner receives existing credentials explicitly from its
+GitHub environment. Publication refuses missing credentials before invoking a
+provider command; it never discovers local profiles or reads macOS Keychain. Do
+not run authentication helpers on the workstation to repair a CI failure.
+
+The general publisher reads account subscriptions, Hyperdrive, Access
+applications, Worker deployments and Durable Object namespaces before writes.
+Its configured credential must already permit those operations. The separate
+admin token has only Workers Scripts Edit and Workers Routes Edit. It cannot
+satisfy the general publisher's prerequisite reads. Missing permission is a
+release blocker, not permission to widen a token or skip verification.
+
+## Required retained configuration
+
+The read-only `doctor` operation reports missing settings and provider access
+without printing values. Both callers run the complete CI profile first.
+Production requires a release tag whose source has already landed on main;
+staging accepts main or a release tag.
+
+The environment must identify its Cloudflare account and zone, production
+Hyperdrive configuration, protected API operations hostname, existing Access
+service identity, and retained native wheel build run. Runtime settings can be
+supplied as the existing private runtime export or read from the exact existing
+Vercel project and environment with its existing CI token. Staging requires its
+explicit Vercel custom environment ID. No provider-only value is replaced with a
+default or a regenerated credential.
+
+Read-only verification must establish that Hyperdrive points to the retained
+database. A diagnostic Hyperdrive configuration being active does not prove that
+it contains the production accounts or catalog.
+
+Preserve existing Stripe catalog, webhook, portal, offer settings, enterprise
+identity keys, callback credentials and PDS broker identity. Conflicting
+readable values fail rather than replacing the retained value. Unreadable
+provider secrets require the same existing value from the approved CI store.
+Production billing verification runs before schema or Worker mutations, even
+when new checkout is closed, so existing customers retain billing controls.
+
+## Publication sequence
+
+Each operation retains a `cloudflare-release-TARGET-RUN_ID` artifact. Supply the
+preceding completed trusted run as `source-run-id`; do not rebuild a different
+artifact to stand in for a retained release. Recovery can use a failed trusted
+run containing its interruption journal.
+
+1. Run `doctor` and resolve every reported prerequisite through the existing
+   approved configuration. Verify the exact retained native wheel provenance.
+2. Run `publish-api` with explicit bootstrap or a retained previous release.
+   This applies the additive schema and publishes the API and discovery pair
+   paused. Retain the schema receipt and exact Worker/namespace identities.
+3. Run `verify-api` for interrupted paused verification where needed. Run
+   `activate-api` only with fresh measured Free-plan capacity evidence and the
+   exact durable consumer handoff. Activation preserves retained job ownership
+   and permits only the intended release to own discovery consumers.
+4. Run `promote-api` after protected health, directory, private-route and MCP
+   challenge checks pass. The operation adds only the canonical API Worker route
+   over the existing proxied DNS record. It retains the created route ID before
+   proving public behavior. It never deletes DNS records.
+5. Run `web-candidate` for the exact active API pair. This publishes and checks
+   the protected candidate, exercises the existing PDS, public API, signed-in
+   identity and configured checkout, and deploys protected administration.
+6. Run `promote-web` only after canonical API proof and fresh candidate
+   observations. Retain the exact previous web routing and immutable artifact
+   before promotion. Verify the canonical site and protected admin afterward.
+
+The measured evidence must name the exact source, Cloudflare account and API /
+discovery versions. Current daily usage alone does not prove capacity at twice
+the expected load or that discovery extraction fits its execution budget.
+
+## Interruption and recovery
+
+Use `pause-api` with the retained run to stop the exact consumer owner. Use
+`restore-api` with the routing journal to remove only the recorded canonical API
+route. Recovery refuses changed ownership, duplicate matching routes or changed
+active versions. It leaves DNS and unrelated routes intact. Restoring an earlier
+origin's route is not proof that the earlier origin is healthy.
+
+The Roll Back Production workflow uses the retained web promotion journal and
+immutable prior deployment. Never recreate a rollback snapshot from the
+already-changed public hostname.
+
+Artifacts are scanned against CI credentials and provider-only secrets before
+upload. Captured runtime values remain in owner-only runner files until that
+scan finishes, then an always-run cleanup step removes them. Browser failure
+traces are encrypted using the existing hosted verifier secret and the exact
+source/run/attempt identity; raw traces are excluded from uploaded artifacts.
+
+## Acceptance
+
+Verify source-linked directory rows and profiles, existing account sign-in, PDS
+identity, invitations, private applicant isolation, real provider delivery,
+existing purchases, enabled checkout and customer billing controls. Verify the
+canonical MCP audience and authenticated client behavior, old admin redirects,
+protected operator access and rejection of forged or ordinary customer
+credentials. Record the exact deployed artifacts, versions, namespace IDs,
+schema receipt, observations and rollback result. Keep release acceptance
+incomplete while any provider check or real user journey remains unproven.

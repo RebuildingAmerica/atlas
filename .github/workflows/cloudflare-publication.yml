@@ -1,0 +1,142 @@
+name: Protected Cloudflare publication
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      operation:
+        required: true
+        type: string
+      source-run-id:
+        required: false
+        type: string
+      rollback-run-id:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  artifact-metadata: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    timeout-minutes: 45
+    concurrency:
+      group: cloudflare-hosted-publication
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ATLAS_PUBLICATION_TARGET: ${{ inputs.target }}
+      ATLAS_PUBLICATION_OPERATION: ${{ inputs.operation }}
+      ATLAS_PUBLICATION_SOURCE_RUN_ID: ${{ inputs.source-run-id }}
+      ATLAS_PUBLICATION_ROLLBACK_RUN_ID: ${{ inputs.rollback-run-id }}
+      ATLAS_PYTHON_WHEELS_RUN_ID: ${{ vars.ATLAS_PYTHON_WHEELS_RUN_ID }}
+      ATLAS_API_BOOTSTRAP: ${{ vars.ATLAS_API_BOOTSTRAP }}
+      ATLAS_HYPERDRIVE_ID: ${{ vars.ATLAS_HYPERDRIVE_ID }}
+      ATLAS_API_OPERATIONS_HOSTNAME: ${{ vars.ATLAS_API_OPERATIONS_HOSTNAME }}
+      ATLAS_WEB_RUNTIME_ENV_JSON: ${{ secrets.ATLAS_WEB_RUNTIME_ENV_JSON }}
+      ATLAS_API_SETTINGS_EXPORT_JSON: ${{ secrets.ATLAS_API_SETTINGS_EXPORT_JSON }}
+      ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
+      ATLAS_API_URL: ${{ secrets.ATLAS_API_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ATLAS_AUTH_INTERNAL_SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
+      ATLAS_AUTH_CALLBACK_SECRET: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
+      ATLAS_EDGE_ORIGIN_SECRET: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
+      ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
+      ATLAS_PDS_PUBLIC_URL: ${{ vars.ATLAS_PDS_PUBLIC_URL }}
+      ATLAS_PDS_INVITE_BROKER_URL: ${{ vars.ATLAS_PDS_INVITE_BROKER_URL }}
+      ATLAS_PDS_INVITE_BROKER_SECRET: ${{ secrets.ATLAS_PDS_INVITE_BROKER_SECRET }}
+      ATLAS_ADMIN_PUBLIC_URL: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
+      ATLAS_ADMIN_SIGNING_PUBLIC_KEY: ${{ vars.ATLAS_ADMIN_SIGNING_PUBLIC_KEY }}
+      ATLAS_INSTANCE_OPERATOR_EMAILS: ${{ vars.ATLAS_INSTANCE_OPERATOR_EMAILS }}
+      ATLAS_PLATFORM_OPERATOR_EMAILS: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
+      ATLAS_ACCESS_TEAM_DOMAIN: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
+      ATLAS_ACCESS_AUD: ${{ vars.ATLAS_ACCESS_AUD }}
+      ATLAS_BILLING_CHECKOUT_ENABLED: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
+      ATLAS_BILLING_AUTOMATIC_TAX: ${{ vars.ATLAS_BILLING_AUTOMATIC_TAX }}
+      ATLAS_PAID_ACCESS_MODE: ${{ vars.ATLAS_PAID_ACCESS_MODE }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
+      STRIPE_BILLING_PORTAL_CONFIGURATION: ${{ secrets.STRIPE_BILLING_PORTAL_CONFIGURATION }}
+      ATLAS_BILLING_ALLOWED_OFFERS: ${{ vars.ATLAS_BILLING_ALLOWED_OFFERS }}
+      ATLAS_ADMIN_SIGNING_KEY: ${{ secrets.ATLAS_ADMIN_SIGNING_KEY }}
+      ATLAS_VERCEL_STAGING_ENVIRONMENT_ID: ${{ vars.ATLAS_VERCEL_STAGING_ENVIRONMENT_ID }}
+      ATLAS_SAML_ALLOWED_ISSUERS: ${{ vars.ATLAS_SAML_ALLOWED_ISSUERS }}
+      ATLAS_SAML_SP_PRIVATE_KEY: ${{ secrets.ATLAS_SAML_SP_PRIVATE_KEY }}
+      ATLAS_SAML_SP_PRIVATE_KEY_PASS: ${{ secrets.ATLAS_SAML_SP_PRIVATE_KEY_PASS }}
+      ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST: ${{ vars.ATLAS_OAUTH_CIMD_DOMAIN_ALLOWLIST }}
+      ATLAS_MACHINE_TRUSTED_ISSUERS: ${{ vars.ATLAS_MACHINE_TRUSTED_ISSUERS }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      ATLAS_WEB_EVIDENCE_JSON: ${{ vars.ATLAS_WEB_EVIDENCE_JSON }}
+      ATLAS_CONSUMER_HANDOFF_JSON: ${{ vars.ATLAS_CONSUMER_HANDOFF_JSON }}
+      ATLAS_API_ROLLBACK_PLAN_JSON: ${{ vars.ATLAS_API_ROLLBACK_PLAN_JSON }}
+      ATLAS_CF_ACCESS_SERVICE_TOKEN_ID: ${{ secrets.ATLAS_CF_ACCESS_SERVICE_TOKEN_ID }}
+      ATLAS_HOSTED_CF_ACCESS_CLIENT_ID: ${{ secrets.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID }}
+      ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET: ${{ secrets.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET }}
+      ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
+      # The first cutover retains existing Vercel routing for recovery only.
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_OWNER: ${{ vars.VERCEL_OWNER }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Verify trusted source before setup or publication
+        run: |
+          node --input-type=module - <<'JS'
+          import {publicationContext} from './scripts/deploy/cloudflare-publication.mjs';
+          publicationContext(process.env);
+          JS
+      - uses: ./.github/actions/setup-toolchain
+      - name: Install hosted acceptance browser
+        if: inputs.operation == 'web-candidate' || inputs.operation == 'promote-web'
+        run: |
+          pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
+          timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
+      - name: Publish, verify, or recover the exact retained release
+        run: node scripts/deploy/cloudflare-publication.mjs
+      - name: Publish the protected platform admin
+        if: inputs.operation == 'web-candidate' || inputs.operation == 'promote-web'
+        uses: ./.github/actions/deploy-atlas-admin
+        with:
+          environment-name: ${{ inputs.target }}
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_ADMIN_DEPLOY_TOKEN }}
+          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
+          admin-signing-key: ${{ secrets.ATLAS_ADMIN_SIGNING_KEY }}
+          api-url: ${{ vars.ATLAS_PLATFORM_API_URL }}
+          access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
+          access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
+          platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
+      - name: Retain hosted identity Playwright traces with existing-secret encryption
+        if: always()
+        run: node scripts/deploy/hosted-traces.mjs
+      - name: Check retained material for deployment credentials
+        id: retention
+        if: always()
+        run: node scripts/deploy/cloudflare-publication.mjs --seal
+      - name: Remove private publication inputs
+        if: always()
+        run: node scripts/deploy/cloudflare-publication.mjs --cleanup
+      - name: Retain immutable artifacts and interruption journals
+        if: always() && steps.retention.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cloudflare-release-${{ inputs.target }}-${{ github.run_id }}
+          path: .atlas/cloudflare-release/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90

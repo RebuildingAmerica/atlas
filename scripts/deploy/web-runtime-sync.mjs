@@ -27,6 +27,7 @@ export async function collectWebRuntime({
   token,
   customEnvironmentId,
   existing = {},
+  additional = {},
   fetcher = fetch,
 }) {
   if (
@@ -45,11 +46,14 @@ export async function collectWebRuntime({
   if (target === "production" && customEnvironmentId)
     throw new Error("Production cannot select a custom environment.");
   if (
-    !existing ||
-    typeof existing !== "object" ||
-    Array.isArray(existing) ||
-    Object.entries(existing).some(
-      ([key, value]) => !RUNTIME_KEY.test(key) || typeof value !== "string",
+    [existing, additional].some(
+      (settings) =>
+        !settings ||
+        typeof settings !== "object" ||
+        Array.isArray(settings) ||
+        Object.entries(settings).some(
+          ([key, value]) => !RUNTIME_KEY.test(key) || typeof value !== "string",
+        ),
     )
   )
     throw new Error(
@@ -105,8 +109,12 @@ export async function collectWebRuntime({
       row.type === "secret" ||
       row.visibility === "secret"
     ) {
-      if (!Object.hasOwn(existing, row.key)) missing.push(row.key);
-      else values[row.key] = existing[row.key];
+      if (
+        !Object.hasOwn(existing, row.key) &&
+        !Object.hasOwn(additional, row.key)
+      )
+        missing.push(row.key);
+      else values[row.key] = existing[row.key] ?? additional[row.key];
       continue;
     }
     const variable = await read(`/v1/projects/${project}/env/${row.id}`);
@@ -129,6 +137,14 @@ export async function collectWebRuntime({
     throw new Error(
       `Existing write-only values are required for: ${missing.sort().join(", ")}.`,
     );
+  // Explicit release configuration may add split credentials and operator roles
+  // introduced after the old deployment. It cannot replace a retained identity,
+  // enterprise setting, price, or signing secret with a different value.
+  for (const [key, value] of Object.entries(additional)) {
+    if (Object.hasOwn(values, key) && values[key] !== value)
+      throw new Error(`Existing value conflict for ${key}.`);
+    values[key] = value;
+  }
   for (const key of Object.keys(existing))
     if (!Object.hasOwn(values, key))
       throw new Error(

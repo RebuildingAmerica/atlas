@@ -185,6 +185,62 @@ test("staging requires an explicit custom environment and rejects ambiguous conf
   );
 });
 
+test("CI additions supply split credentials without replacing retained identity configuration", async () => {
+  const additional = { ATLAS_PLATFORM_OPERATOR_EMAILS: "operator@example.org" };
+  const result = await collectWebRuntime({
+    ...input,
+    ...provider(),
+    additional,
+  });
+  assert.deepEqual(result, { ...canonical, ...additional });
+  const inventory = rows().map((row) =>
+    row.key === "ATLAS_SAML_SP_PRIVATE_KEY"
+      ? { ...row, type: "sensitive" }
+      : row,
+  );
+  assert.deepEqual(
+    await collectWebRuntime({
+      ...input,
+      ...provider(inventory),
+      additional: {
+        ...additional,
+        ATLAS_SAML_SP_PRIVATE_KEY: canonical.ATLAS_SAML_SP_PRIVATE_KEY,
+      },
+    }),
+    { ...canonical, ...additional },
+  );
+  await assert.rejects(
+    collectWebRuntime({
+      ...input,
+      ...provider(),
+      additional: {
+        ATLAS_SAML_SP_PRIVATE_KEY: "different-enterprise-identity",
+      },
+    }),
+    /conflict/,
+  );
+  await assert.rejects(
+    collectWebRuntime({
+      ...input,
+      ...provider(),
+      additional: {
+        DATABASE_URL: "postgres://different-retained-database/atlas",
+      },
+    }),
+    /conflict/,
+  );
+  await assert.rejects(
+    collectWebRuntime({
+      ...input,
+      ...provider(),
+      additional: {
+        ATLAS_PLATFORM_OPERATOR_EMAILS: ["operator@example.org"],
+      },
+    }),
+    /configuration strings/,
+  );
+});
+
 test("doctor never writes; successful sync writes a private file and sends secrets only through stdin", async (t) => {
   const root = mkdtempSync(join(tmpdir(), "atlas-runtime-sync-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));

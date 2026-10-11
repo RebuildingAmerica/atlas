@@ -2,43 +2,43 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function workflowSource(path) {
-  return readFile(new URL(`../../${path}`, import.meta.url), "utf8");
-}
+const source = (path) =>
+  readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 
-test("production rollback is a manual, production-scoped workflow that cannot overlap a deploy", async () => {
-  const source = await workflowSource(".github/workflows/rollback-production.yml");
-
-  assert.match(source, /workflow_dispatch:/);
-  assert.match(source, /release-tag:/);
-  assert.match(source, /api-revision:/);
-  assert.match(source, /vercel-deployment-url:/);
-  assert.match(source, /environment: production/);
-  assert.match(source, /group: deploy-production/);
+test("production recovery remains manual and serialized with releases", async () => {
+  const workflow = await source(".github/workflows/rollback-production.yml");
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /source-run-id:/);
+  assert.match(workflow, /group: deploy-production/);
+  assert.match(workflow, /refs\/tags\/v\*/);
+  assert.match(workflow, /operation: restore-routing/);
+  assert.match(workflow, /cloudflare-publication\.yml/);
+  assert.doesNotMatch(workflow, /cloud-run-release|vercel promote|gcloud/);
 });
 
-test("production rollback moves both services back and reads back what is served", async () => {
-  const source = await workflowSource(".github/workflows/rollback-production.yml");
-
-  assert.match(source, /cloud-run-release\.mjs rollback/);
-  assert.match(source, /vercel promote "\$VERCEL_DEPLOYMENT_URL"/);
-  assert.match(source, /api\/e2e\/hosted\/billing-inventory/);
-  assert.match(source, /"\$served" != "\$EXPECTED_SHA"/);
-  assert.match(source, /\/health/);
-});
-
-test("rollback inputs reach shell steps only through the environment", async () => {
-  const source = await workflowSource(".github/workflows/rollback-production.yml");
-
-  const inputUses = source.split("\n").filter((line) => line.includes("${{ inputs."));
-  assert.ok(inputUses.length > 0);
-  for (const line of inputUses) {
-    assert.match(line, /^\s+[A-Z_]+: \$\{\{ inputs\./, line);
+test("hosted publishing keeps the full CI gate and trusted refs for both environments", async () => {
+  for (const target of ["production", "staging"]) {
+    const workflow = await source(`.github/workflows/deploy-${target}.yml`);
+    assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
+    assert.match(workflow, /profile: production/);
+    assert.match(workflow, /needs: ci/);
+    assert.match(workflow, /cloudflare-publication\.yml/);
+    assert.doesNotMatch(
+      workflow,
+      /deploy-atlas-api|deploy-atlas-pds|vercel deploy|gcloud/,
+    );
   }
 });
 
-test("the next API release takes traffic back from a rolled-back revision", async () => {
-  const action = await workflowSource(".github/actions/deploy-atlas-api/action.yml");
-
-  assert.match(action, /revision_traffic: LATEST=100/);
+test("release credentials stay in the protected job and retained artifacts are sealed first", async () => {
+  const workflow = await source(".github/workflows/cloudflare-publication.yml");
+  assert.match(workflow, /environment: \$\{\{ inputs\.target \}\}/);
+  assert.match(
+    workflow,
+    /CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN/,
+  );
+  assert.match(workflow, /cloudflare-publication\.mjs --seal/);
+  assert.match(workflow, /steps\.retention\.outcome == 'success'/);
+  assert.match(workflow, /include-hidden-files: true/);
+  assert.doesNotMatch(workflow, /security find|gh auth|cf auth|gcloud auth/);
 });

@@ -73,7 +73,7 @@ is never exposed to a browser.
       waitlist browser journey for the actual authority chain.
 - [x] Regenerate contracts and clients; run focused tests, type checks, and
       lint. Report red/green evidence.
-- [ ] Commit the independently reviewable integration after review; preserve
+- [x] Commit the independently reviewable integration after review; preserve
       every unrelated change.
 
 ## Task 2: Verify, land, release, and retire
@@ -89,11 +89,11 @@ integration and provider actions.
       merge/takedown tests.
 - [x] Resolve confirmed failures without weakening gates. Record exact provider
       blockers in the release evidence.
-- [ ] Land through a rebase or fast-forward, preserving commits and newer main
+- [x] Land through a rebase or fast-forward, preserving commits and newer main
       work. Do not squash or introduce merge commits.
 - [ ] Tag the verified release when its deploy prerequisites are satisfied and
       verify the deployment result.
-- [ ] Retire only this task's branches/worktrees after proving the work is
+- [x] Retire only this task's branches/worktrees after proving the work is
       retained on main. Preserve unrelated work and stashes.
 
 ## Completion evidence
@@ -110,12 +110,59 @@ attribution. The operator queue, audit details, and applicant mobile invitation
 were visually inspected. Independent final review found no remaining source
 integration blockers.
 
-Production deployment remains blocked: the linked Google Cloud billing account
-is closed, and the existing production API returns HTTP 500 because Cloud Run
-cannot start it. Leave the release untagged until that prerequisite is restored
-and the hosted identity, API, and admin outcome can be verified. Local browser
-proof does not establish provider email delivery or completed Stripe payment.
+Source integration landed through
+[PR #8](https://github.com/RebuildingAmerica/atlas/pull/8) on October 11, 2026,
+retaining the reviewed commits through a rebase. Fresh remote readback confirms
+main at `28938df5ae32c961e9af43ea22821e713a24c8b4`. Both
+`feature/admin-separation` and `feature/admin-separation-completion` are absent
+locally and remotely, and the original feature worktree is removed. Unrelated
+worktrees and stashes remain preserved. The original final integration
+[CI run](https://github.com/RebuildingAmerica/atlas/actions/runs/38119701104)
+passed before landing.
+
+Hosted release remains incomplete. The linked Google Cloud billing account is
+closed, and the production API failed the latest public checks (HTTP 500 and a
+Cloudflare 403 on a second probe). The authorized Cloudflare recovery keeps
+billing closed and avoids local Keychain-backed credential lookups. Its nine
+native dependency wheel builds passed in
+[run 38126916648](https://github.com/RebuildingAmerica/atlas/actions/runs/38126916648),
+and its full integration test job passed in
+[run 38126916841](https://github.com/RebuildingAmerica/atlas/actions/runs/38126916841).
+That run's secrets scan failed on reviewed fixtures and public dependency
+hashes; the exact baseline corrections pass the full local scan with every
+detector and filter preserved. The next publication commit still needs fresh CI.
+
+Keep the hosted release task unchecked until the exact Cloudflare API,
+discovery, app, and protected admin versions are deployed and verified. This
+includes the existing public API hostname and MCP clients, retained sign-in and
+invitation identities, private applicant access, real delivery and billing
+journeys, and recoverable routing. Local browser proof does not establish
+provider email delivery or completed Stripe payment. Source integration and
+branch retirement do not establish production recovery.
 
 Repeated Cloudflare CLI invocations were found to read the profile encryption
 key from macOS Keychain. Remaining source-control operations use the connected
 GitHub app and Git SSH with Keychain and interactive authentication disabled.
+
+The public API edge preparation and reversible route cutover are committed as
+`85ae6e13` and `58a50647`. The route uses the existing proxied API DNS record,
+retains its exact route ID, checks active API/discovery and edge versions, and
+refuses changed ownership during recovery. All 301 deployment checks pass,
+including protected probes, interruption recovery, retained runtime conflict
+checks, billing preflight and credential-safe artifact retention. Workflow lint
+also passes. These are source checks; no production cutover has occurred.
+
+Read-only provider inspection confirms that CI has no general
+`CLOUDFLARE_API_TOKEN`. Its existing production admin token permits only Workers
+Scripts Edit and Workers Routes Edit; it cannot read subscriptions, Hyperdrive
+or Access applications. Existing Access service credentials are configured only
+in staging. Production still lacks the publication inputs for the zone, retained
+database binding, operations hostname and measured handoff/capacity evidence.
+The sole Hyperdrive configuration is a diagnostic configuration whose retained
+production database identity remains unverified. No credentials were created,
+widened, copied from a browser, or read from Keychain to work around these
+blockers. Follow `docs/runbooks/cloudflare-production-recovery.md` for the
+protected workflow. Scout tests also reached the native credential store through
+a doctor probe; the test dependencies are now injected, and an autouse guard
+rejects native credential-store access throughout the Scout suite. All 963 Scout
+tests passed with that guard enabled.

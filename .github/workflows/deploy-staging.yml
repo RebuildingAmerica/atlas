@@ -2,319 +2,64 @@ name: Deploy Staging
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
     inputs:
-      hosted_public_url:
-        description: Optional hosted Atlas URL to verify, such as a fresh Vercel preview deployment.
-        required: false
+      operation:
+        description: Protected private validation phase; no canonical production routing.
+        type: choice
+        options:
+          [
+            doctor,
+            publish-api,
+            verify-api,
+            activate-api,
+            pause-api,
+            web-candidate,
+          ]
+        default: doctor
+      source-run-id:
+        description: Completed Deploy Staging run retaining the exact release artifacts.
         type: string
+        required: false
 
 permissions:
   contents: read
+  actions: read
+  artifact-metadata: write
 
 concurrency:
   group: deploy-staging
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  guard-staging-ref:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Require source already landed on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Require trusted staging source
+        run: |
+          case "$GITHUB_REF" in
+            refs/heads/main|refs/tags/v*) ;;
+            *) echo 'Staging publication requires main or a v* release tag.' >&2; exit 1 ;;
+          esac
   ci:
+    needs: guard-staging-ref
     uses: ./.github/workflows/ci.yml
     with:
-      profile: staging
+      profile: production
     secrets:
       STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
       STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
-
-  deploy-api:
+  publish:
     needs: ci
-    if: needs.ci.outputs.staging_api_deploy == 'true'
-    runs-on: ubuntu-latest
-    environment: staging
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-      artifact-metadata: write
-      packages: read
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/deploy-atlas-api
-        id: deploy-api
-        with:
-          service-name: atlas-api-staging
-          environment-name: staging
-          image-registry: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/atlas-images
-          image-tag: ${{ github.sha }}
-          cache-scope: atlas-api-staging
-          gcp-region: ${{ secrets.GCP_REGION }}
-          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          database-url: ${{ secrets.DATABASE_URL }}
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          search-api-key: ${{ secrets.SEARCH_API_KEY }}
-          auth-callback-secret: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
-          edge-origin-secret: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
-          auth-api-key-introspection-url: ${{ secrets.ATLAS_AUTH_API_KEY_INTROSPECTION_URL }}
-          auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
-          auth-membership-protection-bypass-secret: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
-          atlas-public-url: ${{ secrets.ATLAS_PUBLIC_URL }}
-          atlas-api-audience: ${{ secrets.ATLAS_API_AUDIENCE || secrets.ATLAS_AUTH_JWT_AUDIENCES }}
-          instance-operator-emails: ${{ vars.ATLAS_INSTANCE_OPERATOR_EMAILS }}
-          admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
-          admin-signing-public-key: ${{ vars.ATLAS_ADMIN_SIGNING_PUBLIC_KEY }}
-          access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
-          access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
-          platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
-          atproto-oauth-e2e-harness: "1"
-
-  # The platform admin ships only where it is configured: a deployment
-  # without ATLAS_ADMIN_PUBLIC_URL has no platform admin at all.
-  deploy-admin:
-    needs:
-      - ci
-      - deploy-api
-    if: always() && needs.ci.result == 'success' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped')
-    runs-on: ubuntu-latest
-    environment: staging
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      # Environment variables become available after the job starts.
-      - name: Report unconfigured platform admin
-        if: vars.ATLAS_ADMIN_PUBLIC_URL == ''
-        run: echo 'Platform admin was not deployed because ATLAS_ADMIN_PUBLIC_URL is unset.' >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        if: vars.ATLAS_ADMIN_PUBLIC_URL != ''
-      - uses: ./.github/actions/deploy-atlas-admin
-        if: vars.ATLAS_ADMIN_PUBLIC_URL != ''
-        with:
-          environment-name: staging
-          cloudflare-api-token: ${{ secrets.CLOUDFLARE_ADMIN_DEPLOY_TOKEN }}
-          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
-          admin-signing-key: ${{ secrets.ATLAS_ADMIN_SIGNING_KEY }}
-          api-url: ${{ vars.ATLAS_PLATFORM_API_URL }}
-          access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
-          access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
-          platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
-
-  deploy-pds:
-    needs: ci
-    if: needs.ci.outputs.staging_pds_deploy == 'true' && needs.ci.outputs.hosted_identity != 'true'
-    runs-on: ubuntu-latest
-    environment: staging
-    timeout-minutes: 20
-    permissions:
-      artifact-metadata: write
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/deploy-atlas-pds
-        with:
-          environment-name: staging
-          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
-          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
-          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
-          pds-hostname: atlas-pds-staging.rebuildingus.org
-          pds-public-url: https://atlas-pds-staging.rebuildingus.org
-
-  hosted-smoke:
-    needs:
-      - ci
-      - deploy-api
-      - deploy-pds
-    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_smoke == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped')
-    runs-on: ubuntu-latest
-    environment: staging
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
-
-      - name: Mint Vercel Trusted Source OIDC token
-        id: vercel-oidc
-        uses: ./.github/actions/vercel-trusted-oidc
-
-      - name: Run hosted Cloudflare API smoke
-        env:
-          ATLAS_HOSTED_EXPECT_EDGE: "true"
-          ATLAS_HOSTED_PUBLIC_URL: ${{ github.event.inputs.hosted_public_url || secrets.ATLAS_PUBLIC_URL }}
-          ATLAS_HOSTED_EXPECTED_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
-          ATLAS_HOSTED_API_URL: ${{ secrets.ATLAS_API_URL }}
-          ATLAS_HOSTED_PDS_URL: https://atlas-pds-staging.rebuildingus.org
-          ATLAS_HOSTED_VERCEL_BYPASS_SECRET: ${{ secrets.ATLAS_HOSTED_VERCEL_BYPASS_SECRET || secrets.ATLAS_AUTH_MEMBERSHIP_PROTECTION_BYPASS_SECRET }}
-          ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
-        run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-smoke
-
-  hosted-identity:
-    needs:
-      - ci
-      - deploy-api
-      - deploy-pds
-      - hosted-smoke
-    if: always() && needs.ci.result == 'success' && needs.ci.outputs.hosted_identity == 'true' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') && (needs.deploy-pds.result == 'success' || needs.deploy-pds.result == 'skipped') && needs.hosted-smoke.result == 'success'
-    runs-on: ubuntu-latest
-    environment: staging
-    timeout-minutes: 20
-    permissions:
-      artifact-metadata: write
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - uses: ./.github/actions/setup-toolchain
-
-      - name: Generate PDS invite broker secret
-        id: pds-invite-broker
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          broker_secret="$(openssl rand -base64 48 | tr -d '\n')"
-          if [ -z "$broker_secret" ] || [[ "$broker_secret" == *$'\n'* ]] || [[ "$broker_secret" == *$'\r'* ]]; then
-            echo "::error title=Invalid PDS invite broker secret::Generated PDS invite broker secret must be a non-empty single-line value."
-            exit 1
-          fi
-          echo "::add-mask::$broker_secret"
-          echo "secret=$broker_secret" >> "$GITHUB_OUTPUT"
-          echo "ATLAS_PDS_INVITE_BROKER_SECRET=$broker_secret" >> "$GITHUB_ENV"
-
-      - uses: ./.github/actions/deploy-atlas-pds
-        with:
-          environment-name: staging
-          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
-          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
-          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
-          pds-hostname: atlas-pds-staging.rebuildingus.org
-          pds-public-url: https://atlas-pds-staging.rebuildingus.org
-          invite-broker-secret: ${{ steps.pds-invite-broker.outputs.secret }}
-
-      - name: Install Playwright browser
-        run: |
-          pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
-          timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
-
-      - name: Start branch app for hosted identity verification
-        env:
-          ATLAS_API_URL: ${{ secrets.ATLAS_API_URL }}
-          ATLAS_AUTH_INTERNAL_SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
-          ATLAS_AUTH_CALLBACK_SECRET: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
-          ATLAS_AUTH_MEMBERSHIP_URL: http://127.0.0.1:3100
-          ATLAS_EDGE_ORIGIN_SECRET: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
-          ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
-          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
-          ATLAS_INSTANCE_OPERATOR_EMAILS: ${{ vars.ATLAS_INSTANCE_OPERATOR_EMAILS }}
-          ATLAS_PLATFORM_OPERATOR_EMAILS: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
-          ATLAS_ADMIN_PUBLIC_URL: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
-          ATLAS_PUBLIC_URL: http://127.0.0.1:3100
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
-          STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
-        run: |
-          set -euo pipefail
-
-          # The app refuses to serve with accounts enabled when any of these is
-          # empty; say which one instead of timing out on the readiness probe.
-          required_env=(
-            ATLAS_AUTH_INTERNAL_SECRET
-            ATLAS_AUTH_CALLBACK_SECRET
-            ATLAS_EDGE_ORIGIN_SECRET
-          )
-          for key in "${required_env[@]}"; do
-            if [ -z "${!key}" ]; then
-              echo "::error title=Missing branch app environment::$key is required in the GitHub \"staging\" Environment to start the branch app."
-              exit 1
-            fi
-          done
-
-          atlas_api_origin="${ATLAS_API_URL%/}"
-          atlas_public_origin="${ATLAS_PUBLIC_URL%/}"
-          export ATLAS_ATPROTO_OAUTH_E2E_HARNESS=1
-          export ATLAS_AUTH_API_KEY_INTROSPECTION_URL="${atlas_public_origin}/api/auth/internal/api-key"
-          export ATLAS_AUTH_BASE_PATH="/api/auth"
-          export ATLAS_AUTH_JWT_AUDIENCES="${atlas_public_origin}/mcp,${atlas_api_origin}"
-          # This runner-local app is a staging surface, not a production one.
-          # It enables the ATProto proof-lane harness above, which the staging
-          # profile permits and the production profile forbids outright.
-          export ATLAS_MANAGED=true
-          export ATLAS_MULTI_USER=true
-          export ATLAS_PAID_ACCESS_MODE="${ATLAS_PAID_ACCESS_MODE:-waitlist}"
-          export ATLAS_EMAIL_PROVIDER=resend
-          export ATLAS_HOSTED_E2E_ENABLED=1
-          export ATLAS_HOSTED_E2E_PRODUCTION_ENABLED=1
-          export ATLAS_PDS_INVITE_BROKER_URL="https://atlas-pds-staging.rebuildingus.org/_atlas/pds/invites"
-          export ATLAS_PDS_PUBLIC_URL="https://atlas-pds-staging.rebuildingus.org"
-          export ATLAS_SERVER_API_PROXY_TARGET="$atlas_api_origin"
-          # Staging exists to exercise the paid funnel before production does.
-          export ATLAS_BILLING_CHECKOUT_ENABLED=true
-          # And it must never do so against live money.
-          case "${STRIPE_API_KEY:-}" in
-            sk_test_*|rk_test_*|"") ;;
-            *)
-              echo "::error title=Stripe key is not test mode::Staging would exercise checkout against live Stripe."
-              exit 1
-              ;;
-          esac
-          export DATABASE_BACKEND=postgres
-          export NODE_ENV=development
-          export PORT=3100
-
-          pnpm exec turbo run @rebuildingamerica/atlas-app#build --output-logs=errors-only
-          pnpm --filter @rebuildingamerica/atlas-app run start:e2e > "$RUNNER_TEMP/atlas-hosted-identity-app.log" 2>&1 &
-          echo "$!" > "$RUNNER_TEMP/atlas-hosted-identity-app.pid"
-
-          for _ in {1..60}; do
-            if curl -fsS "${atlas_public_origin}/sign-in" >/dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-
-          cat "$RUNNER_TEMP/atlas-hosted-identity-app.log"
-          exit 1
-
-      - name: Run hosted ATProto identity verification
-        env:
-          ATLAS_HOSTED_PUBLIC_URL: http://127.0.0.1:3100
-          ATLAS_HOSTED_EXPECTED_PUBLIC_URL: http://127.0.0.1:3100
-          ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
-          ATLAS_HOSTED_E2E_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-        run: pnpm --filter @rebuildingamerica/atlas-app run test:hosted-identity
-
-      - name: Stop branch app
-        if: always()
-        run: |
-          if [ -f "$RUNNER_TEMP/atlas-hosted-identity-app.pid" ]; then
-            kill "$(cat "$RUNNER_TEMP/atlas-hosted-identity-app.pid")" || true
-          fi
-
-      - name: Upload hosted identity Playwright traces
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: hosted-identity-test-results-${{ github.run_id }}-${{ github.run_attempt }}
-          path: app/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
+    uses: ./.github/workflows/cloudflare-publication.yml
+    with:
+      target: staging
+      operation: ${{ inputs.operation || 'doctor' }}
+      source-run-id: ${{ inputs.source-run-id }}
+    secrets: inherit

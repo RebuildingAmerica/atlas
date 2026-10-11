@@ -40,7 +40,7 @@
     "scout-dev:test": "uv --directory ./scout run pytest --no-cov tests/e2e/test_scout_dev_installer.py -q",
     "release:homebrew": "sh scripts/release/scout-homebrew.sh",
     "release:homebrew:test": "sh scripts/release/tests/test-scout-homebrew.sh",
-    "deploy:test": "node --test scripts/deploy/*.test.mjs scripts/ci/*.test.mjs",
+    "deploy:test": "node --import tsx --test scripts/deploy/*.test.mjs scripts/deploy/*.test.ts scripts/ci/*.test.mjs",
     "cf:session": "node scripts/deploy/cloudflare-session.mjs",
     "api:release-cloudflare": "node scripts/deploy/api-cloudflare-release.mjs",
     "api:consumers-cloudflare": "node scripts/deploy/api-cloudflare-consumers.mjs",

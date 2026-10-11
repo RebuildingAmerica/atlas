@@ -171,6 +171,12 @@ export async function changePublicApiRouting({
     manifest.status !== "verified-active" ||
     !manifest.runtimeReleases?.api ||
     !manifest.runtimeReleases?.discovery ||
+    ["api", "discovery"].some(
+      (role) =>
+        manifest.runtimeReleases[role].releaseSha !== manifest.releaseSha ||
+        manifest.runtimeReleases[role].workerName !==
+          `atlas-${role}-production`,
+    ) ||
     !/^[a-f0-9]{40}$/.test(manifest.releaseSha ?? "") ||
     !env.CLOUDFLARE_API_TOKEN?.trim() ||
     env.CLOUDFLARE_ACCOUNT_ID !== manifest.accountId ||

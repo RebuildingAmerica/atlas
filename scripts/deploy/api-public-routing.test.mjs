@@ -265,6 +265,20 @@ test("wildcard conflicts, forged journals and failed private probes cannot chang
   assert.deepEqual(state.mutations, []);
 });
 
+test("a staging or different-source runtime cannot serve a production cutover", async (t) => {
+  for (const patch of [
+    { workerName: "atlas-api-staging" },
+    { releaseSha: "f".repeat(40) },
+  ]) {
+    const { state, options } = await fixture(t);
+    Object.assign(options.manifest.runtimeReleases.api, patch);
+    await assert.rejects(
+      changePublicApiRouting({ ...options, mode: "promote", apply: true }),
+    );
+    assert.deepEqual(state.mutations, []);
+  }
+});
+
 test("the route client uses only an explicit bearer token and scoped REST route endpoints", async () => {
   const calls = [];
   const api = routeClient(

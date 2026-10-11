@@ -22,17 +22,25 @@ test("production Stripe acceptance validates catalog before minting an ephemeral
   assert.match(verifier, /requireWebhookSecret: false/);
 });
 
-test("production billing preflight runs before API and PDS deployment", async () => {
-  const production = await source(".github/workflows/deploy-production.yml");
+test("production billing preflight runs before schema, API and consumer mutations", async () => {
+  const production = await source("scripts/deploy/cloudflare-publication.mjs");
   const preflight = production.indexOf(
-    "Verify hosted production billing settings before deployment",
+    '"scripts/deploy/publication-billing.ts"',
   );
-  const apiDeploy = production.indexOf("./.github/actions/deploy-atlas-api");
-  const pdsDeploy = production.indexOf("./.github/actions/deploy-atlas-pds");
-
   assert.ok(preflight > 0);
-  assert.ok(preflight < apiDeploy);
-  assert.ok(preflight < pdsDeploy);
-  assert.match(production, /vercel env list production --token/);
-  assert.match(production, /node scripts\/deploy\/verify-production-stripe-env\.mjs/);
+  for (const mutation of [
+    "scripts/deploy/api_schema_release.py",
+    "api-cloudflare-release.mjs",
+    "api-cloudflare-consumers.mjs",
+    "web-candidate.mjs",
+  ]) {
+    assert.ok(
+      preflight < production.indexOf(`"${mutation}"`, preflight),
+      `Billing preflight must precede ${mutation}`,
+    );
+  }
+  assert.doesNotMatch(
+    production,
+    /deploy-atlas-pds|Generate PDS invite broker secret/,
+  );
 });
