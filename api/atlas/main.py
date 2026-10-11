@@ -9,25 +9,24 @@ Configures:
 - Health check endpoint
 """
 
+from __future__ import annotations
+
 import logging
-from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from functools import cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 
 from atlas.config import get_settings, validate_runtime_auth_config
 from atlas.models import init_db
 from atlas.platform.http import create_router
 from atlas.platform.http.anonymous_rate_limit import AnonymousRateLimitMiddleware
 from atlas.platform.http.cache import apply_no_store_headers, apply_static_public_cache
-from atlas.platform.mcp import (
+from atlas.platform.mcp.server_transport import (
+    build_transport_allowlists,
     build_transport_security_settings,
-    get_mcp,
-    get_mcp_asgi_app,
     split_cors_origins,
 )
 from atlas.platform.observability import RequestLogMiddleware, configure_json_logging
@@ -43,7 +42,33 @@ from atlas.platform.openapi import (
     install_openapi_enrichment,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
+    from mcp.server.fastmcp import FastMCP
+    from mcp.server.transport_security import TransportSecuritySettings
+    from starlette.applications import Starlette
+    from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
+
 logger = logging.getLogger(__name__)
+
+
+def get_mcp() -> FastMCP:
+    """Resolve the default server only when the ordinary lifespan needs it."""
+    from atlas.platform.mcp.server import get_mcp as get_server
+
+    return get_server()
+
+
+def get_mcp_asgi_app(
+    transport_security: TransportSecuritySettings | None = None,
+    *,
+    server: FastMCP | None = None,
+) -> Starlette:
+    """Keep the default transport lazy while preserving its existing call surface."""
+    from atlas.platform.mcp.server import get_mcp_asgi_app as get_transport
+
+    return get_transport(transport_security, server=server)
 
 
 class McpMountPathAliasMiddleware:
@@ -197,8 +222,10 @@ def create_app(
     # the real API. In production, this middleware stays scoped to exact
     # origins only: `cors_origins` plus the configured auth issuer/audience
     # origins.
-    transport_security = build_transport_security_settings(settings)
-    exact_origins, origin_regex = split_cors_origins(transport_security.allowed_origins)
+    # Catalog reads reuse the transport's origin policy without importing its
+    # server SDK. Hosted MCP remains mounted and initializes on its own request.
+    _, allowed_origins = build_transport_allowlists(settings)
+    exact_origins, origin_regex = split_cors_origins(allowed_origins)
     if settings.environment == "production":
         origin_regex = None
     app.add_middleware(
@@ -279,7 +306,9 @@ def create_app(
     # allowlist from `settings` a second time.
     app.mount(
         "/mcp",
-        get_mcp_asgi_app(transport_security) if mcp_asgi_app is None else mcp_asgi_app,
+        get_mcp_asgi_app(build_transport_security_settings(settings))
+        if mcp_asgi_app is None
+        else mcp_asgi_app,
     )
 
     return app

@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict
 
 from atlas.domains.access.dependencies import require_actor
-from atlas.platform.mcp.elicitation import complete_url_elicitation_state
 
 if TYPE_CHECKING:
     from atlas.domains.access.principals import AuthenticatedActor
@@ -37,6 +36,10 @@ async def complete_mcp_url_elicitation(
     actor: AuthenticatedActor = Depends(require_actor),
 ) -> McpElicitationCompleteResponse:
     """Complete a URL-mode MCP elicitation after first-party identity verification."""
+    # Ordinary profile requests do not need the MCP protocol's schemas or
+    # logging runtime. Keep completion behind its existing identity guard.
+    from atlas.platform.mcp.elicitation import complete_url_elicitation_state
+
     completed = await complete_url_elicitation_state(
         elicitation_id,
         user_id=actor.user_id,

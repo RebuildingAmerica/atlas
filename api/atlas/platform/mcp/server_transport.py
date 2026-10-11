@@ -6,10 +6,10 @@ import re
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
-from mcp.server.transport_security import TransportSecuritySettings
-
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from mcp.server.transport_security import TransportSecuritySettings
 
     from atlas.platform.config import Settings
 
@@ -26,8 +26,8 @@ def _origin_and_host(value: str) -> tuple[str | None, str | None]:
     return f"{parsed.scheme}://{parsed.netloc}", parsed.netloc
 
 
-def build_transport_security_settings(settings: Settings) -> TransportSecuritySettings:
-    """Build MCP host/origin allowlists from Atlas's configured public URLs."""
+def build_transport_allowlists(settings: Settings) -> tuple[list[str], list[str]]:
+    """Derive the same host/origin policy for HTTP CORS and MCP transport."""
     allowed_hosts = set(LOCAL_ALLOWED_HOSTS)
     allowed_origins = set(LOCAL_ALLOWED_ORIGINS)
 
@@ -45,10 +45,18 @@ def build_transport_security_settings(settings: Settings) -> TransportSecuritySe
         if host:
             allowed_hosts.add(host)
 
+    return sorted(allowed_hosts), sorted(allowed_origins)
+
+
+def build_transport_security_settings(settings: Settings) -> TransportSecuritySettings:
+    """Build MCP host/origin allowlists only when a transport needs the SDK."""
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    allowed_hosts, allowed_origins = build_transport_allowlists(settings)
     return TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
-        allowed_hosts=sorted(allowed_hosts),
-        allowed_origins=sorted(allowed_origins),
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
     )
 
 
