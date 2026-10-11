@@ -20,7 +20,7 @@ from urllib.parse import urldefrag, urljoin, urlparse
 from atlas_shared import PageContent, SourceType
 
 
-class HtmlMetadata(Protocol):
+class HtmlMetadata(Protocol):  # pragma: no cover - typing-only protocol
     """Metadata returned by the caller's HTML parser."""
 
     @property

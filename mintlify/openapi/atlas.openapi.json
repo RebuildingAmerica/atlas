@@ -3616,13 +3616,11 @@
             "items": {
               "type": "string"
             },
-            "minItems": 1,
             "title": "Issue Areas",
             "type": "array"
           },
           "location_query": {
             "description": "Location query (for example, 'Kansas City, MO').",
-            "minLength": 1,
             "title": "Location Query",
             "type": "string"
           },
@@ -3647,7 +3645,6 @@
           "state": {
             "description": "2-letter state code.",
             "maxLength": 2,
-            "minLength": 2,
             "title": "State",
             "type": "string"
           }
@@ -3924,13 +3921,11 @@
             "items": {
               "type": "string"
             },
-            "minItems": 1,
             "title": "Issue Areas",
             "type": "array"
           },
           "location_query": {
             "description": "Location query (for example, 'Kansas City, MO').",
-            "minLength": 1,
             "title": "Location Query",
             "type": "string"
           },
@@ -3955,7 +3950,6 @@
           "state": {
             "description": "2-letter state code.",
             "maxLength": 2,
-            "minLength": 2,
             "title": "State",
             "type": "string"
           }
