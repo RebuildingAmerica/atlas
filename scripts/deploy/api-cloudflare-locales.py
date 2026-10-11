@@ -11,10 +11,12 @@ def compress_locales(vendor: Path) -> dict[str, object]:
     source = vendor / "babel/localedata.py"
     code = source.read_text()
     replacements = {
-        "import os\n": "import gzip\nimport os\n",
+        "import os\n": "import gzip\nimport os\nfrom importlib.resources import files\n",
         'f"{name}.dat"': 'f"{name}.dat.gz"',
         "os.path.splitext(filename) for filename in os.listdir(_dirname)": 'os.path.splitext(filename.removesuffix(".gz")) for filename in os.listdir(_dirname)',
-        "with open(filename, 'rb') as fileobj:": "with gzip.open(filename, 'rb') as fileobj:",
+        "with open(filename, 'rb') as fileobj:": 'with gzip.GzipFile(fileobj=files("babel").joinpath("locale-data", f"{name}.dat.gz").open("rb")) as fileobj:',
+        "os.path.exists(resolve_locale_filename(name))": 'files("babel").joinpath("locale-data", f"{name}.dat.gz").is_file()',
+        "os.listdir(_dirname)": '[item.name for item in files("babel").joinpath("locale-data").iterdir()]',
     }
     for before, after in replacements.items():
         if code.count(before) != 1:
@@ -41,6 +43,25 @@ def compress_locales(vendor: Path) -> dict[str, object]:
     if not records:
         raise ValueError("A fresh complete Babel locale set is required.")
     source.write_text(code)
+    core = vendor / "babel/core.py"
+    core_code = core.read_text()
+    before = """        dirname = os.path.join(os.path.dirname(__file__))
+        filename = os.path.join(dirname, 'global.dat')
+        if not os.path.isfile(filename):
+            _raise_no_data_error()
+        with open(filename, 'rb') as fileobj:"""
+    if core_code.count(before) != 1:
+        raise ValueError("Babel global resource loader changed; review compatibility.")
+    core.write_text(
+        core_code.replace(
+            before,
+            """        from importlib.resources import files
+        resource = files("babel").joinpath("global.dat")
+        if not resource.is_file():
+            _raise_no_data_error()
+        with resource.open("rb") as fileobj:""",
+        )
+    )
     return {
         "locales": records,
         "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),

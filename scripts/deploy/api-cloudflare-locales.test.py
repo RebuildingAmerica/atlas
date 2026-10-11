@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,6 +46,21 @@ print(json.dumps({"data":data,"formats":formats},sort_keys=True))
                 ["python3", "-c", program], cwd=directory, env=env
             )
             self.assertEqual(json.loads(before), json.loads(after))
+            archive = vendor / "packages.zip"
+            with zipfile.ZipFile(
+                archive, "w", compression=zipfile.ZIP_DEFLATED
+            ) as output:
+                for path in (vendor / "babel").rglob("*"):
+                    if path.is_file() and "__pycache__" not in path.parts:
+                        output.write(path, path.relative_to(vendor))
+            (vendor / "babel").rename(vendor / "original-babel")
+            zipped = subprocess.check_output(
+                ["python3", "-c", program],
+                cwd=directory,
+                env={**os.environ, "PYTHONPATH": str(archive)},
+            )
+            self.assertEqual(json.loads(before), json.loads(zipped))
+            (vendor / "original-babel").rename(vendor / "babel")
             self.assertGreater(len(provenance["locales"]), 1000)
             self.assertLess(
                 sum(x["compressedBytes"] for x in provenance["locales"]),

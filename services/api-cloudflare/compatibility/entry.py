@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+import package_bootstrap  # noqa: F401 - install the verified archive before framework imports.
 from fastapi import FastAPI, Request
 from workers import DurableObject, WorkerEntrypoint, asgi
 

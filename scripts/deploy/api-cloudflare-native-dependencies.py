@@ -258,6 +258,19 @@ def install_native_packages(run_id: str, *, full_api: bool = False) -> None:
         check=True,
     )
 
+    if full_api:
+        subprocess.run(
+            [
+                "python3",
+                str(ROOT / "scripts/deploy/api-cloudflare-packages.py"),
+                "--vendor",
+                str(vendor),
+                "--provenance",
+                str(artifact_root / "packages-provenance.json"),
+            ],
+            check=True,
+        )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
