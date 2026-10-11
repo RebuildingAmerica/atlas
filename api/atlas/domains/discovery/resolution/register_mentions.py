@@ -150,9 +150,8 @@ def _type_conflict(officer: FilingOfficer) -> bool:
     """
     if FilingPosition.INSTITUTIONAL_TRUSTEE in officer.positions:
         return True
-    # Imported here: loading the model's ratio tables takes minutes under the
-    # coverage tracer, which stalled every test process at startup, and only
-    # register resolution needs it.
+    # Browsing the directory must not allocate discovery's classifier tables.
+    # Deferring them also avoids loading the model under every coverage tracer.
     import probablepeople
 
     try:
