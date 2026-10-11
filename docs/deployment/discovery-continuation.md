@@ -23,20 +23,36 @@ match the existing pipeline. Expected unavailable sources retain the existing
 provider's skip behavior. Unexpected failure or cancellation leaves the
 unfinished unit replayable; it does not repeat completed units.
 
+`publish_registry_mention` adds an opt-in transaction boundary for one prepared
+organization or person. It uses the existing resolution and review rules, defers
+helper commits, and commits catalog/source/role/review writes together with a
+receipt under the active job lock. A person requires a completed organization
+receipt with matching evidence, issue areas, and research date. A retry after a
+lost response returns the recorded counts without reapplying changes, preserving
+curator decisions made since that commit. Changed evidence under the same unit
+key fails explicitly. Unit keys must be stable across invocations.
+
+Publication exceptions and expired leases roll back every write in the unit. A
+lost commit acknowledgement requires a fresh connection: its receipt resolves
+whether the unit committed. The caller must supply an invocation-owned
+connection with no unrelated pending writes. The boundary is database-only and
+must not contain provider calls. Cross-run identity concurrency still follows
+the existing catalog constraints and resolver rules.
+
 This is not an activated discovery alarm. A provider unit is a bounded number of
 operations, not a proven bound on synchronous parsing CPU, archive size,
 classifier memory, or checkpoint payload size. Actual hosted limits still
 require evidence. The caller still owns deliberate lease release, alarm
-scheduling, retry policy, publication, and final run completion. Existing
-publication helpers commit internally; replay-safe publication needs the job
-fence, catalog changes, review history, and per-unit receipt in one transaction
-before discovery activation. Ranking and deduplication also retain their
-existing whole-run behavior.
+scheduling, retry policy, web-candidate publication, and final run completion.
+Ranking and deduplication also retain their existing whole-run behavior.
 
 Local verification uses real ZIP bytes served through byte ranges, compares
 resumed filing selection with the existing provider, and restarts between
 operations. Database tests cover fresh connections, lease reassignment,
 cancellation during a source request, input changes, timeout replay, zero
 budgets, and raw-officer batch stopping on both SQLite and disposable
-PostgreSQL. These checks are local implementation evidence, not hosted
-acceptance or cutover.
+PostgreSQL. Publication tests on both databases exercise rollback after nested
+helper commits, commit acknowledgement loss, concurrent retries, exact
+organization dependencies, changed inputs and ownership, expired leases, and
+preserved curator decisions. These checks are local implementation evidence, not
+hosted acceptance or cutover.
