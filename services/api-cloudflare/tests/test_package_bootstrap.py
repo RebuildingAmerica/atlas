@@ -19,6 +19,23 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+class AssetReader:
+    def __init__(self, data):
+        self.chunks = iter(data[index : index + 4] for index in range(0, len(data), 4))
+        self.released = False
+        self.cancel = AsyncMock()
+
+    async def read(self):
+        chunk = next(self.chunks, None)
+        return SimpleNamespace(
+            done=chunk is None,
+            value=SimpleNamespace(to_file=lambda file: file.write(chunk)),
+        )
+
+    def releaseLock(self):
+        self.released = True
+
+
 @pytest.mark.asyncio
 async def test_concurrent_package_loading_verifies_once_and_rejects_mismatched_data(
     tmp_path, monkeypatch
@@ -29,7 +46,18 @@ async def test_concurrent_package_loading_verifies_once_and_rejects_mismatched_d
     identity.write_text(json.dumps({"sha256": digest}))
     monkeypatch.setattr(MODULE, "__file__", str(tmp_path / "package_bootstrap.py"))
     monkeypatch.setattr(MODULE, "_archive_task", None)
-    response = SimpleNamespace(status=200, bytes=AsyncMock(return_value=data))
+    readers = []
+
+    def reader():
+        stream = AssetReader(data)
+        readers.append(stream)
+        return stream
+
+    response = SimpleNamespace(
+        status=200,
+        bytes=AsyncMock(return_value=data),
+        body=SimpleNamespace(getReader=reader),
+    )
     fetch = AsyncMock(return_value=response)
     env = SimpleNamespace(PACKAGE_ASSETS=SimpleNamespace(fetch=fetch))
     archive = Path("/tmp") / f"atlas-packages-{digest}.zip"
@@ -39,10 +67,14 @@ async def test_concurrent_package_loading_verifies_once_and_rejects_mismatched_d
         assert archive.read_bytes() == data
         assert sys.path.count(str(archive)) == 1
         fetch.assert_awaited_once_with("https://packages.invalid/packages.zip")
+        response.bytes.assert_not_awaited()
+        assert readers[0].released
         monkeypatch.setattr(MODULE, "_archive_task", None)
         identity.write_text(json.dumps({"sha256": "0" * 64}))
         with pytest.raises(RuntimeError, match="does not match"):
             await MODULE.ensure_package_archive(env)
+        assert readers[1].released
+        assert not (Path("/tmp") / f"atlas-packages-{'0' * 64}.zip").exists()
     finally:
         sys.path[:] = original_path
         archive.unlink(missing_ok=True)

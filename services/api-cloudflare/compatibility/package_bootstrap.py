@@ -14,16 +14,30 @@ async def _load_package_archive(env):
     identity = root / "package-identity.json"
     if identity.is_file():
         expected = json.loads(identity.read_text())["sha256"]
-        response = await env.PACKAGE_ASSETS.fetch(
-            "https://packages.invalid/packages.zip"
-        )
+        response = await env.PACKAGE_ASSETS.fetch("https://packages.invalid/packages.zip")
         if response.status != 200:
             raise RuntimeError("Immutable runtime package asset is unavailable.")
-        data = await response.bytes()
-        if hashlib.sha256(data).hexdigest() != expected:
-            raise RuntimeError("Runtime package asset does not match its release.")
         archive = Path("/tmp") / f"atlas-packages-{expected}.zip"
-        archive.write_bytes(data)
+        reader = response.body.getReader()
+        try:
+            # Avoid retaining JavaScript, Python, and filesystem copies of the
+            # full archive so people can open profiles within the Free memory limit.
+            with archive.open("wb") as file:
+                while True:
+                    chunk = await reader.read()
+                    if chunk.done:
+                        break
+                    chunk.value.to_file(file)
+            with archive.open("rb") as file:
+                actual = hashlib.file_digest(file, "sha256").hexdigest()
+            if actual != expected:
+                raise RuntimeError("Runtime package asset does not match its release.")
+        except BaseException:
+            archive.unlink(missing_ok=True)
+            await reader.cancel()
+            raise
+        finally:
+            reader.releaseLock()
         sys.path.insert(0, str(archive))
     else:
         # The small compatibility bundle has no package archive or asset binding.
