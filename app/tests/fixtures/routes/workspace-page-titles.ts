@@ -38,6 +38,11 @@ export const WORKSPACE_PAGE_TITLES: [string, () => Promise<RouteWithHead>, strin
     () => import("@/routes/_workspace/editorial/takedowns"),
     "Takedowns | Atlas editorial",
   ],
+  [
+    "editorial activity",
+    () => import("@/routes/_workspace/editorial/activity"),
+    "Editorial activity | Atlas editorial",
+  ],
   ["feed", () => import("@/routes/_workspace/feed"), "Feed | Atlas"],
   ["research lists", () => import("@/routes/_workspace/lists/index"), "Research lists | Atlas"],
   ["research list", () => import("@/routes/_workspace/lists/$id"), "Research list | Atlas"],

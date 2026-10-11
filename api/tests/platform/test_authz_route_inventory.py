@@ -46,6 +46,7 @@ INSTANCE_AND_MACHINE_ROUTES: dict[tuple[str, str], Action] = {
     ("POST", "/api/review-queue/website-candidate-scan"): Action.REVIEW_QUEUE_SCAN,
     ("POST", "/api/review-queue/{item_id}/approve"): Action.REVIEW_QUEUE_DECIDE,
     ("POST", "/api/review-queue/{item_id}/reject"): Action.REVIEW_QUEUE_DECIDE,
+    ("GET", "/api/audit-log"): Action.AUDIT_READ,
     ("GET", "/api/takedowns"): Action.ENTRIES_TAKEDOWN,
     ("POST", "/api/takedowns"): Action.ENTRIES_TAKEDOWN,
     ("POST", "/api/takedowns/{takedown_id}/restore"): Action.ENTRIES_TAKEDOWN,

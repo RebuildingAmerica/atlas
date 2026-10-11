@@ -31,6 +31,7 @@ class Action(StrEnum):
     REVIEW_QUEUE_DECIDE = "instance.review_queue.decide"
     CLAIMS_REVIEW = "instance.claims.review"
     ENTRIES_TAKEDOWN = "instance.entries.takedown"
+    AUDIT_READ = "instance.audit.read"
     SCHEDULES_READ = "instance.schedules.read"
     SCHEDULES_WRITE = "instance.schedules.write"
     RUNS_CANCEL = "instance.runs.cancel"
@@ -65,6 +66,7 @@ _REFUSAL_DETAIL: dict[Action, str] = {
     Action.REVIEW_QUEUE_SCAN: EDITORIAL_REFUSAL_DETAIL,
     Action.REVIEW_QUEUE_DECIDE: EDITORIAL_REFUSAL_DETAIL,
     Action.ENTRIES_TAKEDOWN: EDITORIAL_REFUSAL_DETAIL,
+    Action.AUDIT_READ: EDITORIAL_REFUSAL_DETAIL,
     Action.DISCOUNTS_REVIEW: PLATFORM_ONLY_DETAIL,
     Action.COSTS_VIEW: PLATFORM_ONLY_DETAIL,
     Action.TRIGGER_SCHEDULED_RUNS: MACHINE_ONLY_DETAIL,
