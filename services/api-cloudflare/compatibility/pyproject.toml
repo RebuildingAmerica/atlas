@@ -1,0 +1,9 @@
+[project]
+name = "atlas-python-compatibility"
+version = "0.0.0"
+requires-python = ">=3.14"
+dependencies = [
+  "fastapi==0.143.0",
+  "psycopg==3.3.6",
+  "workers-runtime-sdk==1.9.3",
+]

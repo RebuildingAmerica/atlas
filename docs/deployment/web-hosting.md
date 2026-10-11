@@ -10,11 +10,17 @@ production.** There is no automatic paid Cloudflare fallback and no capability
 may be removed to meet a limit.
 
 The operator requires Google billing to remain closed. Do not reopen or relink
-billing accounts. The hybrid path remains implemented, but cannot be selected
-while its required Cloud Run deployment is unavailable. The Workers candidate
-also depends on the existing API and PostgreSQL; moving the web runtime does not
-replace those services. Actual provider checks and hosted journeys must pass
-before cutover, including a working API for search and source-linked profiles.
+billing accounts. On October 10, 2026, the operator authorized the
+[Cloudflare-only hosting plan](../superpowers/plans/2026-10-10-cloudflare-only-hosting.md),
+including migration of API and discovery compute and evaluation of Durable
+Objects against their own CPU and duration limits. The original whole-app 8ms
+CPU gate applies to the direct Worker experiment, not the revised object
+architecture. Runtime-specific limits, shared Free allowances, latency, privacy,
+and complete product journeys remain release gates. Existing PostgreSQL, data,
+PDS identities, and public URLs must be preserved. The hybrid path is retained
+temporarily as historical implementation, not a selectable hosted target. Actual
+provider checks and hosted journeys must pass before cutover, including a
+working API for search and source-linked profiles.
 
 ## Required Cloudflare CLI
 

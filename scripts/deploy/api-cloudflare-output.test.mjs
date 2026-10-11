@@ -1,0 +1,79 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { readBuildOutput } from "@cloudflare/build-output-utils";
+import { preparePythonOutput } from "./api-cloudflare-output.mjs";
+
+test("Python artifacts are portable cf Build Output with vendored package data", async () => {
+  const root = mkdtempSync(join(tmpdir(), "atlas-python-output-"));
+  try {
+    const source = join(root, "source"),
+      vendor = join(root, "vendor");
+    mkdirSync(source);
+    mkdirSync(join(vendor, "workers"), { recursive: true });
+    writeFileSync(join(source, "entry.py"), "class Default: pass\n");
+    writeFileSync(join(vendor, "workers", "__init__.py"), "# runtime sdk\n");
+    writeFileSync(join(vendor, "workers", "bridge.js"), "export default {};\n");
+    writeFileSync(join(vendor, "pyvenv.cfg"), "");
+    const destination = join(root, "output");
+    await preparePythonOutput({
+      source,
+      vendor,
+      destination,
+      workerName: "atlas-python-eval",
+      accountId: "a".repeat(32),
+      workerEnv: { HYPERDRIVE: { type: "hyperdrive", id: "b".repeat(32) } },
+      durableExport: "ApiRuntime",
+    });
+    const output = await readBuildOutput(destination);
+    const config = output.workers.default.config;
+    assert.equal(config.manifest.mainModule, "entry.py");
+    assert.equal(config.manifest.modules["entry.py"].type, "python");
+    assert.equal(
+      config.manifest.modules["python_modules/workers/__init__.py"].type,
+      "data",
+    );
+    assert.equal(
+      config.manifest.modules["python_modules/workers/bridge.js"].type,
+      "esm",
+    );
+    assert.equal(config.exports.ApiRuntime.storage, "sqlite");
+    assert.equal(config.workersDev, false);
+    assert.equal(config.previewUrls, false);
+    assert.deepEqual(config.domains ?? [], []);
+    symlinkSync(join(source, "entry.py"), join(vendor, "unsafe.py"));
+    await assert.rejects(
+      preparePythonOutput({
+        source,
+        vendor,
+        destination,
+        workerName: "atlas-python-eval",
+        accountId: "a".repeat(32),
+        workerEnv: {},
+      }),
+      /symbolic link/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("build output rejects secret values and provider credentials", async () => {
+  for (const workerEnv of [
+    { AUTH_SECRET: { type: "secret", value: "private" } },
+    { CLOUDFLARE_API_TOKEN: { type: "text", value: "private" } },
+    { DATABASE_URL: { type: "text", value: "postgres://private" } },
+  ])
+    await assert.rejects(
+      preparePythonOutput({ workerEnv }),
+      /secret|credential/i,
+    );
+});
