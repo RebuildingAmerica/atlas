@@ -91,7 +91,9 @@ test("rejects a wrong host, additional private fields, empty or oversized secret
           env,
           run: () => ({
             status: 0,
-            stdout: Buffer.from(JSON.stringify(document)),
+            stdout: Buffer.from(
+              `ATLAS_PDS_BROKER_RECOVERY:${JSON.stringify(document)}`,
+            ),
           }),
         }),
       /PDS broker response is invalid/,
@@ -138,7 +140,10 @@ test("recovery diagnostics identify only a closed failure category", () => {
       () =>
         recoverPdsBroker({
           env,
-          run: () => ({ status: 0, stdout: Buffer.from(stdout) }),
+          run: () => ({
+            status: 0,
+            stdout: Buffer.from(`ATLAS_PDS_BROKER_RECOVERY:${stdout}`),
+          }),
         }),
       (error) => {
         assert.equal(
@@ -149,6 +154,36 @@ test("recovery diagnostics identify only a closed failure category", () => {
         assert.equal(error.message.includes("synthetic-private-value"), false);
         return true;
       },
+    );
+  }
+});
+
+test("SSH status output cannot obscure or duplicate the broker response", () => {
+  const frame = `ATLAS_PDS_BROKER_RECOVERY:${JSON.stringify(reply)}`;
+  const envelope = recoverPdsBroker({
+    env,
+    run: () => ({
+      status: 0,
+      stdout: Buffer.from(`Updating SSH metadata.\n${frame}\n`),
+    }),
+  });
+  assert.deepEqual(
+    JSON.parse(
+      privateDecrypt(
+        { key: privateKey, oaepHash: "sha256" },
+        Buffer.from(envelope.ciphertext, "base64"),
+      ),
+    ),
+    reply,
+  );
+  for (const stdout of [JSON.stringify(reply), `${frame}\n${frame}\n`]) {
+    assert.throws(
+      () =>
+        recoverPdsBroker({
+          env,
+          run: () => ({ status: 0, stdout: Buffer.from(stdout) }),
+        }),
+      /invalid-frame/,
     );
   }
 });
