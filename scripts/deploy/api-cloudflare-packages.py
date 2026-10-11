@@ -33,6 +33,7 @@ PURE_PACKAGES = {
     "urllib3",
     "nameparser",
     "pydantic_settings",
+    "probablepeople",
 }
 
 # The HTTP import graph must be available when Cloudflare snapshots the entry
@@ -115,8 +116,7 @@ def archive_packages(vendor: Path) -> dict[str, object]:
     directories = [
         path
         for path in vendor.iterdir()
-        if path.is_dir()
-        and (path.name in PURE_PACKAGES or path.name.endswith(".dist-info"))
+        if path.is_dir() and (path.name in PURE_PACKAGES or path.name.endswith(".dist-info"))
     ]
     records = []
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as target:
@@ -137,9 +137,7 @@ def archive_packages(vendor: Path) -> dict[str, object]:
                     info.compress_type = zipfile.ZIP_DEFLATED
                     info.external_attr = 0o644 << 16
                     target.writestr(info, data)
-                    records.append(
-                        {"name": name, "sha256": hashlib.sha256(data).hexdigest()}
-                    )
+                    records.append({"name": name, "sha256": hashlib.sha256(data).hexdigest()})
     with zipfile.ZipFile(archive) as source:
         for item in records:
             if hashlib.sha256(source.read(item["name"])).hexdigest() != item["sha256"]:
@@ -149,6 +147,67 @@ def archive_packages(vendor: Path) -> dict[str, object]:
     return {
         "archiveSha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
         "files": records,
+    }
+
+
+def defer_resource_packages(vendor: Path) -> dict[str, object]:
+    """Keep trained classifier bytes in the verified asset, not the HTTP upload.
+
+    probablepeople opens its models beside __file__, so the runtime extracts
+    this pure package before import. Its native pycrfsuite dependency remains
+    an ordinary package file. Existing archives retain every exact file byte.
+    """
+    archive = vendor / "packages.zip"
+    replacement = vendor / "packages-resources-next.zip"
+    packages = [vendor / "probablepeople"]
+    additions = {}
+    for package in packages:
+        if package.exists():
+            for source in sorted(package.rglob("*")):
+                if source.is_symlink():
+                    raise ValueError("Deferred resource packages reject symbolic links.")
+                if source.is_file() and "__pycache__" not in source.parts:
+                    if source.suffix in {".so", ".wasm"}:
+                        raise ValueError("Native extensions must remain bundled.")
+                    additions[source.relative_to(vendor).as_posix()] = source.read_bytes()
+    if additions:
+        try:
+            with zipfile.ZipFile(archive) as existing, zipfile.ZipFile(replacement, "w") as target:
+                written = set()
+                for info in existing.infolist():
+                    if info.filename in written:
+                        raise ValueError("Package archives contain duplicate files.")
+                    written.add(info.filename)
+                    data = existing.read(info)
+                    if info.filename in additions and additions[info.filename] != data:
+                        raise ValueError("Deferred resource bytes differ from existing archive.")
+                    target.writestr(info, data)
+                for name, data in sorted(additions.items()):
+                    if name not in written:
+                        info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+                        info.compress_type = zipfile.ZIP_DEFLATED
+                        info.external_attr = 0o644 << 16
+                        target.writestr(info, data)
+            with zipfile.ZipFile(replacement) as completed:
+                for name, data in additions.items():
+                    if completed.read(name) != data:
+                        raise ValueError("Deferred resource verification failed.")
+            replacement.replace(archive)
+        except BaseException:
+            replacement.unlink(missing_ok=True)
+            raise
+        for package in packages:
+            if package.exists():
+                shutil.rmtree(package)
+    with zipfile.ZipFile(archive) as source:
+        records = [
+            {"name": info.filename, "sha256": hashlib.sha256(source.read(info)).hexdigest()}
+            for info in source.infolist()
+            if not info.is_dir() and info.filename.startswith("probablepeople/")
+        ]
+    return {
+        "archiveSha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+        "files": sorted(records, key=lambda record: record["name"]),
     }
 
 
@@ -194,9 +253,7 @@ def partition_core_archive(vendor: Path, *, repartition=False) -> dict[str, obje
                 for index in range(1, len(parts)):
                     directory = "/".join(parts[:index]) + "/"
                     if directory not in written_directories[kind]:
-                        entry = zipfile.ZipInfo(
-                            directory, date_time=(1980, 1, 1, 0, 0, 0)
-                        )
+                        entry = zipfile.ZipInfo(directory, date_time=(1980, 1, 1, 0, 0, 0))
                         entry.external_attr = (0o40755 << 16) | 0x10
                         destination.writestr(entry, b"")
                         written_directories[kind].add(directory)
@@ -231,6 +288,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.partition_existing and not args.repartition_existing:
         archive_packages(args.vendor)
+    defer_resource_packages(args.vendor)
     args.provenance.write_text(
         json.dumps(
             partition_core_archive(args.vendor, repartition=args.repartition_existing),

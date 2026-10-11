@@ -4,6 +4,8 @@ import asyncio
 import hashlib
 import importlib.util
 import json
+import io
+import zipfile
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -40,7 +42,10 @@ class AssetReader:
 async def test_concurrent_package_loading_verifies_once_and_rejects_mismatched_data(
     tmp_path, monkeypatch
 ):
-    data = b"immutable zip fixture"
+    fixture = io.BytesIO()
+    with zipfile.ZipFile(fixture, "w") as target:
+        target.writestr("babel/data.txt", b"immutable zip fixture")
+    data = fixture.getvalue()
     digest = hashlib.sha256(data).hexdigest()
     identity = tmp_path / "package-identity.json"
     identity.write_text(json.dumps({"sha256": digest}))
@@ -78,3 +83,58 @@ async def test_concurrent_package_loading_verifies_once_and_rejects_mismatched_d
     finally:
         sys.path[:] = original_path
         archive.unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_model_files_are_available_beside_imported_package_after_verified_asset_load(
+    tmp_path, monkeypatch
+):
+    fixture = io.BytesIO()
+    with zipfile.ZipFile(fixture, "w") as target:
+        target.writestr("probablepeople/__init__.py", "")
+        target.writestr("probablepeople/model.crfsuite", b"trained-model-exact-bytes")
+        target.writestr("babel/data.txt", b"other-deferred-resource")
+    data = fixture.getvalue()
+    digest = hashlib.sha256(data).hexdigest()
+    (tmp_path / "package-identity.json").write_text(json.dumps({"sha256": digest}))
+    monkeypatch.setattr(MODULE, "__file__", str(tmp_path / "package_bootstrap.py"))
+    monkeypatch.setattr(MODULE, "_archive_task", None)
+    stream = AssetReader(data)
+    response = SimpleNamespace(status=200, body=SimpleNamespace(getReader=lambda: stream))
+    env = SimpleNamespace(PACKAGE_ASSETS=SimpleNamespace(fetch=AsyncMock(return_value=response)))
+    original_path = sys.path.copy()
+    try:
+        await MODULE.ensure_package_archive(env)
+        root = Path("/tmp") / f"atlas-resources-{digest}"
+        assert (root / "probablepeople/model.crfsuite").read_bytes() == b"trained-model-exact-bytes"
+        assert not (root / "babel").exists()
+        assert sys.path.index(str(root)) < sys.path.index(
+            str(Path("/tmp") / f"atlas-packages-{digest}.zip")
+        )
+        assert stream.released
+    finally:
+        import shutil
+
+        sys.path[:] = original_path
+        (Path("/tmp") / f"atlas-packages-{digest}.zip").unlink(missing_ok=True)
+        shutil.rmtree(Path("/tmp") / f"atlas-resources-{digest}", ignore_errors=True)
+
+
+@pytest.mark.parametrize(
+    "name,mode",
+    [
+        ("probablepeople/../outside", 0o100644),
+        ("probablepeople/linked-model", 0o120777),
+    ],
+)
+def test_resource_extraction_rejects_unsafe_members_and_removes_partial_files(tmp_path, name, mode):
+    archive = tmp_path / "resources.zip"
+    with zipfile.ZipFile(archive, "w") as target:
+        target.writestr("probablepeople/first-model", b"partial")
+        info = zipfile.ZipInfo(name)
+        info.external_attr = mode << 16
+        target.writestr(info, b"unsafe")
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    with pytest.raises(RuntimeError, match="resource|symbolic"):
+        MODULE._extract_resource_packages(archive, digest)
+    assert not (Path("/tmp") / f"atlas-resources-{digest}").exists()

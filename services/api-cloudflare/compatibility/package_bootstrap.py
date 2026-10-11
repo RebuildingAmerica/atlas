@@ -4,9 +4,40 @@ import asyncio
 import hashlib
 import json
 import sys
+import shutil
+import zipfile
 from pathlib import Path
 
 _archive_task = None
+
+
+def _extract_resource_packages(archive, expected):
+    # probablepeople uses filesystem-relative CRF model paths. Extract only
+    # this immutable pure package; native extensions stay provider-bundled.
+    root = Path("/tmp") / f"atlas-resources-{expected}"
+    try:
+        with zipfile.ZipFile(archive) as source:
+            members = [
+                info
+                for info in source.infolist()
+                if not info.is_dir() and info.filename.startswith("probablepeople/")
+            ]
+            if not members:
+                return None
+            for info in members:
+                parts = info.filename.split("/")
+                if any(part in {"", ".", ".."} for part in parts) or "\\" in info.filename:
+                    raise RuntimeError("Invalid deferred resource path.")
+                if (info.external_attr >> 16) & 0o170000 == 0o120000:
+                    raise RuntimeError("Deferred resources cannot contain symbolic links.")
+                target = root.joinpath(*parts)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with source.open(info) as incoming, target.open("wb") as outgoing:
+                    shutil.copyfileobj(incoming, outgoing, length=64 * 1024)
+        return root
+    except BaseException:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
 
 
 async def _load_package_archive(env):
@@ -38,7 +69,10 @@ async def _load_package_archive(env):
             raise
         finally:
             reader.releaseLock()
+        resources = _extract_resource_packages(archive, expected)
         sys.path.insert(0, str(archive))
+        if resources is not None:
+            sys.path.insert(0, str(resources))
     else:
         # The small compatibility bundle has no package archive or asset binding.
         archive = root / "python_modules/packages.zip"

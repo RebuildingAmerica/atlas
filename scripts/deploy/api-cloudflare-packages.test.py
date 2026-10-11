@@ -31,6 +31,49 @@ def archive_files(vendor):
 
 
 class PackageArchiveTests(unittest.TestCase):
+    def test_deferred_filesystem_models_keep_bytes_and_native_extensions_separate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vendor = Path(directory)
+            archive = vendor / "packages.zip"
+            with zipfile.ZipFile(archive, "w") as target:
+                target.writestr("babel/data.txt", b"existing-resource")
+            package = vendor / "probablepeople"
+            package.mkdir()
+            original = {
+                "__init__.py": b"MODEL = 'generic_learned_settings.crfsuite'\n",
+                "generic_learned_settings.crfsuite": b"exact-trained-model",
+                "ratios.pyc": bytes.fromhex("2b0e0d0a03000000") + b"0" * 16,
+            }
+            for name, data in original.items():
+                (package / name).write_bytes(data)
+            native = vendor / "pycrfsuite"
+            native.mkdir()
+            (native / "native.so").write_bytes(b"native-runtime")
+            result = MODULE.defer_resource_packages(vendor)
+            with zipfile.ZipFile(archive) as source:
+                self.assertEqual(source.read("babel/data.txt"), b"existing-resource")
+                for name, data in original.items():
+                    self.assertEqual(source.read(f"probablepeople/{name}"), data)
+            self.assertFalse(package.exists())
+            self.assertEqual((native / "native.so").read_bytes(), b"native-runtime")
+            self.assertEqual(MODULE.defer_resource_packages(vendor), result)
+
+    def test_failed_resource_deferral_does_not_replace_archive_or_remove_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vendor = Path(directory)
+            archive = vendor / "packages.zip"
+            with zipfile.ZipFile(archive, "w") as target:
+                target.writestr("probablepeople/model.bin", b"different")
+            package = vendor / "probablepeople"
+            package.mkdir()
+            model = package / "model.bin"
+            model.write_bytes(b"original")
+            before = archive.read_bytes()
+            with self.assertRaisesRegex(ValueError, "differ"):
+                MODULE.defer_resource_packages(vendor)
+            self.assertEqual(archive.read_bytes(), before)
+            self.assertEqual(model.read_bytes(), b"original")
+
     def test_core_partition_retains_all_bytes_and_deferred_resources(self):
         digests = []
         for _ in range(2):
@@ -120,9 +163,7 @@ class PackageArchiveTests(unittest.TestCase):
                 self.assertIn("dns/__init__.py", core.namelist())
             after = archive_files(vendor)
             self.assertEqual(before, after)
-            self.assertEqual(
-                MODULE.partition_core_archive(vendor, repartition=True), provenance
-            )
+            self.assertEqual(MODULE.partition_core_archive(vendor, repartition=True), provenance)
 
     def test_failed_repartition_retains_existing_archives(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -167,9 +208,7 @@ class PackageArchiveTests(unittest.TestCase):
                     env={**os.environ, "PYTHONPATH": str(vendor / "packages.zip")},
                 )
                 self.assertEqual(json.loads(output), [{"source": "preserved"}, "1.0"])
-                self.assertEqual(
-                    (native / "protocol.so").read_bytes(), b"native-library"
-                )
+                self.assertEqual((native / "protocol.so").read_bytes(), b"native-library")
                 self.assertFalse(package.exists())
                 digests.append(provenance["archiveSha256"])
         self.assertEqual(*digests)
@@ -194,9 +233,7 @@ class PackageArchiveTests(unittest.TestCase):
             (metadata / "METADATA").write_text(
                 "Metadata-Version: 2.1\nName: atlas-runtime-test\nVersion: 1.0\n"
             )
-            self.assertTrue(
-                hasattr(MODULE, "compile_package_sources"), "Precompiler is missing"
-            )
+            self.assertTrue(hasattr(MODULE, "compile_package_sources"), "Precompiler is missing")
             MODULE.compile_package_sources(vendor)
             self.assertEqual((package / "__init__.py").read_text(), source)
             MODULE.archive_packages(vendor)
@@ -252,17 +289,11 @@ print(json.dumps({
                 bytecode = source.with_suffix(".pyc").read_bytes()
                 self.assertEqual(bytecode[:4], importlib.util.MAGIC_NUMBER)
                 self.assertEqual(int.from_bytes(bytecode[4:8], "little"), 3)
-                self.assertEqual(
-                    bytecode[8:16], importlib.util.source_hash(source.read_bytes())
-                )
-                self.assertEqual(
-                    compilation["modules"][0]["name"], "anthropic/__init__.py"
-                )
+                self.assertEqual(bytecode[8:16], importlib.util.source_hash(source.read_bytes()))
+                self.assertEqual(compilation["modules"][0]["name"], "anthropic/__init__.py")
                 archive = MODULE.archive_packages(vendor)
                 with zipfile.ZipFile(vendor / "packages.zip") as packaged:
-                    self.assertEqual(
-                        packaged.read("anthropic/__init__.py"), b"VALUE = 7\n"
-                    )
+                    self.assertEqual(packaged.read("anthropic/__init__.py"), b"VALUE = 7\n")
                     self.assertEqual(packaged.read("anthropic/__init__.pyc"), bytecode)
                 results.append((bytecode, compilation, archive))
         self.assertEqual(*results)
@@ -273,9 +304,7 @@ print(json.dumps({
             package = vendor / "anthropic"
             package.mkdir()
             (package / "__init__.py").write_text("VALUE = 7\n")
-            self.assertTrue(
-                hasattr(MODULE, "compile_package_sources"), "Precompiler is missing"
-            )
+            self.assertTrue(hasattr(MODULE, "compile_package_sources"), "Precompiler is missing")
             with patch.object(sys, "version_info", (3, 13, 0)):
                 with self.assertRaisesRegex(ValueError, "Python 3.14"):
                     MODULE.compile_package_sources(vendor)
