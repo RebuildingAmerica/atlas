@@ -46,7 +46,11 @@ export async function preparePythonOutput({
       const path = join(directory, item.name);
       if (lstatSync(path).isSymbolicLink())
         throw new Error("Python artifacts reject symbolic links.");
-      if (item.name === "__pycache__" || item.name.endsWith(".pyc")) continue;
+      if (
+        item.name === "__pycache__" ||
+        (!vendored && item.name.endsWith(".pyc"))
+      )
+        continue;
       const name = prefix ? `${prefix}/${item.name}` : item.name;
       if (item.isDirectory()) copy(path, name, vendored);
       else {

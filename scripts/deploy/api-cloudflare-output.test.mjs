@@ -29,6 +29,7 @@ test("Python artifacts are portable cf Build Output with vendored package data",
     writeFileSync(join(source, "entry.py"), "class Default: pass\n");
     writeFileSync(join(vendor, "workers", "__init__.py"), "# runtime sdk\n");
     writeFileSync(join(vendor, "workers", "bridge.js"), "export default {};\n");
+    writeFileSync(join(vendor, "lookup.pyc"), Buffer.from([43, 14, 13, 10]));
     writeFileSync(join(vendor, "pyvenv.cfg"), "");
     const destination = join(root, "output");
     await preparePythonOutput({
@@ -53,6 +54,10 @@ test("Python artifacts are portable cf Build Output with vendored package data",
       "esm",
     );
     assert.equal(config.exports.ApiRuntime.storage, "sqlite");
+    assert.equal(
+      config.manifest.modules["python_modules/lookup.pyc"]?.type,
+      "data",
+    );
     assert.equal(config.workersDev, false);
     assert.equal(config.previewUrls, false);
     assert.deepEqual(config.domains ?? [], []);

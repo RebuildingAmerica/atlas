@@ -127,6 +127,25 @@ def install_native_packages(run_id: str) -> None:
         )
         + "\n"
     )
+    subprocess.run(
+        [
+            "uv",
+            "run",
+            "--no-project",
+            "--python",
+            "3.14",
+            "python",
+            str(ROOT / "scripts/deploy/api-cloudflare-bytecode.py"),
+            "--vendor",
+            str(
+                ROOT
+                / ".atlas/python-compatibility-dependencies/lib/python3.14/site-packages"
+            ),
+            "--provenance",
+            str(artifact_root / "bytecode-provenance.json"),
+        ],
+        check=True,
+    )
 
 
 if __name__ == "__main__":
