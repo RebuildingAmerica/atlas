@@ -10,11 +10,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { digestDirectory } from "./web-release.mjs";
-import { captureApiRuntimeSnapshot } from "./api-runtime-rollback.mjs";
 import {
   publishApiRelease,
   canonicalDigest,
-  releaseMessage,
   prepareOperationsOutput,
   deployReleaseArtifact,
   verifyPausedApiRelease,
