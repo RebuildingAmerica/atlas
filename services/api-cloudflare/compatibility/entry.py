@@ -1,5 +1,7 @@
 """Read-only runtime evaluation; never a production API or migration job."""
 
+from uuid import UUID
+
 from fastapi import FastAPI, Request
 from workers import DurableObject, WorkerEntrypoint, asgi
 
@@ -59,6 +61,39 @@ async def database(request: Request):
         "timestamp": row[3].isoformat(),
         "connection_closed": connection.is_closed(),
     }
+
+
+@app.get("/database-adapter/{probe}")
+async def database_adapter(request: Request, probe: UUID):
+    from database_adapter import connect_database
+
+    hd = request.scope["env"].HYPERDRIVE
+    connection = await connect_database(
+        host=hd.host,
+        port=int(hd.port),
+        user=hd.user,
+        password=hd.password,
+        database=hd.database,
+    )
+    try:
+        cursor = await connection.execute(
+            "SELECT ?::text AS probe, ?::timestamptz AS source_date, "
+            "?::jsonb AS evidence, current_setting('TimeZone') AS timezone",
+            (str(probe), "2000-01-01T05:30:00+05:30", '{"trusted":true}'),
+        )
+        row = await cursor.fetchone()
+        result = {
+            "probe": row[0],
+            "timestamp": row[1],
+            "evidence": row[2],
+            "timezone": row[3],
+            "columns": [column[0] for column in cursor.description],
+            "rowcount": cursor.rowcount,
+            "cursor_exhausted": await cursor.fetchone() is None,
+        }
+    finally:
+        await connection.close()
+    return {**result, "connection_closed": connection.is_closed()}
 
 
 class ApiRuntime(DurableObject):
