@@ -13,6 +13,17 @@ import pytest
 
 
 PATH = Path(__file__).parents[1] / "compatibility/snapshot_bootstrap.py"
+CATALOG_MODULES = (
+    "entries",
+    "profiles",
+    "public",
+    "taxonomy",
+    "atproto_identities",
+    "feed",
+    "org_annotations",
+    "org_resources",
+    "organization_atproto_identities",
+)
 
 
 def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_path):
@@ -23,6 +34,10 @@ def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_p
         core.writestr("fastapi.py", "import pydantic_core\nIMPORTED = True\n")
         core.writestr("httpx.py", "IMPORTED = True\n")
         core.writestr("atlas/__init__.py", "")
+        for package in ("domains", "domains/catalog", "domains/catalog/api"):
+            core.writestr(f"atlas/{package}/__init__.py", "")
+        for module in CATALOG_MODULES:
+            core.writestr(f"atlas/domains/catalog/api/{module}.py", "IMPORTED = True\n")
         core.writestr(
             "atlas/main.py",
             'def create_app():\n    raise AssertionError("Snapshot constructed an application")\n',
@@ -46,10 +61,19 @@ import pydantic_core
 assert "fastapi" in sys.modules
 assert "httpx" in sys.modules
 assert "atlas.main" in sys.modules
+for name in json.loads(sys.argv[3]):
+    assert sys.modules['atlas.domains.catalog.api.' + name].IMPORTED
 print(json.dumps({"imported": pydantic_core.IMPORTED, "paths": sys.path.count(str(Path(sys.argv[2]) / "python_modules/core.zip")), "repeated": module.preload_core_packages()}))
 """
     output = subprocess.check_output(
-        [sys.executable, "-c", script, str(PATH), str(tmp_path)],
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(PATH),
+            str(tmp_path),
+            json.dumps(CATALOG_MODULES),
+        ],
         cwd=tmp_path,
         env={**os.environ, "PYTHONPATH": ""},
     )
@@ -73,22 +97,46 @@ def test_snapshot_requires_matching_core_before_importing_application(
         module.preload_core_packages()
 
 
-def test_real_api_factory_module_import_does_not_construct_settings_or_app():
+def test_real_catalog_preload_does_not_construct_settings_services_or_app(tmp_path):
+    (tmp_path / "python_modules").mkdir()
+    archive = tmp_path / "python_modules/core.zip"
+    with zipfile.ZipFile(archive, "w"):
+        pass
+    (tmp_path / "core-identity.json").write_text(
+        json.dumps({"sha256": hashlib.sha256(archive.read_bytes()).hexdigest()})
+    )
     script = """
-import importlib.abc, sys
+import importlib.abc, importlib.util, sys
+from pathlib import Path
 class RequestOnlyServices(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.split(".")[0] in {"mcp", "anthropic", "jwt", "cryptography", "_cffi_backend", "probablepeople", "trafilatura"}:
+        if fullname.split(".")[0] in {"mcp", "anthropic", "jwt", "cryptography", "_cffi_backend", "probablepeople", "trafilatura", "inflate64", "lxml", "pycrfsuite", "jiter", "rpds", "regex"}:
             raise AssertionError("Snapshot imported request-only services")
 sys.meta_path.insert(0, RequestOnlyServices())
 from atlas.platform import config
+from atlas.platform import database
 def forbidden(*args, **kwargs):
-    raise AssertionError("Snapshot must not read runtime settings")
+    raise AssertionError("Snapshot must not construct runtime settings or services")
 config.get_settings = forbidden
 config.Settings.__init__ = forbidden
-import atlas.main
-assert atlas.main._get_default_application.cache_info().currsize == 0
-assert "probablepeople" not in sys.modules
-assert "trafilatura" not in sys.modules
+database.get_db_connection = forbidden
+spec = importlib.util.spec_from_file_location("snapshot_bootstrap", sys.argv[1])
+module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+module.__file__ = str(Path(sys.argv[2]) / "snapshot_bootstrap.py")
+assert module.preload_core_packages()
+routes = {}
+for name, count in {"entries": 9, "profiles": 8, "public": 8, "taxonomy": 4,
+        "atproto_identities": 5, "feed": 1, "org_annotations": 4,
+        "org_resources": 12, "organization_atproto_identities": 6}.items():
+    router = sys.modules['atlas.domains.catalog.api.' + name].router
+    assert len(router.routes) == count
+    routes[name] = router.routes
+assert module.preload_core_packages()
+for name, declared in routes.items():
+    assert sys.modules['atlas.domains.catalog.api.' + name].router.routes is declared
+atlas = sys.modules['atlas.main']
+assert atlas._get_default_application.cache_info().currsize == 0
+assert 'atlas.platform.http.router' not in sys.modules
+assert 'atlas.domains.discovery.pipeline.runner' not in sys.modules
 """
-    subprocess.check_call([sys.executable, "-c", script])
+    subprocess.check_call([sys.executable, "-c", script, str(PATH), str(tmp_path)])

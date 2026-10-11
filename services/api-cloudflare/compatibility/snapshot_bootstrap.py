@@ -23,9 +23,23 @@ def preload_core_packages():
         raise RuntimeError("Bundled API core does not match its release.")
     if str(archive) not in sys.path:
         sys.path.insert(0, str(archive))
-    # Preload the bounded catalog module graph to reduce cold profile response
-    # time. Importing the factory module leaves settings, application construction,
-    # MCP, model SDKs, and native signing services owned by actual requests.
-    for module in ("pydantic_core", "fastapi", "httpx", "atlas.main"):
+    # Preload catalog route declarations to reduce cold profile response time.
+    # Settings, application construction, discovery execution, MCP, model SDKs,
+    # and native signing services remain owned by actual requests.
+    for module in (
+        "pydantic_core",
+        "fastapi",
+        "httpx",
+        "atlas.main",
+        "atlas.domains.catalog.api.entries",
+        "atlas.domains.catalog.api.profiles",
+        "atlas.domains.catalog.api.public",
+        "atlas.domains.catalog.api.taxonomy",
+        "atlas.domains.catalog.api.atproto_identities",
+        "atlas.domains.catalog.api.feed",
+        "atlas.domains.catalog.api.org_annotations",
+        "atlas.domains.catalog.api.org_resources",
+        "atlas.domains.catalog.api.organization_atproto_identities",
+    ):
         importlib.import_module(module)
     return True
