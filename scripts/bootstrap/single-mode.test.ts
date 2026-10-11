@@ -23,6 +23,17 @@ function runFor(argv: string[]): BootstrapRun {
 }
 
 void describe("single-phase bootstrap modes", () => {
+  void it("records the Access gate against its selected hosted target", () => {
+    const run = runFor(["--access-gate", "--target", "staging"]);
+    const mode = selectSingleMode(run);
+    assert.ok(mode);
+    mode.record({ success: true, followUpItems: [] });
+    assert.equal(
+      run.state.targetPhases?.["access-gate:staging"]?.status,
+      "complete",
+    );
+    assert.equal(run.state.targetPhases?.["access-gate:production"], undefined);
+  });
   void it("selects nothing for a full bootstrap run", () => {
     assert.equal(selectSingleMode(runFor([])), null);
   });

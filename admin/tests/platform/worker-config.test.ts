@@ -11,7 +11,10 @@ import { ADMIN_PUBLIC_URL as PUBLIC_URL } from "../fixtures/admin";
 describe("the admin Worker's deployment settings", () => {
   it("publishes only to the admin's own hostname, with no other way in", () => {
     const worker = adminWorkerConfig(
-      { ATLAS_ADMIN_PUBLIC_URL: PUBLIC_URL },
+      {
+        ATLAS_ADMIN_PUBLIC_URL: PUBLIC_URL,
+        ATLAS_ADMIN_DEPLOY_ENVIRONMENT: "production",
+      },
       { mode: "production" },
     );
 
@@ -28,6 +31,49 @@ describe("the admin Worker's deployment settings", () => {
     expect(
       Object.values(worker.env).every((binding) => binding.type === "secret"),
     ).toBe(true);
+  });
+
+  it("isolates staging code, secrets and hostname from production", () => {
+    const worker = adminWorkerConfig(
+      {
+        ATLAS_ADMIN_PUBLIC_URL: "https://atlas-admin-staging.rebuildingus.org",
+        ATLAS_ADMIN_DEPLOY_ENVIRONMENT: "staging",
+      },
+      { mode: "production" },
+    );
+    expect(worker.name).toBe("atlas-admin-staging");
+    expect(worker.domains).toEqual(["atlas-admin-staging.rebuildingus.org"]);
+  });
+
+  it.each([undefined, "preview"])(
+    "refuses an undefined deployment target %s",
+    (target) => {
+      expect(() =>
+        adminWorkerConfig(
+          {
+            ATLAS_ADMIN_PUBLIC_URL: PUBLIC_URL,
+            ATLAS_ADMIN_DEPLOY_ENVIRONMENT: target,
+          },
+          { mode: "production" },
+        ),
+      ).toThrow("ATLAS_ADMIN_DEPLOY_ENVIRONMENT must be production or staging");
+    },
+  );
+
+  it.each([
+    ["staging", PUBLIC_URL],
+    ["production", "https://atlas-admin-staging.rebuildingus.org"],
+    ["staging", "https://unrelated.example.org"],
+  ])("refuses target %s taking over hostname %s", (target, publicUrl) => {
+    expect(() =>
+      adminWorkerConfig(
+        {
+          ATLAS_ADMIN_PUBLIC_URL: publicUrl,
+          ATLAS_ADMIN_DEPLOY_ENVIRONMENT: target,
+        },
+        { mode: "production" },
+      ),
+    ).toThrow("does not match the");
   });
 
   it("has no hostname in development and allows the development operator there only", () => {

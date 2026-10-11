@@ -51,7 +51,13 @@ export interface PhaseResult {
  * mark the other's readiness.
  */
 export type TargetPhaseId =
-  "infra" | "database" | "deploy" | "api-domain" | "api-edge" | "admin-keys";
+  | "infra"
+  | "database"
+  | "deploy"
+  | "api-domain"
+  | "api-edge"
+  | "admin-keys"
+  | "access-gate";
 
 export function targetPhaseKey(
   phaseId: TargetPhaseId,

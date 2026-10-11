@@ -106,7 +106,8 @@ async def test_a_lookup_joins_what_the_app_knows_with_the_workspace_discounts(
     def _answer(request: httpx.Request) -> httpx.Response:
         assert request.url.path == LOOKUP_PATH
         assert (
-            request.headers["X-Atlas-Callback-Secret"] == "callback-test-secret"
+            request.headers["X-Atlas-Callback-Secret"]
+            == "callback-test-secret"  # pragma: allowlist secret
         )  # pragma: allowlist secret
         asked.append(json.loads(request.content))
         return httpx.Response(200, json=APP_ANSWER)

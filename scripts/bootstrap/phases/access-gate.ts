@@ -21,6 +21,10 @@ import { CfCommandError, createCfRunner, type CfRunner } from "../lib/cf.js";
 import { acquireCloudflareToken } from "../lib/cloudflare.js";
 import { mergeEnvFile, parseEnvFile } from "../lib/env-file.js";
 import {
+  hostedEnvFilePath,
+  type HostedDeployTarget,
+} from "../lib/hosted-target.js";
+import {
   allowPolicyBody,
   appBody,
   planAccessGate,
@@ -68,8 +72,18 @@ function required(env: Map<string, string>, key: string): string {
  */
 export function readAccessGateConfig(
   env: Map<string, string>,
+  target: HostedDeployTarget,
 ): AccessGateConfig {
   const hostname = new URL(required(env, "ATLAS_ADMIN_PUBLIC_URL")).hostname;
+  const expectedHostname =
+    target === "production"
+      ? "atlas-admin.rebuildingus.org"
+      : "atlas-admin-staging.rebuildingus.org";
+  if (hostname !== expectedHostname) {
+    throw new Error(
+      `ATLAS_ADMIN_PUBLIC_URL does not match the ${target} admin hostname.`,
+    );
+  }
   const operatorEmails = required(env, "ATLAS_PLATFORM_OPERATOR_EMAILS")
     .split(",")
     .map((email) => email.trim().toLowerCase())
@@ -81,7 +95,7 @@ export function readAccessGateConfig(
     }
   }
   return {
-    appName: APP_NAME,
+    appName: target === "production" ? APP_NAME : `${APP_NAME} staging`,
     emailDomain,
     hostname,
     operatorEmails,
@@ -271,22 +285,25 @@ function mergedEnv(files: string[]): Map<string, string> {
  */
 export async function runAccessGatePhase(
   projectRoot: string,
+  target: HostedDeployTarget,
   doctorMode: boolean,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
+  const envFile = hostedEnvFilePath(projectRoot, target);
+  const rerunCommand = `pnpm bootstrap --access-gate --target ${target === "production" ? "prod" : "staging"}`;
   const envFiles = [
-    path.join(projectRoot, ".env.production"),
+    envFile,
     path.join(projectRoot, ".env"),
     path.join(projectRoot, "admin", ".env"),
   ];
   const env = mergedEnv(envFiles);
   let config: AccessGateConfig;
   try {
-    config = readAccessGateConfig(env);
+    config = readAccessGateConfig(env, target);
   } catch (error) {
     log.error((error as Error).message);
     followUpItems.push(
-      "Set ATLAS_ADMIN_PUBLIC_URL, ATLAS_PLATFORM_OPERATOR_EMAILS and ATLAS_ACCESS_EMAIL_DOMAIN in .env.production.",
+      `Set ATLAS_ADMIN_PUBLIC_URL, ATLAS_PLATFORM_OPERATOR_EMAILS and ATLAS_ACCESS_EMAIL_DOMAIN in ${path.basename(envFile)}.`,
     );
     return { followUpItems, status: "blocked", success: false };
   }
@@ -296,7 +313,7 @@ export async function runAccessGatePhase(
       "CLOUDFLARE_ACCOUNT_ID is required: the Access gate must be created in Atlas's account.",
     );
     followUpItems.push(
-      "Set CLOUDFLARE_ACCOUNT_ID in .env.production to the Rebuilding America account.",
+      `Set CLOUDFLARE_ACCOUNT_ID in ${path.basename(envFile)} to the Rebuilding America account.`,
     );
     return { followUpItems, status: "blocked", success: false };
   }
@@ -324,7 +341,7 @@ export async function runAccessGatePhase(
   if (result.plan.blocked) {
     log.error(result.plan.blocked);
     followUpItems.push(
-      `${result.plan.blocked} Follow docs/runbooks/platform-admin-access.md, then run pnpm bootstrap --access-gate again.`,
+      `${result.plan.blocked} Follow docs/runbooks/platform-admin-access.md, then run ${rerunCommand} again.`,
     );
     return { followUpItems, status: "blocked", success: false };
   }
@@ -334,7 +351,7 @@ export async function runAccessGatePhase(
       ? { followUpItems, status: "complete", success: true }
       : {
           followUpItems: [
-            `Run pnpm bootstrap --access-gate to make ${String(pending)} Access change(s).`,
+            `Run ${rerunCommand} to make ${String(pending)} Access change(s).`,
           ],
           status: "partial",
           success: false,
@@ -342,11 +359,11 @@ export async function runAccessGatePhase(
   }
 
   mergeEnvFile(
-    path.join(projectRoot, ".env.production"),
+    envFile,
     new Map<string, string>(Object.entries(result.outputs)),
   );
   log.success(
-    `Access gate ready. ATLAS_ACCESS_TEAM_DOMAIN and ATLAS_ACCESS_AUD saved to .env.production for the admin app.`,
+    `Access gate ready. ATLAS_ACCESS_TEAM_DOMAIN and ATLAS_ACCESS_AUD saved to ${path.basename(envFile)} for the admin app.`,
   );
   return { followUpItems, status: "complete", success: true };
 }

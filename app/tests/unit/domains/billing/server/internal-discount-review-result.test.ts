@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-start/server-only", () => ({}));
 
 vi.mock("@/domains/access/server/runtime", () => ({
-  getAuthRuntimeConfig: () => ({ callbackSecret: "callback-test-secret" }),
+  getAuthRuntimeConfig: () => ({ callbackSecret: "callback-test-secret" }), // pragma: allowlist secret
 }));
 
 vi.mock("@/domains/billing/server/discount-verification-emails", () => ({
@@ -27,7 +27,7 @@ describe("the discount review-result callback", () => {
     const response = await handleDiscountReviewResultRequest(
       new Request("https://atlas.test/api/auth/internal/discount-review-results", {
         body: JSON.stringify({ segment: "student", status: "verified", user_id: "user_1" }),
-        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" },
+        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" }, // pragma: allowlist secret
         method: "POST",
       }),
     );
@@ -66,7 +66,7 @@ describe("the discount review-result callback", () => {
     const response = await handleDiscountReviewResultRequest(
       new Request("https://atlas.test/api/auth/internal/discount-review-results", {
         body,
-        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" },
+        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" }, // pragma: allowlist secret
         method: "POST",
       }),
     );
@@ -86,7 +86,7 @@ describe("the discount review-result callback", () => {
       const response = await handleDiscountReviewResultRequest(
         new Request("https://atlas.test/api/auth/internal/discount-review-results", {
           body: JSON.stringify({ segment: "student", status: "rejected", user_id: "user_1" }),
-          headers: { "X-Atlas-Callback-Secret": "callback-test-secret" },
+          headers: { "X-Atlas-Callback-Secret": "callback-test-secret" }, // pragma: allowlist secret
           method: "POST",
         }),
       );

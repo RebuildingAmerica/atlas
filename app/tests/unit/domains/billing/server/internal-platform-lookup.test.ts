@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ lookupPlatformAccount: vi.fn() }));
 
 vi.mock("@tanstack/react-start/server-only", () => ({}));
 vi.mock("@/domains/access/server/runtime", () => ({
-  getAuthRuntimeConfig: () => ({ callbackSecret: "callback-test-secret" }),
+  getAuthRuntimeConfig: () => ({ callbackSecret: "callback-test-secret" }), // pragma: allowlist secret
 }));
 vi.mock("@/domains/billing/server/platform-lookup", () => mocks);
 
@@ -21,7 +21,7 @@ describe("the platform lookup callback", () => {
     const response = await handlePlatformLookupRequest(
       new Request("https://atlas.test/api/auth/internal/platform-lookup", {
         body: JSON.stringify({ query: " dana@example.org " }),
-        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" },
+        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" }, // pragma: allowlist secret
         method: "POST",
       }),
     );
@@ -57,7 +57,7 @@ describe("the platform lookup callback", () => {
     const response = await handlePlatformLookupRequest(
       new Request("https://atlas.test/api/auth/internal/platform-lookup", {
         body,
-        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" },
+        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" }, // pragma: allowlist secret
         method: "POST",
       }),
     );

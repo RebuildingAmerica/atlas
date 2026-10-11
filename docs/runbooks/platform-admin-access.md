@@ -102,6 +102,12 @@ It saves `ATLAS_ACCESS_TEAM_DOMAIN` and `ATLAS_ACCESS_AUD` to `.env.production`.
 Neither is secret: the audience tag is inside every Access token. The admin app
 refuses to start without both.
 
+For staging, put the staging hostname and operators in `.env.staging` and run
+`pnpm bootstrap --access-gate --target staging`. It creates the separate "Atlas
+platform admin staging" application and policy and writes its audience to
+`.env.staging`. A staging run refuses the production hostname and cannot mark
+production's gate ready.
+
 To check the live setup later without changing anything:
 
 ```bash
@@ -133,9 +139,19 @@ admin signs with it.
 In each GitHub Environment (`staging`, `production`), set these. The Access
 values and operator list are the ones the earlier steps produced.
 
+Staging uses `https://atlas-admin-staging.rebuildingus.org` and the
+`atlas-admin-staging` Worker. Production uses
+`https://atlas-admin.rebuildingus.org` and the `atlas-admin` Worker. Create an
+Access application for each hostname, with its own audience, signing key and API
+target. Never reuse the production hostname or signing key for staging. The
+deploy action supplies `ATLAS_ADMIN_DEPLOY_ENVIRONMENT` explicitly, and the
+build refuses a hostname that belongs to the other environment. For local
+production-build checks, set `ATLAS_ADMIN_DEPLOY_ENVIRONMENT=production` along
+with `ATLAS_ADMIN_PUBLIC_URL`.
+
 | Kind     | Name                             | Value                                                |
 | -------- | -------------------------------- | ---------------------------------------------------- |
-| Variable | `ATLAS_ADMIN_PUBLIC_URL`         | `https://atlas-admin.rebuildingus.org`               |
+| Variable | `ATLAS_ADMIN_PUBLIC_URL`         | The distinct staging or production origin above      |
 | Variable | `ATLAS_PLATFORM_API_URL`         | The API origin the admin calls                       |
 | Variable | `ATLAS_ACCESS_TEAM_DOMAIN`       | From step 5                                          |
 | Variable | `ATLAS_ACCESS_AUD`               | From step 5                                          |
