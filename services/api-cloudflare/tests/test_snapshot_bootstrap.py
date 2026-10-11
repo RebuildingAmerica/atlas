@@ -25,7 +25,7 @@ def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_p
         core.writestr("atlas/__init__.py", "")
         core.writestr(
             "atlas/main.py",
-            'raise AssertionError("Full API graph must load during a request")\n',
+            'def create_app():\n    raise AssertionError("Snapshot constructed an application")\n',
         )
     (tmp_path / "core-identity.json").write_text(
         json.dumps(
@@ -45,7 +45,7 @@ assert module.preload_core_packages()
 import pydantic_core
 assert "fastapi" in sys.modules
 assert "httpx" in sys.modules
-assert "atlas.main" not in sys.modules
+assert "atlas.main" in sys.modules
 print(json.dumps({"imported": pydantic_core.IMPORTED, "paths": sys.path.count(str(Path(sys.argv[2]) / "python_modules/core.zip")), "repeated": module.preload_core_packages()}))
 """
     output = subprocess.check_output(
@@ -76,11 +76,11 @@ def test_snapshot_requires_matching_core_before_importing_application(
 def test_real_api_factory_module_import_does_not_construct_settings_or_app():
     script = """
 import importlib.abc, sys
-class RequestOnlyNative(importlib.abc.MetaPathFinder):
+class RequestOnlyServices(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.split(".")[0] in {"jwt", "cryptography", "_cffi_backend"}:
-            raise AssertionError("Snapshot imported request-only native signing libraries")
-sys.meta_path.insert(0, RequestOnlyNative())
+        if fullname.split(".")[0] in {"mcp", "anthropic", "jwt", "cryptography", "_cffi_backend", "probablepeople", "trafilatura"}:
+            raise AssertionError("Snapshot imported request-only services")
+sys.meta_path.insert(0, RequestOnlyServices())
 from atlas.platform import config
 def forbidden(*args, **kwargs):
     raise AssertionError("Snapshot must not read runtime settings")

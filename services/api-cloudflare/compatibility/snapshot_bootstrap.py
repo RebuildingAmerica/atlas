@@ -23,10 +23,9 @@ def preload_core_packages():
         raise RuntimeError("Bundled API core does not match its release.")
     if str(archive) not in sys.path:
         sys.path.insert(0, str(archive))
-    # Reuse the framework imports that passed hosted validation to reduce cold
-    # profile response time. The full API graph exceeded the provider's 64 MiB
-    # snapshot limit; native cryptography also cannot initialize at deployment.
-    # Application code, settings, and signing services remain request owned.
-    for module in ("pydantic_core", "fastapi", "httpx"):
+    # Preload the bounded catalog module graph to reduce cold profile response
+    # time. Importing the factory module leaves settings, application construction,
+    # MCP, model SDKs, and native signing services owned by actual requests.
+    for module in ("pydantic_core", "fastapi", "httpx", "atlas.main"):
         importlib.import_module(module)
     return True
