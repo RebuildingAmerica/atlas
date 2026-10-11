@@ -10,9 +10,22 @@ import { CloudflareAccessVerifier } from "@rebuildingamerica/atlas-access/perime
 import type { PerimeterVerifier } from "@rebuildingamerica/atlas-access/perimeter/perimeter";
 import { readAdminEnv, type AdminEnv, type AdminEnvSource } from "./admin-env";
 
+export interface AdminApiRuntimeBinding {
+  getByName(
+    name: string,
+    options: { locationHint: "enam" },
+  ): { fetch(request: Request): Promise<Response> };
+}
+
+export interface AdminRuntimeSource extends AdminEnvSource {
+  API_RUNTIME?: AdminApiRuntimeBinding;
+}
+
 export interface AdminRuntime {
   env: AdminEnv;
   verifier: PerimeterVerifier;
+  development: boolean;
+  apiRuntime?: AdminApiRuntimeBinding;
 }
 
 export type AdminRuntimeResult = AdminRuntime | Error;
@@ -26,12 +39,19 @@ let cached: AdminRuntimeResult | undefined;
  * @param development - True only under `vite dev`.
  */
 export function createAdminRuntime(
-  source: AdminEnvSource,
+  source: AdminRuntimeSource,
   development: boolean,
 ): AdminRuntimeResult {
   try {
     const env = readAdminEnv(source, { development });
-    return { env, verifier: new CloudflareAccessVerifier(env.access) };
+    if (!development && !source.API_RUNTIME)
+      throw new Error("API_RUNTIME binding is required on a deployed admin.");
+    return {
+      env,
+      verifier: new CloudflareAccessVerifier(env.access),
+      development,
+      apiRuntime: source.API_RUNTIME,
+    };
   } catch (error) {
     return error instanceof Error ? error : new Error(String(error));
   }

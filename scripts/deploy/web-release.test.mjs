@@ -37,6 +37,7 @@ test("candidate artifacts use canonical build origins without changing runtime o
     ATLAS_WEB_CANONICAL_URL: "https://atlas.example.com",
     ATLAS_AUTH_INTERNAL_SECRET: "private-existing-secret",
     ATLAS_AUTH_BASE_PATH: "/custom-auth",
+    ATLAS_ADMIN_PUBLIC_URL: "https://admin.example.com",
   };
   const build = webBuildEnvironment(runtime);
   assert.equal(build.ATLAS_PUBLIC_URL, runtime.ATLAS_WEB_CANONICAL_URL);
@@ -52,6 +53,28 @@ test("candidate artifacts use canonical build origins without changing runtime o
   );
   assert.equal(release.publicEnv.ATLAS_PUBLIC_URL, runtime.ATLAS_PUBLIC_URL);
   assert.equal(release.publicEnv.NODE_ENV, "production");
+  assert.equal(
+    release.publicEnv.ATLAS_ADMIN_PUBLIC_URL,
+    runtime.ATLAS_ADMIN_PUBLIC_URL,
+  );
+  assert.equal(
+    release.buildPublicEnv.ATLAS_ADMIN_PUBLIC_URL,
+    runtime.ATLAS_ADMIN_PUBLIC_URL,
+  );
+  assert.throws(
+    () =>
+      verifyWebManifest(
+        {
+          ...release,
+          buildPublicEnv: {
+            ...release.buildPublicEnv,
+            ATLAS_ADMIN_PUBLIC_URL: "https://other.example.com",
+          },
+        },
+        release,
+      ),
+    /build-time/,
+  );
   assert.equal(
     JSON.stringify(release).includes("private-existing-secret"),
     false,

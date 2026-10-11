@@ -14,6 +14,8 @@ describe("resolveAuthRuntimeConfig", () => {
         ATLAS_WEB_CANONICAL_URL: "https://atlas.example.com",
         ATLAS_MULTI_USER: "true",
         ATLAS_AUTH_INTERNAL_SECRET: "existing-signing-key",
+        ATLAS_AUTH_CALLBACK_SECRET: "dedicated-api-callback",
+        ATLAS_EDGE_ORIGIN_SECRET: "low-privilege-ip-proof",
         ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
           "https://candidate.atlas.example.com/api/auth/internal/api-key",

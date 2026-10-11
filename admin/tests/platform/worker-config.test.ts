@@ -27,9 +27,14 @@ describe("the admin Worker's deployment settings", () => {
       assets: { runWorkerFirst: ["/*", "!/assets/*"] },
       observability: { enabled: true, logs: { invocationLogs: false } },
     });
-    expect(Object.keys(worker.env)).toEqual([...ADMIN_SETTINGS]);
+    expect(worker.env.API_RUNTIME).toEqual({
+      type: "durable-object",
+      worker: "atlas-api-production",
+      exportName: "ApiRuntime",
+    });
+    expect(Object.keys(worker.env)).toEqual([...ADMIN_SETTINGS, "API_RUNTIME"]);
     expect(
-      Object.values(worker.env).every((binding) => binding.type === "secret"),
+      ADMIN_SETTINGS.every((name) => worker.env[name]?.type === "secret"),
     ).toBe(true);
   });
 
@@ -43,6 +48,11 @@ describe("the admin Worker's deployment settings", () => {
     );
     expect(worker.name).toBe("atlas-admin-staging");
     expect(worker.domains).toEqual(["atlas-admin-staging.rebuildingus.org"]);
+    expect(worker.env.API_RUNTIME).toEqual({
+      type: "durable-object",
+      worker: "atlas-api-staging",
+      exportName: "ApiRuntime",
+    });
   });
 
   it.each([undefined, "preview"])(
@@ -80,6 +90,7 @@ describe("the admin Worker's deployment settings", () => {
     const worker = adminWorkerConfig({}, { mode: "development" });
 
     expect(worker.domains).toEqual([]);
+    expect(worker.env.API_RUNTIME).toBeUndefined();
     expect(Object.keys(worker.env)).toEqual([
       ...ADMIN_SETTINGS,
       ...ADMIN_DEVELOPMENT_SETTINGS,

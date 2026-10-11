@@ -12,7 +12,7 @@ export function createWorkerApiTransport(
   binding: ApiRuntimeBinding,
   apiOrigin: string,
   clientIp: string | null,
-  internalSecret: string,
+  edgeOriginSecret: string,
   routePrefix: "" | "/atlas",
 ): ServerApiTransport {
   if (routePrefix !== "" && routePrefix !== "/atlas")
@@ -55,6 +55,10 @@ export function createWorkerApiTransport(
           "forwarded",
           "x-real-ip",
           "cf-connecting-ip",
+          "x-atlas-internal-secret",
+          "x-atlas-actor-id",
+          "x-atlas-actor-email",
+          "x-atlas-organization-id",
           "x-atlas-client-ip",
           "x-atlas-proxy-secret",
         ].includes(name)
@@ -62,9 +66,9 @@ export function createWorkerApiTransport(
         headers.delete(name);
     }
     for (const name of hopHeaders) if (name) headers.delete(name);
-    if (clientIp && internalSecret) {
+    if (clientIp && edgeOriginSecret) {
       headers.set("x-atlas-client-ip", clientIp);
-      headers.set("x-atlas-proxy-secret", internalSecret);
+      headers.set("x-atlas-proxy-secret", edgeOriginSecret);
     }
     target.pathname = routePrefix + target.pathname;
     return binding

@@ -83,7 +83,7 @@ export async function makeRuntime(
   const verifier = new CloudflareAccessVerifier(env.access, {
     fetch: certsFetch([keys]).fetch,
   });
-  return { keys, runtime: { env, verifier } };
+  return { keys, runtime: { env, verifier, development: false } };
 }
 
 /** A request as Access forwards it, signed in as `email`. */

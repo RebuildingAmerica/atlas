@@ -175,15 +175,16 @@ it("preserves an upstream response stream and propagates cancellation without bu
   expect(cancel).toHaveBeenCalledExactlyOnceWith("visitor left");
 });
 
-it("keeps health, schema and ATProto identity API calls on the binding with verified internal auth", async () => {
+it("keeps health, schema and ATProto identity API calls on the binding with a verified signed actor assertion", async () => {
   const urls: string[] = [];
   const transport = createWorkerApiTransport(
     {
       getByName: () => ({
         fetch: (request: Request) => {
           urls.push(request.url);
-          expect(request.headers.get("x-atlas-internal-secret")).toBe("verified-session-secret");
-          expect(request.headers.get("x-atlas-actor-id")).toBe("verified-user");
+          expect(request.headers.get("x-atlas-actor-assertion")).toBe("verified-signed-assertion");
+          expect(request.headers.has("x-atlas-internal-secret")).toBe(false);
+          expect(request.headers.has("x-atlas-actor-id")).toBe(false);
           return Promise.resolve(new Response(null, { status: 204 }));
         },
       }),
@@ -199,7 +200,8 @@ it("keeps health, schema and ATProto identity API calls on the binding with veri
         await transport(
           new Request("https://api.example.com" + path, {
             headers: {
-              "x-atlas-internal-secret": "verified-session-secret",
+              "x-atlas-internal-secret": "retired-secret",
+              "x-atlas-actor-assertion": "verified-signed-assertion",
               "x-atlas-actor-id": "verified-user",
             },
           }),

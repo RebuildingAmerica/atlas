@@ -23,6 +23,12 @@ interface SecretBinding {
   type: "secret";
 }
 
+interface ApiRuntimeBinding {
+  type: "durable-object";
+  worker: string;
+  exportName: "ApiRuntime";
+}
+
 /**
  * Every setting the admin reads. Each is a secret binding: the deploy job
  * uploads the values with `cf deploy --secrets-file`, and `vite dev` reads them
@@ -53,7 +59,7 @@ export interface AdminWorkerConfig {
   domains: string[];
   assets: { runWorkerFirst: string[] };
   observability: { enabled: true; logs: { invocationLogs: false } };
-  env: Record<string, SecretBinding>;
+  env: Record<string, SecretBinding | ApiRuntimeBinding>;
 }
 
 function secretBindings(
@@ -69,14 +75,20 @@ const ADMIN_DEPLOYMENTS = {
   production: {
     name: ADMIN_WORKER_NAME,
     hostname: "atlas-admin.rebuildingus.org",
+    apiWorker: "atlas-api-production",
   },
   staging: {
     name: "atlas-admin-staging",
     hostname: "atlas-admin-staging.rebuildingus.org",
+    apiWorker: "atlas-api-staging",
   },
 } as const;
 
-function deployment(env: AdminBuildEnv): { name: string; hostname: string } {
+function deployment(env: AdminBuildEnv): {
+  name: string;
+  hostname: string;
+  apiWorker: string;
+} {
   const target = env.ATLAS_ADMIN_DEPLOY_ENVIRONMENT;
   if (target !== "production" && target !== "staging") {
     throw new Error(
@@ -143,10 +155,21 @@ export function adminWorkerConfig(
     assets: { runWorkerFirst: ["/*", "!/assets/*"] },
     // Tokenized URLs must not end up in Cloudflare's request logs.
     observability: { enabled: true, logs: { invocationLogs: false } },
-    env: secretBindings(
-      development
-        ? [...ADMIN_SETTINGS, ...ADMIN_DEVELOPMENT_SETTINGS]
-        : ADMIN_SETTINGS,
-    ),
+    env: {
+      ...secretBindings(
+        development
+          ? [...ADMIN_SETTINGS, ...ADMIN_DEVELOPMENT_SETTINGS]
+          : ADMIN_SETTINGS,
+      ),
+      ...(target
+        ? {
+            API_RUNTIME: {
+              type: "durable-object" as const,
+              worker: target.apiWorker,
+              exportName: "ApiRuntime" as const,
+            },
+          }
+        : {}),
+    },
   };
 }

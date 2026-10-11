@@ -8,7 +8,7 @@ afterEach(() => {
 const env = {
   ATLAS_DOCS_URL: "https://docs.example.com",
   ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.com",
-  ATLAS_AUTH_INTERNAL_SECRET: "existing-internal-secret",
+  ATLAS_EDGE_ORIGIN_SECRET: "existing-edge-origin-secret",
 };
 test("Workers keeps auth, server functions and unrelated API routes in the app", async () => {
   for (const path of [
@@ -32,7 +32,7 @@ test("Workers proxy preserves the MCP canonical trailing slash and signed visito
     assert.equal(request.headers.get("x-atlas-client-ip"), "203.0.113.2");
     assert.equal(
       request.headers.get("x-atlas-proxy-secret"),
-      "existing-internal-secret",
+      "existing-edge-origin-secret",
     );
     assert.equal(request.headers.get("cookie"), null);
     return new Response("mcp");

@@ -12,9 +12,28 @@ describe("admin runtime", () => {
   it("builds the settings and an Access verifier", async () => {
     const { createAdminRuntime } = await import("@/server/admin-runtime");
 
-    const runtime = createAdminRuntime(adminSource(), false);
+    const binding = { getByName: vi.fn() };
+    const runtime = createAdminRuntime(
+      { ...adminSource(), API_RUNTIME: binding },
+      false,
+    );
 
     expect(runtime).not.toBeInstanceOf(Error);
+    expect(runtime).toMatchObject({ apiRuntime: binding, development: false });
+  });
+
+  it("refuses a hosted runtime without the private API binding", async () => {
+    const { createAdminRuntime } = await import("@/server/admin-runtime");
+    expect(createAdminRuntime(adminSource(), false)).toEqual(
+      new Error("API_RUNTIME binding is required on a deployed admin."),
+    );
+  });
+
+  it("explicitly uses ordinary API fetch only during local development", async () => {
+    const { createAdminRuntime } = await import("@/server/admin-runtime");
+    expect(createAdminRuntime(adminSource(), true)).toMatchObject({
+      development: true,
+    });
   });
 
   it("keeps the configuration error instead of throwing it", async () => {

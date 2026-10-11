@@ -17,6 +17,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 type NitroRouteRules = NonNullable<NitroPluginConfig["routeRules"]>;
 
 export const PUBLIC_ATLAS_ENV_KEYS = [
+  "ATLAS_ADMIN_PUBLIC_URL",
   "ATLAS_MANAGED",
   "ATLAS_MULTI_USER",
   "ATLAS_PUBLIC_URL",

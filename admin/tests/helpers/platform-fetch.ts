@@ -21,7 +21,8 @@ export async function signInOperator(
 ): Promise<AdminRuntime> {
   const { pkcs8 } = await makeSigningKey();
   const { keys, runtime } = await makeRuntime({}, pkcs8);
-  state.runtime = runtime;
+  // These response-mapping tests use the explicit local HTTP transport.
+  state.runtime = { ...runtime, development: true };
   state.request = await signedInRequest(keys);
-  return runtime;
+  return state.runtime;
 }

@@ -20,6 +20,9 @@ const canonical = {
   ATLAS_MANAGED: "true",
   ATLAS_MULTI_USER: "true",
   ATLAS_AUTH_INTERNAL_SECRET: "unchanged-private-signing",
+  ATLAS_AUTH_CALLBACK_SECRET: "dedicated-api-callback",
+  ATLAS_EDGE_ORIGIN_SECRET: "low-privilege-ip-proof",
+  ATLAS_ADMIN_PUBLIC_URL: "https://admin.example.com",
   DATABASE_URL: "postgres://user:private-db@db.example.com/atlas",
   ATLAS_EMAIL_RESEND_API_KEY: "unchanged-private-email",
   ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
@@ -125,7 +128,11 @@ test("write-only provider secrets require the existing value and never accept ci
     canonical,
   );
   assert.equal(
-    p.calls.some((url) => url.endsWith("/env_9?teamId=team_atlas")),
+    p.calls.some((url) =>
+      url.endsWith(
+        `/env_${Object.keys(canonical).indexOf("ATLAS_SAML_SP_PRIVATE_KEY")}?teamId=team_atlas`,
+      ),
+    ),
     false,
   );
   await assert.rejects(

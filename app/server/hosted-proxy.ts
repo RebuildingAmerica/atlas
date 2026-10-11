@@ -8,7 +8,7 @@ export async function proxyHostedRequest(
   request: Request,
   env: Pick<
     AtlasWorkerEnv,
-    "ATLAS_DOCS_URL" | "ATLAS_SERVER_API_PROXY_TARGET" | "ATLAS_AUTH_INTERNAL_SECRET"
+    "ATLAS_DOCS_URL" | "ATLAS_SERVER_API_PROXY_TARGET" | "ATLAS_EDGE_ORIGIN_SECRET"
   >,
 ): Promise<Response | null> {
   const url = new URL(request.url);
@@ -32,6 +32,7 @@ export async function proxyHostedRequest(
   for (const key of [
     "cookie",
     "x-atlas-internal-secret",
+    "x-atlas-actor-assertion",
     "x-atlas-actor-id",
     "x-atlas-actor-email",
     "x-atlas-organization-id",
@@ -49,7 +50,7 @@ export async function proxyHostedRequest(
   const clientIp = headers.get("x-forwarded-for");
   if (api && clientIp) {
     headers.set("x-atlas-client-ip", clientIp);
-    headers.set("x-atlas-proxy-secret", env.ATLAS_AUTH_INTERNAL_SECRET);
+    headers.set("x-atlas-proxy-secret", env.ATLAS_EDGE_ORIGIN_SECRET);
   }
   const upstream = await (docs ? fetch : fetchAtlasApiResponse)(
     new Request(target, new Request(request, { headers, redirect: "manual" })),

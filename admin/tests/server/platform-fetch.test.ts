@@ -37,11 +37,11 @@ describe("calling the platform API", () => {
     });
 
     expect(body).toEqual({ total: 0 });
-    const [url, init] = fetchMock.mock.calls[0] ?? [];
-    expect(url).toEqual(
-      new URL(`${API_ORIGIN}/api/platform/discount-verifications`),
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(request.url).toBe(
+      `${API_ORIGIN}/api/platform/discount-verifications`,
     );
-    const headers = new Headers(init?.headers);
+    const headers = request.headers;
     expect(headers.get("Authorization")).toMatch(
       /^Bearer [\w-]+\.[\w-]+\.[\w-]+$/,
     );
@@ -49,7 +49,7 @@ describe("calling the platform API", () => {
       state.request.headers.get("Cf-Access-Jwt-Assertion"),
     );
     expect(headers.get("Accept")).toBe("application/json");
-    expect(init?.method).toBe("GET");
+    expect(request.method).toBe("GET");
   });
 
   it("forwards no Access assertion when developing as a local operator", async () => {
@@ -62,9 +62,13 @@ describe("calling the platform API", () => {
     state.request = new Request("http://localhost:3200/");
     const fetchMock = stubFetch(new Response(null, { status: 204 }));
 
-    expect(await platformFetch("/api/platform/cloud-costs")).toBeUndefined();
     expect(
-      new Headers(fetchMock.mock.calls[0]?.[1]?.headers).has(
+      await platformFetch("/api/platform/cloud-costs", {
+        headers: { "Cf-Access-Jwt-Assertion": "forged" },
+      }),
+    ).toBeUndefined();
+    expect(
+      (fetchMock.mock.calls[0]?.[0] as Request).headers.has(
         "Cf-Access-Jwt-Assertion",
       ),
     ).toBe(false);

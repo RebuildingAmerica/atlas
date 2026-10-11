@@ -8,6 +8,7 @@ test("private runtime journal preserves credentials across candidate and canonic
       "https://atlas.example.com/api/auth/internal/api-key",
     ATLAS_AUTH_INTERNAL_SECRET: "unchanged-private-secret",
     STRIPE_API_KEY: "unchanged-stripe-key",
+    ATLAS_ADMIN_PUBLIC_URL: "https://admin.example.com",
   };
   const sha = "a".repeat(40);
   const journal = preserveRuntimeIdentity(runtime, sha);
@@ -29,6 +30,7 @@ test("private runtime journal preserves credentials across candidate and canonic
   );
   for (const patch of [
     { STRIPE_API_KEY: "replacement" },
+    { ATLAS_ADMIN_PUBLIC_URL: "https://other.example.com" },
     { ATLAS_AUTH_INTERNAL_SECRET: "replacement" },
     { ATLAS_PASSKEY_RP_ID: "other.example.com" },
   ])

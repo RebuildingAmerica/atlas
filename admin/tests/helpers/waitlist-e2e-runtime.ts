@@ -6,6 +6,7 @@ import type { AdminRuntime } from "../../src/server/admin-runtime";
 let runtime: AdminRuntime | undefined;
 export function loadAdminRuntime(): AdminRuntime {
   runtime ??= {
+    development: true,
     env: readAdminEnv(process.env, { development: true }),
     verifier: new CloudflareAccessVerifier(
       readAdminEnv(process.env, { development: true }).access,

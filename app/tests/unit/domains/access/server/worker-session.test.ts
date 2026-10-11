@@ -78,6 +78,7 @@ describe("Worker API binding", () => {
       for (const name of [
         "cookie",
         "x-atlas-internal-secret",
+        "x-atlas-actor-assertion",
         "x-atlas-actor-id",
         "x-atlas-organization-id",
       ])
@@ -90,7 +91,8 @@ describe("Worker API binding", () => {
       API_RUNTIME: { getByName: () => ({ fetch: boundFetch }) },
       ATLAS_API_ROUTE_PREFIX: "",
       ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.com",
-      ATLAS_AUTH_INTERNAL_SECRET: "shared-secret",
+      ATLAS_AUTH_INTERNAL_SECRET: "private-app-signing",
+      ATLAS_EDGE_ORIGIN_SECRET: "shared-secret",
       ATLAS_DOCS_URL: "https://docs.example.com",
     } as unknown as Parameters<typeof worker.fetch>[1];
     const response = await worker.fetch(
@@ -102,6 +104,7 @@ describe("Worker API binding", () => {
           cookie: "session=private",
           "x-atlas-client-ip": "forged",
           "x-atlas-internal-secret": "forged",
+          "x-atlas-actor-assertion": "forged-assertion",
           "x-atlas-actor-id": "forged",
           "x-atlas-organization-id": "forged",
         },
@@ -127,19 +130,19 @@ describe("Worker API binding", () => {
   });
 });
 
-it("preserves the internal API introspection credential for the app-owned auth handler", async () => {
+it("preserves the dedicated API introspection callback credential for the app-owned auth handler", async () => {
   const { default: worker } = await import("../../../../../server/worker");
   const env = { HYPERDRIVE: { connectionString: "postgres://session" } } as Parameters<
     typeof worker.fetch
   >[1];
   calls.render.mockImplementation((request: Request) => {
-    expect(request.headers.get("x-atlas-internal-secret")).toBe("api-introspection-secret");
+    expect(request.headers.get("x-atlas-callback-secret")).toBe("api-introspection-secret");
     return Promise.resolve(Response.json({ valid: true }));
   });
   const response = await worker.fetch(
     new Request("https://atlas.test/api/auth/internal/api-key", {
       method: "POST",
-      headers: { "x-atlas-internal-secret": "api-introspection-secret" },
+      headers: { "x-atlas-callback-secret": "api-introspection-secret" },
     }),
     env,
   );

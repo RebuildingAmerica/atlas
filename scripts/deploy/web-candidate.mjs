@@ -97,15 +97,29 @@ export function loadWebRuntime(raw) {
     "ATLAS_PUBLIC_URL",
     "ATLAS_SERVER_API_PROXY_TARGET",
     "ATLAS_AUTH_INTERNAL_SECRET",
+    "ATLAS_AUTH_CALLBACK_SECRET",
+    "ATLAS_EDGE_ORIGIN_SECRET",
+    "ATLAS_ADMIN_PUBLIC_URL",
     "DATABASE_URL",
     "ATLAS_EMAIL_RESEND_API_KEY",
     "ATLAS_AUTH_JWT_AUDIENCES",
     "ATLAS_AUTH_API_KEY_INTROSPECTION_URL",
   ])
     if (!env[key]?.trim()) throw new Error(`Runtime ${key} is required.`);
+  if (
+    new Set([
+      env.ATLAS_AUTH_INTERNAL_SECRET,
+      env.ATLAS_AUTH_CALLBACK_SECRET,
+      env.ATLAS_EDGE_ORIGIN_SECRET,
+    ]).size !== 3
+  )
+    throw new Error(
+      "Signing, callback and visitor identity secrets must be distinct.",
+    );
   for (const key of [
     "ATLAS_PUBLIC_URL",
     "ATLAS_SERVER_API_PROXY_TARGET",
+    "ATLAS_ADMIN_PUBLIC_URL",
     ...(env.ATLAS_WEB_CANONICAL_URL ? ["ATLAS_WEB_CANONICAL_URL"] : []),
   ]) {
     const url = new URL(env[key]);

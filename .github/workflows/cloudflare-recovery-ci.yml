@@ -1,0 +1,21 @@
+name: Verify Cloudflare recovery integration
+
+on:
+  push:
+    branches: [chore/cloudflare-production-recovery]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-recovery-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    with:
+      profile: production
+    secrets:
+      STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+      STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}

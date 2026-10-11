@@ -2,8 +2,9 @@
 
 /**
  * The one part of the Workers runtime module the admin reads: its settings and
- * secrets, as plain strings.
+ * secrets, and its private API runtime binding.
  */
 declare module "cloudflare:workers" {
-  export const env: Readonly<Record<string, string | undefined>>;
+  import type { AdminRuntimeSource } from "@/server/admin-runtime";
+  export const env: Readonly<AdminRuntimeSource>;
 }

@@ -16,6 +16,7 @@ import {
 } from "./web-assess.mjs";
 
 export const WEB_PUBLIC_ENV_KEYS = [
+  "ATLAS_ADMIN_PUBLIC_URL",
   "NODE_ENV",
   "ATLAS_MANAGED",
   "ATLAS_MULTI_USER",

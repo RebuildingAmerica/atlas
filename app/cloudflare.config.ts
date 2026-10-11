@@ -21,6 +21,9 @@ export default defineConfig({
       ATLAS_API_ROUTE_PREFIX: bindings.text<"" | "/atlas">(""),
       ATLAS_SERVER_API_PROXY_TARGET: bindings.text(""),
       ATLAS_AUTH_INTERNAL_SECRET: bindings.secret(),
+      ATLAS_AUTH_CALLBACK_SECRET: bindings.secret(),
+      ATLAS_EDGE_ORIGIN_SECRET: bindings.secret(),
+      ATLAS_ADMIN_PUBLIC_URL: bindings.text(""),
       HYPERDRIVE: bindings.hyperdrive({
         id: "00000000000000000000000000000000",
         dev: {

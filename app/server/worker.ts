@@ -6,6 +6,7 @@ import { currentWorkerRequest, runWorkerRequest } from "./request-scope";
 import { createWorkerApiTransport, type ApiRuntimeBinding } from "./api-transport";
 import { setServerApiTransportProvider } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import { proxyHostedRequest } from "./hosted-proxy";
+import { legacyAdminResponse } from "./legacy-admin";
 import { anonymousSessionResponse } from "../src/domains/access/server/anonymous-session";
 import { dispatchAuthRequest } from "../src/domains/access/server/auth-request-handler";
 
@@ -29,6 +30,8 @@ setServerApiTransportProvider(() => currentWorkerRequest()?.apiTransport);
 
 export default {
   async fetch(request: Request, env: WorkerRuntimeEnv): Promise<Response> {
+    const legacyAdmin = legacyAdminResponse(request, env.ATLAS_ADMIN_PUBLIC_URL);
+    if (legacyAdmin) return legacyAdmin;
     const anonymous = anonymousSessionResponse(request);
     if (anonymous) return anonymous;
     const url = new URL(request.url);
@@ -39,6 +42,10 @@ export default {
         [
           "forwarded",
           "x-real-ip",
+          "x-atlas-actor-assertion",
+          "x-atlas-actor-id",
+          "x-atlas-actor-email",
+          "x-atlas-organization-id",
           "x-atlas-client-ip",
           "x-atlas-proxy-secret",
           "cf-access-client-id",
@@ -57,7 +64,7 @@ export default {
           env.API_RUNTIME,
           env.ATLAS_SERVER_API_PROXY_TARGET,
           clientIp,
-          env.ATLAS_AUTH_INTERNAL_SECRET,
+          env.ATLAS_EDGE_ORIGIN_SECRET,
           env.ATLAS_API_ROUTE_PREFIX,
         )
       : undefined;

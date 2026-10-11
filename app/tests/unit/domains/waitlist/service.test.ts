@@ -8,6 +8,8 @@ import { WaitlistStore } from "@/domains/waitlist/server/store";
 import { sqliteWaitlistDatabase } from "@/domains/waitlist/server/database";
 import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
 import * as functions from "@/domains/waitlist/waitlist.functions";
+import type * as platformService from "@/domains/waitlist/server/platform-service";
+import type { StaffWaitlistAction } from "@/domains/waitlist/contracts";
 import { handlePlatformWaitlistRequest } from "@/domains/waitlist/server/internal-platform-waitlist";
 import { requireWaitlistStaff } from "@/domains/waitlist/server/runtime";
 import { recordWaitlistPurchase } from "@/domains/waitlist/server/purchases";
@@ -77,19 +79,21 @@ describe("waitlist server contracts", () => {
   }
   const platformFunctions = {
     listWaitlistRequests: () =>
-      operation<Awaited<ReturnType<typeof functions.listWaitlistRequests>>>({ operation: "list" }),
+      operation<Awaited<ReturnType<typeof platformService.listStaffRequests>>>({
+        operation: "list",
+      }),
     loadWaitlistStaffDetail: ({ data }: { data: { id: string } }) =>
-      operation<Awaited<ReturnType<typeof functions.loadWaitlistStaffDetail>>>({
+      operation<Awaited<ReturnType<typeof platformService.staffDetail>>>({
         operation: "detail",
         ...data,
       }),
     inviteWaitlistRequests: ({ data }: { data: { ids: string[] } }) =>
-      operation<Awaited<ReturnType<typeof functions.inviteWaitlistRequests>>>({
+      operation<Awaited<ReturnType<typeof platformService.inviteRequests>>>({
         operation: "invite",
         ...data,
       }),
-    actOnWaitlistRequest: ({ data }: { data: functions.StaffWaitlistAction }) =>
-      operation<Awaited<ReturnType<typeof functions.actOnWaitlistRequest>>>({
+    actOnWaitlistRequest: ({ data }: { data: StaffWaitlistAction }) =>
+      operation<Awaited<ReturnType<typeof platformService.staffAction>>>({
         operation: "action",
         ...data,
       }),

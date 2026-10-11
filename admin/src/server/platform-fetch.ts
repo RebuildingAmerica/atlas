@@ -72,19 +72,47 @@ export async function platformFetch<T>(
   const operator = await identifyOperator(getRequest(), runtime);
   if (!operator.ok) throw new PlatformApiError(403, SIGN_IN_AGAIN);
 
+  const target = new URL(url, runtime.env.apiOrigin);
+  if (
+    target.origin !== runtime.env.apiOrigin ||
+    target.username ||
+    target.password ||
+    !/^\/api\/platform(?:\/|$)/.test(target.pathname) ||
+    /%(?:2f|5c)/i.test(target.pathname)
+  )
+    throw new PlatformApiError(
+      403,
+      "The requested platform API route is not allowed.",
+    );
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   headers.set(
     "Authorization",
     `Bearer ${await signAdminToken(runtime.env, operator.email, Date.now())}`,
   );
+  headers.delete(ACCESS_ASSERTION_HEADER);
   if (operator.assertion)
     headers.set(ACCESS_ASSERTION_HEADER, operator.assertion);
 
-  const response = await fetch(new URL(url, runtime.env.apiOrigin), {
+  const request = new Request(target, {
     ...options,
     headers,
+    redirect: "manual",
   });
+  // The private binding preserves both proofs of the operator's identity;
+  // redirects cannot forward them beyond the trusted platform API routes.
+  let response: Response;
+  if (runtime.development) response = await fetch(request);
+  else {
+    if (!runtime.apiRuntime)
+      throw new PlatformApiError(
+        503,
+        "The Atlas platform admin is not configured.",
+      );
+    response = await runtime.apiRuntime
+      .getByName("application", { locationHint: "enam" })
+      .fetch(request);
+  }
   const body = await readBody(response);
   if (!response.ok)
     throw new PlatformApiError(
