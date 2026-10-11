@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from atlas.platform.config import Settings
 
 
-class DatabaseConnector(Protocol):
+class DatabaseConnector(Protocol):  # pragma: no cover - typing-only protocol
     """Open a connection owned by the current hosted request."""
 
     async def __call__(self, database_url: str, *, backend: str | None = None) -> Any: ...
