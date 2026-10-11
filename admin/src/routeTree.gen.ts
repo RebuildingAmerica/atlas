@@ -8,120 +8,150 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as SwitchesRouteImport } from "./routes/switches";
-import { Route as DiscountsRouteImport } from "./routes/discounts";
-import { Route as CloudCostsRouteImport } from "./routes/cloud-costs";
-import { Route as AccountsRouteImport } from "./routes/accounts";
-import { Route as IndexRouteImport } from "./routes/index";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountsRouteImport } from './routes/accounts'
+import { Route as CloudCostsRouteImport } from './routes/cloud-costs'
+import { Route as DiscountsRouteImport } from './routes/discounts'
+import { Route as SwitchesRouteImport } from './routes/switches'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 
-const SwitchesRoute = SwitchesRouteImport.update({
-  id: "/switches",
-  path: "/switches",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const DiscountsRoute = DiscountsRouteImport.update({
-  id: "/discounts",
-  path: "/discounts",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const CloudCostsRoute = CloudCostsRouteImport.update({
-  id: "/cloud-costs",
-  path: "/cloud-costs",
-  getParentRoute: () => rootRouteImport,
-} as any);
-const AccountsRoute = AccountsRouteImport.update({
-  id: "/accounts",
-  path: "/accounts",
-  getParentRoute: () => rootRouteImport,
-} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
+const AccountsRoute = AccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CloudCostsRoute = CloudCostsRouteImport.update({
+  id: '/cloud-costs',
+  path: '/cloud-costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiscountsRoute = DiscountsRouteImport.update({
+  id: '/discounts',
+  path: '/discounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SwitchesRoute = SwitchesRouteImport.update({
+  id: '/switches',
+  path: '/switches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/accounts": typeof AccountsRoute;
-  "/cloud-costs": typeof CloudCostsRoute;
-  "/discounts": typeof DiscountsRoute;
-  "/switches": typeof SwitchesRoute;
+  '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/cloud-costs': typeof CloudCostsRoute
+  '/discounts': typeof DiscountsRoute
+  '/switches': typeof SwitchesRoute
+  '/waitlist': typeof WaitlistRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/accounts": typeof AccountsRoute;
-  "/cloud-costs": typeof CloudCostsRoute;
-  "/discounts": typeof DiscountsRoute;
-  "/switches": typeof SwitchesRoute;
+  '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/cloud-costs': typeof CloudCostsRoute
+  '/discounts': typeof DiscountsRoute
+  '/switches': typeof SwitchesRoute
+  '/waitlist': typeof WaitlistRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/accounts": typeof AccountsRoute;
-  "/cloud-costs": typeof CloudCostsRoute;
-  "/discounts": typeof DiscountsRoute;
-  "/switches": typeof SwitchesRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/accounts': typeof AccountsRoute
+  '/cloud-costs': typeof CloudCostsRoute
+  '/discounts': typeof DiscountsRoute
+  '/switches': typeof SwitchesRoute
+  '/waitlist': typeof WaitlistRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: "/" | "/accounts" | "/cloud-costs" | "/discounts" | "/switches";
-  fileRoutesByTo: FileRoutesByTo;
-  to: "/" | "/accounts" | "/cloud-costs" | "/discounts" | "/switches";
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/accounts'
+    | '/cloud-costs'
+    | '/discounts'
+    | '/switches'
+    | '/waitlist'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/accounts'
+    | '/cloud-costs'
+    | '/discounts'
+    | '/switches'
+    | '/waitlist'
   id:
-    | "__root__"
-    | "/"
-    | "/accounts"
-    | "/cloud-costs"
-    | "/discounts"
-    | "/switches";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/'
+    | '/accounts'
+    | '/cloud-costs'
+    | '/discounts'
+    | '/switches'
+    | '/waitlist'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  AccountsRoute: typeof AccountsRoute;
-  CloudCostsRoute: typeof CloudCostsRoute;
-  DiscountsRoute: typeof DiscountsRoute;
-  SwitchesRoute: typeof SwitchesRoute;
+  IndexRoute: typeof IndexRoute
+  AccountsRoute: typeof AccountsRoute
+  CloudCostsRoute: typeof CloudCostsRoute
+  DiscountsRoute: typeof DiscountsRoute
+  SwitchesRoute: typeof SwitchesRoute
+  WaitlistRoute: typeof WaitlistRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/switches": {
-      id: "/switches";
-      path: "/switches";
-      fullPath: "/switches";
-      preLoaderRoute: typeof SwitchesRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/discounts": {
-      id: "/discounts";
-      path: "/discounts";
-      fullPath: "/discounts";
-      preLoaderRoute: typeof DiscountsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/cloud-costs": {
-      id: "/cloud-costs";
-      path: "/cloud-costs";
-      fullPath: "/cloud-costs";
-      preLoaderRoute: typeof CloudCostsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/accounts": {
-      id: "/accounts";
-      path: "/accounts";
-      fullPath: "/accounts";
-      preLoaderRoute: typeof AccountsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounts': {
+      id: '/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cloud-costs': {
+      id: '/cloud-costs'
+      path: '/cloud-costs'
+      fullPath: '/cloud-costs'
+      preLoaderRoute: typeof CloudCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/discounts': {
+      id: '/discounts'
+      path: '/discounts'
+      fullPath: '/discounts'
+      preLoaderRoute: typeof DiscountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/switches': {
+      id: '/switches'
+      path: '/switches'
+      fullPath: '/switches'
+      preLoaderRoute: typeof SwitchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -131,19 +161,18 @@ const rootRouteChildren: RootRouteChildren = {
   CloudCostsRoute: CloudCostsRoute,
   DiscountsRoute: DiscountsRoute,
   SwitchesRoute: SwitchesRoute,
-};
+  WaitlistRoute: WaitlistRoute,
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-
-import type { createStart } from "@tanstack/react-start";
-
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-
-    router: Awaited<ReturnType<typeof getRouter>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

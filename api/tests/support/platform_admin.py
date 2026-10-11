@@ -39,6 +39,8 @@ PLATFORM_ACTIONS = [
     "platform.switches.read",
     "platform.switches.write",
     "platform.accounts.read",
+    "platform.waitlist.read",
+    "platform.waitlist.write",
 ]
 
 ADMIN_KEY = Ed25519PrivateKey.generate()
@@ -145,7 +147,7 @@ def platform_settings(database_url: str = "sqlite:///unused.db", **overrides: An
         "auth_callback_secret": "callback-test-secret",  # pragma: allowlist secret
         "auth_jwt_audience": ["https://atlas.example.test/mcp"],
         "auth_jwt_issuer": "https://atlas.example.test",
-        "auth_api_key_introspection_url": "https://atlas.example.test/api/auth/internal/api-key",
+        "auth_api_key_introspection_url": "https://atlas.example.test/api/auth/internal/api-key",  # pragma: allowlist secret - test URL
         "auth_membership_verification_url": "https://atlas.example.test",
         "machine_trusted_issuers": admin_issuers(),
         "access_team_domain": ACCESS_TEAM_DOMAIN,

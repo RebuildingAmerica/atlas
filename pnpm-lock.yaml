@@ -273,9 +273,15 @@ importers:
 
   admin:
     dependencies:
+      '@headlessui/react':
+        specifier: 'catalog:'
+        version: 2.2.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@rebuildingamerica/atlas-access':
         specifier: workspace:*
         version: link:../packages/atlas-access
+      '@rebuildingamerica/atlas-api-client':
+        specifier: workspace:*
+        version: link:../packages/atlas-api-client
       '@rebuildingamerica/atlas-ui':
         specifier: workspace:*
         version: link:../packages/atlas-ui

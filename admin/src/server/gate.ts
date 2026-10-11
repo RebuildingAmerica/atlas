@@ -80,6 +80,11 @@ export async function gateRequest(
  * @param headers - The response's headers.
  */
 export function applyPageHeaders(headers: Headers): void {
-  for (const [name, value] of Object.entries(PAGE_HEADERS))
+  for (const [name, value] of Object.entries(PAGE_HEADERS)) {
+    // Private applicant pages may explicitly suppress every referrer. Keep
+    // that stronger policy when adding the common admin security headers.
+    if (name === "Referrer-Policy" && headers.get(name) === "no-referrer")
+      continue;
     headers.set(name, value);
+  }
 }

@@ -22,6 +22,9 @@ describe("hosted proxy route rules", () => {
       ATLAS_ADMIN_PUBLIC_URL: "https://atlas-admin.example.com/",
     });
 
+    expect(rules["/admin/waitlist"]).toEqual({
+      redirect: { to: "https://atlas-admin.example.com/waitlist", status: 308 },
+    });
     expect(rules["/admin/discounts"]).toEqual({
       redirect: { to: "https://atlas-admin.example.com/discounts", status: 308 },
     });

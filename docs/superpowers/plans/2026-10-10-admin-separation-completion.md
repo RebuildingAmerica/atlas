@@ -63,15 +63,15 @@ explicitly enumerated and validated; the API supplies the verified operator
 identity. Preserve existing results and store/mail behavior. The callback secret
 is never exposed to a browser.
 
-- [ ] Add failing behavioral tests for platform-only staff access, callback
+- [x] Add failing behavioral tests for platform-only staff access, callback
       authentication/validation, and existing invitation actions.
-- [ ] Move staff UI to the admin host, reusing existing presentation and
+- [x] Move staff UI to the admin host, reusing existing presentation and
       contracts without app/admin imports or duplicated stores.
-- [ ] Add narrow platform API and callback handlers, audit staff decisions, and
+- [x] Add narrow platform API and callback handlers, audit staff decisions, and
       remove customer-session staff endpoints and Editorial waitlist links.
-- [ ] Update route tests, privacy checks, screenshots exclusions, and the
+- [x] Update route tests, privacy checks, screenshots exclusions, and the
       waitlist browser journey for the actual authority chain.
-- [ ] Regenerate contracts and clients; run focused tests, type checks, and
+- [x] Regenerate contracts and clients; run focused tests, type checks, and
       lint. Report red/green evidence.
 - [ ] Commit the independently reviewable integration after review; preserve
       every unrelated change.
@@ -82,12 +82,12 @@ is never exposed to a browser.
 confirmed integration defects. Only the parent handles source-control
 integration and provider actions.
 
-- [ ] Verify the rebased range remains linear and review the original plan
+- [x] Verify the rebased range remains linear and review the original plan
       against the final code.
-- [ ] Run the complete repository quality suite, generated-contract checks,
+- [x] Run the complete repository quality suite, generated-contract checks,
       admin production build/dry run, relevant browser journeys, and PostgreSQL
       merge/takedown tests.
-- [ ] Resolve confirmed failures without weakening gates. Record exact provider
+- [x] Resolve confirmed failures without weakening gates. Record exact provider
       blockers in the release evidence.
 - [ ] Land through a rebase or fast-forward, preserving commits and newer main
       work. Do not squash or introduce merge commits.
@@ -95,3 +95,27 @@ integration and provider actions.
       verify the deployment result.
 - [ ] Retire only this task's branches/worktrees after proving the work is
       retained on main. Preserve unrelated work and stashes.
+
+## Completion evidence
+
+The full repository quality graph passed all 37 tasks. API tests passed 2,774
+cases with eight skips; app tests passed 4,256 with one skip; admin tests
+passed 112. Each of these packages met its 100% coverage gate.
+Generated-contract checks, 229 bootstrap tests, 93 deployment tests, actionlint,
+PostgreSQL merge and takedown tests, and the admin production build/dry run
+passed. The final paid-waitlist browser journey passed both tests using real
+local Access JWT verification, admin signing, API authorization, the protected
+callback, retained store effects, captured email, and operator audit
+attribution. The operator queue, audit details, and applicant mobile invitation
+were visually inspected. Independent final review found no remaining source
+integration blockers.
+
+Production deployment remains blocked: the linked Google Cloud billing account
+is closed, and the existing production API returns HTTP 500 because Cloud Run
+cannot start it. Leave the release untagged until that prerequisite is restored
+and the hosted identity, API, and admin outcome can be verified. Local browser
+proof does not establish provider email delivery or completed Stripe payment.
+
+Repeated Cloudflare CLI invocations were found to read the profile encryption
+key from macOS Keychain. Remaining source-control operations use the connected
+GitHub app and Git SSH with Keychain and interactive authentication disabled.

@@ -18,6 +18,7 @@ from atlas.domains.access.api.account_lookup_admin import router as account_look
 from atlas.domains.access.api.cloud_cost_admin import router as cloud_cost_admin_router
 from atlas.domains.access.api.platform_switches_admin import router as switches_admin_router
 from atlas.domains.access.api.verification_admin import router as verification_admin_router
+from atlas.domains.access.api.waitlist_admin import router as waitlist_router
 from atlas.platform.openapi_metadata import OPENAPI_VERSION
 
 __all__ = [
@@ -44,6 +45,7 @@ def create_platform_router() -> APIRouter:
     router.include_router(cloud_cost_admin_router)
     router.include_router(switches_admin_router)
     router.include_router(account_lookup_router)
+    router.include_router(waitlist_router)
     return router
 
 

@@ -65,6 +65,9 @@ _REAL_CLIENT = httpx.AsyncClient
 """Kept before any test patches the module, so the test's own client stays real."""
 
 
+CALLBACK_TEST_SECRET = "callback-test-secret"  # pragma: allowlist secret
+
+
 def _app(
     monkeypatch: pytest.MonkeyPatch,
     handler: Callable[[httpx.Request], httpx.Response],
@@ -107,7 +110,7 @@ async def test_a_lookup_joins_what_the_app_knows_with_the_workspace_discounts(
         assert request.url.path == LOOKUP_PATH
         assert (
             request.headers["X-Atlas-Callback-Secret"]
-            == "callback-test-secret"  # pragma: allowlist secret
+            == CALLBACK_TEST_SECRET  # pragma: allowlist secret
         )  # pragma: allowlist secret
         asked.append(json.loads(request.content))
         return httpx.Response(200, json=APP_ANSWER)

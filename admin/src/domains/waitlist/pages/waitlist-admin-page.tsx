@@ -11,7 +11,7 @@ import {
   AdminInlineStatus,
   AdminIndicatorCard,
 } from "@rebuildingamerica/atlas-ui/layout/admin-portal";
-import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
+import { PRODUCT_LABELS } from "@rebuildingamerica/atlas-api-client/waitlist";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import {
   listWaitlistRequests,
@@ -25,8 +25,9 @@ import type {
   WaitlistStatus,
   WaitlistDeliveryStatus,
   WaitlistLinkKind,
-} from "../contracts";
-import { waitlistTextLinkClass } from "./waitlist-layout";
+} from "@rebuildingamerica/atlas-api-client/waitlist";
+import { controlFocusClass } from "@rebuildingamerica/atlas-ui/styles/controls";
+const waitlistTextLinkClass = `type-label-large text-accent-deep hover:text-ink-strong inline-flex min-h-11 items-center rounded-sm underline underline-offset-4 ${controlFocusClass}`;
 
 const requestStatusLabels: Record<WaitlistStatus, string> = {
   unconfirmed: "Email not confirmed",
@@ -77,7 +78,9 @@ export function WaitlistAdminPage() {
         ({ request }) =>
           (!plan || request.product === plan) &&
           (!status ||
-            (status === "purchased" ? Boolean(request.purchasedAt) : request.status === status)) &&
+            (status === "purchased"
+              ? Boolean(request.purchasedAt)
+              : request.status === status)) &&
           `${request.email} ${request.name} ${request.organization}`
             .toLowerCase()
             .includes(search.toLowerCase()),
@@ -87,7 +90,9 @@ export function WaitlistAdminPage() {
   const canInvite = (request: WaitlistRequest) =>
     request.status === "waiting" &&
     queue.data?.availability.available === true &&
-    queue.data.availability.allowedOffers.some((offer) => offer.startsWith(`${request.product}:`));
+    queue.data.availability.allowedOffers.some((offer) =>
+      offer.startsWith(`${request.product}:`),
+    );
   async function refresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["admin", "waitlist"] }),
@@ -109,7 +114,8 @@ export function WaitlistAdminPage() {
     },
   });
   const action = useMutation({
-    mutationFn: (input: StaffWaitlistAction) => actOnWaitlistRequest({ data: input }),
+    mutationFn: (input: StaffWaitlistAction) =>
+      actOnWaitlistRequest({ data: input }),
     onSuccess: async (response) => {
       setRevokeReview(false);
       setNotice([
@@ -124,7 +130,9 @@ export function WaitlistAdminPage() {
   });
   const pending = invite.isPending || action.isPending;
   const error = queue.error ?? invite.error;
-  const selectedRecords = records.filter((item) => selected.includes(item.request.id));
+  const selectedRecords = records.filter((item) =>
+    selected.includes(item.request.id),
+  );
   return (
     <AdminPageShell>
       <AdminPageHeader
@@ -132,7 +140,7 @@ export function WaitlistAdminPage() {
         title="Waitlist"
         description="Choose who to invite and see who has signed up."
       >
-        <Link to="/admin" className="type-label-medium text-accent-deep underline">
+        <Link to="/" className="type-label-medium text-accent-deep underline">
           Admin home
         </Link>
       </AdminPageHeader>
@@ -142,7 +150,10 @@ export function WaitlistAdminPage() {
           value={
             queue.isPending
               ? "–"
-              : String(records.filter((item) => item.request.status === "waiting").length)
+              : String(
+                  records.filter((item) => item.request.status === "waiting")
+                    .length,
+                )
           }
           detail="Confirmed requests"
           tone="neutral"
@@ -152,7 +163,10 @@ export function WaitlistAdminPage() {
           value={
             queue.isPending
               ? "–"
-              : String(records.filter((item) => item.request.status === "invited").length)
+              : String(
+                  records.filter((item) => item.request.status === "invited")
+                    .length,
+                )
           }
           detail="Can sign up for a plan"
           tone="neutral"
@@ -162,7 +176,9 @@ export function WaitlistAdminPage() {
           value={
             queue.isPending
               ? "–"
-              : String(records.filter((item) => item.request.purchasedAt).length)
+              : String(
+                  records.filter((item) => item.request.purchasedAt).length,
+                )
           }
           detail="Payment complete"
           tone="pass"
@@ -191,17 +207,23 @@ export function WaitlistAdminPage() {
         </Button>
       ) : null}
       {!detailId
-        ? notice.map((message) => <AdminInlineStatus key={message} message={message} />)
+        ? notice.map((message) => (
+            <AdminInlineStatus key={message} message={message} />
+          ))
         : null}
       {queue.data && !queue.data.availability.available ? (
         <p className="type-body-medium text-ink-soft">
-          New signups are paused. You can send invitations when paid plans are available again.{" "}
-          <Link to="/admin" className="text-accent-deep underline">
+          New signups are paused. You can send invitations when paid plans are
+          available again.{" "}
+          <Link to="/" className="text-accent-deep underline">
             Review paid plans
           </Link>
         </p>
       ) : null}
-      <section aria-label="Waitlist filters" className="grid gap-4 sm:grid-cols-3">
+      <section
+        aria-label="Waitlist filters"
+        className="grid gap-4 sm:grid-cols-3"
+      >
         <Input
           label="Search requests"
           type="search"
@@ -247,7 +269,9 @@ export function WaitlistAdminPage() {
       <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="secondary"
-          disabled={pending || !filtered.some((item) => canInvite(item.request))}
+          disabled={
+            pending || !filtered.some((item) => canInvite(item.request))
+          }
           onClick={() => {
             setSelected(
               filtered
@@ -284,8 +308,8 @@ export function WaitlistAdminPage() {
             ))}
           </ul>
           <p className="type-body-small text-ink-soft">
-            Each person will get an email inviting them to sign up for their plan. They’ll choose a
-            payment option and pay at checkout.
+            Each person will get an email inviting them to sign up for their
+            plan. They’ll choose a payment option and pay at checkout.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button
@@ -308,7 +332,11 @@ export function WaitlistAdminPage() {
           </div>
         </section>
       ) : null}
-      <section aria-label="Waitlist requests" aria-busy={queue.isPending} className="space-y-3">
+      <section
+        aria-label="Waitlist requests"
+        aria-busy={queue.isPending}
+        className="space-y-3"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="type-title-large text-ink-strong">Requests</h2>
           <p className="type-body-small text-ink-muted tabular-nums">
@@ -352,11 +380,15 @@ export function WaitlistAdminPage() {
                 {request.name || request.email}
               </button>
               {request.name ? (
-                <p className="type-body-small text-ink-soft break-all">{request.email}</p>
+                <p className="type-body-small text-ink-soft break-all">
+                  {request.email}
+                </p>
               ) : null}
               <p className="type-body-medium">
                 {PRODUCT_LABELS[request.product]} ·{" "}
-                {request.purchasedAt ? "Signed up" : requestStatusLabels[request.status]}
+                {request.purchasedAt
+                  ? "Signed up"
+                  : requestStatusLabels[request.status]}
               </p>
               <p className="type-body-small text-ink-muted">
                 {request.confirmedAt
@@ -395,7 +427,9 @@ export function WaitlistAdminPage() {
             <div className="flex min-h-full items-center justify-center">
               <DialogPanel className="border-border bg-surface-container-lowest w-full max-w-2xl space-y-6 rounded-2xl border p-5 shadow-xl sm:p-8">
                 <div className="flex items-start justify-between gap-4">
-                  <DialogTitle className="type-title-large">Request details</DialogTitle>
+                  <DialogTitle className="type-title-large">
+                    Request details
+                  </DialogTitle>
                   <Button
                     variant="ghost"
                     onClick={() => {
@@ -435,7 +469,9 @@ export function WaitlistAdminPage() {
                     <dl className="type-body-medium grid gap-3 sm:grid-cols-2">
                       <div>
                         <dt className="text-ink-muted">Email</dt>
-                        <dd className="break-all">{detail.data.request.email}</dd>
+                        <dd className="break-all">
+                          {detail.data.request.email}
+                        </dd>
                       </div>
                       <div>
                         <dt className="text-ink-muted">Plan</dt>
@@ -465,7 +501,9 @@ export function WaitlistAdminPage() {
                         <div className="flex flex-wrap gap-3">
                           <Button
                             variant="secondary"
-                            disabled={pending || !queue.data?.availability.available}
+                            disabled={
+                              pending || !queue.data?.availability.available
+                            }
                             onClick={() => {
                               action.mutate({ id: detailId, action: "resend" });
                             }}
@@ -485,14 +523,18 @@ export function WaitlistAdminPage() {
                         {revokeReview ? (
                           <div className="space-y-3">
                             <p className="type-body-medium">
-                              Withdraw this invitation? They won’t be able to start a new purchase
-                              with it. Any paid plan they already have will stay active.
+                              Withdraw this invitation? They won’t be able to
+                              start a new purchase with it. Any paid plan they
+                              already have will stay active.
                             </p>
                             <div className="flex flex-wrap gap-3">
                               <Button
                                 disabled={pending}
                                 onClick={() => {
-                                  action.mutate({ id: detailId, action: "revoke" });
+                                  action.mutate({
+                                    id: detailId,
+                                    action: "revoke",
+                                  });
                                 }}
                               >
                                 Confirm withdrawal
@@ -512,8 +554,9 @@ export function WaitlistAdminPage() {
                     ) : null}
                     <h3 className="type-title-medium">Email history</h3>
                     <p className="type-body-small text-ink-soft">
-                      Sent means the email provider accepted the message. If an outcome needs
-                      checking, retry the email before sending a new invitation.
+                      Sent means the email provider accepted the message. If an
+                      outcome needs checking, retry the email before sending a
+                      new invitation.
                     </p>
                     <ul className="space-y-2">
                       {detail.data.deliveries.map((delivery) => (
@@ -531,7 +574,9 @@ export function WaitlistAdminPage() {
                           detail.data.request.status === "invited" ? (
                             <Button
                               variant="secondary"
-                              disabled={pending || !queue.data?.availability.available}
+                              disabled={
+                                pending || !queue.data?.availability.available
+                              }
                               onClick={() => {
                                 action.mutate({
                                   id: detailId,
@@ -550,8 +595,10 @@ export function WaitlistAdminPage() {
                     <ol className="type-body-small space-y-2 break-words">
                       {detail.data.events.map((event) => (
                         <li key={event.id}>
-                          <span className="capitalize">{event.action.replaceAll("_", " ")}</span> ·{" "}
-                          {new Date(event.createdAt).toLocaleString()}
+                          <span className="capitalize">
+                            {event.action.replaceAll("_", " ")}
+                          </span>{" "}
+                          · {new Date(event.createdAt).toLocaleString()}
                           {event.actorId ? ` · ${event.actorId}` : ""}
                         </li>
                       ))}

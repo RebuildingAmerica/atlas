@@ -31,7 +31,9 @@
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@rebuildingamerica/atlas-api-client": "workspace:*",
+    "@headlessui/react": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "catalog:",

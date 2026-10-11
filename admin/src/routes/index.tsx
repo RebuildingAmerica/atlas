@@ -11,10 +11,15 @@ export const Route = createFileRoute("/")({
 interface Destination {
   description: string;
   label: string;
-  to: "/discounts" | "/cloud-costs" | "/switches" | "/accounts";
+  to: "/discounts" | "/cloud-costs" | "/switches" | "/accounts" | "/waitlist";
 }
 
 const DESTINATIONS: readonly Destination[] = [
+  {
+    label: "Waitlist",
+    description: "Review paid-access requests and invite confirmed applicants.",
+    to: "/waitlist",
+  },
   {
     label: "Discount requests",
     description:
