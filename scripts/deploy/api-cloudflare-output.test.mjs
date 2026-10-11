@@ -11,6 +11,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readBuildOutput } from "@cloudflare/build-output-utils";
 import { preparePythonOutput } from "./api-cloudflare-output.mjs";
+import { createRequire } from "node:module";
+import { dirname } from "node:path";
+import { readdirSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 test("Python artifacts are portable cf Build Output with vendored package data", async () => {
   const root = mkdtempSync(join(tmpdir(), "atlas-python-output-"));
@@ -49,6 +53,33 @@ test("Python artifacts are portable cf Build Output with vendored package data",
     assert.equal(config.workersDev, false);
     assert.equal(config.previewUrls, false);
     assert.deepEqual(config.domains ?? [], []);
+    // Exercise cf's actual upload translation: Python's runtime recognizes
+    // vendored packages by their canonical python_modules/ path prefix.
+    const require = createRequire(import.meta.url);
+    const dist = join(dirname(require.resolve("cf/package.json")), "dist");
+    const adapter = readdirSync(dist).find((name) =>
+      /^deploy-input-.*\.mjs$/.test(name),
+    );
+    const { t: uploadBundle } = await import(
+      pathToFileURL(join(dist, adapter)).href
+    );
+    const upload = uploadBundle(output.workers.default, config);
+    assert.ok(
+      upload.modules.some(
+        (module) => module.name === "python_modules/workers/__init__.py",
+      ),
+    );
+    const javascript = structuredClone(config);
+    javascript.manifest.modules["entry.py"].type = "esm";
+    const jsUpload = uploadBundle(
+      { ...output.workers.default, config: javascript },
+      javascript,
+    );
+    assert.ok(
+      jsUpload.modules.some(
+        (module) => module.name === "./python_modules/workers/__init__.py",
+      ),
+    );
     symlinkSync(join(source, "entry.py"), join(vendor, "unsafe.py"));
     await assert.rejects(
       preparePythonOutput({

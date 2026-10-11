@@ -127,3 +127,4 @@ allowBuilds:
 
 patchedDependencies:
   better-auth@1.6.23: patches/better-auth@1.6.23.patch
+  cf@1.0.0-beta.14: patches/cf@1.0.0-beta.14.patch

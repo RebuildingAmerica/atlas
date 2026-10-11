@@ -235,6 +235,7 @@ overrides:
 
 patchedDependencies:
   better-auth@1.6.23: 66a9465a72fddb2604a3d05acde6ae1f1eaea5517689b1ef75ec506fa1f76a70
+  cf@1.0.0-beta.14: 8d2c6213da20daa0376acf736cd30f2f257c3d21f5c67d791584f77d9cf05bbd
 
 importers:
 
@@ -257,7 +258,7 @@ importers:
         version: link:packages/tsconfig
       cf:
         specifier: 1.0.0-beta.14
-        version: 1.0.0-beta.14
+        version: 1.0.0-beta.14(patch_hash=8d2c6213da20daa0376acf736cd30f2f257c3d21f5c67d791584f77d9cf05bbd)
       eslint:
         specifier: 'catalog:'
         version: 10.6.0(jiti@2.7.0)
@@ -596,7 +597,7 @@ importers:
         version: 4.1.10(vitest@4.1.10)
       cf:
         specifier: 1.0.0-beta.14
-        version: 1.0.0-beta.14
+        version: 1.0.0-beta.14(patch_hash=8d2c6213da20daa0376acf736cd30f2f257c3d21f5c67d791584f77d9cf05bbd)
       eslint:
         specifier: 'catalog:'
         version: 10.6.0(jiti@2.7.0)
@@ -1056,7 +1057,7 @@ importers:
     devDependencies:
       cf:
         specifier: 1.0.0-beta.14
-        version: 1.0.0-beta.14
+        version: 1.0.0-beta.14(patch_hash=8d2c6213da20daa0376acf736cd30f2f257c3d21f5c67d791584f77d9cf05bbd)
       wrangler:
         specifier: 4.149.0
         version: 4.149.0(@cloudflare/workers-types@5.20261011.1)
@@ -14864,7 +14865,7 @@ snapshots:
 
   ccount@2.0.1: {}
 
-  cf@1.0.0-beta.14:
+  cf@1.0.0-beta.14(patch_hash=8d2c6213da20daa0376acf736cd30f2f257c3d21f5c67d791584f77d9cf05bbd):
     dependencies:
       '@cloudflare/build-output-utils': 0.9.0
       '@cloudflare/codemods': 0.4.2
