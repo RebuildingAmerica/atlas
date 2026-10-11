@@ -93,10 +93,22 @@ export async function preparePythonOutput({
     throw new Error(
       "A Python entrypoint and a complete vendored environment are required.",
     );
+  const core = join(vendor, "core.zip");
+  if (existsSync(core)) {
+    writeFileSync(
+      join(bundle, "core-identity.json"),
+      JSON.stringify({
+        sha256: createHash("sha256").update(readFileSync(core)).digest("hex"),
+      }),
+    );
+    modules["core-identity.json"] = { type: "data" };
+  }
   if (packagesAsset) {
     const archive = join(vendor, "packages.zip");
-    if (!existsSync(archive))
-      throw new Error("The complete API archive is required.");
+    if (!existsSync(archive) || !existsSync(core))
+      throw new Error(
+        "The complete API core and deferred archives are required.",
+      );
     const assets = join(worker, "assets");
     mkdirSync(assets, { recursive: true });
     cpSync(archive, join(assets, "packages.zip"));

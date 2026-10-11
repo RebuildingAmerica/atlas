@@ -4,7 +4,10 @@ from urllib.parse import urlsplit
 
 from package_bootstrap import ensure_package_archive
 from runtime_probe import RuntimeProbe
+from snapshot_bootstrap import preload_core_packages
 from workers import DurableObject, Response, WorkerEntrypoint, asgi
+
+preload_core_packages()
 
 
 class ApiRuntime(DurableObject):

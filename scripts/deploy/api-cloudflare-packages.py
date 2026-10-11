@@ -34,6 +34,27 @@ PURE_PACKAGES = {
     "pydantic_settings",
 }
 
+# The HTTP import graph must be available when Cloudflare snapshots the entry
+# module. Extraction data stays deferred so browsing profiles does not load the
+# classifier, locale tables, or document parser into the initial snapshot.
+CORE_PACKAGES = {
+    "anthropic",
+    "anyio",
+    "attr",
+    "attrs",
+    "fastapi",
+    "httpcore",
+    "httpx",
+    "jsonschema",
+    "jsonschema_specifications",
+    "mcp",
+    "nameparser",
+    "pydantic",
+    "pydantic_settings",
+    "referencing",
+    "starlette",
+}
+
 # CPython 3.14.2, used by the pinned Pyodide runtime. A future opcode/marshal
 # change must fail the build rather than silently recompiling sources on visits.
 TARGET_BYTECODE_MAGIC = bytes.fromhex("2b0e0d0a")
@@ -129,13 +150,66 @@ def archive_packages(vendor: Path) -> dict[str, object]:
     }
 
 
+def partition_core_archive(vendor: Path) -> dict[str, object]:
+    """Split the verified archive without changing or duplicating package bytes."""
+    archive = vendor / "packages.zip"
+    core = vendor / "core.zip"
+    if core.exists():
+        raise ValueError("Core partition requires an unpartitioned package archive.")
+    deferred = vendor / "packages-deferred.zip"
+    records = {"core": [], "deferred": []}
+    written_directories = {"core": set(), "deferred": set()}
+    try:
+        with (
+            zipfile.ZipFile(archive) as source,
+            zipfile.ZipFile(core, "w") as bundled,
+            zipfile.ZipFile(deferred, "w") as assets,
+        ):
+            for info in sorted(source.infolist(), key=lambda info: info.filename):
+                package = info.filename.split("/", 1)[0]
+                is_core = package in CORE_PACKAGES or package.endswith(".dist-info")
+                destination = bundled if is_core else assets
+                kind = "core" if is_core else "deferred"
+                # zipimport needs explicit directory records for namespace
+                # packages such as anthropic._decoders (no __init__.py).
+                parts = info.filename.split("/")
+                for index in range(1, len(parts)):
+                    directory = "/".join(parts[:index]) + "/"
+                    if directory not in written_directories[kind]:
+                        entry = zipfile.ZipInfo(
+                            directory, date_time=(1980, 1, 1, 0, 0, 0)
+                        )
+                        entry.external_attr = (0o40755 << 16) | 0x10
+                        destination.writestr(entry, b"")
+                        written_directories[kind].add(directory)
+                data = source.read(info)
+                destination.writestr(info, data)
+                records[kind].append(
+                    {"name": info.filename, "sha256": hashlib.sha256(data).hexdigest()}
+                )
+        result = {
+            "coreSha256": hashlib.sha256(core.read_bytes()).hexdigest(),
+            "archiveSha256": hashlib.sha256(deferred.read_bytes()).hexdigest(),
+            "files": records,
+        }
+        deferred.replace(archive)
+        return result
+    except BaseException:
+        core.unlink(missing_ok=True)
+        deferred.unlink(missing_ok=True)
+        raise
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vendor", required=True, type=Path)
     parser.add_argument("--provenance", required=True, type=Path)
+    parser.add_argument("--partition-existing", action="store_true")
     args = parser.parse_args()
+    if not args.partition_existing:
+        archive_packages(args.vendor)
     args.provenance.write_text(
-        json.dumps(archive_packages(args.vendor), indent=2) + "\n"
+        json.dumps(partition_core_archive(args.vendor), indent=2) + "\n"
     )

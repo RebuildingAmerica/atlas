@@ -157,7 +157,7 @@ test("the JavaScript dispatcher binds the existing Python object without a Pytho
   }
 });
 
-test("complete Python packages are immutable assets outside the Worker code modules", async () => {
+test("HTTP core is bundled for snapshots while deferred packages remain immutable assets", async () => {
   const root = mkdtempSync(join(tmpdir(), "atlas-python-assets-"));
   try {
     const source = join(root, "source");
@@ -167,6 +167,19 @@ test("complete Python packages are immutable assets outside the Worker code modu
     writeFileSync(join(source, "entry.py"), "class Default: pass\n");
     writeFileSync(join(vendor, "pyvenv.cfg"), "");
     writeFileSync(join(vendor, "packages.zip"), "verified archive");
+    await assert.rejects(
+      preparePythonOutput({
+        source,
+        vendor,
+        destination: root,
+        workerName: "atlas-python-eval-api",
+        accountId: "a".repeat(32),
+        workerEnv: {},
+        packagesAsset: true,
+      }),
+      /core and deferred archives/,
+    );
+    writeFileSync(join(vendor, "core.zip"), "snapshot core");
     const output = await preparePythonOutput({
       source,
       vendor,
@@ -184,6 +197,10 @@ test("complete Python packages are immutable assets outside the Worker code modu
       undefined,
     );
     assert.equal(config.manifest.modules["package-identity.json"].type, "data");
+    assert.equal(
+      config.manifest.modules["python_modules/core.zip"].type,
+      "data",
+    );
     const { readFileSync } = await import("node:fs");
     const { createHash } = await import("node:crypto");
     const expected = createHash("sha256")
@@ -199,6 +216,17 @@ test("complete Python packages are immutable assets outside the Worker code modu
         ),
       ).sha256,
       expected,
+    );
+    assert.equal(
+      JSON.parse(
+        readFileSync(
+          join(
+            root,
+            ".cloudflare/output/v0/workers/default/bundle/core-identity.json",
+          ),
+        ),
+      ).sha256,
+      createHash("sha256").update("snapshot core").digest("hex"),
     );
     assert.equal(
       readFileSync(

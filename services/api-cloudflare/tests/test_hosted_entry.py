@@ -29,6 +29,11 @@ def load_entry(monkeypatch, *, package_error=None):
     bootstrap = AsyncMock(side_effect=package_error)
     monkeypatch.setitem(
         sys.modules,
+        "snapshot_bootstrap",
+        SimpleNamespace(preload_core_packages=lambda: False),
+    )
+    monkeypatch.setitem(
+        sys.modules,
         "package_bootstrap",
         SimpleNamespace(ensure_package_archive=bootstrap),
     )

@@ -19,6 +19,65 @@ SPEC.loader.exec_module(MODULE)
 
 
 class PackageArchiveTests(unittest.TestCase):
+    def test_core_partition_retains_all_bytes_and_deferred_resources(self):
+        digests = []
+        for _ in range(2):
+            with tempfile.TemporaryDirectory() as directory:
+                vendor = Path(directory)
+                for name in ("anthropic", "babel"):
+                    package = vendor / name
+                    package.mkdir()
+                    (package / "__init__.py").write_text(
+                        "from importlib.resources import files\ndef evidence():\n"
+                        '    return files(__package__).joinpath("data.txt").read_text()\n'
+                    )
+                    (package / "data.txt").write_text(name)
+                metadata = vendor / "atlas_runtime_test-1.0.dist-info"
+                namespace = vendor / "anthropic/namespace"
+                namespace.mkdir()
+                (namespace / "value.py").write_text("VALUE = 7\n")
+                metadata.mkdir()
+                (metadata / "METADATA").write_text(
+                    "Metadata-Version: 2.1\nName: atlas-runtime-test\nVersion: 1.0\n"
+                )
+                MODULE.archive_packages(vendor)
+                with zipfile.ZipFile(vendor / "packages.zip") as original:
+                    before = {name: original.read(name) for name in original.namelist()}
+                result = MODULE.partition_core_archive(vendor)
+                with zipfile.ZipFile(vendor / "core.zip") as core:
+                    core_files = {
+                        item.filename: core.read(item)
+                        for item in core.infolist()
+                        if not item.is_dir()
+                    }
+                with zipfile.ZipFile(vendor / "packages.zip") as deferred:
+                    deferred_files = {
+                        item.filename: deferred.read(item)
+                        for item in deferred.infolist()
+                        if not item.is_dir()
+                    }
+                self.assertEqual(set(core_files) & set(deferred_files), set())
+                self.assertEqual(core_files | deferred_files, before)
+                self.assertIn("anthropic/__init__.py", core_files)
+                self.assertIn("babel/data.txt", deferred_files)
+                output = subprocess.check_output(
+                    [
+                        sys.executable,
+                        "-c",
+                        'import anthropic,babel,importlib.metadata,json; from anthropic.namespace.value import VALUE; print(json.dumps([anthropic.evidence(),babel.evidence(),importlib.metadata.version("atlas-runtime-test"),VALUE]))',
+                    ],
+                    cwd=directory,
+                    env={
+                        **os.environ,
+                        "PYTHONPATH": os.pathsep.join(
+                            str(vendor / name) for name in ("core.zip", "packages.zip")
+                        ),
+                    },
+                )
+                self.assertEqual(json.loads(output), ["anthropic", "babel", "1.0", 7])
+                digests.append(result)
+        self.assertEqual(*digests)
+
     def test_import_resources_metadata_and_native_library_separation(self):
         digests = []
         for _ in range(2):
