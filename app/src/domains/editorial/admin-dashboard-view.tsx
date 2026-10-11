@@ -8,12 +8,18 @@ import {
   type AdminIndicatorTone,
 } from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import type { AdminDashboardSummary } from "./admin-dashboard.functions";
+import { EditorialTriageDesk } from "./editorial-triage-desk";
+import type { EditorialTriage } from "./editorial-triage.functions";
 
 interface AdminDashboardViewProps {
   showWaitlist?: boolean;
   errorMessage?: string;
   isLoading?: boolean;
+  /** The current time in milliseconds, for how long queued work has waited. */
+  now: number;
   summary?: AdminDashboardSummary;
+  triage?: EditorialTriage;
+  triageError?: string;
 }
 
 interface DashboardHealthPanelProps {
@@ -26,22 +32,25 @@ interface DashboardHealthPanelProps {
 
 interface AdminActionLinkProps {
   /** The badge naming what the operator does there. */
-  action?: string;
+  action: string;
   detail: string;
   href: string;
   label: string;
 }
 
 /**
- * The instance operator's start page: this instance's health and its
- * editorial queues. Platform work (discounts, cloud costs) happens in the
- * Atlas platform admin, not here.
+ * The instance operator's start page: this instance's health, what is
+ * waiting in its review queues, and its editorial tools. Platform work
+ * (discounts, cloud costs) happens in the Atlas platform admin, not here.
  */
 export function AdminDashboardView({
   showWaitlist = false,
   errorMessage,
   isLoading = false,
+  now,
   summary,
+  triage,
+  triageError,
 }: AdminDashboardViewProps) {
   const apiTone = summary?.api.status === "ok" ? "pass" : "block";
   const discoveryTone = summary && summary.discovery.failed_jobs > 0 ? "warn" : "pass";
@@ -70,29 +79,17 @@ export function AdminDashboardView({
         />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <EditorialTriageDesk errorMessage={triageError} now={now} triage={triage} />
+
+      <section aria-label="Editorial tools" className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {showWaitlist ? (
           <AdminActionLink
+            action="Review"
             href="/editorial/waitlist"
             label="Review paid access waitlist"
             detail="Review requests, invite people, and follow their signup."
           />
         ) : null}
-        <AdminActionLink
-          href="/editorial/corrections"
-          label="Review visitor corrections"
-          detail="Read private profile and source reports, correct public facts, and close resolved concerns."
-        />
-        <AdminActionLink
-          href="/editorial/discovery-reviews"
-          label="Review discovered profiles"
-          detail="Check proposed public facts against their sources before publishing."
-        />
-        <AdminActionLink
-          href="/editorial/profile-claims"
-          label="Review profile verifications"
-          detail="Confirm representative access with source-backed evidence."
-        />
         <AdminActionLink
           action="Manage"
           href="/editorial/takedowns"
@@ -166,8 +163,8 @@ function DashboardHealthPanel({
   );
 }
 
-/** A link to one editorial queue or tool. */
-function AdminActionLink({ action = "Review", detail, href, label }: AdminActionLinkProps) {
+/** A link to one editorial tool. */
+function AdminActionLink({ action, detail, href, label }: AdminActionLinkProps) {
   return (
     <a
       href={href}
