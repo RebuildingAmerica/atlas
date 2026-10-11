@@ -333,12 +333,33 @@ test("operations edge requires existing Access-protected hostname and rejects al
       accountId,
       target: "staging",
       hostname: "atlas-api-ops-staging.atlas.example.org",
+      publicHostname: "atlas-api.example.org",
+    });
+    const config = JSON.parse(
+      readFileSync(
+        join(
+          r.directory,
+          ".cloudflare/output/v0/workers/default/worker.config.json",
+        ),
+        "utf8",
+      ),
+    );
+    assert.deepEqual(config.domains, [
+      "atlas-api-ops-staging.atlas.example.org",
+    ]);
+    assert.deepEqual(config.env.ATLAS_EDGE_ORIGIN_SECRET, { type: "secret" });
+    assert.deepEqual(config.env.ATLAS_API_PUBLIC_HOSTNAME, {
+      type: "text",
+      value: "atlas-api.example.org",
     });
     const mod = await import(
       "data:text/javascript," + encodeURIComponent(r.code)
     );
     let forwarded = 0;
     const env = {
+      ATLAS_API_PUBLIC_HOSTNAME: "atlas-api.example.org",
+      ATLAS_API_OPERATIONS_HOSTNAME: "atlas-api-ops-staging.atlas.example.org",
+      ATLAS_EDGE_ORIGIN_SECRET: "fixture-existing-origin-proof",
       API_RUNTIME: {
         getByName: (name, options) => {
           assert.equal(name, "application");
@@ -356,22 +377,38 @@ test("operations edge requires existing Access-protected hostname and rejects al
       },
     };
     assert.equal(
-      (await mod.default.fetch(new Request("https://ops/api/health"), env))
-        .status,
+      (
+        await mod.default.fetch(
+          new Request(
+            "https://atlas-api-ops-staging.atlas.example.org/api/health",
+            { headers: { "cf-connecting-ip": "198.51.100.8" } },
+          ),
+          env,
+        )
+      ).status,
       200,
     );
     assert.equal(
       (
         await mod.default.fetch(
-          new Request("https://ops/api/__atlas/consumers", { method: "POST" }),
+          new Request(
+            "https://atlas-api-ops-staging.atlas.example.org/api/__atlas/consumers",
+            { method: "POST" },
+          ),
           env,
         )
       ).status,
       405,
     );
     assert.equal(
-      (await mod.default.fetch(new Request("https://ops/discovery/jobs"), env))
-        .status,
+      (
+        await mod.default.fetch(
+          new Request(
+            "https://atlas-api-ops-staging.atlas.example.org/discovery/jobs",
+          ),
+          env,
+        )
+      ).status,
       404,
     );
     assert.equal(forwarded, 1);
@@ -379,6 +416,30 @@ test("operations edge requires existing Access-protected hostname and rejects al
     rmSync(f.root, { recursive: true, force: true });
   }
 });
+
+test("operations deployment uploads only the existing visitor-proof secret in a private temporary file", () =>
+  using(async (f) => {
+    let privateFile;
+    deployReleaseArtifact(f.input.artifacts.api, {
+      releaseSha: sha,
+      message: "protected edge",
+      secrets: { ATLAS_EDGE_ORIGIN_SECRET: "fixture-existing-origin-proof" },
+      env: f.input.env,
+      runner: (_binary, args) => {
+        privateFile = args[args.indexOf("--secrets-file") + 1];
+        assert.deepEqual(JSON.parse(readFileSync(privateFile, "utf8")), {
+          ATLAS_EDGE_ORIGIN_SECRET: "fixture-existing-origin-proof",
+        });
+        assert.ok(
+          !args.some((value) =>
+            value.includes("fixture-existing-origin-proof"),
+          ),
+        );
+        return { status: 0 };
+      },
+    });
+    assert.throws(() => readFileSync(privateFile), /ENOENT/);
+  }));
 
 test("replacement refuses active consumers before any deployment or checkpoint", () =>
   using(async (f) => {

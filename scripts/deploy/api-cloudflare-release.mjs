@@ -14,6 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { readBuildOutput } from "@cloudflare/build-output-utils";
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
 import { preparePythonOutput } from "./api-cloudflare-output.mjs";
 import {
@@ -628,15 +629,21 @@ export async function prepareOperationsOutput({
   accountId,
   target,
   hostname,
+  publicHostname,
 }) {
   if (
     !["staging", "production"].includes(target) ||
     !/^[a-f0-9]{32}$/.test(accountId ?? "") ||
     !/^atlas-api-ops-(staging|production)\.[a-z0-9.-]+$/.test(hostname ?? "") ||
-    !hostname.startsWith(`atlas-api-ops-${target}.`)
+    !hostname.startsWith(`atlas-api-ops-${target}.`) ||
+    !/^[a-z0-9]+(?:[.-][a-z0-9]+)+$/.test(publicHostname ?? "") ||
+    publicHostname === hostname
   )
     throw Error("An isolated operations hostname/target/account is required.");
-  const code = `export default {async fetch(request,env){if(request.method!=='GET')return new Response(null,{status:405});const url=new URL(request.url);const match=/^\\/(api|discovery)(\\/.*)$/.exec(url.pathname);if(!match)return new Response(null,{status:404});const path=match[2];const control=['/health','/__atlas/release','/__atlas/consumers'];if((match[1]==='discovery'||path.startsWith('/__atlas/'))&&!control.includes(path))return new Response(null,{status:404});url.pathname=path;const binding=match[1]==='api'?env.API_RUNTIME:env.DISCOVERY_RUNTIME;return binding.getByName('application',{locationHint:'enam'}).fetch(new Request(url,request));}};`;
+  const code = readFileSync(
+    join(ROOT, "services/api-cloudflare/public-edge/index.mjs"),
+    "utf8",
+  );
   const out = join(destination, ".cloudflare/output/v0"),
     worker = join(out, "workers/default");
   mkdirSync(join(worker, "bundle"), { recursive: true });
@@ -656,16 +663,21 @@ export async function prepareOperationsOutput({
       workersDev: false,
       previewUrls: false,
       domains: [hostname],
-      env: Object.fromEntries(
-        ROLES.map((role) => [
-          role === "api" ? "API_RUNTIME" : "DISCOVERY_RUNTIME",
-          {
-            type: "durable-object",
-            worker: `atlas-${role}-${target}`,
-            exportName: roleClass(role),
-          },
-        ]),
-      ),
+      env: {
+        ATLAS_API_PUBLIC_HOSTNAME: { type: "text", value: publicHostname },
+        ATLAS_API_OPERATIONS_HOSTNAME: { type: "text", value: hostname },
+        ATLAS_EDGE_ORIGIN_SECRET: { type: "secret" },
+        ...Object.fromEntries(
+          ROLES.map((role) => [
+            role === "api" ? "API_RUNTIME" : "DISCOVERY_RUNTIME",
+            {
+              type: "durable-object",
+              worker: `atlas-${role}-${target}`,
+              exportName: roleClass(role),
+            },
+          ]),
+        ),
+      },
       manifest: {
         type: "complete",
         mainModule: "index.js",
@@ -673,6 +685,7 @@ export async function prepareOperationsOutput({
       },
     }),
   );
+  await readBuildOutput(destination);
   return { directory: destination, code, artifactDigest: digestDirectory(out) };
 }
 
@@ -687,7 +700,14 @@ function privateJson(file) {
 /** Run only the pinned cf CLI with the caller's in-memory bearer session. */
 export function deployReleaseArtifact(
   artifact,
-  { message, releaseSha, settings, env = process.env, runner = spawnSync } = {},
+  {
+    message,
+    releaseSha,
+    settings,
+    secrets,
+    env = process.env,
+    runner = spawnSync,
+  } = {},
 ) {
   if (!env.CLOUDFLARE_API_TOKEN?.trim())
     throw Error(
@@ -695,11 +715,26 @@ export function deployReleaseArtifact(
     );
   const temporary = mkdtempSync(join(tmpdir(), "atlas-api-secrets-"));
   try {
+    if (
+      secrets !== undefined &&
+      (settings !== undefined ||
+        !secrets ||
+        typeof secrets !== "object" ||
+        Array.isArray(secrets) ||
+        Object.keys(secrets).length !== 1 ||
+        typeof secrets.ATLAS_EDGE_ORIGIN_SECRET !== "string" ||
+        !secrets.ATLAS_EDGE_ORIGIN_SECRET.trim())
+    )
+      throw Error(
+        "The edge accepts only its existing visitor-proof credential.",
+      );
     const file = join(temporary, "secrets.json");
-    if (settings !== undefined)
+    if (settings !== undefined || secrets !== undefined)
       writeFileSync(
         file,
-        JSON.stringify({ ATLAS_API_SETTINGS: JSON.stringify(settings) }),
+        JSON.stringify(
+          secrets ?? { ATLAS_API_SETTINGS: JSON.stringify(settings) },
+        ),
         { mode: 0o600 },
       );
     const result = runner(
@@ -716,7 +751,9 @@ export function deployReleaseArtifact(
         releaseSha,
         "--message",
         message,
-        ...(settings === undefined ? [] : ["--secrets-file", file]),
+        ...(settings === undefined && secrets === undefined
+          ? []
+          : ["--secrets-file", file]),
       ],
       {
         cwd: artifact.directory,
@@ -844,6 +881,18 @@ export async function releaseCli(
       workerName: `atlas-api-ops-${target}`,
       hostname,
       accessAppId: app.id,
+      workerVersionId: activeVersion(
+        cf([
+          "workers",
+          "deployments",
+          "list",
+          "--worker",
+          `atlas-api-ops-${target}`,
+        ]),
+      ),
+      artifactDigest: digestDirectory(
+        join(directory, "operations/.cloudflare/output/v0"),
+      ),
     };
     writeFileSync(
       join(directory, "api-release.json"),
@@ -1035,6 +1084,7 @@ export async function releaseCli(
     accountId,
     target,
     hostname,
+    publicHostname: new URL(runtime.ATLAS_SERVER_API_PROXY_TARGET).hostname,
   });
   const headers = {
     "CF-Access-Client-Id": access.client_id,
@@ -1088,7 +1138,10 @@ export async function releaseCli(
       if (role === "api" && !identity.bootstrap && !operationsDeployed) {
         deployReleaseArtifact(ops, {
           releaseSha,
-          message: `Atlas ${target} protected GET-only runtime verification`,
+          message: `Atlas ${target} protected runtime verification; artifact=${ops.artifactDigest}`,
+          secrets: {
+            ATLAS_EDGE_ORIGIN_SECRET: runtime.ATLAS_EDGE_ORIGIN_SECRET,
+          },
           env,
         });
         operationsDeployed = true;
@@ -1112,6 +1165,15 @@ export async function releaseCli(
     hostname,
     artifactDigest: ops.artifactDigest,
     accessAppId: app.id,
+    workerVersionId: activeVersion(
+      cf([
+        "workers",
+        "deployments",
+        "list",
+        "--worker",
+        `atlas-api-ops-${target}`,
+      ]),
+    ),
   };
   writeFileSync(
     join(directory, "api-release.json"),
