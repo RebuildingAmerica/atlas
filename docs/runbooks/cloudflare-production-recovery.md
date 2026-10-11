@@ -103,6 +103,21 @@ the expected load or that discovery extraction fits its execution budget.
 
 ## Interruption and recovery
 
+If the retained PDS invite broker credential is absent from GitHub, use
+**Recover existing PDS broker setting** on `main`. Generate a local RSA-4096
+recipient key with `node:crypto`; supply only the base64 DER SPKI public key.
+The Production job uses the existing Google deployment identity to read the
+broker origin and credential from `/opt/atlas-pds/pds.env` over IAP. Its SSH key
+expires after five minutes. It does not restart the PDS, change its identity,
+read its other secrets, or restore Google billing. This preserves new account
+creation and existing account identity through the hosting migration.
+
+Download the one-day encrypted artifact, verify its source commit, origin and
+recipient fingerprint, and decrypt with RSA OAEP SHA-256 locally. Save the
+existing `brokerSecret` as Production's `ATLAS_PDS_INVITE_BROKER_SECRET`, then
+rerun the production doctor. Keep private keys and plaintext outside source
+control and build inputs. No raw credential is logged or retained in artifacts.
+
 Use `pause-api` with the retained run to stop the exact consumer owner. If
 activation from a verified paused pair was interrupted, use its failed trusted
 run as `source-run-id`. The operation retains the original transition journal,
