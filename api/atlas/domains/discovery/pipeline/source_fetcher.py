@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 import httpx
-import trafilatura
 from atlas_discovery_engine import BraveSearchProvider, SearchProvider, SearchResult
 
 logger = logging.getLogger(__name__)
@@ -179,6 +178,9 @@ def _normalize_queries(queries: Iterable[object]) -> list[str]:
 
 async def _extract_page_text(client: httpx.AsyncClient, url: str) -> str:
     """Fetch a page and extract readable text."""
+    # Browsing existing profiles does not need the document extraction runtime.
+    import trafilatura
+
     response = await client.get(url)
     response.raise_for_status()
     extracted = trafilatura.extract(response.text, include_comments=False, include_tables=False)

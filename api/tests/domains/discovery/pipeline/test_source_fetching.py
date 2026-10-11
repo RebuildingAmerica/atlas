@@ -128,7 +128,7 @@ class TestSourceFetchingHelpers:
                 return FakeResponse()
 
         monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.source_fetcher.trafilatura.extract",
+            "trafilatura.extract",
             lambda text, **_kwargs: "Readable text" if "Readable" in text else "",
         )
 
