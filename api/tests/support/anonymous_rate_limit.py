@@ -29,6 +29,8 @@ def _settings(db_url: str, **overrides: object) -> Settings:
         "anonymous_rate_limit_writes_per_minute": 1,
         "anonymous_rate_limit_total_per_hour": 100,
         "auth_internal_secret": "internal-test-secret",
+        "auth_callback_secret": "callback-test-secret",
+        "edge_origin_secret": "edge-test-secret",
     }
     values.update(overrides)
     return Settings(**values)

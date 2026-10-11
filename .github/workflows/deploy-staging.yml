@@ -58,6 +58,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           search-api-key: ${{ secrets.SEARCH_API_KEY }}
           auth-internal-secret: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
+          auth-callback-secret: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
           edge-origin-secret: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           auth-api-key-introspection-url: ${{ secrets.ATLAS_AUTH_API_KEY_INTROSPECTION_URL }}
           auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
@@ -183,7 +184,9 @@ jobs:
         env:
           ATLAS_API_URL: ${{ secrets.ATLAS_API_URL }}
           ATLAS_AUTH_INTERNAL_SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
+          ATLAS_AUTH_CALLBACK_SECRET: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
           ATLAS_AUTH_MEMBERSHIP_URL: http://127.0.0.1:3100
+          ATLAS_EDGE_ORIGIN_SECRET: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
           ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
           ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
@@ -193,6 +196,20 @@ jobs:
           STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
         run: |
           set -euo pipefail
+
+          # The app refuses to serve with accounts enabled when any of these is
+          # empty; say which one instead of timing out on the readiness probe.
+          required_env=(
+            ATLAS_AUTH_INTERNAL_SECRET
+            ATLAS_AUTH_CALLBACK_SECRET
+            ATLAS_EDGE_ORIGIN_SECRET
+          )
+          for key in "${required_env[@]}"; do
+            if [ -z "${!key}" ]; then
+              echo "::error title=Missing branch app environment::$key is required in the GitHub \"staging\" Environment to start the branch app."
+              exit 1
+            fi
+          done
 
           atlas_api_origin="${ATLAS_API_URL%/}"
           atlas_public_origin="${ATLAS_PUBLIC_URL%/}"

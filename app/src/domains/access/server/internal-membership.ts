@@ -1,8 +1,8 @@
 import "@tanstack/react-start/server-only";
 
-import { timingSafeEqual } from "node:crypto";
 import { normalizeAtlasOrganizationMetadata } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { getAuthDatabase, getAuthPgPool } from "./auth";
+import { hasCallbackSecret } from "./callback-secret";
 import { getAuthRuntimeConfig } from "./runtime";
 import { queryActiveProducts } from "./workspace-products";
 
@@ -142,14 +142,7 @@ export async function verifyMembershipRequest(
   userId: string,
 ): Promise<Response> {
   const runtime = getAuthRuntimeConfig();
-  const providedSecret = request.headers.get("x-atlas-internal-secret");
-  const secretMatches =
-    !!runtime.internalSecret &&
-    !!providedSecret &&
-    runtime.internalSecret.length === providedSecret.length &&
-    timingSafeEqual(Buffer.from(runtime.internalSecret), Buffer.from(providedSecret));
-
-  if (!secretMatches) {
+  if (!hasCallbackSecret(request, runtime.callbackSecret)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 

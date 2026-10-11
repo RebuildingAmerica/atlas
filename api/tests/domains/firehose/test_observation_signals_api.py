@@ -128,6 +128,7 @@ def test_internal_firehose_request_rejects_untrusted_production_call() -> None:
         database_url="sqlite:///tmp/test.db",
         multi_user=True,
         auth_internal_secret="internal-secret",
+        auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -149,6 +150,7 @@ def test_internal_firehose_request_accepts_trusted_production_call() -> None:
         database_url="sqlite:///tmp/test.db",
         multi_user=True,
         auth_internal_secret="internal-secret",
+        auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
     )
 
     assert (

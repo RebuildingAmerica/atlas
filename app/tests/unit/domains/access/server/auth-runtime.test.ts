@@ -233,7 +233,10 @@ describe("auth runtime wiring", () => {
       "https://www.googleapis.com",
     ]);
     expect((typedOptions.plugins ?? []).length).toBeGreaterThanOrEqual(6);
-    expect(mocks.admin).toHaveBeenCalledTimes(1);
+    // Atlas has no Better Auth admin role: operator authority lives in the API's
+    // authorization policy, so the admin plugin's impersonation and role
+    // endpoints must not exist.
+    expect(mocks.admin).not.toHaveBeenCalled();
     expect(mocks.jwt).toHaveBeenCalledTimes(1);
     expect(mocks.passkey).toHaveBeenCalledWith({
       rpID: "atlas.test",

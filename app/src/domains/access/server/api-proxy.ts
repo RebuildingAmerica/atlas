@@ -1,6 +1,5 @@
 import "@tanstack/react-start/server-only";
 
-import { createInternalAuthHeaders } from "@/domains/access/config";
 import {
   SlidingWindowRateLimiter,
   bucketSpecsForRequest,
@@ -9,6 +8,7 @@ import {
   resolveClientIp,
 } from "./anonymous-rate-limit";
 import { visitorIdentityHeaders } from "./api-request-identity";
+import { createAppActorHeaders } from "./app-actor-assertion";
 import { loadAtlasSession } from "./session-state";
 import { type AuthRuntimeConfig, getAuthRuntimeConfig } from "./runtime";
 
@@ -33,6 +33,14 @@ const REQUEST_HEADERS_TO_DROP = new Set([
   "x-vercel-trusted-oidc-idp-token",
 ]);
 
+/**
+ * Headers only the app server may set. A browser that sends any of them is
+ * trying to speak for the app, so they are stripped before forwarding.
+ */
+function isAppOnlyHeader(name: string): boolean {
+  return name.toLowerCase().startsWith("x-atlas-");
+}
+
 const RESPONSE_HEADERS_TO_DROP = new Set([
   "connection",
   "content-encoding",
@@ -43,11 +51,15 @@ const RESPONSE_HEADERS_TO_DROP = new Set([
 
 const anonymousProxyRateLimiter = new SlidingWindowRateLimiter();
 
-function copyProxyHeaders(headers: Headers, blockedHeaders: Set<string>): Headers {
+function copyProxyHeaders(
+  headers: Headers,
+  blockedHeaders: Set<string>,
+  isBlocked: (name: string) => boolean = () => false,
+): Headers {
   const proxyHeaders = new Headers();
 
   headers.forEach((value, key) => {
-    if (blockedHeaders.has(key.toLowerCase())) {
+    if (blockedHeaders.has(key.toLowerCase()) || isBlocked(key)) {
       return;
     }
 
@@ -61,10 +73,9 @@ async function buildInternalAuthHeaders(
   request: Request,
   runtime: AuthRuntimeConfig,
 ): Promise<Record<string, string>> {
-  const { internalSecret, localMode } = runtime;
   const cookie = request.headers.get("cookie");
 
-  if (localMode || !cookie || !internalSecret) {
+  if (runtime.localMode || !cookie) {
     return {};
   }
 
@@ -74,7 +85,7 @@ async function buildInternalAuthHeaders(
     return {};
   }
 
-  return createInternalAuthHeaders(session.user, internalSecret, {
+  return await createAppActorHeaders(session.user, {
     accountReady: session.accountReady,
     organizationId: session.workspace.activeOrganization?.id,
   });
@@ -100,7 +111,11 @@ export async function proxyAtlasApiRequest(request: Request): Promise<Response> 
     );
   }
 
-  const upstreamHeaders = copyProxyHeaders(request.headers, REQUEST_HEADERS_TO_DROP);
+  const upstreamHeaders = copyProxyHeaders(
+    request.headers,
+    REQUEST_HEADERS_TO_DROP,
+    isAppOnlyHeader,
+  );
   const internalHeaders = await buildInternalAuthHeaders(request, runtime);
   const hasCredentialHeaders =
     request.headers.has("authorization") || request.headers.has("x-api-key");
@@ -132,7 +147,7 @@ export async function proxyAtlasApiRequest(request: Request): Promise<Response> 
   Object.entries(
     visitorIdentityHeaders(
       request,
-      runtime.internalSecret,
+      runtime.edgeOriginSecret,
       runtime.anonymousRateLimit.trustedProxyHops,
     ),
   ).forEach(([key, value]) => {

@@ -64,6 +64,12 @@ const authJwtAudiences = buildAtlasAuthJwtAudiences({
 });
 // Deterministic so a run is reproducible. This is a localhost-only harness credential.
 const internalSecret = createHash("sha256").update("atlas-screenshots-harness").digest("hex");
+const callbackSecret = createHash("sha256")
+  .update("atlas-screenshots-harness-callback")
+  .digest("hex");
+const edgeOriginSecret = createHash("sha256")
+  .update("atlas-screenshots-harness-edge-origin")
+  .digest("hex");
 const operatorAllowedEmails = "person@atlas.test";
 
 delete process.env.NO_COLOR;
@@ -90,9 +96,11 @@ const apiWebServer = {
     ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
     ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
     ATLAS_AUTH_INTERNAL_SECRET: internalSecret,
+    ATLAS_AUTH_CALLBACK_SECRET: callbackSecret,
     ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
     ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
     ATLAS_DEPLOY_MODE: deployMode,
+    ATLAS_EDGE_ORIGIN_SECRET: edgeOriginSecret,
     ATLAS_OPERATOR_ALLOWED_EMAILS: operatorAllowedEmails,
     ATLAS_PUBLIC_URL: appUrl,
     CORS_ORIGINS: `["${appUrl}"]`,
@@ -120,9 +128,11 @@ const appWebServer = {
     ATLAS_AUTH_BASE_PATH: "/api/auth",
     ATLAS_AUTH_DB_PATH: authDbPath,
     ATLAS_AUTH_INTERNAL_SECRET: internalSecret,
+    ATLAS_AUTH_CALLBACK_SECRET: callbackSecret,
     ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
     ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
     ATLAS_DEPLOY_MODE: deployMode,
+    ATLAS_EDGE_ORIGIN_SECRET: edgeOriginSecret,
     ATLAS_EMAIL_CAPTURE_URL: `${mailboxUrl}/messages`,
     ATLAS_EMAIL_FROM: "Atlas <hello@localhost>",
     ATLAS_EMAIL_PROVIDER: "capture",

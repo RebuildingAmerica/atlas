@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { atlasApiServiceName } from "./deploy.js";
-import { formatCloudRunEnvVarsFileContent } from "./deploy-config.js";
+import {
+  buildAtlasApiCloudRunEnvVars,
+  formatCloudRunEnvVarsFileContent,
+  readDeployConfig,
+} from "./deploy-config.js";
 import {
   buildAtlasApiImageSpec,
   buildCloudBuildDockerConfig,
@@ -198,6 +203,66 @@ void describe("deploy resilience", () => {
       CORS_ORIGINS: '["https://atlas.rebuildingus.org"]',
     });
     assert.doesNotMatch(content, /^ATLAS_PUBLIC_URL=/m);
+  });
+
+  void it("deploys the callback and edge origin secrets to the API service", () => {
+    const envVars = buildAtlasApiCloudRunEnvVars({
+      databaseUrl: "postgresql://db.example.org/atlas",
+      anthropicApiKey: "anthropic-value", // pragma: allowlist secret
+      searchApiKey: "",
+      authInternalSecret: "internal-value", // pragma: allowlist secret
+      authCallbackSecret: "callback-value", // pragma: allowlist secret
+      authApiKeyIntrospectionUrl:
+        "https://atlas.example.org/api/auth/internal/api-key",
+      authMembershipUrl: "https://atlas.example.org",
+      edgeOriginSecret: "edge-value", // pragma: allowlist secret
+      publicUrl: "https://atlas.example.org",
+      authJwtAudiences: "https://atlas.example.org/mcp",
+      operatorAllowedEmails: "",
+    });
+
+    assert.equal(envVars.ATLAS_AUTH_INTERNAL_SECRET, "internal-value");
+    assert.equal(envVars.ATLAS_AUTH_CALLBACK_SECRET, "callback-value");
+    assert.equal(envVars.ATLAS_EDGE_ORIGIN_SECRET, "edge-value");
+  });
+
+  void it("refuses to deploy the API without a callback secret", () => {
+    const projectRoot = mkdtempSync(
+      path.join(tmpdir(), "atlas-deploy-config-"),
+    );
+    try {
+      const productionEnv = [
+        "GCP_PROJECT_ID=atlas-test",
+        "DATABASE_URL=postgresql://db.example.org/atlas",
+        "ANTHROPIC_API_KEY=anthropic-value", // pragma: allowlist secret
+        "ATLAS_AUTH_INTERNAL_SECRET=internal-value",
+        "ATLAS_EDGE_ORIGIN_SECRET=edge-value",
+        "ATLAS_PUBLIC_URL=https://atlas.example.org",
+      ];
+      const envPath = path.join(projectRoot, ".env.production");
+
+      writeFileSync(
+        envPath,
+        [
+          ...productionEnv,
+          "ATLAS_AUTH_CALLBACK_SECRET=replace-with-a-long-random-callback-secret", // pragma: allowlist secret
+        ].join("\n"),
+      );
+      assert.equal(readDeployConfig(projectRoot, "production"), undefined);
+
+      writeFileSync(
+        envPath,
+        [...productionEnv, "ATLAS_AUTH_CALLBACK_SECRET=callback-value"].join(
+          "\n",
+        ),
+      );
+      assert.equal(
+        readDeployConfig(projectRoot, "production")?.authCallbackSecret,
+        "callback-value",
+      );
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
+    }
   });
 
   void it("detects gcloud reauthentication failures from Cloud Build output", () => {

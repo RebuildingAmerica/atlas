@@ -52,6 +52,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "https://atlas.example.com/api/auth/internal/api-key",
         ATLAS_AUTH_JWT_AUDIENCES: "http://atlas.example.com/mcp",
         ATLAS_EMAIL_PROVIDER: "resend",
@@ -70,6 +72,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_MULTI_USER: "false",
         ATLAS_PUBLIC_URL: "http://127.0.0.1:3000",
       },
@@ -91,6 +95,8 @@ describe("resolveAuthRuntimeConfig", () => {
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
         ATLAS_AUTH_DB_PATH: "/srv/atlas/auth/atlas.sqlite",
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
         ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE: "12",
         ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR: "48",
@@ -186,6 +192,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
         ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
 
@@ -207,6 +215,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
 
         ATLAS_EMAIL_PROVIDER: "resend",
         ATLAS_EMAIL_RESEND_API_KEY: "re_test_123",
@@ -224,6 +234,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
 
         ATLAS_EMAIL_PROVIDER: "resend",
@@ -242,6 +254,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "https://atlas.example.com/api/auth/internal/api-key",
         ATLAS_AUTH_JWT_AUDIENCES: "https://api.atlas.example.com,https://atlas.example.com/mcp",
 
@@ -263,6 +277,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
         ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
 
@@ -281,6 +297,8 @@ describe("resolveAuthRuntimeConfig", () => {
     const runtime = resolveAuthRuntimeConfig(
       {
         ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret",
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "http://127.0.0.1:3100/api/auth/internal/api-key",
         ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
 
@@ -293,6 +311,32 @@ describe("resolveAuthRuntimeConfig", () => {
     expect(() => {
       validateAuthRuntimeConfig(runtime);
     }).toThrow("ATLAS_EMAIL_RESEND_API_KEY is required when ATLAS_EMAIL_PROVIDER=resend.");
+  });
+
+  it.each([
+    [
+      "ATLAS_AUTH_CALLBACK_SECRET",
+      "ATLAS_AUTH_CALLBACK_SECRET is required when ATLAS_MULTI_USER is true.",
+    ],
+    [
+      "ATLAS_EDGE_ORIGIN_SECRET",
+      "ATLAS_EDGE_ORIGIN_SECRET is required when ATLAS_MULTI_USER is true.",
+    ],
+  ])("rejects an account-enabled deployment without %s", (missing, message) => {
+    const env = Object.fromEntries(
+      Object.entries({
+        ATLAS_AUTH_INTERNAL_SECRET: "internal-test-secret", // pragma: allowlist secret
+        ATLAS_AUTH_CALLBACK_SECRET: "callback-test-secret", // pragma: allowlist secret
+        ATLAS_EDGE_ORIGIN_SECRET: "edge-test-secret", // pragma: allowlist secret
+        ATLAS_AUTH_API_KEY_INTROSPECTION_URL: "https://atlas.example.com/api/auth/internal/api-key",
+        ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
+        ATLAS_PUBLIC_URL: "https://atlas.example.com",
+      }).filter(([name]) => name !== missing),
+    );
+
+    expect(() => {
+      validateAuthRuntimeConfig(resolveAuthRuntimeConfig(env, "/workspace/atlas/app"));
+    }).toThrow(message);
   });
 
   it("rejects missing auth secrets", () => {

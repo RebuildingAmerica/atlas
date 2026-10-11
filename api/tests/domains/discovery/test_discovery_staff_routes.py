@@ -95,8 +95,8 @@ async def test_private_research_runs_stay_inside_their_workspace(
         state="NV",
         issue_areas=["public_transit"],
     )
-    outsider = {**headers.ordinary, "X-Atlas-Organization-Id": "org_other"}
-    member = {**headers.ordinary, "X-Atlas-Organization-Id": "org_owner"}
+    outsider = headers.ordinary_in("org_other")
+    member = headers.ordinary_in("org_owner")
 
     for viewer, sees_private in (
         (outsider, False),
@@ -132,8 +132,8 @@ async def test_scout_volunteers_follow_jobs_they_can_see_but_not_private_ones(
     private_job = await DiscoveryJobCRUD.create(
         test_db, run_id=await _private_run(test_db, org_id="org_owner")
     )
-    outsider = {**headers.ordinary, "X-Atlas-Organization-Id": "org_other"}
-    member = {**headers.ordinary, "X-Atlas-Organization-Id": "org_owner"}
+    outsider = headers.ordinary_in("org_other")
+    member = headers.ordinary_in("org_owner")
 
     visible = await test_client.get(f"/api/discovery-runs/jobs/{public_job}", headers=outsider)
     hidden = await test_client.get(f"/api/discovery-runs/jobs/{private_job}", headers=outsider)

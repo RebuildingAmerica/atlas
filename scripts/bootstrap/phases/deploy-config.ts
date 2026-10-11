@@ -23,6 +23,7 @@ export interface DeployConfig {
   anthropicApiKey: string;
   searchApiKey: string;
   authInternalSecret: string;
+  authCallbackSecret: string;
   authApiKeyIntrospectionUrl: string;
   authMembershipUrl: string;
   edgeOriginSecret: string;
@@ -36,6 +37,7 @@ interface AtlasApiCloudRunEnvConfig {
   anthropicApiKey: string;
   searchApiKey: string;
   authInternalSecret: string;
+  authCallbackSecret: string;
   authApiKeyIntrospectionUrl: string;
   authMembershipUrl: string;
   edgeOriginSecret: string;
@@ -61,6 +63,7 @@ export function buildAtlasApiCloudRunEnvVars(
     ANTHROPIC_API_KEY: config.anthropicApiKey,
     SEARCH_API_KEY: config.searchApiKey,
     ATLAS_AUTH_INTERNAL_SECRET: config.authInternalSecret,
+    ATLAS_AUTH_CALLBACK_SECRET: config.authCallbackSecret,
     ATLAS_AUTH_API_KEY_INTROSPECTION_URL: config.authApiKeyIntrospectionUrl,
     ATLAS_AUTH_MEMBERSHIP_URL: config.authMembershipUrl,
     ATLAS_EDGE_ORIGIN_SECRET: config.edgeOriginSecret,
@@ -95,6 +98,7 @@ export function readDeployConfig(
   const anthropicApiKey = resolve("ANTHROPIC_API_KEY");
   const searchApiKey = resolve("SEARCH_API_KEY");
   const authInternalSecret = resolve("ATLAS_AUTH_INTERNAL_SECRET");
+  const authCallbackSecret = resolve("ATLAS_AUTH_CALLBACK_SECRET");
   const edgeOriginSecret = resolve("ATLAS_EDGE_ORIGIN_SECRET");
   const publicUrl =
     resolve("ATLAS_PUBLIC_URL") ||
@@ -137,6 +141,11 @@ export function readDeployConfig(
     return undefined;
   }
 
+  if (!authCallbackSecret) {
+    log.error("ATLAS_AUTH_CALLBACK_SECRET not found in env files.");
+    return undefined;
+  }
+
   if (!authApiKeyIntrospectionUrl) {
     log.error("ATLAS_AUTH_API_KEY_INTROSPECTION_URL not found in env files.");
     return undefined;
@@ -162,6 +171,7 @@ export function readDeployConfig(
     anthropicApiKey,
     searchApiKey,
     authInternalSecret,
+    authCallbackSecret,
     authApiKeyIntrospectionUrl,
     authMembershipUrl,
     edgeOriginSecret,

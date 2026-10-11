@@ -43,6 +43,7 @@ class TestValidateRuntimeAuthConfig:
             auth_jwt_issuer="https://atlas.test",
             auth_jwt_audience=["https://atlas.test/mcp", "https://api.atlas.test"],
             auth_internal_secret="internal-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
         )
@@ -59,6 +60,18 @@ class TestValidateRuntimeAuthConfig:
         with pytest.raises(RuntimeError, match="ATLAS_AUTH_INTERNAL_SECRET is required"):
             validate_runtime_auth_config(settings)
 
+    def test_multi_user_requires_callback_secret(self) -> None:
+        """The API needs its own secret to call back into the app for memberships and keys."""
+        settings = Settings(
+            database_url="sqlite:///tmp/test.db",
+            multi_user=True,
+            auth_jwt_audience=["https://atlas.test/mcp"],
+            auth_internal_secret="internal-secret",
+            auth_callback_secret="",
+        )
+        with pytest.raises(RuntimeError, match="ATLAS_AUTH_CALLBACK_SECRET is required"):
+            validate_runtime_auth_config(settings)
+
     def test_multi_user_requires_api_key_introspection(self) -> None:
         """Hosted API-key access needs the app introspection endpoint."""
         settings = Settings(
@@ -66,6 +79,7 @@ class TestValidateRuntimeAuthConfig:
             multi_user=True,
             auth_jwt_audience=["https://atlas.test/mcp"],
             auth_internal_secret="internal-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url=None,
         )
         with pytest.raises(
@@ -83,6 +97,7 @@ class TestValidateRuntimeAuthConfig:
             multi_user=True,
             auth_jwt_audience=["https://atlas.test/mcp"],
             auth_internal_secret="internal-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="",
         )
@@ -96,6 +111,7 @@ class TestValidateRuntimeAuthConfig:
             multi_user=True,
             auth_jwt_audience=["https://atlas.test/mcp"],
             auth_internal_secret="internal-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
             auth_jwt_issuer="",
@@ -111,6 +127,7 @@ class TestValidateRuntimeAuthConfig:
             auth_jwt_issuer="http://atlas.test",
             auth_jwt_audience=["http://atlas.test/mcp"],
             auth_internal_secret="internal-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
         )
@@ -127,6 +144,7 @@ class TestValidateRuntimeAuthConfig:
             auth_jwt_issuer="http://127.0.0.1:3100",
             auth_jwt_audience=["http://127.0.0.1:3100/mcp", "http://127.0.0.1:8000"],
             auth_internal_secret="internal-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="http://127.0.0.1:3100/api/auth/internal/api-key",
             auth_membership_verification_url="http://127.0.0.1:3100",
         )
@@ -141,6 +159,7 @@ class TestValidateRuntimeAuthConfig:
             auth_jwt_issuer="https://atlas.test",
             auth_jwt_audience=["https://api.atlas.test", "https://atlas.test/mcp"],
             auth_internal_secret="internal-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_api_key_introspection_url="https://atlas.test/api/auth/internal/api-key",
             auth_membership_verification_url="https://atlas.test",
         )

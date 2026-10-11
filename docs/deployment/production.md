@@ -56,8 +56,9 @@ Make sure you understand these pieces:
 - `app/` is the app
 - `api/` is the API
 - `.env.production` holds your production environment variables. `make setup`
-  scaffolds it automatically and generates `ATLAS_AUTH_INTERNAL_SECRET` if it is
-  still a placeholder.
+  scaffolds it automatically and generates `ATLAS_AUTH_INTERNAL_SECRET`,
+  `ATLAS_AUTH_CALLBACK_SECRET`, and `ATLAS_EDGE_ORIGIN_SECRET` when they are
+  missing or still placeholders.
 - `.env` is the optional local Compose smoke-test environment file
 - `compose.yaml` is the canonical Docker setup for both local e2e runs and
   production
@@ -96,7 +97,8 @@ Then fill in the real values.
 
 | Variable                               | Required                                     | Description                                                                                                                                                                                                                                                                                 |
 | -------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ATLAS_AUTH_INTERNAL_SECRET`           | Yes                                          | Shared secret between the app and API services. Used for trusted app-to-API requests (e.g., API key introspection). `make setup` generates this automatically.                                                                                                                              |
+| `ATLAS_AUTH_INTERNAL_SECRET`           | Yes                                          | Shared secret between the app and API services. The app uses it as Better Auth's signing secret, and the API accepts it from system callers such as the discovery scheduler. `make setup` generates this automatically.                                                                     |
+| `ATLAS_AUTH_CALLBACK_SECRET`           | Yes when `ATLAS_MULTI_USER` is `true`        | Secret the API sends in `X-Atlas-Callback-Secret` when it calls back into the app for membership checks and API-key introspection. The app and API must hold the same value, and both refuse to start with accounts enabled without it. `make setup` generates this automatically.          |
 | `ATLAS_AUTH_API_KEY_INTROSPECTION_URL` | Yes when `ATLAS_MULTI_USER` is `true`        | Internal URL Atlas uses to validate API keys from the app server. In a Compose deployment, set this to `http://atlas-web:3000/api/auth/internal/api-key`. In a hosted app deployment, set it to the app's public auth route, such as `https://atlas.example.com/api/auth/internal/api-key`. |
 | `ATLAS_AUTH_DB_PATH`                   | Yes                                          | Path to the Better Auth SQLite database. Must point at persistent storage that survives container restarts.                                                                                                                                                                                 |
 | `ATLAS_OPERATOR_ALLOWED_EMAILS`        | Yes for hosted editorial and discount review | Comma-separated allowlist for first owners and private operator access. Hosted profile-correction, discovery-review, and discount reviewers must be signed in with an email in this list before their admin screens can load or change records.                                             |
@@ -121,25 +123,25 @@ Then fill in the real values.
 
 ### API runtime
 
-| Variable                                          | Required                | Description                                                                                                                                                                                                   |
-| ------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                    | Yes                     | Database URL for the API. Use PostgreSQL for hosted production and staging. Self-hosted Docker deployments may use SQLite only when the database path points at persistent storage.                           |
-| `CORS_ORIGINS`                                    | Yes                     | JSON array of origins allowed to call the API (e.g., `["https://atlas.example.com"]`).                                                                                                                        |
-| `ENABLE_OPENAPI_SPEC`                             | No                      | Set to `true` to publish `/openapi.json`.                                                                                                                                                                     |
-| `ATLAS_ANON_RATE_LIMIT_ENABLED`                   | No                      | Enable anonymous abuse limits at the app proxy and API. Defaults to `true`; keep it enabled in hosted environments.                                                                                           |
-| `ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE`          | No                      | Anonymous public read burst limit per client. Hosted default: `30`.                                                                                                                                           |
-| `ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE`         | No                      | Anonymous public write burst limit per client. Hosted default: `10`.                                                                                                                                          |
-| `ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR`            | No                      | Sustained anonymous public request limit per client. Hosted default: `120`.                                                                                                                                   |
-| `ATLAS_ANON_CREDENTIAL_RATE_LIMIT_PER_MINUTE`     | No                      | Credential-present pre-auth request burst limit per client. Hosted default: `60`. This protects API key introspection and JWT verification from forged credentials.                                           |
-| `ATLAS_ANON_CREDENTIAL_RATE_LIMIT_TOTAL_PER_HOUR` | No                      | Sustained credential-present pre-auth request limit per client. Hosted default: `600`.                                                                                                                        |
-| `ATLAS_TRUSTED_PROXY_HOPS`                        | No                      | Number of trusted proxy hops when deriving a client IP from unsigned forwarded headers. Hosted default: `1`, but hosted deploys keep unsigned forwarded headers disabled.                                     |
-| `ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS`            | No                      | Whether direct API traffic may derive client identity from raw forwarded headers. Hosted default: `false`; keep it false unless a trusted ingress strips client-supplied forwarding headers before Cloud Run. |
-| `ATLAS_EDGE_ORIGIN_SECRET`                        | Yes for hosted API edge | Shared secret Cloudflare writes into `X-Atlas-Proxy-Secret` when setting the signed `X-Atlas-Client-IP` origin header. Use a long random value distinct from `ATLAS_AUTH_INTERNAL_SECRET`.                    |
-| `ATLAS_MCP_FORM_ELICITATION_ENABLED`              | No                      | Enables MCP form-mode follow-up questions and confirmations. Defaults to `true`; set to `false` to roll back form elicitation while preserving existing non-elicited MCP behavior.                            |
-| `ATLAS_MCP_URL_ELICITATION_ENABLED`               | No                      | Enables MCP URL-mode browser handoffs. Defaults to `true`; set to `false` to stop URL-mode requests and return safe direct-Atlas instructions instead.                                                        |
-| `ATLAS_MCP_WORKBENCH_HANDOFFS_ENABLED`            | No                      | Enables MCP-originated Workbench write handoffs. Defaults to `true`; set to `false` to block saved-list, coverage-target, and watch handoffs from MCP while leaving read flows available.                     |
-| `ANTHROPIC_API_KEY`                               | For discovery           | Required for the discovery pipeline (Claude-powered entity extraction).                                                                                                                                       |
-| `SEARCH_API_KEY`                                  | For discovery           | API key for the search provider used during discovery source fetching.                                                                                                                                        |
+| Variable                                          | Required                              | Description                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                    | Yes                                   | Database URL for the API. Use PostgreSQL for hosted production and staging. Self-hosted Docker deployments may use SQLite only when the database path points at persistent storage.                                                                                                                                                                       |
+| `CORS_ORIGINS`                                    | Yes                                   | JSON array of origins allowed to call the API (e.g., `["https://atlas.example.com"]`).                                                                                                                                                                                                                                                                    |
+| `ENABLE_OPENAPI_SPEC`                             | No                                    | Set to `true` to publish `/openapi.json`.                                                                                                                                                                                                                                                                                                                 |
+| `ATLAS_ANON_RATE_LIMIT_ENABLED`                   | No                                    | Enable anonymous abuse limits at the app proxy and API. Defaults to `true`; keep it enabled in hosted environments.                                                                                                                                                                                                                                       |
+| `ATLAS_ANON_RATE_LIMIT_READS_PER_MINUTE`          | No                                    | Anonymous public read burst limit per client. Hosted default: `30`.                                                                                                                                                                                                                                                                                       |
+| `ATLAS_ANON_RATE_LIMIT_WRITES_PER_MINUTE`         | No                                    | Anonymous public write burst limit per client. Hosted default: `10`.                                                                                                                                                                                                                                                                                      |
+| `ATLAS_ANON_RATE_LIMIT_TOTAL_PER_HOUR`            | No                                    | Sustained anonymous public request limit per client. Hosted default: `120`.                                                                                                                                                                                                                                                                               |
+| `ATLAS_ANON_CREDENTIAL_RATE_LIMIT_PER_MINUTE`     | No                                    | Credential-present pre-auth request burst limit per client. Hosted default: `60`. This protects API key introspection and JWT verification from forged credentials.                                                                                                                                                                                       |
+| `ATLAS_ANON_CREDENTIAL_RATE_LIMIT_TOTAL_PER_HOUR` | No                                    | Sustained credential-present pre-auth request limit per client. Hosted default: `600`.                                                                                                                                                                                                                                                                    |
+| `ATLAS_TRUSTED_PROXY_HOPS`                        | No                                    | Number of trusted proxy hops when deriving a client IP from unsigned forwarded headers. Hosted default: `1`, but hosted deploys keep unsigned forwarded headers disabled.                                                                                                                                                                                 |
+| `ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS`            | No                                    | Whether direct API traffic may derive client identity from raw forwarded headers. Hosted default: `false`; keep it false unless a trusted ingress strips client-supplied forwarding headers before Cloud Run.                                                                                                                                             |
+| `ATLAS_EDGE_ORIGIN_SECRET`                        | Yes when `ATLAS_MULTI_USER` is `true` | Shared secret Cloudflare and the app proxy write into `X-Atlas-Proxy-Secret` alongside the visitor's `X-Atlas-Client-IP`. The API trusts that address only with this secret. The app server and the API must hold the same value, and the app refuses to start with accounts enabled without it. Use a long random value distinct from the other secrets. |
+| `ATLAS_MCP_FORM_ELICITATION_ENABLED`              | No                                    | Enables MCP form-mode follow-up questions and confirmations. Defaults to `true`; set to `false` to roll back form elicitation while preserving existing non-elicited MCP behavior.                                                                                                                                                                        |
+| `ATLAS_MCP_URL_ELICITATION_ENABLED`               | No                                    | Enables MCP URL-mode browser handoffs. Defaults to `true`; set to `false` to stop URL-mode requests and return safe direct-Atlas instructions instead.                                                                                                                                                                                                    |
+| `ATLAS_MCP_WORKBENCH_HANDOFFS_ENABLED`            | No                                    | Enables MCP-originated Workbench write handoffs. Defaults to `true`; set to `false` to block saved-list, coverage-target, and watch handoffs from MCP while leaving read flows available.                                                                                                                                                                 |
+| `ANTHROPIC_API_KEY`                               | For discovery                         | Required for the discovery pipeline (Claude-powered entity extraction).                                                                                                                                                                                                                                                                                   |
+| `SEARCH_API_KEY`                                  | For discovery                         | API key for the search provider used during discovery source fetching.                                                                                                                                                                                                                                                                                    |
 
 Use explicit absolute URLs in production.
 
@@ -207,6 +209,8 @@ Set these auth values in Vercel as well:
 
 - `ATLAS_AUTH_API_KEY_INTROSPECTION_URL=https://atlas.example.com/api/auth/internal/api-key`
 - `ATLAS_AUTH_INTERNAL_SECRET=<same shared secret used by the API service>`
+- `ATLAS_AUTH_CALLBACK_SECRET=<same callback secret used by the API service>`
+- `ATLAS_EDGE_ORIGIN_SECRET=<same edge origin secret used by the API service>`
 - `ATLAS_OPERATOR_ALLOWED_EMAILS=<optional bootstrap allowlist for first owners>`
 - `ATLAS_EMAIL_PROVIDER=resend`
 - `ATLAS_EMAIL_FROM=Atlas <hello@atlas-mail.example.com>`
@@ -254,6 +258,7 @@ accidentally inherit production URLs or databases:
 - `ANTHROPIC_API_KEY`
 - `SEARCH_API_KEY`
 - `ATLAS_AUTH_INTERNAL_SECRET`
+- `ATLAS_AUTH_CALLBACK_SECRET`
 - `ATLAS_EDGE_ORIGIN_SECRET`
 - `ATLAS_AUTH_API_KEY_INTROSPECTION_URL`
 - `ATLAS_AUTH_MEMBERSHIP_URL`
@@ -263,6 +268,14 @@ accidentally inherit production URLs or databases:
 - `ATLAS_OPERATOR_ALLOWED_EMAILS`
 - `VERCEL_TOKEN` for the Vercel CLI production app deploy
 - `OPENSTATUS_API_KEY` when synthetics should run
+
+The workflow passes the three shared secrets to both the API service and the
+Vercel app. The API deploy step fails before it builds anything if
+`ATLAS_AUTH_INTERNAL_SECRET`, `ATLAS_AUTH_CALLBACK_SECRET`, or
+`ATLAS_EDGE_ORIGIN_SECRET` is empty, and names the missing one.
+`pnpm bootstrap --infra` uploads all three from the env files. To change one
+later, follow
+[Callback and Edge Origin Secret Rotation](../runbooks/rotate-auth-secrets.md).
 
 OpenStatus synthetics use `config.openstatus.yaml`, which points the GitHub
 Action at the monitor IDs already owned by the OpenStatus workspace. OpenStatus

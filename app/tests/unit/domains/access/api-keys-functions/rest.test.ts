@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AtlasSessionPayload } from "@rebuildingamerica/atlas-access/workspace/organization-contracts";
 import type { ServerFnExecutionResponse } from "../../../../helpers/server-fn-stub";
-import { createAtlasSessionFixture, createAtlasWorkspace } from "../../../../fixtures/access/sessions";
+import {
+  createAtlasSessionFixture,
+  createAtlasWorkspace,
+} from "../../../../fixtures/access/sessions";
 
 const mocks = vi.hoisted(() => ({
   ensureAtlasSession: vi.fn(),
@@ -84,6 +87,7 @@ describe("api-keys.functions", () => {
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       localMode: false,
       internalSecret: "internal-test-secret",
+      callbackSecret: "callback-test-secret",
       publicBaseUrl: "http://atlas.test",
     });
     mocks.getBrowserSessionHeaders.mockReturnValue(browserSessionHeaders);
@@ -300,7 +304,7 @@ describe("api-keys.functions", () => {
       expect.objectContaining({
         headers: {
           "x-api-key": "atlas_secret_key_1234567890",
-          "x-atlas-internal-secret": "internal-test-secret",
+          "x-atlas-callback-secret": "callback-test-secret",
         },
         method: "POST",
       }),
@@ -395,6 +399,7 @@ describe("api-keys.functions", () => {
       apiKeyIntrospectionUrl: null,
       localMode: false,
       internalSecret: "internal-test-secret",
+      callbackSecret: "callback-test-secret",
       publicBaseUrl: "http://atlas.test",
     });
     mocks.ensureReadyAtlasSession.mockResolvedValue(
@@ -430,6 +435,7 @@ describe("api-keys.functions", () => {
       apiBaseUrl: null,
       apiKeyIntrospectionUrl: "http://127.0.0.1:3100/api/auth/internal/api-key",
       internalSecret: "internal-test-secret",
+      callbackSecret: "callback-test-secret",
       localMode: false,
       publicBaseUrl: "http://atlas.test",
     });

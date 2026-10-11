@@ -100,14 +100,38 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       "Bootstrap generates this shared app/API secret when it is missing.",
   },
   {
-    key: "ATLAS_EDGE_ORIGIN_SECRET",
-    label: "API edge origin secret",
-    targets: ["staging", "prod"],
+    key: "ATLAS_AUTH_CALLBACK_SECRET",
+    label: "API-to-app callback secret",
+    targets: ["local", "staging", "prod"],
     required: true,
     source: "bootstrap",
-    destinations: [".env.staging", ".env.production", "api/.env"],
+    destinations: [
+      ".env",
+      ".env.staging",
+      ".env.production",
+      "api/.env",
+      "app/.env.local",
+      "Vercel",
+    ],
     instructions:
-      "Bootstrap generates this Cloudflare-to-API origin secret when it is missing.",
+      "Bootstrap generates this secret when it is missing. The API sends it when it calls back into the app for membership checks and API-key introspection, so the app and API must hold the same value.",
+  },
+  {
+    key: "ATLAS_EDGE_ORIGIN_SECRET",
+    label: "API edge origin secret",
+    targets: ["local", "staging", "prod"],
+    required: true,
+    source: "bootstrap",
+    destinations: [
+      ".env",
+      ".env.staging",
+      ".env.production",
+      "api/.env",
+      "app/.env.local",
+      "Vercel",
+    ],
+    instructions:
+      "Bootstrap generates this secret when it is missing. Cloudflare, the app server, and the API all hold it so the edge and the app proxy can vouch for visitor IP addresses.",
   },
   {
     key: "ATLAS_EMAIL_RESEND_API_KEY",

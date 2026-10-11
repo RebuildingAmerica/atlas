@@ -78,7 +78,20 @@ class Settings(BaseSettings):
     """
 
     auth_internal_secret: str = Field(default="", validation_alias="ATLAS_AUTH_INTERNAL_SECRET")
-    """Shared secret for trusted app-to-API requests."""
+    """Shared secret system callers present until they move to their own credentials.
+
+    People reach the API through the app's signed actor assertion, so this
+    secret never carries operator authority.
+    """
+
+    auth_callback_secret: str = Field(default="", validation_alias="ATLAS_AUTH_CALLBACK_SECRET")
+    """Secret the API presents when it calls back into the app.
+
+    Membership checks and API-key introspection use it. It is separate from the
+    app's own signing secret so that, once the remaining system callers stop
+    using ``ATLAS_AUTH_INTERNAL_SECRET``, the API no longer needs to hold the
+    secret the app signs sessions with.
+    """
 
     auth_api_key_introspection_url: str | None = Field(
         default=None, validation_alias="ATLAS_AUTH_API_KEY_INTROSPECTION_URL"

@@ -47,7 +47,7 @@ describe("registerApiRequestIdentity", () => {
   it("gives each server-side API call the identity of the visitor it serves", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
       anonymousRateLimit: { trustedProxyHops: 1 },
-      internalSecret: "secret", // pragma: allowlist secret - test fixture
+      edgeOriginSecret: "secret", // pragma: allowlist secret - test fixture
     });
     mocks.getRequest.mockReturnValue(visitorRequest("198.51.100.7"));
     registerApiRequestIdentity();

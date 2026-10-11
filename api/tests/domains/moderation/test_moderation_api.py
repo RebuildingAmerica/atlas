@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.models import EntryCRUD, SourceCRUD
 from atlas.platform.authz import Action, require_action
+from tests.support.staff_auth import enable_staff_auth
 from tests.support.authz_requests import guard_request
 
 
@@ -376,22 +377,9 @@ async def test_only_allowlisted_editors_can_read_or_close_private_reports(
         json={"source_id": source_id, "reason": "outdated_source", "note": "Private source note"},
     )
     source_report_id = source_receipt.json()["id"]
-    test_internal_secret = "internal-test-secret"  # pragma: allowlist secret
-    test_settings.multi_user = True
-    test_settings.auth_internal_secret = test_internal_secret
-    test_settings.operator_allowed_emails = ["editor@rebuildingus.org"]
-    ordinary_headers = {
-        "X-Atlas-Actor-Email": "visitor@example.org",
-        "X-Atlas-Actor-Id": "ordinary-user",
-        "X-Atlas-Internal-Secret": test_internal_secret,
-        "X-Atlas-Actor-Account-Ready": "true",
-    }
-    editor_headers = {
-        "X-Atlas-Actor-Email": "EDITOR@rebuildingus.org",
-        "X-Atlas-Actor-Id": "editor-user",
-        "X-Atlas-Internal-Secret": test_internal_secret,
-        "X-Atlas-Actor-Account-Ready": "true",
-    }
+    headers = enable_staff_auth(test_settings)
+    ordinary_headers = headers.ordinary
+    editor_headers = headers.staff
 
     for path in (
         "/api/entity-flags/inbox",

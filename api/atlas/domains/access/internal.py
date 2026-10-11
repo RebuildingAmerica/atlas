@@ -24,19 +24,19 @@ def build_local_actor() -> AuthenticatedActor:
     )
 
 
-def verify_internal_actor(  # noqa: PLR0913 - one parameter per trusted header
+def verify_internal_actor(
     settings: Settings,
     internal_secret: str | None,
     actor_id: str | None,
     actor_email: str | None,
     org_id: str | None = None,
-    account_ready: str | None = None,
 ) -> AuthenticatedActor | None:
-    """Validate trusted app-to-API headers.
+    """Validate trusted shared-secret headers from system callers.
 
-    ``account_ready`` is the app's ``X-Atlas-Actor-Account-Ready`` header: the
-    literal ``true`` when the signed-in session has a verified email and a
-    registered passkey. Anything else, including its absence, means not ready.
+    The actor this returns is never passkey-ready: a shared secret proves the
+    caller holds a deployment credential, not that a person signed in, so it
+    can never act as the operator. People reach the API through the app's
+    signed assertion instead.
     """
     if not (
         settings.auth_internal_secret
@@ -56,5 +56,4 @@ def verify_internal_actor(  # noqa: PLR0913 - one parameter per trusted header
         email=actor_email,
         auth_type="internal",
         org_id=org_id,
-        account_ready=account_ready == "true",
     )

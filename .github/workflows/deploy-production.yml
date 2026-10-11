@@ -94,6 +94,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           search-api-key: ${{ secrets.SEARCH_API_KEY }}
           auth-internal-secret: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
+          auth-callback-secret: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
           edge-origin-secret: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           auth-api-key-introspection-url: ${{ secrets.ATLAS_AUTH_API_KEY_INTROSPECTION_URL }}
           auth-membership-url: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
@@ -138,7 +139,9 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           ATLAS_API_URL: ${{ secrets.ATLAS_API_URL }}
           ATLAS_AUTH_INTERNAL_SECRET: ${{ secrets.ATLAS_AUTH_INTERNAL_SECRET }}
+          ATLAS_AUTH_CALLBACK_SECRET: ${{ secrets.ATLAS_AUTH_CALLBACK_SECRET }}
           ATLAS_AUTH_MEMBERSHIP_URL: ${{ secrets.ATLAS_AUTH_MEMBERSHIP_URL }}
+          ATLAS_EDGE_ORIGIN_SECRET: ${{ secrets.ATLAS_EDGE_ORIGIN_SECRET }}
           ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
           ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
           ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
@@ -162,7 +165,9 @@ jobs:
           required_env=(
             ATLAS_API_URL
             ATLAS_AUTH_INTERNAL_SECRET
+            ATLAS_AUTH_CALLBACK_SECRET
             ATLAS_AUTH_MEMBERSHIP_URL
+            ATLAS_EDGE_ORIGIN_SECRET
             ATLAS_PDS_INVITE_BROKER_SECRET
             ATLAS_PUBLIC_URL
             DATABASE_URL
@@ -201,8 +206,10 @@ jobs:
           add_vercel_env ATLAS_AUTH_API_KEY_INTROSPECTION_URL "$atlas_auth_api_key_introspection_url"
           add_vercel_env ATLAS_AUTH_BASE_PATH "/api/auth"
           add_vercel_env ATLAS_AUTH_INTERNAL_SECRET "$ATLAS_AUTH_INTERNAL_SECRET"
+          add_vercel_env ATLAS_AUTH_CALLBACK_SECRET "$ATLAS_AUTH_CALLBACK_SECRET"
           add_vercel_env ATLAS_AUTH_JWT_AUDIENCES "$atlas_auth_jwt_audiences"
           add_vercel_env ATLAS_AUTH_MEMBERSHIP_URL "$ATLAS_AUTH_MEMBERSHIP_URL"
+          add_vercel_env ATLAS_EDGE_ORIGIN_SECRET "$ATLAS_EDGE_ORIGIN_SECRET"
           add_vercel_env ATLAS_MANAGED "true"
           add_vercel_env ATLAS_PAID_ACCESS_MODE "${ATLAS_PAID_ACCESS_MODE:-waitlist}"
           add_vercel_env ATLAS_MULTI_USER "true"

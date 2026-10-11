@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.models.database import _load_postgres_schema, _load_sqlite_schema
 from atlas.platform.authz import Action, AuditLogCRUD, AuditRecord, actor_plane, require_action
+from tests.support.app_assertions import sign_app_assertion
 from tests.support.authz_requests import guard_request
 from tests.support.staff_auth import STAFF_EMAIL, enable_staff_auth
 
@@ -263,8 +264,12 @@ async def test_an_operator_session_without_a_passkey_cannot_approve(
     test_settings: object,
 ) -> None:
     """An operator signed in by magic link alone is refused until they add a passkey."""
-    headers = enable_staff_auth(test_settings)
-    magic_link_only = {**headers.staff, "X-Atlas-Actor-Account-Ready": "false"}
+    enable_staff_auth(test_settings)
+    magic_link_only = {
+        "X-Atlas-Actor-Assertion": sign_app_assertion(
+            user_id="user_editor", email=STAFF_EMAIL, account_ready=False
+        )
+    }
 
     response = await test_client.post("/api/review-queue/missing/approve", headers=magic_link_only)
 

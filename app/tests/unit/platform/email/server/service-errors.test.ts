@@ -42,6 +42,8 @@ describe("email service error branches", () => {
       emailFrom: "Atlas <auth@atlas.example.com>",
       emailProvider: "capture",
       internalSecret: "internal-test-secret",
+      callbackSecret: "callback-test-secret",
+      edgeOriginSecret: "edge-test-secret",
       passkeyRpId: null,
       publicBaseUrl: "https://atlas.example.com",
       publicDomain: "atlas.example.com",
