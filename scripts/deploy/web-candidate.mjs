@@ -247,6 +247,13 @@ export function durableCandidateBindings(manifest, compiled) {
     compiled.exports.AtlasAppRuntime.storage !== "sqlite"
   )
     throw new Error("The verified build must export SQLite AtlasAppRuntime.");
+  if (
+    compiled.env?.ATLAS_WORKERS_EXECUTION?.type !== "text" ||
+    compiled.env.ATLAS_WORKERS_EXECUTION.value !== "durable-production"
+  )
+    throw new Error(
+      "The verified build must carry the production execution marker.",
+    );
   const api = runtimeReleaseIdentity(manifest.runtimeDependencies?.api);
   runtimeReleaseIdentity(manifest.runtimeDependencies?.discovery);
   return {

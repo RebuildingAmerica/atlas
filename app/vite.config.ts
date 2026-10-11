@@ -111,16 +111,24 @@ const onwarn: Rollup.WarningHandlerWithDefault = (warning, defaultHandler) => {
   defaultHandler(warning);
 };
 
+/** Select explicit Workers entrypoints while preserving the ordinary Node build. */
+export function workersExecutionEntry(runtime: string, execution: string): string | undefined {
+  if (runtime !== "node" && runtime !== "workers")
+    throw new Error("ATLAS_WEB_RUNTIME must be node or workers.");
+  if (!["direct", "durable-evaluation", "durable-production"].includes(execution))
+    throw new Error(
+      "ATLAS_WORKERS_EXECUTION must be direct, durable-evaluation or durable-production.",
+    );
+  if (execution !== "direct" && runtime !== "workers")
+    throw new Error("Durable Object execution requires the Workers build.");
+  return execution === "direct" ? undefined : `server/${execution}.ts`;
+}
+
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const runtime = process.env.ATLAS_WEB_RUNTIME ?? env.ATLAS_WEB_RUNTIME ?? "node";
-  if (runtime !== "node" && runtime !== "workers")
-    throw new Error("ATLAS_WEB_RUNTIME must be node or workers.");
   const execution = process.env.ATLAS_WORKERS_EXECUTION ?? "direct";
-  if (!["direct", "durable-evaluation"].includes(execution))
-    throw new Error("ATLAS_WORKERS_EXECUTION must be direct or durable-evaluation.");
-  if (execution === "durable-evaluation" && runtime !== "workers")
-    throw new Error("Durable Object evaluation requires the Workers build.");
+  const durableEntrypoint = workersExecutionEntry(runtime, execution);
   const runtimePlugins =
     runtime === "workers"
       ? [
@@ -136,13 +144,14 @@ export default defineConfig(async ({ mode }) => {
           (await import("@cloudflare/vite-plugin")).cloudflare({
             viteEnvironment: { name: "ssr" },
             types: { generate: false },
-            ...(execution === "durable-evaluation"
+            ...(durableEntrypoint
               ? {
                   config: (config) => ({
-                    entrypoint: "server/durable-evaluation.ts",
+                    entrypoint: durableEntrypoint,
                     exports: { AtlasAppRuntime: { type: "durable-object", storage: "sqlite" } },
                     env: {
                       ...config.env,
+                      ATLAS_WORKERS_EXECUTION: { type: "text", value: execution },
                       APP_RUNTIME: {
                         type: "durable-object",
                         worker: config.name,

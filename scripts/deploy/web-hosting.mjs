@@ -164,7 +164,7 @@ export function webReleaseBuildSettings({
       throw new Error("Approved Durable Object releases are Cloudflare-only.");
     return {
       execution: "cloudflare-durable",
-      buildExecution: "durable-evaluation",
+      buildExecution: "durable-production",
       releasePolicy,
       runtimeDependencies: {
         api: runtimeReleaseIdentity(evidence.durable?.runtimeReleases?.api),

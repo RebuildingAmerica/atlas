@@ -110,7 +110,7 @@ test("approved DO builds pin existing API and discovery versions and compile the
     env: {},
   });
   assert.equal(settings.execution, "cloudflare-durable");
-  assert.equal(settings.buildExecution, "durable-evaluation");
+  assert.equal(settings.buildExecution, "durable-production");
   assert.deepEqual(
     settings.runtimeDependencies,
     evidence.durable.runtimeReleases,
@@ -130,31 +130,53 @@ test("approved DO builds pin existing API and discovery versions and compile the
       env: { ATLAS_WORKERS_EXECUTION: "durable-evaluation" },
     }),
   );
+  assert.throws(() =>
+    webReleaseBuildSettings({
+      architecture: "workers",
+      releaseSha,
+      env: { ATLAS_WORKERS_EXECUTION: "durable-production" },
+    }),
+  );
   const manifest = {
     execution: settings.execution,
     workerName: "atlas-web",
     runtimeDependencies: settings.runtimeDependencies,
   };
-  assert.deepEqual(
-    durableCandidateBindings(manifest, {
-      exports: {
-        AtlasAppRuntime: { type: "durable-object", storage: "sqlite" },
-      },
-    }),
-    {
-      APP_RUNTIME: {
-        type: "durable-object",
-        worker: "atlas-web",
-        exportName: "AtlasAppRuntime",
-      },
-      ATLAS_API_ROUTE_PREFIX: { type: "text", value: "" },
-      API_RUNTIME: {
-        type: "durable-object",
-        worker: "atlas-api",
-        exportName: "ApiRuntime",
-      },
+  const compiled = {
+    exports: {
+      AtlasAppRuntime: { type: "durable-object", storage: "sqlite" },
     },
-  );
+    env: {
+      ATLAS_WORKERS_EXECUTION: { type: "text", value: "durable-production" },
+    },
+  };
+  assert.deepEqual(durableCandidateBindings(manifest, compiled), {
+    APP_RUNTIME: {
+      type: "durable-object",
+      worker: "atlas-web",
+      exportName: "AtlasAppRuntime",
+    },
+    ATLAS_API_ROUTE_PREFIX: { type: "text", value: "" },
+    API_RUNTIME: {
+      type: "durable-object",
+      worker: "atlas-api",
+      exportName: "ApiRuntime",
+    },
+  });
+  for (const marker of [
+    undefined,
+    { type: "text", value: "durable-evaluation" },
+    { type: "text", value: "direct" },
+    { type: "secret", value: "durable-production" },
+  ])
+    assert.throws(
+      () =>
+        durableCandidateBindings(manifest, {
+          ...compiled,
+          env: { ATLAS_WORKERS_EXECUTION: marker },
+        }),
+      /production execution marker/,
+    );
   assert.throws(() => durableCandidateBindings(manifest, { exports: {} }));
   const provider = (args) =>
     args[0] === "durable-objects"
