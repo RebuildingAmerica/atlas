@@ -404,3 +404,71 @@ async def test_cancellation_closes_every_connection_even_when_one_close_fails(
         assert task.cancelled()
     assert sorted(closed) == [0, 1]
     assert current_hosted_runtime() is None
+
+
+@pytest.mark.asyncio
+async def test_application_owns_explicit_firehose_wake(monkeypatch):
+    from atlas.platform.hosted_runtime import current_hosted_runtime
+    import atlas.main
+
+    wake = object()
+    captured = []
+
+    async def app(scope, receive, send):
+        captured.append(current_hosted_runtime().firehose_wake)
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+
+    app.routes = []
+    monkeypatch.setattr(atlas.main, "create_app", lambda **kwargs: app)
+    hosted, _ = module().create_hosted_application(environment(), firehose_wake=wake)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=hosted), base_url="https://reader.example.com"
+    ) as client:
+        assert (await client.get("/health")).status_code == 200
+    assert captured == [wake]
+    assert current_hosted_runtime() is None
+
+
+@pytest.mark.asyncio
+async def test_alarm_factory_uses_explicit_configuration_and_owned_connection(
+    monkeypatch,
+):
+    import hosted_jobs
+
+    hosted = module()
+    opened = []
+
+    async def connect(**kwargs):
+        connection = SimpleNamespace(close=AsyncMock())
+        opened.append((kwargs, connection))
+        return connection
+
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(hosted, "connect_database", connect)
+    storage = SimpleNamespace(setAlarm=AsyncMock())
+    adapter = hosted_jobs.create_firehose_alarm(environment("alarm"), storage)
+    assert not opened
+    assert adapter.runtime.firehose_wake is adapter
+    runtime = adapter.runtime
+    conn = await runtime.connect(runtime.settings.database_url, backend="postgres")
+    assert opened[0][0]["host"] == "alarm.hyperdrive.local"
+    await conn.close()
+    conn.close.assert_awaited_once()
+    with pytest.raises(RuntimeError, match="configuration mismatch"):
+        await runtime.connect("postgresql://wrong/db", backend="postgres")
+    with pytest.raises(RuntimeError, match="configuration mismatch"):
+        await runtime.connect(runtime.settings.database_url, backend="sqlite")
+    assert len(opened) == 1
+
+
+def test_alarm_factory_redacts_invalid_configuration():
+    import hosted_jobs
+
+    env = environment(FIREHOSE_DELIVERY_WORKER_LEASE_SECONDS="private-invalid-secret")
+    with pytest.raises(
+        RuntimeError, match="^Invalid hosted API configuration.$"
+    ) as error:
+        hosted_jobs.create_firehose_alarm(env, SimpleNamespace())
+    assert "private-invalid-secret" not in str(error.value)

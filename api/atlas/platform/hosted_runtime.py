@@ -19,12 +19,23 @@ class DatabaseConnector(Protocol):  # pragma: no cover - typing-only protocol
     async def __call__(self, database_url: str, *, backend: str | None = None) -> Any: ...
 
 
+class FirehoseWake(Protocol):  # pragma: no cover - typing-only protocol
+    """Durable wake receipts around the observation/outbox transaction."""
+
+    async def prepare_wake(self, receipt: str) -> None: ...
+
+    async def confirm_wake(self, receipt: str | None = None) -> None: ...
+
+    async def abort_wake(self, receipt: str) -> None: ...
+
+
 @dataclass(frozen=True)
 class HostedRuntime:
     """Provider configuration and connector; never shared visitor identity."""
 
     settings: Settings
     connect: DatabaseConnector
+    firehose_wake: FirehoseWake | None = None
 
 
 _runtime: ContextVar[HostedRuntime | None] = ContextVar("atlas_hosted_runtime", default=None)

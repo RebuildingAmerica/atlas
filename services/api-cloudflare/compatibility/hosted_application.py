@@ -86,7 +86,9 @@ async def _request_mcp(scope, receive, send):
         await transport(scope, receive, send)
 
 
-def create_hosted_application(env, *, strip_evaluation_prefix=False):
+def create_hosted_application(
+    env, *, strip_evaluation_prefix=False, firehose_wake=None
+):
     """Return an ASGI callable and route count for one caller-owned DO cache.
 
     Configuration and routes are stable for this instance. Every ASGI invocation
@@ -100,7 +102,9 @@ def create_hosted_application(env, *, strip_evaluation_prefix=False):
         async def no_factory_connection(_url, *, backend=None):
             raise RuntimeError("Database access requires a hosted request")
 
-        with bind_hosted_runtime(HostedRuntime(settings, no_factory_connection)):
+        with bind_hosted_runtime(
+            HostedRuntime(settings, no_factory_connection, firehose_wake)
+        ):
             # atlas.main also constructs its ordinary server at import. Bind
             # explicit settings before importing; never populate os.environ.
             from atlas.main import create_app
@@ -133,7 +137,7 @@ def create_hosted_application(env, *, strip_evaluation_prefix=False):
                 raw_path = scope.get("raw_path", b"")
                 if raw_path == b"/atlas" or raw_path.startswith(b"/atlas/"):
                     scope["raw_path"] = raw_path[len(b"/atlas") :] or b"/"
-        with bind_hosted_runtime(HostedRuntime(settings, connect)):
+        with bind_hosted_runtime(HostedRuntime(settings, connect, firehose_wake)):
             try:
                 await app(scope, receive, send)
             except BaseException as request_error:

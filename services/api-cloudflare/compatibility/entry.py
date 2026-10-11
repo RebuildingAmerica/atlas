@@ -7,6 +7,26 @@ from workers import DurableObject, Response, WorkerEntrypoint, asgi
 
 
 class ApiRuntime(DurableObject):
+    def _firehose_adapter(self):
+        if not hasattr(self, "_firehose"):
+            from hosted_jobs import create_firehose_alarm
+
+            self._firehose = create_firehose_alarm(self.env, self.ctx.storage)
+        return self._firehose
+
+    async def alarm(self):
+        from timer_cleanup import install_timer_cleanup
+
+        # Retain a rescue alarm even when package loading fails before the
+        # adapter can arm its own database/lease recovery alarm.
+        from time import time
+
+        await self.ctx.storage.setAlarm(int(time() * 1000) + 60_000)
+        if not install_timer_cleanup():
+            raise RuntimeError("The selected hosted loop could not be adapted.")
+        await ensure_package_archive(self.env)
+        await self._firehose_adapter().alarm()
+
     async def fetch(self, request):
         path = urlsplit(request.url).path
         if path in {"/timer-cancel/5", "/timer-cancel/30", "/timer-fixed/30"}:
@@ -35,7 +55,9 @@ class ApiRuntime(DurableObject):
                 from hosted_application import create_hosted_application
 
                 self._application, self._route_count = create_hosted_application(
-                    self.env, strip_evaluation_prefix=True
+                    self.env,
+                    strip_evaluation_prefix=True,
+                    firehose_wake=self._firehose_adapter(),
                 )
             if path == "/imports":
                 return Response.json(

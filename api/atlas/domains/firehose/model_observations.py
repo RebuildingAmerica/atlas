@@ -29,57 +29,52 @@ class FirehoseObservationCRUD:
         """Create one observation unless the producer already delivered it."""
         from .model_deliveries import FirehoseObservationDeliveryCRUD
 
-        existing = await FirehoseObservationCRUD.get_by_producer_key(
-            conn,
-            producer=observation_input.producer,
-            dedupe_key=observation_input.dedupe_key,
-        )
-        if existing is not None:
-            await FirehoseObservationDeliveryCRUD.enqueue(
-                conn,
-                observation_id=existing.id,
-                next_attempt_at=existing.observed_at,
+        try:
+            observation_id = db.generate_uuid()
+            now = db.now_iso()
+            await conn.execute(
+                """
+                INSERT INTO firehose_observations (
+                    id, producer, observation_type, subject_type, subject_id, org_id,
+                    coverage_target_id, places_json, issues_json, source_class, occurred_at,
+                    observed_at, dedupe_key, public_realm_basis, confidence, sensitivity,
+                    payload_json, evidence_json, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (producer, dedupe_key) DO NOTHING
+                """,
+                (
+                    observation_id,
+                    observation_input.producer,
+                    observation_input.observation_type,
+                    observation_input.subject_type,
+                    observation_input.subject_id,
+                    observation_input.org_id,
+                    observation_input.coverage_target_id,
+                    db.encode_json(observation_input.places),
+                    db.encode_json(observation_input.issues),
+                    observation_input.source_class,
+                    observation_input.occurred_at,
+                    observation_input.observed_at,
+                    observation_input.dedupe_key,
+                    observation_input.public_realm_basis,
+                    observation_input.confidence,
+                    observation_input.sensitivity,
+                    db.encode_json(observation_input.payload),
+                    db.encode_json(observation_input.evidence),
+                    "observed",
+                    now,
+                    now,
+                ),
             )
-            return existing
-
-        observation_id = db.generate_uuid()
-        now = db.now_iso()
-        await conn.execute(
-            """
-            INSERT INTO firehose_observations (
-                id, producer, observation_type, subject_type, subject_id, org_id,
-                coverage_target_id, places_json, issues_json, source_class, occurred_at,
-                observed_at, dedupe_key, public_realm_basis, confidence, sensitivity,
-                payload_json, evidence_json, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                observation_id,
-                observation_input.producer,
-                observation_input.observation_type,
-                observation_input.subject_type,
-                observation_input.subject_id,
-                observation_input.org_id,
-                observation_input.coverage_target_id,
-                db.encode_json(observation_input.places),
-                db.encode_json(observation_input.issues),
-                observation_input.source_class,
-                observation_input.occurred_at,
-                observation_input.observed_at,
-                observation_input.dedupe_key,
-                observation_input.public_realm_basis,
-                observation_input.confidence,
-                observation_input.sensitivity,
-                db.encode_json(observation_input.payload),
-                db.encode_json(observation_input.evidence),
-                "observed",
-                now,
-                now,
-            ),
-        )
-        await conn.commit()
-        created = await FirehoseObservationCRUD.get_by_id(conn, observation_id)
-        assert created is not None, "observation was just inserted"
+            created = await FirehoseObservationCRUD.get_by_producer_key(
+                conn, producer=observation_input.producer, dedupe_key=observation_input.dedupe_key
+            )
+            assert created is not None, "observation was just inserted"
+        except BaseException:
+            await conn.rollback()
+            raise
+        # The delivery owns the commit, so readers never see an observation
+        # that cannot eventually reach their inbox.
         await FirehoseObservationDeliveryCRUD.enqueue(
             conn,
             observation_id=created.id,

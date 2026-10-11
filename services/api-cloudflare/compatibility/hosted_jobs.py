@@ -14,18 +14,18 @@ can exceed the Durable Object alarm's 15-minute wall-time limit.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol, cast
 from uuid import uuid4
 
 from atlas.domains.firehose.delivery_worker import process_due_observation_deliveries
-from atlas.platform.hosted_runtime import bind_hosted_runtime
+from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from atlas.domains.firehose.delivery_worker import FirehoseDeliveryProcessingResult
-    from atlas.platform.hosted_runtime import HostedRuntime
 
 
 class AlarmStorage(Protocol):
@@ -74,7 +74,7 @@ class FirehoseAlarmAdapter:
     silently: a slow commit cannot be distinguished safely from an abandoned
     producer. Recovery must explicitly abort abandoned, rolled-back receipts.
     PostgreSQL and DO writes are not a distributed atomic transaction; producer
-    integration must await preparation before starting the enqueue.
+    integration must await preparation before committing the enqueue.
     """
 
     _STATE_KEY = "atlas:firehose:wake:v1"
@@ -227,3 +227,31 @@ class FirehoseAlarmAdapter:
         finally:
             if connection is not None:
                 await connection.close()
+
+
+def create_firehose_alarm(env, storage):
+    """Build one instance-owned alarm with explicit Hyperdrive configuration.
+
+    Connections belong to individual alarms and are closed by the adapter.
+    Constructing the adapter performs no SQL, schema changes, or background work.
+    """
+    from hosted_application import _hyperdrive_parameters, _settings, connect_database
+
+    try:
+        settings = _settings(env)
+        _hyperdrive_parameters(env)
+    except Exception:
+        raise RuntimeError("Invalid hosted API configuration.") from None
+
+    async def connect(database_url, *, backend=None):
+        if database_url != settings.database_url or backend not in (None, "postgres"):
+            raise RuntimeError("Hosted database configuration mismatch.")
+        return await connect_database(**_hyperdrive_parameters(env))
+
+    adapter = FirehoseAlarmAdapter(
+        runtime=HostedRuntime(settings, connect), storage=storage, wake=storage.setAlarm
+    )
+    # Materialization can itself produce observations. Those transactions use
+    # this object's wake receipts just like HTTP producers do.
+    adapter.runtime = replace(adapter.runtime, firehose_wake=adapter)
+    return adapter

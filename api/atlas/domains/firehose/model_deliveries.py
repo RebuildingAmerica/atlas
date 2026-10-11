@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from atlas.platform.database import db
+from atlas.platform.hosted_runtime import current_hosted_runtime
 
 from .model_records import (
     FirehoseObservationDeliveryModel,
@@ -37,39 +38,53 @@ class FirehoseObservationDeliveryCRUD:
         next_attempt_at: str,
     ) -> FirehoseObservationDeliveryModel:
         """Create or return the durable delivery for one observation."""
-        existing = await FirehoseObservationDeliveryCRUD.get_by_observation_id(
-            conn,
-            observation_id=observation_id,
-        )
-        if existing is not None:
-            return existing
-
-        delivery_id = db.generate_uuid()
-        now = db.now_iso()
-        await conn.execute(
-            """
-            INSERT INTO firehose_observation_deliveries (
-                id, observation_id, status, attempts, claimed_by, claimed_until,
-                next_attempt_at, last_error, delivered_at, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                delivery_id,
-                observation_id,
-                "pending",
-                0,
-                None,
-                None,
-                next_attempt_at,
-                None,
-                None,
-                now,
-                now,
-            ),
-        )
-        await conn.commit()
-        delivery = await FirehoseObservationDeliveryCRUD.get_by_id(conn, delivery_id)
-        assert delivery is not None, "delivery was just inserted"
+        runtime = current_hosted_runtime()
+        wake = runtime.firehose_wake if runtime is not None else None
+        prepared = False
+        commit_started = False
+        try:
+            if wake is not None:
+                prepared = True
+                await wake.prepare_wake(observation_id)
+            delivery_id = db.generate_uuid()
+            now = db.now_iso()
+            await conn.execute(
+                """
+                INSERT INTO firehose_observation_deliveries (
+                    id, observation_id, status, attempts, claimed_by, claimed_until,
+                    next_attempt_at, last_error, delivered_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (observation_id) DO NOTHING
+                """,
+                (
+                    delivery_id,
+                    observation_id,
+                    "pending",
+                    0,
+                    None,
+                    None,
+                    next_attempt_at,
+                    None,
+                    None,
+                    now,
+                    now,
+                ),
+            )
+            delivery = await FirehoseObservationDeliveryCRUD.get_by_observation_id(
+                conn, observation_id=observation_id
+            )
+            assert delivery is not None, "delivery was just inserted"
+            commit_started = True
+            await conn.commit()
+        except BaseException:
+            await conn.rollback()
+            # A commit may have succeeded despite losing its acknowledgement.
+            # Retain that receipt for the alarm to reconcile against the outbox.
+            if wake is not None and prepared and not commit_started:
+                await wake.abort_wake(observation_id)
+            raise
+        if wake is not None:
+            await wake.confirm_wake(observation_id)
         return delivery
 
     @staticmethod

@@ -278,3 +278,177 @@ async def test_cancellation_leaves_recoverable_lease_and_alarm(outbox, monkeypat
     row = await FirehoseObservationDeliveryCRUD.get_by_id(outbox.conn, delivery.id)
     assert row.status == "claimed"
     assert outbox.storage.alarm_at == 1791590460000
+
+
+async def observation_schema(outbox):
+    await outbox.conn.execute(
+        "CREATE TABLE firehose_observations (id TEXT PRIMARY KEY, producer TEXT, "
+        "observation_type TEXT, subject_type TEXT, subject_id TEXT, org_id TEXT, "
+        "coverage_target_id TEXT, places_json TEXT, issues_json TEXT, source_class TEXT, "
+        "occurred_at TEXT, observed_at TEXT, dedupe_key TEXT, public_realm_basis TEXT, "
+        "confidence REAL, sensitivity REAL, payload_json TEXT, evidence_json TEXT, "
+        "status TEXT, created_at TEXT, updated_at TEXT, UNIQUE(producer, dedupe_key))"
+    )
+    await outbox.conn.commit()
+
+
+def observation_input(outbox, key="event"):
+    from atlas.domains.firehose.models import FirehoseObservationCreate
+
+    return FirehoseObservationCreate(
+        producer="discovery_sync",
+        observation_type="actor_discovered",
+        subject_type="entry",
+        subject_id="actor",
+        org_id=None,
+        coverage_target_id=None,
+        places=[],
+        issues=[],
+        source_class="discovery_run",
+        occurred_at=None,
+        observed_at=outbox.now.isoformat(),
+        dedupe_key=key,
+        public_realm_basis="Published source",
+        confidence=0.9,
+        sensitivity=0.0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_central_producer_commits_atomically_and_wakes_after_restart(outbox):
+    from atlas.domains.firehose.models import FirehoseObservationCRUD
+    from atlas.platform.hosted_runtime import bind_hosted_runtime
+
+    await observation_schema(outbox)
+    worker = adapter(outbox)
+    runtime = HostedRuntime(
+        outbox.runtime.settings, outbox.runtime.connect, firehose_wake=worker
+    )
+    with bind_hosted_runtime(runtime):
+        observation = await FirehoseObservationCRUD.create(
+            outbox.conn, observation_input(outbox)
+        )
+    assert outbox.storage.alarm_at is not None
+    assert (await outbox.storage.get(worker._STATE_KEY))["pending"] == []
+    await fire(outbox, adapter(outbox))
+    assert outbox.materialized == [observation.id]
+    assert outbox.storage.alarm_at is None
+
+
+@pytest.mark.asyncio
+async def test_concurrent_duplicate_producers_have_one_observation_delivery_and_receipt(
+    outbox,
+):
+    from atlas.domains.firehose.models import FirehoseObservationCRUD
+    from atlas.platform.hosted_runtime import bind_hosted_runtime
+
+    await observation_schema(outbox)
+    worker = adapter(outbox)
+    runtime = HostedRuntime(
+        outbox.runtime.settings, outbox.runtime.connect, firehose_wake=worker
+    )
+
+    async def produce():
+        conn = await runtime.connect(runtime.settings.database_url, backend="postgres")
+        try:
+            with bind_hosted_runtime(runtime):
+                return await FirehoseObservationCRUD.create(
+                    conn, observation_input(outbox)
+                )
+        finally:
+            await conn.close()
+
+    first, second = await asyncio.gather(produce(), produce())
+    assert first.id == second.id
+    assert (
+        len(
+            await FirehoseObservationDeliveryCRUD.list_by_observation_id(
+                outbox.conn, observation_id=first.id
+            )
+        )
+        == 1
+    )
+    assert (await outbox.storage.get(worker._STATE_KEY))["pending"] == []
+    await fire(outbox, adapter(outbox))
+    assert outbox.materialized == [first.id]
+
+
+@pytest.mark.asyncio
+async def test_lost_commit_acknowledgement_reconciles_real_producer_without_reenqueue(
+    outbox, monkeypatch
+):
+    from atlas.domains.firehose.models import FirehoseObservationCRUD
+    from atlas.platform.hosted_runtime import bind_hosted_runtime
+
+    await observation_schema(outbox)
+    worker = adapter(outbox)
+    runtime = HostedRuntime(
+        outbox.runtime.settings, outbox.runtime.connect, firehose_wake=worker
+    )
+
+    async def unavailable(receipt=None):
+        raise ConnectionError("Acknowledgement unavailable")
+
+    monkeypatch.setattr(worker, "confirm_wake", unavailable)
+    with bind_hosted_runtime(runtime), pytest.raises(ConnectionError):
+        await FirehoseObservationCRUD.create(outbox.conn, observation_input(outbox))
+    observation = await FirehoseObservationCRUD.get_by_producer_key(
+        outbox.conn, producer="discovery_sync", dedupe_key="event"
+    )
+    assert observation is not None
+    assert (await outbox.storage.get(worker._STATE_KEY))["pending"] == [observation.id]
+    await fire(outbox, adapter(outbox))
+    assert outbox.materialized == [observation.id]
+    assert outbox.storage.alarm_at is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["prepare", "prepare_ack", "insert", "commit"])
+async def test_producer_failure_preserves_only_ambiguous_commit_receipts(
+    outbox, monkeypatch, failure
+):
+    from atlas.domains.firehose.model_observations import FirehoseObservationCRUD
+    from atlas.platform.hosted_runtime import bind_hosted_runtime
+
+    await observation_schema(outbox)
+    worker = adapter(outbox)
+    runtime = HostedRuntime(outbox.runtime.settings, outbox.runtime.connect, worker)
+    original_execute = outbox.conn.execute
+    original_commit = outbox.conn.commit
+
+    original_prepare = worker.prepare_wake
+
+    async def failed_prepare(receipt):
+        if failure == "prepare_ack":
+            await original_prepare(receipt)
+        raise ConnectionError("durable storage unavailable")
+
+    async def failed_insert(sql, *args, **kwargs):
+        if "INSERT INTO firehose_observation_deliveries" in sql:
+            raise ConnectionError("insert rejected")
+        return await original_execute(sql, *args, **kwargs)
+
+    async def ambiguous_commit():
+        await original_commit()
+        raise ConnectionError("commit acknowledgement lost")
+
+    if failure in ("prepare", "prepare_ack"):
+        monkeypatch.setattr(worker, "prepare_wake", failed_prepare)
+    elif failure == "insert":
+        monkeypatch.setattr(outbox.conn, "execute", failed_insert)
+    else:
+        monkeypatch.setattr(outbox.conn, "commit", ambiguous_commit)
+    with bind_hosted_runtime(runtime), pytest.raises(ConnectionError):
+        await FirehoseObservationCRUD.create(outbox.conn, observation_input(outbox))
+    row = await FirehoseObservationCRUD.get_by_producer_key(
+        outbox.conn, producer="discovery_sync", dedupe_key="event"
+    )
+    state = await worker._state()
+    if failure == "commit":
+        assert row is not None
+        assert state["pending"] == [row.id]
+        await fire(outbox, adapter(outbox))
+        assert outbox.materialized == [row.id]
+    else:
+        assert row is None
+        assert state["pending"] == []

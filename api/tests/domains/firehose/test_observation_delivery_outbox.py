@@ -292,3 +292,109 @@ async def test_worker_records_retryable_failure(
     assert delivery.attempts == 1
     assert delivery.last_error == FAILURE_MESSAGE
     assert delivery.next_attempt_at > "2026-07-07T15:02:00+00:00"
+
+
+@pytest.mark.asyncio
+async def test_failed_outbox_insert_cannot_leave_committed_observation(
+    test_db: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An update must never become visible without its durable inbox delivery."""
+    original = test_db.execute
+
+    async def fail_outbox(sql: str, *args: object) -> object:
+        if "INSERT INTO firehose_observation_deliveries" in sql:
+            raise RuntimeError(FAILURE_MESSAGE)
+        return await original(sql, *args)
+
+    monkeypatch.setattr(test_db, "execute", fail_outbox)
+    with pytest.raises(RuntimeError, match=FAILURE_MESSAGE):
+        await _observation(test_db)
+    assert (
+        await FirehoseObservationCRUD.get_by_producer_key(
+            test_db, producer="discovery_sync", dedupe_key="discovery-run-1:entry_123"
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure", [None, "prepare", "observation", "delivery", "commit", "confirm"]
+)
+async def test_hosted_producer_retains_only_committed_or_ambiguous_wakes(
+    test_db: object, monkeypatch: pytest.MonkeyPatch, failure: str | None
+) -> None:
+    """A failed producer cannot strand a visible update without a durable wake."""
+    from atlas.platform.config import get_settings
+    from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
+
+    receipts: set[str] = set()
+    confirmed: list[str] = []
+    original_execute = test_db.execute
+    original_commit = test_db.commit
+    outbox_inserted = False
+
+    class Wake:
+        async def prepare_wake(self, receipt: str) -> None:
+            if failure == "prepare":
+                raise RuntimeError(FAILURE_MESSAGE)
+            receipts.add(receipt)
+
+        async def confirm_wake(self, receipt: str | None = None) -> None:
+            assert receipt is not None
+            if failure == "confirm":
+                raise RuntimeError(FAILURE_MESSAGE)
+            receipts.remove(receipt)
+            confirmed.append(receipt)
+
+        async def abort_wake(self, receipt: str) -> None:
+            receipts.discard(receipt)
+
+    async def execute(sql: str, *args: object) -> object:
+        nonlocal outbox_inserted
+        if failure == "observation" and "INSERT INTO firehose_observations" in sql:
+            raise RuntimeError(FAILURE_MESSAGE)
+        if "INSERT INTO firehose_observation_deliveries" in sql:
+            if failure == "delivery":
+                raise RuntimeError(FAILURE_MESSAGE)
+            outbox_inserted = True
+        return await original_execute(sql, *args)
+
+    async def commit() -> None:
+        await original_commit()
+        if failure == "commit" and outbox_inserted:
+            raise RuntimeError(FAILURE_MESSAGE)
+
+    async def connect(_url: str, *, backend: str | None = None) -> object:
+        assert backend in (None, "postgres", "sqlite")
+        return test_db
+
+    monkeypatch.setattr(test_db, "execute", execute)
+    monkeypatch.setattr(test_db, "commit", commit)
+    runtime = HostedRuntime(get_settings(), connect, Wake())
+    with bind_hosted_runtime(runtime):
+        if failure is None:
+            await _observation(test_db)
+        else:
+            with pytest.raises(RuntimeError, match=FAILURE_MESSAGE):
+                await _observation(test_db)
+    observation = await FirehoseObservationCRUD.get_by_producer_key(
+        test_db, producer="discovery_sync", dedupe_key="discovery-run-1:entry_123"
+    )
+    if failure in (None, "commit", "confirm"):
+        assert observation is not None
+        assert (
+            await FirehoseObservationDeliveryCRUD.get_by_observation_id(
+                test_db, observation_id=observation.id
+            )
+            is not None
+        )
+        if failure is None:
+            assert confirmed == [observation.id]
+            assert not receipts
+        else:
+            assert receipts == {observation.id}
+    else:
+        assert observation is None
+        assert not receipts
+        assert not confirmed
