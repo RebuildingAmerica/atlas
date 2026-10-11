@@ -9,12 +9,12 @@ hosting fee. Both hosting candidates are implemented for evaluation using `cf`.
 production.** There is no automatic paid Cloudflare fallback and no capability
 may be removed to meet a limit.
 
-The operator requested that implementation continue assuming Google billing will
-be available. Do not reopen or relink billing accounts. Continue building and
-validating both deployment paths; actual provider checks and hosted journeys
-must still pass before deployment and cutover. The Workers candidate also
-depends on the existing API and PostgreSQL; moving the web runtime does not
-replace those services.
+The operator requires Google billing to remain closed. Do not reopen or relink
+billing accounts. The hybrid path remains implemented, but cannot be selected
+while its required Cloud Run deployment is unavailable. The Workers candidate
+also depends on the existing API and PostgreSQL; moving the web runtime does not
+replace those services. Actual provider checks and hosted journeys must pass
+before cutover, including a working API for search and source-linked profiles.
 
 ## Required Cloudflare CLI
 

@@ -11,6 +11,50 @@ approved CPU gate, and Google Cloud rejects registry access with
 Keeping the production routing protects existing accounts and avoids moving
 searchable profiles onto an unverified replacement.
 
+## Refreshed production workload
+
+The repository's `web:baseline` command retrieved all 18 measurements for the 14
+complete UTC days from September 27 through October 10, ending October 11, 2026.
+Query identity, daily bucket coverage and truncation checks passed. The private
+report is `.atlas/web/baseline-vercel-2026-10-11.json`; the baseline is
+available and must not be described as a missing release input.
+
+Production received 31,292 requests, with a peak of 11,420 in one day. Counting
+every production request as dynamic gives a conservative doubled-peak bound of
+22,840 requests/day. That leaves strictly less than 57,160 requests/day for
+existing account usage under the plan's 80,000-request ceiling. This arithmetic
+does not establish the missing shared usage or database-query amplification.
+Across production and previews, response transfer was 165,915,563 bytes and
+20,709 function invocations were recorded. Production function starts were
+19,589 hot, 340 cold and 242 prewarmed. Production p95 TTFB was approximately
+1,179ms hot and 12,805ms cold; those provider measurements do not establish the
+Cloudflare candidate's end-to-end latency.
+
+The previous complete baseline already existed. It identified the browser's
+`getAtlasSession` server function as 13,977 of 21,743 function invocations. Its
+identifier was matched to the generated function manifest. A hosted probe then
+used the installed TanStack client transport, including framework request
+headers and decoding, against direct Worker version `67aa68e8`:
+
+| Browser session request | Requests | Matched CPU rows | CPU p50/p95/p99 |
+| ----------------------- | -------: | ---------------: | --------------- |
+| No Atlas credentials    |       50 |               50 | 1/8/9ms         |
+| Invalid session cookie  |       50 |               50 | 2/56/64ms       |
+| Invalid bearer token    |       50 |               49 | 1/5/9ms         |
+
+All 150 returned decoded `null` sessions, HTTP 200 and `private, no-store`. The
+unmatched bearer invocation is not assumed to have zero CPU. This is distinct
+from the optimized anonymous `/api/auth/get-session` HTTP route: the browser
+still pays framework transport and middleware work. These samples also fail the
+original below-8ms CPU requirement; reducing that route alone would not make
+dynamic SSR or the remaining account journeys pass.
+
+Google's billing-account readback at 02:58 UTC on October 11 remained
+`open: false`, and the existing API's `/health`, `/api/entities` and `/mcp/` all
+returned 503. The operator requires billing to remain closed. Restoring the API
+or changing its hosting architecture remains necessary for discovery and profile
+acceptance; assuming billing is restored cannot establish operation.
+
 ## Deployed diagnostic
 
 The actual application, including SSR and static assets, was deployed through
