@@ -239,9 +239,13 @@ for (const path of [
     signal: AbortSignal.timeout(30000),
   });
   const body = await response.text();
-  writeFileSync(join(destination, path.slice(1) + "-private.txt"), body, {
-    mode: 0o600,
-  });
+  writeFileSync(
+    join(destination, path.slice(1).replaceAll("/", "-") + "-private.txt"),
+    body,
+    {
+      mode: 0o600,
+    },
+  );
   if (
     response.status !== 200 ||
     response.headers.get("cache-control") !== "private, no-store"
