@@ -27,6 +27,20 @@ describe("atproto-oauth", () => {
     atprotoSignInMocks.createAtprotoSessionForUser.mockReset();
   });
 
+  it("owns its OAuth client per Workers request and skips request-time schema creation", async () => {
+    vi.stubEnv("ATLAS_AUTH_MIGRATIONS", "external");
+    mocks().getAuthPgPool.mockReturnValue({ query: vi.fn().mockResolvedValue({ rows: [] }) });
+    const { runWorkerRequest } = await import("../../../../../server/request-scope");
+    const { createAtprotoAuthorizationUrl } = await import("@/domains/access/server/atproto-oauth");
+    for (const name of ["a", "b"])
+      await runWorkerRequest("postgres://" + name, async () => {
+        await createAtprotoAuthorizationUrl({ handle: "acme.org", returnTo: "/account#identity" });
+        await createAtprotoAuthorizationUrl({ handle: "acme.org", returnTo: "/account#identity" });
+        return new Response(null, { status: 204 });
+      });
+    expect(mocks().authorize).toHaveBeenCalledTimes(4);
+  });
+
   it("prunes old OAuth app-state rows before writing the next authorization state", async () => {
     const run = vi.fn();
     const prepare = vi.fn().mockReturnValue({ run });

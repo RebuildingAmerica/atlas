@@ -25,7 +25,13 @@ export function absoluteHostedUrl(origin: string, pathname: string): string {
 export function hostedPublicRequestInit(init: RequestInit = {}): RequestInit {
   const bypassSecret = process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET?.trim();
   const trustedOidcToken = process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN?.trim();
-  if (!bypassSecret && !trustedOidcToken) {
+  const clientId = process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID?.trim();
+  const clientSecret = process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET?.trim();
+  if (Boolean(clientId) !== Boolean(clientSecret))
+    throw new Error("Cloudflare Access client ID and secret must be supplied together.");
+  if (clientId && init.redirect === "follow")
+    throw new Error("Cloudflare Access requests must not automatically follow redirects.");
+  if (!bypassSecret && !trustedOidcToken && !clientId) {
     return init;
   }
 
@@ -36,5 +42,9 @@ export function hostedPublicRequestInit(init: RequestInit = {}): RequestInit {
   if (trustedOidcToken) {
     headers.set("x-vercel-trusted-oidc-idp-token", trustedOidcToken);
   }
-  return { ...init, headers };
+  if (clientId && clientSecret) {
+    headers.set("cf-access-client-id", clientId);
+    headers.set("cf-access-client-secret", clientSecret);
+  }
+  return { ...init, ...(clientId ? { redirect: "manual" as const } : {}), headers };
 }

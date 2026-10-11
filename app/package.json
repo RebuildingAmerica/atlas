@@ -45,7 +45,8 @@
     "screenshots": "tsx scripts/screenshots/run.ts",
     "screenshots:local": "tsx scripts/screenshots/run.ts --mode local",
     "screenshots:session": "tsx scripts/screenshots/run.ts --mode session",
-    "test:acceptance:waitlist": "pnpm run build && pnpm --dir ../admin run prebuild && ATLAS_PAID_ACCESS_MODE=waitlist ATLAS_E2E_STRIPE=0 tsx scripts/e2e/stripe-playwright.ts tests/acceptance/domains/waitlist"
+    "test:acceptance:waitlist": "pnpm run build && pnpm --dir ../admin run prebuild && ATLAS_PAID_ACCESS_MODE=waitlist ATLAS_E2E_STRIPE=0 tsx scripts/e2e/stripe-playwright.ts tests/acceptance/domains/waitlist",
+    "postbuild": "node scripts/asset-headers.mjs"
   },
   "keywords": [],
   "author": "",
@@ -61,8 +62,8 @@
     "@headlessui/react": "catalog:",
     "@openstatus/react": "catalog:",
     "@react-email/render": "catalog:",
-    "@rebuildingamerica/atlas-api-client": "workspace:*",
     "@rebuildingamerica/atlas-access": "workspace:*",
+    "@rebuildingamerica/atlas-api-client": "workspace:*",
     "@rebuildingamerica/atlas-catalog": "workspace:*",
     "@rebuildingamerica/atlas-ui": "workspace:*",
     "@rebuildingamerica/entity-widgets": "workspace:*",
@@ -84,6 +85,7 @@
     "react-dom": "catalog:",
     "react-map-gl": "catalog:",
     "react-simple-maps": "catalog:",
+    "reflect-metadata": "0.2.2",
     "resend": "catalog:",
     "stripe": "catalog:",
     "supercluster": "catalog:",
@@ -93,6 +95,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",
+    "@cloudflare/vite-plugin": "^1.63.1",
     "@playwright/test": "catalog:",
     "@rebuildingamerica/eslint-config": "workspace:*",
     "@rebuildingamerica/tsconfig": "workspace:*",

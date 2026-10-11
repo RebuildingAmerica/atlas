@@ -22,6 +22,8 @@ import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
 import { queryActiveProducts } from "./workspace-products";
 import { type AuthRuntimeConfig, getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
 import { getAuthDatabaseConfig, getAuthDatabase, getAuthPgPool } from "./auth-db";
+import { requestResource } from "../../../../server/request-scope";
+import { verifyAuthSchema } from "../../../../server/auth-schema";
 import {
   buildAtlasTrustedOrigins,
   enforceRequirePkceOnAllClients,
@@ -224,7 +226,9 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
           // endpoint at {issuer}/.well-known/openid-configuration maps to
           // /api/auth/.well-known/openid-configuration, which the existing
           // api/auth/$.ts catch-all serves automatically.
-          issuer: new URL("/api/auth", runtime.publicBaseUrl).toString().replace(/\/$/, ""),
+          issuer: new URL("/api/auth", runtime.canonicalBaseUrl ?? runtime.publicBaseUrl)
+            .toString()
+            .replace(/\/$/, ""),
           audience: runtime.authJwtAudience ?? undefined,
           // Any signed-in browser can fetch this token from /api/auth/token,
           // so it grants no API permissions. Scout gets a worker-bound token
@@ -341,6 +345,12 @@ let authReadyPromise: Promise<AtlasAuthInstance> | null = null;
  * process.
  */
 export async function getAuth() {
+  const scoped = requestResource("auth", () => {
+    const runtime = getAuthRuntimeConfig();
+    validateAuthRuntimeConfig(runtime);
+    return createAtlasAuth(runtime);
+  });
+  if (scoped) return await scoped;
   if (authInstance) {
     return authInstance;
   }
@@ -362,7 +372,9 @@ export async function getAuth() {
  *
  * @param context - The resolved Better Auth runtime context.
  */
-async function runAtlasAuthMigrations(context: AtlasAuthContext): Promise<AtlasAuthInstance> {
+export async function runAtlasAuthMigrations(
+  context: AtlasAuthContext,
+): Promise<AtlasAuthInstance> {
   await context.runMigrations();
 
   const { ATLAS_MIGRATIONS, runAtlasCustomMigrations, runAtlasCustomMigrationsPg } =
@@ -394,6 +406,13 @@ async function runAtlasAuthMigrations(context: AtlasAuthContext): Promise<AtlasA
  */
 export async function ensureAuthReady() {
   const auth = await getAuth();
+  if (process.env.ATLAS_AUTH_MIGRATIONS === "external") {
+    const check = () => verifyAuthSchema(getAuthPgPool()).then(() => auth);
+    const scoped = requestResource("auth-ready", check);
+    if (scoped) return await scoped;
+    authReadyPromise ??= check();
+    return await authReadyPromise;
+  }
   if (!authReadyPromise) {
     authReadyPromise = auth.$context.then(runAtlasAuthMigrations);
   }

@@ -1,0 +1,64 @@
+{
+  "releaseSha": null,
+  "baseline": {
+    "days": null,
+    "windowEnd": null,
+    "warmP95Ms": null,
+    "peakDynamicRequestsPerDay": null
+  },
+  "cloudflare": {
+    "accountId": null,
+    "plan": "free",
+    "otherRequestsPerDay": null,
+    "otherQueriesPerDay": null
+  },
+  "workers": {
+    "journeysPassed": false,
+    "limitsPassed": false,
+    "cpuP99Ms": null,
+    "cpuLimitFailures": null,
+    "queriesPerDay": null,
+    "warmP95Ms": null,
+    "coldP95Ms": null,
+    "addedMonthlyCosts": {
+      "databaseUsd": null,
+      "networkUsd": null,
+      "buildsUsd": null,
+      "storageUsd": null,
+      "logsUsd": null
+    }
+  },
+  "hybrid": {
+    "journeysPassed": false,
+    "originProtected": false,
+    "warmP95Ms": null,
+    "coldP95Ms": null,
+    "monthly": {
+      "cpuSeconds": null,
+      "gibSeconds": null,
+      "requests": null,
+      "egressGiB": null,
+      "storageUsd": null,
+      "buildsUsd": null,
+      "logsUsd": null,
+      "databaseUsd": null
+    },
+    "freeRemaining": {
+      "cpuSeconds": null,
+      "gibSeconds": null,
+      "requests": null,
+      "egressGiB": null
+    },
+    "rates": {
+      "cpuSecondUsd": null,
+      "gibSecondUsd": null,
+      "millionRequestsUsd": null,
+      "egressGiBUsd": null
+    }
+  },
+  "staging": {
+    "startedAt": null,
+    "lastCheckedAt": null,
+    "continuousChecksPassed": false
+  }
+}

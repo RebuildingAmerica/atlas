@@ -2,9 +2,7 @@
   "extends": "@rebuildingamerica/tsconfig/react.json",
   "compilerOptions": {
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -18,6 +16,9 @@
     "playwright.screenshots.config.ts",
     "orval.config.ts",
     "vite.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "server/**/*.ts",
+    "worker-configuration.d.ts",
+    "playwright.hosting.config.ts"
   ]
 }

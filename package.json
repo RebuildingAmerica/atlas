@@ -63,10 +63,19 @@
     "stripe:verify:prod": "tsx scripts/bootstrap/products/atlas/verify.ts --target prod --live",
     "stripe:verify:ci": "tsx scripts/ci/verify-stripe-runtime-catalog.ts",
     "stripe:listen": "tsx scripts/bootstrap/products/atlas/listen.ts",
-    "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor"
+    "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor",
+    "web:doctor": "node scripts/deploy/web-hosting.mjs doctor",
+    "web:prepare": "node scripts/deploy/web-hosting.mjs prepare",
+    "web:assess": "node scripts/deploy/web-hosting.mjs assess",
+    "web:types": "node scripts/deploy/web-types.mjs",
+    "web:typecheck": "pnpm --filter @rebuildingamerica/atlas-app exec tsc -p ../services/web-edge/tsconfig.json",
+    "web:migrate-auth": "pnpm exec tsx --tsconfig app/tsconfig.json app/server/migrate-auth.ts",
+    "web:publish-candidate": "node scripts/deploy/web-candidate.mjs publish",
+    "web:bootstrap-access": "node scripts/deploy/web-candidate.mjs bootstrap-access"
   },
   "devDependencies": {
     "@clack/prompts": "catalog:",
+    "@cloudflare/workers-types": "^5.20261010.1",
     "@rebuildingamerica/eslint-config": "workspace:*",
     "@rebuildingamerica/tsconfig": "workspace:*",
     "eslint": "catalog:",
@@ -77,6 +86,7 @@
     "stripe": "catalog:",
     "tsx": "catalog:",
     "turbo": "catalog:",
-    "vercel": "^54.21.1"
+    "vercel": "^54.21.1",
+    "wrangler": "^4.149.0"
   }
 }

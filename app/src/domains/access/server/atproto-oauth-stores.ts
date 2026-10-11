@@ -126,6 +126,7 @@ async function deleteExpiredStoreRows(tableName: string, ttlMs: number): Promise
 }
 
 async function ensureStoreTable(tableName: string): Promise<void> {
+  if (process.env.ATLAS_AUTH_MIGRATIONS === "external") return;
   const pool = getAuthPgPool();
   if (pool) {
     await pool.query(

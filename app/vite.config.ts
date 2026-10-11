@@ -110,8 +110,34 @@ const onwarn: Rollup.WarningHandlerWithDefault = (warning, defaultHandler) => {
   defaultHandler(warning);
 };
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const runtime = process.env.ATLAS_WEB_RUNTIME ?? env.ATLAS_WEB_RUNTIME ?? "node";
+  if (runtime !== "node" && runtime !== "workers")
+    throw new Error("ATLAS_WEB_RUNTIME must be node or workers.");
+  const runtimePlugins =
+    runtime === "workers"
+      ? [
+          {
+            name: "atlas-workers-database",
+            enforce: "pre" as const,
+            resolveId(source: string, importer: string | undefined) {
+              if (source === "./auth-db" && importer?.includes("/domains/access/server/"))
+                return resolve(__dirname, "server/auth-db.workers.ts");
+              return null;
+            },
+          },
+          (await import("@cloudflare/vite-plugin")).cloudflare({
+            viteEnvironment: { name: "ssr" },
+          }),
+        ]
+      : [
+          nitro({
+            rollupConfig: { onwarn },
+            vercel: { functions: { maxDuration: 180 }, regions: ["cle1"] },
+            routeRules: buildHostedProxyRouteRules(env),
+          }),
+        ];
   validateProductionPublicEnv(env);
   const define: Record<string, string> = {};
   for (const key of PUBLIC_ATLAS_ENV_KEYS) {
@@ -123,26 +149,15 @@ export default defineConfig(({ mode }) => {
   return {
     define,
     plugins: [
+      ...(runtime === "workers" ? runtimePlugins : []),
       tanstackStart(),
-      nitro({
-        rollupConfig: {
-          onwarn,
-        },
-        vercel: {
-          functions: {
-            // A bounded 50-recipient invitation batch permits two 10-second
-            // attempts per recipient across ten workers, with provider pacing.
-            maxDuration: 180,
-          },
-          regions: ["cle1"],
-        },
-        routeRules: buildHostedProxyRouteRules(env),
-      }),
+      ...(runtime === "node" ? runtimePlugins : []),
       react(),
       tailwindcss(),
     ],
     build: {
       chunkSizeWarningLimit: 1000,
+      ...(runtime === "workers" ? { minify: true as const } : {}),
       rollupOptions: {
         onwarn,
       },

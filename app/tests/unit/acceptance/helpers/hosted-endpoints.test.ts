@@ -26,6 +26,21 @@ describe("hostedPublicRequestInit", () => {
     expect(headers.get("x-vercel-trusted-oidc-idp-token")).toBe("trusted-oidc");
     expect(requestInit.redirect).toBe("manual");
   });
+
+  it("adds the Cloudflare Access token pair and prevents cross-origin redirect leakage", () => {
+    vi.stubEnv("ATLAS_HOSTED_CF_ACCESS_CLIENT_ID", "client-id");
+    vi.stubEnv("ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET", "client-secret");
+    const init = hostedPublicRequestInit();
+    expect(new Headers(init.headers).get("cf-access-client-id")).toBe("client-id");
+    expect(new Headers(init.headers).get("cf-access-client-secret")).toBe("client-secret");
+    expect(init.redirect).toBe("manual");
+    expect(() => hostedPublicRequestInit({ redirect: "follow" })).toThrow("redirect");
+  });
+
+  it("rejects incomplete Cloudflare service tokens", () => {
+    vi.stubEnv("ATLAS_HOSTED_CF_ACCESS_CLIENT_ID", "client-id");
+    expect(() => hostedPublicRequestInit()).toThrow("together");
+  });
 });
 
 describe("expectedHostedPublicOrigin", () => {

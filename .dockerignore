@@ -9,7 +9,6 @@
 .venv
 node_modules
 docs
-openapi
 mintlify
 screenshots
 scripts
@@ -33,3 +32,10 @@ api/.venv
 
 libs/shared/.venv
 libs/discovery-engine/.venv
+
+app/.output
+app/.nitro
+app/.wrangler
+
+.wrangler
+app/.vercel

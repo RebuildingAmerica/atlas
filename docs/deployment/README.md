@@ -7,6 +7,9 @@ afterward.
 
 ## Deployment Docs
 
+- [Web Hosting Migration](./web-hosting.md) — Workers/hybrid candidates,
+  evidence gates, provider blockers and remaining cutover work
+
 - [Production Deployment](./production.md) — Environment setup, hosting paths,
   and production verification
 - [Staging Deployment](./staging.md) — Automatic staging deploys, required

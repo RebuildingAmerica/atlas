@@ -197,6 +197,36 @@ describe("auth runtime wiring", () => {
     }));
   });
 
+  it("issues candidate bearer tokens with the existing API issuer and resource", async () => {
+    mocks.getAuthRuntimeConfig.mockReturnValue({
+      operatorAllowedEmails: new Set(),
+      localMode: false,
+      apiKeyIntrospectionUrl: "https://candidate.atlas.test/api/auth/internal/api-key",
+      dbPath: "/tmp/atlas/auth/atlas-auth.sqlite",
+      internalSecret: "internal-test-secret",
+      emailProvider: "capture",
+      captureUrl: "http://127.0.0.1:8025/messages",
+      emailFrom: "Atlas <auth@atlas.test>",
+      publicDomain: "candidate.atlas.test",
+      resendApiKey: null,
+      publicBaseUrl: "https://candidate.atlas.test",
+      canonicalBaseUrl: "https://atlas.test",
+      authJwtAudience: "https://atlas.test/mcp",
+      authJwtAudiences: ["https://atlas.test/mcp"],
+    });
+    const mod = await import("@/domains/access/server/auth");
+    await mod.getAuth();
+    expect(mocks.jwt.mock.calls[0]?.[0]).toMatchObject({
+      jwt: {
+        issuer: "https://atlas.test/api/auth",
+        audience: "https://atlas.test/mcp",
+      },
+    });
+    expect(mocks.betterAuth).toHaveBeenCalledWith(
+      expect.objectContaining({ baseURL: "https://candidate.atlas.test" }),
+    );
+  });
+
   it("builds Better Auth once with the Atlas database, plugins, and email callbacks", async () => {
     const mod = await import("@/domains/access/server/auth");
     const auth = await mod.getAuth();
@@ -356,6 +386,47 @@ describe("auth runtime wiring", () => {
 
     expect(second).toBe(first);
     expect(mocks.runMigrations).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates a distinct auth instance per Workers request without changing Node singleton behavior", async () => {
+    const mod = await import("@/domains/access/server/auth");
+    const { runWorkerRequest } = await import("../../../../../server/request-scope");
+    const instances: unknown[] = [];
+    for (const name of ["a", "b"])
+      await runWorkerRequest("postgres://" + name, async () => {
+        const first = await mod.getAuth();
+        expect(await mod.getAuth()).toBe(first);
+        instances.push(first);
+        return new Response(null, { status: 204 });
+      });
+    expect(mocks.betterAuth).toHaveBeenCalledTimes(2);
+    expect(instances).toHaveLength(2);
+  });
+
+  it("checks the deployed schema instead of running migrations in external mode", async () => {
+    vi.stubEnv("ATLAS_AUTH_MIGRATIONS", "external");
+    const schema = await import("../../../../../server/auth-schema");
+    const check = vi.spyOn(schema, "verifyAuthSchema").mockResolvedValue(undefined);
+    const mod = await import("@/domains/access/server/auth");
+    expect(await mod.ensureAuthReady()).toBe(await mod.ensureAuthReady());
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(mocks.runMigrations).not.toHaveBeenCalled();
+    check.mockRestore();
+  });
+
+  it("checks schema once within each Workers request", async () => {
+    vi.stubEnv("ATLAS_AUTH_MIGRATIONS", "external");
+    const schema = await import("../../../../../server/auth-schema");
+    const check = vi.spyOn(schema, "verifyAuthSchema").mockResolvedValue(undefined);
+    const mod = await import("@/domains/access/server/auth");
+    const { runWorkerRequest } = await import("../../../../../server/request-scope");
+    await runWorkerRequest("postgres://a", async () => {
+      expect(await mod.ensureAuthReady()).toBe(await mod.ensureAuthReady());
+      return new Response(null, { status: 204 });
+    });
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(mocks.runMigrations).not.toHaveBeenCalled();
+    check.mockRestore();
   });
 
   describe("ATProto sign-in endpoint", () => {

@@ -47,6 +47,7 @@ export interface AuthRuntimeConfig {
   edgeOriginSecret: string;
   passkeyRpId: string | null;
   publicBaseUrl: string;
+  canonicalBaseUrl?: string;
   publicDomain: string;
   resendApiKey: string | null;
   samlAllowedIssuerOrigins: Set<string>;
@@ -311,6 +312,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     edgeOriginSecret: env.ATLAS_EDGE_ORIGIN_SECRET?.trim() || "",
     passkeyRpId: env.ATLAS_PASSKEY_RP_ID?.trim() || null,
     publicBaseUrl,
+    canonicalBaseUrl: env.ATLAS_WEB_CANONICAL_URL?.trim() || publicBaseUrl,
     publicDomain,
     resendApiKey: env.ATLAS_EMAIL_RESEND_API_KEY?.trim() || null,
     samlAllowedIssuerOrigins: normalizeSamlIssuerOriginList(env.ATLAS_SAML_ALLOWED_ISSUERS),
@@ -383,7 +385,9 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
     throw new Error("ATLAS_PUBLIC_URL must use https unless it is a loopback address.");
   }
 
-  const expectedMcpAudience = buildMcpResourceUrl(runtime.publicBaseUrl);
+  const expectedMcpAudience = buildMcpResourceUrl(
+    runtime.canonicalBaseUrl ?? runtime.publicBaseUrl,
+  );
   if (runtime.authJwtAudience !== expectedMcpAudience) {
     throw new Error(
       `ATLAS_AUTH_JWT_AUDIENCES must put the canonical MCP resource first: ${expectedMcpAudience}`,

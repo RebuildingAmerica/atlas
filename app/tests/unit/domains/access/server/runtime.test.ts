@@ -7,6 +7,35 @@ import {
 } from "@/domains/access/server/runtime";
 
 describe("resolveAuthRuntimeConfig", () => {
+  it("keeps candidate browser links separate from the API bearer identity", () => {
+    const runtime = resolveAuthRuntimeConfig(
+      {
+        ATLAS_PUBLIC_URL: "https://candidate.atlas.example.com",
+        ATLAS_WEB_CANONICAL_URL: "https://atlas.example.com",
+        ATLAS_MULTI_USER: "true",
+        ATLAS_AUTH_INTERNAL_SECRET: "existing-signing-key",
+        ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
+        ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
+          "https://candidate.atlas.example.com/api/auth/internal/api-key",
+        ATLAS_EMAIL_PROVIDER: "capture",
+        ATLAS_EMAIL_CAPTURE_URL: "http://localhost:8025/messages",
+      },
+      "/workspace",
+    );
+    expect(runtime.publicBaseUrl).toBe("https://candidate.atlas.example.com");
+    expect(runtime.canonicalBaseUrl).toBe("https://atlas.example.com");
+    expect(runtime.authJwtAudience).toBe("https://atlas.example.com/mcp");
+    expect(() => {
+      validateAuthRuntimeConfig(runtime);
+    }).not.toThrow();
+    expect(() => {
+      validateAuthRuntimeConfig({
+        ...runtime,
+        canonicalBaseUrl: undefined,
+        publicBaseUrl: "https://atlas.example.com",
+      });
+    }).not.toThrow();
+  });
   it("requires a public Atlas origin and derives the auth domain from it", () => {
     const runtime = resolveAuthRuntimeConfig(
       {

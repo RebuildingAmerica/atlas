@@ -160,7 +160,7 @@ export function buildArtifactCleanupPolicy() {
       action: { type: "Delete" },
       condition: {
         olderThan: CLOUD_COST_POLICY.untaggedImageMaxAge,
-        packageNamePrefixes: ["atlas-api"],
+        packageNamePrefixes: ["atlas-api", "atlas-web"],
         tagState: "untagged",
       },
     },
@@ -169,7 +169,7 @@ export function buildArtifactCleanupPolicy() {
       action: { type: "Keep" },
       mostRecentVersions: {
         keepCount: CLOUD_COST_POLICY.rollbackImageCount,
-        packageNamePrefixes: ["atlas-api"],
+        packageNamePrefixes: ["atlas-api", "atlas-web"],
       },
     },
   ];

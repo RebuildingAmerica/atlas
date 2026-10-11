@@ -90,6 +90,10 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - name: Validate Turbo task selectors
         run: pnpm run turbo:validate
+      - name: Verify Workers binding types and edge proxy
+        run: |
+          pnpm web:types --check
+          pnpm web:typecheck
       - name: Typecheck and lint
         env:
           TURBO_AFFECTED_FLAG: ${{ needs.changes.outputs.use_affected == 'true' && '--affected' || '' }}
@@ -226,6 +230,8 @@ jobs:
           done
           echo "::error::Playwright browser install failed after 3 attempts"
           exit 1
+      - name: Verify hosted browser credential isolation
+        run: pnpm --filter @rebuildingamerica/atlas-app exec playwright test --config playwright.hosting.config.ts
       - name: Run Playwright acceptance suite
         env:
           CI: "true"

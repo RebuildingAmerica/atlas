@@ -14,6 +14,7 @@ import { createAppActorHeaders } from "./app-actor-assertion";
 import { createAtprotoSessionForUser } from "./atproto-sign-in";
 import { loadAtlasSession } from "./session-state";
 import { getAuthRuntimeConfig } from "./runtime";
+import { requestResource } from "../../../../server/request-scope";
 
 interface LinkedAtprotoIdentity {
   current_handle: string;
@@ -363,6 +364,18 @@ export async function pruneAtprotoOAuthStores(): Promise<void> {
 }
 
 async function getAtprotoOAuthClient(): Promise<NodeOAuthClient> {
+  const scoped = requestResource(
+    "atproto",
+    () =>
+      new NodeOAuthClient({
+        allowHttp: isLocalHttpUrl(getAuthRuntimeConfig().publicBaseUrl),
+        clientMetadata: getAtprotoClientMetadata(),
+        responseMode: "query",
+        sessionStore,
+        stateStore,
+      }),
+  );
+  if (scoped) return scoped;
   if (!clientPromise) {
     clientPromise = Promise.resolve(
       new NodeOAuthClient({

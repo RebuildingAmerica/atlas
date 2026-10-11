@@ -200,3 +200,12 @@ test("production-only deploy workflow changes do not redeploy staging", () => {
   assert.equal(outputs.hosted_smoke, false);
   assert.equal(outputs.stripe_acceptance, false);
 });
+
+test("web edge changes run frontend and deployment validation without staging API mutation", () => {
+  const outputs = outputsFor(["services/web-edge/worker.ts"]);
+  assert.equal(outputs.quality, true);
+  assert.equal(outputs.app_tests, true);
+  assert.equal(outputs.deploy_scripts, true);
+  assert.equal(outputs.browser_acceptance, true);
+  assert.equal(outputs.staging_api_deploy, false);
+});

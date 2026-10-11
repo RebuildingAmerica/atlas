@@ -79,6 +79,7 @@ const API_PATHS = [
 const APP_PATHS = [
   /^app\//,
   /^admin\//,
+  /^services\/web-edge\//,
   /^packages\/atlas-access\//,
   /^packages\/atlas-api-client\//,
   /^packages\/atlas-catalog\//,
@@ -118,6 +119,8 @@ const CI_VALIDATION_PATHS = [/^scripts\/ci\//];
 
 const DEPLOY_VALIDATION_PATHS = [
   ...CI_VALIDATION_PATHS,
+  /^services\/web-edge\//,
+  /^\.github\/workflows\/web-hosting-candidate\.ya?ml$/,
   /^scripts\/deploy\//,
   /^\.github\/actions\/build-attest-push\//,
   /^\.github\/actions\/deploy-atlas-api\//,

@@ -1,4 +1,6 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { test } from "../helpers/hosted-test";
+import { hostedPublicRequestInit } from "../helpers/hosted-endpoints";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { absoluteHostedUrl, expectedHostedPublicOrigin } from "../helpers/hosted-endpoints";
 
 interface HostedIdentityAccount {
@@ -24,20 +26,15 @@ function requiredEnv(name: string): string {
 }
 
 function helperHeaders(): Record<string, string> {
-  return {
-    "x-atlas-hosted-e2e-secret": requiredEnv("ATLAS_HOSTED_E2E_SECRET"),
-    ...(process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET?.trim()
-      ? {
-          "x-vercel-protection-bypass": process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET.trim(),
-        }
-      : {}),
-    ...(process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN?.trim()
-      ? {
-          "x-vercel-trusted-oidc-idp-token":
-            process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN.trim(),
-        }
-      : {}),
-  };
+  return Object.fromEntries(
+    new Headers(
+      hostedPublicRequestInit({
+        headers: {
+          "x-atlas-hosted-e2e-secret": requiredEnv("ATLAS_HOSTED_E2E_SECRET"),
+        },
+      }).headers,
+    ).entries(),
+  );
 }
 
 function compactHostedRunId(runId: string): string {

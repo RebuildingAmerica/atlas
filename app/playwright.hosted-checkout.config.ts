@@ -8,15 +8,6 @@ function hostedPublicUrl(): string {
   return new URL(value).origin;
 }
 
-function trustedSourceHeaders(): Record<string, string> {
-  const bypass = process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET?.trim();
-  const token = process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN?.trim();
-  return {
-    ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}),
-    ...(token ? { "x-vercel-trusted-oidc-idp-token": token } : {}),
-  };
-}
-
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /checkout-hosted\.spec\.ts/,
@@ -26,7 +17,6 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: hostedPublicUrl(),
-    extraHTTPHeaders: trustedSourceHeaders(),
     headless: true,
     trace: "retain-on-failure",
   },

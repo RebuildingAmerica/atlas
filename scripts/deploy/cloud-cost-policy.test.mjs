@@ -18,6 +18,23 @@ const preflightScript = path.join(
 );
 
 void describe("cloud cost policy", () => {
+  void it("retains rollback web images and cleans untagged web builds alongside API images", () => {
+    const policies = buildArtifactCleanupPolicy();
+    assert.ok(
+      policies.some(
+        (policy) =>
+          policy.action.type === "Delete" &&
+          policy.condition.packageNamePrefixes.includes("atlas-web"),
+      ),
+    );
+    assert.ok(
+      policies.some(
+        (policy) =>
+          policy.action.type === "Keep" &&
+          policy.mostRecentVersions.packageNamePrefixes.includes("atlas-web"),
+      ),
+    );
+  });
   void it("accepts a scale-to-zero Cloud Run service with bounded resources", () => {
     const posture = evaluateCloudRunCostPosture({
       name: "atlas-api",
@@ -114,7 +131,7 @@ void describe("cloud cost policy", () => {
       action: { type: "Delete" },
       condition: {
         olderThan: "86400s",
-        packageNamePrefixes: ["atlas-api"],
+        packageNamePrefixes: ["atlas-api", "atlas-web"],
         tagState: "untagged",
       },
     });
@@ -123,7 +140,7 @@ void describe("cloud cost policy", () => {
       action: { type: "Keep" },
       mostRecentVersions: {
         keepCount: 5,
-        packageNamePrefixes: ["atlas-api"],
+        packageNamePrefixes: ["atlas-api", "atlas-web"],
       },
     });
   });

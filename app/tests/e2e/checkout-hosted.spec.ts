@@ -1,4 +1,6 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { test } from "../helpers/hosted-test";
+import { hostedPublicRequestInit } from "../helpers/hosted-endpoints";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { selectHostedCheckoutOffer, type HostedCheckoutOffer } from "./hosted-checkout-offer";
 
 /**
@@ -33,13 +35,15 @@ function requiredEnv(name: string): string {
 }
 
 function helperHeaders(): Record<string, string> {
-  const bypassSecret = process.env.ATLAS_HOSTED_VERCEL_BYPASS_SECRET?.trim();
-  const trustedOidcToken = process.env.ATLAS_HOSTED_VERCEL_TRUSTED_OIDC_TOKEN?.trim();
-  return {
-    "x-atlas-hosted-e2e-secret": requiredEnv("ATLAS_HOSTED_E2E_SECRET"),
-    ...(bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : {}),
-    ...(trustedOidcToken ? { "x-vercel-trusted-oidc-idp-token": trustedOidcToken } : {}),
-  };
+  return Object.fromEntries(
+    new Headers(
+      hostedPublicRequestInit({
+        headers: {
+          "x-atlas-hosted-e2e-secret": requiredEnv("ATLAS_HOSTED_E2E_SECRET"),
+        },
+      }).headers,
+    ).entries(),
+  );
 }
 
 async function postHostedHelper(
