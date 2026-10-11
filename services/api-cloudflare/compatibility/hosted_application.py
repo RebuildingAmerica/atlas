@@ -8,6 +8,7 @@ from inspect import signature
 from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
 from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
 from database_adapter import connect_database
+from public_source_transport import workers_public_source_fetch
 
 
 class ExplicitSettings(Settings):
@@ -58,10 +59,7 @@ def _settings(env):
 
 def _hyperdrive_parameters(env):
     binding = env.HYPERDRIVE
-    parameters = {
-        name: getattr(binding, name)
-        for name in ("host", "user", "password", "database")
-    }
+    parameters = {name: getattr(binding, name) for name in ("host", "user", "password", "database")}
     if any(not isinstance(value, str) or not value for value in parameters.values()):
         raise ValueError("Hyperdrive binding is incomplete")
     if isinstance(binding.port, bool):
@@ -126,9 +124,7 @@ def _install_async_dependencies(app):
         app.dependency_overrides[call] = adapt(call)
 
 
-def create_hosted_application(
-    env, *, strip_evaluation_prefix=False, firehose_wake=None
-):
+def create_hosted_application(env, *, strip_evaluation_prefix=False, firehose_wake=None):
     """Return an ASGI callable and route count for one caller-owned DO cache.
 
     Configuration and routes are stable for this instance. Every ASGI invocation
@@ -143,15 +139,15 @@ def create_hosted_application(
             raise RuntimeError("Database access requires a hosted request")
 
         with bind_hosted_runtime(
-            HostedRuntime(settings, no_factory_connection, firehose_wake)
+            HostedRuntime(
+                settings, no_factory_connection, firehose_wake, workers_public_source_fetch
+            )
         ):
             # atlas.main also constructs its ordinary server at import. Bind
             # explicit settings before importing; never populate os.environ.
             from atlas.main import create_app
 
-            app = create_app(
-                lifespan_override=_http_lifespan, mcp_asgi_app=_request_mcp
-            )
+            app = create_app(lifespan_override=_http_lifespan, mcp_asgi_app=_request_mcp)
 
         _install_async_dependencies(app)
     except Exception:
@@ -179,7 +175,9 @@ def create_hosted_application(
                 raw_path = scope.get("raw_path", b"")
                 if raw_path == b"/atlas" or raw_path.startswith(b"/atlas/"):
                     scope["raw_path"] = raw_path[len(b"/atlas") :] or b"/"
-        with bind_hosted_runtime(HostedRuntime(settings, connect, firehose_wake)):
+        with bind_hosted_runtime(
+            HostedRuntime(settings, connect, firehose_wake, workers_public_source_fetch)
+        ):
             try:
                 await app(scope, receive, send)
             except BaseException as request_error:

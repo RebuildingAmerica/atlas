@@ -125,7 +125,7 @@ export async function preparePythonOutput({
   const config = {
     name: workerName,
     compatibilityDate: "2026-10-10",
-    compatibilityFlags: ["python_workers"],
+    compatibilityFlags: ["python_workers", "global_fetch_strictly_public"],
     workersDev: false,
     previewUrls: false,
     observability: {

@@ -59,6 +59,9 @@ test("Python artifacts are portable cf Build Output with vendored package data",
       "data",
     );
     assert.equal(config.workersDev, false);
+    assert.ok(
+      config.compatibilityFlags.includes("global_fetch_strictly_public"),
+    );
     assert.equal(config.previewUrls, false);
     assert.deepEqual(config.domains ?? [], []);
     writeFileSync(join(source, "discovery_entry.py"), "class Default: pass\n");

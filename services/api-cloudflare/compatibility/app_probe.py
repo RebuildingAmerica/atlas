@@ -1,6 +1,7 @@
 """Read-only runtime evaluation; never a production API or migration job."""
 
 from uuid import UUID
+from typing import Literal
 
 from fastapi import FastAPI, Request
 
@@ -17,6 +18,44 @@ async def private_response(request, call_next):
 @app.get("/health")
 async def health():
     return {"status": "ok", "runtime": "python-durable-object"}
+
+
+@app.get("/public-source/{probe}")
+async def public_source(probe: Literal["https", "private-dns", "oversized", "cancel"]):
+    """Fixed, Access-protected cases; never expose a general-purpose fetch proxy."""
+    import hashlib
+
+    import httpx
+    from atlas.domains.discovery.pipeline.source_http import fetch_public_source
+    from public_source_transport import workers_public_source_fetch
+
+    target = "https://example.com/"
+    options = {}
+    if probe == "private-dns":
+        target = "https://127.0.0.1.sslip.io/"
+    elif probe == "oversized":
+        options["max_bytes"] = 16
+    elif probe == "cancel":
+        target = "https://httpbin.org/delay/5"
+        options["timeout"] = 0.05
+    try:
+        response = await fetch_public_source(target, workers_public_source_fetch, **options)
+    except httpx.HTTPStatusError as error:
+        return {
+            "probe": probe,
+            "outcome": "http-rejected",
+            "http_status": error.response.status_code,
+        }
+    except (ValueError, TimeoutError, OSError) as error:
+        return {"probe": probe, "outcome": "rejected", "error_type": type(error).__name__}
+    return {
+        "probe": probe,
+        "outcome": "received",
+        "http_status": response.status_code,
+        "bytes": len(response.content),
+        "body_sha256": hashlib.sha256(response.content).hexdigest(),
+        "example_domain": b"Example Domain" in response.content,
+    }
 
 
 @app.get("/imports")
