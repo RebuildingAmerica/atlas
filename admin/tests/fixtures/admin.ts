@@ -1,8 +1,88 @@
 import type {
+  AccountLookupResponse,
   CloudCostPostureResponse,
   PlatformSwitchResponse,
   VerificationRecordResponse,
 } from "@/generated/platform-schemas";
+
+/** An owner with one team workspace that bought, refunded and asked for a discount. */
+export function accountLookup(): AccountLookupResponse {
+  return {
+    account: {
+      created_at: "2026-09-01T12:00:00Z",
+      email: "dana@example.org",
+      email_verified: true,
+      id: "user_dana",
+      name: "Dana",
+    },
+    workspaces: [
+      {
+        adjustments: [
+          {
+            amount: 400,
+            created_at: "2026-09-04T12:00:00Z",
+            currency: "usd",
+            kind: "refund",
+            reason: "Charged twice",
+          },
+        ],
+        discounts: [
+          {
+            id: "d-1",
+            notes: null,
+            segment: "student",
+            status: "pending",
+            submitted_at: "2026-09-05T12:00:00Z",
+          },
+        ],
+        id: "org_team",
+        members: [{ email: "dana@example.org", role: "owner" }],
+        name: "Reno Tenants",
+        products: [
+          {
+            expires_at: "2027-09-03T12:00:00Z",
+            granted_at: "2026-09-03T12:00:00Z",
+            product: "atlas_team",
+            purchase_intent_id: "pi_1",
+            status: "active",
+            stripe_subscription_id: "sub_1",
+          },
+          {
+            expires_at: null,
+            granted_at: "2026-08-01T12:00:00Z",
+            product: "atlas_research_pass",
+            purchase_intent_id: null,
+            status: "canceled",
+            stripe_subscription_id: null,
+          },
+        ],
+        purchases: [
+          {
+            created_at: "2026-09-03T11:00:00Z",
+            id: "pi_1",
+            interval: "month",
+            paid_at: "2026-09-03T11:05:00Z",
+            product: "atlas_team",
+            revocation_reason: null,
+            revoked_at: null,
+            status: "paid",
+          },
+          {
+            created_at: "2026-08-03T11:00:00Z",
+            id: "pi_0",
+            interval: "once",
+            paid_at: null,
+            product: "atlas_research_pass",
+            revocation_reason: null,
+            revoked_at: "2026-08-04T11:00:00Z",
+            status: "revoked",
+          },
+        ],
+        slug: "reno-tenants",
+      },
+    ],
+  };
+}
 
 /** Discovery spend, never flipped, and checkout paused by the operator. */
 export function platformSwitches(): PlatformSwitchResponse[] {

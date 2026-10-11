@@ -1,6 +1,50 @@
 {
   "components": {
     "schemas": {
+      "AccountLookupRequest": {
+        "description": "An email address or a workspace slug.",
+        "properties": {
+          "query": {
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "AccountLookupRequest",
+        "type": "object"
+      },
+      "AccountLookupResponse": {
+        "description": "What an email or workspace slug finds.",
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LookupAccount"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/LookupWorkspace"
+            },
+            "title": "Workspaces",
+            "type": "array"
+          }
+        },
+        "required": [
+          "account",
+          "workspaces"
+        ],
+        "title": "AccountLookupResponse",
+        "type": "object"
+      },
       "CloudBillingExportPosture": {
         "description": "Cloud Billing BigQuery export connection status.",
         "properties": {
@@ -178,6 +222,329 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LookupAccount": {
+        "description": "The account an email names.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "email_verified",
+          "created_at"
+        ],
+        "title": "LookupAccount",
+        "type": "object"
+      },
+      "LookupAdjustment": {
+        "description": "One refund or other money movement.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "integer"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "kind",
+          "reason",
+          "created_at"
+        ],
+        "title": "LookupAdjustment",
+        "type": "object"
+      },
+      "LookupDiscount": {
+        "description": "One discount request for the workspace.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "segment": {
+            "title": "Segment",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submitted_at": {
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "segment",
+          "status",
+          "submitted_at",
+          "notes"
+        ],
+        "title": "LookupDiscount",
+        "type": "object"
+      },
+      "LookupMember": {
+        "description": "One member of a workspace.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "LookupMember",
+        "type": "object"
+      },
+      "LookupProduct": {
+        "description": "One product a workspace holds, and where it came from.",
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "granted_at": {
+            "title": "Granted At",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "purchase_intent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The purchase that granted it; null for a manual grant.",
+            "title": "Purchase Intent Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "stripe_subscription_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Subscription Id"
+          }
+        },
+        "required": [
+          "product",
+          "status",
+          "granted_at",
+          "expires_at",
+          "purchase_intent_id",
+          "stripe_subscription_id"
+        ],
+        "title": "LookupProduct",
+        "type": "object"
+      },
+      "LookupPurchase": {
+        "description": "One checkout the workspace started, and how it ended.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "interval": {
+            "title": "Interval",
+            "type": "string"
+          },
+          "paid_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid At"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "revocation_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revocation Reason"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "product",
+          "interval",
+          "status",
+          "created_at",
+          "paid_at",
+          "revoked_at",
+          "revocation_reason"
+        ],
+        "title": "LookupPurchase",
+        "type": "object"
+      },
+      "LookupWorkspace": {
+        "description": "A workspace with everything needed to answer its owner.",
+        "properties": {
+          "adjustments": {
+            "items": {
+              "$ref": "#/components/schemas/LookupAdjustment"
+            },
+            "title": "Adjustments",
+            "type": "array"
+          },
+          "discounts": {
+            "items": {
+              "$ref": "#/components/schemas/LookupDiscount"
+            },
+            "title": "Discounts",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/LookupMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/LookupProduct"
+            },
+            "title": "Products",
+            "type": "array"
+          },
+          "purchases": {
+            "items": {
+              "$ref": "#/components/schemas/LookupPurchase"
+            },
+            "title": "Purchases",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "members",
+          "products",
+          "purchases",
+          "adjustments",
+          "discounts"
+        ],
+        "title": "LookupWorkspace",
         "type": "object"
       },
       "PlatformSwitchCollectionResponse": {
@@ -550,6 +917,48 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/platform/accounts/lookup": {
+      "post": {
+        "description": "Find an account by email, or a workspace by slug, with its members, products and why it holds them, purchases, refunds and discount requests. Read-only; every lookup is audited.",
+        "operationId": "lookupAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountLookupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountLookupResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Look up an account or workspace",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
     "/api/platform/cloud-costs": {
       "get": {
         "description": "Return operator-only Atlas cloud-cost posture and guardrail status.",

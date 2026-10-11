@@ -385,6 +385,7 @@ export const EXCLUDED_ROUTES = {
   "/api/auth/$": { reason: "API route, not a page." },
   "/api/auth/internal/api-key": { reason: "API route, not a page." },
   "/api/auth/internal/discount-review-results": { reason: "API route, not a page." },
+  "/api/auth/internal/platform-lookup": { reason: "API route, not a page." },
   "/api/auth/internal/memberships/$organizationId/members/$userId": {
     reason: "API route, not a page.",
   },
