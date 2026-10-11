@@ -195,6 +195,27 @@ through `cf`, and records artifact digests and namespace/deployment IDs without
 secrets. It produces an `evaluation.json`, not a promotable release manifest.
 Normal release preparation rejects experimental execution explicitly.
 
+Source commit `8a3f1953` was accepted by Cloudflare as Worker
+`atlas-durable-eval-cpu`, version `2035a26e-4d5d-4e9b-89cf-541493a39bfa`, with
+49ms startup and a confirmed SQLite namespace. Its descendant hostname
+`atlas-durable-eval-cpu.atlas.rebuildingus.org` preserves the canonical passkey
+RP relationship. Cloudflare's domain and proxied DNS record exist, but public
+resolution returned `ENODATA` and a TLS control failed during provisioning. This
+source deployment has not passed hosted journey or CPU validation.
+
+Deployment identity is retained as pending before probing the hostname. Resume
+the exact version after DNS/TLS is ready without rebuilding or deploying:
+
+```sh
+pnpm web:durable-evaluate \
+  --verify-file .atlas/web/durable-evaluation/COMMIT_SHA/evaluation.json \
+  --access-file /private/path/atlas-access.json
+```
+
+This mode verifies the exclusive Access policy and unchanged active version,
+then checks anonymous session behavior and unauthenticated rejection. A passing
+result establishes only those controls, not production eligibility.
+
 Duration remains an acceptance risk: Free includes 13,000 GB-seconds per day,
 with wall time charged while an object is active and unable to hibernate. At
 128MiB, an 80% budget is 83,200 aggregate object-seconds per day before

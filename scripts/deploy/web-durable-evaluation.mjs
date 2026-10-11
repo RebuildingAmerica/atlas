@@ -12,7 +12,11 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { cloudflareCommand as cf } from "./cloudflare-cli.mjs";
-import { assertAccessPolicy, loadWebRuntime } from "./web-candidate.mjs";
+import {
+  assertAccessPolicy,
+  assertCandidateDomain,
+  loadWebRuntime,
+} from "./web-candidate.mjs";
 import { prepareCloudflareOutput } from "./web-cloudflare-output.mjs";
 import {
   copyWebArtifact,
@@ -69,7 +73,114 @@ export function validateEvaluationDatabase(hyperdrive, databaseUrl) {
     );
 }
 
+export function assertEvaluationVersion(deployments) {
+  const versions = deployments?.deployments?.[0]?.versions;
+  if (
+    !Array.isArray(versions) ||
+    versions.length !== 1 ||
+    versions[0].percentage !== 100 ||
+    !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(
+      versions[0].version_id ?? "",
+    )
+  )
+    throw new Error(
+      "Evaluation requires exactly one immutable version at 100% traffic.",
+    );
+  return versions[0].version_id;
+}
+
+/** Persist the actual deployment even while DNS or TLS provisioning is pending. */
+export async function verifyEvaluation(
+  file,
+  evidence,
+  access,
+  fetcher = fetch,
+) {
+  const pending = { ...evidence, verification: "pending" };
+  writeFileSync(file, JSON.stringify(pending, null, 2) + "\n");
+  const origin = "https://" + evidence.hostname;
+  try {
+    const session = await fetcher(origin + "/api/auth/get-session", {
+      headers: {
+        "CF-Access-Client-Id": access.client_id,
+        "CF-Access-Client-Secret": access.client_secret,
+      },
+      redirect: "manual",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (
+      session.status !== 200 ||
+      (await session.text()) !== "null" ||
+      session.headers.get("cache-control") !== "private, no-store"
+    )
+      throw new Error("Session control failed.");
+    const denied = await fetcher(origin, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (denied.status !== 403) throw new Error("Access control failed.");
+  } catch {
+    throw new Error(
+      "Evaluation deployed; hosted verification is pending. Retry with --verify-file and --access-file after DNS/TLS provisioning. Details remain private.",
+    );
+  }
+  const verified = {
+    ...pending,
+    verification: "anonymous-session-and-access",
+    checkedAt: new Date().toISOString(),
+  };
+  writeFileSync(file, JSON.stringify(verified, null, 2) + "\n");
+  console.log(JSON.stringify(verified));
+  return verified;
+}
+
 export async function evaluate(args) {
+  const verifyFile = arg(args, "--verify-file");
+  if (verifyFile) {
+    const evidence = json(verifyFile, "Evaluation evidence");
+    if (
+      evidence.kind !== "durable-evaluation" ||
+      evidence.productionEligible !== false
+    )
+      throw new Error("Only diagnostic evaluation evidence can be verified.");
+    validateEvaluationDestination(evidence);
+    const access = json(arg(args, "--access-file"), "Access credentials");
+    const application = cf([
+      "zero-trust",
+      "access",
+      "applications",
+      "get",
+      evidence.accessAppId,
+    ]);
+    assertAccessPolicy(
+      application,
+      application.policies,
+      evidence.hostname,
+      access.id,
+    );
+    const live = cf([
+      "workers",
+      "deployments",
+      "list",
+      "--worker",
+      evidence.workerName,
+    ]);
+    if (
+      assertEvaluationVersion(live) !==
+      assertEvaluationVersion(evidence.deployments)
+    )
+      throw new Error(
+        "Evaluation deployment changed; refusing to verify another version.",
+      );
+    if (!/^[a-f0-9]{32}$/.test(evidence.zoneId ?? ""))
+      throw new Error("Evaluation domain zone identity is required.");
+    assertCandidateDomain(cf(["workers", "get", evidence.workerName]), {
+      workerName: evidence.workerName,
+      hostname: evidence.hostname,
+      zoneId: evidence.zoneId,
+    });
+    return verifyEvaluation(verifyFile, evidence, access);
+  }
   const runtime = loadWebRuntime(
     JSON.stringify(json(arg(args, "--runtime-file"), "Runtime")),
   );
@@ -262,50 +373,40 @@ export async function evaluate(args) {
       "--worker",
       workerName,
     ]);
+    assertEvaluationVersion(deployments);
+    const worker = cf(["workers", "get", workerName]);
+    const zoneId = worker.references?.domains?.find(
+      (domain) => domain.hostname === hostname,
+    )?.zone_id;
+    if (!/^[a-f0-9]{32}$/.test(zoneId ?? ""))
+      throw new Error("Evaluation domain zone identity is required.");
+    assertCandidateDomain(worker, { workerName, hostname, zoneId });
     const namespaces = cf(["durable-objects", "namespaces", "list"]);
     const namespace = namespaces.find(
       (n) => n.script === workerName && n.class === "AtlasAppRuntime",
     );
     if (namespace?.use_sqlite !== true)
       throw new Error("SQLite-backed evaluation namespace was not confirmed.");
-    const headers = {
-      "CF-Access-Client-Id": access.client_id,
-      "CF-Access-Client-Secret": access.client_secret,
-    };
-    const session = await fetch(
-      runtime.ATLAS_PUBLIC_URL + "/api/auth/get-session",
-      { headers, redirect: "manual", signal: AbortSignal.timeout(30000) },
-    );
-    if (
-      session.status !== 200 ||
-      (await session.text()) !== "null" ||
-      session.headers.get("cache-control") !== "private, no-store"
-    )
-      throw new Error("Hosted anonymous session control failed.");
-    const denied = await fetch(runtime.ATLAS_PUBLIC_URL, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(30000),
-    });
-    if (denied.status !== 403)
-      throw new Error("Evaluation Access protection failed.");
     const evidence = {
       kind: "durable-evaluation",
       productionEligible: false,
       releaseSha,
       workerName,
       hostname,
+      canonicalUrl,
+      zoneId,
       artifactDigest: digestDirectory(join(directory, "artifact")),
       assetsDigest: digestDirectory(join(directory, "assets")),
       namespaceId: namespace.id,
       accessAppId: application.id,
       deployments,
-      checkedAt: new Date().toISOString(),
+      deployedAt: new Date().toISOString(),
     };
-    writeFileSync(
+    await verifyEvaluation(
       join(directory, "evaluation.json"),
-      JSON.stringify(evidence, null, 2) + "\n",
+      evidence,
+      access,
     );
-    console.log(JSON.stringify({ ...evidence, directory }));
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
