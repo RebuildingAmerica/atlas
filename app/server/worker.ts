@@ -58,6 +58,7 @@ export default {
           env.ATLAS_SERVER_API_PROXY_TARGET,
           clientIp,
           env.ATLAS_AUTH_INTERNAL_SECRET,
+          env.ATLAS_API_ROUTE_PREFIX,
         )
       : undefined;
     return runWorkerRequest(

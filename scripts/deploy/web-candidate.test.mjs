@@ -147,6 +147,7 @@ test("approved DO builds pin existing API and discovery versions and compile the
         worker: "atlas-web",
         exportName: "AtlasAppRuntime",
       },
+      ATLAS_API_ROUTE_PREFIX: { type: "text", value: "" },
       API_RUNTIME: {
         type: "durable-object",
         worker: "atlas-api",

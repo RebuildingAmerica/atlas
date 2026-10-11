@@ -18,6 +18,7 @@ export default defineConfig({
       NODE_ENV: bindings.text("production"),
       ATLAS_AUTH_MIGRATIONS: bindings.text("external"),
       ATLAS_DOCS_URL: bindings.text(""),
+      ATLAS_API_ROUTE_PREFIX: bindings.text<"" | "/atlas">(""),
       ATLAS_SERVER_API_PROXY_TARGET: bindings.text(""),
       ATLAS_AUTH_INTERNAL_SECRET: bindings.secret(),
       HYPERDRIVE: bindings.hyperdrive({

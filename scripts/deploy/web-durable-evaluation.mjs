@@ -307,12 +307,14 @@ export async function evaluate(args) {
     ]),
   );
   workerEnv.HYPERDRIVE = { type: "hyperdrive", id: hyperdriveId };
-  if (apiWorker)
+  if (apiWorker) {
+    workerEnv.ATLAS_API_ROUTE_PREFIX = { type: "text", value: "/atlas" };
     workerEnv.API_RUNTIME = {
       type: "durable-object",
       worker: apiWorker,
       exportName: "ApiRuntime",
     };
+  }
   workerEnv.APP_RUNTIME = {
     type: "durable-object",
     worker: workerName,

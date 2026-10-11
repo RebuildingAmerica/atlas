@@ -12,7 +12,7 @@ afterEach(() => {
 
 it("forwards the exact API method, query and body with trusted visitor headers", async () => {
   const fetch = vi.fn(async (request: Request) => {
-    expect(request.url).toBe("https://api.example.com/atlas/api/entities?q=a%2Fb");
+    expect(request.url).toBe("https://api.example.com/api/entities?q=a%2Fb");
     expect(request.method).toBe("PATCH");
     expect(await request.text()).toBe("payload");
     expect(request.headers.get("authorization")).toBe("Bearer visitor");
@@ -35,6 +35,7 @@ it("forwards the exact API method, query and body with trusted visitor headers",
     "https://api.example.com",
     "203.0.113.8",
     "trusted-secret",
+    "",
   );
   const response = await transport(
     new Request("https://api.example.com/api/entities?q=a%2Fb", {
@@ -53,7 +54,7 @@ it("forwards the exact API method, query and body with trusted visitor headers",
       },
     }),
   );
-  expect(getByName).toHaveBeenCalledWith("application");
+  expect(getByName).toHaveBeenCalledWith("application", { locationHint: "enam" });
   expect(response?.status).toBe(207);
   expect(response?.headers.get("x-result")).toBe("retained");
   expect(await response?.text()).toBe("upstream");
@@ -66,6 +67,7 @@ it("declines unrelated origins and app-owned routes before reaching the binding"
     "https://api.example.com",
     null,
     "secret",
+    "",
   );
   for (const url of [
     "https://outside.example.com/api/entities",
@@ -97,6 +99,7 @@ it("keeps concurrent SSR calls and stream cancellation inside their request tran
       "https://api.example.com",
       visitor,
       "secret",
+      "",
     );
     return runWorkerRequest(
       "postgres://" + visitor,
@@ -152,6 +155,7 @@ it("preserves an upstream response stream and propagates cancellation without bu
     "https://api.example.com",
     null,
     "secret",
+    "",
   );
   const response = await runWorkerRequest(
     "postgres://one",
@@ -187,6 +191,7 @@ it("keeps health, schema and ATProto identity API calls on the binding with veri
     "https://api.example.com",
     null,
     "secret",
+    "",
   );
   for (const path of ["/health", "/openapi.json", "/api/atproto/identities/sign-in/resolve"])
     expect(
@@ -202,8 +207,44 @@ it("keeps health, schema and ATProto identity API calls on the binding with veri
       )?.status,
     ).toBe(204);
   expect(urls).toEqual([
-    "https://api.example.com/atlas/health",
-    "https://api.example.com/atlas/openapi.json",
-    "https://api.example.com/atlas/api/atproto/identities/sign-in/resolve",
+    "https://api.example.com/health",
+    "https://api.example.com/openapi.json",
+    "https://api.example.com/api/atproto/identities/sign-in/resolve",
   ]);
+});
+
+it("uses the explicit evaluation prefix while production preserves original routes", async () => {
+  const urls: string[] = [];
+  const binding = {
+    getByName: () => ({
+      fetch: (request: Request) => {
+        urls.push(request.url);
+        return Promise.resolve(new Response(null, { status: 204 }));
+      },
+    }),
+  };
+  for (const prefix of ["", "/atlas"] as const) {
+    const transport = createWorkerApiTransport(
+      binding,
+      "https://api.example.com",
+      null,
+      "secret",
+      prefix,
+    );
+    await transport(new Request("https://api.example.com/api/entities?limit=1"));
+  }
+  expect(urls).toEqual([
+    "https://api.example.com/api/entities?limit=1",
+    "https://api.example.com/atlas/api/entities?limit=1",
+  ]);
+});
+
+it("rejects missing or unrecognized binding route prefixes before dispatch", () => {
+  const binding = { getByName: vi.fn() };
+  for (const prefix of [undefined, "/unexpected"]) {
+    expect(() =>
+      createWorkerApiTransport(binding, "https://api.example.com", null, "secret", prefix as ""),
+    ).toThrow("API binding route prefix must be explicit");
+  }
+  expect(binding.getByName).not.toHaveBeenCalled();
 });

@@ -1,7 +1,10 @@
 import type { ServerApiTransport } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 
 export interface ApiRuntimeBinding {
-  getByName(name: string): { fetch(request: Request): Promise<Response> };
+  getByName(
+    name: string,
+    options: { locationHint: "enam" },
+  ): { fetch(request: Request): Promise<Response> };
 }
 
 /** Keep the API's request stream and visitor rate-limit identity inside the current request. */
@@ -10,7 +13,10 @@ export function createWorkerApiTransport(
   apiOrigin: string,
   clientIp: string | null,
   internalSecret: string,
+  routePrefix: "" | "/atlas",
 ): ServerApiTransport {
+  if (routePrefix !== "" && routePrefix !== "/atlas")
+    throw new Error("API binding route prefix must be explicit");
   const origin = new URL(apiOrigin).origin;
   return async (request) => {
     const target = new URL(request.url);
@@ -60,9 +66,9 @@ export function createWorkerApiTransport(
       headers.set("x-atlas-client-ip", clientIp);
       headers.set("x-atlas-proxy-secret", internalSecret);
     }
-    target.pathname = "/atlas" + target.pathname;
+    target.pathname = routePrefix + target.pathname;
     return binding
-      .getByName("application")
+      .getByName("application", { locationHint: "enam" })
       .fetch(new Request(target, new Request(request, { headers, redirect: "manual" })));
   };
 }

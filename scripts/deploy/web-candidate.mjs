@@ -255,6 +255,7 @@ export function durableCandidateBindings(manifest, compiled) {
       worker: manifest.workerName,
       exportName: "AtlasAppRuntime",
     },
+    ATLAS_API_ROUTE_PREFIX: { type: "text", value: "" },
     API_RUNTIME: {
       type: "durable-object",
       worker: api.workerName,

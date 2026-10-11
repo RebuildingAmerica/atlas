@@ -72,7 +72,7 @@ describe("Worker API binding", () => {
   it("routes MCP through the binding while docs and auth keep their own handlers", async () => {
     const { default: worker } = await import("../../../../../server/worker");
     const boundFetch = vi.fn(async (request: Request) => {
-      expect(request.url).toBe("https://api.example.com/atlas/mcp/?q=one");
+      expect(request.url).toBe("https://api.example.com/mcp/?q=one");
       expect(request.headers.get("x-atlas-client-ip")).toBe("203.0.113.10");
       expect(request.headers.get("x-atlas-proxy-secret")).toBe("shared-secret");
       for (const name of [
@@ -88,6 +88,7 @@ describe("Worker API binding", () => {
     const env = {
       HYPERDRIVE: { connectionString: "postgres://session" },
       API_RUNTIME: { getByName: () => ({ fetch: boundFetch }) },
+      ATLAS_API_ROUTE_PREFIX: "",
       ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.com",
       ATLAS_AUTH_INTERNAL_SECRET: "shared-secret",
       ATLAS_DOCS_URL: "https://docs.example.com",
