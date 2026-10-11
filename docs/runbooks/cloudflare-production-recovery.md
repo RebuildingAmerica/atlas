@@ -69,10 +69,13 @@ readable values fail rather than replacing the retained value. Unreadable
 provider secrets require the same existing value from the approved CI store.
 Production billing verification runs before consumer activation, canonical route
 promotion and web publication, even when new checkout is closed, so existing
-customers retain billing controls. The protected, paused API publication and
-verification can run while billing credentials are recovered. They do not serve
-canonical traffic or activate consumers; additive schema checks and account
-identity verification still run before publication.
+customers retain billing controls. Only the first protected API bootstrap can
+precede billing recovery, after a live read verifies that the selected API,
+discovery and public-edge Workers are absent. Subsequent publications still
+require billing verification, because paused consumers do not detach existing
+public routes. Paused verification and rollback remain available. Bootstrap
+creates no canonical route or active consumer; additive schema checks and
+account identity verification still run.
 
 ## Publication sequence
 

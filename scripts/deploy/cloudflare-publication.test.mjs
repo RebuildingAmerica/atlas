@@ -449,7 +449,6 @@ test("paused publication avoids billing while every activation and promotion ver
     throw new Error("fixture billing unavailable");
   };
   for (const operation of [
-    "publish-api",
     "verify-api",
     "pause-api",
     "restore-api",
@@ -464,6 +463,7 @@ test("paused publication avoids billing while every activation and promotion ver
     );
   }
   for (const operation of [
+    "publish-api",
     "activate-api",
     "promote-api",
     "web-candidate",
@@ -483,5 +483,38 @@ test("paused publication avoids billing while every activation and promotion ver
       { target: "staging", operation: "web-candidate" },
       unavailable,
     ),
+  );
+});
+
+test("only first bootstrap with absent production runtimes can defer billing", () => {
+  const context = { target: "production", operation: "publish-api" };
+  const unavailable = () => {
+    throw new Error("fixture billing unavailable");
+  };
+  const firstBootstrap = { firstBootstrap: true, cloudflare: () => [] };
+  assert.doesNotThrow(() =>
+    preflightPublicationBilling(context, unavailable, firstBootstrap),
+  );
+  for (const name of [
+    "atlas-api-production",
+    "atlas-discovery-production",
+    "atlas-api-ops-production",
+  ]) {
+    assert.throws(
+      () =>
+        preflightPublicationBilling(context, unavailable, {
+          ...firstBootstrap,
+          cloudflare: () => [{ name }],
+        }),
+      /fixture billing unavailable/,
+    );
+  }
+  assert.throws(
+    () =>
+      preflightPublicationBilling(context, unavailable, {
+        ...firstBootstrap,
+        cloudflare: () => ({ error: "unreadable" }),
+      }),
+    /isolation/,
   );
 });

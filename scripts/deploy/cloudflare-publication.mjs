@@ -543,14 +543,17 @@ export function verifyHostedJourneys({
   };
 }
 
-/** Verify billing before serving people or starting consumers. Protected publication
- * remains paused and cannot receive canonical traffic, so it can be measured while
- * billing credentials are recovered without interrupting existing purchases. */
-export function preflightPublicationBilling(context, run) {
+/** Preserve billing on every replacement and public activation. Only a first,
+ * protected bootstrap with no existing runtime or public edge can defer billing
+ * while the replacement directory is measured. No canonical route is created. */
+export function preflightPublicationBilling(
+  context,
+  run,
+  { firstBootstrap = false, cloudflare } = {},
+) {
   if (
-    context.target === "production" &&
-    ![
-      "publish-api",
+    context.target !== "production" ||
+    [
       "doctor",
       "restore-routing",
       "restore-api",
@@ -558,7 +561,26 @@ export function preflightPublicationBilling(context, run) {
       "pause-api",
     ].includes(context.operation)
   )
-    run("pnpm", ["exec", "tsx", "scripts/deploy/publication-billing.ts"]);
+    return;
+  if (context.operation === "publish-api" && firstBootstrap) {
+    const listed = cloudflare(["workers", "list"]);
+    const workers = Array.isArray(listed) ? listed : listed?.workers;
+    if (
+      !Array.isArray(workers) ||
+      workers.some((worker) => typeof (worker?.name ?? worker?.id) !== "string")
+    )
+      throw Error(
+        "First-bootstrap isolation could not be verified; no publication was attempted.",
+      );
+    const names = new Set(workers.map((worker) => worker.name ?? worker.id));
+    if (
+      !["api", "discovery", "api-ops"].some((role) =>
+        names.has(`atlas-${role}-${context.target}`),
+      )
+    )
+      return;
+  }
+  run("pnpm", ["exec", "tsx", "scripts/deploy/publication-billing.ts"]);
 }
 
 export async function publicationCli({
@@ -812,7 +834,13 @@ export async function publicationCli({
     state: "in-progress",
   };
   atomicJson(join(bundle, "publication.json"), index);
-  preflightPublicationBilling(context, run);
+  preflightPublicationBilling(context, run, {
+    firstBootstrap:
+      context.operation === "publish-api" &&
+      !sourceRun &&
+      env.ATLAS_API_BOOTSTRAP === "true",
+    cloudflare: (args) => cloudflareCommand(args, { env }),
+  });
   let evidenceFile;
   if (
     [
