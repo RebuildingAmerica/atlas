@@ -20,23 +20,24 @@ async def health():
 
 @app.get("/database")
 async def database(request: Request):
-    import psycopg
+    import asyncpg
 
     hyperdrive = request.scope["env"].HYPERDRIVE
     # No schema writes, user records, or credentials leave this probe.
-    async with await psycopg.AsyncConnection.connect(
+    connection = await asyncpg.connect(
         host=hyperdrive.host,
         port=int(hyperdrive.port),
         user=hyperdrive.user,
         password=hyperdrive.password,
-        dbname=hyperdrive.database,
-        sslmode="disable",
-        options="-c TimeZone=UTC",
-    ) as connection:
-        async with connection.cursor() as cursor:
-            await cursor.execute("SELECT 1, current_setting('TimeZone')")
-            row = await cursor.fetchone()
-    return {"query": row[0], "timezone": row[1], "connection_closed": connection.closed}
+        database=hyperdrive.database,
+        ssl=False,
+        server_settings={"TimeZone": "UTC"},
+    )
+    try:
+        row = await connection.fetchrow("SELECT 1, current_setting('TimeZone')")
+    finally:
+        await connection.close()
+    return {"query": row[0], "timezone": row[1], "connection_closed": connection.is_closed()}
 
 
 class ApiRuntime(DurableObject):

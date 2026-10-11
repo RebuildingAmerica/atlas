@@ -1,0 +1,47 @@
+name: Build Cloudflare Python wheels
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [chore/off-vercel]
+    paths:
+      - .github/workflows/cloudflare-python-wheels.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-python-wheels-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheels:
+    name: Wasm wheel (${{ matrix.package }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [inflate64==1.0.4, python-crfsuite==0.9.12]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: "0.12.23"
+      - name: Install pinned cross-build environment
+        run: uv tool run --from pyodide-build==0.39.1 pyodide xbuildenv install 314.0.7
+      - name: Build existing native dependency for WebAssembly
+        env:
+          NATIVE_PACKAGE: ${{ matrix.package }}
+        run: uv tool run --from pyodide-build==0.39.1 pyodide build "$NATIVE_PACKAGE" --outdir wheels
+      - name: Record artifact identity
+        run: sha256sum wheels/*.whl > wheels/SHA256SUMS
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pyodide-${{ matrix.package }}
+          path: wheels/
+          if-no-files-found: error
+          retention-days: 14

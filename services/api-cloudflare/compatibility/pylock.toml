@@ -18,6 +18,11 @@ version = "4.15.1"
 wheels = [{ url = "https://files.pythonhosted.org/packages/12/b8/4bd346e22b28902df4d651910f5242c28d84e4a5c2435ca5c3f797ed7e2e/anyio-4.15.1-py3-none-any.whl", upload-time = 2026-09-05T10:42:37Z, size = 132079, hashes = { sha256 = "6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101" } }]
 
 [[packages]]
+name = "asyncpg"
+version = "0.31.0"
+wheels = [{ url = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/asyncpg-0.31.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hashes = { sha256 = "32b4a4ea601ac68af6e8b78de2252e4bcf6c17101607556f63d034c642e8455b" } }]
+
+[[packages]]
 name = "fastapi"
 version = "0.143.0"
 wheels = [{ url = "https://files.pythonhosted.org/packages/bd/f4/27e386913417ad32aae42bba48b0c0cce40e9ff2fba1a871ca2702c37324/fastapi-0.143.0-py3-none-any.whl", upload-time = 2026-10-08T12:29:44Z, size = 144665, hashes = { sha256 = "3e9395fd35276425b61b516a31fdd7c77fe2af83e41b4da22e30696fb1304c5d" } }]
@@ -31,11 +36,6 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a
 name = "opentelemetry-api"
 version = "1.45.1"
 wheels = [{ url = "https://files.pythonhosted.org/packages/1e/41/f7dcf80b81ee8e71c1a2b59f14208bc723edbd89ed027a73b175abf6348e/opentelemetry_api-1.45.1-py3-none-any.whl", upload-time = 2026-10-06T17:32:33Z, size = 60256, hashes = { sha256 = "b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb" } }]
-
-[[packages]]
-name = "psycopg"
-version = "3.3.6"
-wheels = [{ url = "https://files.pythonhosted.org/packages/4e/de/748bd7609c71cae5d737f0ba9192f19329f70180ecda8fff3cac02c5abe3/psycopg-3.3.6-py3-none-any.whl", upload-time = 2026-09-18T13:15:29Z, size = 215490, hashes = { sha256 = "a1db9f7148b06a28606767efaca51fa6f9398c5c0a3810519be69d7000bdb631" } }]
 
 [[packages]]
 name = "pydantic"
