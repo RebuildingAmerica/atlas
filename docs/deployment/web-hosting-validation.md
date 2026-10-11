@@ -291,6 +291,17 @@ requests. The full frontend suite passed 4,195 tests with one skipped and
 unchanged 100% coverage. These improvements do not pass the cold CPU gate or
 authorize production cutover.
 
+The schema-check change was retained in `e8439856` and deployed from clean
+source as `79851551-5932-4899-b512-0ca5f14ab9a3`. Its repeated 1,140-request
+probe matched every dynamic invocation: invalid-cookie CPU was 3/59/60ms and
+bearer CPU was 7/38/50ms at p50/p95/p99; live sign-in was 7/36/76ms. Home and
+Privacy remained direct static assets, unsigned sessions remained 0ms, and no
+CPU-limit pages appeared. This variability reinforces the failed cold CPU gate.
+Mobile navigation and the editable parameterized sign-in form passed again. A
+rollback to `15bda29d-83a5-4206-a448-4c0872bc5585` and restoration also passed
+exact version readback, public HTML, private sessions and unsigned Access
+rejection.
+
 ## Hybrid and shared usage
 
 The same committed application also produced the hybrid Node/Nitro artifact.
