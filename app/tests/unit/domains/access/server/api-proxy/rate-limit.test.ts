@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { baseRuntimeConfig, makeAuthenticatedSession, makeInternalAuthHeaders } from "./support";
+import { baseRuntimeConfig, makeAuthenticatedSession, makeAppActorHeaders } from "./support";
 
 const mocks = vi.hoisted(() => ({
-  createInternalAuthHeaders: vi.fn(),
+  createAppActorHeaders: vi.fn(),
   getAuthRuntimeConfig: vi.fn(),
   loadAtlasSession: vi.fn(),
 }));
 
-vi.mock("@/domains/access/config", () => ({
-  createInternalAuthHeaders: mocks.createInternalAuthHeaders,
+vi.mock("@/domains/access/server/app-actor-assertion", () => ({
+  createAppActorHeaders: mocks.createAppActorHeaders,
 }));
 
 vi.mock("@/domains/access/server/runtime", () => ({
@@ -24,7 +24,7 @@ describe("proxyAtlasApiRequest anonymous rate limiting", () => {
   let warnCalls: unknown[][];
 
   beforeEach(() => {
-    mocks.createInternalAuthHeaders.mockReset();
+    mocks.createAppActorHeaders.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.loadAtlasSession.mockReset();
     warnCalls = [];
@@ -210,7 +210,7 @@ describe("proxyAtlasApiRequest anonymous rate limiting", () => {
       localMode: false,
     });
     mocks.loadAtlasSession.mockResolvedValue(makeAuthenticatedSession());
-    mocks.createInternalAuthHeaders.mockReturnValue(makeInternalAuthHeaders());
+    mocks.createAppActorHeaders.mockResolvedValue(makeAppActorHeaders());
 
     const { proxyAtlasApiRequest } = await import("@/domains/access/server/api-proxy");
     const requestInit = {

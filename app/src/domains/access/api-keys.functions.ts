@@ -136,7 +136,7 @@ async function canUseApiKeyProbe(
     method: "POST",
     headers: {
       ...baseHeaders,
-      "x-atlas-internal-secret": runtime.internalSecret,
+      "x-atlas-callback-secret": runtime.callbackSecret,
     },
   });
   const response = await responsePromise;

@@ -28,7 +28,7 @@ describe("introspect-api-key", () => {
     mocks.ensureAuthReady.mockReset();
     mocks.getAuthRuntimeConfig.mockReset();
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      internalSecret: "internal-test-secret",
+      callbackSecret: "internal-test-secret",
     });
     mocks.queryActiveProducts.mockResolvedValue([]);
   });
@@ -36,7 +36,7 @@ describe("introspect-api-key", () => {
   it("verifies the internal secret and returns 401 on mismatch", async () => {
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "wrong-secret",
+        "x-atlas-callback-secret": "wrong-secret",
       },
     });
 
@@ -67,7 +67,7 @@ describe("introspect-api-key", () => {
 
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "internal-test-secret",
+        "x-atlas-callback-secret": "internal-test-secret",
         "x-api-key": "atlas_test_key",
       },
     });
@@ -105,7 +105,7 @@ describe("introspect-api-key", () => {
 
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "internal-test-secret",
+        "x-atlas-callback-secret": "internal-test-secret",
         "x-api-key": "invalid_key",
       },
     });
@@ -120,7 +120,7 @@ describe("introspect-api-key", () => {
   it("returns 400 when x-api-key header is missing", async () => {
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "internal-test-secret",
+        "x-atlas-callback-secret": "internal-test-secret",
       },
     });
 
@@ -141,7 +141,7 @@ describe("introspect-api-key", () => {
 
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "internal-test-secret",
+        "x-atlas-callback-secret": "internal-test-secret",
         "x-api-key": "some_key",
       },
     });
@@ -175,7 +175,7 @@ describe("introspect-api-key", () => {
 
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "internal-test-secret",
+        "x-atlas-callback-secret": "internal-test-secret",
         "x-api-key": "some_key",
       },
     });
@@ -204,7 +204,7 @@ describe("introspect-api-key", () => {
 
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "internal-test-secret",
+        "x-atlas-callback-secret": "internal-test-secret",
         "x-api-key": "some_key",
       },
     });
@@ -219,12 +219,12 @@ describe("introspect-api-key", () => {
 
   it("fails when internal secret is not configured", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      internalSecret: undefined,
+      callbackSecret: undefined,
     });
 
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "some-secret",
+        "x-atlas-callback-secret": "some-secret",
       },
     });
 
@@ -235,7 +235,7 @@ describe("introspect-api-key", () => {
   it("fails when secret length mismatches", async () => {
     const request = new Request("http://localhost/api/auth/internal/api-key", {
       headers: {
-        "x-atlas-internal-secret": "too-long-secret",
+        "x-atlas-callback-secret": "too-long-secret",
       },
     });
 

@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import { createInternalAuthHeaders } from "@/domains/access/config";
+import { createAppActorHeaders } from "@/domains/access/server/app-actor-assertion";
 import {
   AtlasApiError,
   classifyAtlasApiStatus,
@@ -26,10 +26,6 @@ function getServerServiceBaseUrl(): string {
   });
 }
 
-function getInternalSecret(): string {
-  return process.env.ATLAS_AUTH_INTERNAL_SECRET?.trim() || "";
-}
-
 function isLocalMode(): boolean {
   return !hasAccounts(process.env);
 }
@@ -44,15 +40,10 @@ export async function requestAtlasService<T>(path: string, init?: RequestInit): 
 
 async function requestAtlasBase<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
   const localMode = isLocalMode();
-  const internalSecret = getInternalSecret();
-  if (!localMode && !internalSecret) {
-    throw new Error("ATLAS_AUTH_INTERNAL_SECRET is required for authenticated discovery requests.");
-  }
-
   const session = await requireReadyAtlasSessionState();
   const headers = localMode
     ? {}
-    : createInternalAuthHeaders(session.user, internalSecret, {
+    : await createAppActorHeaders(session.user, {
         accountReady: session.accountReady,
         organizationId: session.workspace.activeOrganization?.id,
       });

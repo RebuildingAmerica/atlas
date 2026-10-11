@@ -19,6 +19,7 @@ _CLIENT_IP_HEADER = "x-atlas-client-ip"
 _PROXY_SECRET_HEADER = "x-atlas-proxy-secret"
 _INTERNAL_SECRET_HEADER = "x-atlas-internal-secret"
 _ACTOR_ID_HEADER = "x-atlas-actor-id"
+_ACTOR_ASSERTION_HEADER = "x-atlas-actor-assertion"
 _ACTOR_EMAIL_HEADER = "x-atlas-actor-email"
 _API_KEY_CACHE_TTL_SECONDS = 30
 _MAX_API_KEY_CACHE_ENTRIES = 10_000

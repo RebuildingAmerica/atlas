@@ -21,7 +21,7 @@ def _make_settings(
 ) -> MagicMock:
     settings = MagicMock(spec=Settings)
     settings.auth_membership_verification_url = url
-    settings.auth_internal_secret = secret
+    settings.auth_callback_secret = secret
     settings.auth_membership_protection_bypass_secret = bypass_secret
     return settings
 
@@ -144,7 +144,7 @@ async def test_cache_miss_makes_http_get(
     assert client_instance.last_url == (
         "http://localhost:3000/api/auth/internal/memberships/org_2/members/user_2"
     )
-    assert client_instance.last_headers == {"X-Atlas-Internal-Secret": "test-secret"}
+    assert client_instance.last_headers == {"X-Atlas-Callback-Secret": "test-secret"}
     assert result is not None
 
 
@@ -182,7 +182,7 @@ async def test_membership_request_includes_configured_edge_bypass(
 
     assert result is not None
     assert client_instance.last_headers == {
-        "X-Atlas-Internal-Secret": "test-secret",
+        "X-Atlas-Callback-Secret": "test-secret",
         "x-vercel-protection-bypass": "vercel-bypass",
     }
 

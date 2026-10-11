@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInternalAuthHeaders, getAuthConfig } from "@/domains/access/config";
+import { getAuthConfig } from "@/domains/access/config";
 
 describe("getAuthConfig", () => {
   it("defaults to the standard auth base path", () => {
@@ -28,41 +28,6 @@ describe("getAuthConfig", () => {
       apiBaseUrl: "https://atlas.example.com/api",
       authBasePath: "/custom-auth",
       authBaseUrl: "https://atlas.example.com/custom-auth",
-    });
-  });
-});
-
-describe("createInternalAuthHeaders", () => {
-  it("builds trusted actor headers for app-to-api calls", () => {
-    expect(
-      createInternalAuthHeaders(
-        {
-          email: "operator@example.com",
-          id: "user_123",
-        },
-        "internal-test-secret",
-        { accountReady: true },
-      ),
-    ).toEqual({
-      "X-Atlas-Actor-Account-Ready": "true",
-      "X-Atlas-Actor-Email": "operator@example.com",
-      "X-Atlas-Actor-Id": "user_123",
-      "X-Atlas-Internal-Secret": "internal-test-secret",
-    });
-  });
-
-  it("includes organization id when provided", () => {
-    expect(
-      createInternalAuthHeaders({ email: "a@b.com", id: "u1" }, "s", {
-        accountReady: false,
-        organizationId: "org_1",
-      }),
-    ).toEqual({
-      "X-Atlas-Actor-Account-Ready": "false",
-      "X-Atlas-Actor-Email": "a@b.com",
-      "X-Atlas-Actor-Id": "u1",
-      "X-Atlas-Internal-Secret": "s",
-      "X-Atlas-Organization-Id": "org_1",
     });
   });
 });

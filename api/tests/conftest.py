@@ -44,6 +44,7 @@ from atlas.models import (  # noqa: E402
 from atlas.platform import config as platform_config  # noqa: E402
 from atlas.platform.mcp import data as data_module  # noqa: E402
 from atlas.platform.mcp.data import AtlasDataService  # noqa: E402
+from tests.support.app_assertions import trust_test_app_keys  # noqa: E402
 
 pytest_plugins = [
     "tests.domains.catalog.org_resources_support",
@@ -77,6 +78,12 @@ def hermetic_settings() -> Iterator[None]:
         # The suite exercises a dev-hardening API. Tests that need hosted
         # strictness name the profile they are testing themselves.
         yield
+
+
+@pytest.fixture(autouse=True)
+def _trust_test_app_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make app actor assertions signed by the test app key verify in every test."""
+    trust_test_app_keys(monkeypatch)
 
 
 @pytest.fixture

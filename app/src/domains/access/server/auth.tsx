@@ -7,7 +7,7 @@ import { scim } from "@better-auth/scim";
 import { createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 import { betterAuth } from "better-auth";
-import { admin, bearer, deviceAuthorization, organization } from "better-auth/plugins";
+import { bearer, deviceAuthorization, organization } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -192,7 +192,6 @@ async function createAtlasAuth(runtime: AuthRuntimeConfig) {
           enabled: false,
         },
       }),
-      admin(),
       scim({
         canGenerateToken: ({ organizationId }) => canGenerateScimTokenForWorkspace(organizationId),
         linkExistingUsers: {

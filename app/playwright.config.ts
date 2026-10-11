@@ -64,6 +64,14 @@ const e2eInternalSecret =
   process.env.ATLAS_E2E_INTERNAL_SECRET?.trim() ||
   createHash("sha256").update(`atlas-e2e:${e2eRunId}`).digest("hex");
 setDefaultEnv("ATLAS_E2E_INTERNAL_SECRET", e2eInternalSecret);
+// Each secret the app and API share gets its own value, as in a hosted
+// deployment, so a test cannot pass by accident because two of them match.
+const e2eCallbackSecret = createHash("sha256")
+  .update(`atlas-e2e-callback:${e2eRunId}`)
+  .digest("hex");
+const e2eEdgeOriginSecret = createHash("sha256")
+  .update(`atlas-e2e-edge-origin:${e2eRunId}`)
+  .digest("hex");
 const atprotoOAuthHarness = resolveAtprotoOAuthHarnessMode(process.env);
 const atprotoPdsHarness = resolveAtprotoPdsHarnessMode(process.env);
 delete process.env.NO_COLOR;
@@ -81,9 +89,11 @@ const commonAuthEnv = {
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
   ATLAS_AUTH_BASE_PATH: "/api/auth",
   ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
+  ATLAS_AUTH_CALLBACK_SECRET: e2eCallbackSecret,
   ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
   ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
   ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
+  ATLAS_EDGE_ORIGIN_SECRET: e2eEdgeOriginSecret,
   ATLAS_MANAGED: "true",
   ATLAS_PAID_ACCESS_MODE: envValue("ATLAS_PAID_ACCESS_MODE", "open"),
   ATLAS_MULTI_USER: "true",
@@ -130,9 +140,11 @@ export default defineConfig({
         ANTHROPIC_API_KEY: "e2e-test-key",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
         ATLAS_AUTH_INTERNAL_SECRET: e2eInternalSecret,
+        ATLAS_AUTH_CALLBACK_SECRET: e2eCallbackSecret,
         ATLAS_AUTH_MEMBERSHIP_URL: appUrl,
         ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
         ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
+        ATLAS_EDGE_ORIGIN_SECRET: e2eEdgeOriginSecret,
         ATLAS_E2E_WORKSPACE_SEED_ENABLED: "1",
         ATLAS_E2E_INTERNAL_SECRET: e2eInternalSecret,
         ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,

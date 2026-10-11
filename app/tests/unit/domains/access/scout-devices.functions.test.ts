@@ -15,6 +15,13 @@ vi.mock("@tanstack/react-start", async () => {
   return { createServerFn: createServerFnStub() };
 });
 
+vi.mock("@/domains/access/server/app-actor-assertion", () => ({
+  createAppActorHeaders: (actor: { id: string }, options: { accountReady: boolean }) =>
+    Promise.resolve({
+      "X-Atlas-Actor-Assertion": `assertion-for-${actor.id}-ready-${String(options.accountReady)}`,
+    }),
+}));
+
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: mocks.getAuthRuntimeConfig,
 }));
@@ -145,28 +152,6 @@ describe("scout-devices.functions", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("refuses to leave Scout jobs running when the internal secret is missing", async () => {
-    mocks.getAuthRuntimeConfig.mockReturnValue({
-      apiBaseUrl: "http://atlas-api.test",
-      internalSecret: null,
-      localMode: false,
-    });
-    const fetchMock = vi.fn<typeof fetch>();
-    vi.stubGlobal("fetch", fetchMock);
-    const { revokeScoutDevice: revokeScoutDeviceFn } =
-      await import("@/domains/access/scout-devices.functions");
-
-    const response = (await revokeScoutDeviceFn.__executeServer({
-      data: { deviceId: "worker-123" },
-      method: "POST",
-    })) as ServerFnExecutionResponse;
-
-    expect(response.error).toEqual(
-      new Error("ATLAS_AUTH_INTERNAL_SECRET is required to revoke Scout worker leases."),
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   it("reports a Scout worker whose active jobs could not be released", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 503 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -237,11 +222,9 @@ describe("scout-devices.functions", () => {
       "http://atlas-api.test/api/discovery-runs/jobs/workers/worker-123/release",
     );
     expect(releaseInit?.method).toBe("POST");
-    expect(releaseInit?.headers).toMatchObject({
-      "X-Atlas-Actor-Account-Ready": "true",
-      "X-Atlas-Actor-Email": "operator@atlas.test",
-      "X-Atlas-Actor-Id": "user-123",
-      "X-Atlas-Internal-Secret": "internal-secret",
+    expect(releaseInit?.headers).toEqual({
+      Accept: "application/json",
+      "X-Atlas-Actor-Assertion": "assertion-for-user-123-ready-true",
     });
   });
 });

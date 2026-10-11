@@ -1,27 +1,21 @@
 import "@tanstack/react-start/server-only";
 
-import { timingSafeEqual } from "node:crypto";
 import { verifyApiKeyResultSchema } from "./api-key-schema";
 import { ensureAuthReady } from "./auth";
+import { hasCallbackSecret } from "./callback-secret";
 import { permissionsToScopes } from "@rebuildingamerica/atlas-access/api-key-scopes";
 import { getAuthRuntimeConfig } from "./runtime";
 import { queryActiveProducts } from "./workspace-products";
 
 /**
- * Private app-to-API API-key verification endpoint.
+ * Private API-to-app API-key verification endpoint.
  *
  * FastAPI uses this to verify direct API-key requests without treating those
  * keys as browser sessions inside the app.
  */
 export async function introspectApiKeyRequest(request: Request) {
   const runtime = getAuthRuntimeConfig();
-  const providedSecret = request.headers.get("x-atlas-internal-secret");
-  const secretMatches =
-    !!runtime.internalSecret &&
-    !!providedSecret &&
-    runtime.internalSecret.length === providedSecret.length &&
-    timingSafeEqual(Buffer.from(runtime.internalSecret), Buffer.from(providedSecret));
-  if (!secretMatches) {
+  if (!hasCallbackSecret(request, runtime.callbackSecret)) {
     return Response.json(
       {
         valid: false,

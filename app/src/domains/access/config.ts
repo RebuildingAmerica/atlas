@@ -18,39 +18,3 @@ export function getAuthConfig(env: AuthEnv = {}) {
   };
   return getAppConfig(mergedEnv);
 }
-
-interface InternalAuthHeadersOptions {
-  /**
-   * Whether the signed-in session has a verified email and a registered
-   * passkey. The API grants operator authority only to ready sessions, so a
-   * magic-link-only session can never act as the operator.
-   */
-  accountReady: boolean;
-  organizationId?: string;
-}
-
-/**
- * Builds the trusted actor headers the app uses when it calls the API on
- * behalf of an authenticated browser operator.
- */
-export function createInternalAuthHeaders(
-  actor: {
-    email: string;
-    id: string;
-  },
-  internalSecret: string,
-  options: InternalAuthHeadersOptions,
-): Record<string, string> {
-  const headers: Record<string, string> = {
-    "X-Atlas-Actor-Account-Ready": options.accountReady ? "true" : "false",
-    "X-Atlas-Actor-Email": actor.email,
-    "X-Atlas-Actor-Id": actor.id,
-    "X-Atlas-Internal-Secret": internalSecret,
-  };
-
-  if (options.organizationId) {
-    headers["X-Atlas-Organization-Id"] = options.organizationId;
-  }
-
-  return headers;
-}

@@ -36,6 +36,10 @@ export interface AuthRuntimeConfig {
   emailFrom: string;
   emailProvider: "capture" | "resend";
   internalSecret: string;
+  /** Secret the Atlas API presents when it calls back into the app. */
+  callbackSecret: string;
+  /** Secret the app and the edge use to vouch for visitor addresses to the API. */
+  edgeOriginSecret: string;
   passkeyRpId: string | null;
   publicBaseUrl: string;
   publicDomain: string;
@@ -266,6 +270,8 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
     emailFrom: env.ATLAS_EMAIL_FROM?.trim() || `Atlas <hello@${publicDomain}>`,
     emailProvider,
     internalSecret: env.ATLAS_AUTH_INTERNAL_SECRET?.trim() || "",
+    callbackSecret: env.ATLAS_AUTH_CALLBACK_SECRET?.trim() || "",
+    edgeOriginSecret: env.ATLAS_EDGE_ORIGIN_SECRET?.trim() || "",
     passkeyRpId: env.ATLAS_PASSKEY_RP_ID?.trim() || null,
     publicBaseUrl,
     publicDomain,
@@ -315,6 +321,14 @@ export function validateAuthRuntimeConfig(runtime: AuthRuntimeConfig): void {
 
   if (runtime.localMode) {
     return;
+  }
+
+  if (!runtime.callbackSecret) {
+    throw new Error("ATLAS_AUTH_CALLBACK_SECRET is required when ATLAS_MULTI_USER is true.");
+  }
+
+  if (!runtime.edgeOriginSecret) {
+    throw new Error("ATLAS_EDGE_ORIGIN_SECRET is required when ATLAS_MULTI_USER is true.");
   }
 
   if (!runtime.apiKeyIntrospectionUrl) {

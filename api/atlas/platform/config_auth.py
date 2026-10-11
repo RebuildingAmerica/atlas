@@ -77,6 +77,9 @@ def validate_runtime_auth_config(settings: Settings) -> None:
     if not settings.auth_internal_secret:
         msg = "ATLAS_AUTH_INTERNAL_SECRET is required when ATLAS_MULTI_USER is true."
         raise RuntimeError(msg)
+    if not settings.auth_callback_secret:
+        msg = "ATLAS_AUTH_CALLBACK_SECRET is required when ATLAS_MULTI_USER is true."
+        raise RuntimeError(msg)
     if not settings.auth_api_key_introspection_url:
         msg = "ATLAS_AUTH_API_KEY_INTROSPECTION_URL is required when ATLAS_MULTI_USER is true."
         raise RuntimeError(msg)

@@ -28,7 +28,7 @@ describe("internal-membership", () => {
     mocks.getAuthPgPool.mockReset();
 
     mocks.getAuthRuntimeConfig.mockReturnValue({
-      internalSecret: "test-secret",
+      callbackSecret: "test-secret",
     });
     mocks.getAuthDatabase.mockReturnValue(null);
     mocks.getAuthPgPool.mockReturnValue(null);
@@ -36,7 +36,7 @@ describe("internal-membership", () => {
 
   it("verifies the internal secret and returns 401 on mismatch", async () => {
     const request = new Request("http://localhost", {
-      headers: { "x-atlas-internal-secret": "wrong" },
+      headers: { "x-atlas-callback-secret": "wrong" },
     });
     const response = await verifyMembershipRequest(request, "org_1", "user_1");
 
@@ -45,7 +45,7 @@ describe("internal-membership", () => {
 
   it("returns 404 if the organization is not found", async () => {
     const request = new Request("http://localhost", {
-      headers: { "x-atlas-internal-secret": "test-secret" },
+      headers: { "x-atlas-callback-secret": "test-secret" },
     });
     const response = await verifyMembershipRequest(request, "missing", "user_1");
 
@@ -58,7 +58,7 @@ describe("internal-membership", () => {
     mocks.getAuthDatabase.mockReturnValue({ prepare });
 
     const request = new Request("http://localhost", {
-      headers: { "x-atlas-internal-secret": "test-secret" },
+      headers: { "x-atlas-callback-secret": "test-secret" },
     });
     const response = await verifyMembershipRequest(request, "org_1", "user_1");
 
@@ -76,7 +76,7 @@ describe("internal-membership", () => {
     mocks.getAuthDatabase.mockReturnValue({ prepare });
 
     const request = new Request("http://localhost", {
-      headers: { "x-atlas-internal-secret": "test-secret" },
+      headers: { "x-atlas-callback-secret": "test-secret" },
     });
     const response = await verifyMembershipRequest(request, "org_1", "user_1");
 
@@ -126,7 +126,7 @@ describe("internal-membership", () => {
     mocks.getAuthDatabase.mockReturnValue({ prepare });
 
     const request = new Request("http://localhost", {
-      headers: { "x-atlas-internal-secret": "test-secret" },
+      headers: { "x-atlas-callback-secret": "test-secret" },
     });
     const response = await verifyMembershipRequest(request, "org_1", "user_1");
 
@@ -149,7 +149,7 @@ describe("internal-membership", () => {
     mocks.getAuthDatabase.mockReturnValue({ prepare });
 
     const request = new Request("http://localhost", {
-      headers: { "x-atlas-internal-secret": "test-secret" },
+      headers: { "x-atlas-callback-secret": "test-secret" },
     });
     const response = await verifyMembershipRequest(request, "org_1", "user_1");
 
@@ -179,7 +179,7 @@ describe("internal-membership", () => {
     mocks.getAuthPgPool.mockReturnValue({ query });
 
     const response = await verifyMembershipRequest(
-      new Request("http://localhost", { headers: { "x-atlas-internal-secret": "test-secret" } }),
+      new Request("http://localhost", { headers: { "x-atlas-callback-secret": "test-secret" } }),
       "org_1",
       "user_1",
     );
@@ -202,7 +202,7 @@ describe("internal-membership", () => {
     mocks.getAuthPgPool.mockReturnValue({ query });
 
     const response = await verifyMembershipRequest(
-      new Request("http://localhost", { headers: { "x-atlas-internal-secret": "test-secret" } }),
+      new Request("http://localhost", { headers: { "x-atlas-callback-secret": "test-secret" } }),
       "org_1",
       "user_1",
     );
@@ -220,7 +220,7 @@ describe("internal-membership", () => {
     mocks.getAuthPgPool.mockReturnValue({ query });
 
     const response = await verifyMembershipRequest(
-      new Request("http://localhost", { headers: { "x-atlas-internal-secret": "test-secret" } }),
+      new Request("http://localhost", { headers: { "x-atlas-callback-secret": "test-secret" } }),
       "org_1",
       "user_1",
     );

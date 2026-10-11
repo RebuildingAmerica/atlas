@@ -41,11 +41,17 @@ use one credential to subsidize verification of the other.
    proxy is bypassed.
 
 The API only trusts `X-Atlas-Client-IP` when it is paired with a matching
-`X-Atlas-Proxy-Secret`. The app proxy signs that header with
-`ATLAS_AUTH_INTERNAL_SECRET`; Cloudflare signs it with
-`ATLAS_EDGE_ORIGIN_SECRET`. Hosted API deployments keep
-`ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS=false` so raw `X-Forwarded-For` cannot be
-used to change a direct request's rate-limit identity.
+`X-Atlas-Proxy-Secret`. Both the app proxy and Cloudflare sign that header with
+`ATLAS_EDGE_ORIGIN_SECRET`, so the app server, the API, and the Cloudflare rule
+must all hold the same value. No other secret vouches for a client address.
+Hosted API deployments keep `ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS=false` so raw
+`X-Forwarded-For` cannot be used to change a direct request's rate-limit
+identity.
+
+If the holders disagree, the API ignores the vouched address and counts requests
+against the proxy's own address. Many visitors then share one bucket and can be
+blocked together. To change the secret without that, follow
+[Callback and Edge Origin Secret Rotation](./rotate-auth-secrets.md).
 
 The API and app return `429` with `Retry-After`, `X-RateLimit-Limit`,
 `X-RateLimit-Remaining`, and `X-RateLimit-Reset` when they block. Cloudflare

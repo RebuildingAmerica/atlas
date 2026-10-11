@@ -4,11 +4,34 @@ import path from "node:path";
 
 import { runCommand } from "../lib/shell.js";
 import { parseEnvFile } from "../lib/env-file.js";
+import { isPlaceholder } from "../lib/secret.js";
 import {
   hostedEnvFilePath,
   type HostedDeployTarget,
 } from "../lib/hosted-target.js";
 import { promptConfirm } from "../lib/ui.js";
+
+/**
+ * The value bootstrap uploads as a GitHub Environment secret, if any.
+ *
+ * The hosted env file wins, and a value it leaves empty stays unset. A
+ * template placeholder is not a value, though: uploading one would satisfy the
+ * deploy workflow's missing-secret check while leaving a guessable secret, so
+ * it falls through to the root .env the way deploy-config does.
+ */
+export function resolveGithubSecretValue(
+  key: string,
+  hostedEnv: Map<string, string>,
+  rootEnv: Map<string, string>,
+): string | undefined {
+  for (const env of [hostedEnv, rootEnv]) {
+    const value = env.get(key);
+    if (value === undefined) continue;
+    if (value.length === 0) return undefined;
+    if (!isPlaceholder(value)) return value;
+  }
+  return undefined;
+}
 
 export async function setGithubSecrets(
   githubRepo: string,
@@ -56,11 +79,6 @@ export async function setGithubSecrets(
   const hostedEnv = parseEnvFile(hostedEnvFilePath(projectRoot, target));
   const rootEnv = parseEnvFile(path.join(projectRoot, ".env"));
 
-  function envVal(key: string): string | undefined {
-    const v = hostedEnv.get(key) ?? rootEnv.get(key);
-    return v && v.length > 0 ? v : undefined;
-  }
-
   const secrets = new Map<string, string>([
     ["GCP_PROJECT_ID", projectId],
     ["GCP_REGION", region],
@@ -73,6 +91,7 @@ export async function setGithubSecrets(
     "ATLAS_PUBLIC_URL",
     "ANTHROPIC_API_KEY",
     "ATLAS_AUTH_INTERNAL_SECRET",
+    "ATLAS_AUTH_CALLBACK_SECRET",
     "ATLAS_EDGE_ORIGIN_SECRET",
     "ATLAS_OPERATOR_ALLOWED_EMAILS",
     "ATLAS_EMAIL_RESEND_API_KEY",
@@ -84,7 +103,7 @@ export async function setGithubSecrets(
   ];
 
   for (const key of appSecretKeys) {
-    const value = envVal(key);
+    const value = resolveGithubSecretValue(key, hostedEnv, rootEnv);
     if (value) secrets.set(key, value);
   }
 

@@ -22,6 +22,7 @@ from atlas.domains.access.models.discount_verifications import (
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.main import create_app
 from atlas.platform.authz import Action, require_action
+from tests.support.app_assertions import sign_app_assertion
 from tests.support.authz_requests import guard_request
 
 if TYPE_CHECKING:
@@ -41,6 +42,7 @@ async def test_admin_verifications_requires_internal_auth_in_hosted_mode(
             database_url=db_url,
             multi_user=True,
             auth_internal_secret="internal-test-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
             auth_api_key_introspection_url="https://atlas.example.test/api/auth/internal/api-key",
@@ -70,6 +72,7 @@ async def test_admin_verifications_allows_allowlisted_internal_reviewers(
             database_url=db_url,
             multi_user=True,
             auth_internal_secret="internal-test-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             operator_allowed_emails=["reviewer@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
@@ -85,10 +88,11 @@ async def test_admin_verifications_allows_allowlisted_internal_reviewers(
         response = await client.get(
             "/api/admin/verifications",
             headers={
-                "X-Atlas-Actor-Email": "reviewer@rebuildingus.org",
-                "X-Atlas-Actor-Id": "reviewer-user",
-                "X-Atlas-Internal-Secret": "internal-test-secret",
-                "X-Atlas-Actor-Account-Ready": "true",
+                "X-Atlas-Actor-Assertion": sign_app_assertion(
+                    user_id="reviewer-user",
+                    email="reviewer@rebuildingus.org",
+                    issuer="https://atlas.example.test/api/auth",
+                ),
             },
         )
 
@@ -108,6 +112,7 @@ async def test_admin_verifications_rejects_unlisted_internal_users(
             database_url=db_url,
             multi_user=True,
             auth_internal_secret="internal-test-secret",
+            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
             operator_allowed_emails=["reviewer@rebuildingus.org"],
             auth_jwt_audience=["https://atlas.example.test/mcp"],
             auth_jwt_issuer="https://atlas.example.test",
@@ -123,10 +128,11 @@ async def test_admin_verifications_rejects_unlisted_internal_users(
         response = await client.get(
             "/api/admin/verifications",
             headers={
-                "X-Atlas-Actor-Email": "member@example.org",
-                "X-Atlas-Actor-Id": "member-user",
-                "X-Atlas-Internal-Secret": "internal-test-secret",
-                "X-Atlas-Actor-Account-Ready": "true",
+                "X-Atlas-Actor-Assertion": sign_app_assertion(
+                    user_id="member-user",
+                    email="member@example.org",
+                    issuer="https://atlas.example.test/api/auth",
+                ),
             },
         )
 

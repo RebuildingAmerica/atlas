@@ -19,6 +19,7 @@ from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import db as db_util
 
 from .api_keys import verify_api_key
+from .app_assertion import verify_app_actor_assertion
 from .capabilities import get_limit, resolve_capabilities
 from .challenges import build_bearer_challenge
 from .internal import build_local_actor, verify_internal_actor
@@ -168,12 +169,25 @@ async def require_actor(  # noqa: PLR0913
     x_atlas_actor_id: str | None = Header(None),
     x_atlas_actor_email: str | None = Header(None),
     x_atlas_organization_id: str | None = Header(None),
-    x_atlas_actor_account_ready: str | None = Header(None, include_in_schema=False),
+    x_atlas_actor_assertion: str | None = Header(None, include_in_schema=False),
     x_api_key: str | None = Header(None),
 ) -> AuthenticatedActor:
-    """Require an authenticated actor unless local mode disables auth."""
+    """Require an authenticated actor unless local mode disables auth.
+
+    The Atlas app identifies the person it acts for with a signed, short-lived
+    ``X-Atlas-Actor-Assertion``. The shared-secret headers remain for system
+    callers that have no person behind them; they never carry a passkey-ready
+    session, so they never carry operator authority.
+    """
     if not settings.multi_user:
         return build_local_actor()
+
+    if isinstance(x_atlas_actor_assertion, str):
+        return verify_app_actor_assertion(
+            x_atlas_actor_assertion,
+            issuer=settings.auth_jwt_issuer,
+            jwks_url=settings.auth_jwt_jwks_url,
+        )
 
     trusted_actor = verify_internal_actor(
         settings,
@@ -181,7 +195,6 @@ async def require_actor(  # noqa: PLR0913
         x_atlas_actor_id,
         x_atlas_actor_email,
         org_id=x_atlas_organization_id,
-        account_ready=x_atlas_actor_account_ready,
     )
     if trusted_actor is not None:
         return trusted_actor

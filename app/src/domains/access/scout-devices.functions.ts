@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
-import { createInternalAuthHeaders } from "./config";
 
 async function loadRuntimeModule() {
   if (import.meta.env.SSR) {
@@ -17,6 +16,16 @@ async function loadSessionStateModule() {
   }
 
   throw new Error("Session state is only available on the server.");
+}
+
+async function loadAppActorAssertionModule() {
+  /* v8 ignore start -- Reached only after loadRuntimeModule() succeeded, which already required SSR; see loadScoutDevicesModule. */
+  if (import.meta.env.SSR) {
+    return await import("./server/app-actor-assertion");
+  }
+
+  throw new Error("App actor assertions are only available on the server.");
+  /* v8 ignore stop */
 }
 
 async function loadScoutDevicesModule() {
@@ -46,9 +55,7 @@ async function releaseScoutWorkerLeases(
   if (runtime.localMode || !runtime.apiBaseUrl) {
     return;
   }
-  if (!runtime.internalSecret) {
-    throw new Error("ATLAS_AUTH_INTERNAL_SECRET is required to revoke Scout worker leases.");
-  }
+  const { createAppActorHeaders } = await loadAppActorAssertionModule();
 
   const releaseUrl = new URL(
     `/api/discovery-runs/jobs/workers/${encodeURIComponent(deviceId)}/release`,
@@ -57,9 +64,9 @@ async function releaseScoutWorkerLeases(
   const response = await fetch(releaseUrl, {
     headers: {
       Accept: "application/json",
-      ...createInternalAuthHeaders(session.user, runtime.internalSecret, {
+      ...(await createAppActorHeaders(session.user, {
         accountReady: session.accountReady,
-      }),
+      })),
     },
     method: "POST",
   });

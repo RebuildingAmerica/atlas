@@ -8,6 +8,7 @@ export function baseRuntimeConfig(overrides: Record<string, unknown> = {}) {
       writesPerMinute: 10,
     },
     apiBaseUrl: "https://api.atlas.test",
+    edgeOriginSecret: "edge-test-secret",
     internalSecret: "internal-test-secret",
     localMode: false,
     ...overrides,
@@ -29,12 +30,8 @@ export function makeAuthenticatedSession() {
   };
 }
 
-export function makeInternalAuthHeaders() {
+export function makeAppActorHeaders() {
   return {
-    "X-Atlas-Actor-Account-Ready": "true",
-    "X-Atlas-Actor-Email": "operator@atlas.test",
-    "X-Atlas-Actor-Id": "user-123",
-    "X-Atlas-Internal-Secret": "internal-test-secret",
-    "X-Atlas-Organization-Id": "org-456",
+    "X-Atlas-Actor-Assertion": "signed.app.assertion",
   };
 }

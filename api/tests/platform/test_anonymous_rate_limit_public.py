@@ -15,6 +15,7 @@ from tests.support.anonymous_rate_limit import (
     _client,
     _settings,
 )
+from tests.support.app_assertions import TEST_APP_ORIGIN, sign_app_assertion
 
 
 @pytest.mark.asyncio
@@ -207,6 +208,43 @@ async def test_wrong_internal_secret_does_not_bypass_anonymous_limits(db_url: st
         "X-Atlas-Actor-Id": "user-123",
         "X-Atlas-Internal-Secret": "wrong-secret",
     }
+
+    async for client in _client(settings):
+        first = await client.get(READ_PATH, headers=headers)
+        blocked = await client.get(READ_PATH, headers=headers)
+
+    assert first.status_code == HTTPStatus.OK
+    assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_signed_in_app_requests_bypass_anonymous_limits(db_url: str) -> None:
+    """A request carrying the app's signed assertion is a signed-in person, not anonymous."""
+    settings = _settings(
+        db_url,
+        anonymous_rate_limit_reads_per_minute=1,
+        auth_jwt_issuer=TEST_APP_ORIGIN,
+    )
+    headers = {
+        "X-Atlas-Actor-Assertion": sign_app_assertion(
+            user_id="user-123", email="operator@atlas.test"
+        )
+    }
+
+    async for client in _client(settings):
+        responses = [await client.get(READ_PATH, headers=headers) for _ in range(3)]
+
+    assert [response.status_code for response in responses] == [HTTPStatus.OK] * 3
+
+
+@pytest.mark.asyncio
+async def test_a_forged_assertion_does_not_bypass_anonymous_limits(db_url: str) -> None:
+    settings = _settings(
+        db_url,
+        anonymous_rate_limit_reads_per_minute=1,
+        auth_jwt_issuer=TEST_APP_ORIGIN,
+    )
+    headers = {"X-Atlas-Actor-Assertion": "forged"}
 
     async for client in _client(settings):
         first = await client.get(READ_PATH, headers=headers)

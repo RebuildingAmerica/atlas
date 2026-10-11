@@ -91,6 +91,85 @@ void describe("hosted routing prompts", () => {
     );
   });
 
+  void it("syncs the callback and edge origin secrets the app server now requires", () => {
+    const sharedSecretKeys = [
+      "ATLAS_AUTH_INTERNAL_SECRET",
+      "ATLAS_AUTH_CALLBACK_SECRET",
+      "ATLAS_EDGE_ORIGIN_SECRET",
+    ];
+    const productionEnv = new Map([
+      ["ATLAS_AUTH_INTERNAL_SECRET", "prod-internal"],
+      ["ATLAS_AUTH_CALLBACK_SECRET", "prod-callback"],
+      ["ATLAS_EDGE_ORIGIN_SECRET", "prod-edge"],
+    ]);
+    const stagingEnv = new Map([
+      ["ATLAS_AUTH_INTERNAL_SECRET", "staging-internal"],
+      ["ATLAS_AUTH_CALLBACK_SECRET", "staging-callback"],
+      ["ATLAS_EDGE_ORIGIN_SECRET", "staging-edge"],
+    ]);
+
+    const pick = (vars: ReturnType<typeof buildVercelEnvVars>) =>
+      vars.filter((item) => sharedSecretKeys.includes(item.key));
+
+    assert.deepEqual(
+      pick(buildVercelEnvVars("production", productionEnv, stagingEnv)),
+      [
+        {
+          key: "ATLAS_AUTH_INTERNAL_SECRET",
+          value: "prod-internal",
+          environments: ["production"],
+        },
+        {
+          key: "ATLAS_AUTH_CALLBACK_SECRET",
+          value: "prod-callback",
+          environments: ["production"],
+        },
+        {
+          key: "ATLAS_EDGE_ORIGIN_SECRET",
+          value: "prod-edge",
+          environments: ["production"],
+        },
+      ],
+    );
+    assert.deepEqual(
+      pick(buildVercelEnvVars("staging", productionEnv, stagingEnv)),
+      [
+        {
+          key: "ATLAS_AUTH_INTERNAL_SECRET",
+          value: "staging-internal",
+          environments: ["preview"],
+        },
+        {
+          key: "ATLAS_AUTH_CALLBACK_SECRET",
+          value: "staging-callback",
+          environments: ["preview"],
+        },
+        {
+          key: "ATLAS_EDGE_ORIGIN_SECRET",
+          value: "staging-edge",
+          environments: ["preview"],
+        },
+      ],
+    );
+  });
+
+  void it("does not sync a template placeholder as a secret", () => {
+    const vars = buildVercelEnvVars(
+      "production",
+      new Map([
+        [
+          "ATLAS_AUTH_CALLBACK_SECRET",
+          "replace-with-a-long-random-callback-secret",
+        ],
+      ]),
+    );
+
+    assert.equal(
+      vars.some((item) => item.key === "ATLAS_AUTH_CALLBACK_SECRET"),
+      false,
+    );
+  });
+
   void it("syncs staging routing values to Vercel Preview only", () => {
     const vars = buildVercelEnvVars(
       "staging",
