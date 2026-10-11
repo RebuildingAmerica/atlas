@@ -5,8 +5,15 @@ import edge from "../../services/api-cloudflare/edge/index.js";
 test("discovery probes use the isolated object while API requests retain their body and headers", async () => {
   const seen = [];
   const namespace = (kind) => ({
-    getByName(name) {
-      assert.equal(name, "compatibility");
+    getByName(name, options) {
+      assert.equal(
+        name,
+        kind === "api" ? "compatibility-database-east" : "compatibility",
+      );
+      assert.deepEqual(
+        options,
+        kind === "api" ? { locationHint: "enam" } : undefined,
+      );
       return {
         async fetch(request) {
           seen.push({

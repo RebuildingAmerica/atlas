@@ -8,6 +8,11 @@ export default {
         new Request(url, request),
       );
     }
-    return env.API_RUNTIME.getByName("compatibility").fetch(request);
+    // This isolated, read-only evaluation object tests DB proximity without
+    // moving existing durable state. Atlas's retained PostgreSQL is us-east-2;
+    // Cloudflare treats this first-creation hint as best effort.
+    return env.API_RUNTIME.getByName("compatibility-database-east", {
+      locationHint: "enam",
+    }).fetch(request);
   },
 };
