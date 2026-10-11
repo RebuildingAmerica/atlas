@@ -38,6 +38,7 @@ PLATFORM_ACTIONS = [
     "platform.costs.view",
     "platform.switches.read",
     "platform.switches.write",
+    "platform.accounts.read",
 ]
 
 ADMIN_KEY = Ed25519PrivateKey.generate()

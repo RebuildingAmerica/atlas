@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   getCloudCostPosture: vi.fn(),
+  lookupAccount: vi.fn(),
   listPlatformSwitches: vi.fn(),
   listVerifications: vi.fn(),
   setPlatformSwitch: vi.fn(),
@@ -77,6 +78,21 @@ describe("platform server functions", () => {
       engaged: true,
       reason: "Stripe outage",
     });
+  });
+
+  it("looks up an account and refuses an empty query", async () => {
+    const { findAccount } =
+      await import("@/domains/accounts/accounts.functions");
+    api.lookupAccount.mockResolvedValue({ account: null, workspaces: [] });
+
+    await findAccount({ data: { query: " dana@example.org " } });
+    expect(api.lookupAccount).toHaveBeenCalledWith({
+      query: "dana@example.org",
+    });
+
+    await expect(findAccount({ data: { query: "  " } })).rejects.toThrow(
+      "Type an email address",
+    );
   });
 
   it("refuses to flip a switch without a reason", async () => {
