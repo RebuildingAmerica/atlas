@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   publicationContext,
+  preflightPublicationBilling,
   validateRetainedRun,
   releasePath,
   inspectPublicArtifact,
@@ -438,5 +439,49 @@ test("retained artifacts come only from this repository's trusted publication wo
       runId: "123",
       previous: true,
     }),
+  );
+});
+
+// A billing outage must not prevent protected paused evaluation or rollback.
+// Conversely, no traffic or background consumer may be activated without it.
+test("paused publication avoids billing while every activation and promotion verifies it", () => {
+  const unavailable = () => {
+    throw new Error("fixture billing unavailable");
+  };
+  for (const operation of [
+    "publish-api",
+    "verify-api",
+    "pause-api",
+    "restore-api",
+    "restore-routing",
+    "doctor",
+  ]) {
+    assert.doesNotThrow(() =>
+      preflightPublicationBilling(
+        { target: "production", operation },
+        unavailable,
+      ),
+    );
+  }
+  for (const operation of [
+    "activate-api",
+    "promote-api",
+    "web-candidate",
+    "promote-web",
+  ]) {
+    assert.throws(
+      () =>
+        preflightPublicationBilling(
+          { target: "production", operation },
+          unavailable,
+        ),
+      /fixture billing unavailable/,
+    );
+  }
+  assert.doesNotThrow(() =>
+    preflightPublicationBilling(
+      { target: "staging", operation: "web-candidate" },
+      unavailable,
+    ),
   );
 });

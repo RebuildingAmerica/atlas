@@ -543,6 +543,24 @@ export function verifyHostedJourneys({
   };
 }
 
+/** Verify billing before serving people or starting consumers. Protected publication
+ * remains paused and cannot receive canonical traffic, so it can be measured while
+ * billing credentials are recovered without interrupting existing purchases. */
+export function preflightPublicationBilling(context, run) {
+  if (
+    context.target === "production" &&
+    ![
+      "publish-api",
+      "doctor",
+      "restore-routing",
+      "restore-api",
+      "verify-api",
+      "pause-api",
+    ].includes(context.operation)
+  )
+    run("pnpm", ["exec", "tsx", "scripts/deploy/publication-billing.ts"]);
+}
+
 export async function publicationCli({
   env = process.env,
   command,
@@ -794,15 +812,7 @@ export async function publicationCli({
     state: "in-progress",
   };
   atomicJson(join(bundle, "publication.json"), index);
-  // Existing purchases must keep their catalog, portal and webhook before any
-  // schema, Worker or consumer change. This command only reads Stripe.
-  if (
-    context.target === "production" &&
-    !["restore-routing", "restore-api", "verify-api", "pause-api"].includes(
-      context.operation,
-    )
-  )
-    run("pnpm", ["exec", "tsx", "scripts/deploy/publication-billing.ts"]);
+  preflightPublicationBilling(context, run);
   let evidenceFile;
   if (
     [

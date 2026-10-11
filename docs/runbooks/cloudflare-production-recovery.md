@@ -67,8 +67,12 @@ Preserve existing Stripe catalog, webhook, portal, offer settings, enterprise
 identity keys, callback credentials and PDS broker identity. Conflicting
 readable values fail rather than replacing the retained value. Unreadable
 provider secrets require the same existing value from the approved CI store.
-Production billing verification runs before schema or Worker mutations, even
-when new checkout is closed, so existing customers retain billing controls.
+Production billing verification runs before consumer activation, canonical route
+promotion and web publication, even when new checkout is closed, so existing
+customers retain billing controls. The protected, paused API publication and
+verification can run while billing credentials are recovered. They do not serve
+canonical traffic or activate consumers; additive schema checks and account
+identity verification still run before publication.
 
 ## Publication sequence
 
