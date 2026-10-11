@@ -201,7 +201,7 @@ def install_native_packages(run_id: str, *, full_api: bool = False) -> None:
     if full_api:
         # MCP clients must retain the same usable profile widgets as Node hosts.
         subprocess.run(
-            ["pnpm", "--filter", "@rebuildingamerica/entity-widgets-mcp", "build"],
+            ["pnpm", "--filter", "@rebuildingamerica/entity-widgets-mcp...", "build"],
             cwd=ROOT,
             check=True,
         )
