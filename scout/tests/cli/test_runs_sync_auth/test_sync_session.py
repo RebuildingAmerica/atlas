@@ -28,6 +28,8 @@ async def test_sync_uses_login_session_api_token_and_destination(
 
     monkeypatch.setattr("atlas_scout.cli.load_session", workspace_session)
 
+    monkeypatch.setattr("atlas_scout.cli.has_search_api_key", lambda: False)
+
     class FakeDeviceAuthClient:
         async def exchange_session_for_api_token(
             self,
@@ -118,6 +120,8 @@ async def test_sync_defaults_legacy_logged_in_session_to_public(
             user_email="user@example.org",
         ),
     )
+
+    monkeypatch.setattr("atlas_scout.cli.has_search_api_key", lambda: False)
 
     class FakeDeviceAuthClient:
         async def exchange_session_for_api_token(

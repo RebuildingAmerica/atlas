@@ -58,6 +58,8 @@ async def test_sync_session_exchange_error_is_user_facing(
     run_id = await seed_run_with_artifacts(config)
     monkeypatch.setattr("atlas_scout.cli.load_session", workspace_session)
 
+    monkeypatch.setattr("atlas_scout.cli.has_search_api_key", lambda: False)
+
     class FakeDeviceAuthClient:
         async def exchange_session_for_api_token(
             self,

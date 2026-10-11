@@ -79,6 +79,7 @@ def test_login_opens_browser_for_approval(monkeypatch) -> None:
     opened: list[str] = []
     saved: list[ScoutSession] = []
     monkeypatch.setattr(cli_module, "DeviceAuthClient", BrowserLoginClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
     monkeypatch.setattr(cli_module.webbrowser, "open", lambda url: opened.append(url) or True)
 
@@ -111,6 +112,7 @@ def test_login_surfaces_device_code_request_error(monkeypatch) -> None:
             raise DeviceAuthError(error="server_error", description="Atlas unavailable")
 
     monkeypatch.setattr(cli_module, "DeviceAuthClient", FailingDeviceCodeClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
 
     result = CliRunner().invoke(
         main,
@@ -171,6 +173,7 @@ def test_login_surfaces_token_exchange_error(monkeypatch) -> None:
             raise DeviceAuthError(error="server_error", description="Token exchange failed")
 
     monkeypatch.setattr(cli_module, "DeviceAuthClient", FailingTokenExchangeClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
 
     result = CliRunner().invoke(

@@ -122,6 +122,7 @@ def test_login_saves_browser_approved_session(monkeypatch: pytest.MonkeyPatch) -
     """login stores the browser-approved session and remembered upload target."""
     saved: list[ScoutSession] = []
     monkeypatch.setattr(cli_module, "DeviceAuthClient", FakeDeviceAuthClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
     monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
     monkeypatch.setattr(cli_module.webbrowser, "open", lambda _url: True)
@@ -165,6 +166,7 @@ def test_login_uses_production_when_url_is_omitted_even_if_local_atlas_is_runnin
     saved: list[ScoutSession] = []
 
     monkeypatch.setattr(cli_module, "DeviceAuthClient", ProductionDeviceAuthClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
     monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
 
@@ -183,6 +185,7 @@ def test_login_uses_production_when_url_is_omitted(
     saved: list[ScoutSession] = []
 
     monkeypatch.setattr(cli_module, "DeviceAuthClient", ProductionDeviceAuthClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
     monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
 
@@ -225,6 +228,7 @@ def test_login_defaults_to_public_without_prompt(monkeypatch: pytest.MonkeyPatch
 
     saved: list[ScoutSession] = []
     monkeypatch.setattr(cli_module, "DeviceAuthClient", PublicDefaultClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
     monkeypatch.setattr(cli_module.platform, "node", lambda: "Scout Laptop")
     monkeypatch.setattr(cli_module.webbrowser, "open", lambda _url: True)
@@ -279,6 +283,7 @@ def test_login_rejects_workspace_target_without_workspace_hint(
 
     saved: list[ScoutSession] = []
     monkeypatch.setattr(cli_module, "DeviceAuthClient", WorkspaceLessClient)
+    monkeypatch.setattr(cli_module, "has_search_api_key", lambda: False)
     monkeypatch.setattr(cli_module, "save_session", saved.append)
 
     result = CliRunner().invoke(
