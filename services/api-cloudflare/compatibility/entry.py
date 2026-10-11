@@ -34,7 +34,11 @@ async def database(request: Request):
         server_settings={"TimeZone": "UTC"},
     )
     try:
-        row = await connection.fetchrow("SELECT 1, current_setting('TimeZone')")
+        # Hyperdrive transaction pooling may discard driver startup settings.
+        # Keep timestamp interpretation stable for source dates and account data.
+        async with connection.transaction():
+            await connection.execute("SET LOCAL TIME ZONE 'UTC'")
+            row = await connection.fetchrow("SELECT 1, current_setting('TimeZone')")
     finally:
         await connection.close()
     return {"query": row[0], "timezone": row[1], "connection_closed": connection.is_closed()}

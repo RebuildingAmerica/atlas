@@ -55,8 +55,8 @@ deployment tests, and `docs/deployment/web-hosting-validation.md`.
 **Interface:** A reproducible secret-free cf Build Output artifact and a
 non-promotable hosted compatibility report tied to its source and digest.
 
-- [ ] Build a minimal Python candidate using cf's Python module manifest.
-- [ ] Deploy behind Access with the existing uncached Hyperdrive binding.
+- [x] Build a minimal Python candidate using cf's Python module manifest.
+- [x] Deploy behind Access with the existing uncached Hyperdrive binding.
 - [ ] Prove FastAPI, asynchronous psycopg, request cleanup, concurrent reads,
       runtime package imports, and Python Durable Object dispatch on the
       provider.
