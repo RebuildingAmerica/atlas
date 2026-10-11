@@ -484,31 +484,30 @@ automated testing on the test-mode account.
 ## Discount review access
 
 Discount requests are submitted from
-`https://atlas.rebuildingus.org/request-discount` and reviewed in the hosted app
-at:
+`https://atlas.rebuildingus.org/request-discount` and reviewed in the Atlas
+platform admin, not the Atlas app:
 
 ```text
-https://atlas.rebuildingus.org/admin/discounts
+https://atlas-admin.rebuildingus.org/discounts
 ```
 
-Hosted review access has two requirements:
+The old `/admin/discounts` page on the Atlas app redirects there. Review access
+needs both:
 
-1. The reviewer must be signed in to Atlas.
-2. The reviewer email must appear in `ATLAS_OPERATOR_ALLOWED_EMAILS` in the
-   hosted API environment.
+1. A Cloudflare Access sign-in through the Rebuilding America Google Workspace,
+   for an email Access allows.
+2. That email on `ATLAS_PLATFORM_OPERATOR_EMAILS` in both the API and the admin
+   Worker.
 
-Set `ATLAS_OPERATOR_ALLOWED_EMAILS` as a comma-separated list in
-`.env.production`, Vercel Production, and the Cloud Run API environment through
-bootstrap. Example:
+No one signed in to the Atlas app can review discounts, however they are signed
+in. Each decision needs a written reason, is recorded in the API's audit log
+under the reviewer's email, and emails the applicant through the app. If that
+email fails, the decision stays saved and the admin says so. Setup is in
+[the platform admin runbook](../runbooks/platform-admin-access.md).
 
-```env
-ATLAS_OPERATOR_ALLOWED_EMAILS=reviewer@rebuildingus.org,billing@rebuildingus.org
-```
-
-The API allows local development review with the synthetic local operator, but
-hosted staging and production require a real signed-in reviewer email. This
-protects applicant evidence and reviewer decisions while keeping the public
-discount request form open.
+The app still emails new requests to `ATLAS_OPERATOR_ALLOWED_EMAILS`, with a
+link built from `ATLAS_ADMIN_PUBLIC_URL`. The app refuses to send that email
+without `ATLAS_ADMIN_PUBLIC_URL`, rather than send a link to nowhere.
 
 ## Failure modes
 

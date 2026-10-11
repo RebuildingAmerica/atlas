@@ -56,8 +56,14 @@ async function getSubmitterEmail(userId: string): Promise<string> {
   return row.email;
 }
 
-function discountReviewUrl(publicBaseUrl: string): string {
-  return new URL("/admin/discounts", publicBaseUrl).toString();
+/** Where the operator decides the request: the Atlas platform admin. */
+function discountReviewUrl(adminPublicUrl: string | null): string {
+  if (!adminPublicUrl) {
+    throw new Error(
+      "ATLAS_ADMIN_PUBLIC_URL is required to send discount requests to the platform admin.",
+    );
+  }
+  return new URL("/discounts", adminPublicUrl).toString();
 }
 
 export async function sendDiscountRequestOperatorNotification({
@@ -73,7 +79,7 @@ export async function sendDiscountRequestOperatorNotification({
 
   const emailService = createEmailService(runtime);
   const segmentLabel = EMAIL_SEGMENT_LABELS[segment];
-  const reviewUrl = discountReviewUrl(runtime.publicBaseUrl);
+  const reviewUrl = discountReviewUrl(runtime.adminPublicUrl);
   const text = [
     "A new Atlas discount request is ready for review.",
     "",

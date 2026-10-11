@@ -1,0 +1,61 @@
+{
+  "name": "@rebuildingamerica/atlas-admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Atlas platform admin: Atlas-owned administration behind Cloudflare Access. Never part of a self-hosted install.",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "generate:route-tree": "node scripts/generate-route-tree.mjs",
+    "api-client": "orval --config orval.config.ts",
+    "prebuild": "pnpm run api-client && pnpm run generate:route-tree",
+    "predev": "pnpm run api-client && pnpm run generate:route-tree",
+    "dev": "vite dev --port 3200 --strictPort",
+    "build": "vite build",
+    "deploy": "cf deploy",
+    "deploy:check": "cf deploy --dry-run",
+    "test": "vitest run --coverage",
+    "lint": "eslint src tests --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rebuildingamerica/atlas-access": "workspace:*",
+    "@rebuildingamerica/atlas-ui": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@tanstack/react-start": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:",
+    "@rebuildingamerica/eslint-config": "workspace:*",
+    "@rebuildingamerica/tsconfig": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@tanstack/router-generator": "1.167.18",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "cf": "catalog:",
+    "eslint": "catalog:",
+    "jsdom": "catalog:",
+    "orval": "catalog:",
+    "prettier": "catalog:",
+    "prettier-plugin-tailwindcss": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,4 +1,4 @@
-"""Operator cloud-cost posture endpoints."""
+"""Cloud-cost posture for the platform admin."""
 
 from __future__ import annotations
 
@@ -10,14 +10,14 @@ from pydantic import BaseModel, Field
 
 from atlas.domains.access.dependencies import get_usage_db
 from atlas.domains.discovery.cost import DAILY_WINDOW_HOURS, daily_cost
-from atlas.platform.authz import Action, require_action
+from atlas.platform.authz import Action, PlatformOperator, require_platform_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
     import aiosqlite
 
-router = APIRouter(tags=["access"])
+router = APIRouter(tags=["platform"])
 
 __all__ = ["router"]
 
@@ -154,7 +154,7 @@ def _guardrails(
 
 
 @router.get(
-    "/api/admin/cloud-costs",
+    "/api/platform/cloud-costs",
     response_model=CloudCostPostureResponse,
     operation_id="getCloudCostPosture",
     summary="Get cloud cost posture",
@@ -163,7 +163,7 @@ def _guardrails(
 async def get_cloud_cost_posture(
     response: Response,
     conn: aiosqlite.Connection = Depends(get_usage_db),
-    _review_actor: object = Depends(require_action(Action.COSTS_VIEW)),
+    _operator: PlatformOperator = Depends(require_platform_action(Action.COSTS_VIEW)),
     settings: Settings = Depends(get_settings),
 ) -> CloudCostPostureResponse:
     """Return operator-only Atlas cloud-cost posture and guardrail status."""

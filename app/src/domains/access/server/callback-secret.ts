@@ -3,7 +3,7 @@ import "@tanstack/react-start/server-only";
 import { timingSafeEqual } from "node:crypto";
 
 /** Header the Atlas API sends when it calls back into the app. */
-export const CALLBACK_SECRET_HEADER = "x-atlas-callback-secret";
+export const CALLBACK_SECRET_HEADER = "x-atlas-callback-secret"; // pragma: allowlist secret - a header name
 
 /**
  * Returns whether a request from the Atlas API carries the callback secret.

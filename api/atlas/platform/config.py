@@ -145,8 +145,25 @@ class Settings(BaseSettings):
     )
     """Operator emails allowed to access Atlas-maintained review surfaces."""
 
+    platform_operator_emails: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        validation_alias="ATLAS_PLATFORM_OPERATOR_EMAILS",
+    )
+    """People who may use the platform admin on a managed deployment.
+
+    Empty means nobody. Matched exactly against the normalized email in both the
+    admin app's token and the operator's Cloudflare Access sign-in.
+    """
+
+    access_team_domain: str = Field(default="", validation_alias="ATLAS_ACCESS_TEAM_DOMAIN")
+    """Cloudflare Access team host, ``<team>.cloudflareaccess.com``, for the platform admin."""
+
+    access_aud: str = Field(default="", validation_alias="ATLAS_ACCESS_AUD")
+    """Audience tag of the platform admin's Cloudflare Access application."""
+
     @field_validator(
         "operator_allowed_emails",
+        "platform_operator_emails",
         "auth_jwt_audience",
         "auth_jwt_default_scope",
         mode="before",

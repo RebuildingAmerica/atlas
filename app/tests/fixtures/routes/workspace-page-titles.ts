@@ -14,19 +14,9 @@ export interface StaticRouteHead {
 export const WORKSPACE_PAGE_TITLES: [string, () => Promise<RouteWithHead>, string][] = [
   ["admin", () => import("@/routes/_workspace/admin/index"), "Admin | Atlas"],
   [
-    "admin cloud costs",
-    () => import("@/routes/_workspace/admin/cloud-costs"),
-    "Cloud costs | Atlas admin",
-  ],
-  [
     "admin corrections",
     () => import("@/routes/_workspace/admin/corrections"),
     "Correction inbox | Atlas admin",
-  ],
-  [
-    "admin discounts",
-    () => import("@/routes/_workspace/admin/discounts"),
-    "Discount reviews | Atlas admin",
   ],
   [
     "admin editorial review",

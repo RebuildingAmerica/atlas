@@ -1,4 +1,4 @@
-"""Tests for operator cloud-cost posture API."""
+"""Cloud-cost posture for the platform admin."""
 
 from __future__ import annotations
 
@@ -9,81 +9,39 @@ import httpx
 import pytest
 from fastapi import Response
 
-from atlas.config import Settings, get_settings
+from atlas.config import Settings
 from atlas.domains.access.api.cloud_cost_admin import get_cloud_cost_posture
 from atlas.domains.discovery.cost import record_cost
 from atlas.domains.discovery.models import DiscoveryRunCRUD
-from atlas.main import create_app
-from tests.support.app_assertions import sign_app_assertion
+from tests.support.platform_admin import managed_app, platform_headers, platform_settings
 
 if TYPE_CHECKING:
     import aiosqlite
 
 
-@pytest.mark.asyncio
-async def test_cloud_cost_posture_requires_internal_operator(db_url: str) -> None:
+COSTS = "/api/platform/cloud-costs"
+
+
+async def test_cloud_cost_posture_requires_the_admin_app(
+    monkeypatch: pytest.MonkeyPatch, db_url: str
+) -> None:
     """Hosted cloud-cost posture should not be public API data."""
-    app = create_app()
-
-    def override_get_settings() -> Settings:
-        return Settings(
-            managed=True,
-            database_url=db_url,
-            multi_user=True,
-            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
-            auth_jwt_audience=["https://atlas.example.test/mcp"],
-            auth_jwt_issuer="https://atlas.example.test",
-            auth_api_key_introspection_url=(  # pragma: allowlist secret
-                "https://atlas.example.test/api/auth/internal/introspect"
-            ),
-            auth_membership_verification_url=(
-                "https://atlas.example.test/api/auth/internal/memberships"
-            ),
-        )
-
-    app.dependency_overrides[get_settings] = override_get_settings
+    app = managed_app(monkeypatch, platform_settings(db_url))
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/api/admin/cloud-costs")
+        response = await client.get(COSTS)
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-@pytest.mark.asyncio
-async def test_cloud_cost_posture_allows_allowlisted_operator(db_url: str) -> None:
-    """Allowlisted Atlas operators can load cloud-cost posture."""
-    app = create_app()
-
-    def override_get_settings() -> Settings:
-        return Settings(
-            managed=True,
-            database_url=db_url,
-            multi_user=True,
-            auth_callback_secret="callback-test-secret",  # pragma: allowlist secret
-            operator_allowed_emails=["ops@rebuildingus.org"],
-            auth_jwt_audience=["https://atlas.example.test/mcp"],
-            auth_jwt_issuer="https://atlas.example.test",
-            auth_api_key_introspection_url=(  # pragma: allowlist secret
-                "https://atlas.example.test/api/auth/internal/introspect"
-            ),
-            auth_membership_verification_url=(
-                "https://atlas.example.test/api/auth/internal/memberships"
-            ),
-        )
-
-    app.dependency_overrides[get_settings] = override_get_settings
+async def test_cloud_cost_posture_allows_a_platform_operator(
+    monkeypatch: pytest.MonkeyPatch, db_url: str
+) -> None:
+    """The admin app can load cloud-cost posture for a signed-in platform operator."""
+    app = managed_app(monkeypatch, platform_settings(db_url))
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get(
-            "/api/admin/cloud-costs",
-            headers={
-                "X-Atlas-Actor-Assertion": sign_app_assertion(
-                    user_id="ops-user",
-                    email="ops@rebuildingus.org",
-                    issuer="https://atlas.example.test/api/auth",
-                ),
-            },
-        )
+        response = await client.get(COSTS, headers=platform_headers())
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()

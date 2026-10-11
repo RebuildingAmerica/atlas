@@ -56,6 +56,7 @@ describe("runtime additional branches", () => {
   it("does not require enabled-mode settings when auth is disabled", () => {
     expect(() => {
       validateAuthRuntimeConfig({
+        adminPublicUrl: null,
         authJwtAudience: null,
         authJwtAudiences: [],
         apiBaseUrl: null,
@@ -187,6 +188,39 @@ describe("runtime additional branches", () => {
           "/workspace/atlas/app",
         ),
       ).toThrow(/ATLAS_SAML_ALLOWED_ISSUERS contains an invalid URL/);
+    });
+  });
+
+  describe("resolveAdminPublicUrl", () => {
+    it("is absent on a deployment with no platform admin", () => {
+      expect(
+        resolveAuthRuntimeConfig({ ATLAS_PUBLIC_URL: "https://atlas.test" }, "/workspace/atlas/app")
+          .adminPublicUrl,
+      ).toBeNull();
+    });
+
+    it("keeps only the admin's origin", () => {
+      expect(
+        resolveAuthRuntimeConfig(
+          {
+            ATLAS_ADMIN_PUBLIC_URL: "https://admin.atlas.test/discounts",
+            ATLAS_PUBLIC_URL: "https://atlas.test",
+          },
+          "/workspace/atlas/app",
+        ).adminPublicUrl,
+      ).toBe("https://admin.atlas.test");
+    });
+
+    it("refuses a platform admin that is not on https", () => {
+      expect(() =>
+        resolveAuthRuntimeConfig(
+          {
+            ATLAS_ADMIN_PUBLIC_URL: "http://admin.atlas.test",
+            ATLAS_PUBLIC_URL: "https://atlas.test",
+          },
+          "/workspace/atlas/app",
+        ),
+      ).toThrow("ATLAS_ADMIN_PUBLIC_URL must use https.");
     });
   });
 

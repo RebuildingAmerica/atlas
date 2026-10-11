@@ -5,7 +5,7 @@ import {
   AdminPageHeader,
   AdminPageShell,
   AdminStatusBadge,
-} from "./admin-portal";
+} from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import type { DiscoveryReview } from "./discovery-reviews.functions";
 
 type ReviewDecision = "approve" | "reject";

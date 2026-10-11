@@ -4,7 +4,7 @@ import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { useTaxonomy } from "@rebuildingamerica/atlas-catalog/hooks/use-taxonomy";
 import { useHydrated } from "@/platform/runtime/use-hydrated";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
-import { AdminInlineStatus } from "./admin-portal";
+import { AdminInlineStatus } from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import {
   decideDiscoveryReview,
   listDiscoveryReviews,

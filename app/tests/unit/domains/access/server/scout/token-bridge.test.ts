@@ -8,12 +8,15 @@ const mocks = vi.hoisted(() => ({
   resolvePrimaryWorkspaceId: vi.fn(),
 }));
 
+// The runtime setting a test can take away: the audience Scout tokens are issued for.
+const runtimeSettings = vi.hoisted(() => new Map<"audience", string | null>());
+
 vi.mock("@/domains/access/server/auth", () => ({
   ensureAuthReady: mocks.ensureAuthReady,
 }));
 
 vi.mock("@/domains/access/server/runtime", () => ({
-  getAuthRuntimeConfig: () => ({ authJwtAudience: "https://atlas.test/api" }),
+  getAuthRuntimeConfig: () => ({ authJwtAudience: runtimeSettings.get("audience") }),
 }));
 
 vi.mock("@/domains/access/server/workspace-lookup", () => ({
@@ -32,6 +35,7 @@ vi.mock("@/domains/access/server/scout-devices", () => {
 describe("issueScoutTokenRequest", () => {
   beforeEach(() => {
     vi.resetModules();
+    runtimeSettings.set("audience", "https://atlas.test/api");
     mocks.ensureAuthReady.mockReset();
     mocks.getSession.mockReset();
     mocks.signJWT.mockReset();
@@ -298,6 +302,30 @@ describe("issueScoutTokenRequest", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Scout token could not be issued",
     });
+  });
+
+  it("refuses to issue a token the API would reject for lacking its audience", async () => {
+    runtimeSettings.set("audience", null);
+    mocks.getSession.mockResolvedValue({ user: { id: "user-123", email: "user@example.org" } });
+    mocks.resolvePrimaryWorkspaceId.mockResolvedValue(null);
+    const { issueScoutTokenRequest } = await import("@/domains/access/server/scout-token");
+
+    const response = await issueScoutTokenRequest(
+      new Request("https://atlas.test/api/auth/scout/token", {
+        body: JSON.stringify({
+          default_upload_target: "public",
+          worker_name: "Willie's MacBook Pro",
+        }),
+        headers: { Authorization: "Bearer device-session-token" },
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Scout tokens need ATLAS_AUTH_JWT_AUDIENCES to be configured",
+    });
+    expect(mocks.signJWT).not.toHaveBeenCalled();
   });
 
   it("returns an empty email when the account has none on file", async () => {

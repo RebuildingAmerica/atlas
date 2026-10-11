@@ -115,12 +115,19 @@ export async function issueScoutTokenRequest(request: Request): Promise<Response
 
   const issuedAt = Math.floor(Date.now() / 1000);
   const audience = getAuthRuntimeConfig().authJwtAudience;
+  if (!audience) {
+    // The API refuses a token without its audience, so issuing one would only fail later.
+    return Response.json(
+      { error: "Scout tokens need ATLAS_AUTH_JWT_AUDIENCES to be configured" },
+      { status: 500 },
+    );
+  }
   const jwt = scoutJwtSchema.parse(
     await auth.api.signJWT({
       body: {
         payload: {
-          ...(audience ? { aud: audience } : {}),
-          email: user.email ?? "",
+          aud: audience,
+          email: user.email,
           exp: issuedAt + SCOUT_TOKEN_LIFETIME_SECONDS,
           iat: issuedAt,
           ...(workspaceId ? { org_id: workspaceId } : {}),

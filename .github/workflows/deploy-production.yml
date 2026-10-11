@@ -102,6 +102,11 @@ jobs:
           operator-allowed-emails: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
           scheduler-job-name: atlas-discovery-scheduled
           openstatus-api-key: ${{ secrets.OPENSTATUS_API_KEY }}
+          admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
+          admin-signing-public-key: ${{ vars.ATLAS_ADMIN_SIGNING_PUBLIC_KEY }}
+          access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
+          access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
+          platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
 
       - name: Generate PDS invite broker secret
         id: pds-invite-broker
@@ -144,6 +149,7 @@ jobs:
           ATLAS_EMAIL_RESEND_API_KEY: ${{ secrets.ATLAS_EMAIL_RESEND_API_KEY }}
           ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
           ATLAS_OPERATOR_ALLOWED_EMAILS: ${{ secrets.ATLAS_OPERATOR_ALLOWED_EMAILS }}
+          ATLAS_ADMIN_PUBLIC_URL: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
           ATLAS_PUBLIC_URL: ${{ secrets.ATLAS_PUBLIC_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ATLAS_BILLING_CHECKOUT_ENABLED: ${{ vars.ATLAS_BILLING_CHECKOUT_ENABLED }}
@@ -218,6 +224,9 @@ jobs:
           add_vercel_env ATLAS_HOSTED_E2E_PRODUCTION_ENABLED "1"
           add_vercel_env ATLAS_HOSTED_E2E_SECRET "$ATLAS_HOSTED_E2E_SECRET"
           add_vercel_env ATLAS_OPERATOR_ALLOWED_EMAILS "$ATLAS_OPERATOR_ALLOWED_EMAILS"
+          # Discount-request emails link here, and the app's old /admin/discounts
+          # and /admin/cloud-costs pages redirect here.
+          add_vercel_env ATLAS_ADMIN_PUBLIC_URL "$ATLAS_ADMIN_PUBLIC_URL"
           add_vercel_env ATLAS_PDS_INVITE_BROKER_SECRET "$ATLAS_PDS_INVITE_BROKER_SECRET"
           add_vercel_env ATLAS_PDS_INVITE_BROKER_URL "$atlas_pds_invite_broker_url"
           add_vercel_env ATLAS_PDS_PUBLIC_URL "$atlas_pds_public_url"
@@ -246,6 +255,30 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_DEPLOYMENT_URL: ${{ steps.deploy-vercel.outputs.url }}
         run: pnpm exec vercel promote "$VERCEL_DEPLOYMENT_URL" --yes --scope "$VERCEL_ORG_ID" --token "$VERCEL_TOKEN"
+
+  # The platform admin ships after the API it calls, and only where it is
+  # configured: without ATLAS_ADMIN_PUBLIC_URL there is no platform admin.
+  deploy-admin:
+    needs: deploy
+    if: vars.ATLAS_ADMIN_PUBLIC_URL != ''
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/deploy-atlas-admin
+        with:
+          environment-name: production
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_ADMIN_DEPLOY_TOKEN }}
+          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          admin-public-url: ${{ vars.ATLAS_ADMIN_PUBLIC_URL }}
+          admin-signing-key: ${{ secrets.ATLAS_ADMIN_SIGNING_KEY }}
+          api-url: ${{ vars.ATLAS_PLATFORM_API_URL }}
+          access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
+          access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
+          platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
 
   hosted-smoke:
     needs: deploy

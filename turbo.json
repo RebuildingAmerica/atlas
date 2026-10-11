@@ -13,6 +13,7 @@
       "inputs": ["api/atlas/**/*.py", "api/pyproject.toml", "api/uv.lock"],
       "outputs": [
         "openapi/atlas.openapi.json",
+        "openapi/atlas-platform.openapi.json",
         "mintlify/openapi/atlas.openapi.json"
       ],
       "env": [

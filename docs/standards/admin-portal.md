@@ -1,19 +1,31 @@
 # Admin Portal Standards
 
 The admin portal is an operator workbench, not a collection of unrelated tool
-pages. It should help an operator understand service posture, review queues, and
-cost risk quickly on desktop and mobile.
+pages. It should help an operator understand service posture and review queues
+quickly on desktop and mobile.
+
+Two operator surfaces exist and they stay separate:
+
+- **The Atlas app's admin portal** (`/admin`): running this instance. Editorial
+  review, corrections, profile verifications, discovery. Every deployment has
+  it, including self-hosted ones.
+- **The Atlas platform admin** (`admin/`, its own host behind Cloudflare
+  Access): Atlas-owned administration of the managed service, such as discount
+  requests and cloud costs. Only the managed deployment has it. See
+  [Internal Apps](./internal-apps.md).
 
 ## Page Organization
 
 Every top-level admin page should use the same file shape:
 
-- `app/src/routes/_workspace/admin/<page>.tsx` only registers the route.
-- `app/src/domains/**/<page>-page.tsx` loads data, owns mutations, and renders
-  loading, error, or empty states.
-- `app/src/domains/**/<page>-view.tsx` renders the page UI.
+- `app/src/routes/_workspace/admin/<page>.tsx` (or
+  `admin/src/routes/<page>.tsx`) only registers the route.
+- `<workspace>/src/domains/**/<page>-page.tsx` loads data, owns mutations, and
+  renders loading, error, or empty states.
+- `<workspace>/src/domains/**/<page>-view.tsx` renders the page UI.
 - Shared chrome, status badges, metric cards, loading states, and error states
-  come from `app/src/domains/admin/admin-portal.tsx`.
+  come from `@rebuildingamerica/atlas-ui/layout/admin-portal`, so both surfaces
+  read the same.
 
 Do not put full component implementations in route files or page entrypoints. If
 a page needs cards, rows, sections, or formatting helpers, put them in the view
@@ -33,7 +45,8 @@ second source of truth. Use existing data surfaces before adding new endpoints:
 
 - API health comes from `/health`.
 - Discovery pipeline posture comes from `/api/discovery-runs/summary`.
-- Cost posture comes from `/api/admin/cloud-costs`.
+- Cost posture comes from `/api/platform/cloud-costs`, in the platform admin
+  only.
 
 If a new dashboard indicator cannot be backed by an existing runtime surface,
 add the authoritative backend endpoint first, then render it in the dashboard.

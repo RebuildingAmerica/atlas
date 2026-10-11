@@ -1,0 +1,11 @@
+node_modules/
+coverage/
+.cloudflare/
+.output/
+.tanstack/
+.wrangler/
+src/generated/
+# Local Worker secrets for `vite dev` and `vite preview`; never committed.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

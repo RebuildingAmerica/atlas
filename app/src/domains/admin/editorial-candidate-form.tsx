@@ -3,7 +3,7 @@ import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { Select } from "@rebuildingamerica/atlas-ui/ui/select";
 import { Textarea } from "@rebuildingamerica/atlas-ui/ui/textarea";
-import { AdminInlineStatus } from "./admin-portal";
+import { AdminInlineStatus } from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import type { EditorialCandidateInput } from "./discovery-reviews.functions";
 
 interface IssueAreaOption {

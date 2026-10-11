@@ -1,0 +1,17 @@
+{
+  "extends": "@rebuildingamerica/tsconfig/react.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src",
+    "tests",
+    "cloudflare.config.ts",
+    "orval.config.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ]
+}

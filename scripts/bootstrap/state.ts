@@ -33,7 +33,8 @@ export type PhaseId =
   | "ci-cache"
   | "api-domain"
   | "api-edge"
-  | "access-gate";
+  | "access-gate"
+  | "admin-keys";
 
 export interface PhaseResult {
   success: boolean;
@@ -50,7 +51,7 @@ export interface PhaseResult {
  * mark the other's readiness.
  */
 export type TargetPhaseId =
-  "infra" | "database" | "deploy" | "api-domain" | "api-edge";
+  "infra" | "database" | "deploy" | "api-domain" | "api-edge" | "admin-keys";
 
 export function targetPhaseKey(
   phaseId: TargetPhaseId,

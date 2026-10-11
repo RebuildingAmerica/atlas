@@ -11,6 +11,7 @@ interface SentEmail {
 }
 
 interface EmailRuntimeOptions {
+  adminPublicUrl?: string | null;
   operatorAllowedEmails?: string[];
 }
 
@@ -49,6 +50,8 @@ const mockSqliteUserEmail = (email: string | null): void => {
 
 const stubEmailRuntime = (options: EmailRuntimeOptions = {}): void => {
   mocks.getAuthRuntimeConfig.mockReturnValue({
+    adminPublicUrl:
+      options.adminPublicUrl === undefined ? "https://admin.atlas.test" : options.adminPublicUrl,
     captureUrl: "http://127.0.0.1:8025/messages",
     emailFrom: "Atlas <hello@atlas.test>",
     emailProvider: "capture",
@@ -84,6 +87,7 @@ describe("discount verification emails", () => {
 
   it("sends new request notifications to configured operator review recipients", async () => {
     mocks.getAuthRuntimeConfig.mockReturnValue({
+      adminPublicUrl: "https://admin.atlas.test",
       captureUrl: "http://127.0.0.1:8025/messages",
       emailFrom: "Atlas <hello@atlas.test>",
       emailProvider: "capture",
@@ -184,7 +188,23 @@ describe("discount verification emails", () => {
     expect(text).toContain("Segment: Civic tech worker");
     expect(text).toContain("Workspace: org_123");
     expect(text).toContain("Verification: verif_456");
-    expect(text).toContain("https://atlas.test/admin/discounts");
+    expect(text).toContain("https://admin.atlas.test/discounts");
+  });
+
+  it("refuses to send the operator a request it cannot link to the platform admin", async () => {
+    stubEmailRuntime({ adminPublicUrl: null });
+
+    const { sendDiscountRequestOperatorNotification } =
+      await import("@/domains/billing/server/discount-verification-emails");
+
+    await expect(
+      sendDiscountRequestOperatorNotification({
+        organizationId: "org_123",
+        segment: "student",
+        verificationId: "verif_789",
+      }),
+    ).rejects.toThrow("ATLAS_ADMIN_PUBLIC_URL is required");
+    expect(mocks.emailSend).not.toHaveBeenCalled();
   });
 
   describe("looking up the submitter on Postgres", () => {

@@ -18,6 +18,7 @@ vi.mock("resend", () => ({
 describe("email service error branches", () => {
   function buildRuntime(overrides: Partial<AuthRuntimeConfig> = {}): AuthRuntimeConfig {
     return {
+      adminPublicUrl: null,
       authJwtAudience: null,
       authJwtAudiences: [],
       apiBaseUrl: null,
@@ -42,8 +43,8 @@ describe("email service error branches", () => {
       emailFrom: "Atlas <auth@atlas.example.com>",
       emailProvider: "capture",
       internalSecret: "internal-test-secret",
-      callbackSecret: "callback-test-secret",
-      edgeOriginSecret: "edge-test-secret",
+      callbackSecret: "callback-test-secret", // pragma: allowlist secret
+      edgeOriginSecret: "edge-test-secret", // pragma: allowlist secret
       passkeyRpId: null,
       publicBaseUrl: "https://atlas.example.com",
       publicDomain: "atlas.example.com",

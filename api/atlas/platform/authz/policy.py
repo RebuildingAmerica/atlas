@@ -72,8 +72,9 @@ def authorize(actor: AuthenticatedActor, action: Action, settings: Settings) -> 
     Decision
         Allowed, or refused with the status and message the caller should see.
         Platform actions report 404 when the deployment is not managed, because
-        that surface does not exist there. Local single-user mode never holds a
-        platform action.
+        that surface does not exist there. No one signed in to the Atlas app
+        holds a platform action: those belong to the platform admin, behind
+        Cloudflare Access (see ``platform_guard``).
     """
     refusal = Decision(
         allowed=False,
@@ -89,8 +90,7 @@ def authorize(actor: AuthenticatedActor, action: Action, settings: Settings) -> 
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=NOT_FOUND_DETAIL,
             )
-        if actor.is_local:
-            return refusal
+        return refusal
     if _is_instance_operator(actor, settings):
         return Decision(allowed=True)
     return refusal

@@ -13,7 +13,7 @@ HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
 OPERATOR = "editor@rebuildingus.org"
 EDITORIAL_REFUSAL = "Editorial review requires Atlas staff."
-DISCOUNT_REFUSAL = "Discount review access requires Atlas staff."
+PLATFORM_REFUSAL = "This is done in the Atlas platform admin."
 GENERIC_REFUSAL = "This action requires Atlas staff."
 
 INSTANCE_ACTIONS = [action for action in Action if action.value.startswith("instance.")]
@@ -147,8 +147,8 @@ def test_local_single_user_mode_may_perform_instance_actions(
         (Action.RUNS_CANCEL, GENERIC_REFUSAL),
         (Action.RUNS_INSPECT, GENERIC_REFUSAL),
         (Action.RUNS_VIEW_ALL, GENERIC_REFUSAL),
-        (Action.DISCOUNTS_REVIEW, DISCOUNT_REFUSAL),
-        (Action.COSTS_VIEW, DISCOUNT_REFUSAL),
+        (Action.DISCOUNTS_REVIEW, PLATFORM_REFUSAL),
+        (Action.COSTS_VIEW, PLATFORM_REFUSAL),
     ],
 )
 def test_refusals_keep_the_wording_each_surface_already_shows(
@@ -181,14 +181,19 @@ def test_platform_actions_do_not_exist_when_the_deployment_is_not_managed(
 
 
 @pytest.mark.parametrize("action", PLATFORM_ACTIONS)
-def test_allowlisted_operator_may_perform_platform_actions_when_managed(
+def test_no_one_signed_in_to_the_atlas_app_holds_platform_actions(
     test_settings: object,
     action: Action,
 ) -> None:
+    """Platform work happens in the platform admin, behind Cloudflare Access."""
     test_settings.operator_allowed_emails = [OPERATOR]
     test_settings.managed = True
 
-    assert is_granted(_actor(), action, test_settings) is True
+    decision = authorize(_actor(), action, test_settings)
+
+    assert is_granted(_actor(), action, test_settings) is False
+    assert decision.status_code == HTTP_FORBIDDEN
+    assert decision.detail == PLATFORM_REFUSAL
 
 
 @pytest.mark.parametrize("action", PLATFORM_ACTIONS)

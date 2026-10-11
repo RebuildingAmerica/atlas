@@ -1,13 +1,16 @@
-"""Admin endpoints for managing discount verification records."""
+"""Platform endpoints for reviewing discount requests, called by the platform admin."""
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Annotated, Literal
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from atlas.domains.access.dependencies import get_usage_db
+from atlas.domains.access.discount_review_notice import notify_discount_review_result
 from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationCRUD,
     DiscountVerificationMethod,
@@ -15,15 +18,16 @@ from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationStatus,
 )
 from atlas.domains.access.verification import DiscountSegment  # noqa: TC001
-from atlas.platform.authz import Action, require_action
+from atlas.platform.authz import Action, PlatformOperator, require_platform_action
+from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
     import aiosqlite
 
-    from atlas.domains.access.principals import AuthenticatedActor
+UNSENT_RESULT_DETAIL = "The decision was saved, but the applicant could not be emailed."
 
-router = APIRouter(tags=["access"])
+router = APIRouter(tags=["platform"])
 
 __all__ = ["router"]
 
@@ -87,7 +91,7 @@ def _verification_record_response(
 
 
 @router.get(
-    "/api/admin/verifications",
+    "/api/platform/discount-verifications",
     response_model=VerificationListResponse,
     operation_id="listVerifications",
     summary="List discount verifications",
@@ -96,7 +100,7 @@ def _verification_record_response(
 async def list_verifications(
     response: Response,
     conn: aiosqlite.Connection = Depends(get_usage_db),
-    _review_actor: AuthenticatedActor = Depends(require_action(Action.DISCOUNTS_REVIEW)),
+    _operator: PlatformOperator = Depends(require_platform_action(Action.DISCOUNTS_REVIEW)),
     *,
     organization_id: Annotated[str | None, Query()] = None,
     status: Annotated[DiscountVerificationStatus | None, Query()] = None,
@@ -126,20 +130,24 @@ async def list_verifications(
 
 
 @router.patch(
-    "/api/admin/verifications/{verification_id}",
+    "/api/platform/discount-verifications/{verification_id}",
     response_model=VerificationUpdateResponse,
     operation_id="updateVerification",
     summary="Update discount verification",
-    description="Update the review status for a discount verification request.",
+    description=(
+        "Record the review decision for a discount request, then email the applicant "
+        "through the app. A 502 means the decision was saved but the email was not sent."
+    ),
 )
 async def update_verification(
     response: Response,
     verification_id: str,
     request: VerificationUpdateRequest,
     conn: aiosqlite.Connection = Depends(get_usage_db),
-    _review_actor: AuthenticatedActor = Depends(require_action(Action.DISCOUNTS_REVIEW)),
+    settings: Settings = Depends(get_settings),
+    _operator: PlatformOperator = Depends(require_platform_action(Action.DISCOUNTS_REVIEW)),
 ) -> VerificationUpdateResponse:
-    """Update the review status for a discount verification request."""
+    """Record the review decision, then have the app email the applicant."""
     apply_no_store_headers(response)
     record = await DiscountVerificationCRUD.update_status(
         conn,
@@ -149,6 +157,18 @@ async def update_verification(
     )
     if record is None:
         raise HTTPException(status_code=404, detail="Verification record not found")
+
+    try:
+        await notify_discount_review_result(
+            settings,
+            user_id=record.user_id,
+            segment=record.segment,
+            status=request.status,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_GATEWAY, detail=UNSENT_RESULT_DETAIL
+        ) from exc
 
     return VerificationUpdateResponse(
         status=request.status,

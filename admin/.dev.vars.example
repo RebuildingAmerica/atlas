@@ -1,0 +1,17 @@
+# Copy to .dev.vars (gitignored) for `pnpm dev`. Every value is a declared
+# secret binding in cloudflare.config.ts; anything not declared there is
+# invisible to the Worker.
+
+ATLAS_ADMIN_PUBLIC_URL=http://localhost:3200
+ATLAS_API_URL=http://localhost:8000
+ATLAS_PLATFORM_OPERATOR_EMAILS=willie@rebuildingus.org
+# The team domain and audience tag from `pnpm bootstrap --access-gate`.
+ATLAS_ACCESS_TEAM_DOMAIN=replace-with-team.cloudflareaccess.com
+ATLAS_ACCESS_AUD=replace-with-the-64-character-application-audience-tag
+# Base64 PKCS#8 Ed25519 private key; pnpm bootstrap --admin-keys makes the
+# deployed ones. For local work against a local API, generate one and trust its
+# public half in the API's ATLAS_MACHINE_TRUSTED_ISSUERS.
+ATLAS_ADMIN_SIGNING_KEY=replace-with-a-base64-pkcs8-ed25519-key
+# Development only: act as this operator without Cloudflare Access. A deployed
+# admin refuses to start if this is set.
+ATLAS_ADMIN_DEV_OPERATOR_EMAIL=willie@rebuildingus.org

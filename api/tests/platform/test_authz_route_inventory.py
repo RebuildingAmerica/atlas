@@ -1,12 +1,33 @@
-"""Every operator-only route declares the one action it performs, and nothing else does."""
+"""Every operator-only route declares the one action it performs, and nothing else does.
+
+The inventory is taken under both deployment profiles: a managed deployment
+adds the platform routes, and a self-hosted one has none of them, in its
+routes or in its OpenAPI document.
+"""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from atlas.main import create_app
 from atlas.platform.authz import Action
+from atlas.platform.http.platform_router import build_platform_openapi
 from tests.support.route_inventory import route_declarations
 
-EXPECTED_ACTIONS: dict[tuple[str, str], Action] = {
+if TYPE_CHECKING:
+    import pytest
+    from fastapi import FastAPI
+
+PLATFORM_ROUTES: dict[tuple[str, str], Action] = {
+    ("GET", "/api/platform/discount-verifications"): Action.DISCOUNTS_REVIEW,
+    (
+        "PATCH",
+        "/api/platform/discount-verifications/{verification_id}",
+    ): Action.DISCOUNTS_REVIEW,
+    ("GET", "/api/platform/cloud-costs"): Action.COSTS_VIEW,
+}
+
+INSTANCE_AND_MACHINE_ROUTES: dict[tuple[str, str], Action] = {
     ("GET", "/api/correction-inbox"): Action.FLAGS_READ,
     ("GET", "/api/entity-flags"): Action.FLAGS_READ,
     ("GET", "/api/entity-flags/inbox"): Action.FLAGS_READ,
@@ -36,9 +57,6 @@ EXPECTED_ACTIONS: dict[tuple[str, str], Action] = {
     ("DELETE", "/api/discovery-schedules/{schedule_id}"): Action.SCHEDULES_WRITE,
     ("POST", "/api/discovery-runs/{run_id}/cancel"): Action.RUNS_CANCEL,
     ("GET", "/api/discovery-runs/summary"): Action.RUNS_INSPECT,
-    ("GET", "/api/admin/verifications"): Action.DISCOUNTS_REVIEW,
-    ("PATCH", "/api/admin/verifications/{verification_id}"): Action.DISCOUNTS_REVIEW,
-    ("GET", "/api/admin/cloud-costs"): Action.COSTS_VIEW,
     ("POST", "/api/discovery-runs/scheduled"): Action.TRIGGER_SCHEDULED_RUNS,
     (
         "POST",
@@ -48,21 +66,72 @@ EXPECTED_ACTIONS: dict[tuple[str, str], Action] = {
 }
 
 
-def _declared() -> dict[tuple[str, str], set[Action]]:
+def _managed_app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
+    monkeypatch.setenv("ATLAS_MANAGED", "true")
+    return create_app()
+
+
+def _declared(app: FastAPI) -> dict[tuple[str, str], set[Action]]:
     return {
         (declaration.method, declaration.path): set(declaration.actions)
-        for declaration in route_declarations(create_app())
+        for declaration in route_declarations(app)
         if declaration.actions
     }
 
 
-def test_operator_routes_declare_exactly_the_expected_action() -> None:
-    declared = _declared()
-
-    assert declared == {route: {action} for route, action in EXPECTED_ACTIONS.items()}
+def _expected(routes: dict[tuple[str, str], Action]) -> dict[tuple[str, str], set[Action]]:
+    return {route: {action} for route, action in routes.items()}
 
 
-def test_every_action_except_the_visibility_check_guards_at_least_one_route() -> None:
-    guarded = {action for actions in _declared().values() for action in actions}
+def test_a_managed_deployment_guards_exactly_the_expected_routes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    declared = _declared(_managed_app(monkeypatch))
+
+    assert declared == _expected(INSTANCE_AND_MACHINE_ROUTES | PLATFORM_ROUTES)
+
+
+def test_a_self_hosted_deployment_has_no_platform_routes() -> None:
+    app = create_app()
+
+    assert _declared(app) == _expected(INSTANCE_AND_MACHINE_ROUTES)
+    assert not [path for path in app.openapi()["paths"] if path.startswith("/api/platform")]
+
+
+def test_platform_routes_stay_out_of_the_public_openapi_even_when_managed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    public = _managed_app(monkeypatch).openapi()
+
+    assert not [path for path in public["paths"] if path.startswith("/api/platform")]
+    assert "platform" not in {
+        tag for operation in _operations(public) for tag in operation.get("tags", [])
+    }
+
+
+def test_the_platform_document_describes_exactly_the_platform_routes() -> None:
+    document = build_platform_openapi("test")
+
+    described = {
+        (method.upper(), path)
+        for path, operations in document["paths"].items()
+        for method in operations
+    }
+    assert described == set(PLATFORM_ROUTES)
+    assert document["info"]["title"] == "Atlas platform API"
+
+
+def test_every_action_except_the_visibility_check_guards_at_least_one_route(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guarded = {
+        action for actions in _declared(_managed_app(monkeypatch)).values() for action in actions
+    }
 
     assert set(Action) - guarded == {Action.RUNS_VIEW_ALL}
+
+
+def _operations(document: dict[str, object]) -> list[dict[str, list[str]]]:
+    paths = document["paths"]
+    assert isinstance(paths, dict)
+    return [operation for operations in paths.values() for operation in operations.values()]

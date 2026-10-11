@@ -6,7 +6,7 @@ import {
   AdminPageShell,
   AdminStatusBadge,
   type AdminIndicatorTone,
-} from "./admin-portal";
+} from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import type { AdminDashboardSummary } from "./admin-dashboard.functions";
 
 interface AdminDashboardViewProps {
@@ -16,6 +16,25 @@ interface AdminDashboardViewProps {
   summary?: AdminDashboardSummary;
 }
 
+interface DashboardHealthPanelProps {
+  apiTone: AdminIndicatorTone;
+  discoveryTone: AdminIndicatorTone;
+  errorMessage?: string;
+  isLoading: boolean;
+  summary?: AdminDashboardSummary;
+}
+
+interface AdminActionLinkProps {
+  detail: string;
+  href: string;
+  label: string;
+}
+
+/**
+ * The instance operator's start page: this instance's health and its
+ * editorial queues. Platform work (discounts, cloud costs) happens in the
+ * Atlas platform admin, not here.
+ */
 export function AdminDashboardView({
   showWaitlist = false,
   errorMessage,
@@ -24,26 +43,24 @@ export function AdminDashboardView({
 }: AdminDashboardViewProps) {
   const apiTone = summary?.api.status === "ok" ? "pass" : "block";
   const discoveryTone = summary && summary.discovery.failed_jobs > 0 ? "warn" : "pass";
-  const costTone = summary ? postureTone(summary.cloud_costs.posture) : "neutral";
 
   return (
     <AdminPageShell>
       <AdminPageHeader
         badge="Operator portal"
         title="Admin"
-        description="Service posture, review queues, and cost guardrails for Atlas operators."
+        description="Service health and editorial review queues for this Atlas instance."
       />
 
       <section className="space-y-3">
         <div className="flex flex-col gap-1">
           <h2 className="type-title-large text-ink-strong">Service health</h2>
           <p className="type-body-small text-ink-soft">
-            Signals from existing runtime health, discovery pipeline, and cost guardrails.
+            Signals from the API's runtime health and the discovery pipeline.
           </p>
         </div>
         <DashboardHealthPanel
           apiTone={apiTone}
-          costTone={costTone}
           discoveryTone={discoveryTone}
           errorMessage={errorMessage}
           isLoading={isLoading}
@@ -57,38 +74,22 @@ export function AdminDashboardView({
             href="/admin/waitlist"
             label="Review paid access waitlist"
             detail="Review requests, invite people, and follow their signup."
-            tone="neutral"
           />
         ) : null}
         <AdminActionLink
           href="/admin/corrections"
           label="Review visitor corrections"
           detail="Read private profile and source reports, correct public facts, and close resolved concerns."
-          tone="warn"
         />
         <AdminActionLink
           href="/admin/discovery-reviews"
           label="Review discovered profiles"
           detail="Check proposed public facts against their sources before publishing."
-          tone="warn"
         />
         <AdminActionLink
           href="/admin/profile-claims"
           label="Review profile verifications"
           detail="Confirm representative access with source-backed evidence."
-          tone="warn"
-        />
-        <AdminActionLink
-          href="/admin/discounts"
-          label="Review discounts"
-          detail="Resolve submitted access discount requests."
-          tone="neutral"
-        />
-        <AdminActionLink
-          href="/admin/cloud-costs"
-          label="Inspect cloud costs"
-          detail="Check spend, deployment guardrails, and accounting gaps."
-          tone={costTone}
         />
       </section>
     </AdminPageShell>
@@ -97,24 +98,16 @@ export function AdminDashboardView({
 
 function DashboardHealthPanel({
   apiTone,
-  costTone,
   discoveryTone,
   errorMessage,
   isLoading,
   summary,
-}: {
-  apiTone: AdminIndicatorTone;
-  costTone: AdminIndicatorTone;
-  discoveryTone: AdminIndicatorTone;
-  errorMessage?: string;
-  isLoading: boolean;
-  summary?: AdminDashboardSummary;
-}) {
+}: DashboardHealthPanelProps) {
   if (errorMessage || !summary) {
     return (
       <div className="space-y-3">
         <AdminInlineStatus message={errorMessage} />
-        <div className="grid gap-4 md:grid-cols-3" aria-busy={isLoading}>
+        <div className="grid gap-4 md:grid-cols-2" aria-busy={isLoading}>
           <AdminIndicatorPlaceholderCard label="API" detail="Runtime health endpoint" />
           <AdminIndicatorPlaceholderCard
             label="Discovery pipeline"
@@ -125,14 +118,13 @@ function DashboardHealthPanel({
               </span>
             }
           />
-          <AdminIndicatorPlaceholderCard label="Cloud costs" detail="Rolling discovery spend" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2">
       <AdminIndicatorCard
         label="API"
         value={summary.api.status === "ok" ? "Healthy" : "Degraded"}
@@ -150,27 +142,12 @@ function DashboardHealthPanel({
         }
         tone={discoveryTone}
       />
-      <AdminIndicatorCard
-        label="Cloud costs"
-        value={formatCostUsage(summary)}
-        detail="Rolling discovery spend"
-        tone={costTone}
-      />
     </div>
   );
 }
 
-function AdminActionLink({
-  detail,
-  href,
-  label,
-  tone,
-}: {
-  detail: string;
-  href: string;
-  label: string;
-  tone: AdminIndicatorTone;
-}) {
+/** A link to one editorial review queue. */
+function AdminActionLink({ detail, href, label }: AdminActionLinkProps) {
   return (
     <a
       href={href}
@@ -179,47 +156,9 @@ function AdminActionLink({
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="type-title-small text-ink-strong">{label}</h3>
-        <AdminStatusBadge tone={tone}>{statusLabel(tone)}</AdminStatusBadge>
+        <AdminStatusBadge tone="warn">Review</AdminStatusBadge>
       </div>
       <p className="type-body-small text-ink-soft mt-2">{detail}</p>
     </a>
   );
-}
-
-function formatCostUsage(summary: AdminDashboardSummary) {
-  return `${formatUsd(summary.cloud_costs.discovery_spend.estimated_daily_usd)} of ${formatUsd(
-    summary.cloud_costs.discovery_spend.daily_ceiling_usd,
-  )}`;
-}
-
-function postureTone(posture: AdminDashboardSummary["cloud_costs"]["posture"]): AdminIndicatorTone {
-  if (posture === "pass") {
-    return "pass";
-  }
-  if (posture === "warn") {
-    return "warn";
-  }
-  return "block";
-}
-
-function statusLabel(tone: AdminIndicatorTone) {
-  if (tone === "pass") {
-    return "Current";
-  }
-  if (tone === "warn") {
-    return "Review";
-  }
-  if (tone === "block") {
-    return "Blocked";
-  }
-  return "Open";
-}
-
-function formatUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    currency: "USD",
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-    style: "currency",
-  }).format(value);
 }

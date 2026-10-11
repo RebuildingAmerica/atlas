@@ -67,6 +67,28 @@ def _require_parseable_machine_issuers(settings: Settings) -> None:
         raise RuntimeError(str(exc)) from exc
 
 
+def _require_valid_access_config(settings: Settings) -> None:
+    """Refuse to start with Cloudflare Access settings that are half-set or malformed.
+
+    Parameters
+    ----------
+    settings
+        Loaded application settings.
+
+    Raises
+    ------
+    RuntimeError
+        If ``ATLAS_ACCESS_TEAM_DOMAIN`` or ``ATLAS_ACCESS_AUD`` is set but invalid.
+    """
+    # Imported here: the access domain imports this module's settings.
+    from atlas.domains.access.cloudflare_access import parse_access_config
+
+    try:
+        parse_access_config(settings.access_team_domain, settings.access_aud)
+    except ValueError as exc:
+        raise RuntimeError(str(exc)) from exc
+
+
 def validate_runtime_auth_config(settings: Settings) -> None:
     """Fail fast when an instance with accounts is missing required config.
 
@@ -88,6 +110,7 @@ def validate_runtime_auth_config(settings: Settings) -> None:
     """
     _refuse_identity_harness_outside_staging(settings)
     _require_parseable_machine_issuers(settings)
+    _require_valid_access_config(settings)
     if not settings.multi_user:
         return
     if not settings.auth_jwt_audience:
