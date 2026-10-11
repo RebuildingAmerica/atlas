@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from urllib.parse import urlsplit
 
+from atlas.domains.moderation.takedowns import EntryTakedownCRUD
 from atlas.platform.database import db
 from atlas.platform.dates import coerce_date, row_timestamp_string
 
@@ -74,6 +75,7 @@ STALE_SOURCE_REVIEW_DAYS = 365
 STALE_SOURCE_REVIEW_KIND = "source_staleness"
 STALE_SOURCE_REVIEW_REASON = "stale_public_source_review"
 EDITORIAL_CANDIDATE_REASON = "editorial_candidate"
+TAKEN_DOWN_DETAIL = "This profile was taken down. Restore it before publishing anything for it."
 # Holds that a later resolution of the same entity may lift. A possible
 # duplicate and a stale public source are left for a person to close.
 RESOLVABLE_HOLD_REASONS = frozenset(
@@ -513,6 +515,8 @@ class ReviewQueueCRUD:
                 conn, item_id, "approved", reviewed_by, reviewed_at=reviewed_at
             )
             return
+        if await EntryTakedownCRUD.is_taken_down(conn, item.entity_id):
+            raise ReviewConflictError(TAKEN_DOWN_DETAIL)
         if item.hold_reason == EDITORIAL_CANDIDATE_REASON:
             await ReviewQueueCRUD._validate_editorial_candidate(conn, item)
         elif item.proposed_changes is not None:
@@ -844,8 +848,9 @@ class ReviewQueueCRUD:
         resolution can decide is closed as approved by ``registry``.
 
         Nothing changes when a curator rejected the record, because a human
-        decision outranks later automated evidence, or when a possible
-        duplicate is pending, because merging is a reviewer's decision.
+        decision outranks later automated evidence, when a possible duplicate
+        is pending, because merging is a reviewer's decision, or when an editor
+        took the profile down.
 
         Parameters
         ----------
@@ -859,6 +864,8 @@ class ReviewQueueCRUD:
         bool
             True when the entry was published.
         """
+        if await EntryTakedownCRUD.is_taken_down(conn, entity_id):
+            return False
         cursor = await conn.execute(
             """
             SELECT 1 FROM review_queue

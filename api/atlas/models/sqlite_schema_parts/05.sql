@@ -40,3 +40,23 @@ CREATE TABLE IF NOT EXISTS scout_worker_revocations (
     revoked_at TEXT NOT NULL,
     PRIMARY KEY (worker_id, user_id)
 );
+
+-- Profiles an editor took down, such as at the person's own request. While a
+-- takedown stands, nothing republishes the profile: not an approval, not a
+-- registry match, not the next discovery run. Restoring it is its own
+-- decision, recorded on the same row.
+CREATE TABLE IF NOT EXISTS entry_takedowns (
+    id TEXT PRIMARY KEY,
+    entry_id TEXT NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    entry_name TEXT NOT NULL,
+    entry_slug TEXT,
+    entry_type TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    was_active INTEGER NOT NULL CHECK (was_active IN (0, 1)),
+    taken_down_by TEXT NOT NULL,
+    taken_down_at TEXT NOT NULL,
+    restored_by TEXT,
+    restored_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_entry_takedowns_standing
+    ON entry_takedowns(entry_id) WHERE restored_at IS NULL;

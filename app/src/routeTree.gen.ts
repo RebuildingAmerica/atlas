@@ -82,6 +82,7 @@ import { Route as WorkspaceEditorialCorrectionsRouteImport } from './routes/_wor
 import { Route as WorkspaceEditorialDiscoveryReviewsRouteImport } from './routes/_workspace/editorial/discovery-reviews'
 import { Route as WorkspaceEditorialProfileClaimsRouteImport } from './routes/_workspace/editorial/profile-claims'
 import { Route as WorkspaceEditorialSchedulesRouteImport } from './routes/_workspace/editorial/schedules'
+import { Route as WorkspaceEditorialTakedownsRouteImport } from './routes/_workspace/editorial/takedowns'
 import { Route as WorkspaceEditorialWaitlistRouteImport } from './routes/_workspace/editorial/waitlist'
 import { Route as WorkspaceListsIndexRouteImport } from './routes/_workspace/lists/index'
 import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists/$id'
@@ -492,6 +493,12 @@ const WorkspaceEditorialSchedulesRoute =
     path: '/schedules',
     getParentRoute: () => WorkspaceEditorialRoute,
   } as any)
+const WorkspaceEditorialTakedownsRoute =
+  WorkspaceEditorialTakedownsRouteImport.update({
+    id: '/takedowns',
+    path: '/takedowns',
+    getParentRoute: () => WorkspaceEditorialRoute,
+  } as any)
 const WorkspaceEditorialWaitlistRoute =
   WorkspaceEditorialWaitlistRouteImport.update({
     id: '/waitlist',
@@ -753,6 +760,7 @@ export interface FileRoutesByFullPath {
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
+  '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
   '/editorial/waitlist': typeof WorkspaceEditorialWaitlistRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
@@ -853,6 +861,7 @@ export interface FileRoutesByTo {
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
+  '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
   '/editorial/waitlist': typeof WorkspaceEditorialWaitlistRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
@@ -964,6 +973,7 @@ export interface FileRoutesById {
   '/_workspace/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
   '/_workspace/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/_workspace/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
+  '/_workspace/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
   '/_workspace/editorial/waitlist': typeof WorkspaceEditorialWaitlistRoute
   '/_workspace/lists/$id': typeof WorkspaceListsIdRoute
   '/_workspace/manage/$slug': typeof WorkspaceManageSlugRoute
@@ -1072,6 +1082,7 @@ export interface FileRouteTypes {
     | '/editorial/discovery-reviews'
     | '/editorial/profile-claims'
     | '/editorial/schedules'
+    | '/editorial/takedowns'
     | '/editorial/waitlist'
     | '/lists/$id'
     | '/manage/$slug'
@@ -1172,6 +1183,7 @@ export interface FileRouteTypes {
     | '/editorial/discovery-reviews'
     | '/editorial/profile-claims'
     | '/editorial/schedules'
+    | '/editorial/takedowns'
     | '/editorial/waitlist'
     | '/lists/$id'
     | '/manage/$slug'
@@ -1282,6 +1294,7 @@ export interface FileRouteTypes {
     | '/_workspace/editorial/discovery-reviews'
     | '/_workspace/editorial/profile-claims'
     | '/_workspace/editorial/schedules'
+    | '/_workspace/editorial/takedowns'
     | '/_workspace/editorial/waitlist'
     | '/_workspace/lists/$id'
     | '/_workspace/manage/$slug'
@@ -1880,6 +1893,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceEditorialSchedulesRouteImport
       parentRoute: typeof WorkspaceEditorialRoute
     }
+    '/_workspace/editorial/takedowns': {
+      id: '/_workspace/editorial/takedowns'
+      path: '/takedowns'
+      fullPath: '/editorial/takedowns'
+      preLoaderRoute: typeof WorkspaceEditorialTakedownsRouteImport
+      parentRoute: typeof WorkspaceEditorialRoute
+    }
     '/_workspace/editorial/waitlist': {
       id: '/_workspace/editorial/waitlist'
       path: '/waitlist'
@@ -2297,6 +2317,7 @@ interface WorkspaceEditorialRouteChildren {
   WorkspaceEditorialDiscoveryReviewsRoute: typeof WorkspaceEditorialDiscoveryReviewsRoute
   WorkspaceEditorialProfileClaimsRoute: typeof WorkspaceEditorialProfileClaimsRoute
   WorkspaceEditorialSchedulesRoute: typeof WorkspaceEditorialSchedulesRoute
+  WorkspaceEditorialTakedownsRoute: typeof WorkspaceEditorialTakedownsRoute
   WorkspaceEditorialWaitlistRoute: typeof WorkspaceEditorialWaitlistRoute
   WorkspaceEditorialIndexRoute: typeof WorkspaceEditorialIndexRoute
 }
@@ -2307,6 +2328,7 @@ const WorkspaceEditorialRouteChildren: WorkspaceEditorialRouteChildren = {
     WorkspaceEditorialDiscoveryReviewsRoute,
   WorkspaceEditorialProfileClaimsRoute: WorkspaceEditorialProfileClaimsRoute,
   WorkspaceEditorialSchedulesRoute: WorkspaceEditorialSchedulesRoute,
+  WorkspaceEditorialTakedownsRoute: WorkspaceEditorialTakedownsRoute,
   WorkspaceEditorialWaitlistRoute: WorkspaceEditorialWaitlistRoute,
   WorkspaceEditorialIndexRoute: WorkspaceEditorialIndexRoute,
 }
