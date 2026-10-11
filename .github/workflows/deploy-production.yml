@@ -274,15 +274,22 @@ jobs:
   # configured: without ATLAS_ADMIN_PUBLIC_URL there is no platform admin.
   deploy-admin:
     needs: deploy
-    if: vars.ATLAS_ADMIN_PUBLIC_URL != ''
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
+      # Environment variables are available only after this job starts.
+      # Evaluate the optional admin deployment here so configured operators
+      # receive the administration surface after a release.
+      - name: Report unconfigured platform admin
+        if: vars.ATLAS_ADMIN_PUBLIC_URL == ''
+        run: echo 'Platform admin was not deployed because ATLAS_ADMIN_PUBLIC_URL is unset.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        if: vars.ATLAS_ADMIN_PUBLIC_URL != ''
       - uses: ./.github/actions/deploy-atlas-admin
+        if: vars.ATLAS_ADMIN_PUBLIC_URL != ''
         with:
           environment-name: production
           cloudflare-api-token: ${{ secrets.CLOUDFLARE_ADMIN_DEPLOY_TOKEN }}

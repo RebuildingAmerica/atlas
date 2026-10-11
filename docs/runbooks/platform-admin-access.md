@@ -152,8 +152,10 @@ reads it from the Vercel project's environment.
 
 The next deploy then ships the API with the admin's key and Access settings, and
 `deploy-admin` builds the Worker and publishes it to
-`atlas-admin.rebuildingus.org` with `cf deploy`. The deploy job is skipped in
-any environment without `ATLAS_ADMIN_PUBLIC_URL`.
+`atlas-admin.rebuildingus.org` with `cf deploy`. The job reports an unconfigured
+admin and skips its deployment steps in any environment without
+`ATLAS_ADMIN_PUBLIC_URL`. Its condition runs inside the job, after GitHub makes
+Environment variables available.
 
 Check it from a laptop:
 
