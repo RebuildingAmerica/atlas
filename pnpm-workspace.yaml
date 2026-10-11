@@ -124,3 +124,6 @@ allowBuilds:
   # Cloudflare's Workers runtime; its install step selects the platform binary
   # the platform admin's Vite plugin runs locally.
   workerd: true
+
+patchedDependencies:
+  better-auth@1.6.23: patches/better-auth@1.6.23.patch

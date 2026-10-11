@@ -1,0 +1,13 @@
+diff --git a/dist/api/rate-limiter/index.mjs b/dist/api/rate-limiter/index.mjs
+index c00df70bb1a2b40293c79c4f942b2f63902ade6a..a620349f41dcbdc670665ba6bcff126dbc868b09 100644
+--- a/dist/api/rate-limiter/index.mjs
++++ b/dist/api/rate-limiter/index.mjs
+@@ -71,7 +71,7 @@ function rateLimitResponse(retryAfter) {
+ function getRetryAfter(lastRequest, window) {
+ 	const now = Date.now();
+ 	const windowInMs = window * 1e3;
+-	return Math.ceil((lastRequest + windowInMs - now) / 1e3);
++	return Math.ceil((Number(lastRequest) + windowInMs - now) / 1e3);
+ }
+ function createDatabaseStorageWrapper(ctx) {
+ 	const model = "rateLimit";

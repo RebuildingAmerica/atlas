@@ -28,6 +28,7 @@ WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY app/package.json app/package.json
 COPY packages packages
+COPY patches patches
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile --filter @rebuildingamerica/atlas-app...

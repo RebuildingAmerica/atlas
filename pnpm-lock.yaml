@@ -233,6 +233,9 @@ overrides:
   react-dom: 19.2.7
   sharp: 0.34.5
 
+patchedDependencies:
+  better-auth@1.6.23: 66a9465a72fddb2604a3d05acde6ae1f1eaea5517689b1ef75ec506fa1f76a70
+
 importers:
 
   .:
