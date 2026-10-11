@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from atlas.platform import openapi as openapi_module
+from atlas.platform.http.platform_router import build_platform_openapi
 
 STATUS_OK = HTTPStatus.OK
 MIN_OPERATION_DESCRIPTION_LENGTH = 140
@@ -134,10 +135,11 @@ async def test_openapi_uses_explicit_metadata_for_health_and_access_routes(
     health_operation = payload["paths"]["/health"]["get"]
     auth_health_operation = payload["paths"]["/api/auth/health"]["get"]
     verify_discount_operation = payload["paths"]["/api/access/verify-discount"]["post"]
-    list_verifications_operation = payload["paths"]["/api/admin/verifications"]["get"]
-    update_verification_operation = payload["paths"]["/api/admin/verifications/{verification_id}"][
-        "patch"
-    ]
+    platform_paths = build_platform_openapi("test")["paths"]
+    list_verifications_operation = platform_paths["/api/platform/discount-verifications"]["get"]
+    update_verification_operation = platform_paths[
+        "/api/platform/discount-verifications/{verification_id}"
+    ]["patch"]
 
     assert health_operation["operationId"] == "getHealth"
     assert health_operation["tags"] == ["health"]
@@ -151,20 +153,18 @@ async def test_openapi_uses_explicit_metadata_for_health_and_access_routes(
     assert "Args:" not in verify_discount_operation["description"]
 
     assert list_verifications_operation["operationId"] == "listVerifications"
-    assert list_verifications_operation["tags"] == ["access"]
+    assert list_verifications_operation["tags"] == ["platform"]
     assert [parameter["name"] for parameter in list_verifications_operation["parameters"]] == [
         "organization_id",
         "status",
         "segment",
-        "x-api-key",
     ]
     assert "Args:" not in list_verifications_operation["description"]
 
     assert update_verification_operation["operationId"] == "updateVerification"
-    assert update_verification_operation["tags"] == ["access"]
+    assert update_verification_operation["tags"] == ["platform"]
     assert [parameter["name"] for parameter in update_verification_operation["parameters"]] == [
         "verification_id",
-        "x-api-key",
     ]
     assert "Args:" not in update_verification_operation["description"]
 

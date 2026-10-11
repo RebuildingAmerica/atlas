@@ -190,6 +190,7 @@ jobs:
           elif [ "$RUN_APP_TESTS" = "true" ]; then
             pnpm exec turbo run test \
               --filter='@rebuildingamerica/atlas-app...' \
+              --filter='@rebuildingamerica/atlas-admin...' \
               --filter='@rebuildingamerica/entity-widgets-mcp' \
               "${affected_args[@]}"
           fi

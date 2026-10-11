@@ -18,6 +18,8 @@ import { hasAccounts } from "@/platform/config/deployment";
  * server.
  */
 export interface AuthRuntimeConfig {
+  /** The Atlas platform admin's origin; null when this deployment has none. */
+  adminPublicUrl: string | null;
   authJwtAudience: string | null;
   authJwtAudiences: readonly string[];
   apiKeyIntrospectionUrl: string | null;
@@ -187,6 +189,23 @@ function resolveApiBaseUrl(env: NodeJS.ProcessEnv): string | null {
   );
 }
 
+/**
+ * The Atlas platform admin's origin, where discount requests are reviewed.
+ * Null outside a managed deployment, which has no platform admin.
+ */
+function resolveAdminPublicUrl(env: NodeJS.ProcessEnv): string | null {
+  const configuredUrl = env.ATLAS_ADMIN_PUBLIC_URL?.trim();
+  if (!configuredUrl) {
+    return null;
+  }
+
+  const adminUrl = parseAbsoluteUrl(configuredUrl, "ATLAS_ADMIN_PUBLIC_URL");
+  if (adminUrl.protocol !== "https:") {
+    throw new Error("ATLAS_ADMIN_PUBLIC_URL must use https.");
+  }
+  return adminUrl.origin;
+}
+
 function resolveAtprotoPdsUrl(env: NodeJS.ProcessEnv): string | null {
   const configuredUrl = env.ATLAS_PDS_PUBLIC_URL?.trim();
   if (!configuredUrl) {
@@ -248,6 +267,7 @@ export function resolveAuthRuntimeConfig(env: NodeJS.ProcessEnv, cwd: string): A
   const authJwtAudiences = normalizeStringList(env.ATLAS_AUTH_JWT_AUDIENCES);
 
   return {
+    adminPublicUrl: resolveAdminPublicUrl(env),
     authJwtAudience: authJwtAudiences[0] ?? null,
     authJwtAudiences,
     apiBaseUrl: resolveApiBaseUrl(env),

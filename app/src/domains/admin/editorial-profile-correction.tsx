@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import { Input } from "@rebuildingamerica/atlas-ui/ui/input";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
-import { AdminInlineStatus } from "./admin-portal";
+import { AdminInlineStatus } from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import {
   loadEditorialProfile,
   searchEditorialProfiles,

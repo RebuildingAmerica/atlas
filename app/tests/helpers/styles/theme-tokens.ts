@@ -35,8 +35,19 @@ export const REQUIRED_COLOR_TOKENS = [
 
 const helperDir = dirname(fileURLToPath(import.meta.url));
 
+const RELATIVE_IMPORT = /^@import "(\.{1,2}\/[^"]+\.css)";$/gm;
+
+/**
+ * Returns the app's stylesheet as the browser receives it: `app.css` with its
+ * relative imports inlined, including the design tokens shared with the
+ * platform admin from `packages/atlas-ui`.
+ */
 export function readAppCss(): string {
-  return readFileSync(resolve(helperDir, "../../../src/styles/app.css"), "utf8");
+  const appCssPath = resolve(helperDir, "../../../src/styles/app.css");
+  const appCss = readFileSync(appCssPath, "utf8");
+  return appCss.replace(RELATIVE_IMPORT, (_line, importPath: string) =>
+    readFileSync(resolve(dirname(appCssPath), importPath), "utf8"),
+  );
 }
 
 export function darkModeBlock(appCss: string): string | undefined {

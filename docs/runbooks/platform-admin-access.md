@@ -108,13 +108,70 @@ To check the live setup later without changing anything:
 pnpm bootstrap --access-gate --doctor
 ```
 
+## 6. Make the admin's signing key
+
+The admin app proves itself to the API with an Ed25519 key. Make one per
+environment:
+
+```bash
+pnpm bootstrap --admin-keys --target staging
+```
+
+```bash
+pnpm bootstrap --admin-keys --target prod
+```
+
+Each run stores the private key as the GitHub Environment secret
+`ATLAS_ADMIN_SIGNING_KEY` (handed to `gh` on stdin, never written down) and the
+public key as the Environment variable `ATLAS_ADMIN_SIGNING_PUBLIC_KEY`, which
+the API deploy trusts for platform actions only. Running it again rotates the
+key: redeploy the API, then the admin, so the API trusts the new key before the
+admin signs with it.
+
+## 7. Set the deploy values and deploy
+
+In each GitHub Environment (`staging`, `production`), set these. The Access
+values and operator list are the ones the earlier steps produced.
+
+| Kind     | Name                             | Value                                                |
+| -------- | -------------------------------- | ---------------------------------------------------- |
+| Variable | `ATLAS_ADMIN_PUBLIC_URL`         | `https://atlas-admin.rebuildingus.org`               |
+| Variable | `ATLAS_PLATFORM_API_URL`         | The API origin the admin calls                       |
+| Variable | `ATLAS_ACCESS_TEAM_DOMAIN`       | From step 5                                          |
+| Variable | `ATLAS_ACCESS_AUD`               | From step 5                                          |
+| Variable | `ATLAS_PLATFORM_OPERATOR_EMAILS` | `willie@rebuildingus.org`                            |
+| Variable | `CLOUDFLARE_ACCOUNT_ID`          | The Rebuilding America account's ID                  |
+| Secret   | `CLOUDFLARE_ADMIN_DEPLOY_TOKEN`  | Workers Scripts Edit + Workers Routes Edit, one zone |
+| Secret   | `ATLAS_ADMIN_SIGNING_KEY`        | Set by step 6                                        |
+| Variable | `ATLAS_ADMIN_SIGNING_PUBLIC_KEY` | Set by step 6                                        |
+
+Set `ATLAS_ADMIN_PUBLIC_URL` in the Atlas app's Vercel project too: the app
+links new discount requests there and redirects its old `/admin/discounts` and
+`/admin/cloud-costs` pages there. Production sets it on each deploy; staging
+reads it from the Vercel project's environment.
+
+The next deploy then ships the API with the admin's key and Access settings, and
+`deploy-admin` builds the Worker and publishes it to
+`atlas-admin.rebuildingus.org` with `cf deploy`. The deploy job is skipped in
+any environment without `ATLAS_ADMIN_PUBLIC_URL`.
+
+Check it from a laptop:
+
+- `https://atlas-admin.rebuildingus.org` sends you to Google, then shows the
+  admin.
+- A request without the Access cookie, or with a made-up
+  `Cf-Access-Jwt-Assertion` header, gets 403 from the Worker itself.
+- There is no `atlas-admin.<subdomain>.workers.dev` address.
+- `https://atlas.rebuildingus.org/admin/discounts` redirects to the admin.
+
 ## Removing someone
 
 Remove their address from `ATLAS_PLATFORM_OPERATOR_EMAILS`, run
-`pnpm bootstrap --access-gate`, and redeploy the admin app so its own allowlist
-drops them too. Access re-checks people only when they sign in, so also revoke
-their current session: Cloudflare One → Team & Resources → Users → the person →
-Revoke session. Without that, they keep access until their 8 hour session ends.
+`pnpm bootstrap --access-gate`, and redeploy the API and the admin so both of
+their own allowlists drop them too. Access re-checks people only when they sign
+in, so also revoke their current session: Cloudflare One → Team & Resources →
+Users → the person → Revoke session. Without that, they keep access until their
+8 hour session ends.
 
 ## When Google sign-in is unavailable
 

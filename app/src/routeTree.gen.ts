@@ -72,9 +72,7 @@ import { Route as PublicProfilesOrganizationsRouteImport } from './routes/_publi
 import { Route as PublicProfilesPeopleRouteImport } from './routes/_public/profiles/people'
 import { Route as PublicReportsReportIdRouteImport } from './routes/_public/reports/$reportId'
 import { Route as WorkspaceAdminIndexRouteImport } from './routes/_workspace/admin/index'
-import { Route as WorkspaceAdminCloudCostsRouteImport } from './routes/_workspace/admin/cloud-costs'
 import { Route as WorkspaceAdminCorrectionsRouteImport } from './routes/_workspace/admin/corrections'
-import { Route as WorkspaceAdminDiscountsRouteImport } from './routes/_workspace/admin/discounts'
 import { Route as WorkspaceAdminDiscoveryReviewsRouteImport } from './routes/_workspace/admin/discovery-reviews'
 import { Route as WorkspaceAdminProfileClaimsRouteImport } from './routes/_workspace/admin/profile-claims'
 import { Route as WorkspaceAdminWaitlistRouteImport } from './routes/_workspace/admin/waitlist'
@@ -111,6 +109,7 @@ import { Route as ApiAtprotoOauthClientMetadataDotjsonRouteImport } from './rout
 import { Route as ApiAtprotoOauthStartRouteImport } from './routes/api/atproto/oauth/start'
 import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/sign-in/start'
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
+import { Route as ApiAuthInternalDiscountReviewResultsRouteImport } from './routes/api/auth/internal/discount-review-results'
 import { Route as ApiE2eHostedBillingInventoryRouteImport } from './routes/api/e2e/hosted/billing-inventory'
 import { Route as ApiE2eHostedIdentityRouteImport } from './routes/api/e2e/hosted/identity'
 import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
@@ -436,23 +435,12 @@ const WorkspaceAdminIndexRoute = WorkspaceAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => WorkspaceRoute,
 } as any)
-const WorkspaceAdminCloudCostsRoute =
-  WorkspaceAdminCloudCostsRouteImport.update({
-    id: '/admin/cloud-costs',
-    path: '/admin/cloud-costs',
-    getParentRoute: () => WorkspaceRoute,
-  } as any)
 const WorkspaceAdminCorrectionsRoute =
   WorkspaceAdminCorrectionsRouteImport.update({
     id: '/admin/corrections',
     path: '/admin/corrections',
     getParentRoute: () => WorkspaceRoute,
   } as any)
-const WorkspaceAdminDiscountsRoute = WorkspaceAdminDiscountsRouteImport.update({
-  id: '/admin/discounts',
-  path: '/admin/discounts',
-  getParentRoute: () => WorkspaceRoute,
-} as any)
 const WorkspaceAdminDiscoveryReviewsRoute =
   WorkspaceAdminDiscoveryReviewsRouteImport.update({
     id: '/admin/discovery-reviews',
@@ -655,6 +643,12 @@ const ApiAuthInternalApiKeyRoute = ApiAuthInternalApiKeyRouteImport.update({
   path: '/api/auth/internal/api-key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthInternalDiscountReviewResultsRoute =
+  ApiAuthInternalDiscountReviewResultsRouteImport.update({
+    id: '/api/auth/internal/discount-review-results',
+    path: '/api/auth/internal/discount-review-results',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiE2eHostedBillingInventoryRoute =
   ApiE2eHostedBillingInventoryRouteImport.update({
     id: '/api/e2e/hosted/billing-inventory',
@@ -737,9 +731,7 @@ export interface FileRoutesByFullPath {
   '/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/reports/$reportId': typeof PublicReportsReportIdRoute
-  '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
-  '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/admin/waitlist': typeof WorkspaceAdminWaitlistRoute
@@ -781,6 +773,7 @@ export interface FileRoutesByFullPath {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -837,9 +830,7 @@ export interface FileRoutesByTo {
   '/feedback/$slug': typeof PublicFeedbackSlugRoute
   '/places/$placeSlug': typeof PublicPlacesPlaceSlugRoute
   '/reports/$reportId': typeof PublicReportsReportIdRoute
-  '/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
-  '/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/admin/waitlist': typeof WorkspaceAdminWaitlistRoute
@@ -881,6 +872,7 @@ export interface FileRoutesByTo {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -947,9 +939,7 @@ export interface FileRoutesById {
   '/_public/profiles/organizations': typeof PublicProfilesOrganizationsRouteWithChildren
   '/_public/profiles/people': typeof PublicProfilesPeopleRouteWithChildren
   '/_public/reports/$reportId': typeof PublicReportsReportIdRoute
-  '/_workspace/admin/cloud-costs': typeof WorkspaceAdminCloudCostsRoute
   '/_workspace/admin/corrections': typeof WorkspaceAdminCorrectionsRoute
-  '/_workspace/admin/discounts': typeof WorkspaceAdminDiscountsRoute
   '/_workspace/admin/discovery-reviews': typeof WorkspaceAdminDiscoveryReviewsRoute
   '/_workspace/admin/profile-claims': typeof WorkspaceAdminProfileClaimsRoute
   '/_workspace/admin/waitlist': typeof WorkspaceAdminWaitlistRoute
@@ -991,6 +981,7 @@ export interface FileRoutesById {
   '/api/atproto/oauth/start': typeof ApiAtprotoOauthStartRoute
   '/api/atproto/sign-in/start': typeof ApiAtprotoSignInStartRoute
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
+  '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -1054,9 +1045,7 @@ export interface FileRouteTypes {
     | '/profiles/organizations'
     | '/profiles/people'
     | '/reports/$reportId'
-    | '/admin/cloud-costs'
     | '/admin/corrections'
-    | '/admin/discounts'
     | '/admin/discovery-reviews'
     | '/admin/profile-claims'
     | '/admin/waitlist'
@@ -1098,6 +1087,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/auth/internal/discount-review-results'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1154,9 +1144,7 @@ export interface FileRouteTypes {
     | '/feedback/$slug'
     | '/places/$placeSlug'
     | '/reports/$reportId'
-    | '/admin/cloud-costs'
     | '/admin/corrections'
-    | '/admin/discounts'
     | '/admin/discovery-reviews'
     | '/admin/profile-claims'
     | '/admin/waitlist'
@@ -1198,6 +1186,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/auth/internal/discount-review-results'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1263,9 +1252,7 @@ export interface FileRouteTypes {
     | '/_public/profiles/organizations'
     | '/_public/profiles/people'
     | '/_public/reports/$reportId'
-    | '/_workspace/admin/cloud-costs'
     | '/_workspace/admin/corrections'
-    | '/_workspace/admin/discounts'
     | '/_workspace/admin/discovery-reviews'
     | '/_workspace/admin/profile-claims'
     | '/_workspace/admin/waitlist'
@@ -1307,6 +1294,7 @@ export interface FileRouteTypes {
     | '/api/atproto/oauth/start'
     | '/api/atproto/sign-in/start'
     | '/api/auth/internal/api-key'
+    | '/api/auth/internal/discount-review-results'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1347,6 +1335,7 @@ export interface RootRouteChildren {
   ApiAtprotoOauthStartRoute: typeof ApiAtprotoOauthStartRoute
   ApiAtprotoSignInStartRoute: typeof ApiAtprotoSignInStartRoute
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
+  ApiAuthInternalDiscountReviewResultsRoute: typeof ApiAuthInternalDiscountReviewResultsRoute
   ApiE2eHostedBillingInventoryRoute: typeof ApiE2eHostedBillingInventoryRoute
   ApiE2eHostedIdentityRoute: typeof ApiE2eHostedIdentityRoute
   ApiE2eWorkspaceMemberRoute: typeof ApiE2eWorkspaceMemberRoute
@@ -1797,25 +1786,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceAdminIndexRouteImport
       parentRoute: typeof WorkspaceRoute
     }
-    '/_workspace/admin/cloud-costs': {
-      id: '/_workspace/admin/cloud-costs'
-      path: '/admin/cloud-costs'
-      fullPath: '/admin/cloud-costs'
-      preLoaderRoute: typeof WorkspaceAdminCloudCostsRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
     '/_workspace/admin/corrections': {
       id: '/_workspace/admin/corrections'
       path: '/admin/corrections'
       fullPath: '/admin/corrections'
       preLoaderRoute: typeof WorkspaceAdminCorrectionsRouteImport
-      parentRoute: typeof WorkspaceRoute
-    }
-    '/_workspace/admin/discounts': {
-      id: '/_workspace/admin/discounts'
-      path: '/admin/discounts'
-      fullPath: '/admin/discounts'
-      preLoaderRoute: typeof WorkspaceAdminDiscountsRouteImport
       parentRoute: typeof WorkspaceRoute
     }
     '/_workspace/admin/discovery-reviews': {
@@ -2070,6 +2045,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthInternalApiKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/internal/discount-review-results': {
+      id: '/api/auth/internal/discount-review-results'
+      path: '/api/auth/internal/discount-review-results'
+      fullPath: '/api/auth/internal/discount-review-results'
+      preLoaderRoute: typeof ApiAuthInternalDiscountReviewResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/e2e/hosted/billing-inventory': {
       id: '/api/e2e/hosted/billing-inventory'
       path: '/api/e2e/hosted/billing-inventory'
@@ -2295,9 +2277,7 @@ interface WorkspaceRouteChildren {
   WorkspaceHomeRoute: typeof WorkspaceHomeRoute
   WorkspaceOrganizationRoute: typeof WorkspaceOrganizationRouteWithChildren
   WorkspaceWatchingRoute: typeof WorkspaceWatchingRoute
-  WorkspaceAdminCloudCostsRoute: typeof WorkspaceAdminCloudCostsRoute
   WorkspaceAdminCorrectionsRoute: typeof WorkspaceAdminCorrectionsRoute
-  WorkspaceAdminDiscountsRoute: typeof WorkspaceAdminDiscountsRoute
   WorkspaceAdminDiscoveryReviewsRoute: typeof WorkspaceAdminDiscoveryReviewsRoute
   WorkspaceAdminProfileClaimsRoute: typeof WorkspaceAdminProfileClaimsRoute
   WorkspaceAdminWaitlistRoute: typeof WorkspaceAdminWaitlistRoute
@@ -2320,9 +2300,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceHomeRoute: WorkspaceHomeRoute,
   WorkspaceOrganizationRoute: WorkspaceOrganizationRouteWithChildren,
   WorkspaceWatchingRoute: WorkspaceWatchingRoute,
-  WorkspaceAdminCloudCostsRoute: WorkspaceAdminCloudCostsRoute,
   WorkspaceAdminCorrectionsRoute: WorkspaceAdminCorrectionsRoute,
-  WorkspaceAdminDiscountsRoute: WorkspaceAdminDiscountsRoute,
   WorkspaceAdminDiscoveryReviewsRoute: WorkspaceAdminDiscoveryReviewsRoute,
   WorkspaceAdminProfileClaimsRoute: WorkspaceAdminProfileClaimsRoute,
   WorkspaceAdminWaitlistRoute: WorkspaceAdminWaitlistRoute,
@@ -2387,6 +2365,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAtprotoOauthStartRoute: ApiAtprotoOauthStartRoute,
   ApiAtprotoSignInStartRoute: ApiAtprotoSignInStartRoute,
   ApiAuthInternalApiKeyRoute: ApiAuthInternalApiKeyRoute,
+  ApiAuthInternalDiscountReviewResultsRoute:
+    ApiAuthInternalDiscountReviewResultsRoute,
   ApiE2eHostedBillingInventoryRoute: ApiE2eHostedBillingInventoryRoute,
   ApiE2eHostedIdentityRoute: ApiE2eHostedIdentityRoute,
   ApiE2eWorkspaceMemberRoute: ApiE2eWorkspaceMemberRoute,
@@ -2399,11 +2379,13 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
+
+import type { createStart } from '@tanstack/react-start'
+
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
+
     router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

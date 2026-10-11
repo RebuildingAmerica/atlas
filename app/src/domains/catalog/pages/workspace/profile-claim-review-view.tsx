@@ -8,7 +8,7 @@ import {
   AdminPageHeader,
   AdminPageShell,
   AdminStatusBadge,
-} from "@/domains/admin/admin-portal";
+} from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import type { ProfileClaimResponse } from "@rebuildingamerica/atlas-api-client/generated/atlas";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
 import {

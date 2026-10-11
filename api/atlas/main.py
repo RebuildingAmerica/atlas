@@ -254,7 +254,7 @@ def create_app() -> FastAPI:
             return app.openapi()
 
     # Include API router
-    app.include_router(create_router())
+    app.include_router(create_router(managed=settings.managed))
 
     # Mount the MCP Streamable HTTP transport at /mcp. get_mcp_asgi_app()
     # already wires the bearer-token auth guard (which advertises the

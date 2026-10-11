@@ -118,7 +118,7 @@ class TestProductionConfig:
             settings.auth_api_key_introspection_url
             == "http://atlas-web:3000/api/auth/internal/api-key"
         )
-        assert settings.auth_callback_secret == "callback-secret"
+        assert settings.auth_callback_secret == "callback-secret"  # pragma: allowlist secret
         assert settings.machine_trusted_issuers == "[]"
 
     def test_database_url_uses_environment_override(self, monkeypatch: MonkeyPatch) -> None:

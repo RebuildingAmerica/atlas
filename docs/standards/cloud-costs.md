@@ -59,7 +59,9 @@ regressions. Blocking failures must be fixed before starting a costly deploy.
 
 ## Admin Visibility
 
-Operators review cost posture at `/admin/cloud-costs`.
+Operators review cost posture in the Atlas platform admin, at
+`https://atlas-admin.rebuildingus.org/cloud-costs` (the Atlas app's old
+`/admin/cloud-costs` redirects there).
 
 The page shows:
 

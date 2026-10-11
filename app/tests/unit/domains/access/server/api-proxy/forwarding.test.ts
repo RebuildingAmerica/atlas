@@ -159,8 +159,8 @@ describe("proxyAtlasApiRequest forwarding", () => {
           "X-Atlas-Actor-Assertion": "forged.assertion",
           "X-Atlas-Actor-Email": "editor@rebuildingus.org",
           "X-Atlas-Actor-Id": "user_editor",
-          "X-Atlas-Callback-Secret": "guessed",
-          "X-Atlas-Internal-Secret": "guessed",
+          "X-Atlas-Callback-Secret": "guessed", // pragma: allowlist secret
+          "X-Atlas-Internal-Secret": "guessed", // pragma: allowlist secret
           "X-Atlas-Organization-Id": "org_other",
         },
       }),

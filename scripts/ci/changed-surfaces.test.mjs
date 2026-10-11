@@ -30,6 +30,15 @@ test("ordinary app changes run browser acceptance without Stripe acceptance", ()
   assert.equal(outputs.hosted_identity, false);
 });
 
+test("platform admin changes run the app test job and nothing Python", () => {
+  const outputs = outputsFor(["admin/src/server/gate.ts"]);
+
+  assert.equal(outputs.app_tests, true);
+  assert.equal(outputs.quality, true);
+  assert.equal(outputs.python_tests, false);
+  assert.equal(outputs.staging_api_deploy, false);
+});
+
 test("shared frontend package changes use the app verification surface", () => {
   for (const file of [
     "packages/atlas-access/src/index.ts",

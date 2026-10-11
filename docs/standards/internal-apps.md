@@ -25,17 +25,30 @@ the gate did not sign.
 ## Hosting
 
 - Internal apps run as Cloudflare Workers on their own host, such as
-  `atlas-admin.rebuildingus.org`, with `custom_domain = true`.
-- `workers_dev = false` and `preview_urls = false`, so the Worker has no second
+  `atlas-admin.rebuildingus.org`, published as a custom domain (`domains` in
+  `cloudflare.config.ts`).
+- `workersDev: false` and `previewUrls: false`, so the Worker has no second
   address that skips the gate.
-- `run_worker_first` lists every protected path, because static assets are
-  served before the Worker runs.
-- `invocation_logs = false`, so URLs carrying tokens are not logged.
+- `assets.runWorkerFirst` routes every path through the Worker except the built
+  client bundle (`/*`, `!/assets/*`). Static assets are otherwise served before
+  the Worker runs, and the bundle holds code only, never data; Access still
+  gates it at the edge.
+- `observability.logs.invocationLogs: false`, so URLs carrying tokens are not
+  logged.
+- Every setting is a declared secret binding in `cloudflare.config.ts`; the
+  deploy uploads values with `cf deploy --secrets-file`. Undeclared values are
+  not visible to the Worker.
+- TanStack Start apps build through the official `@cloudflare/vite-plugin`,
+  whose output `cf deploy` reads. Nitro's Cloudflare preset writes Wrangler's
+  format, which `cf` does not deploy.
 - Vercel is not used for internal apps: Vercel advises against a proxy in front
   of it, and neither Access nor IAP can front it.
-- Deploys use the pinned `cf` CLI (`cf deploy`) from GitHub Actions with a token
-  scoped to Workers Scripts Edit and Zone Workers Routes Edit for one account
-  and zone.
+- Deploys use the `cf` CLI pinned in the workspace catalog, from GitHub Actions
+  (`.github/actions/deploy-atlas-admin`) with `CLOUDFLARE_API_TOKEN` scoped to
+  Workers Scripts Edit and Zone Workers Routes Edit for one account and zone,
+  and an explicit `CLOUDFLARE_ACCOUNT_ID`.
+- The internal app and the Atlas app never import each other. ESLint
+  (`no-restricted-imports`) and the Turbo graph contract test enforce it.
 
 ## The gate
 
@@ -122,3 +135,23 @@ A machine never becomes a staff principal. An internal app calling the Atlas API
 presents its own signed credential, verified through
 `ATLAS_MACHINE_TRUSTED_ISSUERS`, alongside the forwarded gate assertion that
 names the person it acts for.
+
+For the platform admin that means:
+
+1. The Worker signs a 60-second Ed25519 JWT (`iss` = its origin, `aud` =
+   `urn:atlas:platform-api`, `act` = the operator's email) with the
+   `ATLAS_ADMIN_SIGNING_KEY` secret. Workers have no workload identity to trade
+   for a Google token, so a key pair is the credential.
+2. It forwards the operator's `Cf-Access-Jwt-Assertion` unchanged.
+3. The API's `PlatformActionGuard` verifies the token against the admin's public
+   key, verifies the assertion against the Access team's keys with its own
+   Python verifier, requires both to name the same email, and requires that
+   email on `ATLAS_PLATFORM_OPERATOR_EMAILS`. A stolen key without a live
+   sign-in, or a sign-in without the key, gets nothing.
+4. The decision is written to the audit log under the operator's email, on the
+   `staff` plane.
+
+Platform routes (`/api/platform/*`) are mounted only when `ATLAS_MANAGED` is
+true, never appear in the public OpenAPI document, and are described in their
+own (`openapi/atlas-platform.openapi.json`), from which the admin generates its
+client.

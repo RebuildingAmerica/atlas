@@ -23,26 +23,6 @@ vi.mock("@/platform/runtime/use-hydrated", () => ({
 
 const dashboardSummary: AdminDashboardSummary = {
   api: { status: "ok" },
-  cloud_costs: {
-    billing_export: {
-      detail: "Cloud Billing BigQuery export is not connected yet.",
-      status: "not_connected",
-    },
-    discovery_spend: {
-      daily_ceiling_usd: 10,
-      estimated_daily_usd: 8,
-      kill_switch_enabled: false,
-      posture: "warn",
-      run_ceiling_usd: 5,
-    },
-    external_fixed_costs: {
-      detail: "External provider fixed costs are not configured yet.",
-      status: "not_configured",
-    },
-    generated_at: "2026-07-12T07:05:00Z",
-    guardrails: [],
-    posture: "warn",
-  },
   discovery: {
     completed_runs_total: 9,
     enabled_schedules: 2,
@@ -95,7 +75,7 @@ describe("AdminDashboardPage", () => {
     renderAdminDashboardPage();
 
     expect(screen.getByRole("heading", { name: "Admin" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Inspect cloud costs" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review visitor corrections" })).toBeInTheDocument();
     expect(await screen.findByText("Admin status could not load.")).toBeInTheDocument();
     expect(screen.getAllByText("Admin status could not load.")).toHaveLength(1);
     expect(screen.queryByText("ATLAS_API_REQUEST_FAILED")).toBeNull();
@@ -112,19 +92,9 @@ describe("AdminDashboardPage", () => {
     expect(screen.getByText("API")).toBeInTheDocument();
     expect(screen.getByText("Discovery pipeline")).toBeInTheDocument();
     expect(screen.getByText("1 failed")).toBeInTheDocument();
-    expect(screen.getByText("Cloud costs")).toBeInTheDocument();
-    expect(screen.getByText("$8.00 of $10.00")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Review profile verifications" })).toHaveAttribute(
       "href",
       "/admin/profile-claims",
-    );
-    expect(screen.getByRole("link", { name: "Review discounts" })).toHaveAttribute(
-      "href",
-      "/admin/discounts",
-    );
-    expect(screen.getByRole("link", { name: "Inspect cloud costs" })).toHaveAttribute(
-      "href",
-      "/admin/cloud-costs",
     );
     expect(mocks.loadAdminDashboardSummary).toHaveBeenCalledWith();
   });

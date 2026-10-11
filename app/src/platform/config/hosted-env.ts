@@ -1,4 +1,5 @@
 export interface HostedAtlasEnv {
+  ATLAS_ADMIN_PUBLIC_URL?: string;
   ATLAS_AUTH_JWT_AUDIENCES?: string;
   ATLAS_DOCS_URL?: string;
   ATLAS_PUBLIC_URL?: string;

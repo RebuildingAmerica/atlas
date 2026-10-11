@@ -10,7 +10,7 @@ import {
   AdminPageHeader,
   AdminInlineStatus,
   AdminIndicatorCard,
-} from "@/domains/admin/admin-portal";
+} from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 import { PRODUCT_LABELS } from "@/domains/billing/product-labels";
 import { userFacingErrorMessage } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import {

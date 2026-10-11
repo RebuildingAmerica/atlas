@@ -13,20 +13,13 @@ test.describe("admin journey", () => {
     await expect(page.getByRole("heading", { name: "Admin" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Service health" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Review profile verifications" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Review discounts" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Inspect cloud costs" })).toBeVisible();
+    // Discounts and cloud costs live in the Atlas platform admin, not here.
+    await expect(page.getByRole("link", { name: "Review discounts" })).toHaveCount(0);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Admin" })).toBeVisible();
     await expect(page.getByText("Service health")).toBeVisible();
-
-    await page.goto("/admin/discounts");
-    await expect(
-      page
-        .getByText(/Discount verifications|Loading|Discount verifications could not load/)
-        .first(),
-    ).toBeVisible();
 
     await page.goto("/oauth/consent?client_id=e2e-unknown-client");
     await expect(page.getByRole("heading", { name: /Allow access to Atlas/ })).toBeVisible();

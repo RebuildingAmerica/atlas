@@ -1,5 +1,6 @@
 packages:
   - app
+  - admin
   - api
   - scout
   - libs/*
@@ -14,6 +15,9 @@ catalog:
   "@better-auth/scim": "^1.6.23"
   "@better-auth/sso": "^1.6.23"
   "@clack/prompts": "1.7.0"
+  # Exact pins: the Cloudflare toolchain the platform admin deploys with is in
+  # beta, so upgrades are deliberate (docs/standards/internal-apps.md).
+  "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9"
   "@eslint/js": "^10.0.1"
   "@headlessui/react": "^2.2.10"
   "@openstatus/react": "^0.0.3"
@@ -52,6 +56,7 @@ catalog:
   "lucide-react": "^1.23.0"
   "maplibre-gl": "^5.24.0"
   mint: "4.2.667"
+  cf: "1.0.0-beta.5"
   nitro: "3.0.260610-beta"
   "node-gyp": "^13.0.1"
   orval: "^8.20.0"
@@ -114,3 +119,6 @@ allowBuilds:
   puppeteer: true
   sharp: true
   "vue-demi": false
+  # Cloudflare's Workers runtime; its install step selects the platform binary
+  # the platform admin's Vite plugin runs locally.
+  workerd: true

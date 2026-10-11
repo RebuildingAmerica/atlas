@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requestAtlasApi, requestAtlasService } from "@/domains/discovery/server/api-client";
-import type { CloudCostPostureResponse } from "./cloud-costs.functions";
 
 interface ApiHealthResponse {
   status: string;
@@ -18,20 +17,14 @@ interface DiscoveryPipelineSummary {
 
 export interface AdminDashboardSummary {
   api: ApiHealthResponse;
-  cloud_costs: CloudCostPostureResponse;
   discovery: DiscoveryPipelineSummary;
 }
 
 export const loadAdminDashboardSummary = createServerFn({ method: "GET" }).handler(async () => {
-  const [api, discovery, cloudCosts] = await Promise.all([
+  const [api, discovery] = await Promise.all([
     requestAtlasService<ApiHealthResponse>("/health"),
     requestAtlasApi<DiscoveryPipelineSummary>("/discovery-runs/summary"),
-    requestAtlasApi<CloudCostPostureResponse>("/admin/cloud-costs"),
   ]);
 
-  return {
-    api,
-    cloud_costs: cloudCosts,
-    discovery,
-  } satisfies AdminDashboardSummary;
+  return { api, discovery } satisfies AdminDashboardSummary;
 });

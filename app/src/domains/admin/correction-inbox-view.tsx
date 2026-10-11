@@ -1,6 +1,10 @@
 import type { CorrectionReport } from "./correction-inbox.functions";
 import { Button } from "@rebuildingamerica/atlas-ui/ui/button";
-import { AdminInlineStatus, AdminPageHeader, AdminPageShell } from "./admin-portal";
+import {
+  AdminInlineStatus,
+  AdminPageHeader,
+  AdminPageShell,
+} from "@rebuildingamerica/atlas-ui/layout/admin-portal";
 
 export interface CorrectionInboxViewProps {
   decisionError?: string;

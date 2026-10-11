@@ -300,19 +300,6 @@ export const SCREENSHOT_ROUTES = [
   // ----------------------------------------------------------------- admin
   { name: "admin", routeId: "/admin/", path: "/admin", mode: "session" },
   {
-    name: "admin-cloud-costs",
-    routeId: "/admin/cloud-costs",
-    path: "/admin/cloud-costs",
-    mode: "session",
-    note: "Posture is derived from deploy settings, not seeded rows.",
-  },
-  {
-    name: "admin-discounts",
-    routeId: "/admin/discounts",
-    path: "/admin/discounts",
-    mode: "session",
-  },
-  {
     name: "admin-discovery-reviews",
     routeId: "/admin/discovery-reviews",
     path: "/admin/discovery-reviews",
@@ -384,6 +371,7 @@ export const EXCLUDED_ROUTES = {
   "/api/health": { reason: "API route, not a page." },
   "/api/auth/$": { reason: "API route, not a page." },
   "/api/auth/internal/api-key": { reason: "API route, not a page." },
+  "/api/auth/internal/discount-review-results": { reason: "API route, not a page." },
   "/api/auth/internal/memberships/$organizationId/members/$userId": {
     reason: "API route, not a page.",
   },
