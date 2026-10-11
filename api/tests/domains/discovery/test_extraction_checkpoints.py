@@ -14,7 +14,7 @@ from .test_web_checkpoints import _claim, _settings
 
 
 def _client(monkeypatch, replies) -> tuple[AsyncMock, AsyncMock, list[dict[str, object]]]:
-    from atlas.domains.discovery.pipeline import extraction_checkpoints as extraction
+    import anthropic
 
     request = AsyncMock(side_effect=replies)
     close = AsyncMock()
@@ -31,7 +31,7 @@ def _client(monkeypatch, replies) -> tuple[AsyncMock, AsyncMock, list[dict[str, 
         async def __aexit__(self, *_args: object) -> None:
             await close()
 
-    monkeypatch.setattr(extraction, "AsyncAnthropic", Client)
+    monkeypatch.setattr(anthropic, "AsyncAnthropic", Client)
     return request, close, options
 
 
@@ -204,3 +204,20 @@ async def test_reassigned_lease_discards_late_model_output_and_replays_only_unfi
     assert "IDENTIFIED ENTITIES" in request.await_args.kwargs["messages"][0]["content"]
     cursor = await test_db.execute("SELECT COUNT(*) FROM cost_ledger")
     assert (await cursor.fetchone())[0] == 3
+
+
+def test_importing_checkpoint_module_does_not_load_model_sdk() -> None:
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import atlas.domains.discovery.pipeline.extraction_checkpoints; assert 'anthropic' not in sys.modules",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

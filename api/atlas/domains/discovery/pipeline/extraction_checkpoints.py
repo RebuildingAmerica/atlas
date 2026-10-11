@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Literal
 
-from anthropic import AsyncAnthropic
 from atlas_discovery_engine import (
     build_extraction_system_prompt,
     build_identify_system_prompt,
@@ -15,8 +14,6 @@ from atlas_discovery_engine import (
 )
 from atlas_shared import PageContent, RawEntry
 from pydantic import BaseModel, TypeAdapter
-
-from .extractor import _EXTRACTION_MODEL, _MAX_ATTEMPTS, _extract_text
 
 if TYPE_CHECKING:
     from atlas.platform.config import Settings
@@ -92,6 +89,12 @@ async def advance_source_extraction(  # noqa: PLR0913
         )
         user = page.text if identifying else _enrichment_text(progress.identified, page)
         await store.reserve(kind="llm", units=float(len(user.split())), settings=settings)
+        # Browsing source-backed profiles must not load a model SDK. Import it
+        # only for an authorized billable attempt after the budget fence.
+        from anthropic import AsyncAnthropic
+
+        from .extractor import _EXTRACTION_MODEL, _MAX_ATTEMPTS, _extract_text
+
         try:
             async with (
                 asyncio.timeout(120),
