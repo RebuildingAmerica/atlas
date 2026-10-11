@@ -129,7 +129,7 @@ test("recovery diagnostics identify only a closed failure category", () => {
       "origin-mismatch",
     ],
     [
-      JSON.stringify({ ...reply, brokerSecret: "synthetic private value" }),
+      JSON.stringify({ ...reply, brokerSecret: "synthetic private value" }), // pragma: allowlist secret - synthetic invalid credential
       "invalid-credential",
     ],
   ];
