@@ -14,6 +14,8 @@ import { preserveRuntimeIdentity } from "./web-runtime-identity.mjs";
 import { planWebPromotion, promoteWebRelease } from "./web-promote.mjs";
 
 function fixture(t, architecture = "workers") {
+  const durable = architecture === "durable";
+  if (durable) architecture = "workers";
   const source = mkdtempSync(join(tmpdir(), "atlas-promotion-"));
   t.after(() => rmSync(source, { recursive: true, force: true }));
   mkdirSync(join(source, "artifact"));
@@ -161,6 +163,109 @@ function fixture(t, architecture = "workers") {
     },
   };
   if (architecture === "hybrid") evidence.workers.cpuP99Ms = 10;
+  if (durable) {
+    const runtime = (
+      workerName,
+      namespaceClass,
+      artifactDigest = "b".repeat(64),
+    ) => ({
+      workerName,
+      namespaceClass,
+      artifactDigest,
+      releaseSha: sha,
+      workerVersionId: candidate.workerVersionId,
+      namespaceId: "c".repeat(32),
+      storage: "sqlite",
+    });
+    const api = runtime("atlas-api", "ApiRuntime");
+    const web = runtime(
+      candidate.workerName,
+      "AtlasAppRuntime",
+      candidate.artifactDigest,
+    );
+    const runtimeReleases = { web, api, discovery: api };
+    evidence.releasePolicy = {
+      mode: "immediate",
+      architecture: "cloudflare-durable",
+      releaseSha: sha,
+      authorizedBy: "Operator",
+      authorizationReference:
+        "Operator waived 24h staging and 72h production waits",
+      authorizedAt: new Date(now - 1000).toISOString(),
+    };
+    Object.assign(evidence.cloudflare, {
+      collectedAt: new Date(now).toISOString(),
+      evidenceReference: "private/account.json",
+      quotas: Object.fromEntries(
+        [
+          "workersRequestsPerDay",
+          "durableRequestsPerDay",
+          "durableGbSecondsPerDay",
+          "durableRowsReadPerDay",
+          "durableRowsWrittenPerDay",
+          "durableStorageBytes",
+          "hyperdriveQueriesPerDay",
+        ].map((key) => [key, { candidate: 1, otherAccountUsage: 1 }]),
+      ),
+    });
+    evidence.durable = {
+      journeysPassed: true,
+      warmP95Ms: 210,
+      coldP95Ms: 1000,
+      edgeCpuP99Ms: 1,
+      edgeCpuLimitFailures: 0,
+      addedMonthlyCosts: evidence.workers.addedMonthlyCosts,
+      runtimeReleases,
+      rollback: {
+        readbackPassed: true,
+        evidenceReference: "private/joint-rollback.json",
+        runtimeReleases,
+      },
+      measurements: Object.fromEntries(
+        Object.entries(runtimeReleases).map(([key, identity]) => [
+          key,
+          {
+            ...identity,
+            provider: "cloudflare",
+            evidenceReference: "private/provider.json",
+            collectedAt: new Date(now).toISOString(),
+            cpuP99Ms: 20,
+            knownMemoryLimitBytes: 128 * 1024 * 1024,
+            memoryLimitFailures: 0,
+            providerLoad: {
+              representativePassed: true,
+              maxBoundedPayloadPassed: true,
+              concurrencyPassed: true,
+              scopeReference: "private/load.json",
+            },
+            peakConnections: 2,
+            limitFailures: 0,
+            bundleStartupPassed: true,
+            maxAlarmWallMs: 1000,
+            resumableAlarmsPassed: true,
+          },
+        ]),
+      ),
+    };
+    Object.assign(
+      candidate,
+      createWebManifest({
+        ...candidate,
+        execution: "cloudflare-durable",
+        releasePolicy: evidence.releasePolicy,
+        runtimeDependencies: { api, discovery: api },
+      }),
+      { durableNamespaceId: web.namespaceId },
+    );
+    writeFileSync(join(source, "manifest.json"), JSON.stringify(candidate));
+    writeFileSync(join(source, "deployment.json"), JSON.stringify(candidate));
+    records.splice(0, records.length - 1);
+    Object.assign(records[0], candidate, {
+      checks: [...checks, { name: "joint-runtime", status: "pass" }],
+    });
+    delete evidence.hybrid;
+    delete evidence.workers;
+  }
   return { source, candidate, runtime, evidence, records, now };
 }
 test("promotion reuses exact staging artifacts and derives its day of operation from the immutable journal", (t) => {
@@ -178,7 +283,7 @@ test("promotion reuses exact staging artifacts and derives its day of operation 
   );
 });
 
-for (const architecture of ["workers", "hybrid"])
+for (const architecture of ["workers", "durable"])
   for (const fails of [false, true])
     test(`${architecture} production cutover ${fails ? "automatically restores Vercel after failed probes" : "archives exact artifacts and starts a new production journal"}`, async (t) => {
       const f = fixture(t, architecture),
@@ -207,7 +312,7 @@ for (const architecture of ["workers", "hybrid"])
         publish: async (_directory, target, publishedArchitecture, input) => {
           calls.push("publish");
           assert.equal(target, "production");
-          assert.equal(publishedArchitecture, architecture);
+          assert.equal(publishedArchitecture, "workers");
           assert.equal(input.promotion.imageDigest, f.candidate.imageDigest);
           assert.equal(
             input.runtime.ATLAS_AUTH_INTERNAL_SECRET,
@@ -226,6 +331,9 @@ for (const architecture of ["workers", "hybrid"])
             candidateUrl: `https://${manifest.workerName}.atlas.example.com`,
             accountId: expected.accountId,
             zoneId: expected.zoneId,
+            ...(architecture === "durable"
+              ? { durableNamespaceId: "d".repeat(32) }
+              : {}),
           };
           return deployment;
         },
@@ -262,11 +370,21 @@ for (const architecture of ["workers", "hybrid"])
           () => promoteWebRelease(options),
           /Vercel routing was restored/,
         );
-      else
+      else {
+        const result = await promoteWebRelease(options);
         assert.equal(
-          (await promoteWebRelease(options)).observationRequiredHours,
-          72,
+          result.observationRequiredHours,
+          architecture === "durable" ? 0 : 72,
         );
+        assert.equal(
+          result.observationWindowWaived,
+          architecture === "durable",
+        );
+        assert.deepEqual(
+          result.releasePolicy,
+          f.evidence.releasePolicy ?? null,
+        );
+      }
       assert.deepEqual(calls, [
         "capture",
         "publish",
@@ -326,4 +444,53 @@ test("staging summary flags cannot replace fresh protected probes or preserved c
       );
     assert.throws(() => planWebPromotion(f));
   }
+});
+
+test("immediate promotion uses one fresh exact probe and rejects failures, stale samples and changed joint releases", (t) => {
+  const f = fixture(t, "durable");
+  const plan = planWebPromotion(f);
+  assert.equal(plan.staging.windowWaived, true);
+  assert.equal(plan.staging.elapsedHours, 0);
+  assert.equal(plan.staging.continuousChecksPassed, false);
+  assert.equal(plan.staging.currentChecksPassed, true);
+  for (const mutate of [
+    (x) => {
+      x.records = [];
+    },
+    (x) => {
+      x.records[0].status = "fail";
+    },
+    (x) => {
+      x.records[0].checks = x.records[0].checks.filter(
+        (row) => row.name !== "joint-runtime",
+      );
+    },
+    (x) => {
+      x.records[0].collectedAt = new Date(x.now - 660_000).toISOString();
+    },
+    (x) => {
+      x.records[0].runtimeDependencies = {};
+    },
+    (x) => {
+      x.evidence.durable.runtimeReleases.web.workerVersionId =
+        "ffffffff-ffff-ffff-ffff-ffffffffffff";
+    },
+    (x) => {
+      x.evidence.durable.rollback.readbackPassed = false;
+    },
+    (x) => {
+      x.evidence.releasePolicy.authorizationReference = "different waiver";
+    },
+  ]) {
+    const changed = fixture(t, "durable");
+    mutate(changed);
+    assert.throws(() => planWebPromotion(changed));
+  }
+});
+
+test("historical Cloud Run passing evidence is not a fallback for a failed Cloudflare release", (t) => {
+  assert.throws(
+    () => planWebPromotion(fixture(t, "hybrid")),
+    /selection gates/,
+  );
 });

@@ -112,6 +112,35 @@ test("production promotion cannot substitute missing observation or baseline evi
   assert.throws(() => assertPromotionReady({}, manifest(), Date.now()));
 });
 
+test("DO release manifest pins API and discovery dependencies and rejects incomplete execution metadata", () => {
+  const dependency = {
+    workerName: "atlas-api",
+    releaseSha: sha,
+    artifactDigest: digest,
+    workerVersionId: "12345678-1234-1234-1234-123456789abc",
+    namespaceId: "c".repeat(32),
+    namespaceClass: "ApiRuntime",
+    storage: "sqlite",
+  };
+  const output = createWebManifest({
+    ...manifest(),
+    execution: "cloudflare-durable",
+    runtimeDependencies: { api: dependency, discovery: dependency },
+  });
+  assert.equal(output.execution, "cloudflare-durable");
+  assert.deepEqual(output.runtimeDependencies, {
+    api: dependency,
+    discovery: dependency,
+  });
+  assert.throws(() =>
+    createWebManifest({ ...manifest(), execution: "cloudflare-durable" }),
+  );
+  assert.throws(() => createWebManifest({ ...output, architecture: "hybrid" }));
+  assert.throws(() =>
+    createWebManifest({ ...output, execution: "experimental" }),
+  );
+});
+
 test("portable artifacts materialize nested internal links and reject escapes", (t) => {
   const root = mkdtempSync(join(tmpdir(), "atlas-artifact-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));

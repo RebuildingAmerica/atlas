@@ -19,6 +19,12 @@ import {
 } from "./cloud-cost-policy.mjs";
 import { forecastMonthlyCost, assessMigration } from "./web-migration.mjs";
 import {
+  assertDurableBudget,
+  assertRuntimeDeployments,
+  runtimeReleaseIdentity,
+  validateReleasePolicy,
+} from "./web-assess.mjs";
+import {
   createWebManifest,
   digestDirectory,
   verifyWebManifest,
@@ -182,6 +188,16 @@ async function prepareCandidateRuntime(target, architecture, file) {
 }
 
 export function assertCandidateBudget(evidence, architecture) {
+  if (evidence.releasePolicy) {
+    if (architecture !== "workers")
+      throw new Error("The approved release must use Cloudflare only.");
+    assertDurableBudget(evidence);
+    return;
+  }
+  if (architecture === "hybrid")
+    throw new Error(
+      "Cloud Run is historical and is not an authorized fallback.",
+    );
   const assessment = assessMigration(evidence);
   if (!assessment.alternatives.workers)
     throw new Error(
@@ -206,6 +222,45 @@ export function assertCandidateBudget(evidence, architecture) {
     throw new Error(
       "Candidate forecast exceeds $5/month at twice current traffic.",
     );
+}
+
+/** Pin upstream compute so a healthy web bundle cannot hide a replaced API/job runtime. */
+export function assertDurableDependencies(
+  dependencies,
+  cloudflare = cloudflareCommand,
+) {
+  assertRuntimeDeployments(
+    Object.fromEntries(
+      ["api", "discovery"].map((key) => [
+        key,
+        runtimeReleaseIdentity(dependencies?.[key]),
+      ]),
+    ),
+    cloudflare,
+  );
+}
+
+export function durableCandidateBindings(manifest, compiled) {
+  if (manifest.execution !== "cloudflare-durable") return {};
+  if (
+    compiled.exports?.AtlasAppRuntime?.type !== "durable-object" ||
+    compiled.exports.AtlasAppRuntime.storage !== "sqlite"
+  )
+    throw new Error("The verified build must export SQLite AtlasAppRuntime.");
+  const api = runtimeReleaseIdentity(manifest.runtimeDependencies?.api);
+  runtimeReleaseIdentity(manifest.runtimeDependencies?.discovery);
+  return {
+    APP_RUNTIME: {
+      type: "durable-object",
+      worker: manifest.workerName,
+      exportName: "AtlasAppRuntime",
+    },
+    API_RUNTIME: {
+      type: "durable-object",
+      worker: api.workerName,
+      exportName: api.namespaceClass,
+    },
+  };
 }
 
 async function ensureFreeAccount() {
@@ -448,6 +503,29 @@ export async function publishWebCandidate(
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   if (manifest.target !== target || manifest.architecture !== architecture)
     throw new Error("Candidate target/architecture mismatch.");
+  if (
+    Boolean(evidence.releasePolicy) !==
+      (manifest.execution === "cloudflare-durable") ||
+    (evidence.releasePolicy &&
+      JSON.stringify(manifest.releasePolicy) !==
+        JSON.stringify(
+          validateReleasePolicy(evidence.releasePolicy, manifest.releaseSha),
+        ))
+  )
+    throw new Error(
+      "Candidate execution and recorded operator policy must match the release evidence.",
+    );
+  const durableBindings = durableCandidateBindings(
+    manifest,
+    JSON.parse(
+      readFileSync(
+        join(directory, "artifact/workers/default/worker.config.json"),
+        "utf8",
+      ),
+    ),
+  );
+  if (manifest.execution)
+    assertDurableDependencies(manifest.runtimeDependencies);
   // Hybrid identity is filled only after the pinned revision is deployed.
   const observed = {
     releaseSha: tool("git", ["rev-parse", "HEAD"]),
@@ -511,6 +589,7 @@ export async function publishWebCandidate(
         { type: "text", value: runtime[key] },
       ]),
     );
+    Object.assign(workerEnv, durableBindings);
     workerEnv.ATLAS_AUTH_MIGRATIONS = { type: "text", value: "external" };
     workerEnv.ATLAS_RELEASE_SHA = { type: "text", value: manifest.releaseSha };
     const secrets = Object.fromEntries(
@@ -723,6 +802,24 @@ export async function publishWebCandidate(
     const versions = deployments.deployments?.[0]?.versions;
     if (versions?.length !== 1 || versions[0].percentage !== 100)
       throw new Error("Worker deployment version readback failed.");
+    let durableNamespaceId;
+    if (manifest.execution) {
+      assertDurableDependencies(manifest.runtimeDependencies);
+      const namespaces = cloudflareCommand([
+        "durable-objects",
+        "namespaces",
+        "list",
+      ]);
+      const namespace = namespaces.find(
+        (row) =>
+          row.script === manifest.workerName &&
+          row.class === "AtlasAppRuntime" &&
+          row.use_sqlite === true,
+      );
+      if (!/^[a-f0-9]{32}$/.test(namespace?.id ?? ""))
+        throw new Error("Published web SQLite namespace was not confirmed.");
+      durableNamespaceId = namespace.id;
+    }
     assertCandidateDomain(
       cloudflareCommand(["workers", "get", manifest.workerName]),
       {
@@ -739,6 +836,7 @@ export async function publishWebCandidate(
         runtimeDigest: runtimeJournal.runtimeDigest,
       },
       workerVersionId: versions[0].version_id,
+      ...(durableNamespaceId ? { durableNamespaceId } : {}),
       accountId: required("CLOUDFLARE_ACCOUNT_ID"),
       zoneId: zone,
       ...(architecture === "workers"

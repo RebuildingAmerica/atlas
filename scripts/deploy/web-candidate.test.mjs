@@ -6,8 +6,10 @@ import {
   candidateRuntime,
   assertAccessPolicy,
   assertCandidateDomain,
+  durableCandidateBindings,
+  assertDurableDependencies,
 } from "./web-candidate.mjs";
-import { doctor } from "./web-hosting.mjs";
+import { doctor, webReleaseBuildSettings } from "./web-hosting.mjs";
 
 const runtime = () => ({
   ATLAS_PUBLIC_URL: "https://atlas.example.com",
@@ -77,6 +79,109 @@ test("accepts the existing canonical runtime and rejects provider credentials or
 });
 test("candidate provisioning refuses absent traffic or quota evidence before any provider writes", () => {
   assert.throws(() => assertCandidateBudget({}, "workers"), /baseline/);
+});
+
+test("approved DO builds pin existing API and discovery versions and compile the object export", () => {
+  const releaseSha = "a".repeat(40);
+  const dependency = {
+    workerName: "atlas-api",
+    releaseSha,
+    artifactDigest: "b".repeat(64),
+    workerVersionId: "12345678-1234-1234-1234-123456789abc",
+    namespaceId: "c".repeat(32),
+    namespaceClass: "ApiRuntime",
+    storage: "sqlite",
+  };
+  const evidence = {
+    releasePolicy: {
+      mode: "immediate",
+      architecture: "cloudflare-durable",
+      releaseSha,
+      authorizedBy: "Operator",
+      authorizationReference: "User waiver",
+      authorizedAt: new Date().toISOString(),
+    },
+    durable: { runtimeReleases: { api: dependency, discovery: dependency } },
+  };
+  const settings = webReleaseBuildSettings({
+    architecture: "workers",
+    releaseSha,
+    evidence,
+    env: {},
+  });
+  assert.equal(settings.execution, "cloudflare-durable");
+  assert.equal(settings.buildExecution, "durable-evaluation");
+  assert.deepEqual(
+    settings.runtimeDependencies,
+    evidence.durable.runtimeReleases,
+  );
+  assert.throws(() =>
+    webReleaseBuildSettings({
+      architecture: "hybrid",
+      releaseSha,
+      evidence,
+      env: {},
+    }),
+  );
+  assert.throws(() =>
+    webReleaseBuildSettings({
+      architecture: "workers",
+      releaseSha,
+      env: { ATLAS_WORKERS_EXECUTION: "durable-evaluation" },
+    }),
+  );
+  const manifest = {
+    execution: settings.execution,
+    workerName: "atlas-web",
+    runtimeDependencies: settings.runtimeDependencies,
+  };
+  assert.deepEqual(
+    durableCandidateBindings(manifest, {
+      exports: {
+        AtlasAppRuntime: { type: "durable-object", storage: "sqlite" },
+      },
+    }),
+    {
+      APP_RUNTIME: {
+        type: "durable-object",
+        worker: "atlas-web",
+        exportName: "AtlasAppRuntime",
+      },
+      API_RUNTIME: {
+        type: "durable-object",
+        worker: "atlas-api",
+        exportName: "ApiRuntime",
+      },
+    },
+  );
+  assert.throws(() => durableCandidateBindings(manifest, { exports: {} }));
+  const provider = (args) =>
+    args[0] === "durable-objects"
+      ? [
+          {
+            id: dependency.namespaceId,
+            script: dependency.workerName,
+            class: "ApiRuntime",
+            use_sqlite: true,
+          },
+        ]
+      : {
+          deployments: [
+            {
+              versions: [
+                { version_id: dependency.workerVersionId, percentage: 100 },
+              ],
+            },
+          ],
+        };
+  assert.doesNotThrow(() =>
+    assertDurableDependencies(settings.runtimeDependencies, provider),
+  );
+  assert.throws(() =>
+    assertDurableDependencies(settings.runtimeDependencies, () => ({
+      deployments: [],
+    })),
+  );
 });
 test("doctor reports missing inputs without changing providers or printing credentials", async () => {
   const keys = [

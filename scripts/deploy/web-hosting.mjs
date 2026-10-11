@@ -10,7 +10,11 @@ import {
 } from "node:fs";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { assessMigration } from "./web-migration.mjs";
+import {
+  assessWebRelease,
+  runtimeReleaseIdentity,
+  validateReleasePolicy,
+} from "./web-assess.mjs";
 import {
   createWebManifest,
   digestDirectory,
@@ -77,6 +81,20 @@ export async function doctor({
     return { accountId: account, workersPlan: "free" };
   });
   await check("google-cloud", async () => {
+    if (
+      process.env.ATLAS_WEB_EVIDENCE_FILE &&
+      JSON.parse(readFileSync(process.env.ATLAS_WEB_EVIDENCE_FILE, "utf8"))
+        .releasePolicy
+    ) {
+      const evidence = JSON.parse(
+        readFileSync(process.env.ATLAS_WEB_EVIDENCE_FILE, "utf8"),
+      );
+      validateReleasePolicy(evidence.releasePolicy, evidence.releaseSha);
+      return {
+        required: false,
+        reason: "The explicit Cloudflare-only policy excludes Google hosting.",
+      };
+    }
     const billing = inspectGoogleBilling({
       project: required("GCP_PROJECT_ID"),
       account: process.env.ATLAS_GCP_ACCOUNT,
@@ -119,7 +137,7 @@ export async function doctor({
   });
   await check("measured-evidence", async () => {
     const file = required("ATLAS_WEB_EVIDENCE_FILE");
-    const assessment = assessMigration(JSON.parse(readFileSync(file, "utf8")));
+    const assessment = assessWebRelease(JSON.parse(readFileSync(file, "utf8")));
     if (!assessment.selected) throw new Error(assessment.blockers.join(" "));
     return assessment;
   });
@@ -131,20 +149,62 @@ export async function doctor({
 }
 
 /** Build candidates locally; provider provisioning and cutover remain separately gated. */
-function prepare(args, target) {
-  if (
-    process.env.ATLAS_WORKERS_EXECUTION &&
-    process.env.ATLAS_WORKERS_EXECUTION !== "direct"
-  )
+export function webReleaseBuildSettings({
+  architecture,
+  releaseSha,
+  evidence = {},
+  env = process.env,
+}) {
+  const releasePolicy = validateReleasePolicy(
+    evidence.releasePolicy,
+    releaseSha,
+  );
+  if (releasePolicy) {
+    if (architecture !== "workers")
+      throw new Error("Approved Durable Object releases are Cloudflare-only.");
+    return {
+      execution: "cloudflare-durable",
+      buildExecution: "durable-evaluation",
+      releasePolicy,
+      runtimeDependencies: {
+        api: runtimeReleaseIdentity(evidence.durable?.runtimeReleases?.api),
+        discovery: runtimeReleaseIdentity(
+          evidence.durable?.runtimeReleases?.discovery,
+        ),
+      },
+    };
+  }
+  if (env.ATLAS_WORKERS_EXECUTION && env.ATLAS_WORKERS_EXECUTION !== "direct")
     throw new Error(
-      "Experimental execution cannot produce a promotable release; use web:durable-evaluate.",
+      "Experimental execution cannot produce a promotable release without an explicit policy.",
     );
+  if (architecture === "hybrid")
+    throw new Error(
+      "Cloud Run is historical and is not an authorized fallback.",
+    );
+  return { buildExecution: "direct" };
+}
+
+function prepare(args, target) {
   const architecture = argument(args, "--architecture");
   if (!["workers", "hybrid"].includes(architecture))
     throw new Error("--architecture workers|hybrid is required.");
   const releaseSha = run("git", ["rev-parse", "HEAD"]);
+  const settings = webReleaseBuildSettings({
+    architecture,
+    releaseSha,
+    evidence: process.env.ATLAS_WEB_EVIDENCE_FILE
+      ? JSON.parse(readFileSync(process.env.ATLAS_WEB_EVIDENCE_FILE, "utf8"))
+      : {},
+  });
   const sourceDirty = Boolean(run("git", ["status", "--porcelain"]));
-  const directory = join(ROOT, ".atlas/web", target, releaseSha, architecture);
+  const directory = join(
+    ROOT,
+    ".atlas/web",
+    target,
+    releaseSha,
+    settings.execution ?? architecture,
+  );
   mkdirSync(directory, { recursive: true });
   run(
     "pnpm",
@@ -160,6 +220,7 @@ function prepare(args, target) {
         ATLAS_WEB_RUNTIME: architecture === "workers" ? "workers" : "node",
         NITRO_PRESET: "node-server",
         ATLAS_RELEASE_SHA: releaseSha,
+        ATLAS_WORKERS_EXECUTION: settings.buildExecution,
       },
       stdio: "inherit",
     },
@@ -201,6 +262,7 @@ function prepare(args, target) {
     publicEnv,
     artifactDigest: digestDirectory(join(directory, "artifact")),
     assetsDigest: digestDirectory(join(directory, "assets")),
+    ...settings,
   });
   writeFileSync(
     join(directory, "manifest.json"),
@@ -248,7 +310,7 @@ async function main() {
     const file = argument(args, "--evidence");
     if (!file || !existsSync(file))
       throw new Error("--evidence JSON file is required.");
-    const result = assessMigration(JSON.parse(readFileSync(file, "utf8")));
+    const result = assessWebRelease(JSON.parse(readFileSync(file, "utf8")));
     console.log(JSON.stringify(result, null, 2));
     if (!result.selected) process.exitCode = 1;
   } else

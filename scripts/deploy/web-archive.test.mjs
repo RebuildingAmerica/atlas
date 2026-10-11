@@ -95,3 +95,82 @@ test("tampering, plaintext secrets and invalid release identity prevent creating
     assert.equal(existsSync(join(directory, "release.tar.gz")), false);
   }
 });
+
+test("DO archives retain the exact joint identity and reject changed execution, dependencies or operator audit", (t) => {
+  for (const change of [
+    "none",
+    "execution",
+    "dependency",
+    "policy",
+    "namespace",
+  ]) {
+    const f = fixture(t);
+    const dependency = {
+      workerName: "atlas-api",
+      releaseSha: f.manifest.releaseSha,
+      artifactDigest: "b".repeat(64),
+      workerVersionId: f.deployment.workerVersionId,
+      namespaceId: "c".repeat(32),
+      namespaceClass: "ApiRuntime",
+      storage: "sqlite",
+    };
+    const releasePolicy = {
+      mode: "immediate",
+      architecture: "cloudflare-durable",
+      releaseSha: f.manifest.releaseSha,
+      authorizedBy: "Operator",
+      authorizationReference: "Real operator wait waiver",
+      authorizedAt: new Date().toISOString(),
+    };
+    const manifest = createWebManifest({
+      ...f.manifest,
+      execution: "cloudflare-durable",
+      releasePolicy,
+      runtimeDependencies: { api: dependency, discovery: dependency },
+    });
+    const deployment = {
+      ...f.deployment,
+      ...manifest,
+      durableNamespaceId: "d".repeat(32),
+    };
+    writeFileSync(join(f.directory, "manifest.json"), JSON.stringify(manifest));
+    if (change === "execution") delete deployment.execution;
+    if (change === "dependency")
+      deployment.runtimeDependencies = {
+        ...manifest.runtimeDependencies,
+        api: {
+          ...dependency,
+          workerVersionId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        },
+      };
+    if (change === "policy")
+      deployment.releasePolicy = {
+        ...releasePolicy,
+        authorizationReference: "Different instruction",
+      };
+    if (change === "namespace") delete deployment.durableNamespaceId;
+    writeFileSync(
+      join(f.directory, "deployment.json"),
+      JSON.stringify(deployment),
+    );
+    if (change === "none") {
+      const report = archiveWebRelease({ directory: f.directory, runtime: {} });
+      assert.deepEqual(
+        report.runtimeDependencies,
+        manifest.runtimeDependencies,
+      );
+      assert.deepEqual(report.releasePolicy, releasePolicy);
+      assert.equal(report.execution, "cloudflare-durable");
+      assert.equal(report.durableNamespaceId, deployment.durableNamespaceId);
+      assert.deepEqual(
+        JSON.parse(readFileSync(join(f.directory, "archive.json"), "utf8")),
+        report,
+      );
+    } else {
+      assert.throws(() =>
+        archiveWebRelease({ directory: f.directory, runtime: {} }),
+      );
+      assert.equal(existsSync(join(f.directory, "release.tar.gz")), false);
+    }
+  }
+});

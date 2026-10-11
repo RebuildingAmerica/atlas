@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import {
   probeWebRelease,
   summarizeWebObservations,
@@ -456,4 +459,170 @@ test("active Worker versions and exact artifact identity must match every observ
       summarizeWebObservations([{ ...sample, ...patch }], input),
     );
   }
+});
+
+test("explicit immediate policy summarizes a fresh real probe without claiming an elapsed window", async () => {
+  const now = Date.now();
+  const releasePolicy = {
+    mode: "immediate",
+    architecture: "cloudflare-durable",
+    releaseSha: sha,
+    authorizedBy: "Operator",
+    authorizationReference: "Operator waived 24h/72h waits",
+    authorizedAt: new Date(now).toISOString(),
+  };
+  const sample = await probeWebRelease({
+    ...input,
+    fetcher: provider,
+    now: () => new Date(now),
+  });
+  const options = { ...input, now, minimumHours: 0, releasePolicy };
+  const result = summarizeWebObservations([sample], options);
+  assert.equal(result.currentChecksPassed, true);
+  assert.equal(result.continuousChecksPassed, false);
+  assert.equal(result.windowWaived, true);
+  assert.equal(result.elapsedHours, 0);
+  assert.equal(
+    summarizeWebObservations([], options).currentChecksPassed,
+    false,
+  );
+  assert.equal(
+    summarizeWebObservations([{ ...sample, checks: [] }], options)
+      .currentChecksPassed,
+    false,
+  );
+  assert.equal(
+    summarizeWebObservations([sample], { ...options, now: now + 660_000 })
+      .currentChecksPassed,
+    false,
+  );
+  assert.throws(() =>
+    summarizeWebObservations([sample], {
+      ...options,
+      releasePolicy: undefined,
+    }),
+  );
+});
+
+test("DO probes read back the joint web/API/discovery versions and SQLite namespaces", async () => {
+  const dependency = {
+    workerName: "atlas-api",
+    releaseSha: sha,
+    artifactDigest: "b".repeat(64),
+    workerVersionId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+    namespaceId: "d".repeat(32),
+    namespaceClass: "ApiRuntime",
+    storage: "sqlite",
+  };
+  const options = {
+    ...input,
+    execution: "cloudflare-durable",
+    durableNamespaceId: "c".repeat(32),
+    runtimeDependencies: { api: dependency, discovery: dependency },
+    fetcher: provider,
+  };
+  for (const changed of [false, true]) {
+    const report = await probeWebRelease({
+      ...options,
+      cloudflare: (args) => {
+        if (args[0] === "durable-objects")
+          return [
+            {
+              id: options.durableNamespaceId,
+              script: input.workerName,
+              class: "AtlasAppRuntime",
+              use_sqlite: true,
+            },
+            {
+              id: dependency.namespaceId,
+              script: dependency.workerName,
+              class: "ApiRuntime",
+              use_sqlite: true,
+            },
+          ];
+        const worker = args.at(-1);
+        return {
+          deployments: [
+            {
+              versions: [
+                {
+                  version_id:
+                    worker === input.workerName
+                      ? input.workerVersionId
+                      : changed
+                        ? input.workerVersionId
+                        : dependency.workerVersionId,
+                  percentage: 100,
+                },
+              ],
+            },
+          ],
+        };
+      },
+    });
+    assert.equal(
+      report.checks.find((row) => row.name === "joint-runtime").status,
+      changed ? "fail" : "pass",
+    );
+    assert.equal(report.status, changed ? "fail" : "pass");
+    assert.equal(
+      summarizeWebObservations([report], options).currentChecksPassed,
+      !changed,
+    );
+  }
+});
+
+test("observation CLI accepts an audited zero-hour summary and preserves its real elapsed time", async (t) => {
+  const atlas = resolve(import.meta.dirname, "../../.atlas");
+  mkdirSync(atlas, { recursive: true });
+  const directory = mkdtempSync(join(atlas, "web-policy-test-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const now = Date.now();
+  const policy = {
+    mode: "immediate",
+    architecture: "cloudflare-durable",
+    releaseSha: sha,
+    authorizedBy: "Operator",
+    authorizationReference: "Real operator wait waiver",
+    authorizedAt: new Date(now).toISOString(),
+  };
+  const report = await probeWebRelease({
+    ...input,
+    fetcher: provider,
+    now: () => new Date(now),
+  });
+  writeFileSync(
+    join(directory, "deployment.json"),
+    JSON.stringify({ ...input, candidateUrl: origin }),
+  );
+  writeFileSync(
+    join(directory, "journal.jsonl"),
+    JSON.stringify(report) + "\n",
+  );
+  writeFileSync(join(directory, "policy.json"), JSON.stringify(policy));
+  const args = [
+    resolve(import.meta.dirname, "web-observe.mjs"),
+    "--target",
+    "staging",
+    "--deployment",
+    join(directory, "deployment.json"),
+    "--journal",
+    join(directory, "journal.jsonl"),
+    "--hours",
+    "0",
+    "--summary-only",
+  ];
+  assert.throws(() => execFileSync(process.execPath, args, { stdio: "pipe" }));
+  const summary = JSON.parse(
+    execFileSync(
+      process.execPath,
+      [...args, "--policy", join(directory, "policy.json")],
+      { encoding: "utf8" },
+    ),
+  );
+  assert.equal(summary.windowWaived, true);
+  assert.equal(summary.currentChecksPassed, true);
+  assert.equal(summary.continuousChecksPassed, false);
+  assert.equal(summary.elapsedHours, 0);
+  assert.deepEqual(summary.releasePolicy, policy);
 });

@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { digestDirectory, verifyWebManifest } from "./web-release.mjs";
 import { loadWebRuntime, runtimeInput } from "./web-candidate.mjs";
+import { validateReleasePolicy } from "./web-assess.mjs";
 
 /** Keep previous search/profile assets and server code together for rollback. */
 export function archiveWebRelease({ directory, runtime }) {
@@ -39,6 +40,17 @@ export function archiveWebRelease({ directory, runtime }) {
   ])
     if (manifest[key] !== deployment[key])
       throw new Error("Archive and deployment identity differ.");
+  for (const key of ["execution", "runtimeDependencies", "releasePolicy"])
+    if (JSON.stringify(manifest[key]) !== JSON.stringify(deployment[key]))
+      throw new Error("Archive and joint runtime identity differ.");
+  if (
+    deployment.execution &&
+    (!validateReleasePolicy(deployment.releasePolicy, deployment.releaseSha) ||
+      !/^[a-f0-9]{32}$/.test(deployment.durableNamespaceId ?? ""))
+  )
+    throw new Error(
+      "DO rollback requires the recorded operator policy and published web namespace.",
+    );
   if (
     JSON.stringify(manifest.publicEnv) !==
       JSON.stringify(deployment.publicEnv) ||
@@ -103,6 +115,14 @@ export function archiveWebRelease({ directory, runtime }) {
       workerVersionId: deployment.workerVersionId,
       artifactDigest: deployment.artifactDigest,
       assetsDigest: deployment.assetsDigest,
+      ...(deployment.execution
+        ? {
+            execution: deployment.execution,
+            durableNamespaceId: deployment.durableNamespaceId,
+            runtimeDependencies: deployment.runtimeDependencies,
+            releasePolicy: deployment.releasePolicy,
+          }
+        : {}),
     };
     writeFileSync(
       join(directory, "archive.json"),

@@ -36,6 +36,7 @@ import {
   webRollbackOperationId,
 } from "./web-rollback.mjs";
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
+import { validateReleasePolicy } from "./web-assess.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const read = (file) => JSON.parse(readFileSync(file, "utf8"));
@@ -94,6 +95,9 @@ export function planWebPromotion({
     "sourceDirty",
     "publicEnv",
     "buildPublicEnv",
+    "execution",
+    "runtimeDependencies",
+    "releasePolicy",
   ])
     if (JSON.stringify(original[key]) !== JSON.stringify(candidate[key]))
       throw new Error("Candidate manifest and published artifacts differ.");
@@ -118,11 +122,22 @@ export function planWebPromotion({
   );
   if (!records.length || records.some((row) => row.protectedCandidate !== true))
     throw new Error("Protected staging observations are required.");
+  const releasePolicy = validateReleasePolicy(
+    evidence.releasePolicy,
+    candidate.releaseSha,
+    now,
+  );
+  if (
+    JSON.stringify(releasePolicy) !==
+    JSON.stringify(candidate.releasePolicy ?? null)
+  )
+    throw new Error("The candidate must retain the recorded operator policy.");
   const staging = summarizeWebObservations(records, {
     ...candidate,
     origin: candidate.candidateUrl,
     now,
-    minimumHours: 24,
+    minimumHours: releasePolicy ? 0 : 24,
+    releasePolicy,
   });
   assertPromotionReady({ ...evidence, staging }, candidate, now);
   const manifest = createWebManifest({
@@ -138,7 +153,7 @@ export function planWebPromotion({
     throw new Error(
       "Production requires exactly the candidate's compiled public configuration.",
     );
-  return { manifest, candidate, runtime, staging };
+  return { manifest, candidate, runtime, staging, releasePolicy };
 }
 
 function prepareProductionArtifacts(source, directory, manifest) {
@@ -275,7 +290,9 @@ export async function promoteWebRelease({
       workerVersionId: production.workerVersionId,
       rollbackSnapshotFile: snapshotFile,
       observationJournal: production.observationJournal,
-      observationRequiredHours: 72,
+      observationRequiredHours: plan.releasePolicy ? 0 : 72,
+      releasePolicy: plan.releasePolicy,
+      observationWindowWaived: Boolean(plan.releasePolicy),
     };
   } catch {
     try {
@@ -339,6 +356,7 @@ async function main() {
           artifactDigest: plan.manifest.artifactDigest,
           assetsDigest: plan.manifest.assetsDigest,
           staging: plan.staging,
+          releasePolicy: plan.releasePolicy,
         },
         null,
         2,

@@ -13,6 +13,11 @@ import { setTimeout } from "node:timers/promises";
 import { spawnSync } from "node:child_process";
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
 import { createWebManifest } from "./web-release.mjs";
+import {
+  assertRuntimeDeployments,
+  runtimeReleaseIdentity,
+  validateReleasePolicy,
+} from "./web-assess.mjs";
 
 const PAGES = [
   "/",
@@ -108,6 +113,22 @@ function validateIdentity(input) {
     artifactDigest,
     assetsDigest,
   };
+  if (input.execution) {
+    if (
+      input.execution !== "cloudflare-durable" ||
+      architecture !== "workers" ||
+      !/^[a-f0-9]{32}$/.test(input.durableNamespaceId ?? "")
+    )
+      throw new Error(
+        "Durable Object observation requires the exact web namespace.",
+      );
+    identity.execution = input.execution;
+    identity.durableNamespaceId = input.durableNamespaceId;
+    identity.runtimeDependencies = {
+      api: runtimeReleaseIdentity(input.runtimeDependencies?.api),
+      discovery: runtimeReleaseIdentity(input.runtimeDependencies?.discovery),
+    };
+  }
   if (architecture === "hybrid") {
     if (
       !/^atlas-web-(?:staging|production)-[a-z0-9-]+$/.test(
@@ -147,11 +168,12 @@ function inspectCloudRun(args) {
     throw new Error("Cloud Run deployment readback failed.");
   return JSON.parse(result.stdout);
 }
-function requiredChecks(protectedCandidate, architecture) {
+function requiredChecks(protectedCandidate, architecture, execution) {
   return [
     ...BASE_CHECKS,
     ...(protectedCandidate ? ["access-denial"] : []),
     ...(architecture === "hybrid" ? ["origin-rejection"] : []),
+    ...(execution ? ["joint-runtime"] : []),
   ];
 }
 async function boundedBody(response) {
@@ -195,6 +217,9 @@ export async function probeWebRelease({
   workerVersionId,
   artifactDigest,
   assetsDigest,
+  execution,
+  durableNamespaceId,
+  runtimeDependencies,
   revision,
   imageDigest,
   canonicalOrigin = origin,
@@ -216,6 +241,9 @@ export async function probeWebRelease({
     workerVersionId,
     artifactDigest,
     assetsDigest,
+    execution,
+    durableNamespaceId,
+    runtimeDependencies,
     revision,
     imageDigest,
     originUrl,
@@ -328,6 +356,24 @@ export async function probeWebRelease({
         throw new Error("Cloud Run image or readiness changed.");
     }
   });
+  if (execution)
+    await check("joint-runtime", async () =>
+      assertRuntimeDeployments(
+        {
+          web: {
+            workerName,
+            releaseSha,
+            workerVersionId,
+            artifactDigest,
+            namespaceId: durableNamespaceId,
+            namespaceClass: "AtlasAppRuntime",
+            storage: "sqlite",
+          },
+          ...identity.runtimeDependencies,
+        },
+        cloudflare,
+      ),
+    );
   for (const path of PAGES)
     await check(`page:${path}`, async () => {
       const { response, text } = await request(path);
@@ -439,16 +485,24 @@ export async function probeWebRelease({
 export function summarizeWebObservations(records, options) {
   const { now = Date.now(), minimumHours = 24 } = options;
   const identity = validateIdentity(options);
-  if (![24, 72].includes(minimumHours))
+  const policy = validateReleasePolicy(
+    options.releasePolicy,
+    identity.releaseSha,
+    now,
+  );
+  if (![24, 72].includes(minimumHours) && !(minimumHours === 0 && policy))
     throw new Error("Observation windows must be 24 or 72 hours.");
-  let startedAt = null,
+  let currentChecksPassed = false,
+    startedAt = null,
     previous = null;
   const last = records.at(-1);
   for (const row of records) {
     const time = Date.parse(row.collectedAt);
     if (
       row.schemaVersion !== 1 ||
-      Object.entries(identity).some(([key, value]) => row[key] !== value) ||
+      Object.entries(identity).some(
+        ([key, value]) => JSON.stringify(row[key]) !== JSON.stringify(value),
+      ) ||
       typeof row.protectedCandidate !== "boolean" ||
       row.protectedCandidate !== last.protectedCandidate ||
       !Number.isFinite(time) ||
@@ -456,7 +510,11 @@ export function summarizeWebObservations(records, options) {
       (previous !== null && time <= previous)
     )
       throw new Error("Observation identity or timestamp mismatch.");
-    const names = requiredChecks(row.protectedCandidate, identity.architecture);
+    const names = requiredChecks(
+      row.protectedCandidate,
+      identity.architecture,
+      identity.execution,
+    );
     const passed =
       row.status === "pass" &&
       Array.isArray(row.checks) &&
@@ -467,6 +525,7 @@ export function summarizeWebObservations(records, options) {
             (check) => check.name === name && check.status === "pass",
           ).length === 1,
       );
+    currentChecksPassed = passed && now - time <= TEN_MINUTES;
     if (!passed) startedAt = null;
     else if (
       startedAt === null ||
@@ -476,6 +535,7 @@ export function summarizeWebObservations(records, options) {
     previous = time;
   }
   const continuousChecksPassed =
+    minimumHours !== 0 &&
     startedAt !== null &&
     previous - startedAt >= minimumHours * 3_600_000 &&
     now - previous <= TEN_MINUTES;
@@ -485,6 +545,10 @@ export function summarizeWebObservations(records, options) {
     startedAt: startedAt === null ? null : new Date(startedAt).toISOString(),
     lastCheckedAt: previous === null ? null : new Date(previous).toISOString(),
     continuousChecksPassed,
+    currentChecksPassed,
+    windowWaived: minimumHours === 0,
+    ...(minimumHours === 0 ? { releasePolicy: policy } : {}),
+    elapsedHours: startedAt === null ? 0 : (previous - startedAt) / 3_600_000,
     observations: records.length,
   };
 }
@@ -512,13 +576,6 @@ async function main(args) {
   const file = value("--deployment"),
     journal = value("--journal"),
     target = value("--target");
-  const minimumHours =
-    value("--hours") === undefined ? 24 : Number(value("--hours"));
-  if (
-    ![24, 72].includes(minimumHours) ||
-    (args.includes("--watch") && args.includes("--summary-only"))
-  )
-    throw new Error("Use --hours 24|72; summary-only cannot watch.");
   if (!file || !journal)
     throw new Error(
       "--deployment and ignored --journal .atlas/... paths are required.",
@@ -527,6 +584,27 @@ async function main(args) {
   if (!journalPath.startsWith(resolve(ROOT, ".atlas") + sep))
     throw new Error("Observation journals must remain under .atlas/.");
   const deployment = JSON.parse(readFileSync(file, "utf8"));
+  const policyInput = value("--policy")
+    ? JSON.parse(readFileSync(value("--policy"), "utf8"))
+    : deployment.releasePolicy;
+  const releasePolicy = validateReleasePolicy(
+    policyInput?.releasePolicy ?? policyInput,
+    deployment.releaseSha,
+  );
+  const minimumHours =
+    value("--hours") === undefined
+      ? releasePolicy
+        ? 0
+        : 24
+      : Number(value("--hours"));
+  if (
+    (![24, 72].includes(minimumHours) &&
+      !(minimumHours === 0 && releasePolicy)) ||
+    (args.includes("--watch") && args.includes("--summary-only"))
+  )
+    throw new Error(
+      "Use --hours 24|72, or 0 with the explicit operator policy; summary-only cannot watch.",
+    );
   if (
     deployment.target !== target ||
     !deployment.workerVersionId ||
@@ -550,10 +628,16 @@ async function main(args) {
   const summary = summarizeWebObservations(records, {
     ...identity,
     minimumHours,
+    releasePolicy,
   });
   if (args.includes("--summary-only")) {
     console.log(JSON.stringify(summary, null, 2));
-    if (!summary.continuousChecksPassed) process.exitCode = 1;
+    if (
+      !(summary.windowWaived
+        ? summary.currentChecksPassed
+        : summary.continuousChecksPassed)
+    )
+      process.exitCode = 1;
     return;
   }
   const audience =
@@ -575,6 +659,7 @@ async function main(args) {
         observationWindow: summarizeWebObservations([...records, report], {
           ...identity,
           minimumHours,
+          releasePolicy,
         }),
       },
       null,
