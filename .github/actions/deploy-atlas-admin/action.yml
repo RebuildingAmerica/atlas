@@ -97,6 +97,7 @@ runs:
         ATLAS_ADMIN_PUBLIC_URL: ${{ inputs.admin-public-url }}
         SECRETS_FILE: ${{ steps.secrets.outputs.path }}
         ENVIRONMENT_NAME: ${{ inputs.environment-name }}
+        ATLAS_ADMIN_DEPLOY_ENVIRONMENT: ${{ inputs.environment-name }}
       run: |
         set -euo pipefail
         pnpm run api-client

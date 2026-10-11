@@ -12,6 +12,7 @@
 
 interface AdminBuildEnv {
   ATLAS_ADMIN_PUBLIC_URL?: string;
+  ATLAS_ADMIN_DEPLOY_ENVIRONMENT?: string;
 }
 
 interface AdminBuildContext {
@@ -64,6 +65,33 @@ function secretBindings(
 export const ADMIN_WORKER_NAME = "atlas-admin";
 export const ADMIN_COMPATIBILITY_DATE = "2026-09-25";
 
+const ADMIN_DEPLOYMENTS = {
+  production: {
+    name: ADMIN_WORKER_NAME,
+    hostname: "atlas-admin.rebuildingus.org",
+  },
+  staging: {
+    name: "atlas-admin-staging",
+    hostname: "atlas-admin-staging.rebuildingus.org",
+  },
+} as const;
+
+function deployment(env: AdminBuildEnv): { name: string; hostname: string } {
+  const target = env.ATLAS_ADMIN_DEPLOY_ENVIRONMENT;
+  if (target !== "production" && target !== "staging") {
+    throw new Error(
+      "ATLAS_ADMIN_DEPLOY_ENVIRONMENT must be production or staging.",
+    );
+  }
+  const config = ADMIN_DEPLOYMENTS[target];
+  if (adminHostname(env.ATLAS_ADMIN_PUBLIC_URL) !== config.hostname) {
+    throw new Error(
+      `ATLAS_ADMIN_PUBLIC_URL does not match the ${target} admin hostname.`,
+    );
+  }
+  return config;
+}
+
 /**
  * Returns the hostname the admin is served at, from `ATLAS_ADMIN_PUBLIC_URL`.
  *
@@ -93,7 +121,7 @@ export function adminHostname(publicUrl: string | undefined): string {
  * Builds the Worker config. A production build is published to the admin's
  * own hostname and nowhere else; local development has no hostname.
  *
- * @param env - Build-time environment carrying `ATLAS_ADMIN_PUBLIC_URL`.
+ * @param env - Build-time origin and explicit deployment environment.
  * @param context - The mode `cf` or Vite evaluates the config in.
  */
 export function adminWorkerConfig(
@@ -101,14 +129,17 @@ export function adminWorkerConfig(
   { mode }: AdminBuildContext,
 ): AdminWorkerConfig {
   const development = mode === "development";
+  // Separate Workers and hostnames keep staging releases from replacing the
+  // live operator tools or their production signing key and API bindings.
+  const target = development ? null : deployment(env);
   return {
-    name: ADMIN_WORKER_NAME,
+    name: target ? target.name : ADMIN_WORKER_NAME,
     compatibilityDate: ADMIN_COMPATIBILITY_DATE,
     compatibilityFlags: ["nodejs_compat"],
     entrypoint: "@tanstack/react-start/server-entry",
     workersDev: false,
     previewUrls: false,
-    domains: development ? [] : [adminHostname(env.ATLAS_ADMIN_PUBLIC_URL)],
+    domains: target ? [target.hostname] : [],
     assets: { runWorkerFirst: ["/*", "!/assets/*"] },
     // Tokenized URLs must not end up in Cloudflare's request logs.
     observability: { enabled: true, logs: { invocationLogs: false } },

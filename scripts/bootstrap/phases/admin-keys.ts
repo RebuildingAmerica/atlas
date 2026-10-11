@@ -21,7 +21,7 @@ import { runCommand } from "../lib/shell.js";
 import { promptConfirm } from "../lib/ui.js";
 import type { PhaseResult } from "../state.js";
 
-export const ADMIN_SIGNING_KEY_SECRET = "ATLAS_ADMIN_SIGNING_KEY";
+export const ADMIN_SIGNING_KEY_SECRET = "ATLAS_ADMIN_SIGNING_KEY"; // pragma: allowlist secret
 export const ADMIN_SIGNING_PUBLIC_KEY_VARIABLE =
   "ATLAS_ADMIN_SIGNING_PUBLIC_KEY";
 

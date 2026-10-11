@@ -119,7 +119,7 @@ describe("EmailService", () => {
       emailFrom: "Atlas",
       emailProvider: "resend",
       captureUrl: null,
-      resendApiKey: "test-key",
+      resendApiKey: "test-key", // pragma: allowlist secret
     });
     const message = { to: "person@atlas.test", subject: "Invite", text: "Invite" };
     expect(await service.send(message, { idempotencyKey: "waitlist/id" })).toBe("provider");
@@ -160,7 +160,7 @@ describe("EmailService", () => {
         emailFrom: "Atlas",
         emailProvider: "resend",
         captureUrl: null,
-        resendApiKey: "test-key",
+        resendApiKey: "test-key", // pragma: allowlist secret
       });
       const error = await service
         .send({ to: "person@atlas.test", subject: "Invite", text: "Invite" })
@@ -181,7 +181,7 @@ describe("EmailService", () => {
         emailFrom: "Atlas",
         emailProvider: "resend",
         captureUrl: null,
-        resendApiKey: "test-key",
+        resendApiKey: "test-key", // pragma: allowlist secret
       });
       const error = await service
         .send({ to: "person@atlas.test", subject: "Invite", text: "Invite" })
@@ -196,7 +196,7 @@ describe("EmailService", () => {
       emailFrom: "Atlas",
       emailProvider: "resend",
       captureUrl: null,
-      resendApiKey: "test-key",
+      resendApiKey: "test-key", // pragma: allowlist secret
     });
     const message = { to: "person@atlas.test", subject: "Invite", text: "Invite" };
     const first = service.send(message, { idempotencyKey: "waitlist/one" });

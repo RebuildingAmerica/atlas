@@ -46,7 +46,9 @@ async def test_posts_the_decision_to_the_app_with_the_callback_secret(
     assert (
         str(request.url) == "https://atlas.example.test/api/auth/internal/discount-review-results"
     )
-    assert request.headers["X-Atlas-Callback-Secret"] == "callback-test-secret"
+    assert (
+        request.headers["X-Atlas-Callback-Secret"] == "callback-test-secret"
+    )  # pragma: allowlist secret
     assert request.headers["x-vercel-protection-bypass"] == "bypass-value"
     assert json.loads(request.content) == {
         "segment": "student",

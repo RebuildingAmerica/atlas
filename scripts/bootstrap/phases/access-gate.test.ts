@@ -269,6 +269,28 @@ void describe("applyAccessGate", () => {
 });
 
 void describe("readAccessGateConfig", () => {
+  void it("gives staging its own Access app and policy without changing production", () => {
+    const env = new Map([
+      [
+        "ATLAS_ADMIN_PUBLIC_URL",
+        "https://atlas-admin-staging.rebuildingus.org",
+      ],
+      ["ATLAS_PLATFORM_OPERATOR_EMAILS", "willie@rebuildingus.org"],
+      ["ATLAS_ACCESS_EMAIL_DOMAIN", "rebuildingus.org"],
+    ]);
+    const staging = readAccessGateConfig(env, "staging");
+    assert.equal(staging.appName, "Atlas platform admin staging");
+    assert.equal(
+      allowPolicyBody(staging).name,
+      "Atlas platform admin staging allow",
+    );
+    assert.throws(
+      () => readAccessGateConfig(env, "production"),
+      /does not match/,
+    );
+    env.set("ATLAS_ADMIN_PUBLIC_URL", "https://atlas-admin.rebuildingus.org");
+    assert.throws(() => readAccessGateConfig(env, "staging"), /does not match/);
+  });
   void it("reads the admin host, operators and email domain", () => {
     const env = new Map([
       ["ATLAS_ADMIN_PUBLIC_URL", "https://atlas-admin.rebuildingus.org/"],
@@ -276,7 +298,7 @@ void describe("readAccessGateConfig", () => {
       ["ATLAS_ACCESS_EMAIL_DOMAIN", "rebuildingus.org"],
     ]);
 
-    assert.deepEqual(readAccessGateConfig(env), CONFIG);
+    assert.deepEqual(readAccessGateConfig(env, "production"), CONFIG);
   });
 
   const MISSING: [string, Map<string, string>, string][] = [
@@ -309,7 +331,10 @@ void describe("readAccessGateConfig", () => {
 
   for (const [label, env, message] of MISSING) {
     void it(`refuses config with ${label}`, () => {
-      assert.throws(() => readAccessGateConfig(env), new RegExp(message));
+      assert.throws(
+        () => readAccessGateConfig(env, "production"),
+        new RegExp(message),
+      );
     });
   }
 });

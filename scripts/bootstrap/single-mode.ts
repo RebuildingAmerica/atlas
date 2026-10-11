@@ -170,11 +170,17 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
   }
   if (args.accessGateOnly) {
     return {
-      announcement: "Running the platform admin Access gate only.",
+      announcement: `Running the platform admin Access gate only (target=${hostedApiTarget}).`,
       phaseLabel: "Platform Admin Access Gate",
-      run: () => runAccessGatePhase(projectRoot, args.doctorMode),
+      run: () =>
+        runAccessGatePhase(projectRoot, hostedApiTarget, args.doctorMode),
       record: (result) => {
-        markPhase(state, "access-gate", reportedPhaseStatus(result));
+        markTargetPhase(
+          state,
+          "access-gate",
+          hostedApiTarget,
+          reportedPhaseStatus(result),
+        );
       },
       successMessage: "Cloudflare Access gate for the platform admin is ready.",
       failureMessage: "The platform admin Access gate had issues.",

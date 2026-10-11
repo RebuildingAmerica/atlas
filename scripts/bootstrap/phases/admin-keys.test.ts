@@ -20,7 +20,7 @@ interface FakeGh {
   deps: AdminKeysDeps;
 }
 
-const KEYS = { privateKeyPkcs8: "private-pkcs8", publicKeyRaw: "public-raw" };
+const KEYS = { privateKeyPkcs8: "private-pkcs8", publicKeyRaw: "public-raw" }; // pragma: allowlist secret
 
 function fakeGh(
   existingKey: string,
