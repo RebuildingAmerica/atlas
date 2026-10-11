@@ -266,6 +266,24 @@ async def test_invalid_inline_configuration_is_sanitized_before_archive_io(monke
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    ["/health", "/database", "/database-adapter/example", "/public-source/https"],
+)
+async def test_read_only_probes_do_not_load_discovery_models(monkeypatch, path):
+    entry, bootstrap, asgi = load_entry(monkeypatch)
+    probe = object()
+    monkeypatch.setitem(sys.modules, "app_probe", SimpleNamespace(app=probe))
+    runtime = entry.ApiRuntime(SimpleNamespace(storage=object()), object())
+    assert (
+        await runtime.fetch(SimpleNamespace(url="https://private.example.com" + path))
+        == "response"
+    )
+    bootstrap.assert_not_awaited()
+    assert asgi.fetch.await_args.args[0] is probe
+
+
+@pytest.mark.asyncio
 async def test_non_application_probe_retains_deferred_packages(monkeypatch):
     entry, bootstrap, asgi = load_entry(monkeypatch)
     probe = object()

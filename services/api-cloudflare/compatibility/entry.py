@@ -80,7 +80,9 @@ class ApiRuntime(DurableObject):
         )
         # Profile browsing needs only bundled core code. Inline REST/MCP
         # discovery retains all extraction resources before ASGI dispatch.
-        if not application_request or self._discovery_inline_enabled():
+        if path == "/native" or (
+            application_request and self._discovery_inline_enabled()
+        ):
             with self._diagnostics.measure("packages"):
                 await ensure_package_archive(self.env)
         if application_request:
