@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
 from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -221,10 +220,8 @@ class TestGetDbConnection:
     """Tests for the get_db_connection function."""
 
     @pytest.mark.asyncio
-    async def test_sqlite_connection(self) -> None:
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        conn = await get_db_connection(f"sqlite:///{db_path}")
+    async def test_sqlite_connection(self, tmp_db_path: str) -> None:
+        conn = await get_db_connection(f"sqlite:///{tmp_db_path}")
         try:
             assert isinstance(conn, aiosqlite.Connection)
         finally:
@@ -249,14 +246,12 @@ class TestInitDb:
     """Tests for init_db dispatching."""
 
     @pytest.mark.asyncio
-    async def test_init_db_sqlite(self) -> None:
+    async def test_init_db_sqlite(self, tmp_db_path: str) -> None:
         """init_db should initialize an SQLite database without error."""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        db_url = f"sqlite:///{db_path}"
+        db_url = f"sqlite:///{tmp_db_path}"
         await init_db(db_url)
 
-        conn = await aiosqlite.connect(db_path)
+        conn = await aiosqlite.connect(tmp_db_path)
         try:
             cursor = await conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import asyncio
-import tempfile
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
@@ -29,10 +28,9 @@ _EXPECTED_RECOVERY_DB_CONNECTION_ATTEMPTS = 2
 
 
 @pytest_asyncio.fixture
-async def db_url() -> str:
+async def db_url(tmp_db_path: str) -> str:
     """Create a temporary test database."""
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-        url = f"sqlite:///{f.name}"
+    url = f"sqlite:///{tmp_db_path}"
     await init_db(url)
     return url
 
