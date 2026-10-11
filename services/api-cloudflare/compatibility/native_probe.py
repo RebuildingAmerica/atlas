@@ -1,10 +1,10 @@
 """Exercise native dependencies against existing Atlas discovery examples."""
 
+import inflate64
+import probablepeople
+
 
 def native_checks():
-    import inflate64
-    import probablepeople
-
     payload = b"<Return>" + b"trustee " * 500 + b"</Return>"
     compressor = inflate64.Deflater()
     compressed = compressor.deflate(payload) + compressor.flush()

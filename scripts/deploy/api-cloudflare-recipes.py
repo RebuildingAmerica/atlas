@@ -29,6 +29,19 @@ def pin_recipe(recipe_dir: Path, package: str) -> None:
         "sha256": source["hash"].removeprefix("sha256:"),
     }
     path.write_text(yaml.safe_dump(recipe, sort_keys=False))
+    if name == "lxml":
+        # Autoconf must not try to execute Wasm as a host binary. This keeps
+        # the source-linked filing XML parser available without native Node.
+        iconv_path = recipe_dir / "libiconv" / "meta.yaml"
+        iconv = yaml.safe_load(iconv_path.read_text())
+        script = iconv["build"]["script"]
+        configure = "emconfigure ./configure"
+        if configure not in script:
+            raise ValueError("The reviewed libiconv configure step changed.")
+        iconv["build"]["script"] = script.replace(
+            configure, configure + " --host=wasm32-unknown-emscripten", 1
+        )
+        iconv_path.write_text(yaml.safe_dump(iconv, sort_keys=False))
 
 
 if __name__ == "__main__":
