@@ -69,13 +69,17 @@ readable values fail rather than replacing the retained value. Unreadable
 provider secrets require the same existing value from the approved CI store.
 Production billing verification runs before consumer activation, canonical route
 promotion and web publication, even when new checkout is closed, so existing
-customers retain billing controls. Only the first protected API bootstrap can
-precede billing recovery, after a live read verifies that the selected API,
-discovery and public-edge Workers are absent. Subsequent publications still
-require billing verification, because paused consumers do not detach existing
-public routes. Paused verification and rollback remain available. Bootstrap
-creates no canonical route or active consumer; additive schema checks and
-account identity verification still run.
+customers retain billing controls. An empty new-sale offer allowlist is valid
+only when `ATLAS_BILLING_CHECKOUT_ENABLED=false` is explicitly configured; live
+catalog, webhook and portal verification still run. Missing or malformed
+checkout closure cannot excuse an empty allowlist.
+
+Only the first protected API bootstrap can precede billing recovery, after a
+live read verifies that the selected API, discovery and public-edge Workers are
+absent. Subsequent publications still require billing verification, because
+paused consumers do not detach existing public routes. Paused verification and
+rollback remain available. Bootstrap creates no canonical route or active
+consumer; additive schema checks and account identity verification still run.
 
 ## Publication sequence
 
