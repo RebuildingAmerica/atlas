@@ -16,7 +16,7 @@ for line in Path("/opt/atlas-pds/pds.env").read_text().splitlines():
         if names[key] in result:
             raise RuntimeError("Duplicate broker setting")
         result[names[key]] = value
-print(json.dumps(result))
+print("ATLAS_PDS_BROKER_RECOVERY:" + json.dumps(result))
 `;
 
 function required(env, key) {
@@ -85,9 +85,17 @@ export function recoverPdsBroker({ env = process.env, run = spawnSync } = {}) {
       `PDS broker response is invalid (${category}); private diagnostics suppressed.`,
     );
   };
+  // gcloud and SSH can include status output. Require one explicit host response
+  // instead of treating transport output as the retained invitation credential.
+  const marker = "ATLAS_PDS_BROKER_RECOVERY:";
+  const frames = result.stdout
+    .toString()
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith(marker));
+  if (frames.length !== 1) invalid("invalid-frame");
   let document;
   try {
-    document = JSON.parse(result.stdout.toString());
+    document = JSON.parse(frames[0].slice(marker.length));
   } catch {
     invalid("invalid-json");
   }
