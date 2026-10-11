@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-import jwt
-from jwt import PyJWKClient
+if TYPE_CHECKING:
+    from jwt import PyJWKClient
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ def get_jwks_client(jwks_url: str) -> PyJWKClient:
 
     Creates a new client when the URL changes or no client exists yet.
     """
+    from jwt import PyJWKClient
+
     global _jwks_client, _jwks_client_url  # noqa: PLW0603
     if _jwks_client is None or _jwks_client_url != jwks_url:
         _jwks_client = PyJWKClient(
@@ -70,6 +73,11 @@ def verify_bearer_jwt(
         return None
     if not audience:
         return None
+    # Browsing public profiles and trusted app requests do not verify bearer
+    # signatures. Load signing libraries only when they are needed so visitors
+    # do not pay their native initialization cost on every cold request.
+    import jwt
+
     token = authorization.removeprefix("Bearer ")
     try:
         client = get_jwks_client(jwks_url)

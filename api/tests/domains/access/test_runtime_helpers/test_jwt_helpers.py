@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib.util
+import sys
 from types import SimpleNamespace
 
 import jwt
@@ -10,6 +12,35 @@ import pytest
 from atlas.domains.access import jwt as auth_jwt_module
 
 from .support import BAD_TOKEN_ERROR
+
+
+def test_public_requests_do_not_initialize_bearer_crypto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Public browsing must not load signing libraries before a bearer exists."""
+    monkeypatch.setitem(sys.modules, "jwt", None)
+    spec = importlib.util.spec_from_file_location(
+        "atlas_jwt_startup_probe", auth_jwt_module.__file__
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.invalidate_jwks_cache()
+    for authorization, audience in [
+        (None, ["atlas-api"]),
+        ("Basic abc", ["atlas-api"]),
+        ("Bearer token", []),
+    ]:
+        assert (
+            module.verify_bearer_jwt(
+                authorization,
+                issuer="https://atlas.example",
+                audience=audience,
+                jwks_url="https://atlas.example/jwks",
+            )
+            is None
+        )
 
 
 def test_invalidate_jwks_cache_clears_module_state(
@@ -44,7 +75,7 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
 
     monkeypatch.setattr(auth_jwt_module, "_jwks_client", None)
     monkeypatch.setattr(auth_jwt_module, "_jwks_client_url", None)
-    monkeypatch.setattr(auth_jwt_module, "PyJWKClient", FakeJwksClient)
+    monkeypatch.setattr(jwt, "PyJWKClient", FakeJwksClient)
 
     def fake_decode(*_args: object, **_kwargs: object) -> dict[str, object]:
         return {
@@ -53,7 +84,7 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
             "permissions": {"entities": ["write"]},
         }
 
-    monkeypatch.setattr(auth_jwt_module.jwt, "decode", fake_decode)
+    monkeypatch.setattr(jwt, "decode", fake_decode)
 
     first_client = auth_jwt_module.get_jwks_client("https://atlas.example/jwks")
     second_client = auth_jwt_module.get_jwks_client("https://atlas.example/jwks")
@@ -93,7 +124,7 @@ def test_jwt_helpers_cache_keys_and_decode_bearer_tokens(
     def raise_bad_token(*_args: object, **_kwargs: object) -> None:
         raise jwt.PyJWTError(BAD_TOKEN_ERROR)
 
-    monkeypatch.setattr(auth_jwt_module.jwt, "decode", raise_bad_token)
+    monkeypatch.setattr(jwt, "decode", raise_bad_token)
     assert (
         auth_jwt_module.verify_bearer_jwt(
             "Bearer token-123",
