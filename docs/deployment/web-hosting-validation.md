@@ -195,8 +195,9 @@ configuration, as the existing Node build already did. Better Auth's installed
 dispatcher creates session and response-header state per invocation. A Kysely
 PostgreSQL dialect resolves each physical client from the active Workers
 request; no pool or connection is created at module initialization, and each
-physical pool closes when its response finishes or is cancelled. Schema checks
-remain scoped to the request and migrations remain an external release job.
+physical pool closes when its response finishes or is cancelled. In-flight
+schema checks remain scoped to the request and migrations remain an external
+release job.
 
 Concurrent Kysely tests exercise separate request-owned pools. A disposable
 local PostgreSQL database and the actual workerd bundle also passed sixteen
@@ -249,6 +250,46 @@ The remaining live sign-in/404 workload still measured 54–70ms p99 by route; a
 frontend suite passed 621 files and 4,193 tests, with one skipped and unchanged
 100% coverage thresholds. The candidate remains ineligible for production
 cutover.
+
+The retained changes were committed as `f09cac0a` and deployed as diagnostic
+version `4594e66d-325b-455c-963a-ea0157a383ab`. A live rollback to
+`15bda29d-83a5-4206-a448-4c0872bc5585` and restoration passed version readback,
+private anonymous sessions, public HTML and unauthenticated Access rejection.
+The mobile browser also verified the public menu, Privacy link, parameterized
+sign-in email and editable form without reported page errors.
+
+A subsequent hosted CPU profile identified visitor-identity middleware and
+TanStack route matching/initialization as hot stacks. Registering the identity
+provider once was tested but removed: sign-in still measured 80ms p99 and
+credentialed tails did not improve. A later auth-only profile captured only idle
+samples and is not evidence about authentication CPU.
+
+The next investigation found that invalid credential checks still opened
+PostgreSQL to read the release-schema marker before Better Auth rejected the
+credential. Only a **completed successful schema check** is now remembered for
+the last verified database connection string in an isolate. Database switches
+require another check; failures retry. Concurrent cold requests keep independent
+queries and physical clients. No pending query, identity, permission, session,
+entitlement or customer content is cached by this optimization. Migrations
+remain outside requests; this cache relies on the existing immutable release
+schema contract, as Node's external-migration readiness already does.
+
+Experiment `20258e49-ba30-4b83-bede-c488ca1ec67c` measured:
+
+| Workload                | CPU samples / requests | CPU p50 | CPU p95 | CPU p99 |
+| ----------------------- | ---------------------: | ------: | ------: | ------: |
+| Invalid session cookie  |                50 / 50 |     1ms |     4ms |    40ms |
+| Invalid bearer token    |                50 / 50 |     4ms |     8ms |    12ms |
+| Credential-free session |                40 / 40 |     0ms |     0ms |     0ms |
+| Live sign-in HTML       |              200 / 200 |     7ms |    40ms |    75ms |
+
+Home and Privacy again produced no Worker invocations across 200 requests each.
+Expected 404 routes still measured 53–56ms p99, with 397 of 400 records matched;
+missing records are excluded, not counted as zero. All credential controls
+returned private, uncached `null`, and no CPU-limit pages appeared in 1,140
+requests. The full frontend suite passed 4,195 tests with one skipped and
+unchanged 100% coverage. These improvements do not pass the cold CPU gate or
+authorize production cutover.
 
 ## Hybrid and shared usage
 

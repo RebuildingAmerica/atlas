@@ -415,7 +415,7 @@ describe("auth runtime wiring", () => {
     check.mockRestore();
   });
 
-  it("checks schema once within each Workers request", async () => {
+  it("reuses a successful schema-version check for the same Workers database", async () => {
     vi.stubEnv("ATLAS_AUTH_MIGRATIONS", "external");
     const schema = await import("../../../../../server/auth-schema");
     const check = vi.spyOn(schema, "verifyAuthSchema").mockResolvedValue(undefined);
@@ -426,7 +426,66 @@ describe("auth runtime wiring", () => {
       return new Response(null, { status: 204 });
     });
     expect(check).toHaveBeenCalledTimes(1);
+    await runWorkerRequest("postgres://a", async () => {
+      await mod.ensureAuthReady();
+      return new Response(null, { status: 204 });
+    });
+    expect(check).toHaveBeenCalledTimes(1);
+    await runWorkerRequest("postgres://b", async () => {
+      await mod.ensureAuthReady();
+      return new Response(null, { status: 204 });
+    });
+    expect(check).toHaveBeenCalledTimes(2);
     expect(mocks.runMigrations).not.toHaveBeenCalled();
+    check.mockRestore();
+  });
+
+  it("retries a failed Workers schema check on the next request", async () => {
+    vi.stubEnv("ATLAS_AUTH_MIGRATIONS", "external");
+    const schema = await import("../../../../../server/auth-schema");
+    const check = vi
+      .spyOn(schema, "verifyAuthSchema")
+      .mockRejectedValueOnce(new Error("Schema not ready"))
+      .mockResolvedValue(undefined);
+    const mod = await import("@/domains/access/server/auth");
+    const { runWorkerRequest } = await import("../../../../../server/request-scope");
+    const request = () =>
+      runWorkerRequest("postgres://a", async () => {
+        await mod.ensureAuthReady();
+        return new Response(null, { status: 204 });
+      });
+    await expect(request()).rejects.toThrow("Schema not ready");
+    await expect(request()).resolves.toHaveProperty("status", 204);
+    await request();
+    expect(check).toHaveBeenCalledTimes(2);
+    check.mockRestore();
+  });
+
+  it("does not share an in-flight schema query across Workers requests", async () => {
+    vi.stubEnv("ATLAS_AUTH_MIGRATIONS", "external");
+    const schema = await import("../../../../../server/auth-schema");
+    const finish: (() => void)[] = [];
+    const check = vi
+      .spyOn(schema, "verifyAuthSchema")
+      .mockImplementation(() => new Promise<void>((resolve) => finish.push(resolve)));
+    const mod = await import("@/domains/access/server/auth");
+    await mod.getAuth();
+    const { runWorkerRequest } = await import("../../../../../server/request-scope");
+    const request = () =>
+      runWorkerRequest("postgres://a", async () => {
+        await mod.ensureAuthReady();
+        return new Response(null, { status: 204 });
+      });
+    const first = request();
+    const second = request();
+    await vi.waitFor(() => {
+      expect(check).toHaveBeenCalledTimes(2);
+    });
+    for (const resolve of finish) resolve();
+    await Promise.all([first, second]);
+    check.mockResolvedValue(undefined);
+    await request();
+    expect(check).toHaveBeenCalledTimes(2);
     check.mockRestore();
   });
 

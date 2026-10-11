@@ -66,8 +66,10 @@ and SQLite remain available for local/self-hosted installations.
 The native Worker imports the reflection polyfill needed by passkey
 dependencies, excludes the native SQLite implementation, and holds request
 resources through stream completion/cancellation. The release job owns schema
-changes. Hosted requests only verify `atlas_runtime_schema`; they never create
-tables or run migrations.
+changes. Hosted requests verify `atlas_runtime_schema`; Workers remember only a
+completed successful check for the last verified database in that isolate, never
+an in-flight query or client. Hosted requests never create tables or run
+migrations.
 
 The hybrid publisher packages the prepared server output with
 `services/web-edge/Dockerfile`; it does not rebuild the application. Traced

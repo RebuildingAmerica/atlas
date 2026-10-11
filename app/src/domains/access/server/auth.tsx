@@ -22,7 +22,7 @@ import { resolvePrimaryWorkspaceId } from "./workspace-lookup";
 import { queryActiveProducts } from "./workspace-products";
 import { type AuthRuntimeConfig, getAuthRuntimeConfig, validateAuthRuntimeConfig } from "./runtime";
 import { getAuthDatabaseConfig, getAuthDatabase, getAuthPgPool } from "./auth-db";
-import { requestResource } from "../../../../server/request-scope";
+import { currentWorkerRequest, requestResource } from "../../../../server/request-scope";
 import { verifyAuthSchema } from "../../../../server/auth-schema";
 import {
   buildAtlasTrustedOrigins,
@@ -339,6 +339,7 @@ export interface AtlasWorkspaceStateAuth {
 let authInstance: AtlasAuthInstance | null = null;
 let authInstancePromise: Promise<AtlasAuthInstance> | null = null;
 let authReadyPromise: Promise<AtlasAuthInstance> | null = null;
+let verifiedWorkerDatabase: string | undefined;
 
 /**
  * Reuses the authentication engine's configuration and endpoint definitions.
@@ -403,7 +404,17 @@ export async function runAtlasAuthMigrations(
 export async function ensureAuthReady() {
   const auth = await getAuth();
   if (process.env.ATLAS_AUTH_MIGRATIONS === "external") {
-    const check = () => verifyAuthSchema(getAuthPgPool()).then(() => auth);
+    const scope = currentWorkerRequest();
+    const check = async () => {
+      if (!scope || verifiedWorkerDatabase !== scope.connectionString) {
+        await verifyAuthSchema(getAuthPgPool());
+        // Only completed release-schema metadata is reused. Concurrent first
+        // requests keep their own queries and clients; failures are retried.
+        // Avoid opening PostgreSQL on every invalid sign-in/session probe.
+        if (scope) verifiedWorkerDatabase = scope.connectionString;
+      }
+      return auth;
+    };
     const scoped = requestResource("auth-ready", check);
     if (scoped) return await scoped;
     authReadyPromise ??= check();
