@@ -34,6 +34,12 @@ Vercel project and environment with its existing CI token. Staging requires its
 explicit Vercel custom environment ID. No provider-only value is replaced with a
 default or a regenerated credential.
 
+Retained CI values for the public origin, authentication audiences, membership
+origin and legacy operator allowlist are forwarded to runtime recovery. This
+preserves existing sign-in and operator access when Vercel marks those settings
+write-only. A readable provider value that conflicts with CI still blocks the
+release; forwarding does not authorize changing an identity.
+
 Read-only verification must establish that Hyperdrive points to the retained
 database. A diagnostic Hyperdrive configuration being active does not prove that
 it contains the production accounts or catalog.

@@ -24,6 +24,7 @@ import {
   retainedPublicationRuntime,
   verifyHostedJourneys,
 } from "./cloudflare-publication.mjs";
+import { collectWebRuntime } from "./web-runtime-sync.mjs";
 
 const sha = "a".repeat(40);
 const environment = {
@@ -237,6 +238,72 @@ test("retained runtime acquisition forwards existing CI additions and preserves 
     result.ATLAS_SAML_SP_PRIVATE_KEY,
     "fixture-existing-enterprise-value",
   );
+});
+
+test("retained CI origins and authentication settings recover write-only provider configuration", async () => {
+  const retained = {
+    ATLAS_PUBLIC_URL: "https://atlas.example.org",
+    ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.org/mcp",
+    ATLAS_AUTH_MEMBERSHIP_URL: "https://atlas.example.org",
+    ATLAS_OPERATOR_ALLOWED_EMAILS: "operator@example.org",
+  };
+  const readable = {
+    ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.org",
+    ATLAS_AUTH_INTERNAL_SECRET: "fixture-internal-signing",
+    ATLAS_AUTH_CALLBACK_SECRET: "fixture-api-callback",
+    ATLAS_EDGE_ORIGIN_SECRET: "fixture-visitor-proof",
+    ATLAS_ADMIN_PUBLIC_URL: "https://admin.example.org",
+    DATABASE_URL: "postgres://fixture@db.example.org/atlas",
+    ATLAS_EMAIL_RESEND_API_KEY: "fixture-email-key",
+    ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
+      "https://atlas.example.org/api/auth/internal/api-key",
+  };
+  const inventory = [
+    ...Object.entries(retained).map(([key], i) => ({
+      id: `retained_${i}`,
+      key,
+      type: "sensitive",
+      target: ["production"],
+    })),
+    ...Object.entries(readable).map(([key, value], i) => ({
+      id: `readable_${i}`,
+      key,
+      value,
+      type: "plain",
+      target: ["production"],
+    })),
+  ];
+  const result = await retainedPublicationRuntime(
+    {
+      ATLAS_PUBLICATION_TARGET: "production",
+      VERCEL_PROJECT_ID: "prj_fixture",
+      VERCEL_ORG_ID: "team_fixture",
+      VERCEL_TOKEN: "fixture-provider-token",
+      ...retained,
+    },
+    {
+      collect: (input) =>
+        collectWebRuntime({
+          ...input,
+          fetcher: async (url) => {
+            const pathname = new URL(url).pathname;
+            if (pathname.endsWith("/env"))
+              return Response.json({ envs: inventory });
+            const row = inventory.find(
+              ({ id }) => id === pathname.split("/").at(-1),
+            );
+            assert.equal(row?.type, "plain");
+            return Response.json(row);
+          },
+        }),
+    },
+  );
+  assert.deepEqual(result, {
+    ATLAS_MANAGED: "true",
+    ATLAS_MULTI_USER: "true",
+    ...retained,
+    ...readable,
+  });
 });
 
 test("hosted journeys verify PDS before smoke, identity and checkout against the exact candidate", () => {
