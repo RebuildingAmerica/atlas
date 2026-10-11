@@ -56,6 +56,21 @@ test("Python artifacts are portable cf Build Output with vendored package data",
     assert.equal(config.workersDev, false);
     assert.equal(config.previewUrls, false);
     assert.deepEqual(config.domains ?? [], []);
+    writeFileSync(join(source, "discovery_entry.py"), "class Default: pass\n");
+    const discovery = await preparePythonOutput({
+      source,
+      vendor,
+      destination: join(root, "discovery"),
+      workerName: "atlas-python-eval-discovery",
+      accountId: "a".repeat(32),
+      workerEnv: {},
+      durableExport: "ApiRuntime",
+      entrypoint: "discovery_entry.py",
+    });
+    assert.equal(
+      discovery.workers.default.config.manifest.mainModule,
+      "discovery_entry.py",
+    );
     // Exercise cf's actual upload translation: Python's runtime recognizes
     // vendored packages by their canonical python_modules/ path prefix.
     const require = createRequire(import.meta.url);

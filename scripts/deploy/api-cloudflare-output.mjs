@@ -17,6 +17,7 @@ export async function preparePythonOutput({
   accountId,
   workerEnv,
   durableExport,
+  entrypoint = "entry.py",
 }) {
   for (const [name, binding] of Object.entries(workerEnv ?? {})) {
     if (
@@ -71,11 +72,11 @@ export async function preparePythonOutput({
   copy(source, "", false);
   copy(vendor, "python_modules", true);
   if (
-    modules["entry.py"]?.type !== "python" ||
+    modules[entrypoint]?.type !== "python" ||
     !modules["python_modules/pyvenv.cfg"]
   )
     throw new Error(
-      "entry.py and a complete vendored Python environment are required.",
+      "A Python entrypoint and a complete vendored environment are required.",
     );
   const config = {
     name: workerName,
@@ -96,7 +97,7 @@ export async function preparePythonOutput({
           },
         }
       : {}),
-    manifest: { type: "complete", mainModule: "entry.py", modules },
+    manifest: { type: "complete", mainModule: entrypoint, modules },
   };
   writeFileSync(
     join(output, "config.json"),

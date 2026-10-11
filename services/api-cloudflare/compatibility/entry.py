@@ -1,7 +1,6 @@
 """Read-only runtime evaluation; never a production API or migration job."""
 
 from fastapi import FastAPI, Request
-from native_probe import native_checks
 from workers import DurableObject, WorkerEntrypoint, asgi
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -21,6 +20,8 @@ async def health():
 
 @app.get("/native")
 async def native():
+    from native_probe import native_checks
+
     return native_checks()
 
 

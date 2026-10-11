@@ -47,7 +47,13 @@ const runtime = loadWebRuntime(
 const access = readJson(required("--access-file"));
 const hyperdriveId = required("--hyperdrive-id");
 const edge = args.includes("--edge");
-const workerName = edge ? "atlas-python-eval-edge" : "atlas-python-eval-api";
+const discovery = args.includes("--discovery");
+if (edge && discovery) throw Error("Select one evaluation runtime.");
+const workerName = edge
+  ? "atlas-python-eval-edge"
+  : discovery
+    ? "atlas-python-eval-discovery"
+    : "atlas-python-eval-api";
 const pythonVersionId = edge
   ? assertEvaluationVersion(
       cf([
@@ -108,7 +114,7 @@ const destination = join(
   ROOT,
   ".atlas/python-evaluation",
   releaseSha,
-  ...(edge ? ["edge"] : []),
+  ...(edge ? ["edge"] : discovery ? ["discovery"] : []),
 );
 mkdirSync(destination, { recursive: true });
 if (edge)
@@ -125,6 +131,7 @@ else
     workerName,
     accountId,
     durableExport: "ApiRuntime",
+    entrypoint: discovery ? "discovery_entry.py" : "entry.py",
     workerEnv: {
       HYPERDRIVE: { type: "hyperdrive", id: hyperdriveId },
       API_RUNTIME: {
@@ -206,7 +213,7 @@ const headers = {
 };
 for (const path of [
   "/health",
-  "/database",
+  ...(discovery ? [] : ["/database"]),
   ...(args.includes("--native") ? ["/native"] : []),
 ]) {
   const response = await fetch("https://" + hostname + path, {
