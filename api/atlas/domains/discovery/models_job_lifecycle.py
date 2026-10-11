@@ -18,13 +18,14 @@ class DiscoveryJobCRUDLifecycle:
     """Discovery job lifecycle CRUD helpers."""
 
     @staticmethod
-    async def claim_next(
+    async def claim_next(  # noqa: PLR0913 - owner identity and continuation eligibility are independent
         conn: aiosqlite.Connection,
         *,
         claimed_by: str,
         claimed_by_user_id: str | None = None,
         lease_seconds: int = 900,
         search_key_configured: bool = True,
+        checkpointed: bool = False,
     ) -> DiscoveryJobModel | None:
         """Atomically claim the oldest claimable job. Returns None if none available.
 
@@ -52,6 +53,11 @@ class DiscoveryJobCRUDLifecycle:
             without search credentials only receive jobs that have no search
             target, which are reserved for seeded/direct/evidence work.
 
+        checkpointed : bool, optional
+            Opt into the resumable search consumer. Legacy consumers exclude
+            jobs enrolled in a durable continuation; this lane accepts search
+            jobs, including enrolled ones, without changing public job modes.
+
         Returns
         -------
         DiscoveryJobModel | None
@@ -69,6 +75,13 @@ class DiscoveryJobCRUDLifecycle:
                 "OR (COALESCE(r.location_query, '') = '' AND r.issue_areas = '[]'))"
             )
 
+        continuation_clause = (
+            "AND j.execution_mode = 'search'"
+            if checkpointed
+            else "AND NOT EXISTS (SELECT 1 FROM discovery_web_checkpoints c "
+            "WHERE c.job_id = j.id AND c.unit_key = 'continuation')"
+        )
+
         if is_postgres:  # pragma: no cover - exercised only against PostgreSQL
             cursor = await conn.execute(
                 f"""
@@ -81,6 +94,7 @@ class DiscoveryJobCRUDLifecycle:
                     WHERE (j.status = 'queued' OR (j.status = 'claimed' AND j.claimed_until < ?))
                       AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?)
                       {capability_clause}
+                      {continuation_clause}
                     ORDER BY j.created_at ASC
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
@@ -104,6 +118,7 @@ class DiscoveryJobCRUDLifecycle:
             WHERE (j.status = 'queued' OR (j.status = 'claimed' AND j.claimed_until < ?))
               AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?)
               {capability_clause}
+              {continuation_clause}
             ORDER BY j.created_at ASC
             LIMIT 1
             """,
@@ -121,8 +136,9 @@ class DiscoveryJobCRUDLifecycle:
             SET status = 'claimed', claimed_by = ?, claimed_by_user_id = ?,
                 claimed_until = ?, started_at = COALESCE(started_at, ?)
             WHERE id = ? AND status = ?
+              AND (status = 'queued' OR claimed_until < ?)
             """,
-            (claimed_by, claimed_by_user_id, lease_until, now, job.id, job.status),
+            (claimed_by, claimed_by_user_id, lease_until, now, job.id, job.status, now),
         )
         await conn.commit()
         if getattr(update, "rowcount", 0) != 1:

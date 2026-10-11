@@ -42,9 +42,9 @@ the existing catalog constraints and resolver rules.
 This is not an activated discovery alarm. A provider unit is a bounded number of
 operations, not a proven bound on synchronous parsing CPU, archive size,
 classifier memory, or checkpoint payload size. Actual hosted limits still
-require evidence. The caller still owns deliberate lease release, alarm
-scheduling, retry policy, web-candidate publication, and final run completion.
-Ranking and deduplication also retain their existing whole-run behavior.
+require evidence. Ranking and deduplication retain the existing whole-run
+comparison against at most 1,000 catalog entries. Alarm scheduling and hosted
+resource validation remain required before production activation.
 
 Local verification uses real ZIP bytes served through byte ranges, compares
 resumed filing selection with the existing provider, and restarts between
@@ -70,3 +70,20 @@ by reading the matching terminal receipt; failed or cancelled jobs cannot be
 revived. Registry units use stable org:N/person:N keys in preparation order.
 These are opt-in primitives; existing Node and Scout execution remains
 unchanged.
+
+`advance_claimed_discovery_job` connects these primitives for existing search
+jobs. A scheduler claims with `checkpointed=True`, uses a fresh owner and
+connection, and advances one turn. Successful turns persist progress and return
+the job to queued without consuming a retry. Provider failures retain attempt
+costs and existing retry/backoff limits; cost-ceiling stops fail the run and job
+together. Cancellation and replaced/expired ownership prevent late writes or
+requeue. Credentials remain invocation-owned. A terminal receipt resolves a lost
+final response without retrying or reopening the job.
+
+Enrollment is stored before provider work. Updated legacy claimers exclude
+enrolled jobs so they cannot restart partial work through the monolithic runner.
+All active claimers must run this exclusion before enrolling production jobs.
+Unenrolled Node and Scout jobs keep their existing path. Direct/evidence modes
+are not accepted by this initial turn consumer; their existing consumers remain
+unchanged, and their hosted continuation is still required before replacing
+those consumers. No polling process or hosted alarm is enabled by these changes.
