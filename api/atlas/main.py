@@ -12,6 +12,7 @@ Configures:
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from functools import cache
 from typing import Any
 
 from fastapi import FastAPI, Response
@@ -284,8 +285,22 @@ def create_app(
     return app
 
 
-# Create the application instance
-app = create_app()
+@cache
+def _get_default_application() -> FastAPI:
+    return create_app()
+
+
+def __getattr__(name: str) -> FastAPI:
+    """Construct the ordinary ASGI server only when its loader requests it.
+
+    Importing the explicit factory must not also build a second routing tree and
+    MCP server beside a hosted instance. Keeping one application protects profile
+    browsing from the hosted runtime's memory limit; uvicorn's ``atlas.main:app``
+    entrypoint retains a stable process-owned instance.
+    """
+    if name != "app":
+        raise AttributeError(name)
+    return _get_default_application()
 
 
 if __name__ == "__main__":

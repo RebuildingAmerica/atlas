@@ -1,4 +1,4 @@
-"""Precompile large unchanged classifier tables with the target Python minor."""
+"""Precompile classifier tables and source-retaining packages for Python Workers."""
 
 import argparse
 import hashlib
@@ -11,8 +11,12 @@ from pathlib import Path
 
 def compile_tables(vendor: Path) -> dict:
     """Avoid request-time compiler memory without changing classifier data."""
-    if sys.version_info[:2] != (3, 14):
-        raise ValueError("The pinned Python Worker requires Python 3.14 bytecode.")
+    spec = importlib.util.spec_from_file_location(
+        "atlas_package_compiler", Path(__file__).with_name("api-cloudflare-packages.py")
+    )
+    packages = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(packages)
+    packages.check_bytecode_version()
     records = []
     for name in ("gender", "ratios"):
         source = vendor / "probablepeople" / f"{name}.py"
@@ -38,6 +42,7 @@ def compile_tables(vendor: Path) -> dict:
         "python": sys.version.split()[0],
         "magic": importlib.util.MAGIC_NUMBER.hex(),
         "modules": records,
+        "packages": packages.compile_package_sources(vendor),
     }
 
 
