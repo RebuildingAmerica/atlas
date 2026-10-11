@@ -23,9 +23,10 @@ def preload_core_packages():
         raise RuntimeError("Bundled API core does not match its release.")
     if str(archive) not in sys.path:
         sys.path.insert(0, str(archive))
-    # Validate the native dependency boundary independently before expanding the
-    # snapshot. The full API graph did not settle during deployment validation.
+    # Native Pydantic passed hosted validation; validate the HTTP framework
+    # boundary next. The full API graph did not settle during deployment.
     # Reusing supported imports protects profile response time after eviction;
     # settings, application factories, and services remain request owned.
-    importlib.import_module("pydantic_core")
+    for module in ("pydantic_core", "fastapi", "httpx"):
+        importlib.import_module(module)
     return True
