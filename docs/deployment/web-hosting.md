@@ -94,9 +94,11 @@ baseline, before diagnostic resources and traffic were created.
 Local verification on 2026-10-10 established (the `cf` conversion also passed
 both prebuilt deployment dry runs):
 
-- Node, Vercel, Workers and both Linux container builds succeed; the minified
-  native upload is about 2.3 MiB gzip, below the documented 3 MiB Free bundle
-  limit. This is not a request CPU measurement.
+- Node, Vercel, Workers and both Linux container builds succeed. The minified
+  native upload is approximately 8.5 MiB uncompressed (2.3 MiB gzip).
+  [Current Workers limits](https://developers.cloudflare.com/workers/platform/limits/#worker-size)
+  allow 64 MiB uncompressed on Free; compressed size is informational, with no
+  compressed-size limit. This is not a request CPU measurement.
 - Serialized migrations ran twice successfully on an isolated PostgreSQL 18
   database.
 - Native workerd and the Linux Node container each returned the correct
