@@ -246,17 +246,24 @@ test("retained CI origins and authentication settings recover write-only provide
     ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.org/mcp",
     ATLAS_AUTH_MEMBERSHIP_URL: "https://atlas.example.org",
     ATLAS_OPERATOR_ALLOWED_EMAILS: "operator@example.org",
+    DATABASE_BACKEND: "postgres",
+    ATLAS_DEPLOY_MODE: "production",
+    ATLAS_AUTH_BASE_PATH: "/api/auth",
+    ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
+      "https://atlas.example.org/api/auth/internal/api-key",
+    ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.org",
+    ATLAS_DOCS_URL: "https://docs.example.org",
+    ATLAS_EMAIL_FROM: "Atlas <hello@example.org>",
+    ATLAS_EMAIL_PROVIDER: "resend",
+    ATLAS_PDS_PUBLIC_URL: "https://pds.example.org",
   };
   const readable = {
-    ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.org",
     ATLAS_AUTH_INTERNAL_SECRET: "fixture-internal-signing",
     ATLAS_AUTH_CALLBACK_SECRET: "fixture-api-callback",
     ATLAS_EDGE_ORIGIN_SECRET: "fixture-visitor-proof",
     ATLAS_ADMIN_PUBLIC_URL: "https://admin.example.org",
     DATABASE_URL: "postgres://fixture@db.example.org/atlas",
     ATLAS_EMAIL_RESEND_API_KEY: "fixture-email-key",
-    ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
-      "https://atlas.example.org/api/auth/internal/api-key",
   };
   const inventory = [
     ...Object.entries(retained).map(([key], i) => ({
