@@ -23,10 +23,10 @@ def preload_core_packages():
         raise RuntimeError("Bundled API core does not match its release.")
     if str(archive) not in sys.path:
         sys.path.insert(0, str(archive))
-    # Snapshot the API's code so visits after eviction avoid the full import
-    # cost. Its lazy factory reads no settings and constructs no application.
-    # JWT signing libraries remain request-only: native cryptography left
-    # deployment initialization unsettled when explicitly preloaded.
-    for module in ("pydantic_core", "fastapi", "httpx", "atlas.main"):
+    # Reuse the framework imports that passed hosted validation to reduce cold
+    # profile response time. The full API graph exceeded the provider's 64 MiB
+    # snapshot limit; native cryptography also cannot initialize at deployment.
+    # Application code, settings, and signing services remain request owned.
+    for module in ("pydantic_core", "fastapi", "httpx"):
         importlib.import_module(module)
     return True

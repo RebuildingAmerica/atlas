@@ -25,7 +25,7 @@ def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_p
         core.writestr("atlas/__init__.py", "")
         core.writestr(
             "atlas/main.py",
-            'def create_app():\n    raise AssertionError("Snapshot constructed an application")\n',
+            'raise AssertionError("Full API graph must load during a request")\n',
         )
     (tmp_path / "core-identity.json").write_text(
         json.dumps(
@@ -45,7 +45,7 @@ assert module.preload_core_packages()
 import pydantic_core
 assert "fastapi" in sys.modules
 assert "httpx" in sys.modules
-assert "atlas.main" in sys.modules
+assert "atlas.main" not in sys.modules
 print(json.dumps({"imported": pydantic_core.IMPORTED, "paths": sys.path.count(str(Path(sys.argv[2]) / "python_modules/core.zip")), "repeated": module.preload_core_packages()}))
 """
     output = subprocess.check_output(
