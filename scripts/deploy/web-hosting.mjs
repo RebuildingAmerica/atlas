@@ -132,6 +132,13 @@ export async function doctor({
 
 /** Build candidates locally; provider provisioning and cutover remain separately gated. */
 function prepare(args, target) {
+  if (
+    process.env.ATLAS_WORKERS_EXECUTION &&
+    process.env.ATLAS_WORKERS_EXECUTION !== "direct"
+  )
+    throw new Error(
+      "Experimental execution cannot produce a promotable release; use web:durable-evaluate.",
+    );
   const architecture = argument(args, "--architecture");
   if (!["workers", "hybrid"].includes(architecture))
     throw new Error("--architecture workers|hybrid is required.");

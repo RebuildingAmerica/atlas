@@ -116,6 +116,11 @@ export default defineConfig(async ({ mode }) => {
   const runtime = process.env.ATLAS_WEB_RUNTIME ?? env.ATLAS_WEB_RUNTIME ?? "node";
   if (runtime !== "node" && runtime !== "workers")
     throw new Error("ATLAS_WEB_RUNTIME must be node or workers.");
+  const execution = process.env.ATLAS_WORKERS_EXECUTION ?? "direct";
+  if (!["direct", "durable-evaluation"].includes(execution))
+    throw new Error("ATLAS_WORKERS_EXECUTION must be direct or durable-evaluation.");
+  if (execution === "durable-evaluation" && runtime !== "workers")
+    throw new Error("Durable Object evaluation requires the Workers build.");
   const runtimePlugins =
     runtime === "workers"
       ? [
@@ -131,6 +136,22 @@ export default defineConfig(async ({ mode }) => {
           (await import("@cloudflare/vite-plugin")).cloudflare({
             viteEnvironment: { name: "ssr" },
             types: { generate: false },
+            ...(execution === "durable-evaluation"
+              ? {
+                  config: (config) => ({
+                    entrypoint: "server/durable-evaluation.ts",
+                    exports: { AtlasAppRuntime: { type: "durable-object", storage: "sqlite" } },
+                    env: {
+                      ...config.env,
+                      APP_RUNTIME: {
+                        type: "durable-object",
+                        worker: config.name,
+                        exportName: "AtlasAppRuntime",
+                      },
+                    },
+                  }),
+                }
+              : {}),
           }),
         ]
       : [

@@ -2,7 +2,8 @@
 
 Baseline validated October 10, 2026 against commit
 `a14ff2135e7bf8e133741d2a644cf14245daa3ef`. CPU investigation and retained fixes
-are from `60f7f895`, `688aa2e0` and `e7e661bd`; see the comparison below.
+include `60f7f895`, `688aa2e0`, `e7e661bd`, `df85ef7b` and `f46090a0`; see the
+comparisons and Durable Object evaluation below.
 
 Atlas production remains on Vercel. The current Workers build does not meet the
 approved CPU gate, and Google Cloud rejects registry access with
@@ -89,6 +90,126 @@ an approximately 11ms Worker startup reported during upload do not establish
 adequate per-request CPU headroom. Do not promote it or silently upgrade the
 Workers plan. See
 [Cloudflare Workers limits](https://developers.cloudflare.com/workers/platform/limits/).
+
+### Production authentication corrections and latest measurements
+
+The diagnostic had omitted runtime `NODE_ENV`. Better Auth reads that value
+through its runtime environment proxy; a production Vite build alone had not
+enabled its database rate limiter. Commit `df85ef7b` makes the runtime
+production flag mandatory in Cloudflare output and release configuration.
+Earlier auth CPU samples therefore omit production rate-limit work and cannot
+establish its production cost. Correct rate limiting protects sign-in and
+recovery from abuse.
+
+Hosted production-mode testing also exposed PostgreSQL's `int8` timestamp
+representation: Better Auth added its cooldown window to a string and returned a
+retry delay of approximately 179 trillion seconds. Commit `f46090a0` patches the
+pinned dependency to coerce that timestamp before addition. A real HTTP limiter
+regression covers number, string and bigint representations; hosted 429
+responses now carry a usable 1–10 second `X-Retry-After`.
+
+The clean `f46090a0` build, measured as version
+`1f63f05a-a819-4abd-ae95-928ba25ffed8`, produced:
+
+| Workload                                                | Matched samples / requests | CPU p50 / p95 / p99 |
+| ------------------------------------------------------- | -------------------------: | ------------------: |
+| Sign-in, five concurrent public paths                   |                  197 / 200 |       6 / 41 / 84ms |
+| Sign-in, sequential public paths                        |                  100 / 100 |        5 / 9 / 23ms |
+| Invalid-session reads allowed by the production limiter |                  106 / 107 |       7 / 70 / 83ms |
+| Invalid-session reads rejected by the limiter           |                    13 / 13 |       8 / 46 / 46ms |
+
+Home and Privacy served exact static HTML without Worker invocations. The rate
+test issued 120 requests at concurrency eight, rotating spoofed forwarding IPs;
+107 returned anonymous `null` and 13 returned 429 across a window rollover. All
+responses were private and uncached. No CPU-limit pages were observed, but both
+concurrent and sequential rendering still fail the original CPU gate. The
+matching clean artifact is currently deployed as version
+`67aa68e8-bed2-4be3-8f22-1cbb7ed38cc8`. Exact-version rollback between these two
+production-mode versions and restoration passed session, HTML and Access checks.
+
+Two further ideas were measured and rejected. Preconstructing route metadata at
+startup still yielded 54ms p99 sign-in CPU. A read-only Hyperdrive driver
+comparison measured 5ms p99 for both node-postgres and Postgres.js across 150
+requests each. Neither result justifies retaining the startup mutation or
+replacing the database driver. Local PostgreSQL SCRAM profiling is not evidence
+that Hyperdrive's pooled upstream authentication burns that CPU per request.
+
+### Free Durable Object evaluation
+
+Cloudflare now documents SQLite-backed Durable Objects on Free with a default
+30-second CPU allowance. Its Workers limits page recommends moving expensive
+work to Durable Objects. This provides an architecture to evaluate without
+reopening Google billing; it does **not** make the original application CPU
+disappear or satisfy the original below-8ms whole-app gate. See
+[Durable Object limits](https://developers.cloudflare.com/durable-objects/platform/limits/)
+and
+[pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/).
+
+A protected prototype deployed through `cf` as Worker
+`atlas-do-hosted-diagnostic`, version `4046a4e3-0c9b-4a3d-8228-8063a9f1cf53`,
+forwards requests from a small edge handler to four fixed diagnostic objects.
+Each runs the unchanged Atlas handler with existing uncached Hyperdrive and
+request-owned PostgreSQL clients. Object storage holds no product data. The
+account readback remained Free; namespace readback confirmed SQLite storage.
+
+| Hosted workload                   | Edge CPU p99 | Object CPU p99 | Matched edge / object samples |
+| --------------------------------- | -----------: | -------------: | ----------------------------: |
+| Sign-in SSR                       |          0ms |           81ms |                     200 / 200 |
+| Expected `/about` 404             |          0ms |           94ms |                     200 / 199 |
+| Expected unknown-route 404        |          0ms |           37ms |                     200 / 199 |
+| Limiter-allowed invalid sessions  |          0ms |           79ms |                     104 / 102 |
+| Limiter-rejected invalid sessions |          0ms |           24ms |                       16 / 16 |
+
+The public run made 1,000 requests, including 400 static Home/Privacy requests,
+with no CPU-limit pages. Sign-in edge wall time was 64ms p95 and 95ms p99.
+Limiter-allowed auth edge wall time was 1,265ms p95 under concurrency eight;
+these were rejected credentials, not real signed-in journeys. The 120-request
+auth run returned 104 anonymous 200s and 16 rate-limited 429s across a rollover;
+all cooldowns were 1–10 seconds. Edge and object logs share ray IDs, so CPU was
+matched by **ray and entrypoint**, never by overwriting one entrypoint with the
+other. Missing logs are excluded, not treated as zero CPU.
+
+The retained source adapter has no CPU-burning control endpoint. Actual built
+workerd tests against disposable PostgreSQL passed 16 overlapping signed-session
+reads for two users across four shards and another 16 forced onto one object.
+Every response had the correct identity; fixture users, sessions and remaining
+connections were all zero afterward. Stream overlap and cancellation tests also
+passed. These checks do not replace real hosted email, passkey, OAuth or billing
+acceptance.
+
+Reproduce a clean-source, protected evaluation with:
+
+```sh
+pnpm web:durable-evaluate \
+  --runtime-file /private/path/atlas-runtime.json \
+  --access-file /private/path/atlas-access.json \
+  --hyperdrive-id EXISTING_UNCACHED_HYPERDRIVE_ID \
+  --worker-name atlas-durable-eval-cpu \
+  --hostname atlas-durable-eval-cpu.atlas.rebuildingus.org
+```
+
+Set `CLOUDFLARE_ACCOUNT_ID` and `ATLAS_CF_PROFILE` first. The command checks
+runtime keys, complete PostgreSQL identity, Free subscriptions and exclusive
+Access protection, builds source with the Cloudflare Vite integration, deploys
+through `cf`, and records artifact digests and namespace/deployment IDs without
+secrets. It produces an `evaluation.json`, not a promotable release manifest.
+Normal release preparation rejects experimental execution explicitly.
+
+Duration remains an acceptance risk: Free includes 13,000 GB-seconds per day,
+with wall time charged while an object is active and unable to hibernate. At
+128MiB, an 80% budget is 83,200 aggregate object-seconds per day before
+subtracting other account usage. Four continuously active objects would exceed
+the allowance. Request wall-time totals do not prove billed duration or idle
+hibernation. Shared duration, memory, peak request quotas, placement, load,
+session continuity and rollback need measurement before selecting this design.
+Cloudflare recommends ordinary Workers for stateless traffic; the four-shard
+layout is a bounded experiment, not an endorsed production scaling policy.
+
+The provider billing-usage endpoint did not return usage and the browser
+automation transport became unavailable during the dashboard read. Shared usage
+therefore remains unverified. Entity and MCP probes still fail against the
+existing Google-hosted API; Google billing remains closed. This experimental
+runtime does not resolve that outage. Production routing remains on Vercel.
 
 ### CPU investigation and retained fixes
 
