@@ -199,9 +199,40 @@ Source commit `8a3f1953` was accepted by Cloudflare as Worker
 `atlas-durable-eval-cpu`, version `2035a26e-4d5d-4e9b-89cf-541493a39bfa`, with
 49ms startup and a confirmed SQLite namespace. Its descendant hostname
 `atlas-durable-eval-cpu.atlas.rebuildingus.org` preserves the canonical passkey
-RP relationship. Cloudflare's domain and proxied DNS record exist, but public
-resolution returned `ENODATA` and a TLS control failed during provisioning. This
-source deployment has not passed hosted journey or CPU validation.
+RP relationship. Cloudflare's domain and proxied DNS record initially existed
+while authoritative resolution returned `ENODATA` and HTTPS failed. Its advanced
+certificate pack was already active, so certificate issuance alone did not
+explain the failure. Resolution recovered without changing production DNS. At
+02:53 UTC on October 11, the saved deployment passed private anonymous-session
+and unauthenticated Access controls through the resumable command below.
+
+The descendant candidate also rendered Home, Privacy, sign-in and documentation
+HTML. Passkey authentication options returned the production RP ID,
+`atlas.rebuildingus.org`, an authentication challenge and a cookie, with
+`private, no-store`. This checks configuration and challenge generation, not a
+completed passkey sign-in. Entity and MCP proxies still returned 503 from the
+existing Google API. `/docs/mcp` returned 405 from both the candidate and the
+Mintlify origin; `/docs/what-is-atlas` returned HTML with status 200.
+
+To continue while the descendant hostname was unavailable, the same
+digest-verified source artifact was deployed to the existing protected
+`atlas-do-hosted-diagnostic.rebuildingus.org` hostname. Version
+`68158c35-f292-44fe-b18e-b80c3e71f5e2` passed 1,000 public controls without a
+CPU-limit error. Home and Privacy were served as assets. Across 200 requests per
+dynamic path, sign-in application CPU was 7/17/34ms at p50/p95/p99; `/about` 404
+CPU was 6/15/22ms and unknown-route CPU was 6/16/46ms. Edge p99 was 0–1ms. These
+are separate edge and application measurements, not a whole-application 8ms gate
+pass. A further 120 invalid-session requests with spoofed forwarding headers
+produced 101 anonymous responses and 19 rate-limited responses; all were private
+and uncached, with valid 1–10 second cooldowns. The earlier CPU control endpoint
+is absent (404).
+
+The diagnostic was redeployed as identical-artifact version
+`2e5fb8a3-b248-4916-86ab-dc098267161a`, rolled back to `68158c35`, then
+restored. Each transition confirmed exactly one version at 100% traffic, private
+anonymous sessions, sign-in HTML, Access rejection and the removed CPU-control
+route. This is a diagnostic rollback with identical runtime secrets, not
+production session continuity or replacement-release acceptance.
 
 Deployment identity is retained as pending before probing the hostname. Resume
 the exact version after DNS/TLS is ready without rebuilding or deploying:
@@ -225,6 +256,26 @@ hibernation. Shared duration, memory, peak request quotas, placement, load,
 session continuity and rollback need measurement before selecting this design.
 Cloudflare recommends ordinary Workers for stateless traffic; the four-shard
 layout is a bounded experiment, not an endorsed production scaling policy.
+
+Account analytics can be collected through `cf sql datasets` and `cf sql query`
+even though the restricted billing-usage endpoint returns 403. Queries of
+`events.hyperdriveEvents`, `states.hyperdrivePoolSizes` and `logs.workersLogs`
+succeeded. A completed-UTC-day query for September 27 through October 10
+returned 225 weighted Hyperdrive queries and approximately 30,600 weighted
+invocation log rows on October 10. The separate October 11 partial-day query,
+collected around 02:56 UTC, returned 22,502 weighted Hyperdrive queries and
+21,585 weighted invocation log rows across four diagnostic Workers. Hyperdrive
+pool telemetry showed a peak pool size of four and four waiting clients.
+
+These counts use adaptive sampling weights. They include migration probes and
+are neither exact billing counters nor a production traffic baseline. Worker and
+Durable Object invocation rows can both describe the same HTTP request; absent
+logs do not establish zero usage, and request wall time does not establish
+billed object duration. The accessible SQL catalog did not expose a Durable
+Object duration dataset. Cloudflare documents those metrics through its
+[GraphQL analytics datasets](https://developers.cloudflare.com/durable-objects/observability/metrics-and-analytics/).
+Shared request and duration quotas therefore remain unverified; the sampled
+counts above must not be used to approve cutover.
 
 The provider billing-usage endpoint did not return usage and the browser
 automation transport became unavailable during the dashboard read. Shared usage
