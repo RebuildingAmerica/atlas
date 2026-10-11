@@ -23,6 +23,7 @@ import tempfile  # noqa: E402
 import uuid  # noqa: E402
 from collections.abc import AsyncIterator, Iterator  # noqa: E402
 from datetime import UTC, date, datetime, timedelta  # noqa: E402
+from pathlib import Path  # noqa: E402
 from urllib.parse import urlsplit, urlunsplit  # noqa: E402
 
 import httpx  # noqa: E402
@@ -87,10 +88,22 @@ def _trust_test_app_keys(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def tmp_db_path() -> str:
-    """Create a temporary database file path."""
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-        return f.name
+def tmp_db_path() -> Iterator[str]:
+    """Own a SQLite database and its sidecars for the duration of one test.
+
+    Remove fixture databases even when setup, the test, or teardown fails, so
+    validating directory changes cannot exhaust a contributor's disk.
+    Dependent fixtures close their connections before this directory exits.
+
+    Yields
+    ------
+    str
+        Path of an empty database file in a private temporary directory.
+    """
+    with tempfile.TemporaryDirectory(prefix="atlas-test-db-") as directory:
+        path = Path(directory) / "atlas.db"
+        path.touch()
+        yield str(path)
 
 
 @pytest_asyncio.fixture

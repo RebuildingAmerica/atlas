@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
 from unittest.mock import AsyncMock
 
 import pytest
@@ -26,10 +25,9 @@ HTTP_CONFLICT = 409
 
 
 @pytest_asyncio.fixture
-async def test_db() -> object:
+async def test_db(tmp_db_path: str) -> object:
     """Create a temporary test database with schema."""
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-        url = f"sqlite:///{f.name}"
+    url = f"sqlite:///{tmp_db_path}"
     await init_db(url)
     conn = await get_db_connection(url)
     try:
