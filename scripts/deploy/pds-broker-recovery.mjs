@@ -80,23 +80,32 @@ export function recoverPdsBroker({ env = process.env, run = spawnSync } = {}) {
   );
   if (result.status !== 0)
     throw Error("PDS broker read failed; provider diagnostics suppressed.");
+  const invalid = (category) => {
+    throw Error(
+      `PDS broker response is invalid (${category}); private diagnostics suppressed.`,
+    );
+  };
   let document;
   try {
     document = JSON.parse(result.stdout.toString());
-    if (
-      Object.keys(document).sort().join(",") !== "brokerSecret,origin" ||
-      document.origin !== origin ||
-      typeof document.brokerSecret !== "string" || // pragma: allowlist secret - type name only
-      !/^[A-Za-z0-9_+/=-]{16,256}$/.test(document.brokerSecret)
-    )
-      throw Error("Invalid broker response");
-    if (Buffer.byteLength(JSON.stringify(document)) > 446)
-      throw Error("Invalid broker response size");
   } catch {
-    throw Error(
-      "PDS broker response is invalid; private diagnostics suppressed.",
-    );
+    invalid("invalid-json");
   }
+  if (
+    !document ||
+    typeof document !== "object" ||
+    Array.isArray(document) ||
+    Object.keys(document).sort().join(",") !== "brokerSecret,origin"
+  )
+    invalid("invalid-fields");
+  if (document.origin !== origin) invalid("origin-mismatch");
+  if (
+    typeof document.brokerSecret !== "string" || // pragma: allowlist secret - type name only
+    !/^[A-Za-z0-9_+/=-]{16,256}$/.test(document.brokerSecret)
+  )
+    invalid("invalid-credential");
+  if (Buffer.byteLength(JSON.stringify(document)) > 446)
+    invalid("invalid-size");
   return {
     schemaVersion: 1,
     releaseSha,
