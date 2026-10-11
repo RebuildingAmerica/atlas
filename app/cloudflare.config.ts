@@ -15,6 +15,7 @@ export default defineConfig({
       redactQueryString: true,
     },
     env: {
+      NODE_ENV: bindings.text("production"),
       ATLAS_AUTH_MIGRATIONS: bindings.text("external"),
       ATLAS_DOCS_URL: bindings.text(""),
       ATLAS_SERVER_API_PROXY_TARGET: bindings.text(""),

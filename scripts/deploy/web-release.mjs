@@ -11,6 +11,7 @@ import { join, relative, sep } from "node:path";
 import { assessMigration } from "./web-migration.mjs";
 
 export const WEB_PUBLIC_ENV_KEYS = [
+  "NODE_ENV",
   "ATLAS_MANAGED",
   "ATLAS_MULTI_USER",
   "ATLAS_PUBLIC_URL",

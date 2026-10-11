@@ -32,6 +32,7 @@ const manifest = () =>
 
 test("candidate artifacts use canonical build origins without changing runtime or identity secrets", () => {
   const runtime = {
+    NODE_ENV: "production",
     ATLAS_PUBLIC_URL: "https://candidate.atlas.example.com",
     ATLAS_WEB_CANONICAL_URL: "https://atlas.example.com",
     ATLAS_AUTH_INTERNAL_SECRET: "private-existing-secret",
@@ -50,6 +51,7 @@ test("candidate artifacts use canonical build origins without changing runtime o
     runtime.ATLAS_WEB_CANONICAL_URL,
   );
   assert.equal(release.publicEnv.ATLAS_PUBLIC_URL, runtime.ATLAS_PUBLIC_URL);
+  assert.equal(release.publicEnv.NODE_ENV, "production");
   assert.equal(
     JSON.stringify(release).includes("private-existing-secret"),
     false,

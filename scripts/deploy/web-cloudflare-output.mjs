@@ -20,6 +20,12 @@ export async function prepareCloudflareOutput({
   hostname,
   domains = [hostname],
 }) {
+  if (
+    workerEnv.NODE_ENV &&
+    (workerEnv.NODE_ENV.type !== "text" ||
+      workerEnv.NODE_ENV.value !== "production")
+  )
+    throw new Error("Hosted Workers require NODE_ENV=production.");
   const output = join(outputRoot, ".cloudflare/output/v0");
   mkdirSync(output, { recursive: true });
   copyWebArtifact(
@@ -50,7 +56,14 @@ export async function prepareCloudflareOutput({
     notFoundHandling: "none",
     runWorkerFirst: false,
   };
-  worker.env = { ...workerEnv, ASSETS: { type: "assets" } };
+  // Better Auth reads runtime NODE_ENV through its env proxy. A production
+  // build alone does not enable its shared rate limits on Workers, leaving
+  // account recovery and sign-in exposed to abuse and CPU probes incomplete.
+  worker.env = {
+    ...workerEnv,
+    NODE_ENV: { type: "text", value: "production" },
+    ASSETS: { type: "assets" },
+  };
   writeFileSync(workerFile, JSON.stringify(worker));
   const assets = join(workerDirectory, "assets");
   rmSync(assets, { recursive: true, force: true });

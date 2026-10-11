@@ -410,7 +410,8 @@ export async function ensureAuthReady() {
         await verifyAuthSchema(getAuthPgPool());
         // Only completed release-schema metadata is reused. Concurrent first
         // requests keep their own queries and clients; failures are retried.
-        // Avoid opening PostgreSQL on every invalid sign-in/session probe.
+        // Avoid repeating schema-marker queries; authentication's shared rate
+        // limits and session lookups still use request-owned PostgreSQL clients.
         if (scope) verifiedWorkerDatabase = scope.connectionString;
       }
       return auth;

@@ -94,6 +94,22 @@ for (const architecture of ["workers", "hybrid"]) {
       assert.deepEqual(parsed.workers.default.config.env.SIGNING_SECRET, {
         type: "secret",
       });
+      assert.deepEqual(parsed.workers.default.config.env.NODE_ENV, {
+        type: "text",
+        value: "production",
+      });
+      await assert.rejects(
+        prepareCloudflareOutput({
+          directory,
+          architecture,
+          outputRoot: join(root, "invalid"),
+          accountId: "account",
+          workerName: "release-worker",
+          hostname: "candidate.example.com",
+          workerEnv: { NODE_ENV: { type: "text", value: "development" } },
+        }),
+        /Hosted Workers require NODE_ENV=production/,
+      );
       const digest = digestDirectory(directory);
       let invoked = false;
       await applyRecoveryDomains({
@@ -124,7 +140,10 @@ for (const architecture of ["workers", "hybrid"]) {
             ),
           );
           assert.deepEqual(config.domains, ["candidate.example.com"]);
-          assert.deepEqual(config.env, { ASSETS: { type: "assets" } });
+          assert.deepEqual(config.env, {
+            NODE_ENV: { type: "text", value: "production" },
+            ASSETS: { type: "assets" },
+          });
           assert.equal(args.includes("--secrets-file"), false);
           assert.deepEqual(args.slice(-2), ["--profile", "atlas"]);
           assert.equal(args.includes("--mode"), architecture === "workers");

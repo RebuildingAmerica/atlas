@@ -16,6 +16,7 @@ import {
   digestDirectory,
   copyWebArtifact,
   webBuildEnvironment,
+  WEB_PUBLIC_ENV_KEYS,
 } from "./web-release.mjs";
 
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
@@ -181,18 +182,9 @@ function prepare(args, target) {
     );
   }
   const publicEnv = Object.fromEntries(
-    [
-      "ATLAS_MANAGED",
-      "ATLAS_MULTI_USER",
-      "ATLAS_PUBLIC_URL",
-      "ATLAS_WEB_CANONICAL_URL",
-      "ATLAS_DOCS_URL",
-      "ATLAS_AUTH_BASE_PATH",
-      "ATLAS_SERVER_API_PROXY_TARGET",
-      "ATLAS_AUTH_JWT_AUDIENCES",
-    ]
-      .filter((key) => process.env[key] !== undefined)
-      .map((key) => [key, process.env[key]]),
+    WEB_PUBLIC_ENV_KEYS.filter((key) => process.env[key] !== undefined).map(
+      (key) => [key, process.env[key]],
+    ),
   );
   const manifest = createWebManifest({
     target,
