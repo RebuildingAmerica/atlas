@@ -535,6 +535,126 @@
         "title": "AtprotoIdentityResponse",
         "type": "object"
       },
+      "AuditEntryResponse": {
+        "description": "One decision, allowed or refused.",
+        "properties": {
+          "action": {
+            "description": "The action attempted, such as instance.claims.review",
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The actor's email, when they have one",
+            "title": "Actor Email"
+          },
+          "actor_id": {
+            "description": "Who acted",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "allowed": {
+            "description": "Whether it was allowed",
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Entry ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "description": "HTTP method",
+            "title": "Method",
+            "type": "string"
+          },
+          "occurred_at": {
+            "description": "When it was decided",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it was refused",
+            "title": "Reason"
+          },
+          "route": {
+            "description": "Route template",
+            "title": "Route",
+            "type": "string"
+          },
+          "status_code": {
+            "description": "The status the decision produced",
+            "title": "Status Code",
+            "type": "integer"
+          },
+          "target": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Route parameters naming what was acted on",
+            "title": "Target",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "actor_id",
+          "action",
+          "allowed",
+          "status_code",
+          "method",
+          "route",
+          "target"
+        ],
+        "title": "AuditEntryResponse",
+        "type": "object"
+      },
+      "AuditPageResponse": {
+        "description": "A page of decisions, newest first.",
+        "properties": {
+          "items": {
+            "description": "Decisions on this page",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `before` for the next, older page; null on the last page",
+            "title": "Next Before"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AuditPageResponse",
+        "type": "object"
+      },
       "ClaimEvidence": {
         "description": "Reviewed evidence metadata for one visible profile claim.",
         "properties": {
@@ -14424,6 +14544,86 @@
         "summary": "Check an ATProto identity connection",
         "tags": [
           "identity"
+        ]
+      }
+    },
+    "/api/audit-log": {
+      "get": {
+        "description": "Every editorial decision on this instance that changed data, or tried to, newest first, from the append-only audit log.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "listEditorialActivity",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "`next_before` from the previous page",
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`next_before` from the previous page",
+              "title": "Before"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List editorial activity",
+        "tags": [
+          "moderation"
         ]
       }
     },

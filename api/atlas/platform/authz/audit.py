@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 from atlas.platform.database import db
+from atlas.platform.dates import row_timestamp_string
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -84,7 +85,7 @@ def _row_to_entry(row: Any) -> AuditEntry:
     """Convert a database row into an :class:`AuditEntry`."""
     return AuditEntry(
         id=str(row[0]),
-        occurred_at=str(row[1]),
+        occurred_at=str(row_timestamp_string(row[1])),
         plane=str(row[2]),
         actor_id=str(row[3]),
         actor_email=str(row[4]) if row[4] is not None else None,
@@ -170,5 +171,50 @@ class AuditLogCRUD:
         cursor = await conn.execute(
             f"SELECT {_COLUMNS} FROM audit_log {where} ORDER BY occurred_at DESC LIMIT ?",
             params,
+        )
+        return [_row_to_entry(row) for row in await cursor.fetchall()]
+
+    @staticmethod
+    async def list_namespace_page(
+        conn: aiosqlite.Connection,
+        *,
+        namespace: str,
+        limit: int,
+        before: tuple[str, str] | None,
+    ) -> list[AuditEntry]:
+        """Return one page of decisions in an action namespace, newest first.
+
+        Parameters
+        ----------
+        conn : aiosqlite.Connection
+            Database connection.
+        namespace : str
+            The action prefix, such as ``instance.``.
+        limit : int
+            Maximum number of entries to return.
+        before : tuple[str, str] | None
+            The ``(occurred_at, id)`` of the last entry already shown; only
+            older entries are returned. ``None`` for the newest page.
+
+        Returns
+        -------
+        list[AuditEntry]
+            Entries ordered from newest to oldest.
+        """
+        clauses = ["action LIKE ?"]
+        params: list[object] = [f"{namespace}%"]
+        if before is not None:
+            occurred_at, entry_id = before
+            clauses.append("(occurred_at < ? OR (occurred_at = ? AND id < ?))")
+            params.extend([occurred_at, occurred_at, entry_id])
+        params.append(limit)
+        cursor = await conn.execute(
+            f"""
+            SELECT {_COLUMNS} FROM audit_log
+            WHERE {" AND ".join(clauses)}
+            ORDER BY occurred_at DESC, id DESC
+            LIMIT ?
+            """,
+            tuple(params),
         )
         return [_row_to_entry(row) for row in await cursor.fetchall()]
