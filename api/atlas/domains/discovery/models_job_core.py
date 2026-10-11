@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     import aiosqlite
 
 from atlas.platform.database import db
+from atlas.platform.hosted_runtime import current_hosted_runtime
 
 
 @dataclass
@@ -94,24 +95,48 @@ class DiscoveryJobCRUDCore:
         job_id = db.generate_uuid()
         now = db.now_iso()
         create_input = job_input or DiscoveryJobInput()
-        await conn.execute(
-            """
-            INSERT INTO discovery_jobs (
-                id, run_id, status, retry_count, max_retries,
-                idempotency_key, execution_mode, input_payload, created_at
-            ) VALUES (?, ?, 'queued', 0, ?, ?, ?, ?, ?)
-            """,
-            (
-                job_id,
-                run_id,
-                max_retries,
-                idempotency_key,
-                create_input.execution_mode,
-                db.encode_json(create_input.payload or {}),
-                now,
-            ),
+        runtime = current_hosted_runtime()
+        wake = (
+            runtime.discovery_wake if runtime and create_input.execution_mode == "search" else None
         )
-        await conn.commit()
+        if runtime and create_input.execution_mode == "search" and wake is None:
+            raise RuntimeError("Hosted discovery wake is not configured")  # noqa: TRY003
+        prepared = False
+        commit_started = False
+        try:
+            if wake is not None:
+                prepared = True
+                await wake.prepare_wake(job_id)
+            await conn.execute(
+                """
+                INSERT INTO discovery_jobs (
+                    id, run_id, status, retry_count, max_retries,
+                    idempotency_key, execution_mode, input_payload, created_at
+                ) VALUES (?, ?, 'queued', 0, ?, ?, ?, ?, ?)
+                """,
+                (
+                    job_id,
+                    run_id,
+                    max_retries,
+                    idempotency_key,
+                    create_input.execution_mode,
+                    db.encode_json(create_input.payload or {}),
+                    now,
+                ),
+            )
+            commit_started = True
+            await conn.commit()
+        except BaseException:
+            rollback = getattr(conn, "rollback", None)
+            if rollback is None:
+                await conn.execute("ROLLBACK")
+            else:
+                await rollback()
+            if wake is not None and prepared and not commit_started:
+                await wake.abort_wake(job_id)
+            raise
+        if wake is not None:
+            await wake.confirm_wake(job_id)
         return job_id
 
     @staticmethod

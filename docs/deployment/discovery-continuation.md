@@ -39,7 +39,8 @@ connection with no unrelated pending writes. The boundary is database-only and
 must not contain provider calls. Cross-run identity concurrency still follows
 the existing catalog constraints and resolver rules.
 
-This is not an activated discovery alarm. A provider unit is a bounded number of
+The production discovery consumer remains explicitly paused until its exact
+release is accepted and enabled. A provider unit is a bounded number of
 operations, not a proven bound on synchronous parsing CPU, archive size,
 classifier memory, or checkpoint payload size. Actual hosted limits still
 require evidence. Ranking and deduplication retain the existing whole-run
@@ -171,3 +172,53 @@ also do not prove bounded synchronous HTML parsing CPU or aggregate checkpoint
 memory on Cloudflare. Provider egress, exact hosted resource usage, scheduling,
 and all remaining research modes still require acceptance before activation. No
 mode is removed from the public API or the existing Scout consumer.
+
+## Production search consumer and queue handoff
+
+`services/api-cloudflare/production/production_discovery.py` exports
+`DiscoveryRuntime`; its named object is `application`. Direct Worker requests
+are forbidden. The protected operations edge can read `/__atlas/release`,
+`/__atlas/consumers` and `/health`. The shared consumer control requires the
+internal secret and exact release SHA for state changes. A fresh object or a
+changed release starts paused. Pausing waits for the complete in-flight unit,
+retains producer receipts and removes the alarm. Enabling arms an initial alarm
+before persisting enabled state, which discovers search jobs already in the
+queue without requiring a new producer request.
+
+The production adapter needs the explicit `HYPERDRIVE`, `ATLAS_API_SETTINGS`,
+release/schema receipt bindings, verified package assets and the sibling
+`API_RUNTIME` Firehose wake capability. It loads the verified discovery packages
+only when an enabled alarm runs. Construction, release reads and paused alarms
+perform no SQL, migration or background polling. Schema installation remains a
+separate release operation.
+
+`DiscoveryAlarmAdapter` rescues itself before database I/O, reaps at most one
+expired search lease and claims at most one search job with a fresh owner. It
+runs the existing checkpointed continuation with invocation-owned settings,
+vendor credentials, database connections and public-source transport. Every
+connection closes on success, failure or cancellation. It schedules the next
+queued/retry time or active lease expiry; an empty queue without unresolved
+producer receipts deletes its alarm instead of polling PostgreSQL.
+
+Central job creation prepares a durable receipt before inserting a hosted search
+job, commits the queue record, then confirms the receipt. Preparation failure
+rolls back; a lost commit acknowledgement retains the receipt for
+reconciliation. The alarm reconciles committed IDs from PostgreSQL. Unresolved
+receipts remain durable with bounded backoff and are never silently expired.
+Ordinary Node job creation keeps its existing behavior, and hosted direct URL
+jobs do not enroll or wake the search consumer. This one central hook covers
+REST, scheduled runs and MCP producers.
+
+Catalog publication can produce Firehose observations inside a transaction that
+defers helper commits. The discovery alarm therefore defers Firehose wake
+confirmations until all of its database resources have closed after the outer
+transaction. A cancelled/rolled-back transaction can then release its receipt
+without racing a later commit; a failed connection close retains the receipt for
+recovery. Source observations and their outbox writes remain atomic.
+
+Local tests exercise paused receipt retention, release-bound initial handoff,
+search/Scout lane isolation, precommit preparation, lost acknowledgements, retry
+and lease scheduling, cancellation, connection cleanup and publication wake
+ordering. Provider deployment, exact hosted execution and consumer enable remain
+separate acceptance actions. This implementation does not enable a consumer or
+change any provider account.

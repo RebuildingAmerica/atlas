@@ -26,6 +26,7 @@ class DiscoveryJobCRUDLifecycle:
         lease_seconds: int = 900,
         search_key_configured: bool = True,
         checkpointed: bool = False,
+        execution_mode: str | None = None,
     ) -> DiscoveryJobModel | None:
         """Atomically claim the oldest claimable job. Returns None if none available.
 
@@ -58,6 +59,10 @@ class DiscoveryJobCRUDLifecycle:
             enrolled in a durable continuation; this lane accepts both existing
             modes, including enrolled jobs, without changing public job modes.
 
+        execution_mode : str | None, optional
+            Restrict a consumer to one existing lane. None preserves the
+            ordinary worker/Scout claiming behavior; hosted alarms pass search.
+
         Returns
         -------
         DiscoveryJobModel | None
@@ -74,6 +79,9 @@ class DiscoveryJobCRUDLifecycle:
                 "AND (j.execution_mode != 'search' "
                 "OR (COALESCE(r.location_query, '') = '' AND r.issue_areas = '[]'))"
             )
+
+        mode_clause = "AND j.execution_mode = ?" if execution_mode is not None else ""
+        mode_parameters = (execution_mode,) if execution_mode is not None else ()
 
         continuation_clause = (
             ""
@@ -95,13 +103,14 @@ class DiscoveryJobCRUDLifecycle:
                       AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?)
                       {capability_clause}
                       {continuation_clause}
+                      {mode_clause}
                     ORDER BY j.created_at ASC
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED
                 )
                 RETURNING *
                 """,
-                (claimed_by, claimed_by_user_id, lease_until, now, now, now),
+                (claimed_by, claimed_by_user_id, lease_until, now, now, now, *mode_parameters),
             )
             row = await cursor.fetchone()
             if row is None:
@@ -119,10 +128,11 @@ class DiscoveryJobCRUDLifecycle:
               AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?)
               {capability_clause}
               {continuation_clause}
+              {mode_clause}
             ORDER BY j.created_at ASC
             LIMIT 1
             """,
-            (now, now),
+            (now, now, *mode_parameters),
         )
         row = await cursor.fetchone()
         if row is None:
@@ -286,6 +296,8 @@ class DiscoveryJobCRUDLifecycle:
         conn: aiosqlite.Connection,
         *,
         now: str | None = None,
+        execution_mode: str | None = None,
+        limit: int | None = None,
     ) -> int:
         """Requeue or dead-letter jobs whose lease has expired.
 
@@ -309,13 +321,20 @@ class DiscoveryJobCRUDLifecycle:
             The number of jobs reaped (requeued or dead-lettered).
         """
         cutoff = now if now is not None else db.now_iso()
+        mode_clause = "AND execution_mode = ?" if execution_mode is not None else ""
+        mode_parameters = (execution_mode,) if execution_mode is not None else ()
+        limit_clause = "LIMIT ?" if limit is not None else ""
+        limit_parameters = (limit,) if limit is not None else ()
         cursor = await conn.execute(
-            """
+            f"""
             SELECT id, retry_count, max_retries FROM discovery_jobs
             WHERE status IN ('claimed', 'running')
               AND claimed_until IS NOT NULL AND claimed_until < ?
+              {mode_clause}
+            ORDER BY claimed_until ASC
+            {limit_clause}
             """,
-            (cutoff,),
+            (cutoff, *mode_parameters, *limit_parameters),
         )
         rows = list(await cursor.fetchall())
         if not rows:
@@ -330,9 +349,9 @@ class DiscoveryJobCRUDLifecycle:
                     UPDATE discovery_jobs
                     SET status = 'queued', retry_count = ?,
                         claimed_by = NULL, claimed_until = NULL
-                    WHERE id = ?
+                    WHERE id = ? AND status IN ('claimed', 'running') AND claimed_until < ?
                     """,
-                    (new_retry, job_id),
+                    (new_retry, job_id, cutoff),
                 )
             else:
                 await conn.execute(
@@ -340,9 +359,15 @@ class DiscoveryJobCRUDLifecycle:
                     UPDATE discovery_jobs
                     SET status = 'failed', retry_count = ?,
                         error_message = ?, completed_at = ?
-                    WHERE id = ?
+                    WHERE id = ? AND status IN ('claimed', 'running') AND claimed_until < ?
                     """,
-                    (new_retry, "lease expired: worker stranded the job", db.now_iso(), job_id),
+                    (
+                        new_retry,
+                        "lease expired: worker stranded the job",
+                        db.now_iso(),
+                        job_id,
+                        cutoff,
+                    ),
                 )
         await conn.commit()
         return len(rows)
