@@ -38,6 +38,7 @@ class HostedRuntime:
     connect: DatabaseConnector
     firehose_wake: FirehoseWake | None = None
     public_source_fetch: PublicSourceFetcher | None = None
+    discovery_wake: FirehoseWake | None = None
 
 
 _runtime: ContextVar[HostedRuntime | None] = ContextVar("atlas_hosted_runtime", default=None)

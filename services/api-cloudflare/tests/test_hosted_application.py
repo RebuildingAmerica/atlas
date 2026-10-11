@@ -490,7 +490,8 @@ async def test_cancellation_closes_every_connection_even_when_one_close_fails(
 
 
 @pytest.mark.asyncio
-async def test_application_owns_explicit_firehose_wake(monkeypatch):
+@pytest.mark.parametrize("wake_field", ["firehose_wake", "discovery_wake"])
+async def test_application_owns_explicit_wake(monkeypatch, wake_field):
     from atlas.platform.hosted_runtime import current_hosted_runtime
     import atlas.main
 
@@ -498,14 +499,14 @@ async def test_application_owns_explicit_firehose_wake(monkeypatch):
     captured = []
 
     async def app(scope, receive, send):
-        captured.append(current_hosted_runtime().firehose_wake)
+        captured.append(getattr(current_hosted_runtime(), wake_field))
         await send({"type": "http.response.start", "status": 200, "headers": []})
         await send({"type": "http.response.body", "body": b"ok"})
 
     app.routes = []
     app.dependency_overrides = {}
     monkeypatch.setattr(atlas.main, "create_app", lambda **kwargs: app)
-    hosted, _ = module().create_hosted_application(environment(), firehose_wake=wake)
+    hosted, _ = module().create_hosted_application(environment(), **{wake_field: wake})
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=hosted), base_url="https://reader.example.com"
     ) as client:

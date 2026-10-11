@@ -124,7 +124,9 @@ def _install_async_dependencies(app):
         app.dependency_overrides[call] = adapt(call)
 
 
-def create_hosted_application(env, *, strip_evaluation_prefix=False, firehose_wake=None):
+def create_hosted_application(
+    env, *, strip_evaluation_prefix=False, firehose_wake=None, discovery_wake=None
+):
     """Return an ASGI callable and route count for one caller-owned DO cache.
 
     Configuration and routes are stable for this instance. Every ASGI invocation
@@ -140,7 +142,11 @@ def create_hosted_application(env, *, strip_evaluation_prefix=False, firehose_wa
 
         with bind_hosted_runtime(
             HostedRuntime(
-                settings, no_factory_connection, firehose_wake, workers_public_source_fetch
+                settings,
+                no_factory_connection,
+                firehose_wake,
+                workers_public_source_fetch,
+                discovery_wake=discovery_wake,
             )
         ):
             # atlas.main also constructs its ordinary server at import. Bind
@@ -176,7 +182,13 @@ def create_hosted_application(env, *, strip_evaluation_prefix=False, firehose_wa
                 if raw_path == b"/atlas" or raw_path.startswith(b"/atlas/"):
                     scope["raw_path"] = raw_path[len(b"/atlas") :] or b"/"
         with bind_hosted_runtime(
-            HostedRuntime(settings, connect, firehose_wake, workers_public_source_fetch)
+            HostedRuntime(
+                settings,
+                connect,
+                firehose_wake,
+                workers_public_source_fetch,
+                discovery_wake=discovery_wake,
+            )
         ):
             try:
                 await app(scope, receive, send)
