@@ -259,6 +259,9 @@ export async function restoreApiRuntimeSnapshot({
         );
       }
       assertRuntimeDeployments({ [role]: previous[role] }, cf);
+      for (const key of ROLES)
+        if (active[key].workerName === previous[role].workerName)
+          active[key] = previous[key];
       journal = {
         ...journal,
         completed: [...new Set([...journal.completed, role])],

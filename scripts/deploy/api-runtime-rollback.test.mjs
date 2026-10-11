@@ -352,6 +352,30 @@ test("provider drift during hosted probes prevents a verified result", async () 
   assert.equal(journal.phase, "versions-restored");
 });
 
+test("API and discovery sharing one exact Worker identity restore it only once", async () => {
+  const previous = { api: runtimes("1").api, discovery: runtimes("1").api };
+  const current = { api: runtimes("3").api, discovery: runtimes("3").api };
+  const mock = provider(previous);
+  const snapshot = captureApiRuntimeSnapshot({
+    accountId,
+    runtimeReleases: previous,
+    env,
+    cloudflare: mock.cf,
+  });
+  const plan = createApiRollbackPlan({ snapshot, current });
+  Object.assign(mock.active, structuredClone(current));
+  const report = await restoreApiRuntimeSnapshot({
+    plan,
+    env,
+    cloudflare: mock.cf,
+    apply: true,
+    checkpoint() {},
+    probe: async () => ({ status: "pass", evidenceReference: "report" }),
+  });
+  assert.equal(mock.mutations.length, 1);
+  assert.deepEqual(report.runtimeReleases, previous);
+});
+
 test("provider exceptions in read-only preflight never expose private diagnostics", async () => {
   const { plan } = fixture();
   await assert.rejects(

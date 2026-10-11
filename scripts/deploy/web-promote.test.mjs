@@ -11,7 +11,15 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createWebManifest, digestDirectory } from "./web-release.mjs";
 import { preserveRuntimeIdentity } from "./web-runtime-identity.mjs";
-import { planWebPromotion, promoteWebRelease } from "./web-promote.mjs";
+import {
+  planWebPromotion,
+  promoteWebRelease,
+  recoverPromotedCloudflareRelease,
+} from "./web-promote.mjs";
+import {
+  captureApiRuntimeSnapshot,
+  createApiRollbackPlan,
+} from "./api-runtime-rollback.mjs";
 
 function fixture(t, architecture = "workers") {
   const durable = architecture === "durable";
@@ -492,5 +500,365 @@ test("historical Cloud Run passing evidence is not a fallback for a failed Cloud
   assert.throws(
     () => planWebPromotion(fixture(t, "hybrid")),
     /selection gates/,
+  );
+});
+
+function cloudflareRecoveryFixture(t) {
+  const f = fixture(t, "durable");
+  const rollbackSource = join(f.source, "retained");
+  mkdirSync(join(rollbackSource, "artifact"), { recursive: true });
+  mkdirSync(join(rollbackSource, "assets"));
+  writeFileSync(join(rollbackSource, "artifact/server.js"), "retained server");
+  writeFileSync(join(rollbackSource, "assets/client.js"), "retained client");
+  const sha = "e".repeat(40);
+  const manifest = createWebManifest({
+    ...f.candidate,
+    target: "production",
+    releaseSha: sha,
+    releasePolicy: { ...f.evidence.releasePolicy, releaseSha: sha },
+    publicEnv: f.runtime,
+    artifactDigest: digestDirectory(join(rollbackSource, "artifact")),
+    assetsDigest: digestDirectory(join(rollbackSource, "assets")),
+  });
+  const retained = {
+    ...manifest,
+    workerVersionId: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    durableNamespaceId: "e".repeat(32),
+    candidateUrl: `https://${manifest.workerName}.atlas.example.com`,
+    accountId: f.candidate.accountId,
+    zoneId: f.candidate.zoneId,
+    productionUrl: f.runtime.ATLAS_PUBLIC_URL,
+    promotionState: "active",
+    runtimeIdentity: preserveRuntimeIdentity(f.runtime, sha),
+  };
+  writeFileSync(
+    join(rollbackSource, "manifest.json"),
+    JSON.stringify(manifest),
+  );
+  writeFileSync(
+    join(rollbackSource, "deployment.json"),
+    JSON.stringify(retained),
+  );
+  const states = new Map([
+    [
+      retained.workerName,
+      {
+        ...retained,
+        domains: [new URL(retained.candidateUrl).hostname, "atlas.example.com"],
+      },
+    ],
+  ]);
+  const api = { ...f.candidate.runtimeDependencies.api };
+  const calls = [];
+  const directory = join(f.source, "new-production");
+  const expected = {
+    target: "production",
+    hostname: "atlas.example.com",
+    accountId: retained.accountId,
+    zoneId: retained.zoneId,
+  };
+  const options = {
+    ...f,
+    directory,
+    expected,
+    rollbackSource,
+    hostedSecret: "existing-verifier",
+    capture() {
+      assert.fail("Cloudflare recovery must never use Vercel");
+    },
+    rollback() {
+      assert.fail("Cloudflare recovery must never use Vercel");
+    },
+    archive() {
+      calls.push("archive");
+    },
+    publish: async (_directory, _target, _architecture, input) => {
+      const production = {
+        ...JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8")),
+        workerVersionId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        durableNamespaceId: "f".repeat(32),
+        accountId: retained.accountId,
+        zoneId: retained.zoneId,
+      };
+      production.candidateUrl = `https://${production.workerName}.atlas.example.com`;
+      states.set(production.workerName, {
+        ...production,
+        domains: [new URL(production.candidateUrl).hostname],
+      });
+      assert.equal(
+        input.promotion.workerVersionId,
+        f.candidate.workerVersionId,
+      );
+      calls.push("publish");
+      return production;
+    },
+    applyDomains: async ({ deployment, domains }) => {
+      calls.push(`domains:${deployment.workerName}`);
+      states.get(deployment.workerName).domains = [...domains];
+    },
+    cloudflare(command, options) {
+      const action = command.slice(0, 3).join(" ");
+      if (action === "zones get --zone")
+        return {
+          id: retained.zoneId,
+          name: "example.com",
+          account: { id: retained.accountId },
+        };
+      if (action === "durable-objects namespaces list")
+        return [
+          ...[...states.values()].map((row) => ({
+            id: row.durableNamespaceId,
+            script: row.workerName,
+            class: "AtlasAppRuntime",
+            use_sqlite: true,
+          })),
+          {
+            id: api.namespaceId,
+            script: api.workerName,
+            class: api.namespaceClass,
+            use_sqlite: true,
+          },
+        ];
+      if (action === "workers deployments list") {
+        const name = command.at(-1);
+        const row = name === api.workerName ? api : states.get(name);
+        return {
+          deployments: [
+            {
+              versions: [{ version_id: row.workerVersionId, percentage: 100 }],
+            },
+          ],
+        };
+      }
+      if (action === "workers versions get") return { id: command[3] };
+      if (action === "workers deployments create") {
+        assert.equal(command.at(-1), api.workerName);
+        api.workerVersionId = options.body.versions[0].version_id;
+        calls.push("restore-api");
+        return { id: "runtime-restored" };
+      }
+      if (command.slice(0, 2).join(" ") === "workers get") {
+        const row = states.get(command[2]);
+        return {
+          name: row.workerName,
+          references: {
+            domains: row.domains.map((hostname) => ({
+              hostname,
+              zone_id: retained.zoneId,
+            })),
+          },
+        };
+      }
+      assert.fail(`Unexpected cf command ${command.join(" ")}`);
+    },
+    probe: async (input) => {
+      calls.push(`probe:${input.workerName}`);
+      return { status: "pass" };
+    },
+  };
+  return { ...f, options, retained, states, api, calls };
+}
+
+for (const failed of [false, true])
+  test(`Cloudflare-only cutover ${failed ? "restores retained routing and verifies old journeys" : "uses no Vercel credentials or operations"}`, async (t) => {
+    const f = cloudflareRecoveryFixture(t);
+    f.options.probe = async (input) => {
+      f.calls.push(`probe:${input.workerName}`);
+      return {
+        status:
+          failed && input.workerName !== f.retained.workerName
+            ? "fail"
+            : "pass",
+      };
+    };
+    if (failed)
+      await assert.rejects(
+        promoteWebRelease(f.options),
+        /retained Cloudflare routing was restored and verified/,
+      );
+    else {
+      const result = await promoteWebRelease(f.options);
+      assert.equal(result.rollbackProvider, "cloudflare");
+      assert.equal(result.observationRequiredHours, 0);
+    }
+    const owner = [...f.states.values()].filter((row) =>
+      row.domains.includes("atlas.example.com"),
+    );
+    assert.equal(owner.length, 1);
+    assert.equal(owner[0].workerName === f.retained.workerName, failed);
+    const deployment = JSON.parse(
+      readFileSync(join(f.options.directory, "deployment.json"), "utf8"),
+    );
+    assert.equal(deployment.promotionState, failed ? "rolled-back" : "active");
+    assert.equal(JSON.stringify(deployment).includes("existing-secret"), false);
+    assert.equal(f.calls.includes(`probe:${f.retained.workerName}`), failed);
+  });
+
+test("retained artifact or joint dependency mismatch cannot silently use Vercel recovery", async (t) => {
+  for (const failure of ["artifact", "dependency"]) {
+    const f = cloudflareRecoveryFixture(t);
+    if (failure === "artifact")
+      writeFileSync(
+        join(f.options.rollbackSource, "artifact/server.js"),
+        "tampered",
+      );
+    else {
+      for (const file of ["manifest.json", "deployment.json"]) {
+        const path = join(f.options.rollbackSource, file);
+        const record = JSON.parse(readFileSync(path, "utf8"));
+        record.runtimeDependencies.api.workerVersionId =
+          "dddddddd-dddd-dddd-dddd-dddddddddddd";
+        writeFileSync(path, JSON.stringify(record));
+      }
+    }
+    await assert.rejects(promoteWebRelease(f.options));
+    assert.equal(f.calls.includes("publish"), false);
+    assert.equal(
+      f.states.get(f.retained.workerName).domains.includes("atlas.example.com"),
+      true,
+    );
+  }
+});
+
+test("Cloudflare cutover restores a matching saved API/discovery plan before old production journeys", async (t) => {
+  const f = cloudflareRecoveryFixture(t);
+  const previous = {
+    ...f.api,
+    workerVersionId: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    artifactDigest: "d".repeat(64),
+    releaseSha: "d".repeat(40),
+  };
+  for (const file of ["manifest.json", "deployment.json"]) {
+    const path = join(f.options.rollbackSource, file);
+    const record = JSON.parse(readFileSync(path, "utf8"));
+    record.runtimeDependencies = { api: previous, discovery: previous };
+    writeFileSync(path, JSON.stringify(record));
+  }
+  Object.assign(f.retained.runtimeDependencies, {
+    api: previous,
+    discovery: previous,
+  });
+  const current = { api: { ...f.api }, discovery: { ...f.api } };
+  f.api.workerVersionId = previous.workerVersionId;
+  const snapshot = captureApiRuntimeSnapshot({
+    accountId: f.retained.accountId,
+    runtimeReleases: { api: previous, discovery: previous },
+    env: { CLOUDFLARE_ACCOUNT_ID: f.retained.accountId },
+    cloudflare: f.options.cloudflare,
+  });
+  f.api.workerVersionId = current.api.workerVersionId;
+  f.options.apiRollbackPlan = createApiRollbackPlan({ snapshot, current });
+  const priorAccount = process.env.CLOUDFLARE_ACCOUNT_ID;
+  process.env.CLOUDFLARE_ACCOUNT_ID = f.retained.accountId;
+  t.after(() => {
+    if (priorAccount === undefined) delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    else process.env.CLOUDFLARE_ACCOUNT_ID = priorAccount;
+  });
+  f.options.probe = async (input) => {
+    if (input.workerName === f.retained.workerName) {
+      assert.equal(f.api.workerVersionId, previous.workerVersionId);
+      f.calls.push(
+        input.origin === f.retained.candidateUrl
+          ? "probe-restored-api"
+          : "probe-restored-canonical",
+      );
+      return { status: "pass" };
+    }
+    return { status: "fail" };
+  };
+  await assert.rejects(
+    promoteWebRelease(f.options),
+    /retained Cloudflare routing was restored and verified/,
+  );
+  assert.equal(f.calls.filter((call) => call === "restore-api").length, 1);
+  assert.equal(f.calls.includes("probe-restored-api"), true);
+  assert.equal(f.calls.includes("probe-restored-canonical"), true);
+  assert.ok(
+    f.calls.indexOf("probe-restored-api") <
+      f.calls.indexOf("probe-restored-canonical"),
+  );
+});
+
+test("a lost response after removing previous routing recovers from provider state", async (t) => {
+  const f = cloudflareRecoveryFixture(t);
+  const apply = f.options.applyDomains;
+  let loseResponse = true;
+  f.options.applyDomains = async (input) => {
+    await apply(input);
+    if (loseResponse) {
+      loseResponse = false;
+      throw new Error("private-provider-detail");
+    }
+  };
+  await assert.rejects(
+    promoteWebRelease(f.options),
+    /retained Cloudflare routing was restored and verified/,
+  );
+  assert.equal(
+    f.states.get(f.retained.workerName).domains.includes("atlas.example.com"),
+    true,
+  );
+  const journal = JSON.parse(
+    readFileSync(join(f.options.directory, "routing-rollback.json"), "utf8"),
+  );
+  assert.equal(journal.phase, "verified");
+});
+
+test("changed retained versions, missing credential commitments and unrelated domains stop before publication", async (t) => {
+  for (const failure of ["version", "credentials", "domains"]) {
+    const f = cloudflareRecoveryFixture(t);
+    if (failure === "version")
+      f.states.get(f.retained.workerName).workerVersionId =
+        "dddddddd-dddd-dddd-dddd-dddddddddddd";
+    if (failure === "domains")
+      f.states.get(f.retained.workerName).domains.push("unrelated.example.com");
+    if (failure === "credentials") {
+      const file = join(f.options.rollbackSource, "deployment.json");
+      const deployment = JSON.parse(readFileSync(file, "utf8"));
+      delete deployment.runtimeIdentity;
+      writeFileSync(file, JSON.stringify(deployment));
+    }
+    await assert.rejects(promoteWebRelease(f.options));
+    assert.equal(f.calls.includes("publish"), false);
+    assert.equal(
+      f.calls.some((call) => call.startsWith("domains:")),
+      false,
+    );
+  }
+});
+
+test("failed recovered journeys never claim Cloudflare rollback succeeded", async (t) => {
+  const f = cloudflareRecoveryFixture(t);
+  f.options.probe = async () => ({ status: "fail" });
+  await assert.rejects(
+    promoteWebRelease(f.options),
+    /automatic Cloudflare recovery failed/,
+  );
+  const journal = JSON.parse(
+    readFileSync(join(f.options.directory, "routing-rollback.json"), "utf8"),
+  );
+  assert.notEqual(journal.phase, "verified");
+  const result = await recoverPromotedCloudflareRelease({
+    directory: f.options.directory,
+    runtime: f.runtime,
+    expected: f.options.expected,
+    cloudflare: f.options.cloudflare,
+    applyDomains: f.options.applyDomains,
+    probe: async () => ({ status: "pass" }),
+    archive: f.options.archive,
+    apply: true,
+  });
+  assert.equal(result.readbackPassed, true);
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(f.options.directory, "deployment.json"), "utf8"),
+    ).promotionState,
+    "rolled-back",
+  );
+  assert.equal(
+    JSON.parse(
+      readFileSync(join(f.options.directory, "routing-rollback.json"), "utf8"),
+    ).phase,
+    "verified",
   );
 });

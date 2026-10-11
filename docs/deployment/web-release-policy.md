@@ -121,15 +121,53 @@ and after publication.
 Complete real journeys, measurements, and joint rollback verification for that
 exact published candidate before assessment or promotion. The provisioning
 budget check does not stand in for those later gates. A plan without `--apply`
-performs no production cutover. The existing `--apply` invocation requires the
-production destination, hostname, owner, project, team, provider identities, and
-retained Vercel recovery credentials documented in the hosting runbook.
+performs no production cutover. When an eligible Cloudflare production release
+already exists, select its retained directory explicitly:
+
+```sh
+pnpm web:promote --target production --source <candidate-directory> --journal .atlas/web/staging-probes.jsonl --evidence <evidence-file> --directory <new-production-directory> --hostname <production-hostname> --rollback-cloudflare-source <retained-production-directory> --apply
+```
+
+This path requires the existing Cloudflare account/zone and runtime/verifier
+configuration. It makes no Vercel calls and requires no Vercel token, owner,
+project or team. Invalid Cloudflare recovery evidence fails explicitly; it never
+falls back to Vercel. For the first migration from Vercel, the historical path
+without `--rollback-cloudflare-source` retains the original Vercel recovery
+requirements documented in the hosting runbook.
 
 Promotion copies the exact staged artifacts, rechecks the current protected
 journal after provisioning, verifies routing recovery, and runs immediate
-canonical production probes. Failed production probes restore retained Vercel
-routing. The web promotion command does not itself mutate API/discovery
-versions; joint rollback must cover those separately whenever they change.
+canonical production probes. Cloudflare recovery checks the retained artifact,
+credential commitment, active version, SQLite namespace and domain ownership.
+Cutover changes only Worker domain triggers; it never rebuilds or uploads the
+retained Worker. Failed probes restore retained routing, verify all three
+runtime identities and run canonical production journeys before reporting
+recovery.
+
+If API/discovery versions differ from the retained web release, add
+`--api-rollback-plan <saved-plan.json>` from the
+[API/discovery recovery helper](api-runtime-rollback.md). The plan must match
+both releases' exact dependency identities. Promotion preflights its retained
+versions; recovery restores them with a private durable journal, probes through
+the retained web candidate, then verifies restored canonical journeys. Missing
+or mismatched joint recovery fails before publishing or changing routing.
+Programmatic orchestrators may instead provide the equivalent `runtimeRollback`
+callback with actual readbacks and hosted probes.
+
+An interrupted Cloudflare operation can be checked and resumed from its retained
+snapshot and journals without recreating expired staging observations:
+
+```sh
+pnpm web:promote --restore-cloudflare-routing --target production --directory <new-production-directory> --hostname <production-hostname> --api-rollback-plan <saved-plan.json>
+pnpm web:promote --restore-cloudflare-routing --target production --directory <new-production-directory> --hostname <production-hostname> --api-rollback-plan <saved-plan.json> --apply
+```
+
+Omit the API plan only when both retained dependencies are unchanged. Recovery
+reads actual provider state to resume ambiguous responses, refuses unrelated
+versions/domains, and leaves `promotionState: "recovery-required"` if automatic
+recovery cannot be verified. It never reports successful rollback from a routing
+change alone. These commands do not qualify an evaluation-only API publisher for
+production; the actual API and discovery acceptance gates still apply.
 
 Rollback archives verify the manifest's execution mode, selected dependencies,
 and operator audit against the deployment. Their report retains those identities
