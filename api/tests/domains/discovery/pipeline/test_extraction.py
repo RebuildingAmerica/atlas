@@ -3,12 +3,33 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
+import sys
 
 import pytest
 from atlas_discovery_engine import build_extraction_system_prompt, parse_extraction_response
 
 ANTHROPIC_OUTAGE_ERROR = "anthropic outage"
 PASS_TWO_OUTAGE_ERROR = "pass2 outage"
+
+
+@pytest.mark.asyncio
+async def test_public_import_and_skipped_extraction_need_no_model_sdk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Browsing can import discovery routes without allocating the model SDK."""
+    original = importlib.import_module("atlas.domains.discovery.pipeline.extractor")
+    spec = importlib.util.spec_from_file_location(
+        "atlas_extractor_startup_probe", original.__file__
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    monkeypatch.setitem(sys.modules, "anthropic", None)
+    extractor = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(extractor)
+
+    assert await extractor.extract_entries("https://example.com", "Source", "City", "NV") == []
+    assert await extractor.extract_entries("https://example.com", " ", "City", "NV", "key") == []
 
 
 class TestExtractionHelpers:
@@ -106,9 +127,7 @@ class TestExtractionHelpers:
             def __init__(self, **_kwargs: object) -> None:
                 self.messages = FakeMessages()
 
-        monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.extractor.AsyncAnthropic", FakeAnthropic
-        )
+        monkeypatch.setattr("anthropic.AsyncAnthropic", FakeAnthropic)
 
         parsed = await importlib.import_module(
             "atlas.domains.discovery.pipeline.extractor"
@@ -174,9 +193,7 @@ class TestExtractionHelpers:
             def __init__(self, **_kwargs: object) -> None:
                 self.messages = fake_messages
 
-        monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.extractor.AsyncAnthropic", FakeAnthropic
-        )
+        monkeypatch.setattr("anthropic.AsyncAnthropic", FakeAnthropic)
 
         result = await extractor.extract_entries(
             "https://example.com/story",
@@ -209,9 +226,7 @@ class TestExtractionHelpers:
             def __init__(self, **_kwargs: object) -> None:
                 self.messages = fake_messages
 
-        monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.extractor.AsyncAnthropic", FakeAnthropic
-        )
+        monkeypatch.setattr("anthropic.AsyncAnthropic", FakeAnthropic)
 
         result = await extractor.extract_entries(
             "https://example.com/story",
@@ -258,9 +273,7 @@ class TestExtractionHelpers:
             def __init__(self, **_kwargs: object) -> None:
                 self.messages = fake_messages
 
-        monkeypatch.setattr(
-            "atlas.domains.discovery.pipeline.extractor.AsyncAnthropic", FakeAnthropic
-        )
+        monkeypatch.setattr("anthropic.AsyncAnthropic", FakeAnthropic)
 
         result = await extractor.extract_entries(
             "https://example.com/story",

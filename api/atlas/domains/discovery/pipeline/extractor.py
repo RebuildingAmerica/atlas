@@ -7,9 +7,11 @@ Delegates prompt building, response parsing, normalization, and validation
 to the shared atlas_discovery_engine extraction primitives.
 """
 
-import logging
+from __future__ import annotations
 
-from anthropic import AsyncAnthropic
+import logging
+from typing import TYPE_CHECKING
+
 from atlas_discovery_engine import (
     build_extraction_system_prompt,
     build_identify_system_prompt,
@@ -18,6 +20,9 @@ from atlas_discovery_engine import (
     validate_entries,
 )
 from atlas_shared import PageContent, RawEntry
+
+if TYPE_CHECKING:
+    from anthropic import AsyncAnthropic
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +67,10 @@ async def extract_entries(
     if not api_key or not content.strip():
         logger.warning("Anthropic API key missing or content empty; extraction skipped")
         return []
+
+    # Browsing imports discovery routes too; allocate the model SDK only for
+    # real extraction so ordinary profile visits avoid its startup cost.
+    from anthropic import AsyncAnthropic
 
     client = AsyncAnthropic(api_key=api_key)
     page = PageContent(url=url, text=content)
