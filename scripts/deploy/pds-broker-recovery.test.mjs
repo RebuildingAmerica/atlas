@@ -1,0 +1,111 @@
+import assert from "node:assert/strict";
+import { generateKeyPairSync, privateDecrypt } from "node:crypto";
+import { test } from "node:test";
+
+import { recoverPdsBroker } from "./pds-broker-recovery.mjs";
+
+const { publicKey, privateKey } = generateKeyPairSync("rsa", {
+  modulusLength: 4096,
+});
+const env = {
+  ATLAS_RECOVERY_PUBLIC_KEY: publicKey
+    .export({ type: "spki", format: "der" })
+    .toString("base64"),
+  ATLAS_PDS_PUBLIC_URL: "https://pds.atlas.example",
+  ATLAS_PDS_INSTANCE_NAME: "atlas-pds",
+  ATLAS_PDS_INSTANCE_ZONE: "us-east1-b",
+  GCP_PROJECT_ID: "atlas-example",
+  GITHUB_SHA: "a".repeat(40),
+};
+const credential = "synthetic-broker-value";
+const reply = {
+  origin: env.ATLAS_PDS_PUBLIC_URL,
+  brokerSecret: credential,
+};
+
+test("recovers only the existing broker setting into an encrypted artifact", () => {
+  let command;
+  const envelope = recoverPdsBroker({
+    env,
+    run: (binary, args, options) => {
+      command = { binary, args, options };
+      return { status: 0, stdout: Buffer.from(JSON.stringify(reply)) };
+    },
+  });
+  assert.equal(command.binary, "gcloud");
+  assert.deepEqual(command.args.slice(0, 9), [
+    "compute",
+    "ssh",
+    "atlas-pds",
+    "--project",
+    "atlas-example",
+    "--zone",
+    "us-east1-b",
+    "--tunnel-through-iap",
+    "--quiet",
+  ]);
+  assert.equal(command.options.stdio[1], "pipe");
+  assert.equal(command.options.stdio[2], "pipe");
+  assert.equal(envelope.releaseSha, env.GITHUB_SHA);
+  assert.equal(envelope.origin, env.ATLAS_PDS_PUBLIC_URL);
+  assert.equal(JSON.stringify(envelope).includes(credential), false);
+  const opened = JSON.parse(
+    privateDecrypt(
+      { key: privateKey, oaepHash: "sha256" },
+      Buffer.from(envelope.ciphertext, "base64"),
+    ),
+  );
+  assert.deepEqual(opened, reply);
+});
+
+test("provider failures cannot echo secrets or produce an artifact", () => {
+  assert.throws(
+    () =>
+      recoverPdsBroker({
+        env,
+        run: () => ({ status: 1, stdout: credential, stderr: credential }),
+      }),
+    /^Error: PDS broker read failed; provider diagnostics suppressed\.$/,
+  );
+});
+
+test("rejects a wrong host, additional private fields, empty or oversized secrets", () => {
+  for (const document of [
+    { ...reply, origin: "https://other.atlas.example" },
+    { ...reply, adminPassword: "unrelated-value" },
+    { ...reply, brokerSecret: "" },
+    { ...reply, brokerSecret: "x".repeat(257) },
+  ]) {
+    assert.throws(
+      () =>
+        recoverPdsBroker({
+          env,
+          run: () => ({
+            status: 0,
+            stdout: Buffer.from(JSON.stringify(document)),
+          }),
+        }),
+      /PDS broker response is invalid/,
+    );
+  }
+});
+
+test("invalid recipient keys and deployment identities fail before provider access", () => {
+  for (const overrides of [
+    { ATLAS_RECOVERY_PUBLIC_KEY: "invalid" },
+    { ATLAS_PDS_PUBLIC_URL: "http://pds.atlas.example" },
+    { ATLAS_PDS_INSTANCE_NAME: "--other-command" },
+    { GITHUB_SHA: "" },
+  ]) {
+    let called = false;
+    assert.throws(() =>
+      recoverPdsBroker({
+        env: { ...env, ...overrides },
+        run: () => {
+          called = true;
+        },
+      }),
+    );
+    assert.equal(called, false);
+  }
+});
