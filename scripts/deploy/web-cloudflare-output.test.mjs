@@ -73,7 +73,10 @@ for (const architecture of ["workers", "hybrid"]) {
       ]);
       assert.equal(parsed.workers.default.config.workersDev, false);
       assert.equal(parsed.workers.default.config.previewUrls, false);
-      assert.equal(parsed.workers.default.config.assets.htmlHandling, "none");
+      assert.equal(
+        parsed.workers.default.config.assets.htmlHandling,
+        architecture === "workers" ? "drop-trailing-slash" : "none",
+      );
       assert.equal(
         readFileSync(
           join(parsed.workers.default.bundleDir, "worker.js"),

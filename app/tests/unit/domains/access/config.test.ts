@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createInternalAuthHeaders, getAuthConfig } from "@/domains/access/config";
+import { getAuthConfig } from "@/domains/access/config";
 
 describe("getAuthConfig", () => {
   it("keeps custom sign-in and API URLs on the current migration hostname", () => {

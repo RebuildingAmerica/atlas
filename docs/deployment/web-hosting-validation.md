@@ -110,8 +110,9 @@ visitor state:
   router's eager static dependency graph shrank from 166 modules / 2,833,704
   bytes to 160 modules / 1,053,571 bytes.
 - Immutable router, Start and API-identity modules load during isolate startup,
-  after the reflection polyfill. Routers, query caches, authentication instances
-  and database clients are still created per request.
+  after the reflection polyfill. Routers, query caches, sessions and database
+  clients are still created per request. The later auth configuration reuse
+  described below does not reuse visitor identity.
 - Credential-free `GET /api/auth/get-session` returns `null` directly with
   `private, no-store`. Access injects `CF_Authorization` even into service-token
   requests; that cookie alone is not an Atlas credential. All other cookies,
@@ -175,8 +176,9 @@ Rejected experiments were removed from source and deployment:
   public requests; the last 500 measured 16ms p99.
 - Preloading every route component at startup still measured 56ms p99 across 995
   matched requests. Its startup was 104ms, but request CPU remained over budget.
-- Preloading auth modules did not eliminate credentialed cold spikes and
-  worsened the public CPU tail. No shared auth singleton was introduced.
+- Preloading auth modules alone did not eliminate credentialed cold spikes and
+  worsened the public CPU tail. This experiment preceded the configuration reuse
+  described below.
 - Inlining all SSR dynamic imports broke the Worker entrypoint in local workerd
   and was never deployed.
 
@@ -184,6 +186,69 @@ Neither a 0ms anonymous endpoint nor improved startup establishes that full SSR
 and authentication fit Workers Free. The p99 below 8ms gate remains in force.
 Further work must reduce rendering/authentication allocation and CPU, not merely
 warm a shared HTML cache or exclude cold requests from the sample.
+
+### Authentication configuration and public documents
+
+The next investigation found that every Workers auth request rebuilt Better
+Auth's plugin, schema and endpoint graph. The engine now reuses that
+configuration, as the existing Node build already did. Better Auth's installed
+dispatcher creates session and response-header state per invocation. A Kysely
+PostgreSQL dialect resolves each physical client from the active Workers
+request; no pool or connection is created at module initialization, and each
+physical pool closes when its response finishes or is cancelled. Schema checks
+remain scoped to the request and migrations remain an external release job.
+
+Concurrent Kysely tests exercise separate request-owned pools. A disposable
+local PostgreSQL database and the actual workerd bundle also passed sixteen
+overlapping signed-session reads for two different users. These probes verify
+isolation of synthetic sessions, not real email, passkeys, SSO or production
+account recovery.
+
+The first hosted configuration-reuse experiment,
+`e0d83e7c-8abd-4c59-a597-6aa7baa809b1`, measured:
+
+| Workload                     | CPU samples / requests | CPU p50 | CPU p95 | CPU p99 |
+| ---------------------------- | ---------------------: | ------: | ------: | ------: |
+| Invalid session cookie       |                50 / 50 |     3ms |     5ms |    36ms |
+| Invalid bearer token         |                50 / 50 |     4ms |    11ms |    50ms |
+| Credential-free session      |                40 / 40 |     0ms |     0ms |     0ms |
+| Public SSR and expected 404s |            990 / 1,000 |     5ms |    31ms |    60ms |
+
+Compared with the preceding retained build, invalid-credential median CPU fell
+from 14–15ms to 3–4ms. Cold and rendering tails still fail the release gate.
+Initializing the engine itself at isolate startup was also tested and removed:
+it did not resolve the tails and would make static rendering depend on runtime
+authentication secrets.
+
+Zod was updated from 4.4.3 to 4.6.5 for the
+[documented reduction in schema memory](https://github.com/colinhacks/zod/releases/tag/v4.5.0).
+Cloudflare explicitly recommends 4.5 or later for Workers memory pressure. This
+is not credited as a measured request-CPU improvement: the hosted Zod/startup
+experiment still measured 71ms public p99 across 989 matched invocations.
+
+The Workers build now prerenders only `/` and `/privacy`, with automatic route
+discovery and link crawling disabled. These existing public documents contain no
+visitor identity and retain their HTML, metadata, scripts and client behavior.
+Cloudflare serves their exact generated assets with trailing-slash removal;
+unknown paths still reach the application and return the existing 404 surface.
+Profiles, sign-in parameters, workspaces, billing and server functions remain
+live. The Node/self-hosted target keeps its existing rendering path. No
+generated customer data or authentication secrets are added to public assets.
+
+In experiment `59e3417d-b13b-4469-baa6-780831360c2d`, all 200 home requests and
+200 privacy requests returned their static HTML and produced no Worker
+invocation records. This is expected asset routing, not missing logs counted as
+zero CPU. Browser checks at 390px verified the page titles, visible content and
+absence of horizontal overflow or reported hydration errors; parameterized
+sign-in retained `private, no-store`. The catalog API remains unavailable, so
+these checks do not establish successful search or profile discovery.
+
+The remaining live sign-in/404 workload still measured 54–70ms p99 by route; all
+100 invalid-credential controls returned `null`, but cold cookie CPU reached
+70ms. There were no CPU-limit pages in the 1,140-request probe. The full
+frontend suite passed 621 files and 4,193 tests, with one skipped and unchanged
+100% coverage thresholds. The candidate remains ineligible for production
+cutover.
 
 ## Hybrid and shared usage
 

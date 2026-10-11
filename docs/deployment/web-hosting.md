@@ -57,10 +57,11 @@ never command arguments. Those files are removed even when the command fails.
 | Hybrid    | Exact verified Nitro output in a guarded Node container; Workers serves static assets and streams dynamic requests to a pinned Cloud Run revision | Hosted warm/cold latency, account-wide added cost, complete journeys                        |
 
 `ATLAS_WEB_RUNTIME=workers` enables the Cloudflare adapter and a request-scoped
-PostgreSQL/auth implementation. `ATLAS_WEB_RUNTIME=node` enables Nitro. The
-adapters are mutually exclusive. Omitting the variable preserves the existing
-Node/Vercel build behavior. Node and SQLite remain available for
-local/self-hosted installations.
+PostgreSQL implementation and per-dispatch authentication state. The auth
+engine's configuration is reused; physical SQL clients remain request-owned.
+`ATLAS_WEB_RUNTIME=node` enables Nitro. The adapters are mutually exclusive.
+Omitting the variable preserves the existing Node/Vercel build behavior. Node
+and SQLite remain available for local/self-hosted installations.
 
 The native Worker imports the reflection polyfill needed by passkey
 dependencies, excludes the native SQLite implementation, and holds request
@@ -74,13 +75,19 @@ internal links are materialized before hashing so the container needs no
 checkout or package installation. The source Dockerfile at `app/Dockerfile`
 remains the self-hosted path.
 
-Static asset routing is exact, without SPA fallback. Only directories verified
-to contain fingerprinted assets receive immutable caching. Dynamic responses are
-private and uncached. Application `/api/auth`, billing and server functions stay
-in the app; only the existing documentation, MCP and entity routes proxy to
-their configured upstreams. The guarded origin checks its dedicated secret
-before **every** route, validates the expected public host and replaces
-untrusted forwarding headers.
+The Workers target prerenders only Home and Privacy as public HTML, with route
+discovery and link crawling disabled. Their metadata and browser interactions
+remain intact, while opening them avoids request-time rendering. Profiles and
+account flows retain live handlers; the Node target keeps its existing
+rendering.
+
+Static asset routing is exact, with HTML trailing-slash removal and without SPA
+fallback. Only directories verified to contain fingerprinted assets receive
+immutable caching. Dynamic responses are private and uncached. Application
+`/api/auth`, billing and server functions stay in the app; only the existing
+documentation, MCP and entity routes proxy to their configured upstreams. The
+guarded origin checks its dedicated secret before **every** route, validates the
+expected public host and replaces untrusted forwarding headers.
 
 ## Current evidence and blockers
 

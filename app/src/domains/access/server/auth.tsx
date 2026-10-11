@@ -341,16 +341,12 @@ let authInstancePromise: Promise<AtlasAuthInstance> | null = null;
 let authReadyPromise: Promise<AtlasAuthInstance> | null = null;
 
 /**
- * Returns the singleton Better Auth instance for the current app server
- * process.
+ * Reuses the authentication engine's configuration and endpoint definitions.
+ * Better Auth creates session/header state per dispatch. On Workers its SQL
+ * dialect resolves physical clients from the active request, so a visitor
+ * never inherits another visitor's connection or authentication state.
  */
 export async function getAuth() {
-  const scoped = requestResource("auth", () => {
-    const runtime = getAuthRuntimeConfig();
-    validateAuthRuntimeConfig(runtime);
-    return createAtlasAuth(runtime);
-  });
-  if (scoped) return await scoped;
   if (authInstance) {
     return authInstance;
   }

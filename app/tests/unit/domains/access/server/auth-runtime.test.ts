@@ -388,7 +388,7 @@ describe("auth runtime wiring", () => {
     expect(mocks.runMigrations).toHaveBeenCalledTimes(1);
   });
 
-  it("creates a distinct auth instance per Workers request without changing Node singleton behavior", async () => {
+  it("reuses immutable authentication configuration across Workers requests", async () => {
     const mod = await import("@/domains/access/server/auth");
     const { runWorkerRequest } = await import("../../../../../server/request-scope");
     const instances: unknown[] = [];
@@ -399,8 +399,9 @@ describe("auth runtime wiring", () => {
         instances.push(first);
         return new Response(null, { status: 204 });
       });
-    expect(mocks.betterAuth).toHaveBeenCalledTimes(2);
+    expect(mocks.betterAuth).toHaveBeenCalledTimes(1);
     expect(instances).toHaveLength(2);
+    expect(instances[1]).toBe(instances[0]);
   });
 
   it("checks the deployed schema instead of running migrations in external mode", async () => {

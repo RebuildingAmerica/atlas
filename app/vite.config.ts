@@ -152,7 +152,23 @@ export default defineConfig(async ({ mode }) => {
     define,
     plugins: [
       ...(runtime === "workers" ? runtimePlugins : []),
-      tanstackStart(),
+      tanstackStart(
+        runtime === "workers"
+          ? {
+              // These public documents contain no visitor data. Build their
+              // existing SSR HTML once so opening them consumes no Worker CPU.
+              // Profiles, account flows and server functions keep live routing.
+              pages: [{ path: "/" }, { path: "/privacy" }],
+              prerender: {
+                enabled: true,
+                autoStaticPathsDiscovery: false,
+                crawlLinks: false,
+                failOnError: true,
+                retryCount: 0,
+              },
+            }
+          : undefined,
+      ),
       ...(runtime === "node" ? runtimePlugins : []),
       react(),
       tailwindcss(),

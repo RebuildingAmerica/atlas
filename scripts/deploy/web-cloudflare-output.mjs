@@ -46,7 +46,7 @@ export async function prepareCloudflareOutput({
   worker.domains = domains;
   worker.triggers = [];
   worker.assets = {
-    htmlHandling: "none",
+    htmlHandling: architecture === "workers" ? "drop-trailing-slash" : "none",
     notFoundHandling: "none",
     runWorkerFirst: false,
   };

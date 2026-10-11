@@ -14,7 +14,7 @@ interface WorkerRuntimeEnv extends Omit<AtlasWorkerEnv, "HYPERDRIVE"> {
 }
 
 // Evaluate immutable modules during isolate startup, after the reflection
-// polyfill. Keep routers, query caches, auth instances, and clients request-scoped
+// polyfill. Routers, query caches, sessions, and clients remain request-scoped
 // so first-page latency improves without sharing anyone's identity or content.
 await Promise.all([
   import("../src/router"),
@@ -52,7 +52,7 @@ export default {
       const response =
         (await proxyHostedRequest(forwarded, env)) ??
         // Session checks are HTTP auth requests and need no page router. The
-        // shared dispatcher retains the same guards and request-scoped auth.
+        // shared dispatcher retains the same guards and request-scoped identity.
         (request.method === "GET" && url.pathname === "/api/auth/get-session"
           ? await dispatchAuthRequest(forwarded)
           : await handler.fetch(forwarded));

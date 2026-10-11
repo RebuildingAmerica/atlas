@@ -78,6 +78,7 @@
     "better-auth": "catalog:",
     "better-sqlite3": "catalog:",
     "clsx": "catalog:",
+    "kysely": "catalog:",
     "lucide-react": "catalog:",
     "maplibre-gl": "catalog:",
     "nitro": "catalog:",
