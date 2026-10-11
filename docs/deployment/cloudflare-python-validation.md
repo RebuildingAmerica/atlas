@@ -53,15 +53,31 @@ production auth audiences. Existing Cloud Run API settings were then recovered
 read-only and checked against the web service's database and internal
 authentication secret.
 
-The latest hosted API observation uses version prefix `44b88f`, source
-`234848ff`. The full application's health route returned HTTP 200 in roughly 14
-seconds, but entities returned HTTP 500. Logs identify
-`RuntimeError: can't start new thread` in a synchronous FastAPI dependency.
-Earlier candidates hit memory limits; that is not the established cause of this
-latest failure. Repeated import probes still take roughly 13 seconds, so
-application reuse and acceptable warm performance have not been demonstrated. A
-health response does not establish searchable profiles, private workspace access
-or MCP acceptance.
+Version prefix `44b88f`, source `234848ff`, exposed unsupported thread creation
+in synchronous FastAPI dependencies. The hosted adapter now explicitly adapts
+the six nonblocking dependencies to async calls; the Node runtime keeps its
+existing behavior. The complete API suite passed 2,456 tests with 100% branch
+and statement coverage before subsequent discovery continuation changes.
+
+The hosted framework snapshot at `2026-10-11T06:05:31Z` uses version
+`c964d8a9-9641-4a95-8b32-155d13a9470e`, source `3beff384`. Health and the UTC
+database probe pass, and anonymous Access requests are rejected. Full
+application construction takes roughly 9.5 seconds, down from 12–14 seconds;
+empty search returns HTTP 200 and private lists reject unauthenticated requests
+with HTTP 401. Nonempty catalog search still returns HTTP 500. Its trace reaches
+asyncpg's named prepared-statement cleanup and reports
+`ConnectionDoesNotExistError`. This candidate has not passed search, private
+workspace or MCP acceptance, warm reuse, or performance gates.
+
+Sources `c3ca8902` and `b10cdc36` replace each request-owned query's named
+statement with an unnamed one, after materializing its result. Four real
+PostgreSQL tests preserve cursor shapes, transaction continuity, cancellation
+and cleanup, and verify zero named-statement resources. This change still needs
+hosted validation. A cryptography-only snapshot experiment was rejected with
+Cloudflare error 10021, `Top-level await in module is unsettled`; its failed
+deployment did not replace the live candidate. Source `b10cdc36` restores the
+validated Pydantic/FastAPI/HTTPX snapshot boundary. Cryptography remains
+available at request time; no product dependency was removed.
 
 Twelve concurrent database adapter probes passed through the provider. Local
 PostgreSQL tests cover cursor shapes, dates, JSON, commit visibility, rollback

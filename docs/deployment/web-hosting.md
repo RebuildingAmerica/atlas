@@ -118,11 +118,14 @@ the current evidence:
   [workflow 38115026693](https://github.com/RebuildingAmerica/website/actions/runs/38115026693)
   passed. Its Vercel project is paused, Git-disconnected and has no domains.
   Atlas remains the active dependency on the paid subscription.
-- The protected full API candidate, version prefix `44b88f`, source `234848ff`,
-  returned health HTTP 200 in roughly 14 seconds. Entities returned HTTP 500;
-  logs identify thread creation in a synchronous FastAPI dependency. Earlier
-  memory failures are not the established cause of this latest failure. Repeated
-  imports remain roughly 13 seconds; warm reuse is unproven.
+- The protected full API candidate, version prefix `c964d8a9`, source
+  `3beff384`, passes health, UTC database and empty-search probes. Unsupported
+  thread dependencies have been adapted. Nonempty searches still fail during
+  named prepared-statement cleanup; the request-owned unnamed-statement change
+  passes four real PostgreSQL tests and awaits hosted validation. Application
+  construction remains roughly 9.5 seconds, and warm reuse is unproven. A
+  cryptography preload experiment failed provider deployment validation and did
+  not replace this candidate.
 - The latest retained account dashboard snapshot reports 18,850 daily Workers
   requests, 249 daily Durable Object GB-seconds, and 22.08k month-to-date
   Workers requests. These readings do not replace a complete peak/load forecast.
