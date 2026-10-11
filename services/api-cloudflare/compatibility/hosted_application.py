@@ -3,7 +3,7 @@
 import json
 from contextlib import AsyncExitStack, asynccontextmanager
 
-from atlas.platform.config import Settings, validate_runtime_auth_config
+from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
 from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
 from database_adapter import connect_database
 
@@ -112,6 +112,14 @@ def create_hosted_application(
             app = create_app(
                 lifespan_override=_http_lifespan, mcp_asgi_app=_request_mcp
             )
+
+        async def request_settings():
+            # FastAPI dispatches sync dependencies through a thread pool, which
+            # the hosted Python runtime cannot create. Keep settings resolution
+            # on this request's async context so browsing and sign-in work there.
+            return get_settings()
+
+        app.dependency_overrides[get_settings] = request_settings
     except Exception:
         # Pydantic/URL errors can include entire secret-bearing input values.
         raise RuntimeError("Invalid hosted API configuration.") from None

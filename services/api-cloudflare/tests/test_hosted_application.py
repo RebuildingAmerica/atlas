@@ -61,6 +61,11 @@ async def test_real_health_and_private_routes_keep_auth_and_cors(monkeypatch):
     app, count = hosted.create_hosted_application(env)
     assert count > 0
 
+    async def forbidden_thread(*args, **kwargs):
+        pytest.fail("Hosted authentication attempted to create a worker thread")
+
+    monkeypatch.setattr("anyio.to_thread.run_sync", forbidden_thread)
+
     async def forbidden_connect(**kwargs):
         pytest.fail("Health or unauthenticated requests reached the database")
 
@@ -98,6 +103,11 @@ async def test_concurrent_authenticated_readers_own_settings_and_connections(
     hosted = module()
     from atlas.platform.config import get_settings
     from atlas.platform.hosted_runtime import current_hosted_runtime
+
+    async def forbidden_thread(*args, **kwargs):
+        pytest.fail("Hosted readers attempted to create a worker thread")
+
+    monkeypatch.setattr("anyio.to_thread.run_sync", forbidden_thread)
 
     opened = []
     barrier = asyncio.Barrier(8)
@@ -420,6 +430,7 @@ async def test_application_owns_explicit_firehose_wake(monkeypatch):
         await send({"type": "http.response.body", "body": b"ok"})
 
     app.routes = []
+    app.dependency_overrides = {}
     monkeypatch.setattr(atlas.main, "create_app", lambda **kwargs: app)
     hosted, _ = module().create_hosted_application(environment(), firehose_wake=wake)
     async with httpx.AsyncClient(
