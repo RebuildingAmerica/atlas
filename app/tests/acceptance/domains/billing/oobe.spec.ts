@@ -273,10 +273,10 @@ async function startPaidPlan(page: Page, plan: PaidPlan): Promise<void> {
   });
 
   await chapter(page, `${config.visibleLabel}: add passkey`, async () => {
-    await addPasskeyIfNeeded(page, /Choose workspace|Name your team workspace/i);
+    await addPasskeyIfNeeded(page, /Choose a workspace|Create a workspace/i);
     await page.waitForURL((url) => url.pathname === "/onboarding", { timeout: 60_000 });
     await expect(
-      page.getByRole("heading", { name: /Choose workspace|Name your team workspace/i }),
+      page.getByRole("heading", { name: /Choose a workspace|Create a workspace/i }),
     ).toBeVisible({ timeout: 30_000 });
   });
 }
@@ -285,20 +285,25 @@ async function attachWorkspace(page: Page, plan: PaidPlan): Promise<void> {
   await chapter(page, `${paidPlans[plan].visibleLabel}: workspace`, async () => {
     if (plan === "team") {
       const workspaceId = randomUUID().slice(0, 8);
-      await expect(page.getByText("Name your team workspace", { exact: false })).toBeVisible({
+      await expect(page.getByRole("heading", { name: "Create a workspace" })).toBeVisible({
         timeout: 30_000,
       });
       await fillAction(page.getByLabel("Workspace name"), `OOBE Team ${workspaceId}`);
-      await clickAction(page.getByRole("button", { name: "Continue to payment" }));
     } else {
-      const useWorkspace = page.getByRole("button", { name: /Use My Workspace/i });
+      const useWorkspace = page.getByRole("radio", { name: "My Workspace", exact: true });
       await expect(useWorkspace).toBeEnabled({ timeout: 30_000 });
       await clickAction(useWorkspace);
+      await expect(useWorkspace).toBeChecked();
     }
 
-    await expect(
-      page.getByText("Stripe will handle the payment details", { exact: false }),
-    ).toBeVisible({ timeout: 30_000 });
+    const reviewPlan = page.getByRole("button", { name: "Review plan", exact: true });
+    await expect(reviewPlan).toBeEnabled();
+    await clickAction(reviewPlan);
+    await expect(page.getByRole("heading", { name: "Review your plan" })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(paidPlans[plan].productLabel, { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Payment summary" })).toBeVisible();
     await pauseAfterAction(page);
   });
 }
@@ -334,7 +339,7 @@ async function completeStripeCheckout(page: Page, plan: PaidPlan): Promise<void>
   const config = paidPlans[plan];
   const planLabel = config.visibleLabel;
   await chapter(page, `${planLabel}: Stripe checkout`, async () => {
-    await clickAction(page.getByRole("button", { name: "Continue to Stripe" }));
+    await clickAction(page.getByRole("button", { name: "Continue to payment", exact: true }));
     await page.waitForURL((url) => url.hostname.endsWith("stripe.com"), { timeout: 90_000 });
     await pauseAfterAction(page);
 

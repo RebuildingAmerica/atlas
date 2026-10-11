@@ -132,22 +132,45 @@ describe("SetupPage", () => {
     expect(screen.queryByText(/Stripe will handle/)).not.toBeInTheDocument();
   });
 
-  it("sends a signed-out visitor to sign up while keeping their plan", () => {
-    mocks.useAtlasSession.mockReturnValue({ data: null });
+  it.each([
+    {
+      product: "atlas_pro",
+      interval: "monthly",
+      label: "Atlas Pro",
+      redirect: "%2Fonboarding%3Fproduct%3Datlas_pro%26interval%3Dmonthly",
+    },
+    {
+      product: "atlas_team",
+      interval: "yearly",
+      label: "Atlas Team",
+      redirect: "%2Fonboarding%3Fproduct%3Datlas_team%26interval%3Dyearly",
+    },
+    {
+      product: "atlas_research_pass",
+      interval: "once",
+      label: "Atlas Research Pass",
+      redirect: "%2Fonboarding%3Fproduct%3Datlas_research_pass%26interval%3Donce",
+    },
+  ] as const)(
+    "shows $label at the anonymous account step and retains its selection",
+    ({ product, interval, label, redirect }) => {
+      mocks.useAtlasSession.mockReturnValue({ data: null });
 
-    render(<SetupPage product="atlas_pro" interval="monthly" />);
+      render(<SetupPage product={product} interval={interval} />);
 
-    expect(screen.getByRole("heading", { name: "Start with your account" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Create account" })).toHaveAttribute(
-      "href",
-      "/sign-up?redirect=%2Fonboarding%3Fproduct%3Datlas_pro%26interval%3Dmonthly",
-    );
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/sign-in?redirect=%2Fonboarding%3Fproduct%3Datlas_pro%26interval%3Dmonthly",
-    );
-    expect(mocks.ensurePurchaseOnboarding).not.toHaveBeenCalled();
-  });
+      expect(screen.getByRole("heading", { name: "Start with your account" })).toBeInTheDocument();
+      expect(screen.getByText(label, { exact: true })).toBeVisible();
+      expect(screen.getByRole("link", { name: "Create account" })).toHaveAttribute(
+        "href",
+        `/sign-up?redirect=${redirect}`,
+      );
+      expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+        "href",
+        `/sign-in?redirect=${redirect}`,
+      );
+      expect(mocks.ensurePurchaseOnboarding).not.toHaveBeenCalled();
+    },
+  );
 
   it("says the purchase link is unavailable when the lookup fails", async () => {
     mocks.useAtlasSession.mockReturnValue({
