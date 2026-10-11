@@ -48,7 +48,6 @@ const access = readJson(required("--access-file"));
 const hyperdriveId = required("--hyperdrive-id");
 const edge = args.includes("--edge");
 const discovery = args.includes("--discovery");
-if (edge && discovery) throw Error("Select one evaluation runtime.");
 const workerName = edge
   ? "atlas-python-eval-edge"
   : discovery
@@ -65,6 +64,18 @@ const pythonVersionId = edge
       ]),
     )
   : undefined;
+const discoveryVersionId =
+  edge && discovery
+    ? assertEvaluationVersion(
+        cf([
+          "workers",
+          "deployments",
+          "list",
+          "--worker",
+          "atlas-python-eval-discovery",
+        ]),
+      )
+    : undefined;
 const hostname =
   workerName +
   "." +
@@ -122,6 +133,9 @@ if (edge)
     destination,
     accountId,
     pythonWorkerName: "atlas-python-eval-api",
+    ...(discovery
+      ? { discoveryWorkerName: "atlas-python-eval-discovery" }
+      : {}),
   });
 else
   await preparePythonOutput({
@@ -201,6 +215,7 @@ const report = {
   hostname,
   versionId,
   ...(edge ? { pythonVersionId } : {}),
+  ...(discoveryVersionId ? { discoveryVersionId } : {}),
   accessAppId: application.id,
   deployedAt: new Date().toISOString(),
   checks: [],
@@ -213,8 +228,10 @@ const headers = {
 };
 for (const path of [
   "/health",
-  ...(discovery ? [] : ["/database"]),
-  ...(args.includes("--native") ? ["/native"] : []),
+  ...(discovery && !edge ? [] : ["/database"]),
+  ...(args.includes("--native")
+    ? [edge && discovery ? "/discovery/native" : "/native"]
+    : []),
 ]) {
   const response = await fetch("https://" + hostname + path, {
     headers,
@@ -236,7 +253,7 @@ for (const path of [
     );
   const result = JSON.parse(body);
   if (
-    path === "/native" &&
+    path.endsWith("/native") &&
     (result.deflate64_decoded !== true ||
       result.decoded_bytes !== 4017 ||
       result.name_types?.["Sarah Stone"] !== "Person" ||

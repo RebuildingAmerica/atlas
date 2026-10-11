@@ -115,10 +115,13 @@ export async function preparePythonEdgeOutput({
   destination,
   accountId,
   pythonWorkerName,
+  discoveryWorkerName,
 }) {
   if (
     !/^[a-f0-9]{32}$/.test(accountId ?? "") ||
-    pythonWorkerName !== "atlas-python-eval-api"
+    pythonWorkerName !== "atlas-python-eval-api" ||
+    (discoveryWorkerName !== undefined &&
+      discoveryWorkerName !== "atlas-python-eval-discovery")
   )
     throw new Error(
       "The verified Python evaluation account and Worker are required.",
@@ -151,6 +154,15 @@ export async function preparePythonEdgeOutput({
           worker: pythonWorkerName,
           exportName: "ApiRuntime",
         },
+        ...(discoveryWorkerName
+          ? {
+              DISCOVERY_RUNTIME: {
+                type: "durable-object",
+                worker: discoveryWorkerName,
+                exportName: "ApiRuntime",
+              },
+            }
+          : {}),
       },
       observability: {
         enabled: true,
