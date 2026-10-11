@@ -32,11 +32,11 @@ jobs:
         with:
           version: "0.12.23"
       - name: Install pinned cross-build environment
-        run: uv tool run --from pyodide-build==0.39.1 pyodide xbuildenv install 314.0.7
+        run: uv tool run --from "pyodide-build[resolve]==0.39.1" pyodide xbuildenv install 314.0.7
       - name: Build existing native dependency for WebAssembly
         env:
           NATIVE_PACKAGE: ${{ matrix.package }}
-        run: uv tool run --from pyodide-build==0.39.1 pyodide build "$NATIVE_PACKAGE" --outdir wheels
+        run: uv tool run --from "pyodide-build[resolve]==0.39.1" pyodide build "$NATIVE_PACKAGE" --outdir wheels
       - name: Record artifact identity
         run: sha256sum wheels/*.whl > wheels/SHA256SUMS
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
