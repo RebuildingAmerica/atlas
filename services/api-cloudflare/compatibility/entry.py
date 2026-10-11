@@ -3,6 +3,7 @@
 from urllib.parse import urlsplit
 
 from package_bootstrap import ensure_package_archive
+from runtime_probe import RuntimeProbe
 from workers import DurableObject, Response, WorkerEntrypoint, asgi
 
 
@@ -29,6 +30,16 @@ class ApiRuntime(DurableObject):
 
     async def fetch(self, request):
         path = urlsplit(request.url).path
+        if not hasattr(self, "_diagnostics"):
+            self._diagnostics = RuntimeProbe()
+        self._diagnostics.begin_request()
+        if path == "/runtime-state":
+            return Response.json(
+                self._diagnostics.snapshot(
+                    application_cached=hasattr(self, "_application")
+                ),
+                headers={"Cache-Control": "private, no-store"},
+            )
         if path in {"/timer-cancel/5", "/timer-cancel/30", "/timer-fixed/30"}:
             from timer_probe import cancelled_timer_probe
 
@@ -49,19 +60,27 @@ class ApiRuntime(DurableObject):
 
         if not install_timer_cleanup():
             raise RuntimeError("The selected hosted loop could not be adapted.")
-        await ensure_package_archive(self.env)
+        with self._diagnostics.measure("packages"):
+            await ensure_package_archive(self.env)
         if path == "/imports" or path == "/atlas" or path.startswith("/atlas/"):
             if not hasattr(self, "_application"):
-                from hosted_application import create_hosted_application
+                with self._diagnostics.measure("application"):
+                    from hosted_application import create_hosted_application
 
-                self._application, self._route_count = create_hosted_application(
-                    self.env,
-                    strip_evaluation_prefix=True,
-                    firehose_wake=self._firehose_adapter(),
-                )
+                    self._application, self._route_count = create_hosted_application(
+                        self.env,
+                        strip_evaluation_prefix=True,
+                        firehose_wake=self._firehose_adapter(),
+                    )
             if path == "/imports":
                 return Response.json(
-                    {"status": "ok", "routes": self._route_count},
+                    {
+                        "status": "ok",
+                        "routes": self._route_count,
+                        "diagnostics": self._diagnostics.snapshot(
+                            application_cached=True
+                        ),
+                    },
                     headers={"Cache-Control": "private, no-store"},
                 )
             return await asgi.fetch(self._application, request, self.env)
