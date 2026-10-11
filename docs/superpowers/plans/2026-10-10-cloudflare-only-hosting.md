@@ -19,7 +19,10 @@ Hyperdrive, Workers, SQLite Durable Objects, and the pinned new `cf` CLI.
 permit moving API and discovery compute to Cloudflare and evaluating each
 runtime against its own limits. This supersedes the original requirement to
 preserve Google-hosted compute and apply a whole-app 8ms CPU gate to Durable
-Objects. It does not waive privacy, performance, quota, or journey gates.
+Objects. The user subsequently authorized immediate cutover on October 10 and
+migration of the organization website, waiving the 24-hour staging and 72-hour
+production waiting periods. Privacy, runtime compatibility, and functional
+checks still protect usable sites.
 
 ## Global constraints
 
@@ -37,8 +40,9 @@ Objects. It does not waive privacy, performance, quota, or journey gates.
   edge CPU measurement does not stand in for application CPU.
 - Require twice-current workload below 80% of all applicable Free allowances.
   Unknown usage remains a release blocker. Budget alerts are not spending caps.
-- Preserve the 24-hour staging and 72-hour production observation windows, a
-  tested replacement rollback, and verified end of the Vercel recurring charge.
+- Cut over as soon as hosted functional checks and rollback pass, without a
+  timed staging or production observation window. Migrate the organization
+  website as well and verify the recurring Vercel charge has ended.
 
 ## Review focus
 
@@ -129,12 +133,13 @@ bindings, schema and digests; secret values remain external.
 
 ## 5. Cut over and end the Vercel charge
 
-- [ ] Complete 24 hours of successful staging and a cross-service rollback
-      drill.
+- [ ] Complete hosted functional checks and a cross-service rollback drill; the
+      user waived the timed staging window.
 - [ ] Capture Vercel routes and deployment, switch the existing production
       domain, and immediately verify sign-in, profiles, workspaces and billing.
-- [ ] Observe production for 72 hours; roll back for broken journeys, privacy
-      failures or failed performance/quota gates.
+- [ ] Verify production immediately; roll back for broken journeys, privacy
+      failures or failed performance/quota gates. The user waived the timed
+      production observation window.
 - [ ] Resolve the shared `rap-website` project dependency before cancelling or
       downgrading the team subscription; verify the recurring charge has ended.
 

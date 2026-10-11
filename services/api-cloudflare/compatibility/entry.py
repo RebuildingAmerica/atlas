@@ -20,6 +20,14 @@ async def health():
     return {"status": "ok", "runtime": "python-durable-object"}
 
 
+@app.get("/imports")
+async def imports():
+    # Construct existing routes without lifespan: no migrations or job startup.
+    from atlas.main import app as atlas_app
+
+    return {"status": "ok", "routes": len(atlas_app.routes)}
+
+
 @app.get("/native")
 async def native():
     from native_probe import native_checks
