@@ -168,6 +168,10 @@ def install_native_packages(run_id: str, *, full_api: bool = False) -> None:
                 requirements.append(
                     f"{item['name']} @ {wheel['url']} --hash=sha256:{wheel['hashes']['sha256']}"
                 )
+        # This fixed directory contains only generated build artifacts. Rebuild
+        # it so removed source files and transformed vendor data cannot persist.
+        if vendor.exists():
+            shutil.rmtree(vendor)
         vendor.mkdir(parents=True, exist_ok=True)
     else:
         subprocess.run(
@@ -210,6 +214,17 @@ def install_native_packages(run_id: str, *, full_api: bool = False) -> None:
                 ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
             )
         (vendor / "pyvenv.cfg").touch()
+        subprocess.run(
+            [
+                "python3",
+                str(ROOT / "scripts/deploy/api-cloudflare-locales.py"),
+                "--vendor",
+                str(vendor),
+                "--provenance",
+                str(artifact_root / "locale-provenance.json"),
+            ],
+            check=True,
+        )
     (
         artifact_root / ("api-provenance.json" if full_api else "provenance.json")
     ).write_text(
