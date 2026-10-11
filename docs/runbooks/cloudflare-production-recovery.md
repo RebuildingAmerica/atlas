@@ -47,6 +47,18 @@ preserves existing sign-in and operator access when Vercel marks those settings
 write-only. A readable provider value that conflicts with CI still blocks the
 release; forwarding does not authorize changing an identity.
 
+When the old host also marks ordinary application settings write-only, supply
+their explicit values as protected environment variables: `DATABASE_BACKEND`,
+`ATLAS_DEPLOY_MODE`, `ATLAS_AUTH_BASE_PATH`,
+`ATLAS_AUTH_API_KEY_INTROSPECTION_URL`, `ATLAS_SERVER_API_PROXY_TARGET`,
+`ATLAS_DOCS_URL`, `ATLAS_EMAIL_FROM`, `ATLAS_EMAIL_PROVIDER` and
+`ATLAS_PDS_PUBLIC_URL`. This preserves the intended sign-in routes,
+source-linked directory, documentation and email delivery while moving hosts.
+Recover values from retained configuration or verify the intended provider
+destinations before setting them; the workflow supplies no defaults and still
+rejects conflicts with readable host values. Credentials continue to come from
+environment secrets.
+
 Read-only verification must establish that Hyperdrive points to the retained
 database. A diagnostic Hyperdrive configuration being active does not prove that
 it contains the production accounts or catalog.
