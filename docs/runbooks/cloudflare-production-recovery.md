@@ -78,11 +78,24 @@ the expected load or that discovery extraction fits its execution budget.
 
 ## Interruption and recovery
 
-Use `pause-api` with the retained run to stop the exact consumer owner. Use
-`restore-api` with the routing journal to remove only the recorded canonical API
-route. Recovery refuses changed ownership, duplicate matching routes or changed
-active versions. It leaves DNS and unrelated routes intact. Restoring an earlier
-origin's route is not proof that the earlier origin is healthy.
+Use `pause-api` with the retained run to stop the exact consumer owner. If
+activation from a verified paused pair was interrupted, use its failed trusted
+run as `source-run-id`. The operation retains the original transition journal,
+reconciles accepted uploads and restores the exact paused versions. Retries
+reuse the durable recovery plan and rollback journal. Private isolation,
+protected health, matching release identities and drained consumers must pass
+before the pending transition is cleared. An interrupted pause from an active
+pair requires explicit recovery; this path never restarts consumers implicitly.
+If preflight failed before the first consumer journal, recovery makes no
+deployment changes and clears pending state only after proving that the exact
+original paused pair, namespaces and protected controls remain unchanged.
+
+Use `restore-api` with the routing journal to remove only the recorded canonical
+API route. The retained pair can be verified active or verified paused; its
+current versions and namespaces must still match provider readback. Recovery
+refuses changed ownership, duplicate matching routes or changed active versions.
+It leaves DNS and unrelated routes intact. Restoring an earlier origin's route
+is not proof that the earlier origin is healthy.
 
 The Roll Back Production workflow uses the retained web promotion journal and
 immutable prior deployment. Never recreate a rollback snapshot from the
@@ -95,6 +108,10 @@ traces are encrypted using the existing hosted verifier secret and the exact
 source/run/attempt identity; raw traces are excluded from uploaded artifacts.
 
 ## Acceptance
+
+Public API promotion requires a populated directory and a matching profile with
+usable source links. Hosted acceptance requires the same catalog proof and the
+explicit retained public PDS URL; neither journey may silently skip.
 
 Verify source-linked directory rows and profiles, existing account sign-in, PDS
 identity, invitations, private applicant isolation, real provider delivery,

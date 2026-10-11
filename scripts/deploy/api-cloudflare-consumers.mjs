@@ -21,6 +21,7 @@ import {
 import {
   captureApiRuntimeSnapshot,
   createApiRollbackPlan,
+  restoreApiRuntimeSnapshot,
 } from "./api-runtime-rollback.mjs";
 import {
   assertDurableBudget,
@@ -537,6 +538,152 @@ export async function reconcileConsumerJournal({
   return manifest;
 }
 
+/** Recover failed activation to its retained paused pair without restarting consumers. */
+export async function recoverInterruptedActivation({
+  journal,
+  manifest,
+  artifacts,
+  destination,
+  env = process.env,
+  cloudflare,
+  probe,
+  verifyPrivateRuntime,
+}) {
+  const pending = journal?.manifest;
+  if (
+    !env.CLOUDFLARE_API_TOKEN?.trim() ||
+    env.CLOUDFLARE_ACCOUNT_ID !== manifest?.accountId ||
+    manifest?.schemaVersion !== 1 ||
+    manifest?.kind !== "cloudflare-api-release" ||
+    manifest?.status !== "verified-paused" ||
+    (journal !== undefined &&
+      (pending?.transition?.mode !== "activate" ||
+        pending.transition.previousStatus !== "verified-paused" ||
+        pending.releaseSha !== manifest.releaseSha ||
+        pending.accountId !== manifest.accountId ||
+        pending.target !== manifest.target ||
+        pending.schemaReceiptDigest !== manifest.schemaReceiptDigest ||
+        canonicalDigest(pending.previousSnapshot?.runtimeReleases) !==
+          canonicalDigest(manifest.runtimeReleases))) ||
+    typeof probe !== "function" ||
+    typeof verifyPrivateRuntime !== "function"
+  )
+    throw Error(
+      "Paused recovery requires the exact retained activation-from-paused journal; interrupted pause needs explicit recovery.",
+    );
+  checkArtifacts(manifest, artifacts);
+  const isolation = await verifyPrivateRuntime({ manifest });
+  if (
+    isolation?.private !== true ||
+    isolation?.accountId !== manifest.accountId ||
+    isolation?.releaseSha !== manifest.releaseSha
+  )
+    throw Error("Private candidate isolation readback failed.");
+  const cf = (command, options) =>
+    (cloudflare ?? cloudflareCommand)(command, { ...options, env });
+  for (const role of ROLES)
+    checkVersion(
+      cf,
+      manifest.runtimeReleases[role],
+      consumerReleaseMessage(
+        manifest,
+        role,
+        manifest.runtimeReleases[role].artifactDigest,
+        "pause",
+      ),
+    );
+  const verifyPaused = async () => {
+    for (const role of ROLES)
+      for (const path of [
+        "/__atlas/release",
+        "/__atlas/consumers",
+        "/health",
+      ]) {
+        const response = await probe({
+          role,
+          path,
+          releaseSha: manifest.releaseSha,
+        });
+        if (
+          response?.status !== 200 ||
+          (path === "/__atlas/release" &&
+            (response.body?.releaseSha !== manifest.releaseSha ||
+              response.body?.runtimeRole !== role ||
+              response.body?.schemaReceiptDigest !==
+                manifest.schemaReceiptDigest)) ||
+          (path === "/__atlas/consumers" &&
+            (response.body?.releaseSha !== manifest.releaseSha ||
+              response.body?.activeReleaseSha !== "" ||
+              response.body?.enabled !== false)) ||
+          (path === "/health" && response.body?.status !== "ok")
+        )
+          throw Error("Protected paused consumer recovery proof failed.");
+      }
+    return {
+      status: "pass",
+      evidenceReference: `protected-paused-consumers:${manifest.releaseSha}`,
+    };
+  };
+  // Preflight can fail before the first durable consumer intent exists. Clear
+  // that pending pointer only after proving the original pair never changed.
+  if (journal === undefined) {
+    assertRuntimeDeployments(manifest.runtimeReleases, cf);
+    await verifyPaused();
+    assertRuntimeDeployments(manifest.runtimeReleases, cf);
+    return { ...manifest, productionEligible: false };
+  }
+  const planFile = join(destination, "activation-recovery-plan.json");
+  const rollbackFile = join(destination, "activation-recovery-journal.json");
+  const journalDigest = canonicalDigest(journal);
+  const relocated = structuredClone(journal);
+  for (const [role, artifact] of Object.entries(
+    relocated.manifest.artifacts ?? {},
+  )) {
+    if (!ROLES.includes(role))
+      throw Error("Unknown retained consumer artifact role.");
+    artifact.directory = join(destination, role);
+    if (digestDirectory(output(artifact.directory)) !== artifact.artifactDigest)
+      throw Error("Retained attempted consumer artifact changed.");
+  }
+  let plan;
+  if (existsSync(planFile)) {
+    const saved = readJson(planFile);
+    if (
+      saved.schemaVersion !== 1 ||
+      saved.interruptedJournalDigest !== journalDigest ||
+      canonicalDigest(saved.plan?.snapshot) !==
+        canonicalDigest(pending.previousSnapshot)
+    )
+      throw Error(
+        "Retained activation recovery plan belongs to another transition.",
+      );
+    plan = saved.plan;
+  } else {
+    const reconciled = await reconcileConsumerJournal({
+      journal: relocated,
+      env,
+      cloudflare,
+      checkpoint: async () => {},
+    });
+    plan = reconciled.rollbackPlan;
+    atomicJournal(planFile, {
+      schemaVersion: 1,
+      interruptedJournalDigest: journalDigest,
+      plan,
+    });
+  }
+  await restoreApiRuntimeSnapshot({
+    plan,
+    journal: existsSync(rollbackFile) ? readJson(rollbackFile) : undefined,
+    apply: true,
+    env,
+    cloudflare,
+    checkpoint: (saved) => atomicJournal(rollbackFile, saved),
+    probe: verifyPaused,
+  });
+  return { ...manifest, productionEligible: false };
+}
+
 function privateJson(file) {
   const info = lstatSync(file);
   if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0)
@@ -687,30 +834,50 @@ export async function consumerCli(
       };
     };
   }
-  const result = await transitionApiConsumers({
-    mode,
-    manifest,
-    artifacts,
-    destination,
-    apply,
-    env,
-    probe,
-    verifyPrivateRuntime,
-    ...(mode === "activate"
-      ? {
-          activationEvidence: readJson(resolve(option("--preflight"))),
-          ownership: readJson(resolve(option("--ownership"))),
-        }
-      : {}),
-    checkpoint: async (journal) =>
-      atomicJournal(join(destination, "consumer-journal.json"), journal),
-  });
-  if (apply)
+  if (
+    args.includes("--recover-activation-journal") &&
+    (mode !== "pause" || !apply)
+  )
+    throw Error("Activation recovery requires explicit applied pause mode.");
+  const recoveryFile = args.includes("--recover-activation-journal")
+    ? resolve(option("--recover-activation-journal"))
+    : undefined;
+  const result = recoveryFile
+    ? await recoverInterruptedActivation({
+        journal: existsSync(recoveryFile) ? readJson(recoveryFile) : undefined,
+        manifest,
+        artifacts,
+        destination,
+        env,
+        probe,
+        verifyPrivateRuntime,
+      })
+    : await transitionApiConsumers({
+        mode,
+        manifest,
+        artifacts,
+        destination,
+        apply,
+        env,
+        probe,
+        verifyPrivateRuntime,
+        ...(mode === "activate"
+          ? {
+              activationEvidence: readJson(resolve(option("--preflight"))),
+              ownership: readJson(resolve(option("--ownership"))),
+            }
+          : {}),
+        checkpoint: async (journal) =>
+          atomicJournal(join(destination, "consumer-journal.json"), journal),
+      });
+  if (apply) {
+    mkdirSync(destination, { recursive: true, mode: 0o700 });
     writeFileSync(
       join(destination, "api-release.json"),
       JSON.stringify(result, null, 2) + "\n",
       { mode: 0o600 },
     );
+  }
   console.log(
     JSON.stringify({
       status: result.status,

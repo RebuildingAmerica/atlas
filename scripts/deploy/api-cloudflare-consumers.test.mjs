@@ -5,6 +5,7 @@ import {
   mkdirSync,
   readFileSync,
   writeFileSync,
+  cpSync,
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,6 +17,7 @@ import {
   transitionApiConsumers,
   consumerReleaseMessage,
   reconcileConsumerJournal,
+  recoverInterruptedActivation,
 } from "./api-cloudflare-consumers.mjs";
 
 const sha = "a".repeat(40),
@@ -698,6 +700,286 @@ test("a durable pre-write intent can recover an accepted upload after process de
     assert.deepEqual(f.calls, ["discovery", "api"]);
   } finally {
     f.close();
+  }
+});
+
+test("failed activation restores exact paused versions and resumes an interrupted rollback without replaying it", async () => {
+  const f = fixture();
+  try {
+    activation(f);
+    const previousVersions = { ...f.versions },
+      previousMessages = { ...f.messages };
+    await assert.rejects(
+      transitionApiConsumers({
+        ...f.input,
+        apply: true,
+        probe: async () => ({ status: 503 }),
+      }),
+    );
+    const journal = f.journals.at(-1);
+    journal.manifest.artifacts.api.directory = "/previous-runner/retained/api";
+    const mutations = [];
+    let loseResponse = true;
+    const cloudflare = (command, options) => {
+      const role = command.at(-1).includes("discovery") ? "discovery" : "api";
+      if (command[1] === "versions" && command[3] === previousVersions[role])
+        return {
+          id: previousVersions[role],
+          annotations: {
+            "workers/tag": sha,
+            "workers/message": previousMessages[role],
+          },
+        };
+      if (command[1] === "deployments" && command[2] === "create") {
+        f.versions[role] = options.body.versions[0].version_id;
+        f.messages[role] = previousMessages[role];
+        mutations.push(role);
+        if (loseResponse) {
+          loseResponse = false;
+          throw Error("accepted write, lost response");
+        }
+        return {};
+      }
+      return f.input.cloudflare(command);
+    };
+    const options = {
+      journal,
+      manifest: f.input.manifest,
+      artifacts: f.input.artifacts,
+      destination: f.input.destination,
+      env: f.input.env,
+      cloudflare,
+      verifyPrivateRuntime: f.input.verifyPrivateRuntime,
+      probe: async ({ role, path }) => ({
+        status: 200,
+        body:
+          path === "/health"
+            ? { status: "ok" }
+            : path === "/__atlas/release"
+              ? {
+                  releaseSha: sha,
+                  runtimeRole: role,
+                  schemaReceiptDigest: schema,
+                }
+              : { releaseSha: sha, activeReleaseSha: "", enabled: false },
+      }),
+    };
+    await assert.rejects(
+      recoverInterruptedActivation(options),
+      /rollback stopped/,
+    );
+    const plan = readFileSync(
+      join(f.input.destination, "activation-recovery-plan.json"),
+      "utf8",
+    );
+    const attemptedConfig = join(
+      f.input.destination,
+      "api/.cloudflare/output/v0/workers/default/worker.config.json",
+    );
+    const retainedConfig = readFileSync(attemptedConfig);
+    writeFileSync(attemptedConfig, "changed after rollback interruption");
+    await assert.rejects(
+      recoverInterruptedActivation(options),
+      /attempted consumer artifact changed/,
+    );
+    assert.deepEqual(mutations, ["api"]);
+    writeFileSync(attemptedConfig, retainedConfig);
+    const recovered = await recoverInterruptedActivation(options);
+    assert.equal(recovered.status, "verified-paused");
+    assert.equal(recovered.productionEligible, false);
+    assert.deepEqual(f.versions, previousVersions);
+    assert.deepEqual(mutations, ["api"]);
+    assert.equal(
+      readFileSync(
+        join(f.input.destination, "activation-recovery-plan.json"),
+        "utf8",
+      ),
+      plan,
+    );
+    assert.equal(
+      JSON.parse(
+        readFileSync(
+          join(f.input.destination, "activation-recovery-journal.json"),
+        ),
+      ).phase,
+      "verified",
+    );
+  } finally {
+    f.close();
+  }
+});
+
+test("downloaded activation preflight failure clears only an unchanged proven paused pair without a consumer journal", async () => {
+  for (const failure of [
+    "none",
+    "live-version",
+    "namespace",
+    "enabled",
+    "drift-after-probe",
+  ]) {
+    const f = fixture();
+    try {
+      activation(f);
+      await assert.rejects(
+        transitionApiConsumers({
+          ...f.input,
+          apply: true,
+          verifyPrivateRuntime: async () => {
+            throw Error("Access preflight failed before prepared checkpoint");
+          },
+        }),
+        /Access preflight/,
+      );
+      assert.deepEqual(f.journals, []);
+      assert.deepEqual(f.calls, []);
+      const downloaded = join(f.root, "downloaded"),
+        artifacts = {};
+      for (const [role, artifact] of Object.entries(f.input.artifacts)) {
+        const directory = join(downloaded, "previous", role);
+        cpSync(artifact.directory, directory, { recursive: true });
+        artifacts[role] = { ...artifact, directory };
+      }
+      if (failure === "live-version") f.versions.api = "9".repeat(36);
+      let probes = 0;
+      const options = {
+        manifest: f.input.manifest,
+        artifacts,
+        destination: join(downloaded, "never-prepared"),
+        env: f.input.env,
+        verifyPrivateRuntime: f.input.verifyPrivateRuntime,
+        cloudflare: (command) => {
+          assert.ok(!command.includes("create"), "Recovery must not write");
+          if (failure === "namespace" && command[0] === "durable-objects")
+            return [];
+          return f.input.cloudflare(command);
+        },
+        probe: async ({ role, path }) => {
+          probes += 1;
+          if (failure === "drift-after-probe" && probes === 6)
+            f.versions.api = "9".repeat(36);
+          return {
+            status: 200,
+            body:
+              path === "/health"
+                ? { status: "ok" }
+                : path === "/__atlas/release"
+                  ? {
+                      releaseSha: sha,
+                      runtimeRole: role,
+                      schemaReceiptDigest: schema,
+                    }
+                  : {
+                      releaseSha: sha,
+                      activeReleaseSha: failure === "enabled" ? sha : "",
+                      enabled: failure === "enabled",
+                    },
+          };
+        },
+      };
+      if (failure === "none") {
+        const recovered = await recoverInterruptedActivation(options);
+        assert.equal(recovered.status, "verified-paused");
+        assert.equal(recovered.productionEligible, false);
+        assert.equal(probes, 6);
+      } else await assert.rejects(recoverInterruptedActivation(options));
+    } finally {
+      f.close();
+    }
+  }
+});
+
+test("implicit pause recovery rejects a prior active state, wrong snapshot and unrelated live version", async () => {
+  for (const failure of [
+    "prior-active",
+    "snapshot",
+    "unrelated",
+    "not-drained",
+    "public-runtime",
+    "artifact-tampered",
+  ]) {
+    const f = fixture();
+    try {
+      activation(f);
+      const previousVersions = { ...f.versions },
+        previousMessages = { ...f.messages };
+      await assert.rejects(
+        transitionApiConsumers({
+          ...f.input,
+          apply: true,
+          probe: async () => ({ status: 503 }),
+        }),
+      );
+      const journal = f.journals.at(-1);
+      if (failure === "prior-active")
+        journal.manifest.transition.previousStatus = "verified-active";
+      if (failure === "snapshot")
+        journal.manifest.previousSnapshot.runtimeReleases.api.namespaceId =
+          "f".repeat(32);
+      if (failure === "unrelated") f.messages.api = "unrelated release";
+      if (failure === "artifact-tampered")
+        writeFileSync(
+          join(f.input.destination, "api/.cloudflare/output/v0/tampered.txt"),
+          "changed artifact",
+        );
+      const mutations = [];
+      const cloudflare = (command, options) => {
+        const role = command.at(-1).includes("discovery") ? "discovery" : "api";
+        if (command[1] === "versions" && command[3] === previousVersions[role])
+          return {
+            id: previousVersions[role],
+            annotations: {
+              "workers/tag": sha,
+              "workers/message": previousMessages[role],
+            },
+          };
+        if (command[1] === "deployments" && command[2] === "create") {
+          mutations.push(role);
+          f.versions[role] = previousVersions[role];
+          f.messages[role] = previousMessages[role];
+          return {};
+        }
+        return f.input.cloudflare(command);
+      };
+      await assert.rejects(
+        recoverInterruptedActivation({
+          journal,
+          manifest: f.input.manifest,
+          artifacts: f.input.artifacts,
+          destination: f.input.destination,
+          env: f.input.env,
+          cloudflare,
+          verifyPrivateRuntime:
+            failure === "public-runtime"
+              ? async () => ({ private: false })
+              : f.input.verifyPrivateRuntime,
+          probe: async ({ role, path }) => ({
+            status: 200,
+            body:
+              path === "/health"
+                ? { status: "ok" }
+                : path === "/__atlas/release"
+                  ? {
+                      releaseSha: sha,
+                      runtimeRole: role,
+                      schemaReceiptDigest: schema,
+                    }
+                  : { releaseSha: sha, activeReleaseSha: sha, enabled: true },
+          }),
+        }),
+      );
+      if (failure !== "not-drained") assert.deepEqual(mutations, []);
+      else
+        assert.notEqual(
+          JSON.parse(
+            readFileSync(
+              join(f.input.destination, "activation-recovery-journal.json"),
+            ),
+          ).phase,
+          "verified",
+        );
+    } finally {
+      f.close();
+    }
   }
 });
 

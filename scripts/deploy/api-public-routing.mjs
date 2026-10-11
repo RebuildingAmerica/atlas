@@ -101,6 +101,7 @@ export async function probePublicApi({
   headers = {},
   fetcher = fetch,
 }) {
+  let entry;
   for (const [path, status] of [
     ["/health", 200],
     ["/api/entities?limit=1", 200],
@@ -117,14 +118,59 @@ export async function probePublicApi({
         throw Error("Public API health, directory or privacy proof failed.");
       if (path === "/health" && (await response.json()).status !== "ok")
         throw Error("Public API health body failed.");
-      if (
-        path.startsWith("/api/entities") &&
-        !Array.isArray((await response.json()).items)
-      )
-        throw Error("Public directory body failed.");
+      if (path.startsWith("/api/entities")) {
+        entry = (await response.json()).items?.[0];
+        if (
+          !entry ||
+          !["person", "organization"].includes(entry.type) ||
+          typeof entry.id !== "string" ||
+          !entry.id.trim() ||
+          typeof entry.name !== "string" ||
+          !entry.name.trim() ||
+          typeof entry.slug !== "string" ||
+          !entry.slug.trim() ||
+          !(entry.source_count > 0)
+        )
+          throw Error("Populated source-linked public directory proof failed.");
+      }
     } finally {
       await response.body?.cancel().catch(() => {});
     }
+  }
+  const collection = entry.type === "person" ? "people" : "organizations";
+  const detailResponse = await fetcher(
+    `${origin}${prefix}/api/entities/by-slug/${collection}/${encodeURIComponent(entry.slug)}`,
+    {
+      headers,
+      redirect: "manual",
+      signal: AbortSignal.timeout(30000),
+    },
+  );
+  try {
+    if (detailResponse.status !== 200)
+      throw Error("Public profile proof failed.");
+    const detail = await detailResponse.json();
+    const source = detail.sources?.[0];
+    let sourceUrl;
+    try {
+      sourceUrl = new URL(source?.url);
+    } catch {
+      /* Explicit rejection below. */
+    }
+    if (
+      detail.id !== entry.id ||
+      detail.name !== entry.name ||
+      !(detail.source_count > 0) ||
+      typeof source?.title !== "string" ||
+      !source.title.trim() ||
+      !sourceUrl ||
+      !["https:", "http:"].includes(sourceUrl.protocol) ||
+      sourceUrl.username ||
+      sourceUrl.password
+    )
+      throw Error("Public profile source receipt proof failed.");
+  } finally {
+    await detailResponse.body?.cancel().catch(() => {});
   }
   for (const path of ["/mcp", "/mcp/"]) {
     const response = await fetcher(`${origin}${prefix}${path}`, {
@@ -168,7 +214,10 @@ export async function changePublicApiRouting({
   if (
     !["promote", "restore"].includes(mode) ||
     manifest?.target !== "production" ||
-    manifest.status !== "verified-active" ||
+    !(
+      manifest.status === "verified-active" ||
+      (mode === "restore" && manifest.status === "verified-paused")
+    ) ||
     !manifest.runtimeReleases?.api ||
     !manifest.runtimeReleases?.discovery ||
     ["api", "discovery"].some(
@@ -192,7 +241,7 @@ export async function changePublicApiRouting({
     (apply && typeof checkpoint !== "function")
   )
     throw Error(
-      "Exact active production API, edge identity and existing Access credentials are required.",
+      "Exact verified production API, edge identity and existing Access credentials are required; promotion requires active consumers.",
     );
   if (
     digestDirectory(join(artifact, ".cloudflare/output/v0")) !==

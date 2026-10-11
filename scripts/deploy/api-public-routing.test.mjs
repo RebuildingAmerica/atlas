@@ -87,7 +87,17 @@ async function fixture(t) {
       if (args[1] === "deployments")
         return {
           deployments: [
-            { versions: [{ version_id: state.version, percentage: 100 }] },
+            {
+              versions: [
+                {
+                  version_id:
+                    state.runtimeVersions?.[
+                      args[args.indexOf("--worker") + 1]
+                    ] ?? state.version,
+                  percentage: 100,
+                },
+              ],
+            },
           ],
         };
       if (args[0] === "zero-trust")
@@ -121,7 +131,30 @@ async function fixture(t) {
       state.probes.push({ url, headers: init.headers });
       const path = new URL(url).pathname.replace(/^\/public-api/, "");
       if (path === "/health") return Response.json({ status: "ok" });
-      if (path === "/api/entities") return Response.json({ items: [] });
+      if (path === "/api/entities")
+        return Response.json({
+          items: [
+            {
+              id: "retained-person",
+              name: "Retained Person",
+              slug: "retained-person",
+              type: "person",
+              source_count: 1,
+            },
+          ],
+        });
+      if (path === "/api/entities/by-slug/people/retained-person")
+        return Response.json({
+          id: "retained-person",
+          name: "Retained Person",
+          source_count: 1,
+          sources: [
+            {
+              title: "Public source",
+              url: "https://source.example.org/person",
+            },
+          ],
+        });
       if (path.startsWith("/mcp"))
         return new Response(null, {
           status: 401,
@@ -169,6 +202,35 @@ test("route preview is read-only; promotion and restore touch only the retained 
   assert.equal(restored.status, "restored-routing");
   assert.deepEqual(state.rows, [unrelated]);
   assert.equal(state.mutations.at(-1).id, result.journal.routeId);
+});
+
+test("restore accepts the exact paused pair after consumer shutdown but promotion refuses it", async (t) => {
+  const { state, options, unrelated } = await fixture(t);
+  const promoted = await changePublicApiRouting({
+    ...options,
+    mode: "promote",
+    apply: true,
+  });
+  options.manifest.status = "verified-paused";
+  state.runtimeVersions = {};
+  for (const role of ["api", "discovery"]) {
+    const release = options.manifest.runtimeReleases[role];
+    release.workerVersionId = "22222222-2222-2222-2222-222222222222";
+    state.runtimeVersions[release.workerName] = release.workerVersionId;
+  }
+  await assert.rejects(
+    changePublicApiRouting({ ...options, mode: "promote", apply: true }),
+  );
+  assert.equal(state.mutations.length, 1);
+  const restored = await changePublicApiRouting({
+    ...options,
+    mode: "restore",
+    journal: promoted.journal,
+    apply: true,
+  });
+  assert.equal(restored.status, "restored-routing");
+  assert.deepEqual(state.rows, [unrelated]);
+  assert.equal(state.mutations.at(-1).id, promoted.journal.routeId);
 });
 
 test("interrupted creation is reconciled without creating a second route", async (t) => {
@@ -274,6 +336,43 @@ test("a staging or different-source runtime cannot serve a production cutover", 
     Object.assign(options.manifest.runtimeReleases.api, patch);
     await assert.rejects(
       changePublicApiRouting({ ...options, mode: "promote", apply: true }),
+    );
+    assert.deepEqual(state.mutations, []);
+  }
+});
+
+test("canonical cutover refuses empty catalogs and profiles without public source receipts", async (t) => {
+  for (const failure of ["empty", "unsourced", "wrong-profile"]) {
+    const { state, options } = await fixture(t);
+    const fetcher = options.fetcher;
+    await assert.rejects(
+      changePublicApiRouting({
+        ...options,
+        mode: "promote",
+        apply: true,
+        fetcher: async (url, init) => {
+          const path = new URL(url).pathname;
+          if (failure === "empty" && path.endsWith("/api/entities"))
+            return Response.json({ items: [] });
+          if (path.includes("/by-slug/"))
+            return Response.json({
+              id: failure === "wrong-profile" ? "different" : "retained-person",
+              name: "Retained Person",
+              source_count: failure === "wrong-profile" ? 1 : 0,
+              sources:
+                failure === "wrong-profile"
+                  ? [
+                      {
+                        title: "Public source",
+                        url: "https://source.example.org/person",
+                      },
+                    ]
+                  : [],
+            });
+          return fetcher(url, init);
+        },
+      }),
+      /directory|source|profile/i,
     );
     assert.deepEqual(state.mutations, []);
   }

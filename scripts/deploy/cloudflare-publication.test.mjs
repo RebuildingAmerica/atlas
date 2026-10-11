@@ -291,6 +291,11 @@ test("hosted journeys verify PDS before smoke, identity and checkout against the
       (c) => c.env.ATLAS_HOSTED_E2E_SECRET === runtime.ATLAS_HOSTED_E2E_SECRET,
     ),
   );
+  assert.ok(
+    calls.every(
+      (c) => c.env.ATLAS_HOSTED_PDS_URL === runtime.ATLAS_PDS_PUBLIC_URL,
+    ),
+  );
   assert.throws(
     () =>
       verifyHostedJourneys({
@@ -302,6 +307,7 @@ test("hosted journeys verify PDS before smoke, identity and checkout against the
     /PDS unavailable/,
   );
   assert.equal(calls.length, 5);
+  assert.ok(calls.every((c) => c.env.ATLAS_HOSTED_EXPECT_CATALOG === "true"));
 });
 
 test("staging uses trusted main or release tags and has no public promotion operation", () => {

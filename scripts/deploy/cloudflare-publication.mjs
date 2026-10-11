@@ -485,7 +485,9 @@ export function verifyHostedJourneys({
     ATLAS_HOSTED_E2E_RUN_ID: `${required(env, "GITHUB_RUN_ID")}-${required(env, "GITHUB_RUN_ATTEMPT")}`,
     ATLAS_HOSTED_E2E_SECRET: required(runtime, "ATLAS_HOSTED_E2E_SECRET"),
     ATLAS_PDS_PUBLIC_URL: required(runtime, "ATLAS_PDS_PUBLIC_URL"),
+    ATLAS_HOSTED_PDS_URL: required(runtime, "ATLAS_PDS_PUBLIC_URL"),
     ATLAS_HOSTED_EXPECT_EDGE: "true",
+    ATLAS_HOSTED_EXPECT_CATALOG: "true",
   };
   node("pds-release.mjs", ["health"], { env: base });
   node("pds-release.mjs", ["invite-broker-route"], { env: base });
@@ -740,9 +742,12 @@ export async function publicationCli({
         context.operation === "publish-api" ||
         context.operation === "restore-routing" ||
         context.operation === "restore-api",
-      recovery: ["restore-routing", "restore-api", "verify-api"].includes(
-        context.operation,
-      ),
+      recovery: [
+        "restore-routing",
+        "restore-api",
+        "verify-api",
+        "pause-api",
+      ].includes(context.operation),
     });
   else {
     if (
@@ -935,40 +940,70 @@ export async function publicationCli({
       delete index.pendingApiDirectory;
     } else {
       const mode = context.operation === "activate-api" ? "activate" : "pause";
-      const directory = join(bundle, `api/${mode}-${env.GITHUB_RUN_ID}`);
-      index.pendingConsumerDirectory = directory.slice(bundle.length + 1);
-      atomicJson(join(bundle, "publication.json"), index);
-      const ownership =
-        mode === "activate"
-          ? privateFile(
-              "ownership.json",
-              parseJson(required(env, "ATLAS_CONSUMER_HANDOFF_JSON")),
-            )
-          : undefined;
-      node("api-cloudflare-consumers.mjs", [
-        "--mode",
-        mode,
-        "--manifest",
-        join(previous, "api-release.json"),
-        "--api-artifact",
-        join(previous, "api"),
-        "--discovery-artifact",
-        join(previous, "discovery"),
-        "--directory",
-        directory,
-        "--access-file",
-        accessFile,
-        "--operations-hostname",
-        operations,
-        "--zone-id",
-        zone,
-        ...(mode === "activate"
-          ? ["--preflight", evidenceFile, "--ownership", ownership]
-          : []),
-        "--apply",
-      ]);
-      index.apiDirectory = directory.slice(bundle.length + 1);
-      delete index.pendingConsumerDirectory;
+      if (index.pendingConsumerDirectory) {
+        if (mode !== "pause")
+          throw Error(
+            "Recover the retained consumer journal with pause-api before another activation.",
+          );
+        const pending = releasePath(bundle, index.pendingConsumerDirectory);
+        node("api-cloudflare-consumers.mjs", [
+          "--mode",
+          "pause",
+          "--manifest",
+          join(previous, "api-release.json"),
+          "--api-artifact",
+          join(previous, "api"),
+          "--discovery-artifact",
+          join(previous, "discovery"),
+          "--directory",
+          pending,
+          "--recover-activation-journal",
+          join(pending, "consumer-journal.json"),
+          "--access-file",
+          accessFile,
+          "--operations-hostname",
+          operations,
+          "--zone-id",
+          zone,
+          "--apply",
+        ]);
+        delete index.pendingConsumerDirectory;
+      } else {
+        const directory = join(bundle, `api/${mode}-${env.GITHUB_RUN_ID}`);
+        index.pendingConsumerDirectory = directory.slice(bundle.length + 1);
+        atomicJson(join(bundle, "publication.json"), index);
+        const ownership =
+          mode === "activate"
+            ? privateFile(
+                "ownership.json",
+                parseJson(required(env, "ATLAS_CONSUMER_HANDOFF_JSON")),
+              )
+            : undefined;
+        node("api-cloudflare-consumers.mjs", [
+          "--mode",
+          mode,
+          "--manifest",
+          join(previous, "api-release.json"),
+          "--api-artifact",
+          join(previous, "api"),
+          "--discovery-artifact",
+          join(previous, "discovery"),
+          "--directory",
+          directory,
+          "--access-file",
+          accessFile,
+          "--operations-hostname",
+          operations,
+          "--zone-id",
+          zone,
+          ...(mode === "activate"
+            ? ["--preflight", evidenceFile, "--ownership", ownership]
+            : []),
+          "--apply",
+        ]);
+        index.apiDirectory = directory.slice(bundle.length + 1);
+        delete index.pendingConsumerDirectory;
+      }
     }
   } else if (["promote-api", "restore-api"].includes(context.operation)) {
     const apiDirectory = releasePath(bundle, index.apiDirectory);
