@@ -81,6 +81,7 @@ import { Route as WorkspaceEditorialIndexRouteImport } from './routes/_workspace
 import { Route as WorkspaceEditorialActivityRouteImport } from './routes/_workspace/editorial/activity'
 import { Route as WorkspaceEditorialCorrectionsRouteImport } from './routes/_workspace/editorial/corrections'
 import { Route as WorkspaceEditorialDiscoveryReviewsRouteImport } from './routes/_workspace/editorial/discovery-reviews'
+import { Route as WorkspaceEditorialMergesRouteImport } from './routes/_workspace/editorial/merges'
 import { Route as WorkspaceEditorialProfileClaimsRouteImport } from './routes/_workspace/editorial/profile-claims'
 import { Route as WorkspaceEditorialSchedulesRouteImport } from './routes/_workspace/editorial/schedules'
 import { Route as WorkspaceEditorialTakedownsRouteImport } from './routes/_workspace/editorial/takedowns'
@@ -489,6 +490,12 @@ const WorkspaceEditorialDiscoveryReviewsRoute =
     path: '/discovery-reviews',
     getParentRoute: () => WorkspaceEditorialRoute,
   } as any)
+const WorkspaceEditorialMergesRoute =
+  WorkspaceEditorialMergesRouteImport.update({
+    id: '/merges',
+    path: '/merges',
+    getParentRoute: () => WorkspaceEditorialRoute,
+  } as any)
 const WorkspaceEditorialProfileClaimsRoute =
   WorkspaceEditorialProfileClaimsRouteImport.update({
     id: '/profile-claims',
@@ -773,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/editorial/activity': typeof WorkspaceEditorialActivityRoute
   '/editorial/corrections': typeof WorkspaceEditorialCorrectionsRoute
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
+  '/editorial/merges': typeof WorkspaceEditorialMergesRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
   '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
@@ -876,6 +884,7 @@ export interface FileRoutesByTo {
   '/editorial/activity': typeof WorkspaceEditorialActivityRoute
   '/editorial/corrections': typeof WorkspaceEditorialCorrectionsRoute
   '/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
+  '/editorial/merges': typeof WorkspaceEditorialMergesRoute
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
   '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
@@ -990,6 +999,7 @@ export interface FileRoutesById {
   '/_workspace/editorial/activity': typeof WorkspaceEditorialActivityRoute
   '/_workspace/editorial/corrections': typeof WorkspaceEditorialCorrectionsRoute
   '/_workspace/editorial/discovery-reviews': typeof WorkspaceEditorialDiscoveryReviewsRoute
+  '/_workspace/editorial/merges': typeof WorkspaceEditorialMergesRoute
   '/_workspace/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/_workspace/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
   '/_workspace/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
@@ -1101,6 +1111,7 @@ export interface FileRouteTypes {
     | '/editorial/activity'
     | '/editorial/corrections'
     | '/editorial/discovery-reviews'
+    | '/editorial/merges'
     | '/editorial/profile-claims'
     | '/editorial/schedules'
     | '/editorial/takedowns'
@@ -1204,6 +1215,7 @@ export interface FileRouteTypes {
     | '/editorial/activity'
     | '/editorial/corrections'
     | '/editorial/discovery-reviews'
+    | '/editorial/merges'
     | '/editorial/profile-claims'
     | '/editorial/schedules'
     | '/editorial/takedowns'
@@ -1317,6 +1329,7 @@ export interface FileRouteTypes {
     | '/_workspace/editorial/activity'
     | '/_workspace/editorial/corrections'
     | '/_workspace/editorial/discovery-reviews'
+    | '/_workspace/editorial/merges'
     | '/_workspace/editorial/profile-claims'
     | '/_workspace/editorial/schedules'
     | '/_workspace/editorial/takedowns'
@@ -1913,6 +1926,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceEditorialDiscoveryReviewsRouteImport
       parentRoute: typeof WorkspaceEditorialRoute
     }
+    '/_workspace/editorial/merges': {
+      id: '/_workspace/editorial/merges'
+      path: '/merges'
+      fullPath: '/editorial/merges'
+      preLoaderRoute: typeof WorkspaceEditorialMergesRouteImport
+      parentRoute: typeof WorkspaceEditorialRoute
+    }
     '/_workspace/editorial/profile-claims': {
       id: '/_workspace/editorial/profile-claims'
       path: '/profile-claims'
@@ -2357,6 +2377,7 @@ interface WorkspaceEditorialRouteChildren {
   WorkspaceEditorialActivityRoute: typeof WorkspaceEditorialActivityRoute
   WorkspaceEditorialCorrectionsRoute: typeof WorkspaceEditorialCorrectionsRoute
   WorkspaceEditorialDiscoveryReviewsRoute: typeof WorkspaceEditorialDiscoveryReviewsRoute
+  WorkspaceEditorialMergesRoute: typeof WorkspaceEditorialMergesRoute
   WorkspaceEditorialProfileClaimsRoute: typeof WorkspaceEditorialProfileClaimsRoute
   WorkspaceEditorialSchedulesRoute: typeof WorkspaceEditorialSchedulesRoute
   WorkspaceEditorialTakedownsRoute: typeof WorkspaceEditorialTakedownsRoute
@@ -2369,6 +2390,7 @@ const WorkspaceEditorialRouteChildren: WorkspaceEditorialRouteChildren = {
   WorkspaceEditorialCorrectionsRoute: WorkspaceEditorialCorrectionsRoute,
   WorkspaceEditorialDiscoveryReviewsRoute:
     WorkspaceEditorialDiscoveryReviewsRoute,
+  WorkspaceEditorialMergesRoute: WorkspaceEditorialMergesRoute,
   WorkspaceEditorialProfileClaimsRoute: WorkspaceEditorialProfileClaimsRoute,
   WorkspaceEditorialSchedulesRoute: WorkspaceEditorialSchedulesRoute,
   WorkspaceEditorialTakedownsRoute: WorkspaceEditorialTakedownsRoute,

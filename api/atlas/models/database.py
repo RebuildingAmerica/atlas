@@ -58,6 +58,7 @@ class ConnectionProtocol(Protocol):  # pragma: no cover - typing-only protocol
         self, sql: str, parameters: Sequence[Sequence[Any]]
     ) -> CursorProtocol: ...
     async def commit(self) -> None: ...
+    async def rollback(self) -> None: ...
     async def close(self) -> None: ...
 
 
@@ -189,6 +190,9 @@ class PostgresConnection:
 
     async def commit(self) -> None:
         await self._conn.commit()
+
+    async def rollback(self) -> None:
+        await self._conn.rollback()
 
     async def close(self) -> None:
         await self._conn.close()
