@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import zipfile
 
 import httpx
@@ -106,6 +108,39 @@ class TestReadCentralDirectory:
 
 
 class TestReadMember:
+    async def test_standard_members_do_not_initialize_deflate64(self) -> None:
+        """Browsing can import filing helpers without loading a discovery-only native library."""
+        script = """
+import asyncio, importlib.abc, io, sys, zipfile
+class NoDeflate64(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] == 'inflate64':
+            raise AssertionError('Standard ZIP reads initialized Deflate64')
+sys.meta_path.insert(0, NoDeflate64())
+import httpx
+from atlas_discovery_engine.remote_zip import read_central_directory, read_member
+payload = b'<Return>' + b'officer ' * 100 + b'</Return>'
+buffer = io.BytesIO()
+with zipfile.ZipFile(buffer, 'w') as archive:
+    archive.writestr('stored.xml', payload, compress_type=zipfile.ZIP_STORED)
+    archive.writestr('deflated.xml', payload, compress_type=zipfile.ZIP_DEFLATED)
+data = buffer.getvalue()
+def serve(request):
+    if request.method == 'HEAD':
+        return httpx.Response(200, headers={'content-length': str(len(data))})
+    start, end = (int(part) for part in request.headers['Range'][6:].split('-'))
+    return httpx.Response(206, content=data[start:end + 1])
+async def check():
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as client:
+        members = await read_central_directory(client, 'https://archive.example/filings.zip', lambda name: True)
+        assert set(members) == {'stored.xml', 'deflated.xml'}
+        for member in members.values():
+            assert await read_member(client, member) == payload
+    assert 'inflate64' not in sys.modules
+asyncio.run(check())
+"""
+        subprocess.run([sys.executable, "-c", script], check=True)
+
     async def test_inflates_a_deflated_member(self) -> None:
         """IRS returns are deflated inside each batch."""
         payload = b"<Return>" + b"officer " * 500 + b"</Return>"

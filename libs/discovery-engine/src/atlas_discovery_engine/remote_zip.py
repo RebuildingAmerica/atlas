@@ -25,8 +25,6 @@ import zlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import inflate64
-
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -188,6 +186,10 @@ async def read_member(client: httpx.AsyncClient, member: RemoteMember) -> bytes:
         if member.method == _DEFLATED:
             return zlib.decompress(raw, -zlib.MAX_WBITS)
         if member.method == _DEFLATE64:
+            # Catalog route declarations import the shared filing helpers too.
+            # Keep their profile requests free of this discovery-only native load.
+            import inflate64
+
             return inflate64.Inflater().inflate(raw)
     except (zlib.error, ValueError) as error:
         msg = f"member at offset {member.offset} of {member.url} does not inflate"
