@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
-from atlas.domains.access import AuthenticatedActor, require_atlas_staff
+from atlas.domains.access import (
+    AuthenticatedActor,  # noqa: TC001 - FastAPI resolves this annotation at runtime
+)
 from atlas.domains.catalog.taxonomy import ALL_ISSUE_SLUGS
 from atlas.domains.discovery.models import DiscoveryScheduleCRUD, DiscoveryScheduleModel
 from atlas.domains.discovery.schemas import (
@@ -17,6 +19,7 @@ from atlas.domains.discovery.schemas import (
     DiscoveryScheduleResponse,
     DiscoveryScheduleUpdateRequest,
 )
+from atlas.platform.authz import Action, require_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.database import get_db_connection
 from atlas.platform.http.cache import apply_no_store_headers
@@ -78,7 +81,7 @@ async def list_schedules(
     *,
     enabled_only: bool = Query(False, description="Only return enabled schedules"),
     limit: int = Query(100, ge=1, le=500),
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.SCHEDULES_READ)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryScheduleCollectionResponse:
     """List all discovery schedule targets."""
@@ -103,7 +106,7 @@ async def list_schedules(
 async def create_schedule(
     req: DiscoveryScheduleCreateRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.SCHEDULES_WRITE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryScheduleResponse:
     """Create a new schedule target."""
@@ -133,7 +136,7 @@ async def create_schedule(
 async def get_schedule(
     schedule_id: str,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.SCHEDULES_READ)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryScheduleResponse:
     """Get a schedule target by ID."""
@@ -157,7 +160,7 @@ async def update_schedule(
     schedule_id: str,
     req: DiscoveryScheduleUpdateRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.SCHEDULES_WRITE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryScheduleResponse:
     """Update a schedule target."""
@@ -189,7 +192,7 @@ async def update_schedule(
 )
 async def delete_schedule(
     schedule_id: str,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.SCHEDULES_WRITE)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> None:
     """Delete a schedule target."""

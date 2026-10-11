@@ -13,7 +13,6 @@ from atlas.config import Settings, get_settings
 from atlas.domains.access.api.verification_admin import (
     VerificationUpdateRequest,
     list_verifications,
-    require_discount_review_actor,
     update_verification,
 )
 from atlas.domains.access.models.discount_verifications import (
@@ -22,6 +21,7 @@ from atlas.domains.access.models.discount_verifications import (
 )
 from atlas.domains.access.principals import AuthenticatedActor
 from atlas.main import create_app
+from atlas.platform.authz import Action, require_action
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -131,7 +131,8 @@ async def test_admin_verifications_rejects_unlisted_internal_users(
 
 
 @pytest.mark.asyncio
-async def test_discount_review_dependency_allows_local_actor() -> None:
+async def test_discount_review_dependency_refuses_local_actor() -> None:
+    """Local single-user mode never holds an Atlas platform action."""
     actor = AuthenticatedActor(
         user_id="local-operator",
         email="operator@atlas.test",
@@ -139,9 +140,10 @@ async def test_discount_review_dependency_allows_local_actor() -> None:
         is_local=True,
     )
 
-    allowed = await require_discount_review_actor(actor=actor, settings=Settings(managed=True))
+    with pytest.raises(HTTPException) as exc_info:
+        await require_action(Action.DISCOUNTS_REVIEW)(actor=actor, settings=Settings(managed=True))
 
-    assert allowed is actor
+    assert exc_info.value.status_code == HTTPStatus.FORBIDDEN
 
 
 @pytest.mark.asyncio
@@ -155,7 +157,7 @@ async def test_discount_review_dependency_rejects_when_not_managed() -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_discount_review_actor(actor=actor, settings=Settings(managed=False))
+        await require_action(Action.DISCOUNTS_REVIEW)(actor=actor, settings=Settings(managed=False))
 
     assert exc_info.value.status_code == HTTPStatus.NOT_FOUND
 
@@ -169,7 +171,7 @@ async def test_discount_review_dependency_rejects_non_internal_actor() -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await require_discount_review_actor(actor=actor, settings=Settings(managed=True))
+        await require_action(Action.DISCOUNTS_REVIEW)(actor=actor, settings=Settings(managed=True))
 
     assert exc_info.value.status_code == 403
     assert exc_info.value.detail == "Discount review access requires Atlas staff."

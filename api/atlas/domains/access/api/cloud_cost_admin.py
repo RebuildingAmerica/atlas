@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Literal
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
 
-from atlas.domains.access.api.verification_admin import require_discount_review_actor
 from atlas.domains.access.dependencies import get_usage_db
 from atlas.domains.discovery.cost import DAILY_WINDOW_HOURS, daily_cost
+from atlas.platform.authz import Action, require_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 
@@ -163,7 +163,7 @@ def _guardrails(
 async def get_cloud_cost_posture(
     response: Response,
     conn: aiosqlite.Connection = Depends(get_usage_db),
-    _review_actor: object = Depends(require_discount_review_actor),
+    _review_actor: object = Depends(require_action(Action.COSTS_VIEW)),
     settings: Settings = Depends(get_settings),
 ) -> CloudCostPostureResponse:
     """Return operator-only Atlas cloud-cost posture and guardrail status."""
