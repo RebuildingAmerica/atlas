@@ -81,7 +81,11 @@ class Connection:
             await (self.commit() if command == "COMMIT" else self.rollback())
             return Cursor([], None, -1)
         await self._begin()
-        statement = await self._connection.prepare(translate_parameters(sql))
+        # Every result is materialized before the next query, so the unnamed
+        # statement can be replaced safely. Avoid per-query named-statement
+        # cleanup on Hyperdrive so searches and workspace actions can run
+        # multiple queries on their request-owned transaction.
+        statement = await self._connection.prepare(translate_parameters(sql), name="")
         records = await statement.fetch(*parameters)
         attributes = statement.get_attributes()
         description = [(item.name,) for item in attributes] if attributes else None

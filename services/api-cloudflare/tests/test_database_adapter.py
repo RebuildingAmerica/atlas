@@ -108,3 +108,28 @@ async def test_cancellation_releases_the_request_connection():
     with pytest.raises(asyncio.CancelledError):
         await task
     assert db.is_closed()
+
+
+@pytest.mark.asyncio
+async def test_sequential_queries_materialize_results_without_named_statement_resources():
+    db = await connect()
+    try:
+        first = await db.execute("SELECT ?::int AS first_value", (7,))
+        second = await db.execute(
+            "SELECT ?::text AS next_value, ?::int AS ordinal", ("profile", 2)
+        )
+        assert first.description == [("first_value",)]
+        assert await first.fetchall() == [(7,)]
+        assert second.description == [("next_value",), ("ordinal",)]
+        assert await second.fetchall() == [("profile", 2)]
+        for ordinal in range(12):
+            cursor = await db.execute("SELECT ?::int AS ordinal", (ordinal,))
+            assert await cursor.fetchone() == (ordinal,)
+        resources = await db.execute("SELECT count(*) FROM pg_prepared_statements")
+        assert await resources.fetchone() == (0,)
+        await db.commit()
+        cursor = await db.execute("SELECT ?::text AS after_commit", ("retained",))
+        assert await cursor.fetchall() == [("retained",)]
+    finally:
+        await db.close()
+    assert db.is_closed()
