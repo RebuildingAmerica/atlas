@@ -156,3 +156,29 @@ void test("missing billing settings, test keys and wrong webhooks fail before a 
   );
   assert.deepEqual(f.calls, []);
 });
+
+void test("explicitly closed checkout permits an empty offer list while retaining live billing checks", async () => {
+  const f = fixture();
+  f.runtime.ATLAS_BILLING_CHECKOUT_ENABLED = "false";
+  f.runtime.ATLAS_BILLING_ALLOWED_OFFERS = "";
+  await verifyPublicationBilling(f.runtime, f.stripe, async () => f.snapshot);
+  assert.deepEqual(f.calls, ["bpc_fixture"]);
+  f.portal.features.subscription_update.enabled = true;
+  await assert.rejects(
+    verifyPublicationBilling(f.runtime, f.stripe, async () => f.snapshot),
+    /portal/,
+  );
+});
+
+void test("an empty offer list cannot pass when checkout closure is missing or malformed", async () => {
+  for (const flag of [undefined, "true", "off", ""]) {
+    const f = fixture();
+    f.runtime.ATLAS_BILLING_ALLOWED_OFFERS = "";
+    if (flag !== undefined) f.runtime.ATLAS_BILLING_CHECKOUT_ENABLED = flag;
+    await assert.rejects(
+      verifyPublicationBilling(f.runtime, f.stripe, async () => f.snapshot),
+      /ATLAS_BILLING_ALLOWED_OFFERS/,
+    );
+    assert.deepEqual(f.calls, []);
+  }
+});

@@ -28,10 +28,19 @@ export async function verifyPublicationBilling(
     "STRIPE_ATLAS_CATALOG",
     "STRIPE_WEBHOOK_SECRET",
     "STRIPE_BILLING_PORTAL_CONFIGURATION",
-    "ATLAS_BILLING_ALLOWED_OFFERS",
   ])
     if (!runtime[key]?.trim())
       throw new Error(`Production billing setting missing: ${key}.`);
+  // Closing new sales must not prevent existing customers from retaining billing access.
+  // An empty allowlist is accepted only with an explicit closed-checkout setting;
+  // the live catalog, webhook and customer portal checks still run below.
+  if (
+    !runtime.ATLAS_BILLING_ALLOWED_OFFERS?.trim() &&
+    runtime.ATLAS_BILLING_CHECKOUT_ENABLED?.trim().toLowerCase() !== "false"
+  )
+    throw new Error(
+      "Production billing setting missing: ATLAS_BILLING_ALLOWED_OFFERS.",
+    );
   const env = new Map(Object.entries(runtime));
   validateStripeApiKeyMode(runtimeValue(runtime, "STRIPE_API_KEY"), "live");
   const webhook = new URL(
