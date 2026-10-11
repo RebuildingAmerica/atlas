@@ -7,14 +7,20 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminDashboardPage } from "@/domains/editorial/admin-dashboard-page";
 import type { AdminDashboardSummary } from "@/domains/editorial/admin-dashboard.functions";
+import { editorialTriage } from "../../../fixtures/editorial/editorial-triage";
 
 const mocks = vi.hoisted(() => ({
   useHydrated: vi.fn(() => true),
   loadAdminDashboardSummary: vi.fn(),
+  loadEditorialTriage: vi.fn(),
 }));
 
 vi.mock("@/domains/editorial/admin-dashboard.functions", () => ({
   loadAdminDashboardSummary: mocks.loadAdminDashboardSummary,
+}));
+
+vi.mock("@/domains/editorial/editorial-triage.functions", () => ({
+  loadEditorialTriage: mocks.loadEditorialTriage,
 }));
 
 vi.mock("@/platform/runtime/use-hydrated", () => ({
@@ -54,9 +60,33 @@ afterEach(() => {
   mocks.useHydrated.mockReset();
   mocks.useHydrated.mockReturnValue(true);
   mocks.loadAdminDashboardSummary.mockReset();
+  mocks.loadEditorialTriage.mockReset();
+  mocks.loadEditorialTriage.mockReturnValue(new Promise(() => undefined));
 });
 
 describe("AdminDashboardPage", () => {
+  it("shows what is waiting in each review queue", async () => {
+    mocks.loadAdminDashboardSummary.mockResolvedValue(dashboardSummary);
+    mocks.loadEditorialTriage.mockResolvedValue(editorialTriage());
+
+    renderAdminDashboardPage();
+
+    expect(
+      await screen.findByText("7 waiting for review, longest wait first."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("4 waiting")).toBeInTheDocument();
+  });
+
+  it("keeps the queue links when the review queues cannot load", async () => {
+    mocks.loadAdminDashboardSummary.mockResolvedValue(dashboardSummary);
+    mocks.loadEditorialTriage.mockRejectedValue(new Error("ATLAS_API_REQUEST_FAILED"));
+
+    renderAdminDashboardPage();
+
+    expect(await screen.findByText("Review queues could not load.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Review visitor corrections" })).toBeInTheDocument();
+  });
+
   it("renders the admin shell while dashboard data is still loading", () => {
     mocks.loadAdminDashboardSummary.mockReturnValue(new Promise(() => undefined));
 
