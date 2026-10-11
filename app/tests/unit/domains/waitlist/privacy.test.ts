@@ -6,6 +6,7 @@ describe("private request analytics", () => {
       "/waitlist",
       "/waitlist/link?token=secret",
       "/admin/waitlist",
+      "/api/auth/internal/platform-waitlist",
       "/sign-in?email=private@example.org",
       "/callback?token=secret",
     ])

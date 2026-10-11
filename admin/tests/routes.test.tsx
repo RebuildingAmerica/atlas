@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { pageMeta, pageTitle, renderRoute } from "./helpers/render";
 
+vi.mock("@/domains/waitlist/waitlist.functions", () => ({
+  listWaitlistRequests: vi.fn(() => new Promise(() => undefined)),
+  inviteWaitlistRequests: vi.fn(),
+  loadWaitlistStaffDetail: vi.fn(),
+  actOnWaitlistRequest: vi.fn(),
+}));
+
 vi.mock("@/domains/discounts/discounts.functions", () => ({
   loadDiscountRequests: vi.fn(() => new Promise(() => undefined)),
   reviewDiscountRequest: vi.fn(),
@@ -24,6 +31,12 @@ describe("admin routes", () => {
     });
   });
 
+  it("renders the waitlist shell and private page title before optional data", async () => {
+    const { html, router } = await renderRoute("/waitlist");
+    expect(html).toContain("Waitlist");
+    expect(html).toContain("Search requests");
+    expect(pageTitle(router)).toBe("Waitlist | Atlas platform admin");
+  });
   it("renders the discount requests page", async () => {
     const { html, router } = await renderRoute("/discounts");
 

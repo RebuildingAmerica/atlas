@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   getCloudCostPosture: vi.fn(),
+  listWaitlistRequests: vi.fn(),
+  loadWaitlistStaffDetail: vi.fn(),
+  inviteWaitlistRequests: vi.fn(),
+  actOnWaitlistRequest: vi.fn(),
   lookupAccount: vi.fn(),
   listPlatformSwitches: vi.fn(),
   listVerifications: vi.fn(),
@@ -16,6 +20,43 @@ vi.mock("@tanstack/react-start", async () => {
 vi.mock("@/generated/platform-api", () => api);
 
 describe("platform server functions", () => {
+  it("reviews applicants and sends explicit invitation decisions through the platform API", async () => {
+    const functions = await import("@/domains/waitlist/waitlist.functions");
+    api.listWaitlistRequests.mockResolvedValue({ records: [] });
+    api.loadWaitlistStaffDetail.mockResolvedValue({ request: { id: "one" } });
+    api.inviteWaitlistRequests.mockResolvedValue({
+      results: [{ id: "one", status: "sent" }],
+    });
+    api.actOnWaitlistRequest.mockResolvedValue({
+      delivery: { status: "sent" },
+    });
+    expect(await functions.listWaitlistRequests()).toEqual({ records: [] });
+    expect(
+      await functions.loadWaitlistStaffDetail({ data: { id: "one" } }),
+    ).toEqual({ request: { id: "one" } });
+    expect(
+      await functions.inviteWaitlistRequests({ data: { ids: ["one"] } }),
+    ).toEqual({ results: [{ id: "one", status: "sent" }] });
+    expect(
+      await functions.actOnWaitlistRequest({
+        data: { id: "one", action: "resend" },
+      }),
+    ).toEqual({ delivery: { status: "sent" } });
+    await functions.actOnWaitlistRequest({
+      data: { id: "one", action: "retry", deliveryId: "delivery" },
+    });
+    await expect(
+      functions.actOnWaitlistRequest({ data: { id: "one", action: "retry" } }),
+    ).rejects.toThrow("Choose an invitation");
+    await expect(
+      functions.inviteWaitlistRequests({ data: { ids: [] } }),
+    ).rejects.toThrow();
+    await expect(
+      functions.inviteWaitlistRequests({
+        data: { ids: Array.from({ length: 51 }, () => "one") },
+      }),
+    ).rejects.toThrow();
+  });
   it("loads discount requests from the platform API", async () => {
     const { loadDiscountRequests } =
       await import("@/domains/discounts/discounts.functions");

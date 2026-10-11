@@ -94,6 +94,9 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   page,
   browser,
 }) => {
+  // This journey crosses two separately compiled applications and verifies
+  // signup, operator review and the complete paid onboarding interaction.
+  test.setTimeout(180_000);
   await page.setViewportSize({ width: 390, height: 844 });
   const email = `maya.${randomUUID().slice(0, 8)}@atlas.test`;
   await page.goto("/browse");
@@ -115,10 +118,33 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await page.getByRole("button", { name: "Confirm email" }).click();
   await expect(page.getByRole("heading", { name: "You’re on the waitlist" })).toBeVisible();
   await expectNoAxeViolations(page, "confirmed request");
+  const adminUrl = process.env.ATLAS_E2E_ADMIN_URL;
+  const assertion = process.env.ATLAS_E2E_ACCESS_ASSERTION;
+  if (!adminUrl || !assertion)
+    throw new Error("The platform waitlist acceptance authority is required.");
+  // Customer and instance sessions cannot enter the separate platform admin.
+  const forgedCallback = await page.request.post("/api/auth/internal/platform-waitlist", {
+    headers: { "X-Atlas-Callback-Secret": "forged" }, // pragma: allowlist secret - deliberately invalid fixture
+    data: { operation: "list", operatorEmail: "platform@atlas.test" },
+  });
+  expect(forgedCallback.status()).toBe(401);
+  const refused = await page.request.get(new URL("/waitlist", adminUrl).toString());
+  expect(refused.status()).toBe(403);
+  const forged = await page.request.get(new URL("/waitlist", adminUrl).toString(), {
+    headers: { "Cf-Access-Jwt-Assertion": "forged" },
+  });
+  expect(forged.status()).toBe(403);
   const adminContext = await browser.newContext();
+  await adminContext.route(`${adminUrl}/**`, async (route) => {
+    await route.continue({
+      headers: { ...route.request().headers(), "Cf-Access-Jwt-Assertion": assertion },
+    });
+  });
   const adminPage = await adminContext.newPage();
-  await performSignIn(adminPage, { email: "person@atlas.test", createWorkspace: true });
-  await adminPage.goto("/admin/waitlist");
+  const adminResponse = await adminPage.goto(new URL("/waitlist", adminUrl).toString());
+  expect(adminResponse?.headers()["referrer-policy"]).toBe("no-referrer");
+  expect(adminResponse?.headers()["cache-control"]).toBe("no-store");
+  await expect(adminPage.getByText(email, { exact: true })).toBeVisible();
   await expectNoAxeViolations(adminPage, "staff waitlist");
   await adminPage.screenshot({ path: "test-results/waitlist-admin.png", fullPage: true });
   await adminPage.getByLabel("Search requests").fill(email);
@@ -143,6 +169,7 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
     fullPage: true,
   });
   await performSignIn(page, { email, createWorkspace: true });
+  expect((await page.request.get(new URL("/waitlist", adminUrl).toString())).status()).toBe(403);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(invitationUrl);
   await expect(page.getByRole("group", { name: "Billing period" })).toBeVisible();
@@ -360,11 +387,18 @@ test("public signup, email confirmation, staff invitation and paid onboarding", 
   await page.setViewportSize({ width: 1280, height: 720 });
   await expectFlowActionPosition(page, "Continue to payment");
   await page.screenshot({ path: "test-results/waitlist-payment-desktop.png", fullPage: true });
-  await adminPage.goto("/admin/waitlist");
+  await adminPage.goto(new URL("/waitlist", adminUrl).toString());
+  await expect(adminPage.getByRole("region", { name: "Waitlist requests" })).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
   await adminPage.getByLabel("Status", { exact: true }).selectOption("invited");
   await adminPage.getByLabel("Search requests").fill(email);
   await adminPage.getByRole("button", { name: email, exact: true }).click();
   await expect(adminPage.getByRole("dialog", { name: "Request details" })).toBeVisible();
+  await expect(adminPage.getByRole("dialog", { name: "Request details" })).toContainText(
+    "platform@atlas.test",
+  );
   await expectNoAxeViolations(adminPage, "staff request details");
   await adminPage.screenshot({ path: "test-results/waitlist-details.png", fullPage: true });
   await adminPage.keyboard.press("Escape");

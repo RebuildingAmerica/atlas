@@ -12,7 +12,6 @@ import { EditorialTriageDesk } from "./editorial-triage-desk";
 import type { EditorialTriage } from "./editorial-triage.functions";
 
 interface AdminDashboardViewProps {
-  showWaitlist?: boolean;
   errorMessage?: string;
   isLoading?: boolean;
   /** The current time in milliseconds, for how long queued work has waited. */
@@ -44,7 +43,6 @@ interface AdminActionLinkProps {
  * (discounts, cloud costs) happens in the Atlas platform admin, not here.
  */
 export function AdminDashboardView({
-  showWaitlist = false,
   errorMessage,
   isLoading = false,
   now,
@@ -82,14 +80,6 @@ export function AdminDashboardView({
       <EditorialTriageDesk errorMessage={triageError} now={now} triage={triage} />
 
       <section aria-label="Editorial tools" className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        {showWaitlist ? (
-          <AdminActionLink
-            action="Review"
-            href="/editorial/waitlist"
-            label="Review paid access waitlist"
-            detail="Review requests, invite people, and follow their signup."
-          />
-        ) : null}
         <AdminActionLink
           action="Manage"
           href="/editorial/takedowns"

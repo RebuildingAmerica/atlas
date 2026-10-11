@@ -85,7 +85,6 @@ import { Route as WorkspaceEditorialMergesRouteImport } from './routes/_workspac
 import { Route as WorkspaceEditorialProfileClaimsRouteImport } from './routes/_workspace/editorial/profile-claims'
 import { Route as WorkspaceEditorialSchedulesRouteImport } from './routes/_workspace/editorial/schedules'
 import { Route as WorkspaceEditorialTakedownsRouteImport } from './routes/_workspace/editorial/takedowns'
-import { Route as WorkspaceEditorialWaitlistRouteImport } from './routes/_workspace/editorial/waitlist'
 import { Route as WorkspaceListsIndexRouteImport } from './routes/_workspace/lists/index'
 import { Route as WorkspaceListsIdRouteImport } from './routes/_workspace/lists/$id'
 import { Route as WorkspaceManageSlugRouteImport } from './routes/_workspace/manage/$slug'
@@ -116,6 +115,7 @@ import { Route as ApiAtprotoSignInStartRouteImport } from './routes/api/atproto/
 import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/internal/api-key'
 import { Route as ApiAuthInternalDiscountReviewResultsRouteImport } from './routes/api/auth/internal/discount-review-results'
 import { Route as ApiAuthInternalPlatformLookupRouteImport } from './routes/api/auth/internal/platform-lookup'
+import { Route as ApiAuthInternalPlatformWaitlistRouteImport } from './routes/api/auth/internal/platform-waitlist'
 import { Route as ApiE2eHostedBillingInventoryRouteImport } from './routes/api/e2e/hosted/billing-inventory'
 import { Route as ApiE2eHostedIdentityRouteImport } from './routes/api/e2e/hosted/identity'
 import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
@@ -514,12 +514,6 @@ const WorkspaceEditorialTakedownsRoute =
     path: '/takedowns',
     getParentRoute: () => WorkspaceEditorialRoute,
   } as any)
-const WorkspaceEditorialWaitlistRoute =
-  WorkspaceEditorialWaitlistRouteImport.update({
-    id: '/waitlist',
-    path: '/waitlist',
-    getParentRoute: () => WorkspaceEditorialRoute,
-  } as any)
 const WorkspaceListsIndexRoute = WorkspaceListsIndexRouteImport.update({
   id: '/lists/',
   path: '/lists/',
@@ -691,6 +685,12 @@ const ApiAuthInternalPlatformLookupRoute =
     path: '/api/auth/internal/platform-lookup',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAuthInternalPlatformWaitlistRoute =
+  ApiAuthInternalPlatformWaitlistRouteImport.update({
+    id: '/api/auth/internal/platform-waitlist',
+    path: '/api/auth/internal/platform-waitlist',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiE2eHostedBillingInventoryRoute =
   ApiE2eHostedBillingInventoryRouteImport.update({
     id: '/api/e2e/hosted/billing-inventory',
@@ -784,7 +784,6 @@ export interface FileRoutesByFullPath {
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
   '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
-  '/editorial/waitlist': typeof WorkspaceEditorialWaitlistRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -822,6 +821,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
+  '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -888,7 +888,6 @@ export interface FileRoutesByTo {
   '/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
   '/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
-  '/editorial/waitlist': typeof WorkspaceEditorialWaitlistRoute
   '/lists/$id': typeof WorkspaceListsIdRoute
   '/manage/$slug': typeof WorkspaceManageSlugRoute
   '/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -926,6 +925,7 @@ export interface FileRoutesByTo {
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
+  '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -1003,7 +1003,6 @@ export interface FileRoutesById {
   '/_workspace/editorial/profile-claims': typeof WorkspaceEditorialProfileClaimsRoute
   '/_workspace/editorial/schedules': typeof WorkspaceEditorialSchedulesRoute
   '/_workspace/editorial/takedowns': typeof WorkspaceEditorialTakedownsRoute
-  '/_workspace/editorial/waitlist': typeof WorkspaceEditorialWaitlistRoute
   '/_workspace/lists/$id': typeof WorkspaceListsIdRoute
   '/_workspace/manage/$slug': typeof WorkspaceManageSlugRoute
   '/_workspace/organization/sso': typeof WorkspaceOrganizationSsoRoute
@@ -1041,6 +1040,7 @@ export interface FileRoutesById {
   '/api/auth/internal/api-key': typeof ApiAuthInternalApiKeyRoute
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
+  '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
   '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
   '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
@@ -1115,7 +1115,6 @@ export interface FileRouteTypes {
     | '/editorial/profile-claims'
     | '/editorial/schedules'
     | '/editorial/takedowns'
-    | '/editorial/waitlist'
     | '/lists/$id'
     | '/manage/$slug'
     | '/organization/sso'
@@ -1153,6 +1152,7 @@ export interface FileRouteTypes {
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
+    | '/api/auth/internal/platform-waitlist'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1219,7 +1219,6 @@ export interface FileRouteTypes {
     | '/editorial/profile-claims'
     | '/editorial/schedules'
     | '/editorial/takedowns'
-    | '/editorial/waitlist'
     | '/lists/$id'
     | '/manage/$slug'
     | '/organization/sso'
@@ -1257,6 +1256,7 @@ export interface FileRouteTypes {
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
+    | '/api/auth/internal/platform-waitlist'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1333,7 +1333,6 @@ export interface FileRouteTypes {
     | '/_workspace/editorial/profile-claims'
     | '/_workspace/editorial/schedules'
     | '/_workspace/editorial/takedowns'
-    | '/_workspace/editorial/waitlist'
     | '/_workspace/lists/$id'
     | '/_workspace/manage/$slug'
     | '/_workspace/organization/sso'
@@ -1371,6 +1370,7 @@ export interface FileRouteTypes {
     | '/api/auth/internal/api-key'
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
+    | '/api/auth/internal/platform-waitlist'
     | '/api/e2e/hosted/billing-inventory'
     | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
@@ -1413,6 +1413,7 @@ export interface RootRouteChildren {
   ApiAuthInternalApiKeyRoute: typeof ApiAuthInternalApiKeyRoute
   ApiAuthInternalDiscountReviewResultsRoute: typeof ApiAuthInternalDiscountReviewResultsRoute
   ApiAuthInternalPlatformLookupRoute: typeof ApiAuthInternalPlatformLookupRoute
+  ApiAuthInternalPlatformWaitlistRoute: typeof ApiAuthInternalPlatformWaitlistRoute
   ApiE2eHostedBillingInventoryRoute: typeof ApiE2eHostedBillingInventoryRoute
   ApiE2eHostedIdentityRoute: typeof ApiE2eHostedIdentityRoute
   ApiE2eWorkspaceMemberRoute: typeof ApiE2eWorkspaceMemberRoute
@@ -1954,13 +1955,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceEditorialTakedownsRouteImport
       parentRoute: typeof WorkspaceEditorialRoute
     }
-    '/_workspace/editorial/waitlist': {
-      id: '/_workspace/editorial/waitlist'
-      path: '/waitlist'
-      fullPath: '/editorial/waitlist'
-      preLoaderRoute: typeof WorkspaceEditorialWaitlistRouteImport
-      parentRoute: typeof WorkspaceEditorialRoute
-    }
     '/_workspace/lists/': {
       id: '/_workspace/lists/'
       path: '/lists'
@@ -2169,6 +2163,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/internal/platform-lookup'
       fullPath: '/api/auth/internal/platform-lookup'
       preLoaderRoute: typeof ApiAuthInternalPlatformLookupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/internal/platform-waitlist': {
+      id: '/api/auth/internal/platform-waitlist'
+      path: '/api/auth/internal/platform-waitlist'
+      fullPath: '/api/auth/internal/platform-waitlist'
+      preLoaderRoute: typeof ApiAuthInternalPlatformWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/e2e/hosted/billing-inventory': {
@@ -2381,7 +2382,6 @@ interface WorkspaceEditorialRouteChildren {
   WorkspaceEditorialProfileClaimsRoute: typeof WorkspaceEditorialProfileClaimsRoute
   WorkspaceEditorialSchedulesRoute: typeof WorkspaceEditorialSchedulesRoute
   WorkspaceEditorialTakedownsRoute: typeof WorkspaceEditorialTakedownsRoute
-  WorkspaceEditorialWaitlistRoute: typeof WorkspaceEditorialWaitlistRoute
   WorkspaceEditorialIndexRoute: typeof WorkspaceEditorialIndexRoute
 }
 
@@ -2394,7 +2394,6 @@ const WorkspaceEditorialRouteChildren: WorkspaceEditorialRouteChildren = {
   WorkspaceEditorialProfileClaimsRoute: WorkspaceEditorialProfileClaimsRoute,
   WorkspaceEditorialSchedulesRoute: WorkspaceEditorialSchedulesRoute,
   WorkspaceEditorialTakedownsRoute: WorkspaceEditorialTakedownsRoute,
-  WorkspaceEditorialWaitlistRoute: WorkspaceEditorialWaitlistRoute,
   WorkspaceEditorialIndexRoute: WorkspaceEditorialIndexRoute,
 }
 
@@ -2507,6 +2506,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthInternalDiscountReviewResultsRoute:
     ApiAuthInternalDiscountReviewResultsRoute,
   ApiAuthInternalPlatformLookupRoute: ApiAuthInternalPlatformLookupRoute,
+  ApiAuthInternalPlatformWaitlistRoute: ApiAuthInternalPlatformWaitlistRoute,
   ApiE2eHostedBillingInventoryRoute: ApiE2eHostedBillingInventoryRoute,
   ApiE2eHostedIdentityRoute: ApiE2eHostedIdentityRoute,
   ApiE2eWorkspaceMemberRoute: ApiE2eWorkspaceMemberRoute,
@@ -2519,13 +2519,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-
-import type { createStart } from '@tanstack/react-start'
-
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
-
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

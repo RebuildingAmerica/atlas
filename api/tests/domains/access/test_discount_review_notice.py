@@ -12,6 +12,8 @@ from atlas.domains.access import discount_review_notice
 from atlas.domains.access.discount_review_notice import notify_discount_review_result
 from tests.support.platform_admin import platform_settings
 
+CALLBACK_TEST_SECRET = "callback-test-secret"  # pragma: allowlist secret
+
 
 def _app_answers(
     monkeypatch: pytest.MonkeyPatch, status_code: int, seen: list[httpx.Request]
@@ -47,9 +49,11 @@ async def test_posts_the_decision_to_the_app_with_the_callback_secret(
         str(request.url) == "https://atlas.example.test/api/auth/internal/discount-review-results"
     )
     assert (
-        request.headers["X-Atlas-Callback-Secret"] == "callback-test-secret"
+        request.headers["X-Atlas-Callback-Secret"] == CALLBACK_TEST_SECRET
     )  # pragma: allowlist secret
-    assert request.headers["x-vercel-protection-bypass"] == "bypass-value"
+    assert (
+        request.headers["x-vercel-protection-bypass"] == "bypass-value"
+    )  # pragma: allowlist secret
     assert json.loads(request.content) == {
         "segment": "student",
         "status": "rejected",

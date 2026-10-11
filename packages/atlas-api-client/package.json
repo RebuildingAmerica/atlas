@@ -15,7 +15,8 @@
     "./generated/atlas-schemas": "./src/generated/atlas-schemas/index.ts",
     "./generated/atlas-schemas/*": "./src/generated/atlas-schemas/*.ts",
     "./orval/fetcher": "./src/orval/fetcher.ts",
-    "./user-facing-errors": "./src/user-facing-errors.ts"
+    "./user-facing-errors": "./src/user-facing-errors.ts",
+    "./waitlist": "./src/contracts/waitlist.ts"
   },
   "scripts": {
     "api-client": "orval --config orval.config.ts && node scripts/generate-api-client-barrel.mjs",

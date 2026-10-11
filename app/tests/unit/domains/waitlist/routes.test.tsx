@@ -19,9 +19,6 @@ vi.mock("@/domains/waitlist/pages/waitlist-link-page", () => ({
   ),
   WaitlistRequestPage: ({ id }: { id: string }) => <div>{id}</div>,
 }));
-vi.mock("@/domains/waitlist/pages/waitlist-admin-page", () => ({
-  WaitlistAdminPage: () => <div>Staff queue</div>,
-}));
 vi.mock("@/domains/access/server", () => ({ redirectIfLocalSession: vi.fn() }));
 vi.mock("@/domains/waitlist/waitlist.functions", () => ({
   loadWaitlistStaffAccess: vi.fn(() => Promise.resolve({ allowed: true })),
@@ -36,7 +33,6 @@ describe("waitlist route contracts", () => {
       import("@/routes/_onboarding/waitlist/index"),
       import("@/routes/_onboarding/waitlist/link"),
       import("@/routes/_onboarding/waitlist/request/$id"),
-      import("@/routes/_workspace/admin/waitlist"),
     ]);
     for (const module of modules) {
       const route = asRouteStub(module.Route);
@@ -73,9 +69,5 @@ describe("waitlist route contracts", () => {
     const Request = required(request.options.component);
     render(<Request />);
     expect(screen.getByText("private-id")).toBeInTheDocument();
-    const admin = asRouteStub((await import("@/routes/_workspace/admin/waitlist")).Route);
-    await admin.options.beforeLoad?.({});
-    const { loadWaitlistStaffAccess } = await import("@/domains/waitlist/waitlist.functions");
-    expect(loadWaitlistStaffAccess).toHaveBeenCalled();
   });
 });

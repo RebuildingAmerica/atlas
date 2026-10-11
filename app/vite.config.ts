@@ -47,6 +47,7 @@ function validateProductionPublicEnv(env: HostedAtlasEnv): void {
 const PLATFORM_ADMIN_PAGES: Record<string, string> = {
   "/admin/cloud-costs": "/cloud-costs",
   "/admin/discounts": "/discounts",
+  "/admin/waitlist": "/waitlist",
 };
 
 /**

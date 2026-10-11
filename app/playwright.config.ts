@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, generateKeyPairSync, sign } from "node:crypto";
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { buildAtlasAuthJwtAudiences } from "@rebuildingamerica/atlas-access/oauth-resource-config";
@@ -84,6 +84,52 @@ delete baseWebServerEnv.FORCE_COLOR;
 // acceptance startup deterministic.
 const mailServerCommand = "pnpm --filter @rebuildingamerica/atlas-app e2e:mail:ci";
 const instanceOperatorEmails = "person@atlas.test";
+// The paid-waitlist journey runs the real admin -> signed API -> app callback
+// chain. Only test-owned entrypoints substitute this run's local Access keys.
+const platformWaitlist = process.env.ATLAS_PAID_ACCESS_MODE === "waitlist";
+const adminUrl = envValue("ATLAS_E2E_ADMIN_URL", "http://localhost:3200");
+setDefaultEnv("ATLAS_E2E_ADMIN_URL", adminUrl);
+const adminKeys = generateKeyPairSync("ed25519");
+const accessKeys = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const accessAud = "ab".repeat(32);
+const accessTeam = "atlas-e2e.cloudflareaccess.com";
+const operatorEmail = "platform@atlas.test";
+const accessJwk = {
+  ...accessKeys.publicKey.export({ format: "jwk" }),
+  kid: "e2e-access",
+  alg: "RS256",
+};
+const encode = (input: object) => Buffer.from(JSON.stringify(input)).toString("base64url");
+const now = Math.floor(Date.now() / 1000);
+const accessPayload = `${encode({ alg: "RS256", kid: "e2e-access" })}.${encode({ iss: `https://${accessTeam}`, aud: [accessAud], sub: "e2e-platform-operator", email: operatorEmail, iat: now, nbf: now, exp: now + 3600 })}`;
+setDefaultEnv(
+  "ATLAS_E2E_ACCESS_ASSERTION",
+  `${accessPayload}.${sign("RSA-SHA256", Buffer.from(accessPayload), accessKeys.privateKey).toString("base64url")}`,
+);
+const platformEnv = {
+  ATLAS_E2E_ACCESS_JWKS: JSON.stringify({ keys: [accessJwk] }),
+  ATLAS_ACCESS_TEAM_DOMAIN: accessTeam,
+  ATLAS_ACCESS_AUD: accessAud,
+  ATLAS_PLATFORM_OPERATOR_EMAILS: operatorEmail,
+  ATLAS_ADMIN_PUBLIC_URL: adminUrl,
+  ATLAS_API_URL: apiUrl,
+  ATLAS_ADMIN_SIGNING_KEY: adminKeys.privateKey
+    .export({ format: "der", type: "pkcs8" })
+    .toString("base64"),
+  ATLAS_MACHINE_TRUSTED_ISSUERS: JSON.stringify([
+    {
+      kind: "ed25519_jwt",
+      name: "atlas-admin",
+      issuer: adminUrl,
+      audience: "urn:atlas:platform-api",
+      public_key: Buffer.from(
+        adminKeys.publicKey.export({ format: "jwk" }).x ?? "",
+        "base64url",
+      ).toString("base64"),
+      actions: ["platform.waitlist.read", "platform.waitlist.write"],
+    },
+  ]),
+};
 const commonAuthEnv = {
   ATLAS_INSTANCE_OPERATOR_EMAILS: instanceOperatorEmails,
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
@@ -120,6 +166,20 @@ export default defineConfig({
     video: videoMode ? "on" : "off",
   },
   webServer: [
+    ...(platformWaitlist
+      ? [
+          {
+            command: `pnpm --dir admin exec vite dev --config vite.waitlist-e2e.config.ts --port ${new URL(adminUrl).port} --strictPort`,
+            cwd: repoRoot,
+            env: { ...baseWebServerEnv, ...platformEnv },
+            reuseExistingServer: false,
+            timeout: 120_000,
+            // Every page is Access-protected. Vite's client resource is a readiness
+            // probe; the browser journey itself proves the authenticated page.
+            url: new URL("/@vite/client", adminUrl).toString(),
+          },
+        ]
+      : []),
     {
       command: mailServerCommand,
       cwd: repoRoot,
@@ -133,10 +193,13 @@ export default defineConfig({
       url: new URL("/health", `${mailboxUrl}/`).toString(),
     },
     {
-      command: "pnpm exec turbo run //#e2e:api --output-logs=full",
+      command: platformWaitlist
+        ? `uv --directory api run python -m atlas.seed_profiles --database-url 'sqlite:///${apiDbPath.replaceAll("'", "'\\''")}' && uv --directory api run python tests/support/platform_e2e_server.py`
+        : "pnpm exec turbo run //#e2e:api --output-logs=full",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,
+        ...(platformWaitlist ? platformEnv : {}),
         ANTHROPIC_API_KEY: "e2e-test-key",
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: authIntrospectionUrl,
         ATLAS_AUTH_CALLBACK_SECRET: e2eCallbackSecret,
@@ -165,7 +228,9 @@ export default defineConfig({
       url: absoluteUrl(apiUrl, "/health"),
     },
     {
-      command: "pnpm exec turbo run @rebuildingamerica/atlas-app#start:e2e --output-logs=full",
+      command: platformWaitlist
+        ? "node app/.output/server/index.mjs"
+        : "pnpm exec turbo run @rebuildingamerica/atlas-app#start:e2e --output-logs=full",
       cwd: repoRoot,
       env: {
         ...baseWebServerEnv,

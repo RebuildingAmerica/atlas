@@ -333,9 +333,6 @@ export const EXCLUDED_ROUTES = {
   "/waitlist/request/$id": {
     reason: "Private waitlist details require a runtime request reference.",
   },
-  "/editorial/waitlist": {
-    reason: "Applicant emails and private context must not enter screenshot artifacts.",
-  },
   "/editorial/corrections": {
     reason: "Private reporter notes and contact details must not enter screenshot artifacts.",
   },
@@ -388,6 +385,7 @@ export const EXCLUDED_ROUTES = {
   "/api/auth/$": { reason: "API route, not a page." },
   "/api/auth/internal/api-key": { reason: "API route, not a page." },
   "/api/auth/internal/discount-review-results": { reason: "API route, not a page." },
+  "/api/auth/internal/platform-waitlist": { reason: "Private callback, not a page." },
   "/api/auth/internal/platform-lookup": { reason: "API route, not a page." },
   "/api/auth/internal/memberships/$organizationId/members/$userId": {
     reason: "API route, not a page.",

@@ -34,7 +34,13 @@ export function renderWithQueries(ui: ReactNode) {
 
 /** Server-renders the whole admin at a path, as the Worker would. */
 export async function renderRoute(
-  path: "/" | "/discounts" | "/cloud-costs" | "/switches" | "/accounts",
+  path:
+    | "/"
+    | "/discounts"
+    | "/cloud-costs"
+    | "/switches"
+    | "/accounts"
+    | "/waitlist",
 ): Promise<RenderedRoute> {
   const router = getRouter();
   router.update({

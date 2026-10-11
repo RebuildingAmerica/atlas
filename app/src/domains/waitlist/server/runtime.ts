@@ -3,7 +3,6 @@ import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing
 import { parseEnvBoolean } from "@/platform/config/env-boolean";
 import { getAuthRuntimeConfig } from "@/domains/access/server/runtime";
 import { ensureAuthReady } from "@/domains/access/server/auth";
-import { requireReadyAtlasSessionState } from "@/domains/access/server/session-state";
 import { createEmailService } from "@/platform/email/server/service";
 import { WaitlistStore } from "./store";
 import { getWaitlistDatabase } from "./database";
@@ -43,15 +42,6 @@ export function getWaitlistMailer(store: WaitlistStore) {
     runtime.publicBaseUrl,
   );
 }
-export async function requireWaitlistStaff() {
-  requireManagedWaitlist();
-  const session = await requireReadyAtlasSessionState();
-  const runtime = getAuthRuntimeConfig();
-  if (
-    !session.user.emailVerified ||
-    !session.hasPasskey ||
-    !runtime.operatorAllowedEmails.has(session.user.email.toLowerCase())
-  )
-    throw new UserFacingError("This action requires Atlas staff.");
-  return session;
+export function requireWaitlistStaff(): Promise<never> {
+  return Promise.reject(new UserFacingError("This is done in the Atlas platform admin."));
 }

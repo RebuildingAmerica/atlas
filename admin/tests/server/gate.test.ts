@@ -88,6 +88,12 @@ describe("the admin gate", () => {
     expect(await gateRequest(request, runtime)).toBeNull();
   });
 
+  it("preserves the waitlist's stricter no-referrer policy", () => {
+    const headers = new Headers({ "Referrer-Policy": "no-referrer" });
+    applyPageHeaders(headers);
+    expect(headers.get("Referrer-Policy")).toBe("no-referrer");
+    expect(headers.get("Cache-Control")).toBe("no-store");
+  });
   it("marks every page private and unframeable", () => {
     const headers = new Headers({ "Cache-Control": "public" });
 

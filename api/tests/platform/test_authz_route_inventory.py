@@ -28,6 +28,10 @@ PLATFORM_ROUTES: dict[tuple[str, str], Action] = {
     ("GET", "/api/platform/switches"): Action.SWITCHES_READ,
     ("PUT", "/api/platform/switches/{name}"): Action.SWITCHES_WRITE,
     ("POST", "/api/platform/accounts/lookup"): Action.ACCOUNTS_READ,
+    ("POST", "/api/platform/waitlist"): Action.WAITLIST_READ,
+    ("POST", "/api/platform/waitlist/detail"): Action.WAITLIST_READ,
+    ("POST", "/api/platform/waitlist/invite"): Action.WAITLIST_WRITE,
+    ("POST", "/api/platform/waitlist/action"): Action.WAITLIST_WRITE,
 }
 
 INSTANCE_AND_MACHINE_ROUTES: dict[tuple[str, str], Action] = {

@@ -8,6 +8,7 @@ import { WaitlistStore } from "@/domains/waitlist/server/store";
 import { sqliteWaitlistDatabase } from "@/domains/waitlist/server/database";
 import { createAtlasSessionFixture } from "../../../fixtures/access/sessions";
 import * as functions from "@/domains/waitlist/waitlist.functions";
+import { handlePlatformWaitlistRequest } from "@/domains/waitlist/server/internal-platform-waitlist";
 import { requireWaitlistStaff } from "@/domains/waitlist/server/runtime";
 import { recordWaitlistPurchase } from "@/domains/waitlist/server/purchases";
 import { markPurchaseIntentPaid } from "@/domains/billing/server/purchase-intents";
@@ -43,11 +44,12 @@ vi.mock("@/domains/access/server/request-headers", () => ({
 vi.mock("@/domains/access/server/runtime", () => ({
   getAuthRuntimeConfig: () => ({
     anonymousRateLimit: { trustedProxyHops: 1 },
-    operatorAllowedEmails: new Set(["staff@example.org"]),
+    callbackSecret: "callback-test-secret", // pragma: allowlist secret - test fixture
+    instanceOperatorEmails: new Set(["staff@example.org"]),
     emailProvider: "capture",
     emailFrom: "Atlas <hello@atlas.test>",
     captureUrl: "https://capture.test/messages",
-    internalSecret: "waitlist-test-secret",
+    internalSecret: "waitlist-test-secret", // pragma: allowlist secret - test fixture
     publicBaseUrl: "https://atlas.test",
   }),
 }));
@@ -56,6 +58,43 @@ vi.mock("@/domains/billing/server/checkout-availability", () => ({
 }));
 
 describe("waitlist server contracts", () => {
+  async function callback(
+    body: object,
+    secret = "callback-test-secret", // pragma: allowlist secret - test fixture
+  ) {
+    return handlePlatformWaitlistRequest(
+      new Request("https://atlas.test/api/auth/internal/platform-waitlist", {
+        method: "POST",
+        headers: { "X-Atlas-Callback-Secret": secret, "Content-Type": "application/json" },
+        body: JSON.stringify({ operatorEmail: "platform@example.org", ...body }),
+      }),
+    );
+  }
+  async function operation<T>(body: object): Promise<T> {
+    const response = await callback(body);
+    if (!response.ok) throw new Error(((await response.json()) as { error: string }).error);
+    return response.json() as Promise<T>;
+  }
+  const platformFunctions = {
+    listWaitlistRequests: () =>
+      operation<Awaited<ReturnType<typeof functions.listWaitlistRequests>>>({ operation: "list" }),
+    loadWaitlistStaffDetail: ({ data }: { data: { id: string } }) =>
+      operation<Awaited<ReturnType<typeof functions.loadWaitlistStaffDetail>>>({
+        operation: "detail",
+        ...data,
+      }),
+    inviteWaitlistRequests: ({ data }: { data: { ids: string[] } }) =>
+      operation<Awaited<ReturnType<typeof functions.inviteWaitlistRequests>>>({
+        operation: "invite",
+        ...data,
+      }),
+    actOnWaitlistRequest: ({ data }: { data: functions.StaffWaitlistAction }) =>
+      operation<Awaited<ReturnType<typeof functions.actOnWaitlistRequest>>>({
+        operation: "action",
+        ...data,
+      }),
+  };
+
   function required<T>(value: T | undefined): T {
     if (value === undefined) throw new Error("Expected test record");
     return value;
@@ -92,6 +131,32 @@ describe("waitlist server contracts", () => {
     vi.useRealTimers();
   });
 
+  it("rejects forged callbacks, unlisted operations and browser-supplied actor fields", async () => {
+    expect((await callback({ operation: "list" }, "forged")).status).toBe(401);
+    for (const body of [
+      { operation: "delete" },
+      { operation: "invite", ids: [] },
+      { operation: "invite", ids: Array.from({ length: 51 }, () => "request") },
+      { operation: "list", actorId: "forged" },
+      { operation: "action", id: "request", action: "retry" },
+      { operation: "list", operatorEmail: "" },
+    ])
+      expect((await callback(body)).status).toBe(400);
+    vi.stubEnv("ATLAS_MANAGED", "false");
+    expect((await callback({ operation: "list" })).status).toBe(404);
+  });
+  it("rejects malformed JSON and exposes storage failures rather than false empty queues", async () => {
+    const malformed = await handlePlatformWaitlistRequest(
+      new Request("https://atlas.test/api/auth/internal/platform-waitlist", {
+        method: "POST",
+        headers: { "X-Atlas-Callback-Secret": "callback-test-secret" }, // pragma: allowlist secret - test fixture
+        body: "not json",
+      }),
+    );
+    expect(malformed.status).toBe(400);
+    vi.spyOn(WaitlistStore.prototype, "list").mockRejectedValueOnce(new Error("Database offline"));
+    await expect(callback({ operation: "list" })).rejects.toThrow("Database offline");
+  });
   it("saves anonymous signup and confirms only after an explicit action", async () => {
     await expect(
       functions.submitWaitlist({ data: { email: "Person@example.org", product: "atlas_pro" } }),
@@ -173,47 +238,54 @@ describe("waitlist server contracts", () => {
     await functions.changeWaitlistRequest({ data: { id: request.id, action: "rejoin" } });
     expect((await store.get(request.id)).status).toBe("waiting");
   });
-  it("never mistakes customer admin roles, unverified email, or passkey-less sessions for staff", async () => {
+  it("refuses every app session including instance operators on staff endpoints", async () => {
     for (const session of [
       createAtlasSessionFixture({ user: { email: "customer@example.org" } }),
-      createAtlasSessionFixture({ user: { email: "staff@example.org", emailVerified: false } }),
-      createAtlasSessionFixture({ user: { email: "staff@example.org" }, hasPasskey: false }),
+      createAtlasSessionFixture({ user: { email: "staff@example.org" } }),
     ]) {
       mocks.readySession.mockResolvedValue(session);
-      await expect(functions.listWaitlistRequests()).rejects.toThrow("requires Atlas staff");
+      await expect(functions.listWaitlistRequests()).rejects.toThrow("platform admin");
+      await expect(functions.loadWaitlistStaffAccess()).rejects.toThrow("platform admin");
+      await expect(requireWaitlistStaff()).rejects.toThrow("platform admin");
+      await expect(functions.loadWaitlistStaffDetail({ data: { id: "request" } })).rejects.toThrow(
+        "platform admin",
+      );
+      await expect(
+        functions.inviteWaitlistRequests({ data: { ids: ["request"] } }),
+      ).rejects.toThrow("platform admin");
+      await expect(
+        functions.actOnWaitlistRequest({ data: { id: "request", action: "revoke" } }),
+      ).rejects.toThrow("platform admin");
     }
-    mocks.readySession.mockResolvedValue(
-      createAtlasSessionFixture({ user: { email: "staff@example.org" } }),
-    );
-    expect(await functions.loadWaitlistStaffAccess()).toEqual({ allowed: true });
-    expect(await requireWaitlistStaff()).toHaveProperty("user.email", "staff@example.org");
   });
   it("invites selected confirmed requests, reports partial failure, and records resend and revocation", async () => {
     const request = await store.submit({ email: "person@example.org", product: "atlas_pro" });
     await store.confirm(await store.createLink(request.id, "confirm"));
-    const result = await functions.inviteWaitlistRequests({
+    const result = await platformFunctions.inviteWaitlistRequests({
       data: { ids: [request.id, "missing", request.id] },
     });
     expect(result.results).toHaveLength(2);
     expect(result.results[0]).toMatchObject({ id: request.id, status: "sent" });
     expect(result.results[1]).toMatchObject({ id: "missing", status: "failed" });
-    const list = await functions.listWaitlistRequests();
+    const list = await platformFunctions.listWaitlistRequests();
     expect(list.records[0]?.deliveries[0]?.status).toBe("sent");
-    const detail = await functions.loadWaitlistStaffDetail({ data: { id: request.id } });
-    expect(detail.events.map((event) => event.action)).toContain("invited");
-    await functions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } });
+    const detail = await platformFunctions.loadWaitlistStaffDetail({ data: { id: request.id } });
+    expect(detail.events).toContainEqual(
+      expect.objectContaining({ action: "invited", actorId: "platform@example.org" }),
+    );
+    await platformFunctions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } });
     await expect(
-      functions.actOnWaitlistRequest({
+      platformFunctions.actOnWaitlistRequest({
         data: { id: request.id, action: "retry", deliveryId: "unrelated" },
       }),
     ).rejects.toThrow("unavailable");
-    await functions.actOnWaitlistRequest({
+    await platformFunctions.actOnWaitlistRequest({
       data: { id: request.id, action: "retry", deliveryId: required(detail.deliveries[0]).id },
     });
-    await functions.actOnWaitlistRequest({ data: { id: request.id, action: "revoke" } });
+    await platformFunctions.actOnWaitlistRequest({ data: { id: request.id, action: "revoke" } });
     expect(await store.isAdmitted(request.email, request.product)).toBe(false);
     await expect(
-      functions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } }),
+      platformFunctions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } }),
     ).rejects.toThrow("no active invitation");
   });
   it("blocks invitations during a sales pause but keeps signup available", async () => {
@@ -223,11 +295,13 @@ describe("waitlist server contracts", () => {
     });
     await store.confirm(await store.createLink(request.id, "confirm"));
     expect(
-      (await functions.inviteWaitlistRequests({ data: { ids: [request.id] } })).results[0]?.message,
+      (await platformFunctions.inviteWaitlistRequests({ data: { ids: [request.id] } })).results[0]
+        ?.message,
     ).toContain("paused");
     mocks.availability.mockResolvedValue({ available: false, allowedOffers: [] });
     expect(
-      (await functions.inviteWaitlistRequests({ data: { ids: [request.id] } })).results[0]?.status,
+      (await platformFunctions.inviteWaitlistRequests({ data: { ids: [request.id] } })).results[0]
+        ?.status,
     ).toBe("failed");
     await expect(
       functions.submitWaitlist({ data: { email: "new@example.org", product: "atlas_team" } }),
@@ -238,7 +312,8 @@ describe("waitlist server contracts", () => {
     await store.confirm(await store.createLink(request.id, "confirm"));
     mocks.fetch.mockRejectedValue(new TypeError("offline"));
     expect(
-      (await functions.inviteWaitlistRequests({ data: { ids: [request.id] } })).results[0]?.status,
+      (await platformFunctions.inviteWaitlistRequests({ data: { ids: [request.id] } })).results[0]
+        ?.status,
     ).toBe("unresolved");
     expect(await store.isAdmitted(request.email, request.product)).toBe(true);
   });
@@ -272,7 +347,10 @@ describe("waitlist server contracts", () => {
     ).toHaveLength(1);
     vi.stubEnv("ATLAS_MANAGED", "false");
     expect((await functions.loadPaidAccess()).mode).toBe("unavailable");
-    await expect(functions.listWaitlistRequests()).rejects.toThrow("unavailable on this instance");
+    await expect(
+      functions.submitWaitlist({ data: { email: "new@example.org", product: "atlas_pro" } }),
+    ).rejects.toThrow("unavailable on this instance");
+    await expect(functions.listWaitlistRequests()).rejects.toThrow("platform admin");
     await recordWaitlistPurchase("purchase");
   });
   it("rejects browser execution and a mismatched scoped request", async () => {
@@ -298,9 +376,9 @@ describe("waitlist server contracts", () => {
     ) as { text: string };
     expect(capture.text).toContain("kind=manage");
     await store.invite(request.id, "staff");
-    await functions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } });
-    const detail = await functions.loadWaitlistStaffDetail({ data: { id: request.id } });
-    await functions.actOnWaitlistRequest({
+    await platformFunctions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } });
+    const detail = await platformFunctions.loadWaitlistStaffDetail({ data: { id: request.id } });
+    await platformFunctions.actOnWaitlistRequest({
       data: { id: request.id, action: "retry", deliveryId: required(detail.deliveries[0]).id },
     });
     expect(
@@ -317,8 +395,8 @@ describe("waitlist server contracts", () => {
     await store.confirm(await store.createLink(required(request).id, "confirm"));
     mocks.availability.mockRejectedValueOnce(new Error("provider unavailable"));
     expect(
-      (await functions.inviteWaitlistRequests({ data: { ids: [required(request).id] } })).results[0]
-        ?.message,
+      (await platformFunctions.inviteWaitlistRequests({ data: { ids: [required(request).id] } }))
+        .results[0]?.message,
     ).toBe("This invitation could not be sent.");
   });
   it("starts a bounded group of recipient sends instead of serializing a slow batch", async () => {
@@ -336,7 +414,7 @@ describe("waitlist server contracts", () => {
       release = resolve;
     });
     mocks.fetch.mockReturnValue(pending);
-    const batch = functions.inviteWaitlistRequests({ data: { ids } });
+    const batch = platformFunctions.inviteWaitlistRequests({ data: { ids } });
     try {
       await vi.waitFor(() => {
         expect(mocks.fetch).toHaveBeenCalledTimes(10);

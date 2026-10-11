@@ -63,9 +63,5 @@ export interface PrivateWaitlistInput {
   token?: string;
   kind?: WaitlistLinkKind;
 }
-export interface StaffWaitlistAction {
-  id: string;
-  action: "revoke" | "resend" | "retry";
-  deliveryId?: string;
-}
+export type { StaffWaitlistAction } from "./contracts";
 export { waitlistProductSchema };

@@ -4,16 +4,24 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WaitlistAdminPage } from "@/domains/waitlist/pages/waitlist-admin-page";
-import type { WaitlistRequest } from "@/domains/waitlist/contracts";
+import type { WaitlistRequest } from "@rebuildingamerica/atlas-api-client/waitlist";
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   detail: vi.fn(),
   invite: vi.fn(),
   action: vi.fn(),
 }));
-vi.mock("@tanstack/react-router", async () =>
-  (await import("../../../helpers/router-harness")).installRouterMocks(),
-);
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.PropsWithChildren<{ to: string }>) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
+}));
 vi.mock("@/domains/waitlist/waitlist.functions", () => ({
   listWaitlistRequests: mocks.list,
   loadWaitlistStaffDetail: mocks.detail,
@@ -35,13 +43,21 @@ describe("staff waitlist screens", () => {
     purchasedAt: null,
     createdAt: "2026-10-08",
   };
-  const delivery = { id: "email", kind: "invite", status: "failed", createdAt: "2026-10-08" };
+  const delivery = {
+    id: "email",
+    kind: "invite",
+    status: "failed",
+    createdAt: "2026-10-08",
+  };
   function mount() {
     return render(
       <QueryClientProvider
         client={
           new QueryClient({
-            defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+            defaultOptions: {
+              queries: { retry: false },
+              mutations: { retry: false },
+            },
           })
         }
       >
@@ -55,30 +71,46 @@ describe("staff waitlist screens", () => {
       availability: { available: true, allowedOffers: ["atlas_pro:monthly"] },
     });
     mocks.detail.mockResolvedValue({ request, deliveries: [], events: [] });
-    mocks.invite.mockResolvedValue({ results: [{ id: "first", message: "Invitation sent." }] });
-    mocks.action.mockResolvedValue({ request: { ...request, status: "revoked" } });
+    mocks.invite.mockResolvedValue({
+      results: [{ id: "first", message: "Invitation sent." }],
+    });
+    mocks.action.mockResolvedValue({
+      request: { ...request, status: "revoked" },
+    });
   });
   it("renders the staff shell before optional data and provides retry after failure", async () => {
     mocks.list.mockRejectedValueOnce(new Error("offline"));
     mount();
     expect(screen.getByRole("heading", { name: "Waitlist" })).toBeVisible();
-    await userEvent.click(await screen.findByRole("button", { name: "Retry queue" }));
-    expect(await screen.findByRole("button", { name: request.email })).toBeVisible();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Retry queue" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: request.email }),
+    ).toBeVisible();
   });
   it("reviews exact selected recipients, supports individual and batch selection, and reports outcomes", async () => {
     mount();
     await screen.findByRole("button", { name: request.email });
     await userEvent.click(screen.getByLabelText(`Select ${request.email}`));
     await userEvent.click(screen.getByLabelText(`Select ${request.email}`));
-    await userEvent.click(screen.getByRole("button", { name: "Select up to 50" }));
-    await userEvent.click(screen.getByRole("button", { name: "Review 1 invitation" }));
-    expect(screen.getByRole("region", { name: "Review invitations" })).toHaveTextContent(
-      request.email,
+    await userEvent.click(
+      screen.getByRole("button", { name: "Select up to 50" }),
     );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review 1 invitation" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Review invitations" }),
+    ).toHaveTextContent(request.email);
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await userEvent.click(screen.getByRole("button", { name: "Invite" }));
-    await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
-    expect(await screen.findByText(`${request.email}: Invitation sent.`)).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send invitations" }),
+    );
+    expect(
+      await screen.findByText(`${request.email}: Invitation sent.`),
+    ).toBeVisible();
     expect(mocks.invite).toHaveBeenCalledWith({ data: { ids: ["first"] } });
   });
   it("filters by plan, purchase and search without making unconfirmed or paused requests eligible", async () => {
@@ -107,9 +139,13 @@ describe("staff waitlist screens", () => {
     await screen.findByText("New signups are paused.", {
       exact: false,
     });
-    expect(screen.getByRole("button", { name: "Select up to 50" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Select up to 50" }),
+    ).toBeDisabled();
     await userEvent.selectOptions(screen.getByLabelText("Status"), "purchased");
-    expect(screen.getByRole("button", { name: "team@example.org" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "team@example.org" }),
+    ).toBeVisible();
     await userEvent.selectOptions(screen.getByLabelText("Plan"), "atlas_team");
     await userEvent.type(screen.getByLabelText("Search requests"), "missing");
     expect(screen.getByText("No requests.")).toBeVisible();
@@ -117,36 +153,71 @@ describe("staff waitlist screens", () => {
     await userEvent.selectOptions(screen.getByLabelText("Status"), "");
     await userEvent.selectOptions(screen.getByLabelText("Plan"), "");
     expect(screen.getByRole("button", { name: "Reporter" })).toBeVisible();
-    expect(screen.getAllByText("Email not confirmed").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Email not confirmed").length).toBeGreaterThan(
+      0,
+    );
     expect(screen.getByText(/Email failed/)).toBeVisible();
   });
   it("shows private context, delivery history and audit attribution, and reviews revocation", async () => {
     mocks.list.mockResolvedValue({
-      records: [{ request: { ...request, status: "invited" }, deliveries: [delivery] }],
+      records: [
+        { request: { ...request, status: "invited" }, deliveries: [delivery] },
+      ],
       availability: { available: true, allowedOffers: ["atlas_pro:monthly"] },
     });
     mocks.detail.mockResolvedValue({
       request: { ...request, status: "invited" },
-      deliveries: [delivery, { ...delivery, id: "confirm", kind: "confirm", status: "sent" }],
+      deliveries: [
+        delivery,
+        { ...delivery, id: "confirm", kind: "confirm", status: "sent" },
+      ],
       events: [
-        { id: "event", action: "invited", createdAt: "2026-10-08", actorId: "staff" },
-        { id: "event2", action: "confirmed", createdAt: "2026-10-08", actorId: null },
+        {
+          id: "event",
+          action: "invited",
+          createdAt: "2026-10-08",
+          actorId: "staff",
+        },
+        {
+          id: "event2",
+          action: "confirmed",
+          createdAt: "2026-10-08",
+          actorId: null,
+        },
       ],
     });
     mount();
     await userEvent.selectOptions(screen.getByLabelText("Status"), "invited");
-    await userEvent.click(await screen.findByRole("button", { name: request.email }));
-    const detail = await screen.findByRole("dialog", { name: "Request details" });
+    await userEvent.click(
+      await screen.findByRole("button", { name: request.email }),
+    );
+    const detail = await screen.findByRole("dialog", {
+      name: "Request details",
+    });
     expect(await within(detail).findByText("invited")).toBeVisible();
-    expect(within(detail).getByText("invited").closest("li")).toHaveTextContent("staff");
+    expect(within(detail).getByText("invited").closest("li")).toHaveTextContent(
+      "staff",
+    );
     expect(within(detail).getAllByText("Not provided")).toHaveLength(3);
-    await userEvent.click(screen.getByRole("button", { name: "Withdraw invitation" }));
-    await userEvent.click(screen.getByRole("button", { name: "Keep invitation" }));
-    await userEvent.click(screen.getByRole("button", { name: "Withdraw invitation" }));
-    await userEvent.click(screen.getByRole("button", { name: "Confirm withdrawal" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Withdraw invitation" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Keep invitation" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Withdraw invitation" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm withdrawal" }),
+    );
     expect(await screen.findByText("Invitation withdrawn.")).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Close details" }));
-    expect(screen.queryByRole("dialog", { name: "Request details" })).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close details" }),
+    );
+    expect(
+      screen.queryByRole("dialog", { name: "Request details" }),
+    ).not.toBeInTheDocument();
   });
   it("resends or retries an invitation without presenting unresolved email as sent", async () => {
     mocks.detail.mockResolvedValue({
@@ -164,9 +235,15 @@ describe("staff waitlist screens", () => {
       .mockResolvedValueOnce({ delivery: { status: "unresolved" } })
       .mockResolvedValueOnce({ delivery: { status: "sent" } });
     mount();
-    await userEvent.click(await screen.findByRole("button", { name: request.email }));
-    await userEvent.click(await screen.findByRole("button", { name: "Resend invitation" }));
-    expect(await screen.findByText("Invitation email needs attention.")).toBeVisible();
+    await userEvent.click(
+      await screen.findByRole("button", { name: request.email }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Resend invitation" }),
+    );
+    expect(
+      await screen.findByText("Invitation email needs attention."),
+    ).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Retry email" }));
     expect(await screen.findByText("Invitation sent.")).toBeVisible();
     expect(mocks.action).toHaveBeenLastCalledWith({
@@ -177,13 +254,23 @@ describe("staff waitlist screens", () => {
     mocks.detail.mockRejectedValueOnce(new Error("offline"));
     mocks.invite.mockRejectedValueOnce(new Error("offline"));
     mount();
-    await userEvent.click(await screen.findByRole("button", { name: request.email }));
-    expect(await screen.findByText("Request details couldn’t be loaded.")).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Close details" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: request.email }),
+    );
+    expect(
+      await screen.findByText("Request details couldn’t be loaded."),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close details" }),
+    );
     await userEvent.click(screen.getByRole("button", { name: "Invite" }));
-    await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send invitations" }),
+    );
     await waitFor(() =>
-      expect(screen.getByText("Invitations couldn’t be sent. Try again.")).toBeVisible(),
+      expect(
+        screen.getByText("Invitations couldn’t be sent. Try again."),
+      ).toBeVisible(),
     );
   });
   it("keeps historical failed invitations inactive after withdrawal and reports unmatched batch outcomes", async () => {
@@ -196,12 +283,20 @@ describe("staff waitlist screens", () => {
       results: [{ id: "no-longer-listed", message: "Could not invite." }],
     });
     mount();
-    await userEvent.click(await screen.findByRole("button", { name: request.email }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: request.email }),
+    );
     await screen.findByText(/Invitation · Failed/);
-    expect(screen.queryByRole("button", { name: "Retry email" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Close details" }));
+    expect(
+      screen.queryByRole("button", { name: "Retry email" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close details" }),
+    );
     await userEvent.click(screen.getByRole("button", { name: "Invite" }));
-    await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Send invitations" }),
+    );
     expect(await screen.findByText("Request: Could not invite.")).toBeVisible();
   });
   it("opens request details as a keyboard-dismissable dialog and retries in place", async () => {
@@ -209,11 +304,17 @@ describe("staff waitlist screens", () => {
     mount();
     const trigger = await screen.findByRole("button", { name: request.email });
     await userEvent.click(trigger);
-    const dialog = await screen.findByRole("dialog", { name: "Request details" });
-    await userEvent.click(await within(dialog).findByRole("button", { name: "Try again" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Request details",
+    });
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Try again" }),
+    );
     expect(await within(dialog).findByText("person@example.org")).toBeVisible();
     await userEvent.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
     expect(trigger).toHaveFocus();
   });
   it("shows failed staff actions inside the open request and lets staff retry", async () => {
@@ -226,13 +327,23 @@ describe("staff waitlist screens", () => {
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValueOnce({ delivery: { status: "sent" } });
     mount();
-    await userEvent.click(await screen.findByRole("button", { name: request.email }));
-    const dialog = await screen.findByRole("dialog", { name: "Request details" });
-    await userEvent.click(await within(dialog).findByRole("button", { name: "Resend invitation" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: request.email }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Request details",
+    });
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Resend invitation" }),
+    );
     expect(
-      await within(dialog).findByText("This change couldn’t be saved. Try again."),
+      await within(dialog).findByText(
+        "This change couldn’t be saved. Try again.",
+      ),
     ).toBeVisible();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Resend invitation" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Resend invitation" }),
+    );
     expect(await within(dialog).findByText("Invitation sent.")).toBeVisible();
   });
 });

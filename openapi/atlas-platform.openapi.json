@@ -907,6 +907,491 @@
         ],
         "title": "VerificationUpdateResponse",
         "type": "object"
+      },
+      "WaitlistActionInput": {
+        "additionalProperties": false,
+        "description": "A single explicitly enumerated staff decision.",
+        "properties": {
+          "action": {
+            "enum": [
+              "revoke",
+              "resend",
+              "retry"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "deliveryId": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deliveryid"
+          },
+          "id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "action"
+        ],
+        "title": "WaitlistActionInput",
+        "type": "object"
+      },
+      "WaitlistActionResult": {
+        "additionalProperties": false,
+        "description": "The changed permission or the email delivery.",
+        "properties": {
+          "delivery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WaitlistDelivery"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WaitlistRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "WaitlistActionResult",
+        "type": "object"
+      },
+      "WaitlistAvailability": {
+        "additionalProperties": false,
+        "description": "Whether invitations currently lead to an available purchase.",
+        "properties": {
+          "allowedOffers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowedoffers",
+            "type": "array"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "disabled",
+                  "paused",
+                  "catalog_unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "available",
+          "reason",
+          "allowedOffers"
+        ],
+        "title": "WaitlistAvailability",
+        "type": "object"
+      },
+      "WaitlistDelivery": {
+        "additionalProperties": false,
+        "description": "One durable email delivery.",
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "confirm",
+              "manage",
+              "invite"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "providerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providerid"
+          },
+          "requestId": {
+            "title": "Requestid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "sending",
+              "sent",
+              "failed",
+              "unresolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "requestId",
+          "kind",
+          "status",
+          "providerId",
+          "createdAt",
+          "updatedAt",
+          "attempts"
+        ],
+        "title": "WaitlistDelivery",
+        "type": "object"
+      },
+      "WaitlistDetail": {
+        "additionalProperties": false,
+        "description": "The request's full decision and delivery history.",
+        "properties": {
+          "deliveries": {
+            "items": {
+              "$ref": "#/components/schemas/WaitlistDelivery"
+            },
+            "title": "Deliveries",
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WaitlistEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "request": {
+            "$ref": "#/components/schemas/WaitlistRequest"
+          }
+        },
+        "required": [
+          "request",
+          "deliveries",
+          "events"
+        ],
+        "title": "WaitlistDetail",
+        "type": "object"
+      },
+      "WaitlistDetailInput": {
+        "additionalProperties": false,
+        "description": "One request to review.",
+        "properties": {
+          "id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "WaitlistDetailInput",
+        "type": "object"
+      },
+      "WaitlistEvent": {
+        "additionalProperties": false,
+        "description": "A request decision attributed to its operator.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actorId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actorid"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "requestId": {
+            "title": "Requestid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "requestId",
+          "action",
+          "actorId",
+          "createdAt"
+        ],
+        "title": "WaitlistEvent",
+        "type": "object"
+      },
+      "WaitlistInvitations": {
+        "additionalProperties": false,
+        "description": "Invitation outcomes, preserving partial success.",
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/WaitlistInviteResult"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "WaitlistInvitations",
+        "type": "object"
+      },
+      "WaitlistInviteInput": {
+        "additionalProperties": false,
+        "description": "Up to fifty exact recipients for one reviewed batch.",
+        "properties": {
+          "ids": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "WaitlistInviteInput",
+        "type": "object"
+      },
+      "WaitlistInviteResult": {
+        "additionalProperties": false,
+        "description": "A recipient's independent invitation outcome.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "message"
+        ],
+        "title": "WaitlistInviteResult",
+        "type": "object"
+      },
+      "WaitlistQueue": {
+        "additionalProperties": false,
+        "description": "The private queue and purchase availability.",
+        "properties": {
+          "availability": {
+            "$ref": "#/components/schemas/WaitlistAvailability"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/WaitlistRecord"
+            },
+            "title": "Records",
+            "type": "array"
+          }
+        },
+        "required": [
+          "records",
+          "availability"
+        ],
+        "title": "WaitlistQueue",
+        "type": "object"
+      },
+      "WaitlistRecord": {
+        "additionalProperties": false,
+        "description": "A queue row with email outcomes.",
+        "properties": {
+          "deliveries": {
+            "items": {
+              "$ref": "#/components/schemas/WaitlistDelivery"
+            },
+            "title": "Deliveries",
+            "type": "array"
+          },
+          "request": {
+            "$ref": "#/components/schemas/WaitlistRequest"
+          }
+        },
+        "required": [
+          "request",
+          "deliveries"
+        ],
+        "title": "WaitlistRecord",
+        "type": "object"
+      },
+      "WaitlistRequest": {
+        "additionalProperties": false,
+        "description": "An applicant's retained request.",
+        "properties": {
+          "confirmedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedat"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "intendedUse": {
+            "title": "Intendeduse",
+            "type": "string"
+          },
+          "interval": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval"
+          },
+          "invitedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitedat"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "organization": {
+            "title": "Organization",
+            "type": "string"
+          },
+          "product": {
+            "enum": [
+              "atlas_pro",
+              "atlas_team",
+              "atlas_research_pass"
+            ],
+            "title": "Product",
+            "type": "string"
+          },
+          "purchasedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchasedat"
+          },
+          "status": {
+            "enum": [
+              "unconfirmed",
+              "waiting",
+              "invited",
+              "withdrawn",
+              "revoked"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "organization",
+          "intendedUse",
+          "product",
+          "interval",
+          "status",
+          "createdAt",
+          "confirmedAt",
+          "invitedAt",
+          "purchasedAt"
+        ],
+        "title": "WaitlistRequest",
+        "type": "object"
       }
     }
   },
@@ -1202,6 +1687,154 @@
           }
         },
         "summary": "Engage or release a platform switch",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/platform/waitlist": {
+      "post": {
+        "description": "Read applicants only for a verified platform operator.",
+        "operationId": "listWaitlistRequests",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistQueue"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Waitlist",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/platform/waitlist/action": {
+      "post": {
+        "description": "Withdraw permission, resend an invitation or retry a retained email.",
+        "operationId": "actOnWaitlistRequest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistActionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistActionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Act On Waitlist",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/platform/waitlist/detail": {
+      "post": {
+        "description": "Review a retained request and its operator-attributed history.",
+        "operationId": "loadWaitlistStaffDetail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistDetailInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Waitlist Detail",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/platform/waitlist/invite": {
+      "post": {
+        "description": "Invite the exact reviewed recipients through the existing durable mailer.",
+        "operationId": "inviteWaitlistRequests",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistInviteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistInvitations"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Invite Waitlist",
         "tags": [
           "platform"
         ]

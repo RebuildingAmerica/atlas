@@ -4,6 +4,7 @@ export function excludePrivateAnalytics<T extends { url: string }>(event: T): T 
   if (
     url.pathname.startsWith("/waitlist") ||
     url.pathname.startsWith("/admin") ||
+    url.pathname.startsWith("/api/auth/internal/") ||
     url.searchParams.has("token") ||
     url.searchParams.has("email")
   )
