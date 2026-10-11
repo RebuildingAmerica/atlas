@@ -57,13 +57,16 @@ non-promotable hosted compatibility report tied to its source and digest.
 
 - [x] Build a minimal Python candidate using cf's Python module manifest.
 - [x] Deploy behind Access with the existing uncached Hyperdrive binding.
-- [ ] Prove FastAPI, asynchronous psycopg, request cleanup, concurrent reads,
-      runtime package imports, and Python Durable Object dispatch on the
-      provider.
+- [x] Prove FastAPI, asynchronous PostgreSQL through `asyncpg`, UTC conversion,
+      request cleanup, and Python Durable Object dispatch on the provider. The
+      `psycopg` candidate failed because `libpq` was unavailable.
+- [ ] Prove concurrent database reads, cancellation cleanup, and the complete
+      runtime package imports on the provider.
 - [ ] Resolve the full API and discovery dependency graph for the target Pyodide
       runtime. Exercise native extraction/name parsing/archive decoding; record
       precise unsupported packages rather than assuming compatibility.
-- [ ] Commit the repeatable build/probe interface and measured evidence.
+- [x] Commit the repeatable build/probe interface and
+      [measured evidence](../../deployment/cloudflare-python-validation.md).
 
 ## 2. Restore search, profiles, and MCP through the existing API
 

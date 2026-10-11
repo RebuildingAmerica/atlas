@@ -18,6 +18,13 @@ async def health():
     return {"status": "ok", "runtime": "python-durable-object"}
 
 
+@app.get("/native")
+async def native():
+    from native_probe import native_checks
+
+    return native_checks()
+
+
 @app.get("/database")
 async def database(request: Request):
     import asyncpg

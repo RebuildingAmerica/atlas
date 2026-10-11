@@ -204,7 +204,11 @@ const headers = {
   "CF-Access-Client-Id": access.client_id,
   "CF-Access-Client-Secret": access.client_secret,
 };
-for (const path of ["/health", "/database"]) {
+for (const path of [
+  "/health",
+  "/database",
+  ...(args.includes("--native") ? ["/native"] : []),
+]) {
   const response = await fetch("https://" + hostname + path, {
     headers,
     redirect: "manual",
@@ -224,6 +228,15 @@ for (const path of ["/health", "/database"]) {
         "; details retained privately.",
     );
   const result = JSON.parse(body);
+  if (
+    path === "/native" &&
+    (result.deflate64_decoded !== true ||
+      result.decoded_bytes !== 4017 ||
+      result.name_types?.["Sarah Stone"] !== "Person" ||
+      result.name_types?.["BANK OF AMERICA N A"] !== "Corporation" ||
+      result.name_types?.["Sarah Stone until fall 2024"] !== "Corporation")
+  )
+    throw Error("Native discovery compatibility failed.");
   if (
     path === "/database" &&
     (result.query !== 1 ||

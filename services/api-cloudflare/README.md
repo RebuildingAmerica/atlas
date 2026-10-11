@@ -52,6 +52,26 @@ evaluation hostname and does not change production routing.
 The full discovery graph requires native `inflate64` and `python-crfsuite`
 packages, which lack compatible prebuilt wheels in the evaluated indexes.
 `Build Cloudflare Python wheels` cross-compiles their existing versions on
-standard GitHub runners without deployment secrets. Successful compilation alone
-is not acceptance: deployed archive decoding and name parsing must match
-existing behavior before discovery moves. No extraction capability is disabled.
+standard GitHub runners without deployment secrets. The exact locked validation
+and parsing native packages also have build targets; XML and cryptographic
+libraries use pinned upstream static-library recipes with source hashes from
+`api/uv.lock`. See
+[hosted evidence](../../docs/deployment/cloudflare-python-validation.md).
+Successful compilation alone is not acceptance: deployed archive decoding and
+name parsing must match existing behavior before discovery moves. No extraction
+capability is disabled.
+
+To install the archive and name-parsing packages from a completed, reviewed
+repository wheel build, run the verified installer. It checks the workflow's
+source ancestry and each downloaded artifact hash; pure Python package hashes
+come from Atlas's existing API lock. Then add `--native` to the evaluation
+publisher to require the deployed discovery examples to pass.
+
+```sh
+python3 scripts/deploy/api-cloudflare-native-dependencies.py --run WHEEL_RUN_ID
+```
+
+The source checkout must include the wheel workflow's commit. An expired or
+missing artifact fails explicitly; run the repository wheel workflow again. This
+native check covers Deflate64 decoding and the existing person, bank, and
+annotated-name classification examples. Full discovery remains a separate gate.
