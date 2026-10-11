@@ -156,3 +156,58 @@ test("the JavaScript dispatcher binds the existing Python object without a Pytho
     rmSync(destination, { recursive: true, force: true });
   }
 });
+
+test("complete Python packages are immutable assets outside the Worker code modules", async () => {
+  const root = mkdtempSync(join(tmpdir(), "atlas-python-assets-"));
+  try {
+    const source = join(root, "source");
+    const vendor = join(root, "vendor");
+    mkdirSync(source);
+    mkdirSync(vendor);
+    writeFileSync(join(source, "entry.py"), "class Default: pass\n");
+    writeFileSync(join(vendor, "pyvenv.cfg"), "");
+    writeFileSync(join(vendor, "packages.zip"), "verified archive");
+    const output = await preparePythonOutput({
+      source,
+      vendor,
+      destination: root,
+      workerName: "atlas-python-eval-api",
+      accountId: "a".repeat(32),
+      workerEnv: {},
+      packagesAsset: true,
+    });
+    const config = output.workers.default.config;
+    assert.equal(config.env.PACKAGE_ASSETS.type, "assets");
+    assert.equal(config.assets.runWorkerFirst, true);
+    assert.equal(
+      config.manifest.modules["python_modules/packages.zip"],
+      undefined,
+    );
+    assert.equal(config.manifest.modules["package-identity.json"].type, "data");
+    const { readFileSync } = await import("node:fs");
+    const { createHash } = await import("node:crypto");
+    const expected = createHash("sha256")
+      .update("verified archive")
+      .digest("hex");
+    assert.equal(
+      JSON.parse(
+        readFileSync(
+          join(
+            root,
+            ".cloudflare/output/v0/workers/default/bundle/package-identity.json",
+          ),
+        ),
+      ).sha256,
+      expected,
+    );
+    assert.equal(
+      readFileSync(
+        join(root, ".cloudflare/output/v0/workers/default/assets/packages.zip"),
+        "utf8",
+      ),
+      "verified archive",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

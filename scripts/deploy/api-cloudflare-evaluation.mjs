@@ -146,6 +146,7 @@ else
     accountId,
     durableExport: "ApiRuntime",
     entrypoint: discovery ? "discovery_entry.py" : "entry.py",
+    packagesAsset: args.includes("--packages-asset"),
     workerEnv: {
       HYPERDRIVE: { type: "hyperdrive", id: hyperdriveId },
       API_RUNTIME: {

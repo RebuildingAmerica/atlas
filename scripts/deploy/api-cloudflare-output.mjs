@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
 import {
   cpSync,
+  existsSync,
+  readFileSync,
   lstatSync,
   mkdirSync,
   readdirSync,
@@ -18,6 +21,7 @@ export async function preparePythonOutput({
   workerEnv,
   durableExport,
   entrypoint = "entry.py",
+  packagesAsset = false,
 }) {
   for (const [name, binding] of Object.entries(workerEnv ?? {})) {
     if (
@@ -44,6 +48,13 @@ export async function preparePythonOutput({
   const copy = (directory, prefix, vendored) => {
     for (const item of readdirSync(directory, { withFileTypes: true })) {
       const path = join(directory, item.name);
+      if (
+        packagesAsset &&
+        vendored &&
+        prefix === "python_modules" &&
+        item.name === "packages.zip"
+      )
+        continue;
       if (lstatSync(path).isSymbolicLink())
         throw new Error("Python artifacts reject symbolic links.");
       if (
@@ -82,6 +93,23 @@ export async function preparePythonOutput({
     throw new Error(
       "A Python entrypoint and a complete vendored environment are required.",
     );
+  if (packagesAsset) {
+    const archive = join(vendor, "packages.zip");
+    if (!existsSync(archive))
+      throw new Error("The complete API archive is required.");
+    const assets = join(worker, "assets");
+    mkdirSync(assets, { recursive: true });
+    cpSync(archive, join(assets, "packages.zip"));
+    writeFileSync(
+      join(bundle, "package-identity.json"),
+      JSON.stringify({
+        sha256: createHash("sha256")
+          .update(readFileSync(archive))
+          .digest("hex"),
+      }),
+    );
+    modules["package-identity.json"] = { type: "data" };
+  }
   const config = {
     name: workerName,
     compatibilityDate: "2026-10-10",
@@ -93,7 +121,19 @@ export async function preparePythonOutput({
       headSamplingRate: 1,
       redactQueryString: true,
     },
-    env: workerEnv,
+    env: {
+      ...workerEnv,
+      ...(packagesAsset ? { PACKAGE_ASSETS: { type: "assets" } } : {}),
+    },
+    ...(packagesAsset
+      ? {
+          assets: {
+            runWorkerFirst: true,
+            notFoundHandling: "none",
+            htmlHandling: "none",
+          },
+        }
+      : {}),
     ...(durableExport
       ? {
           exports: {
