@@ -24,7 +24,25 @@ import {
   verifyWebManifest,
 } from "./web-release.mjs";
 
+import { cloudflareCommand } from "./cloudflare-cli.mjs";
+import { prepareCloudflareOutput } from "./web-cloudflare-output.mjs";
+
 const ROOT = resolve(import.meta.dirname, "../..");
+
+/** Confirm the protected URL actually serves this release before recording success. */
+export function assertCandidateDomain(
+  worker,
+  { workerName, hostname, zoneId },
+) {
+  if (
+    worker?.name !== workerName ||
+    !worker.references?.domains?.some(
+      (domain) => domain.hostname === hostname && domain.zone_id === zoneId,
+    )
+  )
+    throw new Error("Candidate domain readback failed.");
+}
+
 export function runtimeInput() {
   return process.env.ATLAS_WEB_RUNTIME_FILE
     ? readFileSync(process.env.ATLAS_WEB_RUNTIME_FILE, "utf8")
@@ -56,30 +74,6 @@ function tool(binary, args, options = {}) {
       `${binary} failed; provider output was suppressed to protect credentials.`,
     );
   return result.stdout?.trim() ?? "";
-}
-async function cf(path, method = "GET", body) {
-  const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${required("CLOUDFLARE_API_TOKEN")}`,
-      "Content-Type": "application/json",
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!response.ok)
-    throw new Error(
-      `Cloudflare ${method} ${path.split("?")[0]} returned HTTP ${response.status}.`,
-    );
-  const payload = await response.json();
-  if (!payload.success)
-    throw new Error(
-      "Cloudflare rejected the requested operation; credential-bearing details were suppressed.",
-    );
-  return payload.result;
-}
-function accountPath(path) {
-  return `/accounts/${encodeURIComponent(required("CLOUDFLARE_ACCOUNT_ID"))}${path}`;
 }
 
 export function loadWebRuntime(raw) {
@@ -171,9 +165,12 @@ export function candidateRuntime(runtime, target, architecture, sha, zoneName) {
 
 async function prepareCandidateRuntime(target, architecture, file) {
   const original = loadWebRuntime(required("ATLAS_WEB_RUNTIME_ENV_JSON"));
-  const zone = await cf(
-    `/zones/${encodeURIComponent(required("CLOUDFLARE_ZONE_ID"))}`,
-  );
+  const zone = cloudflareCommand([
+    "zones",
+    "get",
+    "--zone",
+    required("CLOUDFLARE_ZONE_ID"),
+  ]);
   const runtime = candidateRuntime(
     original,
     target,
@@ -216,7 +213,7 @@ export function assertCandidateBudget(evidence, architecture) {
 }
 
 async function ensureFreeAccount() {
-  const subscriptions = await cf(accountPath("/subscriptions"));
+  const subscriptions = cloudflareCommand(["accounts", "subscriptions", "get"]);
   if (!Array.isArray(subscriptions))
     throw new Error("Cloudflare subscription inventory is unavailable.");
   if (
@@ -232,10 +229,10 @@ async function ensureFreeAccount() {
 async function ensureHyperdrive(target, runtime) {
   const name = `atlas-auth-${target}`;
   const db = new URL(runtime.DATABASE_URL);
-  const configs = await cf(accountPath("/hyperdrive/configs"));
+  const configs = cloudflareCommand(["hyperdrive", "list"]);
   const existing = configs.find((item) => item.name === name);
   if (existing) {
-    const current = await cf(accountPath(`/hyperdrive/configs/${existing.id}`));
+    const current = cloudflareCommand(["hyperdrive", "get", existing.id]);
     if (current.caching?.disabled !== true)
       throw new Error(
         "Existing auth Hyperdrive must have query caching disabled.",
@@ -251,16 +248,18 @@ async function ensureHyperdrive(target, runtime) {
       );
     return existing.id;
   }
-  const created = await cf(accountPath("/hyperdrive/configs"), "POST", {
-    name,
-    caching: { disabled: true },
-    origin: {
-      scheme: "postgres",
-      host: db.hostname,
-      port: Number(db.port || 5432),
-      database: decodeURIComponent(db.pathname.slice(1)),
-      user: decodeURIComponent(db.username),
-      password: decodeURIComponent(db.password),
+  const created = cloudflareCommand(["hyperdrive", "create"], {
+    body: {
+      name,
+      caching: { disabled: true },
+      origin: {
+        scheme: "postgres",
+        host: db.hostname,
+        port: Number(db.port || 5432),
+        database: decodeURIComponent(db.pathname.slice(1)),
+        user: decodeURIComponent(db.username),
+        password: decodeURIComponent(db.password),
+      },
     },
   });
   if (created.caching?.disabled !== true || !created.id)
@@ -291,49 +290,75 @@ async function protectCandidate(hostname, name) {
   const tokenId = required("ATLAS_CF_ACCESS_SERVICE_TOKEN_ID");
   required("ATLAS_HOSTED_CF_ACCESS_CLIENT_ID");
   required("ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET");
-  const apps = await cf(accountPath("/access/apps"));
+  const apps = cloudflareCommand([
+    "zero-trust",
+    "access",
+    "applications",
+    "list",
+  ]);
   const existing = apps.find((item) => item.domain === hostname);
   const app =
     existing ??
-    (await cf(accountPath("/access/apps"), "POST", {
-      name,
-      type: "self_hosted",
-      domain: hostname,
-      session_duration: "24h",
-      policies: [
-        {
-          name: "Atlas hosted verification",
-          decision: "non_identity",
-          include: [{ service_token: { token_id: tokenId } }],
-        },
-      ],
-    }));
+    cloudflareCommand(["zero-trust", "access", "applications", "create"], {
+      body: {
+        name,
+        type: "self_hosted",
+        domain: hostname,
+        session_duration: "24h",
+        policies: [
+          {
+            name: "Atlas hosted verification",
+            decision: "non_identity",
+            include: [{ service_token: { token_id: tokenId } }],
+          },
+        ],
+      },
+    });
   if (!app.id || app.domain !== hostname)
     throw new Error("Access application protection was not confirmed.");
-  const policies = await cf(accountPath(`/access/apps/${app.id}/policies`));
+  const policies = cloudflareCommand([
+    "zero-trust",
+    "access",
+    "applications",
+    "get",
+    app.id,
+  ]).policies;
   assertAccessPolicy(app, policies, hostname, tokenId);
   return app.id;
 }
 
 async function exposeAtprotoMetadata(hostname, name) {
   const domain = hostname + "/api/atproto/oauth/client-metadata.json";
-  const apps = await cf(accountPath("/access/apps"));
+  const apps = cloudflareCommand([
+    "zero-trust",
+    "access",
+    "applications",
+    "list",
+  ]);
   const existing = apps.find((item) => item.domain === domain);
   const app =
     existing ??
-    (await cf(accountPath("/access/apps"), "POST", {
-      name: name + " public ATProto metadata",
-      type: "self_hosted",
-      domain,
-      policies: [
-        {
-          name: "Public OAuth client metadata",
-          decision: "bypass",
-          include: [{ everyone: {} }],
-        },
-      ],
-    }));
-  const policies = await cf(accountPath(`/access/apps/${app.id}/policies`));
+    cloudflareCommand(["zero-trust", "access", "applications", "create"], {
+      body: {
+        name: name + " public ATProto metadata",
+        type: "self_hosted",
+        domain,
+        policies: [
+          {
+            name: "Public OAuth client metadata",
+            decision: "bypass",
+            include: [{ everyone: {} }],
+          },
+        ],
+      },
+    });
+  const policies = cloudflareCommand([
+    "zero-trust",
+    "access",
+    "applications",
+    "get",
+    app.id,
+  ]).policies;
   if (
     app.domain !== domain ||
     app.type !== "self_hosted" ||
@@ -352,10 +377,15 @@ async function bootstrapAccess(target) {
   let token;
   if (existsSync(file)) token = JSON.parse(readFileSync(file, "utf8"));
   else {
-    token = await cf(accountPath("/access/service_tokens"), "POST", {
-      name: `Atlas ${target} hosted verification`,
-      duration: "8760h",
-    });
+    token = cloudflareCommand(
+      ["zero-trust", "access", "service-tokens", "create"],
+      {
+        body: {
+          name: `Atlas ${target} hosted verification`,
+          duration: "8760h",
+        },
+      },
+    );
     if (!token.id || !token.client_id || !token.client_secret)
       throw new Error("Access token creation returned incomplete credentials.");
     writeFileSync(file, JSON.stringify(token), { mode: 0o600 });
@@ -419,7 +449,7 @@ async function publish(directory, target, architecture) {
     if ((manifest.publicEnv[key] ?? "") !== (runtime[key] ?? ""))
       throw new Error(`Candidate build-time ${key} differs from runtime.`);
   const zone = required("CLOUDFLARE_ZONE_ID");
-  const zoneInfo = await cf(`/zones/${encodeURIComponent(zone)}`);
+  const zoneInfo = cloudflareCommand(["zones", "get", "--zone", zone]);
   const canonical = new URL(runtime.ATLAS_WEB_CANONICAL_URL ?? "");
   const hostname = `${manifest.workerName}.${canonical.hostname}`;
   if (
@@ -434,38 +464,14 @@ async function publish(directory, target, architecture) {
   await exposeAtprotoMetadata(hostname, manifest.workerName);
   const temp = mkdtempSync(join(tmpdir(), "atlas-web-release-"));
   try {
-    const config =
-      architecture === "workers"
-        ? JSON.parse(
-            readFileSync(join(directory, "artifact/wrangler.json"), "utf8"),
-          )
-        : JSON.parse(
-            readFileSync(
-              join(ROOT, "services/web-edge/wrangler.jsonc"),
-              "utf8",
-            ),
-          );
-    delete config.env;
-    delete config.routes;
-    config.name = manifest.workerName;
-    config.account_id = required("CLOUDFLARE_ACCOUNT_ID");
-    config.workers_dev = false;
-    config.preview_urls = false;
-    config.assets = {
-      directory: join(directory, "assets"),
-      binding: "ASSETS",
-      html_handling: "none",
-      not_found_handling: "none",
-      run_worker_first: false,
-    };
-    config.vars = Object.fromEntries(
+    const workerEnv = Object.fromEntries(
       PUBLIC_KEYS.filter((key) => runtime[key] !== undefined).map((key) => [
         key,
-        runtime[key],
+        { type: "text", value: runtime[key] },
       ]),
     );
-    config.vars.ATLAS_AUTH_MIGRATIONS = "external";
-    config.vars.ATLAS_RELEASE_SHA = manifest.releaseSha;
+    workerEnv.ATLAS_AUTH_MIGRATIONS = { type: "text", value: "external" };
+    workerEnv.ATLAS_RELEASE_SHA = { type: "text", value: manifest.releaseSha };
     const secrets = Object.fromEntries(
       Object.entries(runtime).filter(
         ([key]) =>
@@ -478,12 +484,10 @@ async function publish(directory, target, architecture) {
       ),
     );
     if (architecture === "workers") {
-      config.main = join(directory, "artifact/index.js");
-      config.base_dir = join(directory, "artifact");
-      config.hyperdrive = [
-        { binding: "HYPERDRIVE", id: await ensureHyperdrive(target, runtime) },
-      ];
-      config.no_bundle = true;
+      workerEnv.HYPERDRIVE = {
+        type: "hyperdrive",
+        id: await ensureHyperdrive(target, runtime),
+      };
     } else {
       const journalPath = join(directory, "private-journal.json");
       const journal = existsSync(journalPath)
@@ -625,46 +629,61 @@ async function publish(directory, target, architecture) {
       if (!tagged?.url || deployed.status.latestReadyRevisionName !== revision)
         throw new Error("Pinned Cloud Run revision was not confirmed.");
       Object.assign(manifest, { originUrl: tagged.url, revision, imageDigest });
-      config.main = join(ROOT, "services/web-edge/worker.ts");
-      config.vars.ATLAS_WEB_ORIGIN_URL = tagged.url;
+      workerEnv.ATLAS_WEB_ORIGIN_URL = { type: "text", value: tagged.url };
       for (const key of Object.keys(secrets)) delete secrets[key];
       secrets.ATLAS_WEB_ORIGIN_SECRET = originSecret;
     }
     verifyWebManifest(manifest, observed);
-    config.secrets = { required: Object.keys(secrets) };
-    const configFile = join(temp, "wrangler.json");
+    for (const key of Object.keys(secrets)) workerEnv[key] = { type: "secret" };
+    await prepareCloudflareOutput({
+      directory,
+      architecture,
+      outputRoot: temp,
+      accountId: required("CLOUDFLARE_ACCOUNT_ID"),
+      workerName: manifest.workerName,
+      workerEnv,
+      hostname,
+    });
     const secretFile = join(temp, "secrets.json");
-    writeFileSync(configFile, JSON.stringify(config));
     writeFileSync(secretFile, JSON.stringify(secrets), { mode: 0o600 });
-    tool("pnpm", [
-      "exec",
-      "wrangler",
-      "deploy",
-      "--config",
-      configFile,
-      "--secrets-file",
-      secretFile,
-      "--tag",
-      manifest.releaseSha,
-      "--message",
-      `Atlas ${manifest.architecture} candidate ${manifest.releaseSha}`,
-      "--no-autoconfig",
-    ]);
-    // Read back the exact deployed version before exposing its protected hostname.
-    const deployments = await cf(
-      accountPath(`/workers/scripts/${manifest.workerName}/deployments`),
+    tool(
+      process.execPath,
+      [
+        join(ROOT, "node_modules/cf/bin/cf"),
+        "deploy",
+        "--prebuilt",
+        "--secrets-file",
+        secretFile,
+        "--tag",
+        manifest.releaseSha,
+        "--message",
+        `Atlas ${manifest.architecture} candidate ${manifest.releaseSha}`,
+        ...(architecture === "workers" ? ["--mode", "production"] : []),
+        ...(!process.env.CLOUDFLARE_API_TOKEN
+          ? ["--profile", required("ATLAS_CF_PROFILE")]
+          : []),
+      ],
+      { cwd: temp },
     );
+    // Read back the exact deployed version after cf applies its protected domain.
+    const deployments = cloudflareCommand([
+      "workers",
+      "deployments",
+      "list",
+      "--worker",
+      manifest.workerName,
+    ]);
     const versions = deployments.deployments?.[0]?.versions;
     if (versions?.length !== 1 || versions[0].percentage !== 100)
       throw new Error("Worker deployment version readback failed.");
-    const domain = await cf(accountPath("/workers/domains"), "PUT", {
-      hostname,
-      service: manifest.workerName,
-      environment: "production",
-      zone_id: zone,
-    });
-    if (domain.service !== manifest.workerName || domain.hostname !== hostname)
-      throw new Error("Candidate domain readback failed.");
+    assertCandidateDomain(
+      cloudflareCommand(["workers", "get", manifest.workerName]),
+      {
+        workerName: manifest.workerName,
+        hostname,
+        zoneId: required("CLOUDFLARE_ZONE_ID"),
+      },
+    );
     const deployment = {
       ...manifest,
       workerVersionId: versions[0].version_id,

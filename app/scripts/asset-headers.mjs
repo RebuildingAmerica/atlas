@@ -52,7 +52,7 @@ if (
   writeAssetHeaders(
     resolve(
       process.env.ATLAS_WEB_RUNTIME === "workers"
-        ? "dist/client"
+        ? ".cloudflare/output/v0/workers/default/assets"
         : ".output/public",
     ),
   );

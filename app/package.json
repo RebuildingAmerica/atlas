@@ -46,7 +46,8 @@
     "screenshots:local": "tsx scripts/screenshots/run.ts --mode local",
     "screenshots:session": "tsx scripts/screenshots/run.ts --mode session",
     "test:acceptance:waitlist": "pnpm run build && pnpm --dir ../admin run prebuild && ATLAS_PAID_ACCESS_MODE=waitlist ATLAS_E2E_STRIPE=0 tsx scripts/e2e/stripe-playwright.ts tests/acceptance/domains/waitlist",
-    "postbuild": "node scripts/asset-headers.mjs"
+    "postbuild": "node scripts/asset-headers.mjs",
+    "build:workers": "pnpm run prebuild && ATLAS_WEB_RUNTIME=workers cf build && ATLAS_WEB_RUNTIME=workers pnpm run postbuild"
   },
   "keywords": [],
   "author": "",
@@ -95,7 +96,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",
-    "@cloudflare/vite-plugin": "^1.63.1",
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-91c870c02",
     "@playwright/test": "catalog:",
     "@rebuildingamerica/eslint-config": "workspace:*",
     "@rebuildingamerica/tsconfig": "workspace:*",
@@ -125,6 +126,7 @@
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "cf": "1.0.0-beta.14"
   }
 }

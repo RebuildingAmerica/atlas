@@ -1,0 +1,54 @@
+import { readBuildOutput } from "@cloudflare/build-output-utils";
+import {
+  cpSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { copyWebArtifact } from "./web-release.mjs";
+
+/** Rebind verified bundles without rebuilding or introducing deployment credentials. */
+export async function prepareCloudflareOutput({
+  directory,
+  architecture,
+  outputRoot,
+  accountId,
+  workerName,
+  workerEnv,
+  hostname,
+}) {
+  const output = join(outputRoot, ".cloudflare/output/v0");
+  mkdirSync(output, { recursive: true });
+  copyWebArtifact(
+    join(
+      directory,
+      architecture === "workers" ? "artifact" : "artifact/cf-edge",
+    ),
+    output,
+  );
+  const root = JSON.parse(readFileSync(join(output, "config.json"), "utf8"));
+  root.accountId = accountId;
+  writeFileSync(join(output, "config.json"), JSON.stringify(root));
+  const workerDirectory = join(output, "workers/default");
+  const workerFile = join(workerDirectory, "worker.config.json");
+  const worker = JSON.parse(readFileSync(workerFile, "utf8"));
+  worker.name = workerName;
+  worker.workersDev = false;
+  worker.previewUrls = false;
+  worker.domains = [hostname];
+  worker.triggers = [];
+  worker.assets = {
+    htmlHandling: "none",
+    notFoundHandling: "none",
+    runWorkerFirst: false,
+  };
+  worker.env = { ...workerEnv, ASSETS: { type: "assets" } };
+  writeFileSync(workerFile, JSON.stringify(worker));
+  const assets = join(workerDirectory, "assets");
+  rmSync(assets, { recursive: true, force: true });
+  cpSync(join(directory, "assets"), assets, { recursive: true });
+  // cf's own parser rejects malformed, nonportable or incomplete Build Output.
+  return readBuildOutput(outputRoot);
+}

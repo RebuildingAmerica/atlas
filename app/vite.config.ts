@@ -129,6 +129,7 @@ export default defineConfig(async ({ mode }) => {
           },
           (await import("@cloudflare/vite-plugin")).cloudflare({
             viteEnvironment: { name: "ssr" },
+            types: { generate: false },
           }),
         ]
       : [

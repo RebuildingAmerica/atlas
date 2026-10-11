@@ -6,6 +6,7 @@ packages:
   - libs/*
   - mintlify
   - packages/*
+  - services/web-edge
 
 catalog:
   "@axe-core/playwright": "^4.13.0"

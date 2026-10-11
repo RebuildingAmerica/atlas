@@ -75,9 +75,11 @@
   },
   "devDependencies": {
     "@clack/prompts": "catalog:",
+    "@cloudflare/build-output-utils": "0.9.0",
     "@cloudflare/workers-types": "^5.20261010.1",
     "@rebuildingamerica/eslint-config": "workspace:*",
     "@rebuildingamerica/tsconfig": "workspace:*",
+    "cf": "1.0.0-beta.14",
     "eslint": "catalog:",
     "picocolors": "catalog:",
     "portless": "catalog:",

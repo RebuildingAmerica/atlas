@@ -17,6 +17,8 @@ import {
   copyWebArtifact,
 } from "./web-release.mjs";
 
+import { cloudflareCommand } from "./cloudflare-cli.mjs";
+
 const ROOT = resolve(import.meta.dirname, "../..");
 function run(binary, args, options = {}) {
   const result = spawnSync(binary, args, {
@@ -41,7 +43,12 @@ function required(name) {
 }
 
 /** Read-only provider inventory. Never changes the operator's active account/project. */
-export async function doctor({ target, fetcher = fetch, tool = run }) {
+export async function doctor({
+  target,
+  fetcher = fetch,
+  tool = run,
+  cloudflare = cloudflareCommand,
+}) {
   const checks = [];
   async function check(name, operation) {
     try {
@@ -53,19 +60,10 @@ export async function doctor({ target, fetcher = fetch, tool = run }) {
   }
   await check("cloudflare", async () => {
     const account = required("CLOUDFLARE_ACCOUNT_ID");
-    const token = required("CLOUDFLARE_API_TOKEN");
-    const response = await fetcher(
-      `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/subscriptions`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!response.ok)
-      throw new Error(
-        `Cloudflare account subscriptions returned HTTP ${response.status}.`,
-      );
-    const data = await response.json();
-    if (!data.success || !Array.isArray(data.result))
+    const subscriptions = cloudflare(["accounts", "subscriptions", "get"]);
+    if (!Array.isArray(subscriptions))
       throw new Error("Cloudflare subscription inventory is unavailable.");
-    const workers = data.result.filter((item) =>
+    const workers = subscriptions.filter((item) =>
       /workers/i.test(item.rate_plan?.id ?? ""),
     );
     if (workers.some((item) => !/free/i.test(item.rate_plan.id)))
@@ -127,28 +125,48 @@ function prepare(args, target) {
   const sourceDirty = Boolean(run("git", ["status", "--porcelain"]));
   const directory = join(ROOT, ".atlas/web", target, releaseSha, architecture);
   mkdirSync(directory, { recursive: true });
-  run("pnpm", ["--filter", "@rebuildingamerica/atlas-app", "run", "build"], {
-    env: {
-      ...process.env,
-      ATLAS_WEB_RUNTIME: architecture === "workers" ? "workers" : "node",
-      NITRO_PRESET: "node-server",
-      ATLAS_RELEASE_SHA: releaseSha,
+  run(
+    "pnpm",
+    [
+      "--filter",
+      "@rebuildingamerica/atlas-app",
+      "run",
+      architecture === "workers" ? "build:workers" : "build",
+    ],
+    {
+      env: {
+        ...process.env,
+        ATLAS_WEB_RUNTIME: architecture === "workers" ? "workers" : "node",
+        NITRO_PRESET: "node-server",
+        ATLAS_RELEASE_SHA: releaseSha,
+      },
+      stdio: "inherit",
     },
-    stdio: "inherit",
-  });
+  );
   const source = join(
     ROOT,
     "app",
-    architecture === "workers" ? "dist/server" : ".output",
+    architecture === "workers" ? ".cloudflare/output/v0" : ".output",
   );
   rmSync(join(directory, "artifact"), { recursive: true, force: true });
   rmSync(join(directory, "assets"), { recursive: true, force: true });
   copyWebArtifact(source, join(directory, "artifact"));
   const assets =
     architecture === "workers"
-      ? join(ROOT, "app/dist/client")
+      ? join(source, "workers/default/assets")
       : join(source, "public");
   cpSync(assets, join(directory, "assets"), { recursive: true });
+  if (architecture === "hybrid") {
+    run(
+      "pnpm",
+      ["--filter", "@rebuildingamerica/atlas-web-edge", "exec", "cf", "build"],
+      { stdio: "inherit" },
+    );
+    copyWebArtifact(
+      join(ROOT, "services/web-edge/.cloudflare/output/v0"),
+      join(directory, "artifact/cf-edge"),
+    );
+  }
   const publicEnv = Object.fromEntries(
     [
       "ATLAS_MANAGED",

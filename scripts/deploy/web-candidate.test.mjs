@@ -5,6 +5,7 @@ import {
   assertCandidateBudget,
   candidateRuntime,
   assertAccessPolicy,
+  assertCandidateDomain,
 } from "./web-candidate.mjs";
 import { doctor } from "./web-hosting.mjs";
 
@@ -19,6 +20,44 @@ const runtime = () => ({
   ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
     "https://atlas.example.com/api/auth/internal/api-key",
+});
+
+test("publication requires the candidate domain on the intended Worker and zone", () => {
+  const expected = {
+    workerName: "atlas-candidate",
+    hostname: "candidate.atlas.example.com",
+    zoneId: "atlas-zone",
+  };
+  const worker = {
+    name: expected.workerName,
+    references: {
+      domains: [{ hostname: expected.hostname, zone_id: expected.zoneId }],
+    },
+  };
+  assert.doesNotThrow(() => assertCandidateDomain(worker, expected));
+  for (const observed of [
+    {},
+    { ...worker, name: "another-worker" },
+    { ...worker, references: { domains: [] } },
+    {
+      ...worker,
+      references: {
+        domains: [
+          { hostname: "another.example.com", zone_id: expected.zoneId },
+        ],
+      },
+    },
+    {
+      ...worker,
+      references: {
+        domains: [{ hostname: expected.hostname, zone_id: "another-zone" }],
+      },
+    },
+  ])
+    assert.throws(
+      () => assertCandidateDomain(observed, expected),
+      /domain readback/,
+    );
 });
 
 test("accepts the existing canonical runtime and rejects provider credentials or missing identity secrets", () => {

@@ -4,10 +4,43 @@
 
 This work protects the experience of searching Atlas, reading source-linked
 profiles, signing in, and using paid workspaces while replacing the fixed Vercel
-hosting fee. Both hosting candidates are implemented for evaluation. **Vercel
-remains the active host. Neither candidate is approved for production.** There
-is no automatic paid Cloudflare fallback and no capability may be removed to
-meet a limit.
+hosting fee. Both hosting candidates are implemented for evaluation using `cf`.
+**Vercel remains the active host. Neither candidate is approved for
+production.** There is no automatic paid Cloudflare fallback and no capability
+may be removed to meet a limit.
+
+## Required Cloudflare CLI
+
+The migration uses the new `cf` CLI, pinned to `1.0.0-beta.14` in the
+repository. Account inspection, Hyperdrive, Access, builds, type generation and
+candidate publication all use `cf`. Do not substitute direct Wrangler commands
+or a raw Cloudflare HTTP client. This keeps the tested deployment path
+consistent so profiles, private sessions and rollback artifacts retain the same
+behavior.
+
+Authenticate from the migration checkout:
+
+```sh
+pnpm exec cf auth create atlas
+pnpm exec cf auth activate atlas
+pnpm exec cf auth whoami
+```
+
+Approve the browser request within five minutes. `cf` keeps its own credentials;
+a Wrangler login does not authenticate `cf`. Keep the Atlas profile separate
+from other organizations. Local management commands require
+`ATLAS_CF_PROFILE=atlas` and the verified `CLOUDFLARE_ACCOUNT_ID`; CI requires
+the scoped `CLOUDFLARE_API_TOKEN`. Neither credential goes into build output or
+manifests.
+
+Both candidates use `cloudflare.config.ts` and `cf` Build Output. The native
+application uses the matching Cloudflare Vite plugin beta. The small proxy
+Worker uses `cf`'s supported internal bundler with `wrangler.config.ts`;
+Wrangler is an internal compiler dependency, never the migration's CLI
+interface. `cf deploy --prebuilt` consumes the verified bundle without
+rebuilding and receives runtime secret values only through a temporary mode-600
+file. Mutation bodies containing database credentials also use mode-600 files,
+never command arguments. Those files are removed even when the command fails.
 
 ## Implemented candidates
 
@@ -44,7 +77,8 @@ untrusted forwarding headers.
 
 ## Current evidence and blockers
 
-Local verification on 2026-10-10 established:
+Local verification on 2026-10-10 established (the `cf` conversion also passed
+both prebuilt deployment dry runs):
 
 - Node, Vercel, Workers and both Linux container builds succeed; the minified
   native upload is about 2.3 MiB gzip, below the documented 3 MiB Free bundle
@@ -60,28 +94,50 @@ Local verification on 2026-10-10 established:
 - A real Chromium test verifies that Access credentials survive Atlas redirects
   and never reach an external origin.
 
-Provider access prevented collecting the required baseline or deploying
-candidates:
+Read-only provider inventory on 2026-10-10 established:
 
-- The saved Vercel credential returned HTTP 403. Domain/environment/integration
-  and shared-subscription inventories, traffic and rollback snapshots are still
-  missing.
+- Vercel authentication works. The Rebuilding America Project Pro team contains
+  `atlas` and `rap-website`; the latter must be accounted for before
+  cancellation. Atlas's production and staging domains, environment key names
+  and current production deployment were captured locally under ignored
+  `.atlas/` files, without environment values. Production remains on Vercel. The
+  metrics API reports 33,502 Atlas requests from September 26 through October 9,
+  across environments. Billing usage for the same window reports monetary units;
+  it cannot substitute for a complete request, response, latency and workload
+  mix baseline.
 - The Atlas Google Cloud account (`willie@rebuildingus.org`, `rap-atlas-prod`)
-  requires reauthentication. The active CLI project belongs to another project;
-  deployment commands must always receive the explicit Atlas project and
-  account.
-- The available Cloudflare OAuth session belongs to LVBT, not Atlas. An
-  authorized Atlas account/zone token and account usage are required. Do not
-  deploy to LVBT.
+  is authenticated again as of 2026-10-10. The default CLI project belongs to
+  another project; deployment commands must always receive the explicit Atlas
+  project and account.
+- The new `cf` profile `atlas` is authenticated to the Rebuilding America
+  account. `rebuildingus.org` is an active Free zone. Atlas's CNAME still
+  targets Vercel; its mail and verification records must also be preserved. The
+  account contains the unrelated `curfew-sync-staging` Worker. Hyperdrive has no
+  configurations; a SQL API query returned zero Hyperdrive queries over the same
+  14-day window. The account-wide billing usage endpoint returns HTTP 403 for
+  this OAuth profile. Workers account usage and scoped CI credentials are still
+  required; authentication does not establish access to billing usage.
+- Four Google Cloud projects share Atlas's billing account. Their usage must be
+  included when determining remaining free allowances. The existing `atlas-web`
+  Cloud Run service predates this migration; the publisher uses separate target
+  services.
+
+The required request/response workload baseline, shared account cost/quota
+measurements and deployed acceptance remain release blockers. Provider login
+alone does not satisfy those gates.
+
+Documentation retrieval has a separate limitation:
+
 - Context7 documentation retrieval reached its monthly quota. Restore it with
   `npx ctx7@latest login` or `CONTEXT7_API_KEY`. Official Cloudflare
   documentation was used for this implementation.
 
-No traffic, operating-cost estimate, architecture selection, observation window,
-production cutover, rollback readiness or subscription cancellation is claimed.
+No complete traffic baseline, operating-cost estimate, architecture selection,
+observation window, production cutover, rollback readiness or subscription
+cancellation is claimed.
 
 The final app suite passed 4,167 tests with 100% statement, branch, function and
-line coverage. All 22 repository lint/type-check tasks, 117 deployment tests and
+line coverage. All 22 repository lint/type-check tasks, 122 deployment tests and
 159 bootstrap tests passed without changing coverage thresholds. These are local
 checks; no remote CI run or hosted acceptance has been completed for this
 branch.
@@ -113,8 +169,8 @@ It is an additive release job; review future schema changes for compatibility
 with both the current and rollback releases before changing that version.
 
 Provider inputs are `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ZONE_ID`,
-`CLOUDFLARE_API_TOKEN`, `GCP_PROJECT_ID`, `GCP_REGION`, optional
-`ATLAS_GCP_ACCOUNT`, `VERCEL_ORG_ID`, `VERCEL_TOKEN`, and
+`CLOUDFLARE_API_TOKEN` (CI) or `ATLAS_CF_PROFILE` (local), `GCP_PROJECT_ID`,
+`GCP_REGION`, optional `ATLAS_GCP_ACCOUNT`, `VERCEL_ORG_ID`, `VERCEL_TOKEN`, and
 `ATLAS_WEB_EVIDENCE_FILE`. Never place tokens in Git, release manifests, build
 arguments, logs or image layers.
 

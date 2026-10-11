@@ -1,23 +1,27 @@
-# ============================================
-# Bootstrap State
-# ============================================
-.atlas/
-.superpowers/
-
-# ============================================
-# Environment & Configuration
-# ============================================
+# Secrets and local configuration
 .env
-.env.local
 .env*.local
 .env.staging
 .env.production
-.env.production.local
-.env.test.local
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+gha-creds-*.json
 
-# ============================================
-# Python
-# ============================================
+# Dependencies, builds, and tool state
+node_modules/
+dist/
+.vite/
+.cache/
+.turbo/
+.vercel/
+.wrangler/
+.cloudflare/
+.atlas/
+.superpowers/
+.worktrees/
+
+# Python caches and packages
 __pycache__/
 .hypothesis/
 *.py[cod]
@@ -27,108 +31,54 @@ __pycache__/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-.pyre/
 .ruff_cache/
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-*.cover
 *.egg-info/
 *.egg
 
-# ============================================
-# Node / Frontend
-# ============================================
-node_modules/
-pnpm-debug.log
-dist/
-.vite/
-.cache/
-.next/
-out/
-.turbo/
+# Test output and coverage
+.coverage
+.coverage.*
+coverage/
+coverage.xml
+htmlcov/
+*.cover
+.playwright-mcp/
+blob-report/
+playwright-report/
+test-results/
+*.cpuprofile
+# Keep screenshot harness source visible.
+/screenshots/
+/tmp/
 
-# ============================================
-# IDE & Editors
-# ============================================
-.vscode/
-.idea/
-.project
-.pydevproject
-.settings/
-*.sublime-workspace
-*.sublime-project
-.vim/
-.vimrc
-tags
-
-# ============================================
-# OS
-# ============================================
-.DS_Store
-Thumbs.db
-*.log
-*.swp
-*.swo
-*~
-.AppleDouble
-.LSOverride
-._*
-
-# ============================================
-# Database
-# ============================================
+# Local databases and datasets
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
-atlas.db
 data/
-# Bundled package data (gazetteer centroids) must ship with the API package.
+# Bundled gazetteer data ships with the API package.
 !api/atlas/domains/catalog/geo/data/
 !api/atlas/domains/catalog/geo/data/**
 
-# ============================================
-# Testing & Coverage
-# ============================================
-.playwright-mcp/
-blob-report/
-playwright-report/
-# Generated screenshot audit output. Anchored so it does not swallow the
-# harness source in app/tests/screenshots and app/scripts/screenshots.
-/screenshots/
-/tmp/
-test-results/
-
-# ============================================
-# Docker
-# ============================================
+# Local Docker overrides
 .docker/
 docker-compose.override.yml
 
-# ============================================
-# Deployment
-# ============================================
-.vercel
-.wrangler/
-.dev.vars
-.dev.vars.*
-!.dev.vars.example
-app/.output/
-app/.nitro/
-*.cpuprofile
-gha-creds-*.json
-
-# ============================================
-# Misc
-# ============================================
+# Editors, operating systems, logs, and archives
+.vscode/
+.idea/
+.vim/
+tags
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+._*
+*.log
+*.swp
+*.swo
+*~
 *.tar.gz
 *.zip
-
-# ============================================
-# Git worktrees
-# ============================================
-.worktrees/
-coverage/
