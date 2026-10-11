@@ -61,6 +61,29 @@ Successful compilation alone is not acceptance: deployed archive decoding and
 name parsing must match existing behavior before discovery moves. No extraction
 capability is disabled.
 
+The complete API build uses the same lockfile and native build artifacts:
+
+```sh
+python3 scripts/deploy/api-cloudflare-native-dependencies.py --run WHEEL_RUN_ID --full-api
+```
+
+This also builds and includes the existing MCP profile widgets. Deploy with
+`--vendor .atlas/python-api-dependencies --packages-asset` to keep the immutable
+pure-package archive outside the Python code upload. Its SHA-256 is verified at
+runtime; native libraries stay in the package filesystem.
+
+For protected actual API routes, add `--api-settings-file` pointing to the
+private JSON output of `gcloud run services describe atlas-api --format=json`
+with the explicit original account, project and region. This is a read-only
+recovery operation. The publisher verifies production identity and database
+against the web runtime, then passes settings using cf's private secrets-file
+interface. Settings never enter the build artifact or manifest. `/imports`
+constructs the configured API; `/atlas/*` exposes its existing routes under the
+protected evaluation prefix. HTTP requests do not run migrations or start
+process polling; each request owns its connections and MCP manager through
+response completion. This still does not qualify a production release or prove
+durable discovery execution.
+
 To install the archive and name-parsing packages from a completed, reviewed
 repository wheel build, run the verified installer. It checks the workflow's
 source ancestry and each downloaded artifact hash; pure Python package hashes
