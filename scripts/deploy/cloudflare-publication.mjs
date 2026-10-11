@@ -339,9 +339,13 @@ export async function retainedPublicationRuntime(env, { collect } = {}) {
     return loadWebRuntime(env.ATLAS_WEB_RUNTIME_ENV_JSON);
   const { collectWebRuntime } = await import("./web-runtime-sync.mjs");
   const keys = [
+    "ATLAS_PUBLIC_URL",
     "DATABASE_URL",
     "ATLAS_AUTH_INTERNAL_SECRET",
     "ATLAS_AUTH_CALLBACK_SECRET",
+    "ATLAS_AUTH_JWT_AUDIENCES",
+    "ATLAS_AUTH_MEMBERSHIP_URL",
+    "ATLAS_OPERATOR_ALLOWED_EMAILS",
     "ATLAS_EDGE_ORIGIN_SECRET",
     "ATLAS_ADMIN_PUBLIC_URL",
     "ATLAS_EMAIL_RESEND_API_KEY",
