@@ -19,6 +19,13 @@ admin token has only Workers Scripts Edit and Workers Routes Edit. It cannot
 satisfy the general publisher's prerequisite reads. Missing permission is a
 release blocker, not permission to widen a token or skip verification.
 
+Use an account-owned token for the publisher. Doctor reports only its format
+category and a closed set of CLI failure categories, without token material or
+raw provider errors. An invalid scannable format can identify an incomplete CI
+save; authentication, permission, process and JSON errors require different
+repairs. This keeps recovery actionable while protecting customer identities and
+deployment credentials.
+
 ## Required retained configuration
 
 The read-only `doctor` operation reports missing settings and provider access

@@ -5,6 +5,38 @@ import { join, resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
+/** Report only token format, so failed CI saves can be diagnosed without disclosure. */
+export function cloudflareCredentialKind(token) {
+  if (!token?.trim()) return "missing";
+  if (/^cf(?:at|ut)_/.test(token)) {
+    if (!/^cf(?:at|ut)_[A-Za-z0-9_-]{48}$/.test(token))
+      return "invalid-scannable";
+    return token.startsWith("cfat_") ? "account-scannable" : "user-scannable";
+  }
+  return "legacy";
+}
+
+/** Expose a closed set of diagnostic categories, never arbitrary provider messages. */
+export class CloudflareCommandError extends Error {
+  constructor(command, failure) {
+    super(
+      `cf ${command.slice(0, 2).join(" ")} failed (${failure}); provider output suppressed.`,
+    );
+    this.failure = failure;
+  }
+}
+
+function failureCategory(result) {
+  if (result.error?.code === "ENOENT") return "executable-not-found";
+  if (result.error) return "process-error";
+  const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}`;
+  if (/(?:status(?:\s+code|Code)?[\s":=]+|HTTP\s+)401\b/i.test(output))
+    return "authentication";
+  if (/(?:status(?:\s+code|Code)?[\s":=]+|HTTP\s+)403\b/i.test(output))
+    return "permission-denied";
+  return "nonzero-exit";
+}
+
 /** Keep Atlas account selection explicit and credentials out of argv and errors. */
 export function cloudflareCommand(
   command,
@@ -32,15 +64,11 @@ export function cloudflareCommand(
       maxBuffer: 8 * 1024 * 1024,
     });
     if (result.error || result.status !== 0)
-      throw new Error(
-        `cf ${command.slice(0, 3).join(" ")} failed; provider output was suppressed to protect credentials.`,
-      );
+      throw new CloudflareCommandError(command, failureCategory(result));
     try {
       return JSON.parse(result.stdout);
     } catch {
-      throw new Error(
-        "cf returned an invalid JSON result; provider output was suppressed.",
-      );
+      throw new CloudflareCommandError(command, "invalid-json");
     }
   } finally {
     if (temp) rmSync(temp, { recursive: true, force: true });
