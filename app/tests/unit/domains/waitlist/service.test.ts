@@ -280,7 +280,11 @@ describe("waitlist server contracts", () => {
       }),
     ).rejects.toThrow("unavailable");
     await platformFunctions.actOnWaitlistRequest({
-      data: { id: request.id, action: "retry", deliveryId: required(detail.deliveries[0]).id },
+      data: {
+        id: request.id,
+        action: "retry",
+        deliveryId: required(detail.deliveries.find((delivery) => delivery.kind === "invite")).id,
+      },
     });
     await platformFunctions.actOnWaitlistRequest({ data: { id: request.id, action: "revoke" } });
     expect(await store.isAdmitted(request.email, request.product)).toBe(false);
