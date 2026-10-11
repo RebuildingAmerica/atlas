@@ -54,9 +54,9 @@ class DiscoveryJobCRUDLifecycle:
             target, which are reserved for seeded/direct/evidence work.
 
         checkpointed : bool, optional
-            Opt into the resumable search consumer. Legacy consumers exclude
-            jobs enrolled in a durable continuation; this lane accepts search
-            jobs, including enrolled ones, without changing public job modes.
+            Opt into the resumable consumer. Legacy consumers exclude jobs
+            enrolled in a durable continuation; this lane accepts both existing
+            modes, including enrolled jobs, without changing public job modes.
 
         Returns
         -------
@@ -76,7 +76,7 @@ class DiscoveryJobCRUDLifecycle:
             )
 
         continuation_clause = (
-            "AND j.execution_mode = 'search'"
+            ""
             if checkpointed
             else "AND NOT EXISTS (SELECT 1 FROM discovery_web_checkpoints c "
             "WHERE c.job_id = j.id AND c.unit_key = 'continuation')"

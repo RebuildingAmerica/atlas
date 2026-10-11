@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-from atlas_shared import RawEntry
 
 from atlas.domains.discovery.models import DiscoveryJobCRUD
 from atlas.models import DiscoveryRunCRUD
@@ -43,25 +42,31 @@ async def test_fresh_turns_finish_with_same_source_hold_summary_and_once_only_co
     fetch = AsyncMock(
         return_value=[
             FetchedSource(
-                "https://example.org/story", "Report", None, None, "Public evidence", "news_article"
+                "https://example.org/story",
+                "Report",
+                None,
+                None,
+                "Housing Trust provides Housing support.",
+                "news_article",
             )
         ]
     )
-    extract = AsyncMock(
-        return_value=[
-            RawEntry(
-                name="Housing Trust",
-                entry_type="organization",
-                description="Housing support.",
-                city="Las Vegas",
-                state="NV",
-                issue_areas=["housing_affordability"],
-                extraction_context="Housing support.",
-            )
-        ]
+    from atlas.domains.discovery.pipeline.runner import DiscoveryPipelineCredentials
+
+    from .test_extraction_checkpoints import _client, _reply
+
+    extract, _, _ = _client(
+        monkeypatch,
+        [
+            _reply('[{"name":"Housing Trust"}]'),
+            _reply(
+                '{"entries":[{"name":"Housing Trust","type":"organization",'
+                '"description":"Housing support.","city":"Las Vegas","state":"NV",'
+                '"issue_areas":["housing_affordability"],"extraction_context":"Housing support."}]}'
+            ),
+        ],
     )
     monkeypatch.setattr(web, "fetch_sources", fetch)
-    monkeypatch.setattr(web, "extract_entries", extract)
     phases = []
     for index in range(20):
         conn = await get_db_connection(db_url)
@@ -70,7 +75,13 @@ async def test_fresh_turns_finish_with_same_source_hold_summary_and_once_only_co
             claimed = await DiscoveryJobCRUD.claim_next(conn, claimed_by=owner, checkpointed=True)
             assert claimed.id == job_id
             result = await advance_claimed_discovery_job(
-                conn, job_id=job_id, claimed_by=owner, settings=_settings()
+                conn,
+                job_id=job_id,
+                claimed_by=owner,
+                settings=_settings(),
+                credentials=DiscoveryPipelineCredentials(
+                    anthropic_api_key="private", search_api_key="search"
+                ),
             )
             phases.append(result.phase)
             if result.status == "completed":
@@ -81,7 +92,8 @@ async def test_fresh_turns_finish_with_same_source_hold_summary_and_once_only_co
         finally:
             await conn.close()
     assert result.status == "completed"
-    assert fetch.await_count == extract.await_count == 1
+    assert fetch.await_count == 1
+    assert extract.await_count == 2
     assert "registry" in phases
     assert "ranking" in phases
     saved = await DiscoveryRunCRUD.get_by_id(test_db, run)
@@ -94,7 +106,7 @@ async def test_fresh_turns_finish_with_same_source_hold_summary_and_once_only_co
         "SELECT kind, COUNT(*) FROM cost_ledger WHERE run_id = ? GROUP BY kind ORDER BY kind",
         (run,),
     )
-    assert await cursor.fetchall() == [("llm", 1), ("search", 1)]
+    assert await cursor.fetchall() == [("llm", 2), ("search", 1)]
     replay = await advance_claimed_discovery_job(
         test_db, job_id=job_id, claimed_by="after-completion", settings=_settings()
     )
@@ -261,24 +273,31 @@ async def test_cancelled_provider_turn_cannot_requeue_or_publish(test_db, monkey
 
 
 @pytest.mark.asyncio
-async def test_checkpoint_lane_does_not_claim_direct_jobs_and_rejects_other_modes(test_db) -> None:
+@pytest.mark.parametrize("payload", [{}, {"direct_urls": [1]}, {"direct_urls": [" "]}])
+async def test_direct_jobs_fail_invalid_inputs_with_existing_retry_state(test_db, payload) -> None:
     from atlas.domains.discovery.pipeline.continuation import advance_claimed_discovery_job
     from atlas.domains.discovery.pipeline.web_checkpoints import CheckpointLeaseLostError
+    from atlas.platform.database import db
 
     _run, job = await _enqueue(test_db)
     await test_db.execute(
-        "UPDATE discovery_jobs SET execution_mode = 'direct_url' WHERE id = ?", (job,)
+        "UPDATE discovery_jobs SET execution_mode = 'direct_url', input_payload = ? WHERE id = ?",
+        (db.encode_json(payload), job),
     )
     await test_db.commit()
-    assert await DiscoveryJobCRUD.claim_next(test_db, claimed_by="new", checkpointed=True) is None
-    assert (await DiscoveryJobCRUD.claim_next(test_db, claimed_by="legacy")).id == job
-    with pytest.raises(CheckpointLeaseLostError):
-        await advance_claimed_discovery_job(
-            test_db, job_id=job, claimed_by="legacy", settings=_settings()
+    assert (
+        await DiscoveryJobCRUD.claim_next(
+            test_db, claimed_by="new", checkpointed=True, search_key_configured=False
         )
+    ).id == job
+    result = await advance_claimed_discovery_job(
+        test_db, job_id=job, claimed_by="new", settings=_settings()
+    )
+    assert result.status == "retry"
+    assert (await DiscoveryJobCRUD.get_by_id(test_db, job)).retry_count == 1
     with pytest.raises(CheckpointLeaseLostError):
         await advance_claimed_discovery_job(
-            test_db, job_id="missing", claimed_by="legacy", settings=_settings()
+            test_db, job_id="missing", claimed_by="new", settings=_settings()
         )
 
 
@@ -441,3 +460,104 @@ async def test_final_ack_loss_is_not_requeued_and_replays_terminal_receipt(
     for (value,) in await cursor.fetchall():
         assert "private-search-credential" not in value
         assert "private-model-credential" not in value
+
+
+@pytest.mark.asyncio
+async def test_direct_job_preserves_seed_evidence_without_search_or_registry(
+    test_db, monkeypatch
+) -> None:
+    from atlas.domains.discovery.pipeline import continuation
+    from atlas.domains.discovery.pipeline import web_checkpoints as web
+    from atlas.domains.discovery.pipeline.runner import DiscoveryPipelineCredentials
+    from atlas.domains.discovery.pipeline.source_fetcher import FetchedSource
+    from atlas.platform.database import db
+
+    from .test_extraction_checkpoints import _client, _reply
+
+    run, job = await _enqueue(test_db)
+    await test_db.execute(
+        "UPDATE discovery_jobs SET execution_mode = 'direct_url', input_payload = ? WHERE id = ?",
+        (
+            db.encode_json(
+                {"direct_urls": [" https://example.org/story#top ", "https://example.org/story"]}
+            ),
+            job,
+        ),
+    )
+    await test_db.commit()
+    direct = AsyncMock(
+        return_value=FetchedSource(
+            "https://example.org/story", "Source", None, None, "Housing Trust helps", "report"
+        )
+    )
+    search = AsyncMock(side_effect=AssertionError("direct work must not search"))
+    registry = AsyncMock(side_effect=AssertionError("direct work must not broaden its scope"))
+    monkeypatch.setattr(web, "fetch_direct_source", direct)
+    monkeypatch.setattr(web, "fetch_sources", search)
+    monkeypatch.setattr(continuation, "advance_registry_discovery", registry)
+    request, _, _ = _client(
+        monkeypatch,
+        [
+            _reply('[{"name":"Housing Trust"}]'),
+            _reply('{"entries":[{"name":"Housing Trust","type":"organization"}]}'),
+        ],
+    )
+    for index in range(12):
+        owner = f"direct-{index}"
+        claimed = await DiscoveryJobCRUD.claim_next(
+            test_db, claimed_by=owner, checkpointed=True, search_key_configured=False
+        )
+        assert claimed.id == job
+        result = await continuation.advance_claimed_discovery_job(
+            test_db,
+            job_id=job,
+            claimed_by=owner,
+            settings=_settings(),
+            credentials=DiscoveryPipelineCredentials(anthropic_api_key="private"),
+        )
+        if result.status == "completed":
+            break
+        assert result.status == "yielded"
+    assert result.status == "completed"
+    assert direct.await_args.args == ("https://example.org/story",)
+    assert direct.await_count == 1
+    assert request.await_count == 2
+    assert (await DiscoveryRunCRUD.get_by_id(test_db, run)).sources_processed == 1
+    cursor = await test_db.execute("SELECT DISTINCT kind FROM cost_ledger WHERE run_id = ?", (run,))
+    assert await cursor.fetchall() == [("llm",)]
+    search.assert_not_awaited()
+    registry.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_evidence_only_empty_target_does_not_invent_searches(test_db, monkeypatch) -> None:
+    from atlas.domains.discovery.pipeline import continuation
+    from atlas.domains.discovery.pipeline import web_checkpoints as web
+
+    run = await DiscoveryRunCRUD.create(test_db, location_query="", state="", issue_areas=[])
+    job = await DiscoveryJobCRUD.create(test_db, run_id=run)
+    search = AsyncMock(side_effect=AssertionError("empty targets must not search"))
+    registry = AsyncMock(side_effect=AssertionError("empty targets must not broaden scope"))
+    monkeypatch.setattr(web, "fetch_sources", search)
+    monkeypatch.setattr(continuation, "advance_registry_discovery", registry)
+    for index in range(6):
+        owner = f"evidence-{index}"
+        assert (
+            await DiscoveryJobCRUD.claim_next(
+                test_db, claimed_by=owner, checkpointed=True, search_key_configured=False
+            )
+        ).id == job
+        result = await continuation.advance_claimed_discovery_job(
+            test_db, job_id=job, claimed_by=owner, settings=_settings()
+        )
+        if result.status == "completed":
+            break
+        assert result.status == "yielded", (
+            await DiscoveryJobCRUD.get_by_id(test_db, job)
+        ).error_message
+    assert result.status == "completed"
+    assert (await DiscoveryRunCRUD.get_by_id(test_db, run)).entries_extracted == 0
+    cursor = await test_db.execute("SELECT COUNT(*) FROM cost_ledger WHERE run_id = ?", (run,))
+    assert (await cursor.fetchone())[0] == 0
+    search.assert_not_awaited()
+    registry.assert_not_awaited()

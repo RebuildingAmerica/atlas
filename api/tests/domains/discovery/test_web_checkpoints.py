@@ -357,3 +357,73 @@ async def test_credentials_stay_out_of_checkpoint_evidence(test_db, monkeypatch)
     for (result,) in await cursor.fetchall():
         assert "test-search-secret" not in result
         assert "test-model-secret" not in result
+
+
+@pytest.mark.asyncio
+async def test_direct_fetches_yield_replay_empty_pages_and_reject_changed_seeds(
+    test_db, monkeypatch
+) -> None:
+    from atlas.domains.discovery.pipeline import web_checkpoints as web
+
+    job_id, job = await _claim(test_db)
+    fetch = AsyncMock(return_value=None)
+    monkeypatch.setattr(web, "fetch_direct_source", fetch)
+    kwargs = {
+        "job_id": job_id,
+        "claimed_by": "alarm-1",
+        "job": job,
+        "settings": _settings(),
+        "direct_urls": ["https://example.org/a", "https://example.org/b"],
+        "bounded_extraction": True,
+    }
+    assert await web.advance_web_discovery(test_db, **kwargs) is None
+    result = await web.advance_web_discovery(test_db, **kwargs)
+    assert result.sources == []
+    assert result.queries == []
+    assert await web.advance_web_discovery(test_db, **kwargs) == result
+    assert fetch.await_count == 2
+    kwargs["direct_urls"] = ["https://example.org/changed"]
+    with pytest.raises(web.CheckpointInputsChangedError):
+        await web.advance_web_discovery(test_db, **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_direct_kill_switch_prevents_fetch_and_leaves_no_transaction(
+    test_db, monkeypatch
+) -> None:
+    from atlas.domains.discovery.cost import CostCeilingExceeded
+    from atlas.domains.discovery.pipeline import web_checkpoints as web
+
+    job_id, job = await _claim(test_db)
+    fetch = AsyncMock()
+    monkeypatch.setattr(web, "fetch_direct_source", fetch)
+    with pytest.raises(CostCeilingExceeded):
+        await web.advance_web_discovery(
+            test_db,
+            job_id=job_id,
+            claimed_by="alarm-1",
+            job=job,
+            settings=_settings().model_copy(update={"discovery_cost_kill_switch": True}),
+            direct_urls=["https://example.org"],
+            bounded_extraction=True,
+        )
+    fetch.assert_not_awaited()
+    # Another connection can cancel immediately: the budget failure released the fence.
+    from atlas.platform.config import get_settings
+    from atlas.platform.database import get_db_connection
+
+    other = await get_db_connection(get_settings().database_url)
+    try:
+        await DiscoveryJobCRUD.cancel(other, job_id)
+    finally:
+        await other.close()
+    with pytest.raises(web.CheckpointLeaseLostError):
+        await web.advance_web_discovery(
+            test_db,
+            job_id=job_id,
+            claimed_by="alarm-1",
+            job=job,
+            settings=_settings(),
+            direct_urls=["https://example.org"],
+            bounded_extraction=True,
+        )

@@ -26,6 +26,8 @@ from atlas.domains.discovery.cost import (
 )
 from atlas.platform.database import db
 
+from .direct_sources import fetch_direct_source
+from .extraction_checkpoints import advance_source_extraction
 from .extractor import extract_entries
 from .query_generator import generate_queries, sample_queries_across_categories
 from .source_fetcher import FetchedSource, build_search_provider, fetch_sources
@@ -77,14 +79,21 @@ class WebDiscovery(BaseModel):
     fingerprint: str
 
 
-def web_checkpoint_fingerprint(job: DiscoveryPipelineJob, settings: Settings) -> str:
+def web_checkpoint_fingerprint(
+    job: DiscoveryPipelineJob,
+    settings: Settings,
+    *,
+    bounded_extraction: bool = False,
+    direct_urls: list[str] | None = None,
+) -> str:
     """Bind prepared evidence to the exact run and its query cap."""
     return hashlib.sha256(
         json.dumps(
             {
-                "version": _VERSION,
+                "version": _VERSION + int(bounded_extraction),
                 "job": asdict(job),
                 "queries": settings.discovery_max_queries_per_run,
+                **({"direct_urls": direct_urls} if direct_urls is not None else {}),
             },
             sort_keys=True,
         ).encode()
@@ -160,7 +169,7 @@ class _Checkpoints:
             raise
 
 
-async def advance_web_discovery(  # noqa: PLR0913
+async def advance_web_discovery(  # noqa: PLR0913, PLR0912, PLR0915 - explicit resumable units
     conn: Connection,
     *,
     job_id: str,
@@ -168,6 +177,8 @@ async def advance_web_discovery(  # noqa: PLR0913
     job: DiscoveryPipelineJob,
     settings: Settings,
     credentials: DiscoveryPipelineCredentials | None = None,
+    bounded_extraction: bool = False,
+    direct_urls: list[str] | None = None,
 ) -> WebDiscovery | None:
     """Perform one new web unit, returning evidence once preparation completes.
 
@@ -180,6 +191,12 @@ async def advance_web_discovery(  # noqa: PLR0913
         lease outside this function if needed; no process-local locks are used.
     job, settings, credentials
         Existing pipeline inputs. Credentials are never serialized.
+    bounded_extraction
+        Yield between individual model attempts instead of the original
+        per-source extraction call. Used by the hosted continuation.
+    direct_urls
+        Explicit seeds, or None for generated search queries. Seed inputs are
+        part of the checkpoint fingerprint and never consume search charges.
 
     Returns
     -------
@@ -190,13 +207,17 @@ async def advance_web_discovery(  # noqa: PLR0913
         parsing cannot be preempted by asyncio and still needs hosted proof.
     """
     city = job.location_query.split(",", maxsplit=1)[0].strip()
-    fingerprint = web_checkpoint_fingerprint(job, settings)
+    fingerprint = web_checkpoint_fingerprint(
+        job, settings, bounded_extraction=bounded_extraction, direct_urls=direct_urls
+    )
     store = _Checkpoints(conn, job_id, claimed_by, job.run_id, fingerprint)
     manifest_adapter = TypeAdapter(_Manifest)
     manifest = await store.load("manifest", manifest_adapter)
     if manifest is None:
         manifest = _Manifest(
-            queries=[
+            queries=[]
+            if direct_urls is not None or (not job.location_query and not job.issue_areas)
+            else [
                 query.query
                 for query in sample_queries_across_categories(
                     generate_queries(city=city, state=job.state, issue_areas=job.issue_areas),
@@ -230,6 +251,28 @@ async def advance_web_discovery(  # noqa: PLR0913
         for source in output.sources:
             sources.setdefault(source.url, source)
 
+    for index, url in enumerate(direct_urls or []):
+        output = await store.load(f"direct:{index}", search_adapter)
+        if output is None:
+            if advanced:
+                return None
+            # HTTP fetches are not billable search/model calls, but the kill
+            # switch and accumulated run/day ceilings still apply before I/O.
+            await store.fence()
+            try:
+                await assert_within_budget(conn, run_id=job.run_id, settings=settings)
+            except BaseException:
+                await conn.execute("ROLLBACK")
+                raise
+            await conn.commit()
+            async with asyncio.timeout(_UNIT_TIMEOUT_SECONDS):
+                direct_source = await fetch_direct_source(url)
+            output = _SearchOutput(sources=[direct_source] if direct_source else [])
+            await store.save(f"direct:{index}", output, search_adapter)
+            advanced = True
+        for source in output.sources:
+            sources.setdefault(source.url, source)
+
     entries: list[dict[str, Any]] = []
     entry_adapter = TypeAdapter(list[RawEntry])
     today = manifest.started_at.date().isoformat()
@@ -239,17 +282,31 @@ async def advance_web_discovery(  # noqa: PLR0913
         if extracted is None:
             if advanced:
                 return None
-            await store.reserve(
-                kind="llm", units=float(len(source.content.split())), settings=settings
-            )
-            async with asyncio.timeout(_UNIT_TIMEOUT_SECONDS):
-                extracted = await extract_entries(
-                    source.url,
-                    source.content,
-                    city,
-                    job.state,
-                    credentials.anthropic_api_key if credentials else None,
+            if bounded_extraction:
+                extracted = await advance_source_extraction(
+                    store=store,
+                    index=index,
+                    url=source.url,
+                    content=source.content,
+                    city=city,
+                    state=job.state,
+                    api_key=credentials.anthropic_api_key if credentials else None,
+                    settings=settings,
                 )
+                if extracted is None:
+                    return None
+            else:
+                await store.reserve(
+                    kind="llm", units=float(len(source.content.split())), settings=settings
+                )
+                async with asyncio.timeout(_UNIT_TIMEOUT_SECONDS):
+                    extracted = await extract_entries(
+                        source.url,
+                        source.content,
+                        city,
+                        job.state,
+                        credentials.anthropic_api_key if credentials else None,
+                    )
             await store.save(key, extracted, entry_adapter)
             advanced = True
         for item in extracted:

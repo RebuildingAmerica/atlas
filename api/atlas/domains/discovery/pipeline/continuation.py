@@ -8,6 +8,7 @@ from contextlib import suppress
 from dataclasses import asdict
 from datetime import date
 from typing import TYPE_CHECKING, Literal, cast
+from urllib.parse import urldefrag
 
 from atlas_shared import PageContent
 from pydantic import BaseModel, TypeAdapter
@@ -78,11 +79,15 @@ class DiscoveryTurnResult(BaseModel):
     completion: DiscoveryCompletionReceipt | None = None
 
 
-def _fingerprint(job: DiscoveryPipelineJob, settings: Settings) -> str:
+def _fingerprint(
+    job: DiscoveryPipelineJob, settings: Settings, mode: str, payload: dict[str, object]
+) -> str:
     return hashlib.sha256(
         json.dumps(
             {
-                "version": 1,
+                "version": 3,
+                "mode": mode,
+                "payload": payload,
                 "job": asdict(job),
                 "queries": settings.discovery_max_queries_per_run,
                 "organizations": settings.discovery_registry_max_organizations,
@@ -93,6 +98,16 @@ def _fingerprint(job: DiscoveryPipelineJob, settings: Settings) -> str:
     ).hexdigest()
 
 
+def _direct_urls(payload: dict[str, object]) -> list[str]:
+    raw_urls = payload.get("direct_urls")
+    if not isinstance(raw_urls, list) or not all(isinstance(url, str) for url in raw_urls):
+        raise ValueError("Direct URL job requires a list of URLs")  # noqa: TRY003
+    urls = list(dict.fromkeys(urldefrag(url.strip())[0] for url in raw_urls if url.strip()))
+    if not urls:
+        raise ValueError("Direct URL job has no usable URLs")  # noqa: TRY003
+    return urls
+
+
 async def _advance(  # noqa: PLR0911, PLR0912, PLR0913 - one explicit branch per durable stage
     conn: Connection,
     store: _Checkpoints,
@@ -100,14 +115,25 @@ async def _advance(  # noqa: PLR0911, PLR0912, PLR0913 - one explicit branch per
     job: DiscoveryPipelineJob,
     settings: Settings,
     credentials: DiscoveryPipelineCredentials | None,
+    direct_urls: list[str] | None,
 ) -> DiscoveryCompletionReceipt | None:
     base = {"job_id": store.job_id, "claimed_by": store.owner}
     if state.phase == "web":
         state.web = await advance_web_discovery(
-            conn, **base, job=job, settings=settings, credentials=credentials
+            conn,
+            **base,
+            job=job,
+            settings=settings,
+            credentials=credentials,
+            bounded_extraction=True,
+            direct_urls=direct_urls,
         )
         if state.web is not None:
-            state.phase = "registry"
+            if direct_urls is not None or (not job.location_query and not job.issue_areas):
+                state.registry = RegistryDiscovery()
+                state.phase = "ranking"
+            else:
+                state.phase = "registry"
         return None
     assert state.web is not None
     today = state.web.started_at.date()
@@ -241,7 +267,7 @@ async def advance_claimed_discovery_job(
     settings: Settings,
     credentials: DiscoveryPipelineCredentials | None = None,
 ) -> DiscoveryTurnResult:
-    """Advance one claimed search job, then release its lease without a retry.
+    """Advance one claimed job, then release its lease without a retry.
 
     Parameters
     ----------
@@ -263,7 +289,7 @@ async def advance_claimed_discovery_job(
         synchronous unit requiring hosted CPU/memory validation.
     """
     queued = await DiscoveryJobCRUD.get_by_id(conn, job_id)
-    if queued is None or queued.execution_mode != "search":
+    if queued is None:
         raise CheckpointLeaseLostError
     if queued.status == "completed":
         cursor = await conn.execute(
@@ -283,7 +309,13 @@ async def advance_claimed_discovery_job(
     job = DiscoveryPipelineJob(
         run.id, run.location_query, run.state, run.issue_areas, run.research_goal
     )
-    store = _Checkpoints(conn, job_id, claimed_by, job.run_id, _fingerprint(job, settings))
+    store = _Checkpoints(
+        conn,
+        job_id,
+        claimed_by,
+        job.run_id,
+        _fingerprint(job, settings, queued.execution_mode, queued.input_payload),
+    )
     codec = TypeAdapter(_Continuation)
     state = await store.load(_KEY, codec)
     if state is None:
@@ -292,7 +324,10 @@ async def advance_claimed_discovery_job(
         # monolithic claimers after a crash or a deliberate yield.
         await store.save(_KEY, state, codec)
     try:
-        completion = await _advance(conn, store, state, job, settings, credentials)
+        direct_urls = (
+            _direct_urls(queued.input_payload) if queued.execution_mode == "direct_url" else None
+        )
+        completion = await _advance(conn, store, state, job, settings, credentials, direct_urls)
     except CheckpointLeaseLostError:
         raise
     except CostCeilingExceeded as error:

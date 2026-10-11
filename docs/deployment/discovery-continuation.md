@@ -72,18 +72,43 @@ These are opt-in primitives; existing Node and Scout execution remains
 unchanged.
 
 `advance_claimed_discovery_job` connects these primitives for existing search
-jobs. A scheduler claims with `checkpointed=True`, uses a fresh owner and
-connection, and advances one turn. Successful turns persist progress and return
-the job to queued without consuming a retry. Provider failures retain attempt
-costs and existing retry/backoff limits; cost-ceiling stops fail the run and job
-together. Cancellation and replaced/expired ownership prevent late writes or
-requeue. Credentials remain invocation-owned. A terminal receipt resolves a lost
-final response without retrying or reopening the job.
+and direct URL jobs. A scheduler claims with `checkpointed=True`, uses a fresh
+owner and connection, and advances one turn. Successful turns persist progress
+and return the job to queued without consuming a retry. Provider failures retain
+attempt costs and existing retry/backoff limits; cost-ceiling stops fail the run
+and job together. Cancellation and replaced/expired ownership prevent late
+writes or requeue. Credentials remain invocation-owned. A terminal receipt
+resolves a lost final response without retrying or reopening the job.
 
 Enrollment is stored before provider work. Updated legacy claimers exclude
 enrolled jobs so they cannot restart partial work through the monolithic runner.
 All active claimers must run this exclusion before enrolling production jobs.
-Unenrolled Node and Scout jobs keep their existing path. Direct/evidence modes
-are not accepted by this initial turn consumer; their existing consumers remain
-unchanged, and their hosted continuation is still required before replacing
-those consumers. No polling process or hosted alarm is enabled by these changes.
+Unenrolled Node and Scout jobs keep their existing path. No polling process or
+hosted alarm is enabled by these changes.
+
+The turn consumer accepts both declared queue modes: search and direct_url.
+Direct seeds are frozen into the checkpoint fingerprint, deduplicated after
+fragment removal, and fetched one per turn. They do not generate search queries
+or broaden the request into unrelated registry research. Empty-target search
+jobs (the existing queue's seeded/evidence capability) do not invent place
+queries. Canonical artifacts now allow that exact untargeted input while still
+requiring a complete location, state and issue list for targeted research.
+
+The hosted continuation separates source extraction into the existing identify
+and enrich passes. Each turn makes at most one model request, with SDK retries
+disabled; every attempt is reserved in the cost ledger before I/O. Completed
+passes survive restarts. Each pass keeps its existing three-attempt limit and
+source grounding. Credentials are invocation-owned, and model clients close at
+the end of the turn. Unfinished attempts may be replayed after a lost response;
+the replay is charged independently. Changed ownership cannot publish a late
+model response.
+
+Direct seed transport validates URL schemes, credentials, local hostnames and
+private IP literals before the initial request and each redirect. This does not
+yet pin or validate DNS resolution for public-looking hostnames; DNS rebinding
+protection is required before hosted activation. It also does not replace
+Scout's same-host crawl (depth 2, 20 pages per seed), structured/PDF parsing, or
+browser rendering. Those remain explicit feature-parity blockers; accepting a
+direct seed job locally is not evidence that all existing direct research
+behavior has migrated. No mode is removed from the public API or the existing
+Scout consumer.

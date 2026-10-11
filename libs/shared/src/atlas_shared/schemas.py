@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 from datetime import date, datetime
 from hashlib import sha256
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from atlas_shared.page_content import PageContent
 from atlas_shared.types import DiscoveryRunStatus, EntityType, GeoSpecificity
@@ -144,13 +144,11 @@ class DiscoveryRunInput(BaseModel):
     location_query: str = Field(
         ...,
         description="Location query (for example, 'Kansas City, MO').",
-        min_length=1,
     )
-    state: str = Field(..., description="2-letter state code.", min_length=2, max_length=2)
+    state: str = Field(..., description="2-letter state code.", max_length=2)
     issue_areas: list[str] = Field(
         ...,
         description="Issue area slugs that define the run.",
-        min_length=1,
     )
     research_goal: DiscoveryResearchGoal = Field(
         default="landscape_scan",
@@ -160,6 +158,16 @@ class DiscoveryRunInput(BaseModel):
         default="standard",
         description="Discovery depth hint used by the runner.",
     )
+
+    @model_validator(mode="after")
+    def validate_target(self) -> Self:
+        """Preserve untargeted evidence inputs without inventing a place or issue."""
+        if self.location_query == "" and not self.issue_areas:
+            if len(self.state) not in {0, 2}:
+                raise ValueError("Evidence state must be empty or two letters")
+        elif not self.location_query or len(self.state) != 2 or not self.issue_areas:
+            raise ValueError("Targeted discovery requires a location, state and issue areas")
+        return self
 
 
 class DiscoveryRunStats(BaseModel):
