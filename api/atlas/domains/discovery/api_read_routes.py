@@ -7,16 +7,13 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
-from atlas.domains.access import (
-    AuthenticatedActor,
-    require_actor_permission,
-    require_atlas_staff,
-)
+from atlas.domains.access import AuthenticatedActor, require_actor_permission
 from atlas.domains.discovery.models import DiscoveryJobCRUD
 from atlas.domains.discovery.schemas import (
     DiscoveryRunCancelResponse,
 )
 from atlas.models import DiscoveryRunCRUD
+from atlas.platform.authz import Action, require_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
 from atlas.schemas import (
@@ -135,7 +132,7 @@ async def get_discovery_run(
 async def cancel_discovery_run(
     run_id: str,
     response: Response = Response(),
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.RUNS_CANCEL)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> DiscoveryRunCancelResponse:
     """Cancel a discovery run's outstanding jobs.

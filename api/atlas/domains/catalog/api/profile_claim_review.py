@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from atlas.domains.access import require_atlas_staff
 from atlas.domains.catalog.api.profile_claim_atproto_helpers import link_atproto_proof_if_present
 from atlas.domains.catalog.api.profile_claim_helpers import (
     claim_to_response,
@@ -26,6 +25,7 @@ from atlas.domains.catalog.schemas.public import (
 )
 from atlas.domains.catalog.services.atproto_identity import revalidate_linked_atproto_profiles
 from atlas.models import EntryCRUD
+from atlas.platform.authz import Action, require_action
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
@@ -49,7 +49,7 @@ async def list_profile_claim_reviews(
     response: Response,
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.CLAIMS_REVIEW)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ProfileClaimReviewListResponse:
     """List pending profile verifications oldest-first."""
@@ -74,7 +74,7 @@ async def list_profile_claim_reviews(
 )
 async def revalidate_profile_atproto_links(
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.CLAIMS_REVIEW)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ProfileAtprotoRevalidationResponse:
     """Recheck public ATProto profile links without deleting identity provenance."""
@@ -98,7 +98,7 @@ async def approve_profile_claim_review(
     claim_id: str,
     payload: ProfileClaimReviewDecisionRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.CLAIMS_REVIEW)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ProfileClaimResponse:
     """Approve a pending profile verification."""
@@ -130,7 +130,7 @@ async def reject_profile_claim_review(
     claim_id: str,
     payload: ProfileClaimReviewDecisionRequest,
     response: Response,
-    actor: AuthenticatedActor = Depends(require_atlas_staff),
+    actor: AuthenticatedActor = Depends(require_action(Action.CLAIMS_REVIEW)),
     db: aiosqlite.Connection = Depends(get_db),
 ) -> ProfileClaimResponse:
     """Reject a pending profile verification."""

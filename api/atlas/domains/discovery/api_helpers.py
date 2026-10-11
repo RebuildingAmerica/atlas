@@ -11,7 +11,6 @@ from atlas_shared import (
 )
 from fastapi import APIRouter, Depends, HTTPException
 
-from atlas.domains.access.staff import is_atlas_staff
 from atlas.domains.catalog.models.ownership import OwnershipCRUD
 from atlas.domains.discovery.models import (
     DiscoveryJobCRUD,
@@ -22,6 +21,7 @@ from atlas.domains.discovery.schemas import (
     DiscoveryWorkerJobResponse,
 )
 from atlas.models import DiscoveryRunCRUD, EntryCRUD, get_db_connection
+from atlas.platform.authz import Action, is_granted
 from atlas.platform.config import Settings, get_settings
 from atlas.schemas import (
     DiscoveryRunResponse,
@@ -131,7 +131,7 @@ def run_visibility_for(actor: AuthenticatedActor, settings: Settings) -> RunVisi
         Every workspace's runs for Atlas staff; otherwise public runs plus the
         caller's own workspace's private runs.
     """
-    if is_atlas_staff(actor, settings):
+    if is_granted(actor, Action.RUNS_VIEW_ALL, settings):
         return RunVisibility.staff()
     return RunVisibility.workspace(actor.org_id)
 

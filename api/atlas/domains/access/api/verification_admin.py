@@ -7,16 +7,15 @@ from typing import TYPE_CHECKING, Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from atlas.domains.access.dependencies import get_usage_db, require_actor
+from atlas.domains.access.dependencies import get_usage_db
 from atlas.domains.access.models.discount_verifications import (
     DiscountVerificationCRUD,
     DiscountVerificationMethod,
     DiscountVerificationModel,
     DiscountVerificationStatus,
 )
-from atlas.domains.access.staff import ensure_atlas_staff
 from atlas.domains.access.verification import DiscountSegment  # noqa: TC001
-from atlas.platform.config import Settings, get_settings
+from atlas.platform.authz import Action, require_action
 from atlas.platform.http.cache import apply_no_store_headers
 
 if TYPE_CHECKING:
@@ -87,22 +86,6 @@ def _verification_record_response(
     )
 
 
-async def require_discount_review_actor(
-    actor: AuthenticatedActor = Depends(require_actor),
-    settings: Settings = Depends(get_settings),
-) -> AuthenticatedActor:
-    """Require an Atlas operator for discount verification review endpoints."""
-    if not settings.managed:
-        # Discount review is a Rebuilding America commercial function. Someone
-        # self-hosting Atlas has no Atlas discounts to review, so the surface
-        # does not exist for them rather than standing open.
-        raise HTTPException(status_code=404, detail="Not found.")
-
-    return ensure_atlas_staff(
-        actor, settings, detail="Discount review access requires Atlas staff."
-    )
-
-
 @router.get(
     "/api/admin/verifications",
     response_model=VerificationListResponse,
@@ -113,7 +96,7 @@ async def require_discount_review_actor(
 async def list_verifications(
     response: Response,
     conn: aiosqlite.Connection = Depends(get_usage_db),
-    _review_actor: AuthenticatedActor = Depends(require_discount_review_actor),
+    _review_actor: AuthenticatedActor = Depends(require_action(Action.DISCOUNTS_REVIEW)),
     *,
     organization_id: Annotated[str | None, Query()] = None,
     status: Annotated[DiscountVerificationStatus | None, Query()] = None,
@@ -154,7 +137,7 @@ async def update_verification(
     verification_id: str,
     request: VerificationUpdateRequest,
     conn: aiosqlite.Connection = Depends(get_usage_db),
-    _review_actor: AuthenticatedActor = Depends(require_discount_review_actor),
+    _review_actor: AuthenticatedActor = Depends(require_action(Action.DISCOUNTS_REVIEW)),
 ) -> VerificationUpdateResponse:
     """Update the review status for a discount verification request."""
     apply_no_store_headers(response)

@@ -10,8 +10,8 @@ import pytest
 from fastapi import HTTPException
 
 from atlas.domains.access.principals import AuthenticatedActor
-from atlas.domains.moderation.api import require_moderation_editor
 from atlas.models import EntryCRUD, SourceCRUD
+from atlas.platform.authz import Action, require_action
 
 
 @pytest.mark.asyncio
@@ -442,7 +442,7 @@ async def test_discovery_api_key_cannot_become_a_moderation_editor(test_settings
         permissions={"discovery": ["write"]},
     )
     with pytest.raises(HTTPException) as exc:
-        await require_moderation_editor(actor=actor, settings=test_settings)
+        await require_action(Action.FLAGS_READ)(actor=actor, settings=test_settings)
     assert exc.value.status_code == HTTPStatus.FORBIDDEN
 
 
