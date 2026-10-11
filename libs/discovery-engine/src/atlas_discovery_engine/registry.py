@@ -60,6 +60,14 @@ class RegistryOrganization:
     """Primary website, when the registry publishes one."""
 
 
+@dataclass(frozen=True)
+class RegistrySearchPage:
+    """One provider page, retaining whether the original search would continue."""
+
+    organizations: list[RegistryOrganization]
+    has_more: bool
+
+
 class RegistryProvider(ABC):
     """The contract every nonprofit registry adapter must satisfy."""
 
@@ -145,6 +153,18 @@ class ProPublicaRegistryProvider(RegistryProvider):
                     break
 
         return collected[:limit]
+
+    async def search_page(self, term: str, state: str, *, page: int) -> RegistrySearchPage:
+        """Read one registry page for callers that persist progress between pages."""
+        if page < 0:
+            msg = "Registry page must be nonnegative"
+            raise ValueError(msg)
+        async with httpx.AsyncClient(timeout=self._timeout, headers=self._headers) as client:
+            payload = await self._fetch_page(client, term, state, page)
+        raw = (payload.get("organizations") or []) if payload is not None else []
+        return RegistrySearchPage(
+            [self._map_organization(item) for item in raw], len(raw) >= self.PAGE_SIZE
+        )
 
     def _pages_needed(self, limit: int) -> int:
         """Return how many pages cover ``limit`` results."""

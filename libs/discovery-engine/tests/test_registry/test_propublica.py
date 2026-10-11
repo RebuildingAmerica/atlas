@@ -203,3 +203,43 @@ class TestRegistryTermsForIssue:
             "rent",
             "affordable housing",
         ]
+
+
+async def test_checkpoint_page_preserves_mapping_and_exact_requested_page(monkeypatch: Any) -> None:
+    client = _ScriptedClient(
+        [_FakeResponse(payload={"organizations": [_hit(str(i)) for i in range(25)]})]
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
+    page = await ProPublicaRegistryProvider().search_page("housing", "CA", page=3)
+    assert page.has_more
+    assert page.organizations[0].registry_id == "0"
+    assert page.organizations[0].category_code == "L21"
+    assert page.organizations[0].source_url.endswith("/0")
+    assert client.pages == [3]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        _FakeResponse(status_code=503),
+        _FakeResponse(status_code=404),
+        _FakeResponse(payload={"organizations": None}),
+    ],
+)
+async def test_checkpoint_page_preserves_unavailable_and_empty_skip_semantics(
+    monkeypatch: Any, response: Any
+) -> None:
+    client = _ScriptedClient([response])
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
+    page = await ProPublicaRegistryProvider().search_page("housing", "CA", page=0)
+    assert not page.has_more
+    assert page.organizations == []
+    assert client.pages == [0]
+
+
+async def test_checkpoint_page_rejects_negative_cursor_without_network(monkeypatch: Any) -> None:
+    client = _ScriptedClient([])
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **_kwargs: client)
+    with pytest.raises(ValueError, match="nonnegative"):
+        await ProPublicaRegistryProvider().search_page("housing", "CA", page=-1)
+    assert client.pages == []
