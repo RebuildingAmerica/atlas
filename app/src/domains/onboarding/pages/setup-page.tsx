@@ -241,6 +241,7 @@ export function SetupPage({ interval, product, purchase }: SetupPageProps) {
     panel = (
       <PurchaseStepPanel
         description="Create or open your account. Your selected plan stays with you."
+        productLabel={productLabel}
         title="Start with your account"
       >
         <div className="flex flex-wrap gap-3">
