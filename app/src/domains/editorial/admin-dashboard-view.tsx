@@ -98,6 +98,12 @@ export function AdminDashboardView({
         />
         <AdminActionLink
           action="Manage"
+          href="/editorial/merges"
+          label="Merge duplicate profiles"
+          detail="Fold a profile Atlas listed twice into the one to keep, with its sources and followers."
+        />
+        <AdminActionLink
+          action="Manage"
           href="/editorial/schedules"
           label="Manage discovery schedules"
           detail="Choose which places and issues Atlas re-researches every night, and pause or remove them."

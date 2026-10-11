@@ -65,6 +65,7 @@ describe("describeActivity", () => {
       "Restored a profile",
     ],
     ["instance.entries.takedown", "POST", "/api/takedowns", "Took a profile down"],
+    ["instance.entries.merge", "POST", "/api/merges", "Merged duplicate profiles"],
     ["instance.schedules.write", "POST", "/api/discovery-schedules", "Added a discovery schedule"],
     [
       "instance.schedules.write",

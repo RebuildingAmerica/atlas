@@ -39,6 +39,11 @@ export const WORKSPACE_PAGE_TITLES: [string, () => Promise<RouteWithHead>, strin
     "Takedowns | Atlas editorial",
   ],
   [
+    "editorial merges",
+    () => import("@/routes/_workspace/editorial/merges"),
+    "Merge profiles | Atlas editorial",
+  ],
+  [
     "editorial activity",
     () => import("@/routes/_workspace/editorial/activity"),
     "Editorial activity | Atlas editorial",

@@ -6121,6 +6121,112 @@
         "title": "EntityUpdateRequest",
         "type": "object"
       },
+      "EntryMergeCollectionResponse": {
+        "description": "Past merges.",
+        "properties": {
+          "items": {
+            "description": "Merges, newest first",
+            "items": {
+              "$ref": "#/components/schemas/EntryMergeResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "EntryMergeCollectionResponse",
+        "type": "object"
+      },
+      "EntryMergeResponse": {
+        "description": "One merge that was made.",
+        "properties": {
+          "duplicate_entry_id": {
+            "description": "duplicate entry id for this entry merge.",
+            "title": "Duplicate Entry Id",
+            "type": "string"
+          },
+          "duplicate_name": {
+            "description": "duplicate name for this entry merge.",
+            "title": "Duplicate Name",
+            "type": "string"
+          },
+          "duplicate_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "duplicate slug for this entry merge.",
+            "title": "Duplicate Slug"
+          },
+          "id": {
+            "description": "Merge ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "kept_entry_id": {
+            "description": "kept entry id for this entry merge.",
+            "title": "Kept Entry Id",
+            "type": "string"
+          },
+          "kept_name": {
+            "description": "kept name for this entry merge.",
+            "title": "Kept Name",
+            "type": "string"
+          },
+          "kept_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "kept slug for this entry merge.",
+            "title": "Kept Slug"
+          },
+          "merged_at": {
+            "description": "merged at for this entry merge.",
+            "title": "Merged At",
+            "type": "string"
+          },
+          "merged_by": {
+            "description": "The editor who merged them",
+            "title": "Merged By",
+            "type": "string"
+          },
+          "moved": {
+            "$ref": "#/components/schemas/MergeCountsResponse",
+            "description": "moved for this entry merge."
+          },
+          "reason": {
+            "description": "reason for this entry merge.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kept_entry_id",
+          "kept_name",
+          "kept_slug",
+          "duplicate_entry_id",
+          "duplicate_name",
+          "duplicate_slug",
+          "reason",
+          "merged_by",
+          "merged_at",
+          "moved"
+        ],
+        "title": "EntryMergeResponse",
+        "type": "object"
+      },
       "FacetOption": {
         "description": "A single filter option with result count.",
         "properties": {
@@ -8214,6 +8320,176 @@
           "target_flow"
         ],
         "title": "McpElicitationCompleteResponse",
+        "type": "object"
+      },
+      "MergeCountsResponse": {
+        "description": "What moves, or moved, from the duplicate to the kept profile.",
+        "properties": {
+          "connections": {
+            "description": "Connections to other profiles that move",
+            "minimum": 0.0,
+            "title": "Connections",
+            "type": "integer"
+          },
+          "followers": {
+            "description": "People who now follow the kept profile",
+            "minimum": 0.0,
+            "title": "Followers",
+            "type": "integer"
+          },
+          "identity_keys": {
+            "description": "EIN, FEC or domain keys that move",
+            "minimum": 0.0,
+            "title": "Identity Keys",
+            "type": "integer"
+          },
+          "issue_areas": {
+            "description": "Issue areas the kept profile gains",
+            "minimum": 0.0,
+            "title": "Issue Areas",
+            "type": "integer"
+          },
+          "open_reports": {
+            "description": "Open visitor reports that move",
+            "minimum": 0.0,
+            "title": "Open Reports",
+            "type": "integer"
+          },
+          "pending_reviews": {
+            "description": "Pending discovery reviews on the duplicate that close",
+            "minimum": 0.0,
+            "title": "Pending Reviews",
+            "type": "integer"
+          },
+          "saved_list_places": {
+            "description": "Saved lists that now hold it",
+            "minimum": 0.0,
+            "title": "Saved List Places",
+            "type": "integer"
+          },
+          "sources": {
+            "description": "Source links the kept profile gains",
+            "minimum": 0.0,
+            "title": "Sources",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sources",
+          "issue_areas",
+          "connections",
+          "followers",
+          "saved_list_places",
+          "open_reports",
+          "identity_keys",
+          "pending_reviews"
+        ],
+        "title": "MergeCountsResponse",
+        "type": "object"
+      },
+      "MergeCreateRequest": {
+        "description": "Which profile to keep, which to fold into it, and why.",
+        "properties": {
+          "duplicate": {
+            "description": "Slug of the duplicate to retire",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Duplicate",
+            "type": "string"
+          },
+          "keep": {
+            "description": "Slug of the profile to keep",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Keep",
+            "type": "string"
+          },
+          "reason": {
+            "description": "How the editor knows they are the same",
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keep",
+          "duplicate",
+          "reason"
+        ],
+        "title": "MergeCreateRequest",
+        "type": "object"
+      },
+      "MergePreviewResponse": {
+        "description": "What a merge would do, and anything that stops it.",
+        "properties": {
+          "blockers": {
+            "description": "Every reason the merge is refused; empty if none",
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "duplicate": {
+            "$ref": "#/components/schemas/MergeProfileResponse",
+            "description": "duplicate for this merge preview."
+          },
+          "keep": {
+            "$ref": "#/components/schemas/MergeProfileResponse",
+            "description": "keep for this merge preview."
+          },
+          "moves": {
+            "$ref": "#/components/schemas/MergeCountsResponse",
+            "description": "moves for this merge preview."
+          }
+        },
+        "required": [
+          "keep",
+          "duplicate",
+          "moves",
+          "blockers"
+        ],
+        "title": "MergePreviewResponse",
+        "type": "object"
+      },
+      "MergeProfileResponse": {
+        "description": "One of the two profiles in a merge.",
+        "properties": {
+          "active": {
+            "description": "Whether it is published",
+            "title": "Active",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Entry ID",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "description": "The profile's name",
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The profile's slug",
+            "title": "Slug",
+            "type": "string"
+          },
+          "type": {
+            "description": "person, organization, or another entry type",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "type",
+          "active"
+        ],
+        "title": "MergeProfileResponse",
         "type": "object"
       },
       "ModerationInboxItemResponse": {
@@ -19814,6 +20090,202 @@
         "summary": "Complete Mcp Url Elicitation",
         "tags": [
           "access"
+        ]
+      }
+    },
+    "/api/merges": {
+      "get": {
+        "description": "Duplicate profiles editors folded into the profile to keep, newest first.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "listEntryMerges",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryMergeCollectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List profile merges",
+        "tags": [
+          "moderation"
+        ]
+      },
+      "post": {
+        "description": "Fold a duplicate into the profile to keep: sources, issue areas, connections, followers, saved-list places, open reports and identity keys move over, the duplicate is retired, and its address opens the kept profile. Cannot be undone.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "createEntryMerge",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryMergeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge a duplicate profile",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/merges/preview": {
+      "get": {
+        "description": "Show what merging one profile into another would move, and anything that stops it. Changes nothing.\n\nUse this moderation operation when a record needs human review before it appears in a public directory. The goal is to prevent unsupported, stale, or sensitive claims from being displayed with more confidence than the evidence allows.",
+        "operationId": "previewEntryMerge",
+        "parameters": [
+          {
+            "description": "Slug to keep",
+            "in": "query",
+            "name": "keep",
+            "required": true,
+            "schema": {
+              "description": "Slug to keep",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Keep",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Slug to retire",
+            "in": "query",
+            "name": "duplicate",
+            "required": true,
+            "schema": {
+              "description": "Slug to retire",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Duplicate",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergePreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check a profile merge",
+        "tags": [
+          "moderation"
         ]
       }
     },
