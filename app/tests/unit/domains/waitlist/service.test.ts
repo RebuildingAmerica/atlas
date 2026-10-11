@@ -371,26 +371,45 @@ describe("waitlist server contracts", () => {
       functions.loadWaitlistRequest({ data: { id: first.id, token, kind: "manage" } }),
     ).resolves.toMatchObject({ id: first.id });
   });
-  it("sends a private management link for confirmed duplicate signup and audits mail actions", async () => {
-    const request = await store.submit({ email: "person@example.org", product: "atlas_pro" });
-    await store.confirm(await store.createLink(request.id, "confirm"));
-    await functions.submitWaitlist({ data: { email: request.email, product: request.product } });
-    const capture = JSON.parse(
-      String((mocks.fetch.mock.calls[0]?.[1] as { body: string } | undefined)?.body),
-    ) as { text: string };
-    expect(capture.text).toContain("kind=manage");
-    await store.invite(request.id, "staff");
-    await platformFunctions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } });
-    const detail = await platformFunctions.loadWaitlistStaffDetail({ data: { id: request.id } });
-    await platformFunctions.actOnWaitlistRequest({
-      data: { id: request.id, action: "retry", deliveryId: required(detail.deliveries[0]).id },
-    });
-    expect(
-      (await store.events(request.id))
-        .filter((event) => event.action.startsWith("email_"))
-        .map((event) => event.actorId),
-    ).toEqual([expect.any(String), expect.any(String)]);
-  });
+  it.each(["manage", "invite"] as const)(
+    "sends a private management link for confirmed duplicate signup and audits mail actions with %s first",
+    async (firstKind) => {
+      const request = await store.submit({ email: "person@example.org", product: "atlas_pro" });
+      await store.confirm(await store.createLink(request.id, "confirm"));
+      await functions.submitWaitlist({ data: { email: request.email, product: request.product } });
+      const capture = JSON.parse(
+        String((mocks.fetch.mock.calls[0]?.[1] as { body: string } | undefined)?.body),
+      ) as { text: string };
+      expect(capture.text).toContain("kind=manage");
+      await store.invite(request.id, "staff");
+      await platformFunctions.actOnWaitlistRequest({ data: { id: request.id, action: "resend" } });
+      const detail = await platformFunctions.loadWaitlistStaffDetail({ data: { id: request.id } });
+      const deliveries = [...detail.deliveries].sort(
+        (left, right) => Number(right.kind === firstKind) - Number(left.kind === firstKind),
+      );
+      expect(deliveries[0]?.kind).toBe(firstKind);
+      const invitation = required(deliveries.find((delivery) => delivery.kind === "invite"));
+      const management = required(deliveries.find((delivery) => delivery.kind === "manage"));
+      await expect(
+        platformFunctions.actOnWaitlistRequest({
+          data: { id: request.id, action: "retry", deliveryId: management.id },
+        }),
+      ).rejects.toThrow("This invitation email is unavailable.");
+      await expect(
+        platformFunctions.actOnWaitlistRequest({
+          data: { id: request.id, action: "retry", deliveryId: invitation.id },
+        }),
+      ).resolves.toMatchObject({ delivery: { id: invitation.id, kind: "invite", status: "sent" } });
+      const mailEvents = (await store.events(request.id)).filter((event) =>
+        event.action.startsWith("email_"),
+      );
+      expect(mailEvents.map((event) => event.action)).toEqual(["email_resent", "email_retried"]);
+      expect(mailEvents.map((event) => event.actorId)).toEqual([
+        expect.any(String),
+        expect.any(String),
+      ]);
+    },
+  );
 
   it("rate limits requests without a client IP and reports provider readiness failures per applicant", async () => {
     mocks.request.mockReturnValue(new Request("https://atlas.test/_serverFn"));
