@@ -38,10 +38,20 @@ async def database(request: Request):
         # Keep timestamp interpretation stable for source dates and account data.
         async with connection.transaction():
             await connection.execute("SET LOCAL TIME ZONE 'UTC'")
-            row = await connection.fetchrow("SELECT 1, current_setting('TimeZone')")
+            row = await connection.fetchrow(
+                "SELECT 1, current_setting('TimeZone'), "
+                "EXTRACT(TIMEZONE FROM CURRENT_TIMESTAMP)::int, "
+                "TIMESTAMPTZ '2000-01-01T05:30:00+05:30'"
+            )
     finally:
         await connection.close()
-    return {"query": row[0], "timezone": row[1], "connection_closed": connection.is_closed()}
+    return {
+        "query": row[0],
+        "timezone": row[1],
+        "timezone_offset_seconds": row[2],
+        "timestamp": row[3].isoformat(),
+        "connection_closed": connection.is_closed(),
+    }
 
 
 class ApiRuntime(DurableObject):

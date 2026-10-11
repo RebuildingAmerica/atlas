@@ -199,7 +199,8 @@ for (const path of ["/health", "/database"]) {
   if (
     path === "/database" &&
     (result.query !== 1 ||
-      result.timezone !== "UTC" ||
+      result.timezone_offset_seconds !== 0 ||
+      result.timestamp !== "2000-01-01T00:00:00+00:00" ||
       result.connection_closed !== true)
   )
     throw Error("PostgreSQL runtime contract failed.");

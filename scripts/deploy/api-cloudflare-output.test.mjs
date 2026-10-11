@@ -10,7 +10,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readBuildOutput } from "@cloudflare/build-output-utils";
-import { preparePythonOutput } from "./api-cloudflare-output.mjs";
+import {
+  preparePythonOutput,
+  preparePythonEdgeOutput,
+} from "./api-cloudflare-output.mjs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { readdirSync } from "node:fs";
@@ -107,4 +110,29 @@ test("build output rejects secret values and provider credentials", async () => 
       preparePythonOutput({ workerEnv }),
       /secret|credential/i,
     );
+});
+
+test("the JavaScript dispatcher binds the existing Python object without a Python edge invocation", async () => {
+  const destination = mkdtempSync(join(tmpdir(), "atlas-python-edge-"));
+  try {
+    const output = await preparePythonEdgeOutput({
+      destination,
+      accountId: "a".repeat(32),
+      pythonWorkerName: "atlas-python-eval-api",
+    });
+    const config = output.workers.default.config;
+    assert.equal(config.name, "atlas-python-eval-edge");
+    assert.equal(config.manifest.mainModule, "index.js");
+    assert.equal(config.manifest.modules["index.js"].type, "esm");
+    assert.deepEqual(config.env.API_RUNTIME, {
+      type: "durable-object",
+      worker: "atlas-python-eval-api",
+      exportName: "ApiRuntime",
+    });
+    assert.equal(config.workersDev, false);
+    assert.equal(config.previewUrls, false);
+    assert.deepEqual(config.domains ?? [], []);
+  } finally {
+    rmSync(destination, { recursive: true, force: true });
+  }
 });
