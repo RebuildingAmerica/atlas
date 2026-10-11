@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import "@tanstack/react-start/server-only";
 
 import { createAppActorHeaders } from "@/domains/access/server/app-actor-assertion";
@@ -65,7 +66,7 @@ async function sendAtlasRequest(
         accountReady: session.accountReady,
         organizationId: session.workspace.activeOrganization?.id,
       });
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetchAtlasApiResponse(`${baseUrl}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",

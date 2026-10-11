@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import { createFileRoute } from "@tanstack/react-router";
 
 const NO_STORE = { "Cache-Control": "no-store" } as const;
@@ -22,7 +23,7 @@ export async function handleHealthGet(): Promise<Response> {
   }
 
   try {
-    const apiResponse = await fetch(new URL("/health", apiBaseUrl), {
+    const apiResponse = await fetchAtlasApiResponse(new URL("/health", apiBaseUrl), {
       signal: AbortSignal.timeout(5000),
     });
 

@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import "@tanstack/react-start/server-only";
 
 import {
@@ -20,6 +21,10 @@ const REQUEST_HEADERS_TO_DROP = new Set([
   "connection",
   "content-length",
   "cookie",
+  "x-atlas-internal-secret",
+  "x-atlas-actor-id",
+  "x-atlas-actor-email",
+  "x-atlas-organization-id",
   "forwarded",
   "host",
   "transfer-encoding",
@@ -159,7 +164,7 @@ export async function proxyAtlasApiRequest(request: Request): Promise<Response> 
 
   let apiResponse: Response;
   try {
-    apiResponse = await fetch(buildAtlasApiUrl(request, apiBaseUrl), {
+    apiResponse = await fetchAtlasApiResponse(buildAtlasApiUrl(request, apiBaseUrl), {
       body,
       headers: upstreamHeaders,
       method: request.method,

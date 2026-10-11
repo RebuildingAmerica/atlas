@@ -188,6 +188,14 @@ export async function evaluate(args) {
   const workerName = arg(args, "--worker-name"),
     hostname = arg(args, "--hostname");
   const hyperdriveId = arg(args, "--hyperdrive-id");
+  const apiWorker = arg(args, "--api-worker");
+  if (apiWorker && apiWorker !== "atlas-python-eval-api")
+    throw new Error("The protected Atlas API evaluation binding is required.");
+  const apiVersionId = apiWorker
+    ? assertEvaluationVersion(
+        cf(["workers", "deployments", "list", "--worker", apiWorker]),
+      )
+    : undefined;
   const canonicalUrl =
     runtime.ATLAS_WEB_CANONICAL_URL ?? runtime.ATLAS_PUBLIC_URL;
   validateEvaluationDestination({ workerName, hostname, canonicalUrl });
@@ -299,6 +307,12 @@ export async function evaluate(args) {
     ]),
   );
   workerEnv.HYPERDRIVE = { type: "hyperdrive", id: hyperdriveId };
+  if (apiWorker)
+    workerEnv.API_RUNTIME = {
+      type: "durable-object",
+      worker: apiWorker,
+      exportName: "ApiRuntime",
+    };
   workerEnv.APP_RUNTIME = {
     type: "durable-object",
     worker: workerName,
@@ -394,6 +408,7 @@ export async function evaluate(args) {
       workerName,
       hostname,
       canonicalUrl,
+      ...(apiWorker ? { apiWorker, apiVersionId } : {}),
       zoneId,
       artifactDigest: digestDirectory(join(directory, "artifact")),
       assetsDigest: digestDirectory(join(directory, "assets")),

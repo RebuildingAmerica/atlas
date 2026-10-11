@@ -67,3 +67,80 @@ describe("Worker session endpoint", () => {
     expect(calls.dispatch).not.toHaveBeenCalled();
   });
 });
+
+describe("Worker API binding", () => {
+  it("routes MCP through the binding while docs and auth keep their own handlers", async () => {
+    const { default: worker } = await import("../../../../../server/worker");
+    const boundFetch = vi.fn(async (request: Request) => {
+      expect(request.url).toBe("https://api.example.com/atlas/mcp/?q=one");
+      expect(request.headers.get("x-atlas-client-ip")).toBe("203.0.113.10");
+      expect(request.headers.get("x-atlas-proxy-secret")).toBe("shared-secret");
+      for (const name of [
+        "cookie",
+        "x-atlas-internal-secret",
+        "x-atlas-actor-id",
+        "x-atlas-organization-id",
+      ])
+        expect(request.headers.has(name)).toBe(false);
+      expect(await request.text()).toBe("rpc-body");
+      return new Response("bound", { status: 202 });
+    });
+    const env = {
+      HYPERDRIVE: { connectionString: "postgres://session" },
+      API_RUNTIME: { getByName: () => ({ fetch: boundFetch }) },
+      ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.com",
+      ATLAS_AUTH_INTERNAL_SECRET: "shared-secret",
+      ATLAS_DOCS_URL: "https://docs.example.com",
+    } as unknown as Parameters<typeof worker.fetch>[1];
+    const response = await worker.fetch(
+      new Request("https://atlas.test/mcp?q=one", {
+        method: "POST",
+        body: "rpc-body",
+        headers: {
+          "cf-connecting-ip": "203.0.113.10",
+          cookie: "session=private",
+          "x-atlas-client-ip": "forged",
+          "x-atlas-internal-secret": "forged",
+          "x-atlas-actor-id": "forged",
+          "x-atlas-organization-id": "forged",
+        },
+      }),
+      env,
+    );
+    expect(response.status).toBe(202);
+    expect(await response.text()).toBe("bound");
+    const network = vi.fn((request: Request) => {
+      expect(request.url).toBe("https://docs.example.com/docs/guide");
+      return Promise.resolve(new Response("docs"));
+    });
+    vi.stubGlobal("fetch", network);
+    expect(
+      await (await worker.fetch(new Request("https://atlas.test/docs/guide"), env)).text(),
+    ).toBe("docs");
+    calls.render.mockResolvedValue(new Response("auth"));
+    expect(
+      await (await worker.fetch(new Request("https://atlas.test/api/auth/sign-in"), env)).text(),
+    ).toBe("auth");
+    expect(boundFetch).toHaveBeenCalledOnce();
+    expect(network).toHaveBeenCalledOnce();
+  });
+});
+
+it("preserves the internal API introspection credential for the app-owned auth handler", async () => {
+  const { default: worker } = await import("../../../../../server/worker");
+  const env = { HYPERDRIVE: { connectionString: "postgres://session" } } as Parameters<
+    typeof worker.fetch
+  >[1];
+  calls.render.mockImplementation((request: Request) => {
+    expect(request.headers.get("x-atlas-internal-secret")).toBe("api-introspection-secret");
+    return Promise.resolve(Response.json({ valid: true }));
+  });
+  const response = await worker.fetch(
+    new Request("https://atlas.test/api/auth/internal/api-key", {
+      method: "POST",
+      headers: { "x-atlas-internal-secret": "api-introspection-secret" },
+    }),
+    env,
+  );
+  expect(await response.json()).toEqual({ valid: true });
+});

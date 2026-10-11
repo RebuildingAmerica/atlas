@@ -67,7 +67,8 @@ export const ATLAS_API_ERROR_MESSAGES = {
   signIn: "Sign in to Atlas to continue.",
   forbidden: "You don't have permission to do that in Atlas.",
   notFound: "Atlas couldn't find that. It may have moved or been removed.",
-  conflict: "That conflicts with a recent change. Refresh the page and try again.",
+  conflict:
+    "That conflicts with a recent change. Refresh the page and try again.",
   busy: "Atlas is busy right now. Try again in a moment.",
   unavailable: "Atlas is temporarily unavailable. Please try again.",
   failed: "Atlas couldn't complete that request. Try again.",
@@ -151,20 +152,53 @@ let serverRequestHeaders: ServerRequestHeadersProvider | undefined;
  * visitor's identity, every visitor shares one anonymous rate-limit bucket at
  * the API, and once it empties every server-rendered page fails.
  */
-export function setServerRequestHeadersProvider(provider: ServerRequestHeadersProvider): void {
+export function setServerRequestHeadersProvider(
+  provider: ServerRequestHeadersProvider,
+): void {
   serverRequestHeaders = provider;
 }
 
-export async function atlasFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
+/** A request-owned server transport declines URLs it does not own without consuming their body. */
+export type ServerApiTransport = (
+  request: Request,
+) => Promise<Response | undefined>;
+export type ServerApiTransportProvider = () => ServerApiTransport | undefined;
+let serverApiTransport: ServerApiTransportProvider | undefined;
+
+/** Register a lookup, never a visitor's transport or identity, at server startup. */
+export function setServerApiTransportProvider(
+  provider: ServerApiTransportProvider | undefined,
+): void {
+  serverApiTransport = provider;
+}
+
+/** Preserve ordinary browser/self-hosted fetch while allowing request-owned server bindings. */
+export async function fetchAtlasApiResponse(
+  input: string | URL | Request,
+  init: RequestInit = {},
+): Promise<Response> {
+  const transport =
+    typeof window === "undefined" ? serverApiTransport?.() : undefined;
+  if (!transport) return fetch(input, init);
+  const request = new Request(input, init);
+  return (await transport(request)) ?? fetch(request);
+}
+
+export async function atlasFetch<T>(
+  url: string,
+  init: RequestInit = {},
+): Promise<T> {
   const requestUrl = /^https?:\/\//.test(url)
     ? url
     : new URL(url, `${getRuntimeAppOrigin()}/`).toString();
-  const response = await fetch(requestUrl, {
+  const response = await fetchAtlasApiResponse(requestUrl, {
     ...init,
     headers: {
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...(typeof window === "undefined" && serverRequestHeaders ? serverRequestHeaders() : {}),
+      ...(typeof window === "undefined" && serverRequestHeaders
+        ? serverRequestHeaders()
+        : {}),
       ...(init.headers ?? {}),
     },
   });

@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import { createServerFn } from "@tanstack/react-start";
 import { UserFacingError } from "@rebuildingamerica/atlas-api-client/user-facing-errors";
 import { z } from "zod";
@@ -124,7 +125,7 @@ async function canUseApiKeyProbe(
   };
 
   if (probe.kind === "protected-api") {
-    const responsePromise = fetch(probe.url, {
+    const responsePromise = fetchAtlasApiResponse(probe.url, {
       headers: baseHeaders,
       method: "GET",
     });
@@ -132,7 +133,7 @@ async function canUseApiKeyProbe(
     return response.ok;
   }
 
-  const responsePromise = fetch(probe.url, {
+  const responsePromise = fetchAtlasApiResponse(probe.url, {
     method: "POST",
     headers: {
       ...baseHeaders,

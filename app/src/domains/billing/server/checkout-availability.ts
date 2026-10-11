@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import "@tanstack/react-start/server-only";
 
 import { readBillingFlag } from "./billing-flags";
@@ -162,7 +163,7 @@ async function runApiProbe(
     controller.abort();
   }, PROBE_TIMEOUT_MS);
   try {
-    const response = await fetch(probeUrl, {
+    const response = await fetchAtlasApiResponse(probeUrl, {
       signal: controller.signal,
       headers: { accept: "application/json" },
     });

@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import "@tanstack/react-start/server-only";
 
 import { randomUUID } from "node:crypto";
@@ -422,7 +423,7 @@ async function persistLinkedAtprotoIdentity(
   const runtime = getAuthRuntimeConfig();
   const session = await requireSignedInAtlasSession();
   const target = runtime.apiBaseUrl ?? runtime.publicBaseUrl;
-  const response = await fetch(new URL("/api/atproto/identities", target), {
+  const response = await fetchAtlasApiResponse(new URL("/api/atproto/identities", target), {
     body: JSON.stringify(input),
     headers: {
       "Content-Type": "application/json",
@@ -444,17 +445,20 @@ async function resolveAtprotoSignInController(
 ): Promise<string> {
   const runtime = getAuthRuntimeConfig();
   const target = runtime.apiBaseUrl ?? runtime.publicBaseUrl;
-  const response = await fetch(new URL("/api/atproto/identities/sign-in/resolve", target), {
-    body: JSON.stringify(input),
-    headers: {
-      "Content-Type": "application/json",
-      ...(await createAppActorHeaders(
-        { email: "atproto-sign-in@atlas.internal", id: "atproto-sign-in" },
-        { accountReady: false },
-      )),
+  const response = await fetchAtlasApiResponse(
+    new URL("/api/atproto/identities/sign-in/resolve", target),
+    {
+      body: JSON.stringify(input),
+      headers: {
+        "Content-Type": "application/json",
+        ...(await createAppActorHeaders(
+          { email: "atproto-sign-in@atlas.internal", id: "atproto-sign-in" },
+          { accountReady: false },
+        )),
+      },
+      method: "POST",
     },
-    method: "POST",
-  });
+  );
   if (!response.ok) {
     throw new UserFacingError("ATProto sign-in is unavailable.");
   }

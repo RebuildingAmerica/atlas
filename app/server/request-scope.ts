@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { ServerApiTransport } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 
 interface WorkerRequest {
+  apiTransport?: ServerApiTransport;
   connectionString: string;
   resources: Map<string, unknown>;
   cleanup: (() => Promise<void>)[];
@@ -20,8 +22,14 @@ export function requestResource<T>(key: string, create: () => T): T | undefined 
 export async function runWorkerRequest(
   connectionString: string,
   handler: () => Promise<Response>,
+  options: { apiTransport?: ServerApiTransport } = {},
 ): Promise<Response> {
-  const scope: WorkerRequest = { connectionString, resources: new Map(), cleanup: [] };
+  const scope: WorkerRequest = {
+    connectionString,
+    resources: new Map(),
+    cleanup: [],
+    apiTransport: options.apiTransport,
+  };
   let released = false;
   const release = async () => {
     if (released) return;
@@ -51,12 +59,14 @@ export async function runWorkerRequest(
             }
           });
         },
-        async cancel(reason) {
-          try {
-            await reader.cancel(reason);
-          } finally {
-            await release();
-          }
+        cancel(reason) {
+          return requests.run(scope, async () => {
+            try {
+              await reader.cancel(reason);
+            } finally {
+              await release();
+            }
+          });
         },
       });
       return new Response(body, {

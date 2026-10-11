@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import { notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -86,7 +87,7 @@ function serverApiBaseUrl(): string {
 export const loadPublicDirectory = createServerFn({ method: "GET" })
   .validator(publicDirectorySchema)
   .handler(async ({ data }): Promise<PublicDirectoryResponse> => {
-    const response = await fetch(
+    const response = await fetchAtlasApiResponse(
       `${serverApiBaseUrl()}/orgs/${encodeURIComponent(data.orgId)}/entries/public-directory`,
       {
         headers: { Accept: "application/json" },

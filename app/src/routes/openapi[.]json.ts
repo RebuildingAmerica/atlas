@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import { createFileRoute } from "@tanstack/react-router";
 
 const PLAIN_TEXT = { "content-type": "text/plain; charset=utf-8" } as const;
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/openapi.json")({
         }
 
         try {
-          const apiResponse = await fetch(new URL("/openapi.json", apiBaseUrl), {
+          const apiResponse = await fetchAtlasApiResponse(new URL("/openapi.json", apiBaseUrl), {
             signal: AbortSignal.timeout(5000),
           });
 

@@ -1,3 +1,4 @@
+import { fetchAtlasApiResponse } from "@rebuildingamerica/atlas-api-client/orval/fetcher";
 import type { AtlasWorkerEnv } from "../worker-configuration";
 const DOCS_CSP =
   "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https:; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
@@ -30,6 +31,10 @@ export async function proxyHostedRequest(
   const headers = new Headers(request.headers);
   for (const key of [
     "cookie",
+    "x-atlas-internal-secret",
+    "x-atlas-actor-id",
+    "x-atlas-actor-email",
+    "x-atlas-organization-id",
     "host",
     "connection",
     "keep-alive",
@@ -46,7 +51,7 @@ export async function proxyHostedRequest(
     headers.set("x-atlas-client-ip", clientIp);
     headers.set("x-atlas-proxy-secret", env.ATLAS_AUTH_INTERNAL_SECRET);
   }
-  const upstream = await fetch(
+  const upstream = await (docs ? fetch : fetchAtlasApiResponse)(
     new Request(target, new Request(request, { headers, redirect: "manual" })),
   );
   const responseHeaders = new Headers(upstream.headers);
