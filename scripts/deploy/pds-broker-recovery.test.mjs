@@ -118,3 +118,37 @@ test("invalid recipient keys and deployment identities fail before provider acce
     assert.equal(called, false);
   }
 });
+
+test("recovery diagnostics identify only a closed failure category", () => {
+  const cases = [
+    ["not-json synthetic-private-value", "invalid-json"],
+    ["null", "invalid-fields"],
+    [JSON.stringify({ brokerSecret: credential }), "invalid-fields"],
+    [
+      JSON.stringify({ ...reply, origin: "https://other.atlas.example" }),
+      "origin-mismatch",
+    ],
+    [
+      JSON.stringify({ ...reply, brokerSecret: "synthetic private value" }),
+      "invalid-credential",
+    ],
+  ];
+  for (const [stdout, category] of cases) {
+    assert.throws(
+      () =>
+        recoverPdsBroker({
+          env,
+          run: () => ({ status: 0, stdout: Buffer.from(stdout) }),
+        }),
+      (error) => {
+        assert.equal(
+          error.message,
+          `PDS broker response is invalid (${category}); private diagnostics suppressed.`,
+        );
+        assert.equal(error.message.includes(credential), false);
+        assert.equal(error.message.includes("synthetic-private-value"), false);
+        return true;
+      },
+    );
+  }
+});
