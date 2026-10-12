@@ -30,6 +30,12 @@ void test("live billing repair cannot target a test key or another origin", () =
   });
 });
 
+void test("live billing repair refuses unrestricted account credentials", () => {
+  assert.throws(() => {
+    requireProductionBillingTarget("sk_live_fixture_only", origin);
+  }, /restricted live key/);
+});
+
 void test("live billing repair updates the existing endpoint and creates a usable Atlas portal", async () => {
   const webhook = {
     id: "we_atlas",

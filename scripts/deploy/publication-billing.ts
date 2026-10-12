@@ -42,7 +42,11 @@ export async function verifyPublicationBilling(
       "Production billing setting missing: ATLAS_BILLING_ALLOWED_OFFERS.",
     );
   const env = new Map(Object.entries(runtime));
-  validateStripeApiKeyMode(runtimeValue(runtime, "STRIPE_API_KEY"), "live");
+  const apiKey = runtimeValue(runtime, "STRIPE_API_KEY");
+  validateStripeApiKeyMode(apiKey, "live");
+  // Preserve customer billing access without granting the application account-wide access.
+  if (!apiKey.trim().startsWith("rk_live_"))
+    throw new Error("Production billing requires a restricted live key.");
   const webhook = new URL(
     "/api/stripe/webhook",
     runtimeValue(runtime, "ATLAS_PUBLIC_URL"),

@@ -96,9 +96,12 @@ Production's `STRIPE_BILLING_PORTAL_CONFIGURATION` secret; the workflow token
 cannot edit GitHub environment secrets. This is the permission-limited fallback
 to the automated repair. Retain the separate runtime restricted key as
 Production's `STRIPE_API_KEY` and the live catalog as `STRIPE_ATLAS_CATALOG`.
-Keep the repository-level test-mode key and catalog for CI. The protected
-publication job reads Production's settings, preserving existing customers'
-billing access without giving ordinary test jobs live credentials.
+Production publication rejects unrestricted `sk_live_` keys before contacting
+Stripe; the runtime key must use `rk_live_` with the application's required
+permissions. Live mode and restricted permissions are independent settings. Keep
+the repository-level test-mode key and catalog for CI. The protected publication
+job reads Production's settings, preserving existing customers' billing access
+without giving ordinary test jobs live credentials.
 
 ## Publication sequence
 

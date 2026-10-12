@@ -20,7 +20,7 @@ function fixture() {
   for (const coupon of ATLAS_COUPONS) ids.set(coupon.envKey, coupon.id);
   const runtime = Object.fromEntries(
     buildStripeEnvUpdates(
-      "sk_live_fixture_only",
+      "rk_live_fixture_only",
       "whsec_fixture_only",
       ids,
       "bpc_fixture",
@@ -154,6 +154,24 @@ void test("missing billing settings, test keys and wrong webhooks fail before a 
     verifyPublicationBilling(f.runtime, f.stripe, async () => f.snapshot),
     /catalog or webhook/,
   );
+  assert.deepEqual(f.calls, []);
+});
+
+void test("production publication rejects unrestricted keys before contacting Stripe", async () => {
+  const f = fixture();
+  let snapshotRequested = false;
+  await assert.rejects(
+    verifyPublicationBilling(
+      { ...f.runtime, STRIPE_API_KEY: "sk_live_fixture_only" }, // pragma: allowlist secret
+      f.stripe,
+      async () => {
+        snapshotRequested = true;
+        return f.snapshot;
+      },
+    ),
+    /restricted live key/,
+  );
+  assert.equal(snapshotRequested, false);
   assert.deepEqual(f.calls, []);
 });
 

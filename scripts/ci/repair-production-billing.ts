@@ -20,6 +20,11 @@ export function requireProductionBillingTarget(
   publicOrigin: string,
 ): void {
   validateStripeApiKeyMode(apiKey, "live");
+  if (!apiKey.trim().startsWith("rk_live_")) {
+    throw new Error(
+      "Production billing repair requires a restricted live key.",
+    );
+  }
   const origin = new URL(publicOrigin);
   if (origin.origin !== PRODUCTION_ORIGIN || origin.pathname !== "/") {
     throw new Error(
