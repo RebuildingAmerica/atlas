@@ -217,6 +217,71 @@ test("publication retains only closed stage outcomes when a provider fails", () 
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("API failure summaries identify the current nested check and ignore retained predecessor failures", () => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-api-summary-"));
+  const env = {
+    ATLAS_PUBLICATION_TARGET: "production",
+    ATLAS_PUBLICATION_OPERATION: "verify-api",
+    GITHUB_RUN_ID: "124",
+  };
+  const apiDirectory = "api/publication-123";
+  try {
+    mkdirSync(join(directory, apiDirectory), { recursive: true });
+    writeFileSync(
+      join(directory, "publication.json"),
+      JSON.stringify({
+        runId: "124",
+        operation: "verify-api",
+        apiDirectory,
+      }),
+    );
+    assert.throws(
+      () =>
+        publicationStage(directory, "api-verify", () => {
+          throw Error("private-provider-output");
+        }),
+      /private-provider-output/,
+    );
+    const diagnosticFile = join(
+      directory,
+      apiDirectory,
+      "verification-diagnostics.jsonl",
+    );
+    const records = [
+      { runId: "123", stage: "runtime-snapshot", status: "failed" },
+      { runId: "124", stage: "api-probes", status: "pass" },
+      {
+        runId: "124",
+        stage: "runtime-deployments-after",
+        status: "failed",
+        message: "private-provider-output",
+      },
+      { runId: "124", stage: "runtime-verification", status: "failed" },
+    ];
+    writeFileSync(
+      diagnosticFile,
+      records.map((record) => JSON.stringify(record)).join("\n") + "\n",
+    );
+    const summary = publicationSummary({ env, directory, failed: true });
+    assert.match(summary, /Active API\/discovery versions after probes/);
+    assert.doesNotMatch(
+      summary,
+      /private-provider-output|runtime-snapshot|No safe failure/,
+    );
+    writeFileSync(diagnosticFile, JSON.stringify(records[0]) + "\n");
+    assert.match(
+      publicationSummary({ env, directory, failed: true }),
+      /API\/discovery runtime verification/,
+    );
+    assert.doesNotMatch(
+      publicationSummary({ env, directory, failed: true }),
+      /Rollback snapshot/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 test("web preparation failures identify the action without retaining private output", () => {
   const directory = mkdtempSync(join(tmpdir(), "atlas-web-stage-"));
   const env = {

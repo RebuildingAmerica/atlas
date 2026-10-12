@@ -66,6 +66,13 @@ export async function runPausedVerificationStage(stage, operation, checkpoint) {
       "operations-domain",
       "operations-denial",
       "runtime-verification",
+      "discovery-version",
+      "api-version",
+      "runtime-deployments-before",
+      "discovery-probes",
+      "api-probes",
+      "runtime-deployments-after",
+      "runtime-snapshot",
     ].includes(stage)
   )
     throw Error("Unknown paused verification stage.");
@@ -558,6 +565,7 @@ export async function verifyPausedApiRelease({
   probe,
   checkpoint,
   now = Date.now,
+  verifyStage = async (_stage, action) => action(),
 }) {
   if (
     manifest?.schemaVersion !== 1 ||
@@ -634,28 +642,32 @@ export async function verifyPausedApiRelease({
       identity.namespaceClass !== roleClass(role)
     )
       throw Error("The retained role/release identity differs.");
-    const v = cf([
-      "workers",
-      "versions",
-      "get",
-      identity.workerVersionId,
-      "--worker-id",
-      identity.workerName,
-    ]);
-    if (
-      v?.id !== identity.workerVersionId ||
-      v.annotations?.["workers/tag"] !== identity.releaseSha ||
-      v.annotations?.["workers/message"] !==
-        releaseMessage(
-          manifest.target,
-          role,
-          identity.artifactDigest,
-          manifest.schemaReceiptDigest,
-        )
-    )
-      throw Error("Exact retained version/artifact readback failed.");
+    await verifyStage(`${role}-version`, () => {
+      const v = cf([
+        "workers",
+        "versions",
+        "get",
+        identity.workerVersionId,
+        "--worker-id",
+        identity.workerName,
+      ]);
+      if (
+        v?.id !== identity.workerVersionId ||
+        v.annotations?.["workers/tag"] !== identity.releaseSha ||
+        v.annotations?.["workers/message"] !==
+          releaseMessage(
+            manifest.target,
+            role,
+            identity.artifactDigest,
+            manifest.schemaReceiptDigest,
+          )
+      )
+        throw Error("Exact retained version/artifact readback failed.");
+    });
   }
-  assertRuntimeDeployments(checked.runtimeReleases, cf);
+  await verifyStage("runtime-deployments-before", () =>
+    assertRuntimeDeployments(checked.runtimeReleases, cf),
+  );
   if (manifest.rollbackPlan) {
     const expected = createApiRollbackPlan({
       snapshot: manifest.rollbackPlan.snapshot,
@@ -667,21 +679,27 @@ export async function verifyPausedApiRelease({
   checked.checks = [];
   for (const role of ROLES)
     checked.checks.push(
-      ...(await probeRole(
-        probe,
-        role,
-        manifest.releaseSha,
-        manifest.schemaReceiptDigest,
+      ...(await verifyStage(`${role}-probes`, () =>
+        probeRole(
+          probe,
+          role,
+          manifest.releaseSha,
+          manifest.schemaReceiptDigest,
+        ),
       )),
     );
-  assertRuntimeDeployments(checked.runtimeReleases, cf);
-  checked.retainedSnapshot = captureApiRuntimeSnapshot({
-    accountId: checked.accountId,
-    runtimeReleases: checked.runtimeReleases,
-    env,
-    cloudflare: cf,
-    now,
-  });
+  await verifyStage("runtime-deployments-after", () =>
+    assertRuntimeDeployments(checked.runtimeReleases, cf),
+  );
+  checked.retainedSnapshot = await verifyStage("runtime-snapshot", () =>
+    captureApiRuntimeSnapshot({
+      accountId: checked.accountId,
+      runtimeReleases: checked.runtimeReleases,
+      env,
+      cloudflare: cf,
+      now,
+    }),
+  );
   checked.status = "verified-paused";
   checked.verifiedAt = new Date(now()).toISOString();
   await checkpoint({
@@ -908,7 +926,12 @@ export async function releaseCli(
       runPausedVerificationStage(stage, operation, async (record) =>
         appendFileSync(
           join(directory, "verification-diagnostics.jsonl"),
-          JSON.stringify(record) + "\n",
+          JSON.stringify({
+            ...record,
+            ...(/^\d+$/.test(env.GITHUB_RUN_ID ?? "")
+              ? { runId: env.GITHUB_RUN_ID }
+              : {}),
+          }) + "\n",
         ),
       );
     const app = await verifyStage("operations-access", async () => {
@@ -947,6 +970,7 @@ export async function releaseCli(
     });
     const manifest = await verifyStage("runtime-verification", () =>
       verifyPausedApiRelease({
+        verifyStage,
         manifest: journal.manifest,
         artifacts: Object.fromEntries(
           ROLES.map((role) => {

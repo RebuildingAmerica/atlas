@@ -591,6 +591,44 @@ test("verification-only resumes exact published versions without a deployment ca
     );
   }));
 
+test("verification identifies a provider readback failure after all protected probes pass", () =>
+  using(async (f) => {
+    const published = await publishApiRelease({ ...f.input, apply: true });
+    const probes = [];
+    const records = [];
+    await assert.rejects(
+      verifyPausedApiRelease({
+        manifest: published,
+        env: f.input.env,
+        cloudflare: (command) => {
+          if (probes.length === 6)
+            throw Error("private-provider-output credential-value");
+          return f.input.cloudflare(command);
+        },
+        probe: async (input) => {
+          probes.push(input);
+          return f.input.probe(input);
+        },
+        checkpoint: async () =>
+          assert.fail("Failed verification cannot checkpoint success"),
+        verifyStage: (stage, action) =>
+          runPausedVerificationStage(stage, action, async (record) =>
+            records.push(record),
+          ),
+      }),
+      /runtime-deployments-after/,
+    );
+    assert.equal(probes.length, 6);
+    assert.deepEqual(records.slice(-2), [
+      { stage: "runtime-deployments-after", status: "running" },
+      { stage: "runtime-deployments-after", status: "failed" },
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(records),
+      /private-provider-output|credential-value/,
+    );
+  }));
+
 test("verification recovers the uploaded final API after an interrupted bootstrap callback", () =>
   using(async (f) => {
     const deploy = f.input.deploy;

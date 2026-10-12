@@ -31,6 +31,7 @@ const PUBLICATION_STAGES = new Set([
   "cloudflare-hyperdrive-read",
   "cloudflare-access-read",
   "native-dependencies",
+  "api-verify",
   "web-runtime-identity",
   "web-runtime-prepare",
   "web-build",
@@ -118,6 +119,7 @@ export function publicationSummary({
     "cloudflare-hyperdrive-read": "Cloudflare database connection access",
     "cloudflare-access-read": "Cloudflare Access configuration",
     "native-dependencies": "Python native dependencies",
+    "api-verify": "API/discovery runtime verification",
     "web-runtime-identity": "Exact API and discovery runtime identity",
     "web-runtime-prepare": "Protected web runtime preparation",
     "web-build": "Workers application build",
@@ -137,18 +139,50 @@ export function publicationSummary({
       current.runId === env.GITHUB_RUN_ID &&
       current.operation === operation
     ) {
-      const failures = (name) =>
-        readFileSync(join(directory, name), "utf8")
+      const failures = (name, root = directory) =>
+        readFileSync(join(root, name), "utf8")
           .trim()
           .split("\n")
           .map(JSON.parse)
-          .filter((entry) => entry.status === "fail");
+          .filter((entry) => ["fail", "failed"].includes(entry.status));
       const stage = failures("publication-diagnostics.jsonl").findLast(
         (entry) => PUBLICATION_STAGES.has(entry.stage),
       )?.stage;
       if (stage) {
         boundary = labels[stage];
         details = "publication-diagnostics.jsonl";
+        if (stage === "api-verify") {
+          const api = {
+            "operations-access": "API operations Access policy",
+            "operations-domain": "API operations hostname",
+            "operations-denial": "API operations anonymous denial",
+            "discovery-version": "Retained discovery version",
+            "api-version": "Retained API version",
+            "runtime-deployments-before":
+              "Active API/discovery versions before probes",
+            "discovery-probes": "Protected discovery runtime probes",
+            "api-probes": "Protected API runtime probes",
+            "runtime-deployments-after":
+              "Active API/discovery versions after probes",
+            "runtime-snapshot": "Rollback snapshot readback",
+          };
+          const apiDirectory = releasePath(
+            directory,
+            current.pendingApiDirectory ?? current.apiDirectory,
+          );
+          const entry = failures(
+            "verification-diagnostics.jsonl",
+            apiDirectory,
+          ).findLast(
+            (entry) =>
+              entry.runId === env.GITHUB_RUN_ID &&
+              Object.hasOwn(api, entry.stage),
+          );
+          if (entry) {
+            boundary = api[entry.stage];
+            details = "API release verification-diagnostics.jsonl";
+          }
+        }
         if (stage === "billing-preflight") {
           details = "billing-diagnostics.jsonl";
           const billing = {
@@ -1162,23 +1196,25 @@ export async function publicationCli({
           "verify-api accepts paused publication artifacts only; active API acceptance belongs to the protected web journey checks.",
         );
       const apiSettings = privateFile("api-settings.json", configured.service);
-      node("api-cloudflare-release.mjs", [
-        "--target",
-        context.target,
-        "--directory",
-        previous,
-        "--runtime-file",
-        runtimeFile,
-        "--api-settings-file",
-        apiSettings,
-        "--access-file",
-        accessFile,
-        "--operations-hostname",
-        operations,
-        "--zone-id",
-        zone,
-        "--verify-only",
-      ]);
+      publicationStage(bundle, "api-verify", () =>
+        node("api-cloudflare-release.mjs", [
+          "--target",
+          context.target,
+          "--directory",
+          previous,
+          "--runtime-file",
+          runtimeFile,
+          "--api-settings-file",
+          apiSettings,
+          "--access-file",
+          accessFile,
+          "--operations-hostname",
+          operations,
+          "--zone-id",
+          zone,
+          "--verify-only",
+        ]),
+      );
       if (context.target === "production") {
         node("api-public-routing.mjs", [
           "--mode",
