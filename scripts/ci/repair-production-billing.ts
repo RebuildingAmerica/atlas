@@ -152,7 +152,9 @@ async function main(): Promise<void> {
   if (command === "--verify") {
     const portalId = process.env.STRIPE_BILLING_PORTAL_CONFIGURATION?.trim();
     if (!portalId) {
-      throw new Error("The Atlas portal ID is not set in Vercel Production.");
+      throw new Error(
+        "The Atlas portal ID is not set in production configuration.",
+      );
     }
     await requireLiveAtlasCatalog(stripe, catalogRaw);
     await verifyProductionBillingRepair(stripe, publicOrigin, portalId);

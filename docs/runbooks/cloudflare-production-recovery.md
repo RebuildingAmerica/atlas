@@ -81,6 +81,25 @@ paused consumers do not detach existing public routes. Paused verification and
 rollback remain available. Bootstrap creates no canonical route or active
 consumer; additive schema checks and account identity verification still run.
 
+For live billing repair, use **Repair Production Billing Configuration** on
+`main`, with `ATLAS_STRIPE_LIVE_REPAIR_KEY` and `ATLAS_STRIPE_LIVE_CATALOG` in
+the Production environment. The repair key must be restricted (`rk_live_`), with
+Accounts and Products read access and Customer Portal and Webhook Endpoints
+write access. All other permissions can remain disabled. The workflow requires
+explicitly closed checkout, updates the existing webhook without rotating its
+signing secret, and creates or reuses the Atlas portal. It changes no customer,
+charge, refund or subscription and never writes hosting settings to Vercel.
+
+After Stripe read-back, the summary and non-secret receipt identify the portal
+configuration. An environment administrator installs that identifier as
+Production's `STRIPE_BILLING_PORTAL_CONFIGURATION` secret; the workflow token
+cannot edit GitHub environment secrets. This is the permission-limited fallback
+to the automated repair. Retain the separate runtime restricted key as
+Production's `STRIPE_API_KEY` and the live catalog as `STRIPE_ATLAS_CATALOG`.
+Keep the repository-level test-mode key and catalog for CI. The protected
+publication job reads Production's settings, preserving existing customers'
+billing access without giving ordinary test jobs live credentials.
+
 ## Publication sequence
 
 Each operation retains a `cloudflare-release-TARGET-RUN_ID` artifact. Supply the
