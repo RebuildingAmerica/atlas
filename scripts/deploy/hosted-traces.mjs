@@ -52,6 +52,21 @@ export function decryptTrace(data, secret, identity) {
     decipher.final(),
   ]);
 }
+
+/** Decode the retained report only in the existing credentialed doctor process. */
+export function readRetainedHostedReport({ directory, secret, identity }) {
+  const index = JSON.parse(readFileSync(join(directory, "index.json"), "utf8"));
+  const name = "hosted-results.json.encrypted";
+  if (index.identity !== identity || !index.files?.includes(name))
+    throw Error("Retained hosted report identity differs.");
+  return JSON.parse(
+    decryptTrace(
+      readFileSync(join(directory, name)),
+      secret,
+      identity,
+    ).toString("utf8"),
+  );
+}
 export function retainHostedTraces({ source, destination, secret, identity }) {
   if (!existsSync(source)) return { status: "no-traces", files: 0 };
   const files = [];

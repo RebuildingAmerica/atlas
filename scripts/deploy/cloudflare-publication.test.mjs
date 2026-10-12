@@ -178,6 +178,44 @@ test("hosted failure diagnostics retain source locations without credentials or 
   );
 });
 
+test("identity helper diagnostics expose only fixed failure categories and HTTP status", () => {
+  const report = {
+    suites: [
+      {
+        specs: [
+          {
+            file: "atproto-identity-hosted.spec.ts",
+            line: 65,
+            column: 35,
+            tests: [
+              {
+                results: [
+                  {
+                    status: "failed",
+                    duration: 689,
+                    error: {
+                      message:
+                        'Error: {"error":"Hosted E2E cleanup is unavailable."}\nExpected: < 400\nReceived: 503\nBearer private-token customer@example.org',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const failures = hostedFailureReport(report);
+  assert.equal(failures[0].httpStatus, 503);
+  assert.equal(failures[0].reason, "hosted-cleanup-unavailable");
+  assert.equal(JSON.stringify(failures).includes("private-token"), false);
+  assert.equal(
+    JSON.stringify(failures).includes("customer@example.org"),
+    false,
+  );
+});
+
 test("trusted publication preflight and cleanup work in a clean checkout before dependency setup", (t) => {
   const checkout = mkdtempSync(join(tmpdir(), "atlas-pre-setup-"));
   t.after(() => rmSync(checkout, { recursive: true, force: true }));

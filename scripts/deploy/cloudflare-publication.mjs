@@ -126,6 +126,23 @@ export function hostedFailureReport(report) {
               return summary;
             });
           const message = String(result.error?.message ?? "");
+          const httpStatus =
+            /Expected:\s*<\s*400\s+Received:\s*([1-5]\d{2})\b/.exec(
+              message.replace(/\u001b\[[0-9;]*m/g, ""),
+            );
+          const helperFailures = {
+            "Hosted E2E is unavailable.": "hosted-helper-unavailable",
+            "Hosted E2E cleanup is unavailable.": "hosted-cleanup-unavailable",
+            "Hosted E2E preparation and cleanup could not be verified.":
+              "hosted-prepare-cleanup-failed",
+            "Hosted E2E preparation failed; temporary accounts were removed.":
+              "hosted-prepare-failed-cleaned",
+            "Hosted E2E cleanup could not be verified.":
+              "hosted-cleanup-unverified",
+          };
+          const reason = Object.entries(helperFailures).find(([text]) =>
+            message.includes(JSON.stringify({ error: text })),
+          )?.[1];
           failures.push({
             file: `app/tests/e2e/${file[1]}`,
             line: precise ? Number(location.line) : Number(spec.line),
@@ -141,6 +158,8 @@ export function hostedFailureReport(report) {
                     : "error",
             durationMs: result.duration,
             steps,
+            ...(httpStatus ? { httpStatus: Number(httpStatus[1]) } : {}),
+            ...(reason ? { reason } : {}),
           });
         }
     }
@@ -1012,6 +1031,62 @@ export async function publicationCli({
     if (existsSync(bundle))
       throw Error("Doctor requires a fresh runner directory.");
     mkdirSync(bundle, { recursive: true, mode: 0o700 });
+    let retainedHostedFailures;
+    const diagnosticRunId = env.ATLAS_PUBLICATION_SOURCE_RUN_ID?.trim();
+    if (diagnosticRunId) {
+      const directory = mkdtempSync(
+        join(required(env, "RUNNER_TEMP"), "atlas-hosted-diagnostic-"),
+      );
+      try {
+        const run = parseJson(
+          tool(
+            "gh",
+            [
+              "api",
+              `repos/${context.repository}/actions/runs/${diagnosticRunId}`,
+            ],
+            { env },
+          ),
+        );
+        validateRetainedRun(run, context, {
+          runId: diagnosticRunId,
+          previous: true,
+          recovery: true,
+        });
+        tool(
+          "gh",
+          [
+            "run",
+            "download",
+            diagnosticRunId,
+            "--repo",
+            context.repository,
+            "--name",
+            `cloudflare-release-${context.target}-${diagnosticRunId}`,
+            "--dir",
+            directory,
+          ],
+          { env },
+        );
+        const { readRetainedHostedReport } =
+          await import("./hosted-traces.mjs");
+        retainedHostedFailures = hostedFailureReport(
+          readRetainedHostedReport({
+            directory: join(directory, "hosted-traces"),
+            secret: required(env, "ATLAS_HOSTED_E2E_SECRET"),
+            identity: `${run.head_sha}:${diagnosticRunId}:${run.run_attempt}`,
+          }),
+        );
+        console.log(
+          JSON.stringify({
+            retainedRunId: diagnosticRunId,
+            hostedFailures: retainedHostedFailures,
+          }),
+        );
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    }
     const checks = [];
     checks.push({
       setting: "CLOUDFLARE_API_TOKEN",
@@ -1093,6 +1168,7 @@ export async function publicationCli({
       accountId: context.accountId,
       releaseSha: context.sha,
       operation: "doctor",
+      ...(retainedHostedFailures ? { retainedHostedFailures } : {}),
       status: checks.every((check) => check.status === "pass")
         ? "pass"
         : "block",
