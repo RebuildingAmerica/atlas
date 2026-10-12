@@ -139,7 +139,11 @@ the retained artifact bytes, release and schema annotations, unchanged discovery
 deployment and original API SQLite namespace before recording the final API
 identity. It does not upload code, apply schema changes, activate consumers or
 change public routing. Protected health and paused-consumer checks still have to
-pass, preserving existing accounts and directory data during recovery.
+pass, preserving existing accounts and directory data during recovery. The
+current recovery source can verify an older trusted publication artifact; its
+original release identity is preserved. Activation and promotion still require
+their exact source identity. Publish the current paused API pair using the
+verified retained run before proceeding with the current web release.
 
 Read-only verification retains `verification-diagnostics.jsonl` with fixed
 Access, domain, denial and runtime stage names and pass/fail states. Use the

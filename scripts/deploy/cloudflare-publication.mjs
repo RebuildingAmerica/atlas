@@ -276,7 +276,9 @@ export function validateRetainedRun(
     ].includes(run.path) ||
     run.status !== "completed" ||
     (!recovery && run.conclusion !== "success") ||
-    (!previous && run.head_sha !== context.sha) ||
+    (!previous &&
+      !(recovery && context.operation === "verify-api") &&
+      run.head_sha !== context.sha) ||
     !/^[a-f0-9]{40}$/.test(run.head_sha ?? "") ||
     (!(context.target === "staging" && run.head_branch === "main") &&
       !/^v[^\s/]+$/.test(run.head_branch ?? ""))

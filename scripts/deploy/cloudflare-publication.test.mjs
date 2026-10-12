@@ -440,6 +440,47 @@ test("retained artifacts come only from this repository's trusted publication wo
       previous: true,
     }),
   );
+  const olderFailure = {
+    ...run,
+    head_sha: "c".repeat(40),
+    conclusion: "failure",
+  };
+  const verification = { ...context, operation: "verify-api" };
+  assert.doesNotThrow(() =>
+    validateRetainedRun(olderFailure, verification, {
+      runId: "123",
+      recovery: true,
+    }),
+  );
+  for (const operation of [
+    "activate-api",
+    "pause-api",
+    "web-candidate",
+    "promote-api",
+    "promote-web",
+  ])
+    assert.throws(() =>
+      validateRetainedRun(
+        olderFailure,
+        { ...context, operation },
+        {
+          runId: "123",
+          recovery: true,
+        },
+      ),
+    );
+  for (const patch of [
+    { head_repository: { full_name: "another/atlas" } },
+    { path: ".github/workflows/ci.yml" },
+    { status: "in_progress" },
+    { head_branch: "chore/unsafe" },
+  ])
+    assert.throws(() =>
+      validateRetainedRun({ ...olderFailure, ...patch }, verification, {
+        runId: "123",
+        recovery: true,
+      }),
+    );
 });
 
 // A billing outage must not prevent protected paused evaluation or rollback.
