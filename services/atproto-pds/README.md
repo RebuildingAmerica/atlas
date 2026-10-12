@@ -47,14 +47,20 @@ The data backup operation above does not archive `/opt/atlas-pds/pds.env`. Keep
 the original credentials in the deployment secret store; a data archive alone
 does not establish that the PDS's sign-in configuration can be recovered.
 
-For production recovery, select `restore-pds` in **Deploy Production** on a
-landed release tag. After the normal full CI gate, it uses the existing workload
-identity and IAP connection to run the fixed host release. The host reads the
-three original Secret Manager values, validates the complete configuration, and
-restarts the same PDS against its retained data disk. The existing broker
-credential is required; recovery cannot generate a replacement. Public PDS
-health and broker routing are checked before success. This operation publishes
-no API, web, or discovery Worker and retains the production routing.
+Normal web deployment converges the existing PDS before account verification.
+The host reads the original three Secret Manager values and requires the
+existing broker credential. It validates the complete configuration before
+replacing any file or changing containers, so unavailable secrets leave the
+running service untouched. Missing configuration is restored through this same
+deployment path; there is no separate repair operation or automatic key
+generation.
+
+Repeated deployment retains an identical environment file and lets Compose
+reconcile the services. Broker and edge containers are forcibly reloaded only
+when their bind-mounted code changes. Their successful content digest is
+recorded after startup, so an interrupted deployment retries that reload.
+Existing accounts keep their signing keys and data throughout deployment. Public
+PDS health and broker routing are checked before success.
 
 ## Local validation
 

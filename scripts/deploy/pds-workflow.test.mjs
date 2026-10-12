@@ -37,44 +37,13 @@ for (const target of ["production", "staging"]) {
       source,
       /git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/,
     );
-    const normalPublication = source.slice(
-      source.indexOf("  publish:"),
-      source.indexOf("  restore-pds:") < 0
-        ? undefined
-        : source.indexOf("  restore-pds:"),
-    );
     assert.doesNotMatch(
-      normalPublication,
+      source,
       /deploy-atlas-pds|gcloud|ATLAS_PDS_ADMIN_PASSWORD/,
     );
+    assert.doesNotMatch(source, /restore-pds/);
   });
 }
-
-test("production PDS restoration uses the existing fixed host release after full CI", async () => {
-  const source = await workflowSource(
-    ".github/workflows/deploy-production.yml",
-  );
-  assert.match(source, /restore-pds,/);
-  assert.match(
-    source,
-    /publish:\s*\n\s*needs: ci\n\s*if: inputs.operation != 'restore-pds'/,
-  );
-  const restore = source.slice(source.indexOf("  restore-pds:"));
-  assert.match(restore, /needs: ci/);
-  assert.match(restore, /if: inputs.operation == 'restore-pds'/);
-  assert.match(restore, /environment: production/);
-  assert.match(restore, /id-token: write/);
-  assert.match(restore, /uses: \.\/\.github\/actions\/deploy-atlas-pds/);
-  assert.match(restore, /mode: full/);
-  assert.match(
-    restore,
-    /invite-broker-secret: \$\{\{ secrets.ATLAS_PDS_INVITE_BROKER_SECRET \}\}/,
-  );
-  assert.doesNotMatch(
-    restore,
-    /CLOUDFLARE_API_TOKEN|DATABASE_URL|STRIPE_API_KEY|deploy-atlas-api|inputs.command|randomBytes/,
-  );
-});
 
 test("publication preserves the existing PDS broker and account verification credentials", async () => {
   const source = await workflowSource(
@@ -100,7 +69,7 @@ test("publication preserves the existing PDS broker and account verification cre
   assert.doesNotMatch(source, /Generate.*secret|vercel deploy|gcloud/);
 });
 
-test("doctor checks the PDS host read-only and web candidates update its broker after billing preflight", async () => {
+test("doctor checks the PDS read-only and normal web deployment converges it after billing preflight", async () => {
   const source = await workflowSource(
     ".github/workflows/cloudflare-publication.yml",
   );
@@ -114,7 +83,7 @@ test("doctor checks the PDS host read-only and web candidates update its broker 
   );
   assert.match(
     source,
-    /mode: \$\{\{ inputs.operation == 'doctor' && 'check' \|\| 'broker' \}\}/,
+    /mode: \$\{\{ inputs.operation == 'doctor' && 'check' \|\| 'full' \}\}/,
   );
   assert.match(
     source,
@@ -177,15 +146,6 @@ test("hosted PDS deploy bundle includes the backup, restore, and invite broker s
   assert.ok(
     source.indexOf("vm-backup.sh") < source.indexOf("vm-release.sh"),
     "backup operation should ship with the same host bundle as release",
-  );
-});
-
-test("hosted PDS release reloads broker and edge bind-mounted files", async () => {
-  const source = await workflowSource("services/atproto-pds/vm-release.sh");
-
-  assert.match(
-    source,
-    /docker compose --env-file pds\.env -f compose\.hosted\.yaml up -d --force-recreate \\\n  atlas-pds-invite-broker \\\n  atlas-pds-edge/,
   );
 });
 

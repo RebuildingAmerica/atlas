@@ -132,7 +132,6 @@ test("PDS VM release materializes scoped secrets without persisting them in sour
   assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-jwt-secret/);
   assert.match(source, /atlas-pds-\$\{ENVIRONMENT\}-plc-rotation-key/);
   assert.match(source, /ATLAS_PDS_INVITE_BROKER_SECRET/);
-  assert.match(source, /secrets\.token_urlsafe\(48\)/);
   assert.match(source, /umask 077/);
   assert.match(source, /pds\.env/);
   assert.match(

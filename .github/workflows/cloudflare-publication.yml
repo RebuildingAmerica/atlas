@@ -150,11 +150,11 @@ jobs:
             process.exitCode = 1;
           }
           JS
-      - name: Check the PDS host or update its broker before hosted account verification
+      - name: Check or converge the PDS before hosted account verification
         if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor'
         uses: ./.github/actions/deploy-atlas-pds
         with:
-          mode: ${{ inputs.operation == 'doctor' && 'check' || 'broker' }}
+          mode: ${{ inputs.operation == 'doctor' && 'check' || 'full' }}
           environment-name: ${{ inputs.target }}
           gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
           workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}

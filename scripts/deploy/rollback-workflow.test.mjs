@@ -23,9 +23,8 @@ test("hosted publishing keeps the full CI gate and trusted refs for both environ
     assert.match(workflow, /profile: production/);
     assert.match(workflow, /needs: ci/);
     assert.match(workflow, /cloudflare-publication\.yml/);
-    const recoveryJob = workflow.indexOf("\n  restore-pds:");
     assert.doesNotMatch(
-      recoveryJob < 0 ? workflow : workflow.slice(0, recoveryJob),
+      workflow,
       /deploy-atlas-api|deploy-atlas-pds|vercel deploy|gcloud/,
     );
   }

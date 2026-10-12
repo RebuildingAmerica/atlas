@@ -39,7 +39,7 @@ inputs:
     required: false
     default: /opt/atlas-pds
   mode:
-    description: Full host release, broker update preserving the PDS, or read-only host check.
+    description: Converge the host configuration or perform a read-only host check.
     required: false
     default: full
 
@@ -66,8 +66,8 @@ runs:
         set -euo pipefail
 
         node --input-type=module <<'NODE'
-        if (!["full", "broker", "check"].includes(process.env.ATLAS_PDS_RELEASE_MODE)) {
-          throw new Error("mode must be full, broker, or check.");
+        if (!["full", "check"].includes(process.env.ATLAS_PDS_RELEASE_MODE)) {
+          throw new Error("mode must be full or check.");
         }
         const publicUrl = new URL(process.env.ATLAS_PDS_PUBLIC_URL);
         if (publicUrl.protocol !== "https:") {
@@ -166,11 +166,6 @@ runs:
           printf '%q' "$1"
         }
 
-        release_argument=""
-        if [ "$ATLAS_PDS_RELEASE_MODE" = broker ]; then
-          release_argument="--broker-only"
-        fi
-
         remote_command="$(cat <<REMOTE
         set -euo pipefail
         readonly remote_archive=$(quote "$ATLAS_PDS_REMOTE_ARCHIVE")
@@ -187,7 +182,7 @@ runs:
           ATLAS_PDS_INVITE_BROKER_SECRET=$(quote "$ATLAS_PDS_INVITE_BROKER_SECRET") \
           ATLAS_PDS_DATA_DIRECTORY=$(quote "$ATLAS_PDS_DATA_DIRECTORY") \
           ATLAS_PDS_DEPLOY_DIRECTORY=$(quote "$ATLAS_PDS_DEPLOY_DIRECTORY") \
-          $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh") $release_argument
+          $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh")
         REMOTE
         )"
 

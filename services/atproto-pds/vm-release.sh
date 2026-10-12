@@ -20,8 +20,8 @@ PDS_PUBLIC_URL="$(required_env ATLAS_PDS_PUBLIC_URL)"
 HOST_DATA_DIRECTORY="$(required_env ATLAS_PDS_DATA_DIRECTORY)"
 readonly ENVIRONMENT GCP_PROJECT PDS_HOSTNAME PDS_PUBLIC_URL HOST_DATA_DIRECTORY
 
-if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != --broker-only ]; }; then
-  echo 'Usage: vm-release.sh [--broker-only]' >&2
+if [ "$#" -ne 0 ]; then
+  echo 'Usage: vm-release.sh' >&2
   exit 64
 fi
 
@@ -54,50 +54,13 @@ if ! findmnt --target "$HOST_DATA_DIRECTORY" >/dev/null; then
   exit 1
 fi
 
-if [ "${1:-}" = --broker-only ]; then
-  # Broker changes must preserve the credentials that let existing people sign in.
-  cd "$DEPLOY_DIRECTORY"
-  python3 - pds.env <<'PY'
-import os
-import sys
-from pathlib import Path
-
-values = {}
-for line in Path(sys.argv[1]).read_text().splitlines():
-    if not line.strip() or line.startswith("#"):
-        continue
-    key, separator, value = line.partition("=")
-    if not separator or key in values:
-        raise SystemExit("Retained PDS configuration is invalid.")
-    values[key] = value
-for key in ("PDS_ADMIN_PASSWORD", "PDS_JWT_SECRET", "PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX"):
-    if not values.get(key, "").strip("'\""):
-        raise SystemExit("Retained PDS credentials are incomplete; no containers were changed.")
-for key in ("ATLAS_PDS_PUBLIC_URL", "ATLAS_PDS_HOSTNAME", "ATLAS_PDS_DATA_DIRECTORY", "ATLAS_PDS_INVITE_BROKER_SECRET"):
-    if not os.environ.get(key) or values.get(key) != os.environ[key]:
-        raise SystemExit("Retained PDS configuration differs from the deployment inputs.")
-PY
-  docker compose --env-file pds.env -f compose.hosted.yaml config --quiet
-  container_id="$(docker compose --env-file pds.env -f compose.hosted.yaml ps -q atlas-pds)"
-  if [ -z "$container_id" ] || [ "$(docker inspect --format '{{.State.Health.Status}}' "$container_id")" != healthy ]; then
-    echo 'Broker deployment requires a healthy existing PDS.' >&2
-    exit 1
-  fi
-  docker compose --env-file pds.env -f compose.hosted.yaml up -d --no-deps --force-recreate \
-    atlas-pds-invite-broker atlas-pds-edge
-  exit 0
-fi
-
 ACCESS_TOKEN="$(metadata_get 'instance/service-accounts/default/token' | python3 -c 'import json, sys; token = json.load(sys.stdin)["access_token"]; assert isinstance(token, str) and token; sys.stdout.write(token)')"
 readonly ACCESS_TOKEN
 ADMIN_PASSWORD="$(read_secret "atlas-pds-${ENVIRONMENT}-admin-password")"
 JWT_SECRET="$(read_secret "atlas-pds-${ENVIRONMENT}-jwt-secret")"
 PLC_ROTATION_KEY="$(read_secret "atlas-pds-${ENVIRONMENT}-plc-rotation-key")"
 readonly ADMIN_PASSWORD JWT_SECRET PLC_ROTATION_KEY
-INVITE_BROKER_SECRET="${ATLAS_PDS_INVITE_BROKER_SECRET:-}"
-if [ -z "$INVITE_BROKER_SECRET" ]; then
-  INVITE_BROKER_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
-fi
+INVITE_BROKER_SECRET="$(required_env ATLAS_PDS_INVITE_BROKER_SECRET)"
 if [[ "$INVITE_BROKER_SECRET" == *$'\n'* ]] || [[ "$INVITE_BROKER_SECRET" == *$'\r'* ]]; then
   echo "ATLAS_PDS_INVITE_BROKER_SECRET must be a single-line value." >&2
   exit 1
@@ -109,7 +72,26 @@ cd "$DEPLOY_DIRECTORY"
 umask 077
 readonly ENVIRONMENT_FILE="pds.env"
 temporary_environment_file="$(mktemp "${ENVIRONMENT_FILE}.XXXXXX")"
-trap 'rm -f "$temporary_environment_file"' EXIT
+temporary_content_file="$(mktemp .release-content.XXXXXX)"
+trap 'rm -f "$temporary_environment_file" "$temporary_content_file"' EXIT
+
+# Reload changed bind-mounted code without interrupting unchanged account services.
+python3 - Caddyfile invite-broker.mjs >"$temporary_content_file" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+digest = hashlib.sha256()
+for filename in sys.argv[1:]:
+    digest.update(filename.encode())
+    digest.update(b"\0")
+    digest.update(Path(filename).read_bytes())
+print(digest.hexdigest())
+PY
+content_changed=true
+if [ -f .release-content.sha256 ] && cmp -s "$temporary_content_file" .release-content.sha256; then
+  content_changed=false
+fi
 
 cat >"$temporary_environment_file" <<EOF
 ATLAS_PDS_PUBLIC_URL=$PDS_PUBLIC_URL
@@ -126,10 +108,15 @@ PDS_PORT=${PDS_PORT:-2583}
 EOF
 chmod 600 "$temporary_environment_file"
 docker compose --env-file "$temporary_environment_file" -f compose.hosted.yaml config --quiet
-mv "$temporary_environment_file" "$ENVIRONMENT_FILE"
+if ! cmp -s "$temporary_environment_file" "$ENVIRONMENT_FILE"; then
+  mv "$temporary_environment_file" "$ENVIRONMENT_FILE"
+fi
 
 docker compose --env-file pds.env -f compose.hosted.yaml config --quiet
 docker compose --env-file pds.env -f compose.hosted.yaml up -d
-docker compose --env-file pds.env -f compose.hosted.yaml up -d --force-recreate \
-  atlas-pds-invite-broker \
-  atlas-pds-edge
+if [ "$content_changed" = true ]; then
+  docker compose --env-file pds.env -f compose.hosted.yaml up -d --force-recreate \
+    atlas-pds-invite-broker \
+    atlas-pds-edge
+fi
+mv "$temporary_content_file" .release-content.sha256

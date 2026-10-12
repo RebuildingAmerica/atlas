@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+  stat,
+  appendFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -20,6 +28,8 @@ async function fixture(t, overrides = {}) {
   const deploy = join(directory, "deploy");
   await mkdir(bin);
   await mkdir(deploy);
+  await writeFile(join(deploy, "Caddyfile"), "synthetic-edge-config\n");
+  await writeFile(join(deploy, "invite-broker.mjs"), "synthetic-broker-code\n");
   const values = {
     ATLAS_PDS_PUBLIC_URL: "https://pds.example.org",
     ATLAS_PDS_HOSTNAME: "pds.example.org",
@@ -84,6 +94,7 @@ esac
   return {
     original,
     envFile: join(deploy, "pds.env"),
+    brokerFile: join(deploy, "invite-broker.mjs"),
     run: (args = [], extra = {}) =>
       spawnSync("bash", [script, ...args], {
         env: { ...env, ...extra },
@@ -127,53 +138,48 @@ test("a full release writes complete credentials before starting containers", as
   assert.match(await f.dockerLog(), /up -d\n/);
 });
 
+test("repeated deployment preserves configuration and avoids forced container recreation", async (t) => {
+  const f = await fixture(t, { PDS_JWT_SECRET: "" });
+  assert.equal(f.run().status, 0);
+  const original = await readFile(f.envFile, "utf8");
+  const inode = (await stat(f.envFile)).ino;
+  const before = await f.dockerLog();
+  const again = f.run();
+  assert.equal(again.status, 0, again.stderr);
+  assert.equal(await readFile(f.envFile, "utf8"), original);
+  assert.equal((await stat(f.envFile)).ino, inode);
+  assert.doesNotMatch(
+    (await f.dockerLog()).slice(before.length),
+    /force-recreate|restart|down/,
+  );
+});
+
+test("changed bind-mounted broker code is reloaded once", async (t) => {
+  const f = await fixture(t);
+  assert.equal(f.run().status, 0);
+  await appendFile(f.brokerFile, "changed-code\n");
+  const before = await f.dockerLog();
+  assert.equal(f.run().status, 0);
+  assert.match((await f.dockerLog()).slice(before.length), /force-recreate/);
+  const after = await f.dockerLog();
+  assert.equal(f.run().status, 0);
+  assert.doesNotMatch(
+    (await f.dockerLog()).slice(after.length),
+    /force-recreate/,
+  );
+});
+
+test("deployment requires the retained broker credential instead of generating another", async (t) => {
+  const f = await fixture(t);
+  const result = f.run([], { ATLAS_PDS_INVITE_BROKER_SECRET: "" });
+  assert.notEqual(result.status, 0);
+  assert.equal(await readFile(f.envFile, "utf8"), f.original);
+  assert.doesNotMatch(await f.dockerLog(), /up |restart|down/);
+});
+
 test("invalid compose configuration preserves the previous credentials", async (t) => {
   const f = await fixture(t);
   assert.notEqual(f.run([], { FIXTURE_CONFIG_FAILURE: "1" }).status, 0);
   assert.equal(await readFile(f.envFile, "utf8"), f.original);
   assert.doesNotMatch(await f.dockerLog(), /up |restart|down/);
-});
-
-test("broker updates retain credentials and never restart the PDS", async (t) => {
-  const f = await fixture(t);
-  const result = f.run(["--broker-only"]);
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(await readFile(f.envFile, "utf8"), f.original);
-  assert.equal(await f.curlLog(), "");
-  const commands = await f.dockerLog();
-  assert.match(
-    commands,
-    /up -d --no-deps --force-recreate atlas-pds-invite-broker atlas-pds-edge/,
-  );
-  assert.doesNotMatch(commands, /up -d(?:\n|$)/);
-});
-
-test("broker updates reject incomplete retained credentials before any container changes", async (t) => {
-  const f = await fixture(t, { PDS_JWT_SECRET: "" });
-  assert.notEqual(f.run(["--broker-only"]).status, 0);
-  assert.equal(await readFile(f.envFile, "utf8"), f.original);
-  assert.doesNotMatch(await f.dockerLog(), /up |restart|down/);
-  assert.equal(await f.curlLog(), "");
-});
-
-test("broker updates require a healthy existing PDS", async (t) => {
-  const f = await fixture(t);
-  assert.notEqual(
-    f.run(["--broker-only"], { FIXTURE_HEALTH: "unhealthy" }).status,
-    0,
-  );
-  assert.equal(await readFile(f.envFile, "utf8"), f.original);
-  assert.doesNotMatch(await f.dockerLog(), /up |restart|down/);
-});
-
-test("broker updates reject changed deployment inputs", async (t) => {
-  const f = await fixture(t);
-  assert.notEqual(
-    f.run(["--broker-only"], { ATLAS_PDS_HOSTNAME: "changed.example.org" })
-      .status,
-    0,
-  );
-  assert.equal(await readFile(f.envFile, "utf8"), f.original);
-  assert.equal(await f.dockerLog(), "");
-  assert.equal(await f.curlLog(), "");
 });

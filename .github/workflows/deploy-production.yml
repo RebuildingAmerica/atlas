@@ -19,7 +19,6 @@ on:
             web-candidate,
             promote-web,
             restore-routing,
-            restore-pds,
           ]
         default: doctor
       source-run-id:
@@ -67,7 +66,6 @@ jobs:
       STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
   publish:
     needs: ci
-    if: inputs.operation != 'restore-pds'
     permissions:
       contents: read
       actions: read
@@ -80,55 +78,3 @@ jobs:
       source-run-id: ${{ inputs.source-run-id }}
       rollback-run-id: ${{ inputs.rollback-run-id }}
     secrets: inherit
-  restore-pds:
-    needs: ci
-    if: inputs.operation == 'restore-pds'
-    runs-on: ubuntu-latest
-    environment: production
-    timeout-minutes: 15
-    concurrency:
-      group: cloudflare-hosted-publication
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: ./.github/actions/setup-toolchain
-        with:
-          python: "false"
-          install-deps: "false"
-      - name: Require existing PDS authority and broker credential
-        id: pds-recovery
-        env:
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          ATLAS_PDS_INSTANCE_NAME: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
-          ATLAS_PDS_INSTANCE_ZONE: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
-          ATLAS_PDS_INVITE_BROKER_SECRET: ${{ secrets.ATLAS_PDS_INVITE_BROKER_SECRET }}
-          ATLAS_PDS_PUBLIC_URL: ${{ vars.ATLAS_PDS_PUBLIC_URL }}
-        run: |
-          node --input-type=module <<'JS'
-          import {appendFileSync} from 'node:fs';
-          for (const key of ['GCP_PROJECT_ID','GCP_WORKLOAD_IDENTITY_PROVIDER','GCP_SERVICE_ACCOUNT','ATLAS_PDS_INSTANCE_NAME','ATLAS_PDS_INSTANCE_ZONE','ATLAS_PDS_INVITE_BROKER_SECRET']) {
-            if (!process.env[key]?.trim()) throw new Error('Existing PDS recovery authority is incomplete.');
-          }
-          const origin = new URL(process.env.ATLAS_PDS_PUBLIC_URL);
-          if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash)
-            throw new Error('Existing PDS origin is invalid.');
-          appendFileSync(process.env.GITHUB_OUTPUT, 'hostname='+origin.hostname+'\n');
-          JS
-      - name: Restore original PDS configuration and verify public health
-        uses: ./.github/actions/deploy-atlas-pds
-        with:
-          mode: full
-          environment-name: production
-          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
-          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
-          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
-          pds-hostname: ${{ steps.pds-recovery.outputs.hostname }}
-          pds-public-url: ${{ vars.ATLAS_PDS_PUBLIC_URL }}
-          invite-broker-secret: ${{ secrets.ATLAS_PDS_INVITE_BROKER_SECRET }}
