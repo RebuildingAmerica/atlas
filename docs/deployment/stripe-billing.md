@@ -106,9 +106,9 @@ portal ID, and offer allowlist live in Vercel.
 The cutover requires these settings; it does not certify the payment lifecycle:
 
 1. Confirm `STRIPE_API_KEY`, `STRIPE_ATLAS_CATALOG`, `STRIPE_WEBHOOK_SECRET`,
-   and `STRIPE_BILLING_PORTAL_CONFIGURATION` are present in Vercel Production
-   after live bootstrap. Confirm their values belong to the same live account
-   and deployed webhook.
+   and `STRIPE_BILLING_PORTAL_CONFIGURATION` are present in the production app
+   runtime after live bootstrap. Confirm their values belong to the same live
+   account and deployed webhook.
 2. Set `ATLAS_BILLING_ALLOWED_OFFERS` in the production app runtime to only the
    offers whose acceptance rows have passed. Confirm the deployed pricing page
    enables exactly those offers.
@@ -122,24 +122,29 @@ If the live Atlas portal is missing or the existing billing webhook lacks the
 required events, run the protected **Repair Production Billing Configuration**
 workflow from `main` with confirmation input `REPAIR_LIVE_ATLAS_BILLING`. It
 requires `ATLAS_STRIPE_LIVE_REPAIR_KEY` and `ATLAS_STRIPE_LIVE_CATALOG` in the
-GitHub **production environment**. Provision them from the approved live
-credential and catalog record for the same Stripe account used by the deployed
-app; do not paste their values into an issue or workflow input. Vercel marks the
-runtime Stripe settings sensitive and does not export their values through
-`vercel env run`. The September 28 repair attempt stopped before mutation
-because it received no key from that command. The saved local Stripe CLI live
-key was also rejected by Stripe, so it is not a repair credential.
+GitHub **production environment**. Use a dedicated restricted live key
+(`rk_live_…`) with Accounts Read, Products Read, Customer Portal Write, and
+Webhook Endpoints Write; grant no other permissions. The catalog must belong to
+the same live account as the deployed app. Do not paste either value into an
+issue or workflow input.
 
 The workflow checks the live account and catalog before mutation, updates the
 existing Atlas webhook in place so its signing secret is retained, provisions or
-updates the Atlas-specific portal, saves its ID to Vercel Production, and reads
-both Stripe objects back. It refuses a missing, duplicate, or test-mode webhook
-and runs only while checkout is closed. Vercel can confirm the portal setting
-**exists by name**, but cannot return its sensitive value; verify the deployed
-portal setting through a guarded owner portal-session journey after a subsequent
-production deployment. The workflow does not set the offer allowlist, open
-checkout, deliver a signed event, or prove a customer lifecycle; those remain
-separate acceptance gates.
+updates the Atlas-specific portal, and reads both Stripe objects back. It
+retains a non-secret receipt containing the verified portal identifier. An
+environment administrator installs that identifier as
+`STRIPE_BILLING_PORTAL_CONFIGURATION` in GitHub Production before Cloudflare
+publication, because the workflow token cannot edit environment secrets. The
+workflow refuses a missing, duplicate, or test-mode webhook and requires
+checkout to be explicitly closed. Verify the deployed portal setting through a
+guarded owner portal-session journey after publication. The workflow does not
+set the offer allowlist, open checkout, deliver a signed event, or prove a
+customer lifecycle; those remain separate acceptance gates.
+
+This is a recovery path for existing production configuration. Normal production
+bootstrap already provisions the webhook and portal; its hosting installation
+must own those settings for subsequent releases. Retire the temporary repair key
+and its GitHub secret after verified recovery.
 
 ## Sales tax
 
