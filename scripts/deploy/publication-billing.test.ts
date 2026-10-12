@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type Stripe from "stripe";
 import {
   ATLAS_PRODUCTS,
@@ -8,7 +13,10 @@ import {
 } from "../bootstrap/config/products.js";
 import { buildStripeEnvUpdates } from "../bootstrap/products/atlas/env.js";
 import type { StripeCatalogSnapshot } from "../bootstrap/products/atlas/verify-types.js";
-import { verifyPublicationBilling } from "./publication-billing.js";
+import {
+  verifyPublicationBilling,
+  type BillingDiagnostic,
+} from "./publication-billing.js";
 
 function fixture() {
   const ids = new Map<string, string>();
@@ -115,6 +123,177 @@ function fixture() {
   } as unknown as Stripe;
   return { runtime, snapshot, portal, stripe, calls };
 }
+
+void test("the real billing CLI retains input failure when a key is missing", () => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-billing-cli-"));
+  try {
+    const runtimeFile = join(directory, "runtime.json");
+    const diagnostics = join(directory, "billing-diagnostics.jsonl");
+    writeFileSync(
+      runtimeFile,
+      JSON.stringify({ ...fixture().runtime, STRIPE_API_KEY: "" }),
+      { mode: 0o600 },
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        fileURLToPath(new URL("./publication-billing.ts", import.meta.url)),
+      ],
+      {
+        env: {
+          ...process.env,
+          ATLAS_WEB_RUNTIME_FILE: runtimeFile,
+          ATLAS_PUBLICATION_BILLING_DIAGNOSTICS_FILE: diagnostics,
+        },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.status, 1);
+    assert.deepEqual(
+      readFileSync(diagnostics, "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line) as BillingDiagnostic),
+      [
+        { stage: "inputs", status: "running" },
+        { stage: "inputs", status: "fail", failure: "validation" },
+      ],
+    );
+    assert.doesNotMatch(
+      `${result.stdout}${result.stderr}${readFileSync(diagnostics, "utf8")}`,
+      /rk_live_fixture_only|whsec_fixture_only/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+void test("billing retains a safe failing boundary without provider credentials or customer data", async () => {
+  const f = fixture();
+  const records: BillingDiagnostic[] = [];
+  const failure = Object.assign(
+    new Error("private-credential customer-private@example.org"),
+    {
+      type: "StripePermissionError",
+    },
+  );
+  await assert.rejects(
+    verifyPublicationBilling(
+      f.runtime,
+      f.stripe,
+      async () => {
+        throw failure;
+      },
+      (record) => records.push(record),
+    ),
+    (error) => error === failure,
+  );
+  assert.deepEqual(records, [
+    { stage: "inputs", status: "running" },
+    { stage: "inputs", status: "pass" },
+    { stage: "catalog-read", status: "running" },
+    { stage: "catalog-read", status: "fail", failure: "permission" },
+  ]);
+  assert.doesNotMatch(
+    JSON.stringify(records),
+    /private-credential|customer-private/,
+  );
+});
+
+void test("billing records validation and portal failures as distinct boundaries", async () => {
+  const f = fixture();
+  const records: BillingDiagnostic[] = [];
+  f.portal.features.subscription_update.enabled = true;
+  await assert.rejects(
+    verifyPublicationBilling(
+      f.runtime,
+      f.stripe,
+      async () => f.snapshot,
+      (record) => records.push(record),
+    ),
+    /portal/,
+  );
+  assert.deepEqual(records.at(-1), {
+    stage: "portal-read",
+    status: "fail",
+    failure: "validation",
+  });
+  records.length = 0;
+  await assert.rejects(
+    verifyPublicationBilling(
+      { ...f.runtime, STRIPE_API_KEY: "" },
+      f.stripe,
+      async () => f.snapshot,
+      (record) => records.push(record),
+    ),
+    /STRIPE_API_KEY/,
+  );
+  assert.deepEqual(records, [
+    { stage: "inputs", status: "running" },
+    { stage: "inputs", status: "fail", failure: "validation" },
+  ]);
+});
+
+void test("unknown provider failures cannot become diagnostic strings or validation claims", async () => {
+  const f = fixture();
+  const records: BillingDiagnostic[] = [];
+  await assert.rejects(
+    verifyPublicationBilling(
+      f.runtime,
+      f.stripe,
+      async () => {
+        throw { type: "private-provider-value", message: "private-credential" };
+      },
+      (record) => records.push(record),
+    ),
+  );
+  assert.deepEqual(records.at(-1), {
+    stage: "catalog-read",
+    status: "fail",
+    failure: "unknown",
+  });
+  assert.doesNotMatch(JSON.stringify(records), /private-/);
+});
+
+void test("successful billing reports every read-only boundary and portal read errors remain redacted", async () => {
+  const f = fixture();
+  const records: BillingDiagnostic[] = [];
+  await verifyPublicationBilling(
+    f.runtime,
+    f.stripe,
+    async () => f.snapshot,
+    (record) => records.push(record),
+  );
+  assert.deepEqual(
+    records,
+    ["inputs", "catalog-read", "catalog-validation", "portal-read"].flatMap(
+      (stage) => [
+        { stage, status: "running" },
+        { stage, status: "pass" },
+      ],
+    ),
+  );
+  records.length = 0;
+  f.stripe.billingPortal.configurations.retrieve = async () => {
+    throw new Error("private-customer-configuration");
+  };
+  await assert.rejects(
+    verifyPublicationBilling(
+      f.runtime,
+      f.stripe,
+      async () => f.snapshot,
+      (record) => records.push(record),
+    ),
+    /portal/,
+  );
+  assert.deepEqual(records.slice(-2), [
+    { stage: "portal-read", status: "running" },
+    { stage: "portal-read", status: "fail", failure: "provider" },
+  ]);
+  assert.doesNotMatch(JSON.stringify(records), /private-customer/);
+});
 
 void test("publication verifies the retained live catalog, webhook and exact customer portal read-only", async () => {
   const f = fixture();

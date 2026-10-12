@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   publicationContext,
+  publicationStage,
   preflightPublicationBilling,
   validateRetainedRun,
   releasePath,
@@ -28,6 +29,47 @@ import {
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 
 const sha = "a".repeat(40);
+
+test("publication retains only closed stage outcomes when a provider fails", () => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-stage-"));
+  try {
+    assert.equal(
+      publicationStage(directory, "billing-preflight", () => 42),
+      42,
+    );
+    const failure = new Error(
+      "private-credential customer-private@example.org",
+    );
+    assert.throws(
+      () =>
+        publicationStage(directory, "evidence-validation", () => {
+          throw failure;
+        }),
+      (error) => error === failure,
+    );
+    const retained = readFileSync(
+      join(directory, "publication-diagnostics.jsonl"),
+      "utf8",
+    );
+    assert.deepEqual(retained.trim().split("\n").map(JSON.parse), [
+      { stage: "billing-preflight", status: "running" },
+      { stage: "billing-preflight", status: "pass" },
+      { stage: "evidence-validation", status: "running" },
+      { stage: "evidence-validation", status: "fail" },
+    ]);
+    assert.doesNotMatch(retained, /private-credential|customer-private/);
+    assert.throws(
+      () => publicationStage(directory, failure.message, () => {}),
+      /Unknown publication stage/,
+    );
+    assert.equal(
+      readFileSync(join(directory, "publication-diagnostics.jsonl"), "utf8"),
+      retained,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 const environment = {
   GITHUB_ACTIONS: "true",
   GITHUB_REPOSITORY: "RebuildingAmerica/atlas",

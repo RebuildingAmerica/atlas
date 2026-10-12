@@ -23,6 +23,35 @@ import {
 } from "./cloudflare-cli.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
+
+const PUBLICATION_STAGES = new Set([
+  "billing-preflight",
+  "evidence-validation",
+  "cloudflare-subscriptions-read",
+  "cloudflare-hyperdrive-read",
+  "cloudflare-access-read",
+  "native-dependencies",
+]);
+
+/** Retain a recovery boundary without exposing provider output or customer settings. */
+export function publicationStage(directory, stage, action) {
+  if (!PUBLICATION_STAGES.has(stage)) throw Error("Unknown publication stage.");
+  const record = (status) =>
+    appendFileSync(
+      join(directory, "publication-diagnostics.jsonl"),
+      `${JSON.stringify({ stage, status })}\n`,
+      { mode: 0o600 },
+    );
+  record("running");
+  try {
+    const result = action();
+    record("pass");
+    return result;
+  } catch (error) {
+    record("fail");
+    throw error;
+  }
+}
 const OPERATIONS = [
   "doctor",
   "publish-api",
@@ -836,13 +865,26 @@ export async function publicationCli({
     state: "in-progress",
   };
   atomicJson(join(bundle, "publication.json"), index);
-  preflightPublicationBilling(context, run, {
-    firstBootstrap:
-      context.operation === "publish-api" &&
-      !sourceRun &&
-      env.ATLAS_API_BOOTSTRAP === "true",
-    cloudflare: (args) => cloudflareCommand(args, { env }),
-  });
+  // A retained predecessor may contain diagnostics from an earlier operation.
+  // Keep these files specific to the current attempt so recovery is unambiguous.
+  for (const name of [
+    "publication-diagnostics.jsonl",
+    "billing-diagnostics.jsonl",
+  ])
+    writeFileSync(join(bundle, name), "", { mode: 0o600 });
+  env.ATLAS_PUBLICATION_BILLING_DIAGNOSTICS_FILE = join(
+    bundle,
+    "billing-diagnostics.jsonl",
+  );
+  publicationStage(bundle, "billing-preflight", () =>
+    preflightPublicationBilling(context, run, {
+      firstBootstrap:
+        context.operation === "publish-api" &&
+        !sourceRun &&
+        env.ATLAS_API_BOOTSTRAP === "true",
+      cloudflare: (args) => cloudflareCommand(args, { env }),
+    }),
+  );
   let evidenceFile;
   if (
     [
@@ -853,16 +895,19 @@ export async function publicationCli({
       "promote-web",
     ].includes(context.operation)
   ) {
-    const evidence = parseJson(required(env, "ATLAS_WEB_EVIDENCE_JSON"));
-    if (
-      evidence.releaseSha !== context.sha ||
-      evidence.cloudflare?.accountId !== context.accountId ||
-      !evidence.releasePolicy
-    )
-      throw Error(
-        "Measured evidence must name this exact Cloudflare-only release and account.",
-      );
-    assertDurableBudget(evidence);
+    const evidence = publicationStage(bundle, "evidence-validation", () => {
+      const evidence = parseJson(required(env, "ATLAS_WEB_EVIDENCE_JSON"));
+      if (
+        evidence.releaseSha !== context.sha ||
+        evidence.cloudflare?.accountId !== context.accountId ||
+        !evidence.releasePolicy
+      )
+        throw Error(
+          "Measured evidence must name this exact Cloudflare-only release and account.",
+        );
+      assertDurableBudget(evidence);
+      return evidence;
+    });
     evidenceFile = privateFile("evidence.json", evidence);
     env.ATLAS_WEB_EVIDENCE_FILE = evidenceFile;
     // Diagnose existing CI-token permission failures before a schema or Worker write.
@@ -872,17 +917,27 @@ export async function publicationCli({
       ["zero-trust", "access", "applications", "list"],
     ]) {
       try {
-        const value = cloudflareCommand(args, { env });
-        if (
-          args[0] === "accounts" &&
-          (!Array.isArray(value) ||
-            value.some(
-              (subscription) =>
-                /workers/i.test(subscription.rate_plan?.id ?? "") &&
-                !/free/i.test(subscription.rate_plan.id),
-            ))
-        )
-          throw Error("Workers Free readback failed.");
+        publicationStage(
+          bundle,
+          {
+            accounts: "cloudflare-subscriptions-read",
+            hyperdrive: "cloudflare-hyperdrive-read",
+            "zero-trust": "cloudflare-access-read",
+          }[args[0]],
+          () => {
+            const value = cloudflareCommand(args, { env });
+            if (
+              args[0] === "accounts" &&
+              (!Array.isArray(value) ||
+                value.some(
+                  (subscription) =>
+                    /workers/i.test(subscription.rate_plan?.id ?? "") &&
+                    !/free/i.test(subscription.rate_plan.id),
+                ))
+            )
+              throw Error("Workers Free readback failed.");
+          },
+        );
       } catch {
         throw Error(
           `Existing Cloudflare CI credentials cannot read prerequisite: cf ${args.join(" ")}. No schema or Worker write was attempted.`,
@@ -893,15 +948,17 @@ export async function publicationCli({
   const operations = required(env, "ATLAS_API_OPERATIONS_HOSTNAME");
   const zone = required(env, "CLOUDFLARE_ZONE_ID");
   if (context.operation === "publish-api") {
-    const nativeRun = required(env, "ATLAS_PYTHON_WHEELS_RUN_ID");
-    if (!/^\d+$/.test(nativeRun))
-      throw Error("A numeric native-wheel workflow run is required.");
-    run("python3", [
-      "scripts/deploy/api-cloudflare-native-dependencies.py",
-      "--run",
-      nativeRun,
-      "--full-api",
-    ]);
+    publicationStage(bundle, "native-dependencies", () => {
+      const nativeRun = required(env, "ATLAS_PYTHON_WHEELS_RUN_ID");
+      if (!/^\d+$/.test(nativeRun))
+        throw Error("A numeric native-wheel workflow run is required.");
+      run("python3", [
+        "scripts/deploy/api-cloudflare-native-dependencies.py",
+        "--run",
+        nativeRun,
+        "--full-api",
+      ]);
+    });
     const apiSettings = privateFile("api-settings.json", configured.service);
     const directory = join(bundle, `api/publication-${env.GITHUB_RUN_ID}`);
     mkdirSync(directory, { recursive: true });
