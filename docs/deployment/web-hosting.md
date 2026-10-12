@@ -385,6 +385,12 @@ separate public bypass: external ATProto authorization servers must fetch that
 public client metadata. Certificate issuance and Access path precedence still
 need deployed verification.
 
+The observer first checks the candidate's anonymous Access denial. New custom
+domains receive up to three minutes for DNS and verified TLS connectivity to
+settle before authenticated page probes begin. Only recognized DNS/TLS transport
+failures receive this bounded retry; an HTTP response is checked immediately. A
+hostname that never becomes reachable remains a failed release.
+
 Migration builds compile `ATLAS_PUBLIC_URL` to the canonical origin and expose
 the nonsecret `ATLAS_WEB_CANONICAL_URL` marker. The manifest records both
 `publicEnv` (runtime) and `buildPublicEnv` (compiled configuration). Search and

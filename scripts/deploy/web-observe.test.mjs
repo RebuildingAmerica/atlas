@@ -626,3 +626,72 @@ test("observation CLI accepts an audited zero-hour summary and preserves its rea
   assert.equal(summary.elapsedHours, 0);
   assert.deepEqual(summary.releasePolicy, policy);
 });
+
+test("new candidate DNS and TLS settle before authenticated hosted probes begin", async () => {
+  const pending = ["ENOTFOUND", "ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE"];
+  let elapsed = 0;
+  const report = await probeWebRelease({
+    ...input,
+    wait: async (ms) => {
+      elapsed += ms;
+    },
+    monotonicNow: () => elapsed,
+    fetcher: (url, init) => {
+      if (pending.length) {
+        assert.equal(new URL(url).pathname, "/api/health");
+        assert.equal(init.headers.get("cf-access-client-id"), null);
+        throw new TypeError("fetch failed", {
+          cause: { code: pending.shift() },
+        });
+      }
+      return provider(url, init);
+    },
+  });
+  assert.equal(report.status, "pass");
+  assert.equal(elapsed, 10_000);
+});
+
+test("unready candidate certificates exhaust a bounded deadline and remain failed", async () => {
+  let elapsed = 0;
+  const report = await probeWebRelease({
+    ...input,
+    wait: async (ms) => {
+      elapsed += ms;
+    },
+    monotonicNow: () => elapsed,
+    fetcher: () => {
+      throw new TypeError("private provider content", {
+        cause: { code: "ERR_TLS_CERT_ALTNAME_INVALID" },
+      });
+    },
+  });
+  assert.equal(elapsed, 180_000);
+  assert.equal(report.status, "fail");
+  assert.equal(
+    report.checks.find((c) => c.name === "access-denial").reason,
+    "candidate_domain_not_ready",
+  );
+  assert.equal(
+    JSON.stringify(report).includes("private provider content"),
+    false,
+  );
+});
+
+test("reachable candidate application failures do not receive provisioning retries", async () => {
+  const report = await probeWebRelease({
+    ...input,
+    wait: async () => {
+      assert.fail("HTTP failures must not be retried");
+    },
+    fetcher: (url, init) => {
+      if (!init.headers.get("cf-access-client-id"))
+        return new Response(null, { status: 503 });
+      return provider(url, init);
+    },
+  });
+  assert.equal(report.status, "fail");
+  assert.equal(
+    report.checks.find((c) => c.name === "access-denial").status,
+    "fail",
+  );
+});

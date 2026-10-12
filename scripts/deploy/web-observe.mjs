@@ -43,6 +43,16 @@ const BASE_CHECKS = [
 ];
 const ROOT = resolve(import.meta.dirname, "../..");
 const TEN_MINUTES = 600_000;
+const PENDING_DOMAIN_ERRORS = new Set([
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ECONNRESET",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE",
+  "ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR",
+  "ERR_SSL_TLSV1_UNRECOGNIZED_NAME",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+]);
 
 /** Preserve the existing protected verifier; do not deploy an untestable candidate. */
 export function assertWebObserverConfiguration(
@@ -231,6 +241,8 @@ export async function probeWebRelease({
   cloudflare = cloudflareCommand,
   google = inspectCloudRun,
   now = () => new Date(),
+  wait = setTimeout,
+  monotonicNow = () => performance.now(),
 }) {
   const identity = validateIdentity({
     origin,
@@ -276,15 +288,38 @@ export async function probeWebRelease({
       headers.set("cf-access-client-secret", clientSecret);
     }
     if (inventory) headers.set("x-atlas-hosted-e2e-secret", hostedSecret);
-    const signal = AbortSignal.timeout(20_000);
+    // A new custom domain can be attached before its DNS and certificate are
+    // usable. Settle only this credential-free transport check before testing
+    // sign-in and profiles, so provider provisioning cannot mask app failures.
+    const readyBy = anonymous && clientId ? monotonicNow() + 180_000 : null;
+    const signal = readyBy === null ? AbortSignal.timeout(20_000) : undefined;
     for (let redirect = 0; redirect <= 3; redirect++) {
       if (url.origin !== origin) throw new Error("external_redirect");
-      const response = await fetcher(url.href, {
-        method,
-        headers,
-        signal,
-        redirect: "manual",
-      });
+      let response;
+      for (;;) {
+        try {
+          response = await fetcher(url.href, {
+            method,
+            headers,
+            signal:
+              signal ??
+              AbortSignal.timeout(
+                Math.max(1, Math.min(20_000, readyBy - monotonicNow())),
+              ),
+            redirect: "manual",
+          });
+          break;
+        } catch (error) {
+          if (
+            readyBy === null ||
+            !PENDING_DOMAIN_ERRORS.has(error?.cause?.code)
+          )
+            throw error;
+          const remaining = readyBy - monotonicNow();
+          if (remaining <= 0) throw new Error("candidate_domain_not_ready");
+          await wait(Math.min(5_000, remaining));
+        }
+      }
       if (![301, 302, 303, 307, 308].includes(response.status) || anonymous)
         return { response, text: await boundedBody(response) };
       const location = response.headers.get("location");
@@ -304,11 +339,14 @@ export async function probeWebRelease({
         status: "pass",
         durationMs: Math.round(performance.now() - started),
       });
-    } catch {
+    } catch (error) {
       checks.push({
         name,
         status: "fail",
-        reason: "probe_failed",
+        reason:
+          error?.message === "candidate_domain_not_ready"
+            ? "candidate_domain_not_ready"
+            : "probe_failed",
         durationMs: Math.round(performance.now() - started),
       });
     }
@@ -374,6 +412,18 @@ export async function probeWebRelease({
         cloudflare,
       ),
     );
+  if (clientId)
+    await check("access-denial", async () => {
+      const { response } = await request("/api/health", { anonymous: true });
+      const location = response.headers.get("location");
+      if (response.status === 403) return;
+      if (
+        response.status !== 302 ||
+        !location ||
+        !new URL(location, origin).hostname.endsWith(".cloudflareaccess.com")
+      )
+        throw new Error("access_not_enforced");
+    });
   for (const path of PAGES)
     await check(`page:${path}`, async () => {
       const { response, text } = await request(path);
@@ -450,18 +500,6 @@ export async function probeWebRelease({
     )
       throw new Error("release_billing_failed");
   });
-  if (clientId)
-    await check("access-denial", async () => {
-      const { response } = await request("/api/health", { anonymous: true });
-      const location = response.headers.get("location");
-      if (response.status === 403) return;
-      if (
-        response.status !== 302 ||
-        !location ||
-        !new URL(location, origin).hostname.endsWith(".cloudflareaccess.com")
-      )
-        throw new Error("access_not_enforced");
-    });
   if (architecture === "hybrid")
     await check("origin-rejection", async () => {
       const response = await fetcher(new URL("/api/health", originUrl).href, {
