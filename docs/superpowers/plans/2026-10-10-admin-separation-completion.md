@@ -98,7 +98,7 @@ integration and provider actions.
 
 ## Completion evidence
 
-Snapshot: October 12, 2026, 18:14 UTC.
+Snapshot: October 12, 2026, 19:23 UTC.
 
 Source integration and branch retirement are complete. Hosted release is not.
 The release remains unchecked above because sign-in and the protected admin have
@@ -127,8 +127,8 @@ passed. Both `feature/admin-separation` and
 original feature worktree was removed. Unrelated worktrees and stashes were
 preserved.
 
-The following October 12 recovery evidence supersedes the earlier API-outage and
-missing-publication-credential assessment:
+The following October 12 evidence records the API and account-service
+restoration. Frontend and protected-admin release acceptance remains incomplete:
 
 - [API publication #134](https://github.com/RebuildingAmerica/atlas/actions/runs/38259474718)
   succeeded for `880d8f83f9a6a6e1129ea6e60009581dbba6be8b`. Its retained
@@ -145,14 +145,12 @@ missing-publication-credential assessment:
   identity and IAP SSH connection reached the PDS host, but three Secret Manager
   reads returned HTTP 403. The old host script masked those failures, replaced
   `pds.env` with incomplete credentials, and restarted the PDS. The public PDS
-  health endpoint now returns HTTP 502. The later host check below establishes
-  the provider error category; an original credential recovery source remains
-  unproven.
-- The implementation and host-check source verified for this snapshot is
-  `c62ee6e6eb2c26c7a56a9a592aa4e3c97bb244b8`. The host release now aborts on
-  failed credential reads or invalid Compose configuration before replacing
-  credentials. Web verification updates only the broker and edge, preserving the
-  existing healthy PDS. The permanent read-only host check uses the same
+  health endpoint returned HTTP 502 after that attempt. The later host check
+  below established the provider error category; normal deployment #142 then
+  restored the original credentials and service.
+- The corrected host-check source at `c62ee6e6eb2c26c7a56a9a592aa4e3c97bb244b8`
+  aborts on failed credential reads or invalid Compose configuration before
+  replacing credentials. The permanent read-only host check uses the same
   workload identity and IAP connection. Its corrected input handling passed all
   42 PDS tests, 343 deployment tests, workflow lint, the complete secret scan,
   and all 37 pre-push quality tasks.
@@ -165,6 +163,28 @@ missing-publication-credential assessment:
   complete credentials. This check does not exhaust manual backups, boot-disk
   snapshots, other containers, or off-host recovery sources. It made no host
   configuration changes and did not recover the keys.
+- After the operator re-enabled Google billing,
+  [normal deployment #142](https://github.com/RebuildingAmerica/atlas/actions/runs/38293177989)
+  restored the original account-service configuration through the existing
+  workload identity and IAP connection. Its public health and invitation-broker
+  route checks passed. The normal deployment at `c3b0f56e` validates the
+  original Secret Manager values and Compose configuration before replacing the
+  environment, and converges the existing services. The separate PDS recovery
+  operation was removed. Fresh public readback returns HTTP 200 from both API
+  and PDS health endpoints. Public PDS reads also found an existing repository;
+  this is not proof of identity continuity or data completeness.
+- The web candidate in #142 then stopped before artifact creation because its
+  selected retained API source came from an older commit. No frontend or admin
+  was published by that attempt. Source and artifact identity checks remain
+  enforced.
+- The search-facet optimization and read-only secret scan landed on main at
+  `311366aea13a88a69e2cc65e58dd4ee1eec59b67`, tagged `v2026.10.12-cf.19`. The
+  optimization passed 2,997 API tests at 100% coverage and the two changed
+  PostgreSQL tests. All pre-push checks passed.
+  [API deployment #143](https://github.com/RebuildingAmerica/atlas/actions/runs/38297145136)
+  is running from that source to establish matching retained artifacts for the
+  web candidate. Its deployment result and hosted query savings are not yet
+  verified.
 
 The API is serving public traffic through Cloudflare. Atlas's frontend remains
 on Vercel, and the Cloudflare admin release remains unverified. Retained routing
@@ -174,8 +194,8 @@ GitHub readback shows empty artifact lists for both old runs.
 
 Finish the release by proving each remaining production requirement:
 
-- Restore the original PDS admin, JWT and PLC credentials and verify existing
-  sign-in identities. Do not rotate identity keys or reset retained data.
+- Verify existing sign-in identities against the restored original PDS
+  configuration. Do not rotate identity keys or reset retained data.
 - Publish and verify the exact Cloudflare frontend and Access-protected admin
   versions. Prove operator entry, refusal of unauthenticated/non-org/forged
   assertions, private applicant isolation, invitation behavior, and audit
@@ -195,4 +215,5 @@ Keep the release unchecked until this evidence exists. Local tests, tags, source
 integration, and branch retirement do not establish production recovery. All
 agent-run authentication must continue to avoid Keychain-backed credential
 lookups; use existing noninteractive deployment identities and authorized
-browser sessions. Keep the closed Google billing account closed.
+browser sessions. Google billing was re-enabled by the operator before normal
+deployment #142 restored the account service.
