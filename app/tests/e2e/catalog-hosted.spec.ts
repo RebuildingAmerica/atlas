@@ -162,53 +162,73 @@ function firstItem<T>(items: T[], label: string): T {
 }
 
 test.describe("hosted public catalog", () => {
+  // Keep the consistency bracket in order, with one existing 30-second budget
+  // per request instead of sharing it across five independent reads.
+  test.describe.configure({ mode: "serial" });
+  let apiCatalog: CatalogSummary;
+  let publicCatalog: CatalogSummary;
+
   test.skip(
     !shouldExpectHostedCatalog,
     "Set ATLAS_HOSTED_EXPECT_CATALOG=true once production is expected to expose vetted catalog data.",
   );
 
-  test("serves populated catalog JSON, map points, and source receipts", async () => {
+  test("serves a populated direct API catalog", async () => {
     const apiOrigin = requiredHostedOrigin("ATLAS_HOSTED_API_URL");
-    const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
     const catalogPath = "/api/entities?limit=1";
-    const mapPath = "/api/entities/map?min_lng=-125&min_lat=24&max_lng=-66&max_lat=50&limit=5";
 
-    const apiCatalog = parseCatalogSummary(
+    apiCatalog = parseCatalogSummary(
       await catalogRequest(apiOrigin, catalogPath, "direct API catalog"),
     );
-    const publicCatalog = parseCatalogSummary(
+    expect(apiCatalog.total).toBeGreaterThan(0);
+    expect(apiCatalog.items.length).toBeGreaterThan(0);
+  });
+
+  test("serves the populated catalog through the public app", async () => {
+    const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
+    publicCatalog = parseCatalogSummary(
       await catalogRequest(
         publicOrigin,
-        catalogPath,
+        "/api/entities?limit=1",
         "public app catalog",
         hostedPublicRequestInit(),
       ),
     );
+    expect(publicCatalog.items.length).toBeGreaterThan(0);
+    expect(firstItem(publicCatalog.items, "public catalog").sourceCount).toBeGreaterThan(0);
+  });
+
+  test("keeps the public catalog consistent with the direct API", async () => {
+    const apiOrigin = requiredHostedOrigin("ATLAS_HOSTED_API_URL");
     // Discovery publishes continuously, so the catalog can grow between two
     // reads. Reading the API on both sides of the public read still proves the
     // public app serves the live catalog: a stale cache would report a total
     // from before the first API read.
     const apiCatalogAfter = parseCatalogSummary(
-      await catalogRequest(apiOrigin, catalogPath, "direct API catalog, read again"),
-    );
-    const map = parseMapSummary(
-      await catalogRequest(publicOrigin, mapPath, "public app map", hostedPublicRequestInit()),
+      await catalogRequest(apiOrigin, "/api/entities?limit=1", "direct API catalog, read again"),
     );
 
-    expect(apiCatalog.total).toBeGreaterThan(0);
-    expect(apiCatalog.items.length).toBeGreaterThan(0);
     expect(publicCatalog.total).toBeGreaterThanOrEqual(
       Math.min(apiCatalog.total, apiCatalogAfter.total),
     );
     expect(publicCatalog.total).toBeLessThanOrEqual(
       Math.max(apiCatalog.total, apiCatalogAfter.total),
     );
-    expect(publicCatalog.items.length).toBeGreaterThan(0);
-    const publicCatalogItem = firstItem(publicCatalog.items, "public catalog");
-    expect(publicCatalogItem.sourceCount).toBeGreaterThan(0);
+  });
+
+  test("serves populated map points through the public app", async () => {
+    const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
+    const mapPath = "/api/entities/map?min_lng=-125&min_lat=24&max_lng=-66&max_lat=50&limit=5";
+    const map = parseMapSummary(
+      await catalogRequest(publicOrigin, mapPath, "public app map", hostedPublicRequestInit()),
+    );
     expect(map.total).toBeGreaterThan(0);
     expect(map.points.length).toBeGreaterThan(0);
+  });
 
+  test("serves the catalog profile with its public source receipts", async () => {
+    const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
+    const publicCatalogItem = firstItem(publicCatalog.items, "public catalog");
     const detail = parseEntityDetail(
       await catalogRequest(
         publicOrigin,

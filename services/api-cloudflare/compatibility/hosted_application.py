@@ -2,9 +2,8 @@
 
 import json
 from contextlib import AsyncExitStack, asynccontextmanager
-from functools import cache, wraps
+from functools import wraps
 from inspect import signature
-from types import SimpleNamespace
 
 from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
 from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
@@ -133,30 +132,6 @@ def _install_async_dependencies(app):
         app.dependency_overrides[call] = adapt(call)
 
 
-@cache
-def compiled_hosted_routes(*, managed):
-    """Prepare immutable routing structure without configuration or visitor state.
-
-    FastAPI's inclusion contexts compile dependency and response models lazily.
-    Materialize those contexts in the deployment snapshot so cold profile visits
-    pay only for their request-owned settings and services. The shared overrides
-    resolve the current HostedRuntime; they never capture an application or user.
-    """
-    from fastapi import APIRouter
-    from fastapi.routing import iter_route_contexts
-    from atlas.platform.http import create_router
-
-    provider = SimpleNamespace(dependency_overrides={})
-    _install_async_dependencies(provider)
-    router = APIRouter(dependency_overrides_provider=provider)
-    router.include_router(create_router(managed=managed))
-    # Iteration compiles inclusion contexts without allocating an OpenAPI document
-    # and its JSON-schema graph, which exceed Python's deployment memory budget.
-    for _ in iter_route_contexts(router.routes):
-        pass
-    return tuple(router.routes)
-
-
 def create_hosted_application(
     env, *, strip_evaluation_prefix=False, firehose_wake=None, discovery_wake=None
 ):
@@ -194,7 +169,6 @@ def create_hosted_application(
                 # The guard still owns scopes, claims, body replay and usage;
                 # each accepted request owns its server and session manager.
                 mcp_asgi_app=McpBearerAuthMiddleware(_request_mcp),
-                prepared_http_routes=compiled_hosted_routes(managed=settings.managed),
             )
 
         _install_async_dependencies(app)

@@ -65,10 +65,6 @@ def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_p
             "atlas/main.py",
             'def create_app():\n    raise AssertionError("Snapshot constructed an application")\n',
         )
-        core.writestr(
-            "hosted_application.py",
-            "def compiled_hosted_routes(*, managed):\n    assert managed is True\n",
-        )
     (tmp_path / "core-identity.json").write_text(
         json.dumps(
             {
@@ -163,13 +159,9 @@ for name, declared in routes.items():
     assert sys.modules['atlas.domains.catalog.api.' + name].router.routes is declared
 atlas = sys.modules['atlas.main']
 assert atlas._get_default_application.cache_info().currsize == 0
-assert 'atlas.platform.http.router' in sys.modules
-from hosted_application import compiled_hosted_routes
-assert compiled_hosted_routes.cache_info().currsize == 1
-assert compiled_hosted_routes.cache_info().hits >= 1
+assert 'atlas.platform.http.router' not in sys.modules
 for name in ('atlas.domains.access.api.health', 'atlas.domains.access.api.lists', 'atlas.domains.access.api.mcp_elicitations', 'atlas.domains.access.api.org_usage', 'atlas.domains.access.api.org_watch_digest', 'atlas.domains.access.api.org_watches', 'atlas.domains.access.api.service_status', 'atlas.domains.access.api.verification', 'atlas.domains.firehose', 'atlas.domains.moderation.activity_api', 'atlas.domains.moderation.api', 'atlas.domains.moderation.merge_api', 'atlas.domains.moderation.takedown_api', 'atlas.platform.http.platform_router'):
     assert name in sys.modules
-# Pure route declarations reference orchestration functions. Model SDKs, native
-# extraction data, settings and connections remain forbidden by the guards above.
+assert 'atlas.domains.discovery.pipeline.runner' not in sys.modules
 """
     subprocess.check_call([sys.executable, "-c", script, str(PATH), str(tmp_path)])
