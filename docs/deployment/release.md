@@ -52,11 +52,10 @@ should look like this:
    make quality
    ```
 2. Build or deploy using the intended environment path
-   - staging: push to `main`; `.github/workflows/deploy-staging.yml` deploys
-     `atlas-api-staging`, and Vercel deploys the `main` staging app
-   - production: create and push a `v*` tag;
-     `.github/workflows/deploy-production.yml` deploys `atlas-api` and the
-     Vercel production app from that tagged checkout
+   - staging: run **Deploy Staging** explicitly against `main` or a `v*` tag and
+     select the intended operation
+   - production: create and push a `v*` tag, then run **Deploy Production**
+     against that tag and select the intended operation
 3. Record the release tag and any known follow-up items
 
 Production release tags should point at a commit that has already passed the
@@ -69,11 +68,11 @@ git tag vYYYY.MM.DD-N
 git push origin vYYYY.MM.DD-N
 ```
 
-The Deploy Production workflow requires `VERCEL_TOKEN` in the GitHub
-`production` environment. GitHub OIDC is used only for Vercel Trusted Sources
-during hosted smoke checks. Because Vercel production domain auto-assignment is
-off, the workflow explicitly promotes the tagged Vercel deployment after
-`vercel deploy --prod`.
+Main pushes and release tags do not start deployment workflows. PR CI owns
+source checks; the explicit deployment runs retain the full release gate.
+Selecting `doctor` checks configuration, deploys nothing, and does not verify
+production health. Follow [Cloudflare publication](./cloudflare-publication.md)
+for the operations that publish, verify, and promote a release.
 
 Production uses the full CI gate even when the tag only includes a small surface
 change. Turbo remote cache and Docker layer cache should make unchanged work

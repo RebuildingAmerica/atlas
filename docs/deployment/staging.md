@@ -28,19 +28,17 @@ for why that matters and the current cost/sizing state of both PDS VMs.
 The staging API deploy is a GitHub Actions workflow:
 
 - workflow: `.github/workflows/deploy-staging.yml`
-- automatic trigger: push to `main`
-- manual trigger: **Deploy Staging** > **Run workflow**
+- trigger: **Deploy Staging** > **Run workflow**, with an explicit operation
 - GitHub Environment: `staging`
-- Cloud Run service: `atlas-api-staging`
 - recommended app domain: `https://atlas-staging.rebuildingus.org`
 - recommended API domain: `https://atlas-api-staging.rebuildingus.org`
 
-The workflow runs CI first. CI classifies the changed files and only runs the
-staging work that can matter for that change. Docs-only changes do not rebuild
-the API image. App-only changes run hosted smoke without rebuilding
-`atlas-api-staging`. API and deploy changes build the same `atlas-api` image as
-production, deploy the staging API service, and smoke-test the hosted app/API
-pair. Vercel owns staging app deployments through its GitHub integration.
+Main pushes do not start this workflow. An explicit run uses the full release CI
+gate before its selected Cloudflare operation. The default `doctor` operation
+only checks configuration; it does not deploy or prove staging health. See
+[Cloudflare publication](./cloudflare-publication.md) for the publish and verify
+operations. The GCP and Vercel setup below describes the retained hosting path
+during migration, not actions performed by this workflow.
 
 Staging does not create or update the production Cloud Scheduler job. Run
 discovery in staging deliberately so test data and external API spend stay

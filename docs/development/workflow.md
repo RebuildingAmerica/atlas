@@ -242,16 +242,16 @@ make test            # Run tests with coverage
 
 ## GitHub Actions
 
-| Workflow                         | Purpose                                                                                | When it runs                                              |
-| -------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| CI                               | Tests, types, lint, API contracts, generated files, documentation and secret scanning. | Pull requests, weekly, and before releases.               |
-| Deploy Staging                   | Checks staging configuration and runs the selected private release operation.          | Main pushes run `doctor`; release operations are manual.  |
-| Deploy Production                | Checks production configuration and publishes, verifies or promotes a release.         | Release tags run `doctor`; release operations are manual. |
-| Roll Back Production             | Restores retained production routing from a previous release run.                      | Manual, using the retained run ID.                        |
-| Production Canary                | Checks the public app, sitemap, PDS, catalog and search.                               | Hourly or manual.                                         |
-| Scout Release                    | Publishes a versioned Scout package and Homebrew formula.                              | `atlas-scout-v*.*.*` tags.                                |
-| Protected Cloudflare publication | Implements the shared staging, production and rollback jobs.                           | Called by those workflows.                                |
-| Build Cloudflare Python wheels   | Builds native Python dependencies for the Workers runtime.                             | Native recipe changes on main or manual.                  |
+| Workflow                         | Purpose                                                                                | When it runs                                |
+| -------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------- |
+| CI                               | Tests, types, lint, API contracts, generated files, documentation and secret scanning. | Pull requests, weekly, and before releases. |
+| Deploy Staging                   | Checks staging configuration and runs the selected private release operation.          | Manual, against main or a release tag.      |
+| Deploy Production                | Checks production configuration and publishes, verifies or promotes a release.         | Manual, against a release tag.              |
+| Roll Back Production             | Restores retained production routing from a previous release run.                      | Manual, using the retained run ID.          |
+| Production Canary                | Checks the public app, sitemap, PDS, catalog and search.                               | Hourly or manual.                           |
+| Scout Release                    | Publishes a versioned Scout package and Homebrew formula.                              | `atlas-scout-v*.*.*` tags.                  |
+| Protected Cloudflare publication | Implements the shared staging, production and rollback jobs.                           | Called by those workflows.                  |
+| Build Cloudflare Python wheels   | Builds native Python dependencies for the Workers runtime.                             | Native recipe changes on main or manual.    |
 
 Use **CI** for code verification, **Deploy Staging** for private release checks,
 and **Deploy Production** for the public release. A `doctor` result checks
