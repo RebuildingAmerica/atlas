@@ -793,7 +793,7 @@ test("runtime release rejects other databases on the same PostgreSQL host and en
       port: 5432,
     },
   };
-  const url = "postgres://atlas:private@db.example.com/atlas";
+  const url = "postgres://atlas@db.example.com/atlas";
   assert.doesNotThrow(() => validateRuntimeDatabase(valid, url));
   for (const origin of [
     { host: "other.example.com" },

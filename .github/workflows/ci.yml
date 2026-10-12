@@ -152,8 +152,8 @@ jobs:
         with:
           python: "true"
           cache-scope: ${{ needs.changes.outputs.python_tests == 'true' && needs.changes.outputs.app_tests == 'true' && 'test-full' || needs.changes.outputs.python_tests == 'true' && 'test-python' || 'test-app' }}
-      - name: Start PostgreSQL for Python tests
-        if: needs.changes.outputs.python_tests == 'true'
+      - name: Start PostgreSQL for database tests
+        if: needs.changes.outputs.python_tests == 'true' || needs.changes.outputs.app_tests == 'true'
         env:
           POSTGRES_PASSWORD: postgres # pragma: allowlist secret - disposable CI service password
         run: |

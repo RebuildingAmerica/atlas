@@ -132,14 +132,28 @@ using its own service account, so GitHub never receives PDS runtime secrets.
 
 Production account creation uses a narrower boundary instead of giving GitHub or
 Vercel the PDS admin password. The PDS release includes a private invite broker
-at `POST /_atlas/pds/invites`. The production workflow generates a single-use
-deploy-time `ATLAS_PDS_INVITE_BROKER_SECRET`, updates the PDS host with that
-bearer secret, and passes the same value plus `ATLAS_PDS_INVITE_BROKER_URL` to
-the Vercel server environment before promoting the app. The broker runs beside
-the PDS, calls the local PDS admin endpoint with the host-only
-`PDS_ADMIN_PASSWORD`, and returns only a one-use invite code. Do not grant the
-GitHub deploy service account Secret Manager access to
+at `POST /_atlas/pds/invites`. Protected web-candidate publication updates the
+existing PDS host through its existing workload identity and IAP deployment
+action, supplying the retained `ATLAS_PDS_INVITE_BROKER_SECRET` explicitly.
+Billing checks run before this host update. The same broker secret and
+`ATLAS_PDS_INVITE_BROKER_URL` remain in the application runtime. The broker runs
+beside the PDS, calls the local PDS admin endpoint with the host-only
+`PDS_ADMIN_PASSWORD`, and returns a one-use invite code. Do not grant the GitHub
+deploy service account Secret Manager access to
 `atlas-pds-production-admin-password` for app provisioning.
+
+Hosted identity tests require verified cleanup before creating temporary
+accounts. An authenticated `GET` on the existing broker route verifies PDS admin
+connectivity through a read-only account lookup. Its cleanup action accepts only
+the current GitHub run's synthetic handles and `atlas.test` emails, checks
+provider account identity before deleting, and verifies absence after deletion.
+The application then removes that run's database records in a transaction and
+reads back sessions, passkeys, workspace memberships, products, and identity
+links. Foreign memberships, public profile links, or billing activity stop
+cleanup. Browser-test teardown runs after failed assertions too; partial
+preparation attempts cleanup before reporting failure. This protects real
+accounts and keeps repeated sign-in validation from leaving identities behind.
+No PDS admin credential enters the application or GitHub environment.
 
 PDS hosts use the `atlas-pds` network tag. Their firewall configuration permits
 ports 80 and 443 publicly, permits port 22 only from the IAP TCP forwarding

@@ -68,6 +68,36 @@ test("publication preserves the existing PDS broker and account verification cre
   assert.doesNotMatch(source, /Generate.*secret|vercel deploy|gcloud/);
 });
 
+test("web candidates update the existing PDS host only after billing preflight using retained authority", async () => {
+  const source = await workflowSource(
+    ".github/workflows/cloudflare-publication.yml",
+  );
+  assert.match(source, /id-token: write/);
+  const deployment = source.indexOf("uses: ./.github/actions/deploy-atlas-pds");
+  assert.ok(
+    deployment >
+      source.indexOf("Check billing before updating the existing PDS host"),
+  );
+  assert.match(
+    source,
+    /if: inputs.operation == 'web-candidate'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
+  );
+  for (const setting of [
+    "GCP_PROJECT_ID",
+    "GCP_WORKLOAD_IDENTITY_PROVIDER",
+    "GCP_SERVICE_ACCOUNT",
+    "ATLAS_PDS_INSTANCE_NAME",
+    "ATLAS_PDS_INSTANCE_ZONE",
+    "ATLAS_PDS_INVITE_BROKER_SECRET",
+  ])
+    assert.ok(source.includes(`secrets.${setting}`), setting);
+  assert.ok(
+    deployment <
+      source.indexOf("run: node scripts/deploy/cloudflare-publication.mjs\n"),
+  );
+  assert.doesNotMatch(source, /deploy-atlas-api|Generate.*secret/);
+});
+
 test("hosted verification retains encrypted failure traces only after scanning artifacts", async () => {
   const source = await workflowSource(
     ".github/workflows/cloudflare-publication.yml",

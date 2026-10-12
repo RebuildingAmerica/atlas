@@ -20,6 +20,7 @@ permissions:
   contents: read
   actions: read
   artifact-metadata: write
+  id-token: write
 
 jobs:
   publish:
@@ -115,6 +116,53 @@ jobs:
           publicationContext(process.env);
           JS
       - uses: ./.github/actions/setup-toolchain
+      - name: Check billing before updating the existing PDS host
+        id: pds-release-config
+        if: inputs.operation == 'web-candidate'
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          ATLAS_PDS_INSTANCE_NAME: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
+          ATLAS_PDS_INSTANCE_ZONE: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
+        run: |
+          node --import tsx --input-type=module - <<'JS'
+          import {appendFileSync} from 'node:fs';
+          import Stripe from 'stripe';
+          import {publicationContext, retainedPublicationRuntime, assemblePublicationSettings} from './scripts/deploy/cloudflare-publication.mjs';
+          import {verifyPublicationBilling} from './scripts/deploy/publication-billing.ts';
+          try {
+            const context = publicationContext(process.env);
+            for (const key of ['GCP_PROJECT_ID','GCP_WORKLOAD_IDENTITY_PROVIDER','GCP_SERVICE_ACCOUNT','ATLAS_PDS_INSTANCE_NAME','ATLAS_PDS_INSTANCE_ZONE','ATLAS_PDS_INVITE_BROKER_SECRET']) {
+              if (!process.env[key]?.trim()) throw new Error('Existing PDS deployment authority is incomplete.');
+            }
+            const origin = new URL(process.env.ATLAS_PDS_PUBLIC_URL);
+            if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash)
+              throw new Error('Existing PDS origin is invalid.');
+            if (context.target === 'production') {
+              const retained = await retainedPublicationRuntime(process.env);
+              const {runtime} = assemblePublicationSettings({...process.env,ATLAS_WEB_RUNTIME_ENV_JSON:JSON.stringify(retained)});
+              await verifyPublicationBilling(runtime, () => new Stripe(runtime.STRIPE_API_KEY,{apiVersion:'2026-06-24.dahlia'}));
+            }
+            appendFileSync(process.env.GITHUB_OUTPUT, 'hostname='+origin.hostname+'\n');
+            console.log('Existing PDS deployment authority and billing preflight passed.');
+          } catch {
+            console.error('PDS release preflight failed; private configuration suppressed.');
+            process.exitCode = 1;
+          }
+          JS
+      - name: Update the existing PDS broker before hosted account verification
+        if: inputs.operation == 'web-candidate'
+        uses: ./.github/actions/deploy-atlas-pds
+        with:
+          environment-name: ${{ inputs.target }}
+          gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          instance-name: ${{ secrets.ATLAS_PDS_INSTANCE_NAME }}
+          instance-zone: ${{ secrets.ATLAS_PDS_INSTANCE_ZONE }}
+          pds-hostname: ${{ steps.pds-release-config.outputs.hostname }}
+          pds-public-url: ${{ vars.ATLAS_PDS_PUBLIC_URL }}
+          invite-broker-secret: ${{ secrets.ATLAS_PDS_INVITE_BROKER_SECRET }}
       - name: Install hosted acceptance browser
         if: inputs.operation == 'web-candidate' || inputs.operation == 'promote-web'
         run: |

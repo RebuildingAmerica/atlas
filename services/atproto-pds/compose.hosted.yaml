@@ -34,6 +34,7 @@ services:
       ATLAS_PDS_INTERNAL_URL: http://atlas-pds:2583
       ATLAS_PDS_INVITE_BROKER_PORT: 2584
       PDS_ADMIN_PASSWORD: ${PDS_ADMIN_PASSWORD}
+      PDS_HOSTNAME: ${ATLAS_PDS_HOSTNAME}
     command: ["node", "/app/invite-broker.mjs"]
     volumes:
       - ./invite-broker.mjs:/app/invite-broker.mjs:ro

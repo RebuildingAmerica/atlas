@@ -51,7 +51,7 @@ test("test caches distinguish app, Python, and full release work", async () => {
   assert.match(testJob, /'test-app'/);
 });
 
-test("app-only test runs skip PostgreSQL but still install Python", async () => {
+test("app-only test runs start PostgreSQL for fixture cleanup and install Python", async () => {
   const workflow = await source(".github/workflows/ci.yml");
   const testJob = workflow.slice(
     workflow.indexOf("  test:"),
@@ -70,12 +70,11 @@ test("app-only test runs skip PostgreSQL but still install Python", async () => 
     /python: \$\{\{ needs\.changes\.outputs\.python_tests \}\}/,
   );
 
-  // The PostgreSQL container is still worth skipping: nothing in the app
-  // test path talks to it.
-  assert.match(testJob, /name: Start PostgreSQL for Python tests/);
+  // The app's cleanup contract exercises real PostgreSQL foreign keys too.
+  assert.match(testJob, /name: Start PostgreSQL for database tests/);
   assert.match(
     testJob,
-    /if: needs\.changes\.outputs\.python_tests == 'true'/,
+    /if: needs\.changes\.outputs\.python_tests == 'true' \|\| needs\.changes\.outputs\.app_tests == 'true'/,
   );
 });
 

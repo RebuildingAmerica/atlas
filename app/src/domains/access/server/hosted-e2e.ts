@@ -1,15 +1,20 @@
 import "@tanstack/react-start/server-only";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { canManageAtlasOrganizationRole } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { requireActiveWorkspace } from "../organization-server-helpers";
-import { ensureAuthReady, type AtlasAuthAdapter, type AtlasAuthInternalAdapter } from "./auth";
+import {
+  ensureAuthReady,
+  getAuthPgPool,
+  type AtlasAuthAdapter,
+  type AtlasAuthInternalAdapter,
+} from "./auth";
 import { createAtprotoSessionForUser } from "./atproto-sign-in";
 import { requireAtlasSessionState } from "./session-state";
 
 const HOSTED_E2E_UNAVAILABLE = { error: "Hosted E2E is unavailable." } as const;
-const hostedE2ERunIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/);
+const hostedE2ERunIdSchema = z.string().regex(/^\d{1,11}-[1-9]\d?$/);
 
 export const hostedE2EPayloadSchema = z.discriminatedUnion("action", [
   z.object({
@@ -332,28 +337,48 @@ async function upsertHostedE2EMembership(
 
 async function prepareHostedE2ERun(runId: string): Promise<Response> {
   const seeds = buildHostedE2EAccountSeeds(runId);
-  const auth = await ensureAuthReady();
-  const context = await auth.$context;
-  const ownerUserId = await upsertHostedE2EUser(context.internalAdapter, seeds.owner);
-  const delegateUserId = await upsertHostedE2EUser(context.internalAdapter, seeds.delegate);
-  await Promise.all([
-    ensureHostedE2EPasskey(context.adapter, {
-      role: "owner",
-      runId: seeds.runId,
-      userId: ownerUserId,
-    }),
-    ensureHostedE2EPasskey(context.adapter, {
-      role: "delegate",
-      runId: seeds.runId,
-      userId: delegateUserId,
-    }),
-  ]);
+  try {
+    await assertHostedE2ECleanupAvailable();
+  } catch {
+    return Response.json({ error: "Hosted E2E cleanup is unavailable." }, { status: 503 });
+  }
+  try {
+    const auth = await ensureAuthReady();
+    const context = await auth.$context;
+    const ownerUserId = await upsertHostedE2EUser(context.internalAdapter, seeds.owner);
+    const delegateUserId = await upsertHostedE2EUser(context.internalAdapter, seeds.delegate);
+    await Promise.all([
+      ensureHostedE2EPasskey(context.adapter, {
+        role: "owner",
+        runId: seeds.runId,
+        userId: ownerUserId,
+      }),
+      ensureHostedE2EPasskey(context.adapter, {
+        role: "delegate",
+        runId: seeds.runId,
+        userId: delegateUserId,
+      }),
+    ]);
 
-  return Response.json({
-    delegate: { ...seeds.delegate, userId: delegateUserId },
-    owner: { ...seeds.owner, userId: ownerUserId },
-    runId: seeds.runId,
-  });
+    return Response.json({
+      delegate: { ...seeds.delegate, userId: delegateUserId },
+      owner: { ...seeds.owner, userId: ownerUserId },
+      runId: seeds.runId,
+    });
+  } catch {
+    try {
+      await cleanupHostedE2ERun(seeds);
+    } catch {
+      return Response.json(
+        { error: "Hosted E2E preparation and cleanup could not be verified." },
+        { status: 503 },
+      );
+    }
+    return Response.json(
+      { error: "Hosted E2E preparation failed; temporary accounts were removed." },
+      { status: 503 },
+    );
+  }
 }
 
 async function createHostedE2ESession(runId: string, email: string): Promise<Response> {
@@ -420,5 +445,252 @@ export async function handleHostedE2EIdentityRequest(request: Request): Promise<
     return await seedHostedE2EWorkspaceMember(payload.runId, payload.delegateEmail);
   }
 
-  return Response.json({ ok: true, runId: payload.runId });
+  try {
+    return await cleanupHostedE2ERun(buildHostedE2EAccountSeeds(payload.runId));
+  } catch {
+    return Response.json({ error: "Hosted E2E cleanup could not be verified." }, { status: 503 });
+  }
+}
+
+interface FixtureUser {
+  id: string;
+  email: string;
+  name: string;
+}
+interface FixtureWorkspace {
+  id: string;
+  name: string;
+}
+interface FixtureIdentity {
+  id: string;
+  did: string;
+  current_handle: string;
+  pds_url: string;
+}
+interface PdsFixture {
+  handle: string;
+  email: string;
+  did?: string;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === "string");
+}
+
+function brokerSettings() {
+  const url = new URL(process.env.ATLAS_PDS_INVITE_BROKER_URL ?? "");
+  const pds = new URL(process.env.ATLAS_PDS_PUBLIC_URL ?? "");
+  const secret = process.env.ATLAS_PDS_INVITE_BROKER_SECRET?.trim();
+  if (
+    !secret ||
+    url.protocol !== "https:" ||
+    url.origin !== pds.origin ||
+    url.pathname !== "/_atlas/pds/invites" ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  )
+    throw new Error("Hosted E2E cleanup is unavailable.");
+  return { url, secret, pds: pds.origin };
+}
+
+async function brokerRequest(body?: {
+  action: "cleanup-hosted-e2e";
+  runId: string;
+  accounts: PdsFixture[];
+}) {
+  const { url, secret } = brokerSettings();
+  const response = await fetch(url, {
+    method: body ? "POST" : "GET",
+    headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+    redirect: "error",
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok) throw new Error("Hosted E2E cleanup is unavailable.");
+  return (await response.json()) as unknown;
+}
+
+/** Refuse fixture creation until the existing PDS broker can delete this run's accounts. */
+export async function assertHostedE2ECleanupAvailable(): Promise<void> {
+  const result = await brokerRequest();
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("hostedFixtureCleanup" in result) ||
+    result.hostedFixtureCleanup !== true
+  )
+    throw new Error("Hosted E2E cleanup is unavailable.");
+}
+
+function fixturePdsEmail(user: FixtureUser, handle: string): string {
+  const local = user.email.slice(0, user.email.lastIndexOf("@")).slice(0, 40);
+  const digest = createHash("sha256").update(`${user.id}:${handle}`).digest("hex").slice(0, 16);
+  return `${local}+atlas-${digest}@atlas.test`;
+}
+
+/** Delete only exact-run fixtures; retain everything if ownership or provider deletion is unproven. */
+export async function cleanupHostedE2ERun(seeds: HostedE2EAccountSeeds): Promise<Response> {
+  await assertHostedE2ECleanupAvailable();
+  await ensureAuthReady();
+  const pool = getAuthPgPool();
+  if (!pool) throw new Error("Hosted E2E cleanup requires PostgreSQL.");
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+    const { rows: users } = await client.query<FixtureUser>(
+      'SELECT id, email, name FROM "user" WHERE email = ANY($1::text[]) FOR UPDATE',
+      [[seeds.owner.email, seeds.delegate.email]],
+    );
+    for (const user of users) {
+      const seed = user.email === seeds.owner.email ? seeds.owner : seeds.delegate;
+      if (!user.id.startsWith("hosted_e2e_user_") || user.name !== seed.name)
+        throw new Error("Hosted E2E cleanup ownership differs.");
+    }
+    const ids = users.map((user) => user.id);
+    const { rows: workspaces } = await client.query<FixtureWorkspace>(
+      'SELECT id, name FROM "organization" WHERE id IN (SELECT "organizationId" FROM "member" WHERE "userId" = ANY($1::text[])) FOR UPDATE',
+      [ids],
+    );
+    if (
+      workspaces.some(
+        (workspace) => !users.some((user) => workspace.name === `${user.name}'s Workspace`),
+      )
+    )
+      throw new Error("Hosted E2E workspace ownership differs.");
+    const orgIds = workspaces.map((workspace) => workspace.id);
+    const { rows: foreignMembers } = await client.query(
+      'SELECT id FROM "member" WHERE "organizationId" = ANY($1::text[]) AND NOT ("userId" = ANY($2::text[])) LIMIT 1',
+      [orgIds, ids],
+    );
+    const { rows: invitations } = await client.query(
+      'SELECT id FROM "invitation" WHERE "organizationId" = ANY($1::text[]) LIMIT 1',
+      [orgIds],
+    );
+    const { rows: purchases } = await client.query(
+      "SELECT id FROM purchase_intents WHERE user_id = ANY($1::text[]) OR workspace_id = ANY($2::text[]) LIMIT 1",
+      [ids, orgIds],
+    );
+    const { rows: billed } = await client.query(
+      "SELECT id FROM workspace_products WHERE workspace_id = ANY($1::text[]) AND (stripe_customer_id IS NOT NULL OR stripe_subscription_id IS NOT NULL) LIMIT 1",
+      [orgIds],
+    );
+    if (foreignMembers.length || invitations.length || purchases.length || billed.length)
+      throw new Error("Hosted E2E workspace has non-fixture activity.");
+    const compact = seeds.runId.replaceAll("-", "").slice(-12);
+    const suffix = new URL(brokerSettings().pds).hostname;
+    const organizationHandle = `a${compact}g.${suffix}`;
+    const handles = [seeds.owner.handle, seeds.delegate.handle, organizationHandle];
+    const { rows: identities } = await client.query<FixtureIdentity>(
+      "SELECT id, did, current_handle, pds_url FROM atproto_identities WHERE current_handle = ANY($1::text[]) FOR UPDATE",
+      [handles],
+    );
+    if (
+      identities.some((identity) => identity.pds_url?.replace(/\/$/, "") !== brokerSettings().pds)
+    )
+      throw new Error("Hosted E2E identity provider differs.");
+    if (
+      identities.some(
+        (identity) =>
+          !users.some(
+            (user) =>
+              user.email ===
+              (identity.current_handle === seeds.delegate.handle
+                ? seeds.delegate.email
+                : seeds.owner.email),
+          ),
+      )
+    )
+      throw new Error("Hosted E2E identity owner is unavailable.");
+    const identityIds = identities.map((identity) => identity.id);
+    const { rows: outsideLinks } = await client.query(
+      `SELECT id FROM user_atproto_controls WHERE identity_id = ANY($1::text[]) AND NOT (user_id = ANY($2::text[]))
+       UNION ALL SELECT id FROM profile_atproto_links WHERE identity_id = ANY($1::text[])
+       UNION ALL SELECT id FROM organization_atproto_identities WHERE identity_id = ANY($1::text[]) AND NOT (organization_id = ANY($3::text[]))
+       UNION ALL SELECT id FROM atproto_identity_delegations WHERE identity_id = ANY($1::text[]) AND (NOT (controller_user_id = ANY($2::text[])) OR NOT (delegate_user_id = ANY($2::text[])) OR NOT (organization_id = ANY($3::text[])))
+       UNION ALL SELECT id FROM user_atproto_controls WHERE user_id = ANY($2::text[]) AND NOT (identity_id = ANY($1::text[]))
+       UNION ALL SELECT id FROM organization_atproto_identities WHERE organization_id = ANY($3::text[]) AND NOT (identity_id = ANY($1::text[]))`,
+      [identityIds, ids, orgIds],
+    );
+    if (outsideLinks.length) throw new Error("Hosted E2E identity has non-fixture links.");
+    const accounts: PdsFixture[] = [];
+    for (const user of users) {
+      const userHandles =
+        user.email === seeds.owner.email
+          ? [seeds.owner.handle, organizationHandle]
+          : [seeds.delegate.handle];
+      for (const handle of userHandles) {
+        const identity = identities.find((candidate) => candidate.current_handle === handle);
+        accounts.push({
+          handle,
+          email: fixturePdsEmail(user, handle),
+          ...(identity ? { did: identity.did } : {}),
+        });
+      }
+    }
+    const result = await brokerRequest({
+      action: "cleanup-hosted-e2e",
+      runId: seeds.runId,
+      accounts,
+    });
+    if (
+      typeof result !== "object" ||
+      result === null ||
+      !("cleanedHandles" in result) ||
+      !isStringArray(result.cleanedHandles) ||
+      JSON.stringify([...result.cleanedHandles].sort()) !==
+        JSON.stringify(accounts.map((account) => account.handle).sort())
+    )
+      throw new Error("Hosted E2E PDS cleanup is unverified.");
+    const dids = identities.map((identity) => identity.did);
+    await client.query("DELETE FROM atproto_oauth_session WHERE key = ANY($1::text[])", [dids]);
+    await client.query(
+      `DELETE FROM atproto_oauth_state WHERE value->>'appState' IN
+      (SELECT key FROM atproto_oauth_app_state WHERE value->>'userId' = ANY($1::text[]) OR value->>'requestedHandle' = ANY($2::text[]))`,
+      [ids, handles],
+    );
+    await client.query(
+      `DELETE FROM atproto_oauth_app_state WHERE value->>'userId' = ANY($1::text[]) OR value->>'requestedHandle' = ANY($2::text[])`,
+      [ids, handles],
+    );
+    await client.query("DELETE FROM atproto_identities WHERE id = ANY($1::text[])", [identityIds]);
+    await client.query("DELETE FROM workspace_products WHERE workspace_id = ANY($1::text[])", [
+      orgIds,
+    ]);
+    await client.query('DELETE FROM "organization" WHERE id = ANY($1::text[])', [orgIds]);
+    await client.query('DELETE FROM "user" WHERE id = ANY($1::text[])', [ids]);
+    const { rows: remaining } = await client.query(
+      `SELECT id FROM "user" WHERE id = ANY($1::text[])
+       UNION ALL SELECT id FROM "organization" WHERE id = ANY($2::text[])
+       UNION ALL SELECT id FROM atproto_identities WHERE id = ANY($3::text[])
+       UNION ALL SELECT id FROM "session" WHERE "userId" = ANY($1::text[])
+       UNION ALL SELECT id FROM "account" WHERE "userId" = ANY($1::text[])
+       UNION ALL SELECT id FROM "passkey" WHERE "userId" = ANY($1::text[])
+       UNION ALL SELECT id FROM "member" WHERE "userId" = ANY($1::text[]) OR "organizationId" = ANY($2::text[])
+       UNION ALL SELECT id FROM workspace_products WHERE workspace_id = ANY($2::text[])
+       UNION ALL SELECT id FROM user_atproto_controls WHERE user_id = ANY($1::text[]) OR identity_id = ANY($3::text[])
+       UNION ALL SELECT id FROM organization_atproto_identities WHERE organization_id = ANY($2::text[]) OR identity_id = ANY($3::text[])
+       UNION ALL SELECT id FROM atproto_identity_delegations WHERE controller_user_id = ANY($1::text[]) OR delegate_user_id = ANY($1::text[]) OR identity_id = ANY($3::text[])
+       UNION ALL SELECT key AS id FROM atproto_oauth_session WHERE key = ANY($4::text[])
+       UNION ALL SELECT key AS id FROM atproto_oauth_app_state WHERE value->>'userId' = ANY($1::text[]) OR value->>'requestedHandle' = ANY($5::text[])`,
+      [ids, orgIds, identityIds, dids, handles],
+    );
+    if (remaining.length) throw new Error("Hosted E2E cleanup is unverified.");
+    await client.query("COMMIT");
+    return Response.json({
+      ok: true,
+      runId: seeds.runId,
+      deleted: {
+        users: users.length,
+        workspaces: workspaces.length,
+        identities: identities.length,
+      },
+    });
+  } catch {
+    await client.query("ROLLBACK");
+    throw new Error("Hosted E2E cleanup could not be verified.");
+  } finally {
+    client.release();
+  }
 }

@@ -117,7 +117,7 @@ void describe("PDS release health probe", () => {
 
     assert.equal(
       packageManifest.scripts["pds:test"],
-      "node --test services/atproto-pds/test-config.mjs scripts/deploy/pds-release.test.mjs",
+      "node --test services/atproto-pds/test-config.mjs services/atproto-pds/hosted-cleanup.test.mjs scripts/deploy/pds-release.test.mjs",
     );
     assert.match(productionVerify, /'\/\/\#pds:test'/);
   });

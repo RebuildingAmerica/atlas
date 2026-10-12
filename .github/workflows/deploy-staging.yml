@@ -56,6 +56,11 @@ jobs:
       STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
   publish:
     needs: ci
+    permissions:
+      contents: read
+      actions: read
+      artifact-metadata: write
+      id-token: write
     uses: ./.github/workflows/cloudflare-publication.yml
     with:
       target: staging

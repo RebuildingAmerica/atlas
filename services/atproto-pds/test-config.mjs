@@ -141,7 +141,7 @@ test("PDS VM release materializes scoped secrets without persisting them in sour
   );
 });
 
-test("invite broker implementation only mints one-use invites for authorized callers", async () => {
+test("PDS broker keeps admin credentials local and requires its existing bearer credential", async () => {
   const source = await readFile(
     new URL("./invite-broker.mjs", import.meta.url),
     "utf8",

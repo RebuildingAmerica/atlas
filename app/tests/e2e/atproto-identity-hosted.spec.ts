@@ -174,6 +174,14 @@ async function fillFieldAndClickWhenEnabled(
 
 test.describe.configure({ mode: "serial" });
 
+// A failed browser assertion or partially completed preparation still owns
+// disposable accounts. The independent request fixture survives page failures.
+test.afterEach(async ({ request }) => {
+  const runId = requiredEnv("ATLAS_HOSTED_E2E_RUN_ID");
+  const result = await postHostedHelper(request, { action: "cleanup", runId });
+  expect(result).toMatchObject({ ok: true, runId });
+});
+
 test("hosted ATProto identity administration works without a personal browser session", async ({
   page,
 }) => {
