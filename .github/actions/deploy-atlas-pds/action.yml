@@ -38,6 +38,10 @@ inputs:
     description: Root-owned host directory that receives release files.
     required: false
     default: /opt/atlas-pds
+  broker-only:
+    description: Update the invite broker and edge while preserving the healthy PDS and its credentials.
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -57,10 +61,14 @@ runs:
       env:
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
         ATLAS_PDS_HOSTNAME: ${{ inputs.pds-hostname }}
+        ATLAS_PDS_BROKER_ONLY: ${{ inputs.broker-only }}
       run: |
         set -euo pipefail
 
         node --input-type=module <<'NODE'
+        if (!["true", "false"].includes(process.env.ATLAS_PDS_BROKER_ONLY)) {
+          throw new Error("broker-only must be true or false.");
+        }
         const publicUrl = new URL(process.env.ATLAS_PDS_PUBLIC_URL);
         if (publicUrl.protocol !== "https:") {
           throw new Error("pds-public-url must use HTTPS.");
@@ -110,12 +118,18 @@ runs:
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
         INSTANCE_NAME: ${{ inputs.instance-name }}
         INSTANCE_ZONE: ${{ inputs.instance-zone }}
+        ATLAS_PDS_BROKER_ONLY: ${{ inputs.broker-only }}
       run: |
         set -euo pipefail
 
         quote() {
           printf '%q' "$1"
         }
+
+        release_argument=""
+        if [ "$ATLAS_PDS_BROKER_ONLY" = true ]; then
+          release_argument="--broker-only"
+        fi
 
         remote_command="$(cat <<REMOTE
         set -euo pipefail
@@ -133,7 +147,7 @@ runs:
           ATLAS_PDS_INVITE_BROKER_SECRET=$(quote "$ATLAS_PDS_INVITE_BROKER_SECRET") \
           ATLAS_PDS_DATA_DIRECTORY=$(quote "$ATLAS_PDS_DATA_DIRECTORY") \
           ATLAS_PDS_DEPLOY_DIRECTORY=$(quote "$ATLAS_PDS_DEPLOY_DIRECTORY") \
-          $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh")
+          $(quote "$ATLAS_PDS_DEPLOY_DIRECTORY/vm-release.sh") $release_argument
         REMOTE
         )"
 
