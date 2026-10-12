@@ -162,12 +162,12 @@ range, and explicitly denies direct public SSH. Operators must use
 source addresses. The release identity needs the corresponding IAP tunnel and
 Compute SSH permissions before it can update a host.
 
-Routine hosted account verification uses the reusable action's `broker-only`
-input. This validates the retained configuration and requires a healthy PDS,
-then updates only the broker and TLS edge without reading Secret Manager,
-replacing credentials, or restarting the PDS. Existing people retain their
-sign-in service during broker changes. The host equivalent is
-`vm-release.sh --broker-only` with the same deployment inputs.
+Routine hosted account verification uses the reusable action's `broker` mode.
+This validates the retained configuration and requires a healthy PDS, then
+updates only the broker and TLS edge without reading Secret Manager, replacing
+credentials, or restarting the PDS. Existing people retain their sign-in service
+during broker changes. The host equivalent is `vm-release.sh --broker-only` with
+the same deployment inputs.
 
 Full releases read every required credential successfully and validate Compose
 before replacing `pds.env`. A failed credential read stops the release before

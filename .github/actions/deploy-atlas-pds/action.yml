@@ -38,10 +38,10 @@ inputs:
     description: Root-owned host directory that receives release files.
     required: false
     default: /opt/atlas-pds
-  broker-only:
-    description: Update the invite broker and edge while preserving the healthy PDS and its credentials.
+  mode:
+    description: Full host release, broker update preserving the PDS, or read-only host check.
     required: false
-    default: "false"
+    default: full
 
 runs:
   using: composite
@@ -61,13 +61,13 @@ runs:
       env:
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
         ATLAS_PDS_HOSTNAME: ${{ inputs.pds-hostname }}
-        ATLAS_PDS_BROKER_ONLY: ${{ inputs.broker-only }}
+        ATLAS_PDS_RELEASE_MODE: ${{ inputs.mode }}
       run: |
         set -euo pipefail
 
         node --input-type=module <<'NODE'
-        if (!["true", "false"].includes(process.env.ATLAS_PDS_BROKER_ONLY)) {
-          throw new Error("broker-only must be true or false.");
+        if (!["full", "broker", "check"].includes(process.env.ATLAS_PDS_RELEASE_MODE)) {
+          throw new Error("mode must be full, broker, or check.");
         }
         const publicUrl = new URL(process.env.ATLAS_PDS_PUBLIC_URL);
         if (publicUrl.protocol !== "https:") {
@@ -81,7 +81,44 @@ runs:
         }
         NODE
 
+    - name: Check retained PDS host without changing configuration
+      if: inputs.mode == 'check'
+      shell: bash
+      env:
+        ATLAS_PDS_DATA_DIRECTORY: ${{ inputs.pds-data-directory }}
+        ATLAS_PDS_DEPLOY_DIRECTORY: ${{ inputs.deploy-directory }}
+        ATLAS_PDS_ENVIRONMENT: ${{ inputs.environment-name }}
+        ATLAS_PDS_GCP_PROJECT: ${{ inputs.gcp-project-id }}
+        ATLAS_PDS_HOSTNAME: ${{ inputs.pds-hostname }}
+        ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
+        INSTANCE_NAME: ${{ inputs.instance-name }}
+        INSTANCE_ZONE: ${{ inputs.instance-zone }}
+      run: |
+        set -euo pipefail
+
+        quote() {
+          printf '%q' "$1"
+        }
+
+        remote_command="$(cat <<REMOTE
+        sudo env \
+          ATLAS_PDS_ENVIRONMENT=$(quote "$ATLAS_PDS_ENVIRONMENT") \
+          ATLAS_PDS_GCP_PROJECT=$(quote "$ATLAS_PDS_GCP_PROJECT") \
+          ATLAS_PDS_HOSTNAME=$(quote "$ATLAS_PDS_HOSTNAME") \
+          ATLAS_PDS_PUBLIC_URL=$(quote "$ATLAS_PDS_PUBLIC_URL") \
+          ATLAS_PDS_DATA_DIRECTORY=$(quote "$ATLAS_PDS_DATA_DIRECTORY") \
+          ATLAS_PDS_DEPLOY_DIRECTORY=$(quote "$ATLAS_PDS_DEPLOY_DIRECTORY") \
+          bash -s
+        REMOTE
+        )"
+
+        gcloud compute ssh "$INSTANCE_NAME" \
+          --zone "$INSTANCE_ZONE" \
+          --tunnel-through-iap \
+          --command "$remote_command" < services/atproto-pds/vm-check.sh
+
     - name: Copy PDS release bundle to host
+      if: inputs.mode != 'check'
       shell: bash
       env:
         INSTANCE_NAME: ${{ inputs.instance-name }}
@@ -107,6 +144,7 @@ runs:
           --tunnel-through-iap
 
     - name: Release PDS on host
+      if: inputs.mode != 'check'
       shell: bash
       env:
         ATLAS_PDS_DATA_DIRECTORY: ${{ inputs.pds-data-directory }}
@@ -118,7 +156,7 @@ runs:
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
         INSTANCE_NAME: ${{ inputs.instance-name }}
         INSTANCE_ZONE: ${{ inputs.instance-zone }}
-        ATLAS_PDS_BROKER_ONLY: ${{ inputs.broker-only }}
+        ATLAS_PDS_RELEASE_MODE: ${{ inputs.mode }}
       run: |
         set -euo pipefail
 
@@ -127,7 +165,7 @@ runs:
         }
 
         release_argument=""
-        if [ "$ATLAS_PDS_BROKER_ONLY" = true ]; then
+        if [ "$ATLAS_PDS_RELEASE_MODE" = broker ]; then
           release_argument="--broker-only"
         fi
 
@@ -157,12 +195,14 @@ runs:
           --command "$remote_command"
 
     - name: Verify public PDS health
+      if: inputs.mode != 'check'
       shell: bash
       env:
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}
       run: node scripts/deploy/pds-release.mjs health
 
     - name: Verify public PDS invite broker route
+      if: inputs.mode != 'check'
       shell: bash
       env:
         ATLAS_PDS_PUBLIC_URL: ${{ inputs.pds-public-url }}

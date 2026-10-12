@@ -154,7 +154,7 @@ jobs:
         if: inputs.operation == 'web-candidate'
         uses: ./.github/actions/deploy-atlas-pds
         with:
-          broker-only: "true"
+          mode: broker
           environment-name: ${{ inputs.target }}
           gcp-project-id: ${{ secrets.GCP_PROJECT_ID }}
           workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
