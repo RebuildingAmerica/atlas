@@ -23,7 +23,9 @@ def preload_core_packages():
         raise RuntimeError("Bundled API core does not match its release.")
     if str(archive) not in sys.path:
         sys.path.insert(0, str(archive))
-    # Preload catalog route declarations to reduce cold profile response time.
+    # Snapshot request-independent route declarations so a first profile visit
+    # does not pay for workspace and moderation validation models. Discovery
+    # execution imports stay deferred with their data and SDKs.
     # Settings, application construction, discovery execution, MCP, model SDKs,
     # and native signing services remain owned by actual requests.
     for module in (
@@ -40,6 +42,20 @@ def preload_core_packages():
         "atlas.domains.catalog.api.org_annotations",
         "atlas.domains.catalog.api.org_resources",
         "atlas.domains.catalog.api.organization_atproto_identities",
+        "atlas.domains.access.api.health",
+        "atlas.domains.access.api.lists",
+        "atlas.domains.access.api.mcp_elicitations",
+        "atlas.domains.access.api.org_usage",
+        "atlas.domains.access.api.org_watch_digest",
+        "atlas.domains.access.api.org_watches",
+        "atlas.domains.access.api.service_status",
+        "atlas.domains.access.api.verification",
+        "atlas.domains.firehose",
+        "atlas.domains.moderation.activity_api",
+        "atlas.domains.moderation.api",
+        "atlas.domains.moderation.merge_api",
+        "atlas.domains.moderation.takedown_api",
+        "atlas.platform.http.platform_router",
     ):
         importlib.import_module(module)
     return True

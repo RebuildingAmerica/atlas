@@ -24,6 +24,22 @@ CATALOG_MODULES = (
     "org_resources",
     "organization_atproto_identities",
 )
+ADDITIONAL_ROUTES = (
+    "atlas.domains.access.api.health",
+    "atlas.domains.access.api.lists",
+    "atlas.domains.access.api.mcp_elicitations",
+    "atlas.domains.access.api.org_usage",
+    "atlas.domains.access.api.org_watch_digest",
+    "atlas.domains.access.api.org_watches",
+    "atlas.domains.access.api.service_status",
+    "atlas.domains.access.api.verification",
+    "atlas.domains.firehose",
+    "atlas.domains.moderation.activity_api",
+    "atlas.domains.moderation.api",
+    "atlas.domains.moderation.merge_api",
+    "atlas.domains.moderation.takedown_api",
+    "atlas.platform.http.platform_router",
+)
 
 
 def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_path):
@@ -33,11 +49,18 @@ def test_snapshot_preloads_core_without_deferred_io_or_application_factory(tmp_p
         core.writestr("pydantic_core.py", "IMPORTED = True\n")
         core.writestr("fastapi.py", "import pydantic_core\nIMPORTED = True\n")
         core.writestr("httpx.py", "IMPORTED = True\n")
-        core.writestr("atlas/__init__.py", "")
-        for package in ("domains", "domains/catalog", "domains/catalog/api"):
-            core.writestr(f"atlas/{package}/__init__.py", "")
-        for module in CATALOG_MODULES:
-            core.writestr(f"atlas/domains/catalog/api/{module}.py", "IMPORTED = True\n")
+        modules = (
+            tuple("atlas.domains.catalog.api." + name for name in CATALOG_MODULES)
+            + ADDITIONAL_ROUTES
+        )
+        packages = set()
+        for name in modules:
+            parts = name.split(".")
+            for size in range(1, len(parts)):
+                packages.add("/".join(parts[:size]))
+            core.writestr(name.replace(".", "/") + ".py", "IMPORTED = True\n")
+        for package in sorted(packages):
+            core.writestr(package + "/__init__.py", "")
         core.writestr(
             "atlas/main.py",
             'def create_app():\n    raise AssertionError("Snapshot constructed an application")\n',
@@ -62,7 +85,7 @@ assert "fastapi" in sys.modules
 assert "httpx" in sys.modules
 assert "atlas.main" in sys.modules
 for name in json.loads(sys.argv[3]):
-    assert sys.modules['atlas.domains.catalog.api.' + name].IMPORTED
+    assert sys.modules[name].IMPORTED
 print(json.dumps({"imported": pydantic_core.IMPORTED, "paths": sys.path.count(str(Path(sys.argv[2]) / "python_modules/core.zip")), "repeated": module.preload_core_packages()}))
 """
     output = subprocess.check_output(
@@ -72,7 +95,7 @@ print(json.dumps({"imported": pydantic_core.IMPORTED, "paths": sys.path.count(st
             script,
             str(PATH),
             str(tmp_path),
-            json.dumps(CATALOG_MODULES),
+            json.dumps(modules),
         ],
         cwd=tmp_path,
         env={**os.environ, "PYTHONPATH": ""},
@@ -97,7 +120,7 @@ def test_snapshot_requires_matching_core_before_importing_application(
         module.preload_core_packages()
 
 
-def test_real_catalog_preload_does_not_construct_settings_services_or_app(tmp_path):
+def test_real_route_preload_does_not_construct_settings_services_or_app(tmp_path):
     (tmp_path / "python_modules").mkdir()
     archive = tmp_path / "python_modules/core.zip"
     with zipfile.ZipFile(archive, "w"):
@@ -137,6 +160,8 @@ for name, declared in routes.items():
 atlas = sys.modules['atlas.main']
 assert atlas._get_default_application.cache_info().currsize == 0
 assert 'atlas.platform.http.router' not in sys.modules
+for name in ('atlas.domains.access.api.health', 'atlas.domains.access.api.lists', 'atlas.domains.access.api.mcp_elicitations', 'atlas.domains.access.api.org_usage', 'atlas.domains.access.api.org_watch_digest', 'atlas.domains.access.api.org_watches', 'atlas.domains.access.api.service_status', 'atlas.domains.access.api.verification', 'atlas.domains.firehose', 'atlas.domains.moderation.activity_api', 'atlas.domains.moderation.api', 'atlas.domains.moderation.merge_api', 'atlas.domains.moderation.takedown_api', 'atlas.platform.http.platform_router'):
+    assert name in sys.modules
 assert 'atlas.domains.discovery.pipeline.runner' not in sys.modules
 """
     subprocess.check_call([sys.executable, "-c", script, str(PATH), str(tmp_path)])
