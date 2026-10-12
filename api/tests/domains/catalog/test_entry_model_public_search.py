@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
 import pytest
 
@@ -74,10 +75,21 @@ async def test_search_public_id_filter_branches_with_full_query_payload(
 
     assert result["total"] >= 1
     assert any(item["entry"].id == entry_id for item in result["entries"])
+    assert result["facets"] == {
+        "states": [{"value": "MO", "count": 1}],
+        "cities": [{"value": "Kansas City", "count": 1}],
+        "regions": [{"value": "Kansas City metro", "count": 1}],
+        "issue_areas": [{"value": "housing_affordability", "count": 1}],
+        "entity_types": [{"value": "organization", "count": 1}],
+        "source_types": [{"value": "news_article", "count": 1}],
+        "source_patterns": [{"value": "single_source", "count": 1}],
+    }
 
 
 @pytest.mark.asyncio
-async def test_search_public_filters_and_facets_source_patterns(test_db: object) -> None:
+async def test_search_public_filters_and_facets_source_patterns(
+    test_db: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Search should expose trust-relevant source patterns for filtering."""
     conn = test_db
     single_id = await EntryCRUD.create(
@@ -129,6 +141,23 @@ async def test_search_public_filters_and_facets_source_patterns(test_db: object)
     assert {"value": "multi_source", "count": 1} in unfiltered["facets"]["source_patterns"]
     assert {"value": "single_source", "count": 2} in unfiltered["facets"]["source_patterns"]
     assert {"value": "social_only", "count": 1} in unfiltered["facets"]["source_patterns"]
+
+    # Search must keep its full filter vocabulary without seven network trips.
+    original_execute = conn.execute
+    query_count = 0
+
+    async def counted_execute(sql: str, parameters: Any = ()) -> Any:
+        nonlocal query_count
+        query_count += 1
+        return await original_execute(sql, parameters)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(conn, "execute", counted_execute)
+        facets = await EntryCRUD._build_facets(  # noqa: SLF001
+            conn, [single_id, multi_id, social_id]
+        )
+    assert facets == unfiltered["facets"]
+    assert query_count == 1
 
     result = await EntryCRUD.search_public(conn, source_patterns=["multi_source"])
 

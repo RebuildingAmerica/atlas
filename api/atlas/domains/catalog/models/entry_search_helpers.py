@@ -16,7 +16,6 @@ __all__ = [
     "_empty_facets",
     "_entry_place_clause",
     "_entry_search_order_clause",
-    "_facet_rows_to_dicts",
     "_invalid_entity_sort",
     "_latest_source_date",
     "_make_placeholders",
@@ -100,11 +99,6 @@ def _entry_search_order_clause(sort: str) -> str:
 
 def _invalid_entity_sort(sort: str) -> ValueError:
     return ValueError(f"Invalid entity sort: {sort}")
-
-
-def _facet_rows_to_dicts(rows: list[tuple[Any, Any]]) -> list[dict[str, Any]]:
-    """Convert raw facet SQL rows into API-friendly dictionaries."""
-    return [{"value": value, "count": int(count)} for value, count in rows]
 
 
 def _place_label(row: dict[str, Any]) -> str | None:
