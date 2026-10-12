@@ -68,20 +68,20 @@ test("publication preserves the existing PDS broker and account verification cre
   assert.doesNotMatch(source, /Generate.*secret|vercel deploy|gcloud/);
 });
 
-test("web candidates update the existing PDS host only after billing preflight using retained authority", async () => {
+test("doctor checks the PDS host read-only and web candidates update its broker after billing preflight", async () => {
   const source = await workflowSource(
     ".github/workflows/cloudflare-publication.yml",
   );
   assert.match(source, /id-token: write/);
   const deployment = source.indexOf("uses: ./.github/actions/deploy-atlas-pds");
-  assert.ok(
-    deployment >
-      source.indexOf("Check billing before updating the existing PDS host"),
-  );
+  const preflight = source.indexOf("id: pds-release-config");
+  assert.ok(preflight >= 0 && deployment > preflight);
   assert.match(
     source,
-    /if: inputs.operation == 'web-candidate'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
+    /if: inputs.operation == 'web-candidate' \|\| inputs.operation == 'doctor'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
   );
+  assert.match(source, /mode: \$\{\{ inputs.operation == 'doctor' && 'check' \|\| 'broker' \}\}/);
+  assert.match(source, /if \(context.operation === 'web-candidate' && context.target === 'production'\)/);
   for (const setting of [
     "GCP_PROJECT_ID",
     "GCP_WORKLOAD_IDENTITY_PROVIDER",
