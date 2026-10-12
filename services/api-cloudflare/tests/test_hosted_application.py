@@ -309,10 +309,59 @@ def test_lifespan_does_not_migrate_or_start_background_workers(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "authorization,payload,status",
+    [
+        (None, None, 401),
+        ("Bearer invalid", None, 401),
+        ("Bearer insufficient", {"scope": "discovery:read"}, 403),
+    ],
+)
+async def test_mcp_rejects_invalid_credentials_before_constructing_tools(
+    monkeypatch, authorization, payload, status
+):
+    hosted = module()
+    from atlas.platform.mcp import server as mcp_server
+    from atlas.platform.mcp import auth_middleware
+
+    def forbidden_build():
+        pytest.fail("Rejected MCP traffic constructed the tool server")
+
+    monkeypatch.setattr(mcp_server, "build_mcp", forbidden_build)
+    monkeypatch.setattr(
+        auth_middleware, "verify_bearer_jwt", lambda *args, **kwargs: payload
+    )
+    app, _ = hosted.create_hosted_application(environment())
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="https://reader.example.com"
+    ) as client:
+        response = await client.post(
+            "/mcp", headers={"Authorization": authorization} if authorization else {}
+        )
+    assert response.status_code == status
+    assert "Bearer" in response.headers["www-authenticate"]
+
+
+@pytest.mark.asyncio
 async def test_mcp_mount_owns_fresh_servers_and_preserves_bearer_guard(monkeypatch):
     hosted = module()
     app, _ = hosted.create_hosted_application(environment())
     from atlas.platform.mcp import server as mcp_server
+    from atlas.platform.mcp import auth_middleware
+
+    verifications = []
+    usage = []
+
+    def verify(*args, **kwargs):
+        verifications.append(args)
+        return {"scope": "discovery:read", "capabilities": ["api.mcp"]}
+
+    monkeypatch.setattr(auth_middleware, "verify_bearer_jwt", verify)
+
+    async def record_usage(settings, *, payload, request, response):
+        usage.append(response.status_code)
+
+    monkeypatch.setattr(auth_middleware, "_record_successful_mcp_usage", record_usage)
 
     servers = []
     original = mcp_server.build_mcp
@@ -330,8 +379,18 @@ async def test_mcp_mount_owns_fresh_servers_and_preserves_bearer_guard(monkeypat
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="https://reader.example.com"
     ) as client:
-        responses = await asyncio.gather(client.post("/mcp"), client.post("/mcp/"))
-    assert [response.status_code for response in responses] == [401, 401]
+        headers = {
+            "Authorization": "Bearer verified",
+            "Accept": "application/json, text/event-stream",
+        }
+        message = {"jsonrpc": "2.0", "id": 1, "method": "ping"}
+        responses = await asyncio.gather(
+            client.post("/mcp", headers=headers, json=message),
+            client.post("/mcp/", headers=headers, json=message),
+        )
+    assert [response.status_code for response in responses] == [200, 200]
+    assert len(verifications) == 2
+    assert usage == [200, 200]
     assert len(servers) == 2
     assert servers[0] is not servers[1]
     assert servers[0].session_manager is not servers[1].session_manager

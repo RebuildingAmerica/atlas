@@ -30,7 +30,7 @@ test.describe("hosted public pages", () => {
         );
         const body = await response.text();
 
-        expect(response.status, path).toBeLessThan(500);
+        expect(response.status, path).toBe(200);
         expect(body, path).not.toContain(`data-testid="route-error-panel"`);
         expect(body, path).not.toContain("Something went wrong");
       });

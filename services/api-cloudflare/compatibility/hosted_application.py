@@ -93,7 +93,7 @@ async def _request_mcp(scope, receive, send):
     from atlas.platform.mcp.server import build_mcp, get_mcp_asgi_app
 
     server = build_mcp()
-    transport = get_mcp_asgi_app(server=server)
+    transport = get_mcp_asgi_app(server=server, include_bearer_auth=False)
     async with server.session_manager.run():
         await transport(scope, receive, send)
 
@@ -160,9 +160,15 @@ def create_hosted_application(
             # atlas.main also constructs its ordinary server at import. Bind
             # explicit settings before importing; never populate os.environ.
             from atlas.main import create_app
+            from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
 
             app = create_app(
-                lifespan_override=_http_lifespan, mcp_asgi_app=_request_mcp
+                lifespan_override=_http_lifespan,
+                # Reject unauthenticated probes before tool registration can
+                # block visitors searching profiles on the same event loop.
+                # The guard still owns scopes, claims, body replay and usage;
+                # each accepted request owns its server and session manager.
+                mcp_asgi_app=McpBearerAuthMiddleware(_request_mcp),
             )
 
         _install_async_dependencies(app)

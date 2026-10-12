@@ -13,6 +13,7 @@ export const PUBLIC_PAGE_PATHS = [
 
 interface EntityListItem {
   slug: string;
+  type: "person" | "organization";
 }
 
 interface EntityListResponse {
@@ -34,7 +35,7 @@ export async function firstProfilePath(
   entityType: keyof typeof PROFILE_COLLECTIONS,
 ): Promise<string> {
   const response = await fetch(
-    absoluteHostedUrl(origin, `/api/entities?entry_types=${entityType}&limit=1`),
+    absoluteHostedUrl(origin, `/api/entities?entity_type=${entityType}&limit=1`),
     hostedPublicRequestInit({
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(PROFILE_LOOKUP_TIMEOUT_MS),
@@ -46,6 +47,9 @@ export async function firstProfilePath(
   const [first] = ((await response.json()) as EntityListResponse).items;
   if (!first) {
     throw new Error(`The hosted catalog has no published ${entityType}.`);
+  }
+  if (first.type !== entityType) {
+    throw new Error("The hosted catalog returned the wrong entity type.");
   }
   return `/profiles/${PROFILE_COLLECTIONS[entityType]}/${first.slug}`;
 }

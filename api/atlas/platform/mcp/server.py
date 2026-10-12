@@ -100,16 +100,20 @@ def get_mcp_asgi_app(
     transport_security: TransportSecuritySettings | None = None,
     *,
     server: FastMCP | None = None,
+    include_bearer_auth: bool = True,
 ) -> Starlette:
     """Wrap an explicit request-owned server or the ordinary process singleton.
 
     The caller must run the selected server's session manager until its ASGI
     response completes, so overlapping readers cannot stop each other's tools.
+    A lazy hosted caller may authenticate before constructing the server and
+    omit the inner guard to avoid verifying and recording usage twice.
     """
     app = (get_mcp() if server is None else server).streamable_http_app()
     if not getattr(app.state, "atlas_mcp_asgi_middleware_installed", False):
         app.add_middleware(DraftTasksJsonRpcMiddleware)
-        app.add_middleware(McpBearerAuthMiddleware)
+        if include_bearer_auth:
+            app.add_middleware(McpBearerAuthMiddleware)
 
         if transport_security is None:
             transport_security = build_transport_security_settings(get_settings())
