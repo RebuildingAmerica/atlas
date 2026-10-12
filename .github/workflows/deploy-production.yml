@@ -1,4 +1,5 @@
 name: Deploy Production
+run-name: "Production — ${{ inputs.operation && inputs.operation != 'doctor' && inputs.operation || 'Configuration check (no deployment)' }} — ${{ github.ref_name }}"
 
 on:
   push:
@@ -6,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Protected release phase; publication never implies public acceptance.
+        description: Operation to run. Doctor checks configuration and deploys nothing.
         type: choice
         options:
           [

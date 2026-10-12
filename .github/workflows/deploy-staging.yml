@@ -1,4 +1,5 @@
 name: Deploy Staging
+run-name: "Staging — ${{ inputs.operation && inputs.operation != 'doctor' && inputs.operation || 'Configuration check (no deployment)' }} — ${{ github.ref_name }}"
 
 on:
   push:
@@ -6,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Protected private validation phase; no canonical production routing.
+        description: Operation to run. Doctor checks configuration and deploys nothing.
         type: choice
         options:
           [

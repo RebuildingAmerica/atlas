@@ -23,6 +23,7 @@ permissions:
 
 jobs:
   publish:
+    name: "${{ inputs.target }} / ${{ inputs.operation == 'doctor' && 'Configuration check (no deployment)' || inputs.operation }}"
     runs-on: ubuntu-latest
     environment: ${{ inputs.target }}
     timeout-minutes: 45
@@ -117,7 +118,7 @@ jobs:
         run: |
           pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
           timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
-      - name: Publish, verify, or recover the exact retained release
+      - name: "${{ inputs.operation == 'doctor' && 'Check configuration (deploys nothing)' || inputs.operation }}"
         run: node scripts/deploy/cloudflare-publication.mjs
       - name: Publish the protected platform admin
         if: inputs.operation == 'web-candidate' || inputs.operation == 'promote-web'

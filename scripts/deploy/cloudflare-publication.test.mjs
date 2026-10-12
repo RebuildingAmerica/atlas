@@ -15,6 +15,7 @@ import { join } from "node:path";
 import {
   publicationContext,
   publicationStage,
+  publicationSummary,
   preflightPublicationBilling,
   validateRetainedRun,
   releasePath,
@@ -29,6 +30,79 @@ import {
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 
 const sha = "a".repeat(40);
+
+test("configuration success explicitly says nothing was deployed or health checked", () => {
+  const summary = publicationSummary({
+    env: {
+      ATLAS_PUBLICATION_TARGET: "production",
+      ATLAS_PUBLICATION_OPERATION: "doctor",
+    },
+    report: { status: "pass" },
+  });
+  assert.match(summary, /Production configuration check: passed/);
+  assert.match(summary, /Nothing deployed/);
+  assert.match(summary, /Production health was not checked/);
+});
+
+test("API routing recovery does not claim the previous origin was restored or healthy", () => {
+  const summary = publicationSummary({
+    env: {
+      ATLAS_PUBLICATION_TARGET: "production",
+      ATLAS_PUBLICATION_OPERATION: "restore-api",
+    },
+    report: { status: "verified-operation" },
+  });
+  assert.match(summary, /Removed the recorded public API Worker route/);
+  assert.match(summary, /Previous-origin health was not checked/);
+});
+
+test("failure summaries show the current safe boundary without provider content", () => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-summary-"));
+  const env = {
+    ATLAS_PUBLICATION_TARGET: "production",
+    ATLAS_PUBLICATION_OPERATION: "publish-api",
+    GITHUB_RUN_ID: "123",
+  };
+  try {
+    writeFileSync(
+      join(directory, "publication.json"),
+      JSON.stringify({ runId: "123", operation: "publish-api" }),
+    );
+    writeFileSync(
+      join(directory, "publication-diagnostics.jsonl"),
+      JSON.stringify({
+        stage: "billing-preflight",
+        status: "fail",
+        message: "secret-provider-content",
+      }) + "\n",
+    );
+    writeFileSync(
+      join(directory, "billing-diagnostics.jsonl"),
+      JSON.stringify({
+        stage: "catalog-validation",
+        status: "fail",
+        message: "secret-provider-content",
+      }) + "\n",
+    );
+    const summary = publicationSummary({ env, directory, failed: true });
+    assert.match(summary, /publish-api: failed/);
+    assert.match(summary, /Stripe catalog validation/);
+    assert.match(summary, /Production health is unverified/);
+    assert.doesNotMatch(summary, /secret-provider-content/);
+    env.GITHUB_RUN_ID = "124";
+    assert.doesNotMatch(
+      publicationSummary({ env, directory, failed: true }),
+      /Stripe catalog validation/,
+    );
+    env.ATLAS_PUBLICATION_OPERATION = "secret-provider-content";
+    assert.doesNotMatch(
+      publicationSummary({ env, directory, failed: true }),
+      /secret-provider-content/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("publication retains only closed stage outcomes when a provider fails", () => {
   const directory = mkdtempSync(join(tmpdir(), "atlas-stage-"));

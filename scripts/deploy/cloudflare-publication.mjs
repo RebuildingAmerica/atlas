@@ -64,6 +64,93 @@ const OPERATIONS = [
   "promote-web",
   "restore-routing",
 ];
+
+/** Make release outcomes understandable without exposing provider responses. */
+export function publicationSummary({
+  env,
+  report,
+  failed = false,
+  directory = join(ROOT, ".atlas/cloudflare-release"),
+}) {
+  const target =
+    env.ATLAS_PUBLICATION_TARGET === "production"
+      ? "Production"
+      : env.ATLAS_PUBLICATION_TARGET === "staging"
+        ? "Staging"
+        : "Unknown environment";
+  const operation = OPERATIONS.includes(env.ATLAS_PUBLICATION_OPERATION)
+    ? env.ATLAS_PUBLICATION_OPERATION
+    : "unknown operation";
+  if (operation === "doctor")
+    return `${target} configuration check: ${!failed && report?.status === "pass" ? "passed" : "failed"}.\nNothing deployed. ${target} health was not checked.\nDetails: doctor.json.`;
+  if (!failed) {
+    const outcomes = {
+      "publish-api":
+        "Uploaded API/discovery Workers with consumers paused. Public routing was not promoted.",
+      "verify-api":
+        "Verified the paused API/discovery Workers. Public routing was not promoted.",
+      "activate-api": "Activated API/discovery consumers.",
+      "pause-api": "Paused API/discovery consumers.",
+      "promote-api":
+        "Promoted public API routing and passed its hosted checks.",
+      "restore-api":
+        "Removed the recorded public API Worker route. Previous-origin health was not checked.",
+      "web-candidate":
+        "Published a protected web candidate and passed hosted journey checks.",
+      "promote-web": "Promoted web routing after hosted journey checks.",
+      "restore-routing": "Restored previous web routing.",
+    };
+    return `${target} ${operation}: completed.\n${outcomes[operation] ?? "No recognized release operation was reported."}\nDetails: publication.json.`;
+  }
+  const labels = {
+    "billing-preflight": "Existing customer billing access",
+    "evidence-validation": "Release evidence and budget",
+    "cloudflare-subscriptions-read": "Cloudflare subscription access",
+    "cloudflare-hyperdrive-read": "Cloudflare database connection access",
+    "cloudflare-access-read": "Cloudflare Access configuration",
+    "native-dependencies": "Python native dependencies",
+  };
+  let boundary = "No safe failure boundary was recorded.";
+  let details = "publication.json and release journals";
+  try {
+    const current = read(join(directory, "publication.json"));
+    if (
+      /^\d+$/.test(env.GITHUB_RUN_ID ?? "") &&
+      current.runId === env.GITHUB_RUN_ID &&
+      current.operation === operation
+    ) {
+      const failures = (name) =>
+        readFileSync(join(directory, name), "utf8")
+          .trim()
+          .split("\n")
+          .map(JSON.parse)
+          .filter((entry) => entry.status === "fail");
+      const stage = failures("publication-diagnostics.jsonl").findLast(
+        (entry) => PUBLICATION_STAGES.has(entry.stage),
+      )?.stage;
+      if (stage) {
+        boundary = labels[stage];
+        details = "publication-diagnostics.jsonl";
+        if (stage === "billing-preflight") {
+          details = "billing-diagnostics.jsonl";
+          const billing = {
+            inputs: "Required billing settings",
+            "catalog-read": "Stripe catalog read",
+            "catalog-validation": "Stripe catalog validation",
+            "portal-read": "Stripe customer portal configuration",
+          };
+          const entry = failures(details).findLast((entry) =>
+            Object.hasOwn(billing, entry.stage),
+          );
+          if (entry) boundary = billing[entry.stage];
+        }
+      }
+    }
+  } catch {
+    // Early failures may precede artifact creation. Never print private parse errors.
+  }
+  return `${target} ${operation}: failed.\nFailed check: ${boundary}\nThis attempt did not complete. Production health is unverified.\nDetails: ${details}.`;
+}
 const parseJson = (raw) => {
   try {
     return JSON.parse(raw);
@@ -740,7 +827,6 @@ export async function publicationCli({
       state: "read-only-doctor",
     });
     atomicJson(join(bundle, "doctor.json"), report);
-    console.log(JSON.stringify(report));
     if (report.status !== "pass")
       throw Error(
         "Cloudflare publication doctor found release blockers; see the retained redacted doctor.json.",
@@ -1323,12 +1409,35 @@ export async function publicationCli({
   // The always-run seal and cleanup steps own the private captured inputs.
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  const auxiliary =
+    process.argv.includes("--seal") || process.argv.includes("--cleanup");
+  const reportOutcome = (report, failed = false) => {
+    const summary = publicationSummary({ env: process.env, report, failed });
+    console[failed ? "error" : "log"](summary);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      try {
+        appendFileSync(
+          process.env.GITHUB_STEP_SUMMARY,
+          `${summary.replaceAll("\n", "\n\n")}\n\n`,
+        );
+      } catch {
+        console.error(
+          "Could not write the Actions summary; the outcome is in this step's log.",
+        );
+      }
+    }
+  };
   publicationCli()
-    .then((report) => console.log(JSON.stringify(report)))
-    .catch((error) => {
-      console.error(
-        "Cloudflare publication failed; inspect retained redacted diagnostics and interruption journals.",
-      );
+    .then((report) =>
+      auxiliary ? console.log(JSON.stringify(report)) : reportOutcome(report),
+    )
+    .catch(() => {
+      if (auxiliary)
+        console.error(
+          "Release artifact sealing or cleanup failed; private output suppressed.",
+        );
+      else reportOutcome(undefined, true);
       process.exitCode = 1;
     });
+}
