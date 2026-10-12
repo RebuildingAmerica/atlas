@@ -405,6 +405,23 @@ export function validateRetainedRun(
   return run;
 }
 
+/** Web readers can use a verified directory while discovery alarms stay paused. */
+export function assertWebApiRuntime(api, evidence) {
+  if (
+    !["verified-active", "verified-paused"].includes(api?.status) ||
+    ["api", "discovery"].some(
+      (role) =>
+        !sameRuntimeRelease(
+          api.runtimeReleases?.[role],
+          evidence.durable?.runtimeReleases?.[role],
+        ),
+    )
+  )
+    throw Error(
+      "The protected web candidate requires the exact verified API/discovery pair.",
+    );
+}
+
 function atomicJson(file, value) {
   const temporary = `${file}.tmp`;
   writeFileSync(temporary, JSON.stringify(value, null, 2) + "\n", {
@@ -1142,6 +1159,27 @@ export async function publicationCli({
         zone,
         "--verify-only",
       ]);
+      if (context.target === "production") {
+        node("api-public-routing.mjs", [
+          "--mode",
+          "verify",
+          "--manifest",
+          manifestFile,
+          "--artifact",
+          join(previous, "operations"),
+          "--journal",
+          join(bundle, "api-public-routing.json"),
+          "--access-file",
+          accessFile,
+          "--zone-id",
+          zone,
+          "--public-hostname",
+          new URL(runtime.ATLAS_SERVER_API_PROXY_TARGET).hostname,
+          "--operations-hostname",
+          operations,
+        ]);
+        index.apiHttpState = "verified-protected";
+      }
       index.apiDirectory = previous.slice(bundle.length + 1);
       delete index.pendingApiDirectory;
     } else {
@@ -1243,19 +1281,7 @@ export async function publicationCli({
       join(releasePath(bundle, index.apiDirectory), "api-release.json"),
     );
     const evidence = read(evidenceFile);
-    if (
-      api.status !== "verified-active" ||
-      ["api", "discovery"].some(
-        (role) =>
-          !sameRuntimeRelease(
-            api.runtimeReleases[role],
-            evidence.durable?.runtimeReleases?.[role],
-          ),
-      )
-    )
-      throw Error(
-        "The protected web candidate requires the exact privately activated API/discovery pair.",
-      );
+    assertWebApiRuntime(api, evidence);
     const candidateRuntimeFile = join(config, "candidate-runtime.json");
     node("web-candidate.mjs", [
       "prepare-runtime",

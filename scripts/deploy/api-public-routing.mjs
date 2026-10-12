@@ -212,12 +212,9 @@ export async function changePublicApiRouting({
   const cf = (args, options) => cloudflare(args, { ...options, env });
   const ops = manifest?.operations;
   if (
-    !["promote", "restore"].includes(mode) ||
+    !["verify", "promote", "restore"].includes(mode) ||
     manifest?.target !== "production" ||
-    !(
-      manifest.status === "verified-active" ||
-      (mode === "restore" && manifest.status === "verified-paused")
-    ) ||
+    !["verified-active", "verified-paused"].includes(manifest.status) ||
     !manifest.runtimeReleases?.api ||
     !manifest.runtimeReleases?.discovery ||
     ["api", "discovery"].some(
@@ -241,7 +238,7 @@ export async function changePublicApiRouting({
     (apply && typeof checkpoint !== "function")
   )
     throw Error(
-      "Exact verified production API, edge identity and existing Access credentials are required; promotion requires active consumers.",
+      "Exact verified production API, edge identity and existing Access credentials are required.",
     );
   if (
     digestDirectory(join(artifact, ".cloudflare/output/v0")) !==
@@ -274,6 +271,21 @@ export async function changePublicApiRouting({
     ops.accessAppId,
   ]);
   assertAccessPolicy(policy, policy.policies, operationsHostname, access.id);
+  // Directory readers do not depend on discovery alarms. Prove the HTTP
+  // experience while consumers stay paused, without touching public routes.
+  if (mode === "verify") {
+    await probePublicApi({
+      origin: `https://${operationsHostname}`,
+      prefix: "/public-api",
+      headers: {
+        "CF-Access-Client-Id": access.client_id,
+        "CF-Access-Client-Secret": access.client_secret,
+      },
+      fetcher,
+    });
+    assertVersions();
+    return { status: "verified-protected", releaseSha: manifest.releaseSha };
+  }
   const routes = routeApi ?? routeClient(zoneId, env);
   const pattern = `${publicHostname}/*`;
   const identity = {

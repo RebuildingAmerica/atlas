@@ -101,17 +101,21 @@ run containing its interruption journal.
 2. Run `publish-api` with explicit bootstrap or a retained previous release.
    This applies the additive schema and publishes the API and discovery pair
    paused. Retain the schema receipt and exact Worker/namespace identities.
-3. Run `verify-api` for interrupted paused verification where needed. Run
-   `activate-api` only with fresh measured Free-plan capacity evidence and the
-   exact durable consumer handoff. Activation preserves retained job ownership
-   and permits only the intended release to own discovery consumers.
+3. Run `verify-api` for paused verification. In production it also proves a
+   populated, source-linked directory and private-route/MCP isolation through
+   the protected edge without changing public routes. Run `activate-api` only
+   with fresh measured Free-plan capacity evidence and the exact durable
+   consumer handoff. Activation preserves retained job ownership and permits
+   only the intended release to own discovery consumers.
 4. Run `promote-api` after protected health, directory, private-route and MCP
    challenge checks pass. The operation adds only the canonical API Worker route
    over the existing proxied DNS record. It retains the created route ID before
-   proving public behavior. It never deletes DNS records.
-5. Run `web-candidate` for the exact active API pair. This publishes and checks
-   the protected candidate, exercises the existing PDS, public API, signed-in
-   identity and configured checkout, and deploys protected administration.
+   proving public behavior. It never deletes DNS records. A verified paused pair
+   can serve HTTP traffic; routing does not activate discovery consumers.
+5. Run `web-candidate` for the exact verified API pair, active or paused. This
+   publishes and checks the protected candidate, exercises the existing PDS,
+   public API, signed-in identity and configured checkout, and deploys protected
+   administration.
 6. Run `promote-web` only after canonical API proof and fresh candidate
    observations. Retain the exact previous web routing and immutable artifact
    before promotion. Verify the canonical site and protected admin afterward.
@@ -120,6 +124,14 @@ The measured evidence must name the exact source, Cloudflare account and API /
 discovery versions. Current daily usage alone does not prove capacity at twice
 the expected load or that discovery extraction fits its execution budget.
 
+Builds, Worker deployment and provider readbacks use the pinned official `cf`
+CLI. Canonical API routing uses the official zone route API with the existing CI
+token for inventory, creation and deletion of the exact retained route ID. This
+is a narrow CLI limitation: `cf` 1.0.0-beta.14 exposes trigger deployment but no
+route inventory or deletion command, and an empty trigger route list does not
+remove existing routes. The route API preserves an exact rollback without
+patching the CLI or altering DNS.
+
 ## Interruption and recovery
 
 If the initial API upload succeeded but its callback failed before the final
@@ -127,8 +139,9 @@ identity was journaled, run `verify-api` with that failed trusted run. It checks
 the retained artifact bytes, release and schema annotations, unchanged discovery
 deployment and original API SQLite namespace before recording the final API
 identity. It does not upload code, apply schema changes, activate consumers or
-change public routing. Protected health and paused-consumer checks still have to
-pass, preserving existing accounts and directory data during recovery. The
+change public routing. Protected health, paused-consumer, populated directory,
+source-linked profile, private-route and MCP checks still have to pass in
+production, preserving existing accounts and directory data during recovery. The
 current recovery source can verify an older trusted publication artifact; its
 original release identity is preserved. Activation and promotion still require
 their exact source identity. Publish the current paused API pair using the

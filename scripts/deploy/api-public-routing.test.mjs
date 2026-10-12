@@ -204,7 +204,55 @@ test("route preview is read-only; promotion and restore touch only the retained 
   assert.equal(state.mutations.at(-1).id, result.journal.routeId);
 });
 
-test("restore accepts the exact paused pair after consumer shutdown but promotion refuses it", async (t) => {
+test("the exact paused pair serves the directory without activating consumers", async (t) => {
+  const { state, options } = await fixture(t);
+  options.manifest.status = "verified-paused";
+  const result = await changePublicApiRouting({
+    ...options,
+    mode: "promote",
+    apply: true,
+  });
+  assert.equal(result.status, "verified");
+  assert.equal(options.manifest.status, "verified-paused");
+  assert.equal(state.mutations.length, 1);
+});
+
+test("protected HTTP verification checks the paused directory without reading or changing routes", async (t) => {
+  const { state, options } = await fixture(t);
+  options.manifest.status = "verified-paused";
+  options.routeApi = {
+    list() {
+      throw Error("Route inventory must not be needed for HTTP verification");
+    },
+  };
+  const result = await changePublicApiRouting({ ...options, mode: "verify" });
+  assert.equal(result.status, "verified-protected");
+  assert.deepEqual(state.mutations, []);
+  assert.equal(state.probes.length, 7);
+  assert.ok(
+    state.probes.every(
+      ({ url }) => new URL(url).hostname === operationsHostname,
+    ),
+  );
+});
+
+test("protected HTTP verification cannot pass a missing source-linked directory", async (t) => {
+  const { state, options } = await fixture(t);
+  options.manifest.status = "verified-paused";
+  const fetcher = options.fetcher;
+  options.fetcher = (url, init) =>
+    new URL(url).pathname.endsWith("/api/entities")
+      ? Response.json({ items: [] })
+      : fetcher(url, init);
+  await assert.rejects(
+    changePublicApiRouting({ ...options, mode: "verify" }),
+    /source-linked/,
+  );
+  assert.deepEqual(state.mutations, []);
+  assert.deepEqual(state.journals, []);
+});
+
+test("restore accepts the exact paused pair after consumer shutdown", async (t) => {
   const { state, options, unrelated } = await fixture(t);
   const promoted = await changePublicApiRouting({
     ...options,
@@ -218,9 +266,6 @@ test("restore accepts the exact paused pair after consumer shutdown but promotio
     release.workerVersionId = "22222222-2222-2222-2222-222222222222";
     state.runtimeVersions[release.workerName] = release.workerVersionId;
   }
-  await assert.rejects(
-    changePublicApiRouting({ ...options, mode: "promote", apply: true }),
-  );
   assert.equal(state.mutations.length, 1);
   const restored = await changePublicApiRouting({
     ...options,

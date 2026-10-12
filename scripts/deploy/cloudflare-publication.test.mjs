@@ -28,10 +28,47 @@ import {
   cleanupPrivatePublicationDirectory,
   retainedPublicationRuntime,
   verifyHostedJourneys,
+  assertWebApiRuntime,
 } from "./cloudflare-publication.mjs";
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 
 const sha = "a".repeat(40);
+
+test("web journeys use the exact verified API pair while discovery can remain paused", () => {
+  const runtimeReleases = Object.fromEntries(
+    ["api", "discovery"].map((role) => [
+      role,
+      {
+        workerName: `atlas-${role}-production`,
+        releaseSha: sha,
+        workerVersionId: "11111111-1111-1111-1111-111111111111",
+        artifactDigest: "b".repeat(64),
+        namespaceId: (role === "api" ? "c" : "d").repeat(32),
+        namespaceClass: role === "api" ? "ApiRuntime" : "DiscoveryRuntime",
+        storage: "sqlite",
+      },
+    ]),
+  );
+  const evidence = {
+    durable: { runtimeReleases: structuredClone(runtimeReleases) },
+  };
+  for (const status of ["verified-active", "verified-paused"]) {
+    const api = { status, runtimeReleases };
+    assert.doesNotThrow(() => assertWebApiRuntime(api, evidence));
+    assert.equal(api.status, status);
+    for (const role of ["api", "discovery"]) {
+      const changed = structuredClone(evidence);
+      changed.durable.runtimeReleases[role].workerVersionId =
+        "22222222-2222-2222-2222-222222222222";
+      assert.throws(() => assertWebApiRuntime(api, changed), /exact verified/);
+    }
+  }
+  assert.throws(
+    () =>
+      assertWebApiRuntime({ status: "unverified", runtimeReleases }, evidence),
+    /exact verified/,
+  );
+});
 
 test("deployment and CI JavaScript has no unresolved Node identifiers", () => {
   const linter = new Linter();
