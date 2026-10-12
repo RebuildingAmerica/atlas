@@ -98,71 +98,101 @@ integration and provider actions.
 
 ## Completion evidence
 
-The full repository quality graph passed all 37 tasks. API tests passed 2,774
-cases with eight skips; app tests passed 4,256 with one skip; admin tests
-passed 112. Each of these packages met its 100% coverage gate.
-Generated-contract checks, 229 bootstrap tests, 93 deployment tests, actionlint,
-PostgreSQL merge and takedown tests, and the admin production build/dry run
-passed. The final paid-waitlist browser journey passed both tests using real
-local Access JWT verification, admin signing, API authorization, the protected
-callback, retained store effects, captured email, and operator audit
-attribution. The operator queue, audit details, and applicant mobile invitation
-were visually inspected. Independent final review found no remaining source
-integration blockers.
+Snapshot: October 12, 2026, 18:14 UTC.
 
-Source integration landed through
+Source integration and branch retirement are complete. Hosted release is not.
+The release remains unchecked above because sign-in and the protected admin have
+not passed production acceptance together with the Cloudflare frontend. This
+distinction protects people's existing accounts, private applicants, invitation
+links, and purchases during the hosting change.
+
+The original integration passed all 37 repository quality tasks. API tests
+passed 2,774 cases with eight skips, app tests passed 4,256 with one skip, and
+admin tests passed 112; all three packages met their 100% coverage gates.
+Generated contracts, bootstrap and deployment tests, workflow lint, PostgreSQL
+merge/takedown tests, and the admin production build/dry run passed. The local
+paid-waitlist browser journey verified the Access assertion, admin signing,
+platform authorization, protected callback, retained store effects, captured
+email, and operator audit attribution. Visual review covered the operator queue,
+audit details, and mobile invitation. These local checks do not prove provider
+delivery, a completed Stripe payment, or live Workspace sign-in.
+
+The integration landed through
 [PR #8](https://github.com/RebuildingAmerica/atlas/pull/8) on October 11, 2026,
-retaining the reviewed commits through a rebase. Fresh remote readback confirms
-main at `28938df5ae32c961e9af43ea22821e713a24c8b4`. Both
-`feature/admin-separation` and `feature/admin-separation-completion` are absent
-locally and remotely, and the original feature worktree is removed. Unrelated
-worktrees and stashes remain preserved. The original final integration
+with its reviewed commits retained through a rebase. Main at that landing was
+`28938df5ae32c961e9af43ea22821e713a24c8b4`. The original integration
 [CI run](https://github.com/RebuildingAmerica/atlas/actions/runs/38119701104)
-passed before landing.
+passed. Both `feature/admin-separation` and
+`feature/admin-separation-completion` were retired locally and remotely, and the
+original feature worktree was removed. Unrelated worktrees and stashes were
+preserved.
 
-Hosted release remains incomplete. The linked Google Cloud billing account is
-closed, and the production API failed the latest public checks (HTTP 500 and a
-Cloudflare 403 on a second probe). The authorized Cloudflare recovery keeps
-billing closed and avoids local Keychain-backed credential lookups. Its nine
-native dependency wheel builds passed in
-[run 38126916648](https://github.com/RebuildingAmerica/atlas/actions/runs/38126916648),
-and its full integration test job passed in
-[run 38126916841](https://github.com/RebuildingAmerica/atlas/actions/runs/38126916841).
-That run's secrets scan failed on reviewed fixtures and public dependency
-hashes; the exact baseline corrections pass the full local scan with every
-detector and filter preserved. The next publication commit still needs fresh CI.
+The following October 12 recovery evidence supersedes the earlier API-outage and
+missing-publication-credential assessment:
 
-Keep the hosted release task unchecked until the exact Cloudflare API,
-discovery, app, and protected admin versions are deployed and verified. This
-includes the existing public API hostname and MCP clients, retained sign-in and
-invitation identities, private applicant access, real delivery and billing
-journeys, and recoverable routing. Local browser proof does not establish
-provider email delivery or completed Stripe payment. Source integration and
-branch retirement do not establish production recovery.
+- [API publication #134](https://github.com/RebuildingAmerica/atlas/actions/runs/38259474718)
+  succeeded for `880d8f83f9a6a6e1129ea6e60009581dbba6be8b`. Its retained
+  manifest reported `verified-paused` for the API/discovery pair, preserving API
+  namespace `dc3b7c8a2f684dba92f35c18dad03d3f` and discovery namespace
+  `cecc646cdabd4896b73fee640fd5782f`.
+- [Protected API verification #135](https://github.com/RebuildingAmerica/atlas/actions/runs/38261761483)
+  passed for that retained release. Independent public readback returned HTTP
+  200 from the API health endpoint, and the public directory and a source-linked
+  organization profile rendered successfully. A fresh October 12 check still
+  returns HTTP 200 from the API health endpoint.
+- [Web candidate #136](https://github.com/RebuildingAmerica/atlas/actions/runs/38262678714)
+  failed before publishing the frontend or admin. The existing Google workload
+  identity and IAP SSH connection reached the PDS host, but three Secret Manager
+  reads returned HTTP 403. The old host script masked those failures, replaced
+  `pds.env` with incomplete credentials, and restarted the PDS. The public PDS
+  health endpoint now returns HTTP 502. The later host check below establishes
+  the provider error category; an original credential recovery source remains
+  unproven.
+- The implementation and host-check source verified for this snapshot is
+  `c62ee6e6eb2c26c7a56a9a592aa4e3c97bb244b8`. The host release now aborts on
+  failed credential reads or invalid Compose configuration before replacing
+  credentials. Web verification updates only the broker and edge, preserving the
+  existing healthy PDS. The permanent read-only host check uses the same
+  workload identity and IAP connection. Its corrected input handling passed all
+  42 PDS tests, 343 deployment tests, workflow lint, the complete secret scan,
+  and all 37 pre-push quality tasks.
+- [Hosted doctor #139](https://github.com/RebuildingAmerica/atlas/actions/runs/38288182704)
+  ran the corrected host check for `v2026.10.12-cf.15`. All CI jobs passed,
+  including 3,005 API tests at 100% coverage. The host check then failed with
+  `BILLING_DISABLED` on all three original Secret Manager values. The metadata
+  token has the cloud-platform scope. Neither the deployment/data directories'
+  root-only `pds.env` copies nor the matching retained PDS container contained
+  complete credentials. This check does not exhaust manual backups, boot-disk
+  snapshots, other containers, or off-host recovery sources. It made no host
+  configuration changes and did not recover the keys.
 
-Repeated Cloudflare CLI invocations were found to read the profile encryption
-key from macOS Keychain. Remaining source-control operations use the connected
-GitHub app and Git SSH with Keychain and interactive authentication disabled.
+The API is serving public traffic through Cloudflare. Atlas's frontend remains
+on Vercel, and the Cloudflare admin release remains unverified. Retained routing
+and rollback artifacts are preserved. The obsolete encrypted broker-export and
+billing-repair artifacts were deleted with the user's explicit confirmation;
+GitHub readback shows empty artifact lists for both old runs.
 
-The public API edge preparation and reversible route cutover are committed as
-`85ae6e13` and `58a50647`. The route uses the existing proxied API DNS record,
-retains its exact route ID, checks active API/discovery and edge versions, and
-refuses changed ownership during recovery. All 301 deployment checks pass,
-including protected probes, interruption recovery, retained runtime conflict
-checks, billing preflight and credential-safe artifact retention. Workflow lint
-also passes. These are source checks; no production cutover has occurred.
+Finish the release by proving each remaining production requirement:
 
-Read-only provider inspection confirms that CI has no general
-`CLOUDFLARE_API_TOKEN`. Its existing production admin token permits only Workers
-Scripts Edit and Workers Routes Edit; it cannot read subscriptions, Hyperdrive
-or Access applications. Existing Access service credentials are configured only
-in staging. Production still lacks the publication inputs for the zone, retained
-database binding, operations hostname and measured handoff/capacity evidence.
-The sole Hyperdrive configuration is a diagnostic configuration whose retained
-production database identity remains unverified. No credentials were created,
-widened, copied from a browser, or read from Keychain to work around these
-blockers. Follow `docs/deployment/cloudflare-publication.md` for the protected
-workflow. Scout tests also reached the native credential store through a doctor
-probe; the test dependencies are now injected, and an autouse guard rejects
-native credential-store access throughout the Scout suite. All 963 Scout tests
-passed with that guard enabled.
+- Restore the original PDS admin, JWT and PLC credentials and verify existing
+  sign-in identities. Do not rotate identity keys or reset retained data.
+- Publish and verify the exact Cloudflare frontend and Access-protected admin
+  versions. Prove operator entry, refusal of unauthenticated/non-org/forged
+  assertions, private applicant isolation, invitation behavior, and audit
+  attribution against the retained store.
+- Verify customer and editorial sign-in, retained invitation links and purchase
+  associations, provider email delivery, billing journeys, and authenticated MCP
+  clients through the production authority chain.
+- Establish fresh proof that legacy discovery consumers are stopped before
+  activating the published discovery runtime. Complete the required capacity and
+  cost acceptance; the last paused manifest is not activation evidence.
+- Rehearse recovery with the actual retained runtime and routing identities,
+  then promote the canonical frontend and retire Vercel and obsolete candidate
+  resources after replacement and recovery are verified.
+
+Follow `docs/deployment/cloudflare-publication.md` for the protected workflow.
+Keep the release unchecked until this evidence exists. Local tests, tags, source
+integration, and branch retirement do not establish production recovery. All
+agent-run authentication must continue to avoid Keychain-backed credential
+lookups; use existing noninteractive deployment identities and authorized
+browser sessions. Keep the closed Google billing account closed.
