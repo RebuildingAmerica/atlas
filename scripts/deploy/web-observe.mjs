@@ -49,9 +49,34 @@ const PENDING_DOMAIN_ERRORS = new Set([
   "ECONNRESET",
   "UND_ERR_CONNECT_TIMEOUT",
   "ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE",
+  "ERR_SSL_SSL/TLS_ALERT_HANDSHAKE_FAILURE",
   "ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR",
   "ERR_SSL_TLSV1_UNRECOGNIZED_NAME",
   "ERR_TLS_CERT_ALTNAME_INVALID",
+]);
+const TRANSPORT_ERROR_CODES = new Set([
+  ...PENDING_DOMAIN_ERRORS,
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "ENETUNREACH",
+  "EHOSTUNREACH",
+  "UND_ERR_SOCKET",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+]);
+const TRANSPORT_ERROR_NAMES = new Set([
+  "Error",
+  "TypeError",
+  "TimeoutError",
+  "AbortError",
+  "AggregateError",
+]);
+const RESPONSE_TYPES = new Set([
+  "application/json",
+  "text/html",
+  "text/plain",
+  "application/problem+json",
+  "text/event-stream",
 ]);
 
 /** Preserve the existing protected verifier; do not deploy an untestable candidate. */
@@ -275,6 +300,7 @@ export async function probeWebRelease({
       throw new Error("A pinned Cloud Run revision origin is required.");
   }
   const checks = [];
+  let diagnostic;
   async function request(
     path,
     { method = "GET", inventory = false, anonymous = false } = {},
@@ -310,6 +336,16 @@ export async function probeWebRelease({
           });
           break;
         } catch (error) {
+          // Closed labels identify provider failures without retaining arbitrary
+          // error messages, URLs, credentials, headers, or response bodies.
+          diagnostic = {
+            kind: "transport",
+            name: TRANSPORT_ERROR_NAMES.has(error?.name) ? error.name : "Error",
+            code:
+              [error?.cause?.code, error?.code].find((code) =>
+                TRANSPORT_ERROR_CODES.has(code),
+              ) ?? "unclassified",
+          };
           if (
             readyBy === null ||
             !PENDING_DOMAIN_ERRORS.has(error?.cause?.code)
@@ -320,8 +356,20 @@ export async function probeWebRelease({
           await wait(Math.min(5_000, remaining));
         }
       }
-      if (![301, 302, 303, 307, 308].includes(response.status) || anonymous)
-        return { response, text: await boundedBody(response) };
+      const contentType = response.headers.get("content-type")?.split(";")[0];
+      diagnostic = {
+        kind: "http",
+        status: response.status,
+        contentType: RESPONSE_TYPES.has(contentType) ? contentType : "other",
+        cloudflareChallenge:
+          response.headers.get("cf-mitigated") === "challenge",
+        accessForbidden: false,
+      };
+      if (![301, 302, 303, 307, 308].includes(response.status) || anonymous) {
+        const text = await boundedBody(response);
+        diagnostic.accessForbidden = text.includes("AccessForbidden");
+        return { response, text };
+      }
       const location = response.headers.get("location");
       await response.body?.cancel();
       if (inventory || !location || redirect === 3)
@@ -332,6 +380,7 @@ export async function probeWebRelease({
   }
   async function check(name, action) {
     const started = performance.now();
+    diagnostic = undefined;
     try {
       await action();
       checks.push({
@@ -347,6 +396,7 @@ export async function probeWebRelease({
           error?.message === "candidate_domain_not_ready"
             ? "candidate_domain_not_ready"
             : "probe_failed",
+        ...(diagnostic ? { diagnostic } : {}),
         durationMs: Math.round(performance.now() - started),
       });
     }

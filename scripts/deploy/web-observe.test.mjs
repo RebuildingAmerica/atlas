@@ -628,7 +628,11 @@ test("observation CLI accepts an audited zero-hour summary and preserves its rea
 });
 
 test("new candidate DNS and TLS settle before authenticated hosted probes begin", async () => {
-  const pending = ["ENOTFOUND", "ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE"];
+  const pending = [
+    "ENOTFOUND",
+    "ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE",
+    "ERR_SSL_SSL/TLS_ALERT_HANDSHAKE_FAILURE",
+  ];
   let elapsed = 0;
   const report = await probeWebRelease({
     ...input,
@@ -648,7 +652,66 @@ test("new candidate DNS and TLS settle before authenticated hosted probes begin"
     },
   });
   assert.equal(report.status, "pass");
-  assert.equal(elapsed, 10_000);
+  assert.equal(elapsed, 15_000);
+});
+
+test("failed probes retain closed transport and HTTP diagnostics without private content", async () => {
+  for (const transport of [true, false]) {
+    const report = await probeWebRelease({
+      ...input,
+      fetcher: (url, init) => {
+        if (new URL(url).pathname !== "/browse") return provider(url, init);
+        if (transport)
+          throw new TypeError("private failure content", {
+            cause: { code: "ECONNREFUSED", message: secrets.clientSecret },
+          });
+        return new Response(`AccessForbidden ${secrets.clientSecret}`, {
+          status: 403,
+          headers: {
+            "content-type": "text/html; charset=utf-8",
+            "cf-mitigated": "challenge",
+            "private-header": secrets.hostedSecret,
+          },
+        });
+      },
+    });
+    assert.equal(report.status, "fail");
+    assert.deepEqual(
+      report.checks.find((check) => check.name === "page:/browse").diagnostic,
+      transport
+        ? { kind: "transport", name: "TypeError", code: "ECONNREFUSED" }
+        : {
+            kind: "http",
+            status: 403,
+            contentType: "text/html",
+            cloudflareChallenge: true,
+            accessForbidden: true,
+          },
+    );
+    for (const value of [...Object.values(secrets), "private failure content"])
+      assert.equal(JSON.stringify(report).includes(value), false);
+  }
+});
+
+test("unknown transport names and codes cannot become retained diagnostic content", async () => {
+  const report = await probeWebRelease({
+    ...input,
+    fetcher: (url, init) => {
+      if (new URL(url).pathname !== "/browse") return provider(url, init);
+      const error = new Error(secrets.hostedSecret, {
+        cause: { code: secrets.clientSecret },
+      });
+      error.name = secrets.clientId;
+      error.code = secrets.hostedSecret;
+      throw error;
+    },
+  });
+  assert.deepEqual(
+    report.checks.find((check) => check.name === "page:/browse").diagnostic,
+    { kind: "transport", name: "Error", code: "unclassified" },
+  );
+  for (const value of Object.values(secrets))
+    assert.equal(JSON.stringify(report).includes(value), false);
 });
 
 test("unready candidate certificates exhaust a bounded deadline and remain failed", async () => {
