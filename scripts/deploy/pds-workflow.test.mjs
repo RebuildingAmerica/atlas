@@ -21,16 +21,18 @@ test("CI exposes the staging PDS deployment decision to caller workflows", async
 });
 
 for (const target of ["production", "staging"]) {
-  test(`${target} publishes through protected Cloudflare automation after full CI`, async () => {
+  test(`${target} publishes through protected Cloudflare automation with trusted source`, async () => {
     const source = await workflowSource(
       `.github/workflows/deploy-${target}.yml`,
     );
     assert.match(source, /needs: guard-(production|staging)-ref/);
-    assert.match(source, /profile: production/);
-    assert.match(
-      source,
-      /publish:\s*\n\s*needs: (?:ci|\[guard-production-ref, ci\])/,
-    );
+    if (target === "production") {
+      assert.match(source, /needs: guard-production-ref/);
+      assert.doesNotMatch(source, /profile: production/);
+    } else {
+      assert.match(source, /profile: production/);
+      assert.match(source, /publish:\s*\n\s*needs: ci/);
+    }
     assert.match(
       source,
       /uses: \.\/\.github\/workflows\/cloudflare-publication.yml/,

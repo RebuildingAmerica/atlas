@@ -56,6 +56,25 @@ def environment(label="reader", **overrides):
     )
 
 
+def test_compiled_routes_prepare_without_settings_or_database(monkeypatch):
+    from fastapi.openapi.utils import get_openapi
+    from atlas.platform import config, database
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Static route preparation accessed runtime configuration or SQL")
+
+    monkeypatch.setattr(config.Settings, "__init__", forbidden)
+    monkeypatch.setattr(database, "get_db_connection", forbidden)
+    hosted = module()
+    hosted.compiled_hosted_routes.cache_clear()
+    routes = hosted.compiled_hosted_routes(managed=True)
+    assert hosted.compiled_hosted_routes(managed=True) is routes
+    schema = get_openapi(title="Prepared routes", version="1", routes=list(routes))
+    assert "/api/entities" in schema["paths"]
+    assert "/api/lists" in schema["paths"]
+    assert "/api/discovery-runs" in schema["paths"]
+
+
 @pytest.fixture(autouse=True)
 def app_keys(monkeypatch):
     from tests.support.app_assertions import trust_test_app_keys

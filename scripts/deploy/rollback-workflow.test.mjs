@@ -16,12 +16,19 @@ test("production recovery remains manual and serialized with releases", async ()
   assert.doesNotMatch(workflow, /cloud-run-release|vercel promote|gcloud/);
 });
 
-test("hosted publishing keeps the full CI gate and trusted refs for both environments", async () => {
+test("hosted publishing retains trusted refs while production executes independently of CI", async () => {
   for (const target of ["production", "staging"]) {
     const workflow = await source(`.github/workflows/deploy-${target}.yml`);
-    assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
-    assert.match(workflow, /profile: production/);
-    assert.match(workflow, /needs: (?:ci|\[guard-production-ref, ci\])/);
+    if (target === "production") {
+      assert.match(workflow, /needs: guard-production-ref/);
+      assert.match(workflow, /refs\/tags\/v\*/);
+      assert.match(workflow, /git merge-base --is-ancestor/);
+      assert.doesNotMatch(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
+    } else {
+      assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
+      assert.match(workflow, /profile: production/);
+      assert.match(workflow, /needs: ci/);
+    }
     assert.match(workflow, /cloudflare-publication\.yml/);
     assert.doesNotMatch(
       workflow,

@@ -43,11 +43,12 @@ from atlas.platform.openapi import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Sequence
 
     from mcp.server.fastmcp import FastMCP
     from mcp.server.transport_security import TransportSecuritySettings
     from starlette.applications import Starlette
+    from starlette.routing import BaseRoute
     from starlette.types import ASGIApp, Lifespan, Receive, Scope, Send
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,7 @@ def create_app(
     *,
     lifespan_override: Lifespan[FastAPI] | None = None,
     mcp_asgi_app: ASGIApp | None = None,
+    prepared_http_routes: Sequence[BaseRoute] | None = None,
 ) -> FastAPI:
     """
     Create and configure the FastAPI application.
@@ -163,6 +165,10 @@ def create_app(
         Request-owned MCP transport, mounted inside the same auth-adjacent
         rate limiting, CORS and logging middleware as the ordinary server.
         Its caller owns the MCP session manager through response completion.
+    prepared_http_routes
+        Hosting-owned static routes with request-bound dependency providers.
+        Preparing these during deployment keeps cold profile visits from
+        rebuilding validation models. Ordinary servers build their own routes.
 
     Returns
     -------
@@ -296,7 +302,10 @@ def create_app(
             return app.openapi()
 
     # Include API router
-    app.include_router(create_router(managed=settings.managed))
+    if prepared_http_routes is None:
+        app.include_router(create_router(managed=settings.managed))
+    else:
+        app.router.routes.extend(prepared_http_routes)
 
     # Mount the MCP Streamable HTTP transport at /mcp. get_mcp_asgi_app()
     # already wires the bearer-token auth guard (which advertises the

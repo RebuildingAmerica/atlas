@@ -25,7 +25,7 @@ def preload_core_packages():
         sys.path.insert(0, str(archive))
     # Snapshot request-independent route declarations so a first profile visit
     # does not pay for workspace and moderation validation models. Discovery
-    # execution imports stay deferred with their data and SDKs.
+    # execution services stay deferred with their data and SDKs.
     # Settings, application construction, discovery execution, MCP, model SDKs,
     # and native signing services remain owned by actual requests.
     for module in (
@@ -58,4 +58,9 @@ def preload_core_packages():
         "atlas.platform.http.platform_router",
     ):
         importlib.import_module(module)
+    from hosted_application import compiled_hosted_routes
+
+    # Managed Atlas's routing contains no settings, identities or connections.
+    # Compile its dependency structure now, keeping cold search visits responsive.
+    compiled_hosted_routes(managed=True)
     return True
