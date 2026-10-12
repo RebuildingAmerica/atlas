@@ -8,7 +8,7 @@ import {
 } from "../bootstrap/products/atlas/env.js";
 import { fetchStripeCatalogSnapshot } from "../bootstrap/products/atlas/verify.js";
 import { verifyStripeTargetSnapshot } from "../bootstrap/products/atlas/verify-catalog.js";
-import { assessAtlasPortal } from "../ci/verify-production-billing.js";
+import { assessAtlasPortal } from "../bootstrap/products/atlas/portal.js";
 
 function runtimeValue(runtime: Record<string, string>, key: string): string {
   const value = runtime[key];

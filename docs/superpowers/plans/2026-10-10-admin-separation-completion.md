@@ -161,8 +161,8 @@ database binding, operations hostname and measured handoff/capacity evidence.
 The sole Hyperdrive configuration is a diagnostic configuration whose retained
 production database identity remains unverified. No credentials were created,
 widened, copied from a browser, or read from Keychain to work around these
-blockers. Follow `docs/runbooks/cloudflare-production-recovery.md` for the
-protected workflow. Scout tests also reached the native credential store through
-a doctor probe; the test dependencies are now injected, and an autouse guard
-rejects native credential-store access throughout the Scout suite. All 963 Scout
-tests passed with that guard enabled.
+blockers. Follow `docs/deployment/cloudflare-publication.md` for the protected
+workflow. Scout tests also reached the native credential store through a doctor
+probe; the test dependencies are now injected, and an autouse guard rejects
+native credential-store access throughout the Scout suite. All 963 Scout tests
+passed with that guard enabled.

@@ -8,8 +8,7 @@ import path from "node:path";
  *
  * This value is deliberately identical to the GitHub Actions Environment
  * name each target's deploy jobs already declare (`environment: staging` /
- * `environment: production` in deploy-staging.yml, deploy-production.yml,
- * api-image-provenance.yml) — no separate translation needed.
+ * `environment: production` in deploy-staging.yml and deploy-production.yml) — no separate translation needed.
  */
 export type HostedDeployTarget = "staging" | "production";
 

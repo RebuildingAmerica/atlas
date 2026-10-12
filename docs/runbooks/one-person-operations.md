@@ -10,19 +10,18 @@ Every target below is sized to one person's capacity.
 
 ## What reaches the operator without anyone watching
 
-| Signal                                                       | How it arrives                                                      | Set up by                                               |
-| ------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------- |
-| The API logs an error                                        | Email, at most every 5 minutes                                      | Error Alerting workflow, "Atlas API errors" policy      |
-| A visitor reports a profile or source                        | Email, at most every 5 minutes, linking to `/editorial/corrections` | Error Alerting workflow, "Atlas visitor reports" policy |
-| The public site, sitemap, catalog, or search stops answering | Failed hourly run notification from GitHub                          | `production-canary.yml`                                 |
-| A Stripe webhook keeps failing, or a dispute opens           | Stripe's own email to the account owner                             | Stripe account notification settings                    |
+| Signal                                                       | How it arrives                                                      | Set up by                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------- |
+| The API logs an error                                        | Email, at most every 5 minutes                                      | Existing Cloud Monitoring "Atlas API errors" policy      |
+| A visitor reports a profile or source                        | Email, at most every 5 minutes, linking to `/editorial/corrections` | Existing Cloud Monitoring "Atlas visitor reports" policy |
+| The public site, sitemap, catalog, or search stops answering | Failed hourly run notification from GitHub                          | `production-canary.yml`                                  |
+| A Stripe webhook keeps failing, or a dispute opens           | Stripe's own email to the account owner                             | Stripe account notification settings                     |
 
-The Error Alerting workflow needs the deploy service account to hold
-`roles/monitoring.editor`, `roles/logging.configWriter` (every log-based alert
-owns a Cloud Logging notification rule), and `roles/logging.viewer`.
-`scripts/grant-monitoring-role.sh` grants them and dispatches the workflow with
-the operator's email. Email channels need no confirmation; Cloud Monitoring has
-no test button, so a real error or report is what proves delivery.
+The existing Google policies remain configured for the retained Cloud Run
+service. They do not monitor a Cloudflare Worker. Before cutover, verify the
+operator receives errors and visitor reports from the active API; retained
+Google policies are not proof of Cloudflare alert delivery. The hourly public
+canary checks availability independently of the hosting provider.
 
 ## Response targets
 

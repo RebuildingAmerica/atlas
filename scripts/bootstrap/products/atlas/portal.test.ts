@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 import type Stripe from "stripe";
-import { ensureBillingPortalConfiguration } from "./portal.js";
+import {
+  assessAtlasPortal,
+  ensureBillingPortalConfiguration,
+} from "./portal.js";
 
 function configuration(id: string, metadata: Record<string, string> = {}) {
   return { id, metadata, active: true, livemode: true };
@@ -137,4 +140,37 @@ void describe("Atlas billing portal bootstrap", () => {
       /Multiple Atlas billing portal configurations/,
     );
   });
+});
+
+void test("portal inventory checks the exact Atlas configuration used by sessions", async () => {
+  const requested: string[] = [];
+  let planChangesEnabled = false;
+  const stripe = {
+    billingPortal: {
+      configurations: {
+        retrieve: (id: string) => {
+          requested.push(id);
+          return Promise.resolve({
+            id,
+            active: true,
+            livemode: true,
+            metadata: { atlas_portal: "billing" },
+            features: {
+              invoice_history: { enabled: true },
+              payment_method_update: { enabled: true },
+              subscription_cancel: { enabled: true, mode: "at_period_end" },
+              subscription_update: { enabled: planChangesEnabled },
+            },
+          });
+        },
+      },
+    },
+  } as unknown as Stripe;
+
+  const check = await assessAtlasPortal(stripe, "bpc_atlas");
+  assert.deepEqual(requested, ["bpc_atlas"]);
+  assert.equal(check.status, "pass");
+  planChangesEnabled = true;
+  assert.equal((await assessAtlasPortal(stripe, "bpc_atlas")).status, "fail");
+  assert.equal((await assessAtlasPortal(stripe, "")).status, "fail");
 });

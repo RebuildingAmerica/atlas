@@ -138,10 +138,8 @@ test("staging deploy workflow changes exercise the staging deploy path", () => {
   assert.equal(outputs.hosted_identity, true);
 });
 
-test("trusted-source helper changes lint actions without running hosted smoke", () => {
-  const outputs = outputsFor([
-    ".github/actions/vercel-trusted-oidc/action.yml",
-  ]);
+test("toolchain action changes lint actions without running hosted smoke", () => {
+  const outputs = outputsFor([".github/actions/setup-toolchain/action.yml"]);
 
   assert.equal(outputs.actions_lint, true);
   assert.equal(outputs.deploy_scripts, false);

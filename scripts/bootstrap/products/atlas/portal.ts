@@ -75,3 +75,29 @@ export async function ensureBillingPortalConfiguration(
   }
   return stripe.billingPortal.configurations.create(settings);
 }
+
+/** Verify that existing customers can manage billing and leave their subscription. */
+export async function assessAtlasPortal(
+  stripe: Stripe,
+  configurationId?: string,
+): Promise<{ status: "pass" | "fail" | "unverified" }> {
+  if (!configurationId?.trim()) return { status: "fail" };
+  try {
+    const portal = await stripe.billingPortal.configurations.retrieve(
+      configurationId.trim(),
+    );
+    const usable =
+      portal.id === configurationId.trim() &&
+      portal.metadata?.atlas_portal === "billing" &&
+      portal.active &&
+      portal.livemode &&
+      portal.features.invoice_history.enabled &&
+      portal.features.payment_method_update.enabled &&
+      portal.features.subscription_cancel.enabled &&
+      portal.features.subscription_cancel.mode === "at_period_end" &&
+      !portal.features.subscription_update?.enabled;
+    return { status: usable ? "pass" : "fail" };
+  } catch {
+    return { status: "unverified" };
+  }
+}

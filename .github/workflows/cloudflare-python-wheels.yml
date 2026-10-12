@@ -3,7 +3,7 @@ name: Build Cloudflare Python wheels
 on:
   workflow_dispatch:
   push:
-    branches: [chore/off-vercel, chore/cloudflare-production-recovery]
+    branches: [main]
     paths:
       - .github/workflows/cloudflare-python-wheels.yml
       - scripts/deploy/api-cloudflare-recipes.py

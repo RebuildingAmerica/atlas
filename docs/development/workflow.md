@@ -59,62 +59,20 @@ Use Conventional Commits format. Enforced by the `commit-msg` hook.
 [optional body]
 ```
 
-**Types:**
+**Types:** `feat` and `fix` for end-user behavior; `docs`, `chore`, and
+`refactor` for documentation, tooling, tests and internal changes.
 
-- `feat` — A new feature
-- `fix` — A bug fix
-- `docs` — Documentation-only correction for existing behavior or guidance
-- `refactor` — Code refactoring
-- `test` — Adding or updating tests
-- `chore` — Dependency, tooling, config changes
-- `perf` — Performance improvements
+**Scopes:** `admin`, `api`, `app`, `scout`, `docs`, `dx`, or omit for a
+cross-cutting change. Descriptions start with a capital letter. Bodies use short
+prose paragraphs wrapped to 72 columns; the commit hook wraps them. Explain the
+experience the change enables or protects.
 
-**Scopes:** (optional but recommended)
-
-- `api` — API server changes
-- `app` — App changes
-- `pipeline` — Pipeline/discovery changes
-- `db` — Database/schema changes
-- `taxonomy` — Issue areas or search terms
-- `devops` — Docker, Makefile, CI/CD
-- `docs` — Documentation
-
-**Examples:**
+Write the message to a file and stage only the intended paths in the same chain
+as the commit:
 
 ```bash
-# New feature
-git commit -m "feat(api): add full-text search endpoint"
-
-# Bug fix
-git commit -m "fix(pipeline): handle null values in extraction"
-
-# With body for more context
-git commit -m "feat(api): add entry deduplication logic
-
-Deduplicates entries by fuzzy matching on name and location.
-Merges sources from duplicate entries into single record."
-
-# Documentation-only correction for existing behavior
-git commit -m "docs: clarify pipeline architecture overview"
-
-# Test
-git commit -m "test(api): add 15 new tests for deduplicator"
+git restore --staged . && git add <paths> && git commit -F <message-file>
 ```
-
-**Avoid:**
-
-- ❌ `Updated code`
-- ❌ `WIP`
-- ❌ `fixes`
-- ❌ `asdf`
-
-**Instead:**
-
-- ✅ `feat(pipeline): implement source deduplication`
-- ✅ `fix(api): handle empty query string`
-- ✅ `docs: clarify deployment process`
-
-The `commit-msg` hook will reject non-conformant messages.
 
 ## Pull Request Process
 
@@ -282,15 +240,25 @@ make test            # Run tests with coverage
 
 **Coverage requirement:** 100% on all changed files.
 
-## Deployment Notes
+## GitHub Actions
 
-Currently no automated deployment. To deploy:
+| Workflow                         | Purpose                                                                                | When it runs                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| CI                               | Tests, types, lint, API contracts, generated files, documentation and secret scanning. | Pull requests, weekly, and before releases.               |
+| Deploy Staging                   | Checks staging configuration and runs the selected private release operation.          | Main pushes run `doctor`; release operations are manual.  |
+| Deploy Production                | Checks production configuration and publishes, verifies or promotes a release.         | Release tags run `doctor`; release operations are manual. |
+| Roll Back Production             | Restores retained production routing from a previous release run.                      | Manual, using the retained run ID.                        |
+| Production Canary                | Checks the public app, sitemap, PDS, catalog and search.                               | Hourly or manual.                                         |
+| Scout Release                    | Publishes a versioned Scout package and Homebrew formula.                              | `atlas-scout-v*.*.*` tags.                                |
+| Protected Cloudflare publication | Implements the shared staging, production and rollback jobs.                           | Called by those workflows.                                |
+| Build Cloudflare Python wheels   | Builds native Python dependencies for the Workers runtime.                             | Native recipe changes on main or manual.                  |
 
-1. Ensure main branch is passing all checks
-2. Tag the commit: `git tag v0.1.0`
-3. Push tag: `git push origin v0.1.0`
-4. Build Docker images: `make docker-build`
-5. Deploy manually or via your deployment tool
+Use **CI** for code verification, **Deploy Staging** for private release checks,
+and **Deploy Production** for the public release. A `doctor` result checks
+configuration; it does not deploy the site. Exact operations and required
+settings are documented in
+[Cloudflare publication](../deployment/cloudflare-publication.md). Rollback and
+public health checks remain independent of release approval.
 
 ---
 
@@ -302,4 +270,4 @@ Currently no automated deployment. To deploy:
 
 ---
 
-Last updated: March 25, 2026
+Last updated: October 12, 2026

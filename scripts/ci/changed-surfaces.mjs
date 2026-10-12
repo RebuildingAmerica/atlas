@@ -120,7 +120,6 @@ const CI_VALIDATION_PATHS = [/^scripts\/ci\//];
 const DEPLOY_VALIDATION_PATHS = [
   ...CI_VALIDATION_PATHS,
   /^services\/web-edge\//,
-  /^\.github\/workflows\/web-hosting-candidate\.ya?ml$/,
   /^scripts\/deploy\//,
   /^\.github\/actions\/build-attest-push\//,
   /^\.github\/actions\/deploy-atlas-api\//,

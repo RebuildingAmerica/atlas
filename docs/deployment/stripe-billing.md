@@ -86,22 +86,17 @@ Stripe Checkout session, so a reachable API with an empty directory keeps the
 funnel shut. A shallow `/health` check would pass in exactly the case that
 matters, which is why the probe asks for data instead.
 
-The staging deploy exports it as `true` so staging exercises the paid funnel.
-Production reads the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable and
-falls back to `false` when it is unset. Set that variable to `true` only after
-`https://atlas.rebuildingus.org/browse` returns results.
+Set the checkout flag explicitly in each GitHub environment. Staging can enable
+it to exercise the paid funnel. Production stays closed until the directory and
+the offered purchase lifecycles pass verification.
 
 ## Staging to production cutover
 
-The production deploy preserves the Vercel Stripe variables provisioned by
-`pnpm setup:prod`; when checkout is enabled, it checks that the key, catalog,
-webhook secret, Atlas portal configuration, and offer allowlist are named in
-Vercel Production **before** deploying the API or PDS. A missing setting stops
-the release without a partial deployment. This is a presence check, not
-validation of values or payment. The repository's test-mode Stripe secret
-belongs to CI and is not copied into the production runtime. The deploy passes
-its checkout flag with the deployment, while the catalog, key, signing secret,
-portal ID, and offer allowlist live in Vercel.
+Production uses its protected GitHub environment for runtime Stripe settings.
+The normal publication preflight validates the configured live catalog, webhook
+and customer portal before release changes. Repository-level test-mode Stripe
+credentials remain scoped to CI. Hosted journey checks then verify the exact
+deployed release.
 
 The cutover requires these settings; it does not certify the payment lifecycle:
 
@@ -112,39 +107,25 @@ The cutover requires these settings; it does not certify the payment lifecycle:
 2. Set `ATLAS_BILLING_ALLOWED_OFFERS` in the production app runtime to only the
    offers whose acceptance rows have passed. Confirm the deployed pricing page
    enables exactly those offers.
-3. Set the `ATLAS_BILLING_CHECKOUT_ENABLED` repository variable to `true`.
+3. Set Production’s `ATLAS_BILLING_CHECKOUT_ENABLED` variable to `true`.
 
 Do the third only after `https://atlas.rebuildingus.org/browse` returns useful,
 reviewed results. The catalog probe enforces that at runtime regardless, but the
 variable is the deliberate decision.
 
-If the live Atlas portal is missing or the existing billing webhook lacks the
-required events, run the protected **Repair Production Billing Configuration**
-workflow from `main` with confirmation input `REPAIR_LIVE_ATLAS_BILLING`. It
-requires `ATLAS_STRIPE_LIVE_REPAIR_KEY` and `ATLAS_STRIPE_LIVE_CATALOG` in the
-GitHub **production environment**. Use a dedicated restricted live key
-(`rk_live_…`) with Accounts Read, Products Read, Customer Portal Write, and
-Webhook Endpoints Write; grant no other permissions. The catalog must belong to
-the same live account as the deployed app. Do not paste either value into an
-issue or workflow input.
+Stripe configuration belongs to the normal Atlas bootstrap: it creates or reuses
+the product catalog, updates the existing billing webhook in place, and creates
+or reuses the Atlas-specific customer portal. Rerun that setup for a
+configuration change; there is no separate production repair workflow or repair
+credential.
 
-The workflow checks the live account and catalog before mutation, updates the
-existing Atlas webhook in place so its signing secret is retained, provisions or
-updates the Atlas-specific portal, and reads both Stripe objects back. It
-retains a non-secret receipt containing the verified portal identifier. An
-environment administrator installs that identifier as
-`STRIPE_BILLING_PORTAL_CONFIGURATION` in GitHub Production before Cloudflare
-publication, because the workflow token cannot edit environment secrets. The
-workflow refuses a missing, duplicate, or test-mode webhook and requires
-checkout to be explicitly closed. Verify the deployed portal setting through a
-guarded owner portal-session journey after publication. The workflow does not
-set the offer allowlist, open checkout, deliver a signed event, or prove a
-customer lifecycle; those remain separate acceptance gates.
-
-This is a recovery path for existing production configuration. Normal production
-bootstrap already provisions the webhook and portal; its hosting installation
-must own those settings for subsequent releases. Retire the temporary repair key
-and its GitHub secret after verified recovery.
+Production deployment reads `STRIPE_API_KEY`, `STRIPE_ATLAS_CATALOG`,
+`STRIPE_WEBHOOK_SECRET` and `STRIPE_BILLING_PORTAL_CONFIGURATION` from the
+protected GitHub Production environment. Use the restricted live runtime key for
+the application and keep CI's repository-level test key separate. The normal
+publication preflight verifies the catalog, webhook and customer portal before
+changing the release. Deployed billing journeys verify customer access before
+promotion; a configuration check alone does not certify a purchase.
 
 ## Sales tax
 
@@ -349,56 +330,19 @@ If you want to inspect Vercel's encrypted env metadata directly:
 vercel env ls --scope rebuilding-america-project --cwd app
 ```
 
-### Read-only production inventory
+### Production verification
 
-Run the manual **Production Billing Readiness** workflow against the latest
-deployed tag before deciding whether any live offer can open:
+Use **Deploy Production** for the release under review. Its publication
+preflight reads the live catalog, webhook and exact customer portal, then the
+protected deployed journey checks exercise the release itself. Stage diagnostics
+retain fixed outcomes without provider messages, credentials or customer data.
+There is no separate Vercel billing-readiness workflow.
 
-```bash
-gh workflow run billing-readiness.yml --ref main -f release_tag=vYYYY.MM.DD-N
-```
-
-The job first checks Vercel Production setting **names** without reading values.
-It also calls a protected read-only inventory inside the deployed app, where the
-runtime Stripe key is available. That check requires the deployed revision to
-match the requested release tag and reports key mode, charge capability, whether
-catalog IDs resolve to active objects in the same account, required webhook
-endpoint metadata, Tax status, and the configured Atlas customer-portal
-controls. Fixed diagnostic codes identify failed portal controls and webhook
-settings, including each missing required event. The CI renderer accepts only an
-explicit allowlist of those codes; no key, catalog ID, endpoint URL, provider
-error, or signing secret is returned. The job then tries to pass readable values
-in memory to the fuller Stripe inventory of amounts, terms, coupons, and
-endpoint metadata. Vercel
-[sensitive variables](https://vercel.com/docs/environment-variables/manage-across-environments)
-are non-readable once created; when the CLI cannot supply one, the report says
-**configured by name, runtime value unverified**, not absent. Its GitHub job
-summary is redacted: it shows check outcomes and, only when the account lookup
-succeeds, the final four characters of the account ID. The job fails while
-checkout is closed or any required proof is failed or unverified. A failed run
-is therefore an honest **no-go** result, not automatically a broken script. It
-never changes Stripe, Vercel, or the checkout flag.
-
-This inventory still cannot prove that the deployed signing secret matches a
-delivered webhook, that every catalog amount matches the offer when sensitive
-values remain unreadable in CI, that the runtime key has write/refund
-permissions, that Tax registrations fit the intended sales, or that a buyer
-received and later lost paid access correctly. Record those separate acceptance
-results against the same release before opening an offer.
-
-For a failed **Customer portal** row, use the diagnostic codes to inspect the
-Atlas portal configuration ID in the same live account as the runtime key. The
-inventory requires it to be active, with invoice history, payment-method update,
-and subscription cancellation enabled, with portal plan changes disabled;
-cancellation must take effect at the end of the current period. For a failed
-**Webhook endpoint metadata** row, use the diagnostic codes to inspect the
-enabled endpoint at `<ATLAS_PUBLIC_URL>/api/stripe/webhook` in that account and
-compare its subscribed events with the eight events in the Local development
-section. The inventory also requires a configured `whsec_` signing secret, but
-cannot establish that it belongs to this endpoint. Inspect existing live objects
-before provisioning replacements, correct the mismatch, and rerun the same
-release's billing-readiness workflow. A passing metadata row still needs an
-authentic signed delivery and retry rehearsal.
+Configuration readback cannot prove a completed payment, signed webhook receipt,
+entitlement, cancellation, expiry or refund. Verify those journeys against the
+same deployed release before opening an offer. The customer portal must allow
+invoice history, payment-method changes and end-of-period cancellation, with
+portal plan changes disabled.
 
 The expected state is:
 

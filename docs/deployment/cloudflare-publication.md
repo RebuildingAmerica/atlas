@@ -1,4 +1,4 @@
-# Cloudflare production recovery
+# Cloudflare publication
 
 Recover the directory, customer accounts, purchases and protected platform
 administration using the existing PostgreSQL and PDS identities. A successful
@@ -81,27 +81,13 @@ paused consumers do not detach existing public routes. Paused verification and
 rollback remain available. Bootstrap creates no canonical route or active
 consumer; additive schema checks and account identity verification still run.
 
-For live billing repair, use **Repair Production Billing Configuration** on
-`main`, with `ATLAS_STRIPE_LIVE_REPAIR_KEY` and `ATLAS_STRIPE_LIVE_CATALOG` in
-the Production environment. The repair key must be restricted (`rk_live_`), with
-Accounts and Products read access and Customer Portal and Webhook Endpoints
-write access. All other permissions can remain disabled. The workflow requires
-explicitly closed checkout, updates the existing webhook without rotating its
-signing secret, and creates or reuses the Atlas portal. It changes no customer,
-charge, refund or subscription and never writes hosting settings to Vercel.
-
-After Stripe read-back, the summary and non-secret receipt identify the portal
-configuration. An environment administrator installs that identifier as
-Production's `STRIPE_BILLING_PORTAL_CONFIGURATION` secret; the workflow token
-cannot edit GitHub environment secrets. This is the permission-limited fallback
-to the automated repair. Retain the separate runtime restricted key as
-Production's `STRIPE_API_KEY` and the live catalog as `STRIPE_ATLAS_CATALOG`.
-Production publication rejects unrestricted `sk_live_` keys before contacting
-Stripe; the runtime key must use `rk_live_` with the application's required
-permissions. Live mode and restricted permissions are independent settings. Keep
-the repository-level test-mode key and catalog for CI. The protected publication
-job reads Production's settings, preserving existing customers' billing access
-without giving ordinary test jobs live credentials.
+Billing configuration is owned by normal Atlas bootstrap, which provisions the
+catalog, webhook and Atlas-specific customer portal. Production consumes the
+canonical runtime settings from its protected GitHub environment. Use a
+restricted live runtime key (`rk_live_`) for the application; publication
+rejects unrestricted live keys before contacting Stripe. Keep the
+repository-level test key and catalog for CI. No separate repair credential or
+workflow is required.
 
 ## Publication sequence
 

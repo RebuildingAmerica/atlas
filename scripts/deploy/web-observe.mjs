@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { runtimeInventoryPasses } from "../ci/runtime-billing-report.mjs";
+import { runtimeInventoryPasses } from "./billing-inventory.mjs";
 import { setTimeout } from "node:timers/promises";
 import { spawnSync } from "node:child_process";
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
