@@ -24,6 +24,8 @@ import {
 } from "./cloudflare-cli.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
+const RETAINED_SOURCE_IDENTITY_ERROR =
+  "Retained artifacts require a completed trusted publication run with the expected source identity.";
 
 const PUBLICATION_STAGES = new Set([
   "billing-preflight",
@@ -82,6 +84,7 @@ export function publicationSummary({
   env,
   report,
   failed = false,
+  error,
   directory = join(ROOT, ".atlas/cloudflare-release"),
 }) {
   const target =
@@ -134,6 +137,14 @@ export function publicationSummary({
   };
   let boundary = "No safe failure boundary was recorded.";
   let details = "publication.json and release journals";
+  if (
+    error instanceof Error &&
+    error.message === RETAINED_SOURCE_IDENTITY_ERROR
+  ) {
+    boundary = "Retained publication source identity";
+    details =
+      "Check the source run's repository, workflow, result and required relationship to this release commit";
+  }
   try {
     const current = read(join(directory, "publication.json"));
     if (
@@ -453,9 +464,7 @@ export function validateRetainedRun(
     (!(context.target === "staging" && run.head_branch === "main") &&
       !/^v[^\s/]+$/.test(run.head_branch ?? ""))
   )
-    throw Error(
-      "Retained artifacts require a completed trusted publication run with the expected source identity.",
-    );
+    throw Error(RETAINED_SOURCE_IDENTITY_ERROR);
   return run;
 }
 
@@ -1606,8 +1615,13 @@ export async function publicationCli({
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const auxiliary =
     process.argv.includes("--seal") || process.argv.includes("--cleanup");
-  const reportOutcome = (report, failed = false) => {
-    const summary = publicationSummary({ env: process.env, report, failed });
+  const reportOutcome = (report, failed = false, error) => {
+    const summary = publicationSummary({
+      env: process.env,
+      report,
+      failed,
+      error,
+    });
     console[failed ? "error" : "log"](summary);
     if (process.env.GITHUB_STEP_SUMMARY) {
       try {
@@ -1626,12 +1640,12 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     .then((report) =>
       auxiliary ? console.log(JSON.stringify(report)) : reportOutcome(report),
     )
-    .catch(() => {
+    .catch((error) => {
       if (auxiliary)
         console.error(
           "Release artifact sealing or cleanup failed; private output suppressed.",
         );
-      else reportOutcome(undefined, true);
+      else reportOutcome(undefined, true, error);
       process.exitCode = 1;
     });
 }

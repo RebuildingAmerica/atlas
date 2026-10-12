@@ -288,6 +288,55 @@ test("API routing recovery does not claim the previous origin was restored or he
   assert.match(summary, /Previous-origin health was not checked/);
 });
 
+test("a rejected retained source is explained before a release artifact exists", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-source-summary-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const repository = "RebuildingAmerica/atlas";
+  assert.throws(
+    () =>
+      validateRetainedRun(
+        {
+          id: 123,
+          path: ".github/workflows/deploy-production.yml",
+          head_sha: "b".repeat(40),
+          head_branch: "v2026.10.12-1",
+          status: "completed",
+          conclusion: "success",
+          head_repository: { full_name: repository },
+        },
+        { target: "production", repository, sha, operation: "web-candidate" },
+        { runId: "123" },
+      ),
+    (error) => {
+      const summary = publicationSummary({
+        env: {
+          ATLAS_PUBLICATION_TARGET: "production",
+          ATLAS_PUBLICATION_OPERATION: "web-candidate",
+        },
+        directory,
+        failed: true,
+        error,
+      });
+      assert.match(summary, /Retained publication source identity/);
+      assert.match(summary, /this release commit/);
+      assert.doesNotMatch(summary, /No safe failure/);
+      return true;
+    },
+  );
+});
+
+test("unrecognized early failures never expose their provider message", () => {
+  const summary = publicationSummary({
+    env: {
+      ATLAS_PUBLICATION_TARGET: "production",
+      ATLAS_PUBLICATION_OPERATION: "web-candidate",
+    },
+    failed: true,
+    error: new Error("private-provider-content"),
+  });
+  assert.doesNotMatch(summary, /private-provider-content/);
+});
+
 test("failure summaries show the current safe boundary without provider content", () => {
   const directory = mkdtempSync(join(tmpdir(), "atlas-summary-"));
   const env = {
