@@ -16,6 +16,7 @@ import {
   prepareOperationsOutput,
   deployReleaseArtifact,
   verifyPausedApiRelease,
+  runPausedVerificationStage,
 } from "./api-cloudflare-release.mjs";
 
 const sha = "a".repeat(40),
@@ -25,6 +26,34 @@ const versions = {
   api: "11111111-1111-1111-1111-111111111111",
   discovery: "22222222-2222-2222-2222-222222222222",
 };
+
+test("paused verification retains only closed diagnostic stages when provider errors contain secrets", async () => {
+  const records = [];
+  await assert.rejects(
+    runPausedVerificationStage(
+      "operations-domain",
+      async () => {
+        throw Error("credential-bearing-provider-output");
+      },
+      async (r) => records.push(r),
+    ),
+    (error) =>
+      error.message.includes("operations-domain") &&
+      !error.message.includes("credential-bearing-provider-output"),
+  );
+  assert.deepEqual(records, [
+    { stage: "operations-domain", status: "running" },
+    { stage: "operations-domain", status: "failed" },
+  ]);
+  await assert.rejects(
+    runPausedVerificationStage(
+      "credential-bearing-provider-output",
+      async () => {},
+      async () => {},
+    ),
+    /Unknown paused verification stage/,
+  );
+});
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "atlas-api-release-")),
     calls = [],
@@ -560,6 +589,92 @@ test("verification-only resumes exact published versions without a deployment ca
       }),
       /readback/,
     );
+  }));
+
+test("verification recovers the uploaded final API after an interrupted bootstrap callback", () =>
+  using(async (f) => {
+    const deploy = f.input.deploy;
+    await assert.rejects(
+      publishApiRelease({
+        ...f.input,
+        apply: true,
+        deploy: async (role, artifact, identity) => {
+          await deploy(role, artifact, identity);
+          if (role === "api" && !identity.bootstrap)
+            throw Error("Operations routing readback interrupted the callback");
+        },
+      }),
+      /Runtime deployment failed/,
+    );
+    const interrupted = f.journals.at(-1).manifest;
+    assert.equal(interrupted.runtimeReleases.api, undefined);
+    assert.ok(interrupted.bootstrapApi);
+    const before = structuredClone(f.state);
+    const readbackStart = f.calls.length;
+    const checked = await verifyPausedApiRelease({
+      manifest: interrupted,
+      artifacts: f.input.artifacts,
+      env: f.input.env,
+      cloudflare: f.input.cloudflare,
+      probe: f.input.probe,
+      checkpoint: f.input.checkpoint,
+    });
+    assert.deepEqual(f.state, before);
+    assert.equal(interrupted.runtimeReleases.api, undefined);
+    assert.equal(checked.runtimeReleases.api.workerVersionId, versions.api);
+    assert.equal(
+      checked.runtimeReleases.api.namespaceId,
+      interrupted.bootstrapApi.namespaceId,
+    );
+    assert.equal(checked.checks.length, 6);
+    assert.equal(checked.status, "verified-paused");
+    assert.equal(checked.productionEligible, false);
+    assert.ok(
+      f.calls.slice(readbackStart).every((c) => ["get", "list"].includes(c[2])),
+    );
+  }));
+
+test("interrupted bootstrap recovery refuses missing artifacts, seed runtime and namespace replacement", () =>
+  using(async (f) => {
+    const deploy = f.input.deploy;
+    await assert.rejects(
+      publishApiRelease({
+        ...f.input,
+        apply: true,
+        deploy: async (role, artifact, identity) => {
+          await deploy(role, artifact, identity);
+          if (role === "api" && !identity.bootstrap) throw Error("Interrupted");
+        },
+      }),
+    );
+    const interrupted = f.journals.at(-1).manifest;
+    const options = {
+      manifest: interrupted,
+      env: f.input.env,
+      cloudflare: f.input.cloudflare,
+      probe: f.input.probe,
+      checkpoint: f.input.checkpoint,
+    };
+    await assert.rejects(verifyPausedApiRelease(options), /artifact/i);
+    const changedNamespace = structuredClone(interrupted);
+    changedNamespace.bootstrapApi.namespaceId = "9".repeat(32);
+    await assert.rejects(
+      verifyPausedApiRelease({
+        ...options,
+        manifest: changedNamespace,
+        artifacts: f.input.artifacts,
+      }),
+      /namespace/i,
+    );
+    await deploy("api", f.input.bootstrapArtifact, {
+      bootstrap: true,
+      message: "Seed is still active",
+    });
+    await assert.rejects(
+      verifyPausedApiRelease({ ...options, artifacts: f.input.artifacts }),
+      /readback/i,
+    );
+    assert.equal(f.journals.at(-1).manifest.status, "verification-required");
   }));
 
 test("concurrent provider replacement after preflight stops before an upload", () =>

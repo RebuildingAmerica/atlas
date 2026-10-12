@@ -133,6 +133,19 @@ the expected load or that discovery extraction fits its execution budget.
 
 ## Interruption and recovery
 
+If the initial API upload succeeded but its callback failed before the final
+identity was journaled, run `verify-api` with that failed trusted run. It checks
+the retained artifact bytes, release and schema annotations, unchanged discovery
+deployment and original API SQLite namespace before recording the final API
+identity. It does not upload code, apply schema changes, activate consumers or
+change public routing. Protected health and paused-consumer checks still have to
+pass, preserving existing accounts and directory data during recovery.
+
+Read-only verification retains `verification-diagnostics.jsonl` with fixed
+Access, domain, denial and runtime stage names and pass/fail states. Use the
+failed stage to identify the next readback to investigate. Provider error text
+and credential values are never copied into those diagnostics.
+
 If the retained PDS invite broker credential is absent from GitHub, use
 **Recover existing PDS broker setting** on `main`. Generate a local RSA-4096
 recipient key with `node:crypto`; supply only the base64 DER SPKI public key.

@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -56,6 +57,31 @@ export const releaseMessage = (target, role, artifactDigest, schemaDigest) =>
   `Atlas ${target} ${role}; artifact=${artifactDigest}; schema=${schemaDigest}; consumers paused`;
 const roleClass = (role) =>
   role === "api" ? "ApiRuntime" : "DiscoveryRuntime";
+
+/** Retain the failing read-only check without copying provider errors or credentials. */
+export async function runPausedVerificationStage(stage, operation, checkpoint) {
+  if (
+    ![
+      "operations-access",
+      "operations-domain",
+      "operations-denial",
+      "runtime-verification",
+    ].includes(stage)
+  )
+    throw Error("Unknown paused verification stage.");
+  await checkpoint({ stage, status: "running" });
+  let result;
+  try {
+    result = await operation();
+  } catch {
+    await checkpoint({ stage, status: "failed" });
+    throw Error(
+      `Paused release verification failed at ${stage}; private diagnostics suppressed.`,
+    );
+  }
+  await checkpoint({ stage, status: "pass" });
+  return result;
+}
 function activeVersion(result) {
   const versions = result?.deployments?.[0]?.versions;
   if (
@@ -162,6 +188,51 @@ function checkedArtifacts(
       ];
     }),
   );
+}
+function readRuntimeIdentity(
+  role,
+  artifact,
+  { target, releaseSha, schemaReceiptDigest, cf },
+) {
+  const workerName = `atlas-${role}-${target}`,
+    workerVersionId = activeVersion(
+      cf(["workers", "deployments", "list", "--worker", workerName]),
+    );
+  const v = cf([
+    "workers",
+    "versions",
+    "get",
+    workerVersionId,
+    "--worker-id",
+    workerName,
+  ]);
+  if (
+    v?.id !== workerVersionId ||
+    v.annotations?.["workers/tag"] !== releaseSha ||
+    v.annotations?.["workers/message"] !==
+      releaseMessage(target, role, artifact.artifactDigest, schemaReceiptDigest)
+  )
+    throw Error("Exact uploaded version/tag/artifact/schema readback failed.");
+  const namespaces = cf(["durable-objects", "namespaces", "list"]);
+  const matches = Array.isArray(namespaces)
+    ? namespaces.filter(
+        (n) =>
+          n.script === workerName &&
+          n.class === roleClass(role) &&
+          n.use_sqlite === true,
+      )
+    : [];
+  if (matches.length !== 1)
+    throw Error("Exact SQLite namespace readback failed.");
+  return runtimeReleaseIdentity({
+    workerName,
+    workerVersionId,
+    releaseSha,
+    artifactDigest: artifact.artifactDigest,
+    namespaceId: matches[0].id,
+    namespaceClass: roleClass(role),
+    storage: "sqlite",
+  });
 }
 async function probeRole(probe, role, releaseSha, schemaReceiptDigest) {
   const checks = [];
@@ -328,54 +399,13 @@ export async function publishApiRelease({
         "The nonpromotable API seed must omit the unresolved discovery binding.",
       );
   }
-  const readRuntime = (role, artifact) => {
-    const workerName = `atlas-${role}-${target}`,
-      workerVersionId = activeVersion(
-        cf(["workers", "deployments", "list", "--worker", workerName]),
-      );
-    const v = cf([
-      "workers",
-      "versions",
-      "get",
-      workerVersionId,
-      "--worker-id",
-      workerName,
-    ]);
-    if (
-      v?.id !== workerVersionId ||
-      v.annotations?.["workers/tag"] !== releaseSha ||
-      v.annotations?.["workers/message"] !==
-        releaseMessage(
-          target,
-          role,
-          artifact.artifactDigest,
-          schemaReceiptDigest,
-        )
-    )
-      throw Error(
-        "Exact uploaded version/tag/artifact/schema readback failed.",
-      );
-    const namespaces = cf(["durable-objects", "namespaces", "list"]);
-    const matches = Array.isArray(namespaces)
-      ? namespaces.filter(
-          (n) =>
-            n.script === workerName &&
-            n.class === roleClass(role) &&
-            n.use_sqlite === true,
-        )
-      : [];
-    if (matches.length !== 1)
-      throw Error("Exact SQLite namespace readback failed.");
-    return runtimeReleaseIdentity({
-      workerName,
-      workerVersionId,
+  const readRuntime = (role, artifact) =>
+    readRuntimeIdentity(role, artifact, {
+      target,
       releaseSha,
-      artifactDigest: artifact.artifactDigest,
-      namespaceId: matches[0].id,
-      namespaceClass: roleClass(role),
-      storage: "sqlite",
+      schemaReceiptDigest,
+      cf,
     });
-  };
   const manifest = {
     schemaVersion: 1,
     kind: "cloudflare-api-release",
@@ -522,6 +552,7 @@ export async function publishApiRelease({
 /** Resume real verification after a completed upload without redeploying or enabling work. */
 export async function verifyPausedApiRelease({
   manifest,
+  artifacts,
   env = process.env,
   cloudflare,
   probe,
@@ -555,8 +586,48 @@ export async function verifyPausedApiRelease({
       );
     }
   };
+  const checked = structuredClone(manifest);
+  if (!checked.runtimeReleases?.api) {
+    // A routing readback can interrupt the deploy callback after the final API
+    // upload. Recover its identity without replacing user data or enabling jobs.
+    if (
+      checked.status !== "verification-required" ||
+      !checked.bootstrapApi ||
+      !checked.runtimeReleases?.discovery ||
+      checked.rollbackPlan ||
+      !artifacts
+    )
+      throw Error(
+        "Interrupted bootstrap recovery requires exact retained artifacts.",
+      );
+    checkedProvenance(checked.provenance);
+    const retained = checkedArtifacts(artifacts, checked);
+    const seed = runtimeReleaseIdentity(checked.bootstrapApi);
+    if (
+      seed.workerName !== `atlas-api-${checked.target}` ||
+      seed.namespaceClass !== "ApiRuntime" ||
+      seed.releaseSha !== checked.releaseSha ||
+      checked.runtimeReleases.discovery.artifactDigest !==
+        retained.discovery.artifactDigest
+    )
+      throw Error("The retained bootstrap artifact identities differ.");
+    assertRuntimeDeployments(checked.runtimeReleases, cf);
+    const uploaded = readRuntimeIdentity("api", retained.api, {
+      ...checked,
+      cf,
+    });
+    if (
+      uploaded.namespaceId !== seed.namespaceId ||
+      uploaded.workerVersionId === seed.workerVersionId ||
+      uploaded.artifactDigest === seed.artifactDigest
+    )
+      throw Error(
+        "The final API must preserve the seed namespace with a distinct immutable artifact/version.",
+      );
+    checked.runtimeReleases.api = uploaded;
+  }
   for (const role of ROLES) {
-    const identity = runtimeReleaseIdentity(manifest.runtimeReleases?.[role]);
+    const identity = runtimeReleaseIdentity(checked.runtimeReleases?.[role]);
     if (
       identity.releaseSha !== manifest.releaseSha ||
       identity.workerName !== `atlas-${role}-${manifest.target}` ||
@@ -584,7 +655,7 @@ export async function verifyPausedApiRelease({
     )
       throw Error("Exact retained version/artifact readback failed.");
   }
-  assertRuntimeDeployments(manifest.runtimeReleases, cf);
+  assertRuntimeDeployments(checked.runtimeReleases, cf);
   if (manifest.rollbackPlan) {
     const expected = createApiRollbackPlan({
       snapshot: manifest.rollbackPlan.snapshot,
@@ -593,7 +664,6 @@ export async function verifyPausedApiRelease({
     if (expected.planId !== manifest.rollbackPlan.planId)
       throw Error("The retained joint rollback plan differs.");
   }
-  const checked = structuredClone(manifest);
   checked.checks = [];
   for (const role of ROLES)
     checked.checks.push(
@@ -834,49 +904,85 @@ export async function releaseCli(
       throw Error("Retained release target differs.");
     const cf = (command, options) =>
       cloudflareCommand(command, { ...options, env });
-    const apps = cf(["zero-trust", "access", "applications", "list"]),
-      app = apps.find((a) => a.domain === hostname);
-    if (!app?.id)
-      throw Error("Retained operations Access application is absent.");
-    const policy = cf(["zero-trust", "access", "applications", "get", app.id]);
-    assertAccessPolicy(policy, policy.policies, hostname, access.id);
-    assertCandidateDomain(cf(["workers", "get", `atlas-api-ops-${target}`]), {
-      workerName: `atlas-api-ops-${target}`,
-      hostname,
-      zoneId,
+    const verifyStage = (stage, operation) =>
+      runPausedVerificationStage(stage, operation, async (record) =>
+        appendFileSync(
+          join(directory, "verification-diagnostics.jsonl"),
+          JSON.stringify(record) + "\n",
+        ),
+      );
+    const app = await verifyStage("operations-access", async () => {
+      const apps = cf(["zero-trust", "access", "applications", "list"]);
+      const found = apps.find((a) => a.domain === hostname);
+      if (!found?.id)
+        throw Error("Retained operations Access application is absent.");
+      const policy = cf([
+        "zero-trust",
+        "access",
+        "applications",
+        "get",
+        found.id,
+      ]);
+      assertAccessPolicy(policy, policy.policies, hostname, access.id);
+      return found;
     });
+    await verifyStage("operations-domain", async () =>
+      assertCandidateDomain(cf(["workers", "get", `atlas-api-ops-${target}`]), {
+        workerName: `atlas-api-ops-${target}`,
+        hostname,
+        zoneId,
+      }),
+    );
     const headers = {
       "CF-Access-Client-Id": access.client_id,
       "CF-Access-Client-Secret": access.client_secret,
     };
-    const denied = await fetch(`https://${hostname}/api/health`, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(30000),
+    await verifyStage("operations-denial", async () => {
+      const denied = await fetch(`https://${hostname}/api/health`, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(30000),
+      });
+      if (denied.status !== 403)
+        throw Error("Operations Access denial readback failed.");
     });
-    if (denied.status !== 403)
-      throw Error("Operations Access denial readback failed.");
-    const manifest = await verifyPausedApiRelease({
-      manifest: journal.manifest,
-      env,
-      cloudflare: cf,
-      probe: async ({ role, path }) => {
-        const r = await fetch(`https://${hostname}/${role}${path}`, {
-          headers,
-          redirect: "manual",
-          signal: AbortSignal.timeout(30000),
-        });
-        let body = null;
-        try {
-          body = await r.json();
-        } catch {}
-        return { status: r.status, body };
-      },
-      checkpoint: async (next) =>
-        writeFileSync(
-          join(directory, "release-journal.json"),
-          JSON.stringify(next, null, 2) + "\n",
+    const manifest = await verifyStage("runtime-verification", () =>
+      verifyPausedApiRelease({
+        manifest: journal.manifest,
+        artifacts: Object.fromEntries(
+          ROLES.map((role) => {
+            const retained = join(directory, role);
+            return [
+              role,
+              {
+                directory: retained,
+                artifactDigest: digestDirectory(
+                  join(retained, ".cloudflare/output/v0"),
+                ),
+              },
+            ];
+          }),
         ),
-    });
+        env,
+        cloudflare: cf,
+        probe: async ({ role, path }) => {
+          const r = await fetch(`https://${hostname}/${role}${path}`, {
+            headers,
+            redirect: "manual",
+            signal: AbortSignal.timeout(30000),
+          });
+          let body = null;
+          try {
+            body = await r.json();
+          } catch {}
+          return { status: r.status, body };
+        },
+        checkpoint: async (next) =>
+          writeFileSync(
+            join(directory, "release-journal.json"),
+            JSON.stringify(next, null, 2) + "\n",
+          ),
+      }),
+    );
     manifest.operations = {
       workerName: `atlas-api-ops-${target}`,
       hostname,
