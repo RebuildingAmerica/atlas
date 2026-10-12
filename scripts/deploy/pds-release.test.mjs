@@ -9,9 +9,69 @@ import {
   probePdsHealth,
   probePdsInviteBrokerRoute,
   waitForProbe,
+  inspectPdsCleanup,
 } from "./pds-release.mjs";
 
 const rootDir = path.resolve(import.meta.dirname, "../..");
+
+void it("cleanup readiness reports credential drift and HTTP status without credentials", async () => {
+  const runtime = {
+    ATLAS_PDS_PUBLIC_URL: "https://pds.example.org",
+    ATLAS_PDS_INVITE_BROKER_URL: "https://pds.example.org/_atlas/pds/invites",
+    ATLAS_PDS_INVITE_BROKER_SECRET: "fixture-retained-broker-credential",
+  };
+  const result = await inspectPdsCleanup(
+    runtime,
+    "fixture-publisher-broker-credential",
+    async (url, init) => {
+      assert.equal(url, runtime.ATLAS_PDS_INVITE_BROKER_URL);
+      assert.equal(
+        init.headers.authorization,
+        `Bearer ${runtime.ATLAS_PDS_INVITE_BROKER_SECRET}`,
+      );
+      return Response.json(
+        { error: "unauthorized", private: "fixture-private-body" },
+        { status: 401 },
+      );
+    },
+  );
+  assert.deepEqual(result, {
+    name: "existing-pds-cleanup",
+    status: "block",
+    credentialMatchesPublisher: false,
+    responseStatus: 401,
+    reason: "broker-rejected",
+  });
+  assert.equal(JSON.stringify(result).includes("credential"), true);
+  assert.equal(JSON.stringify(result).includes("fixture-"), false);
+  const ready = await inspectPdsCleanup(
+    runtime,
+    runtime.ATLAS_PDS_INVITE_BROKER_SECRET,
+    async () => Response.json({ hostedFixtureCleanup: true }),
+  );
+  assert.equal(ready.status, "pass");
+  const bad = await inspectPdsCleanup(
+    {
+      ...runtime,
+      ATLAS_PDS_INVITE_BROKER_URL:
+        "https://other.example.org/_atlas/pds/invites",
+    },
+    runtime.ATLAS_PDS_INVITE_BROKER_SECRET,
+    async () => {
+      throw Error("must not disclose credentials to another host");
+    },
+  );
+  assert.equal(bad.reason, "broker-configuration-invalid");
+  const failed = await inspectPdsCleanup(
+    runtime,
+    runtime.ATLAS_PDS_INVITE_BROKER_SECRET,
+    async () => {
+      throw Error("fixture-private-network-error");
+    },
+  );
+  assert.equal(failed.reason, "broker-transport-failed");
+  assert.equal(JSON.stringify(failed).includes("fixture-private"), false);
+});
 
 void describe("PDS release health probe", () => {
   void it("targets the canonical XRPC health endpoint from an HTTPS PDS origin", () => {

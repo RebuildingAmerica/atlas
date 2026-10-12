@@ -1149,6 +1149,13 @@ export async function publicationCli({
         status: "pass",
         keys: Object.keys(runtime).sort(),
       });
+      const { inspectPdsCleanup } = await import("./pds-release.mjs");
+      const cleanup = await inspectPdsCleanup(
+        runtime,
+        env.ATLAS_PDS_INVITE_BROKER_SECRET,
+      );
+      checks.push(cleanup);
+      console.log(JSON.stringify({ pdsCleanup: cleanup }));
     } catch (error) {
       const safe =
         /^(?:[A-Z_]+ is required|Runtime [A-Z_]+ is required|Existing write-only values are required|Existing value conflict for [A-Z_]+|Vercel runtime read failed with HTTP|Staging requires)/.test(
