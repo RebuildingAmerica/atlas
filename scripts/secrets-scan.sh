@@ -17,19 +17,21 @@ is_zero_sha() {
 }
 
 paths_file="$(mktemp)"
-trap 'rm -f "$paths_file"' EXIT
+baseline_file="$(mktemp)"
+trap 'rm -f "$paths_file" "$baseline_file"' EXIT
+cp .secrets.baseline "$baseline_file"
 
 if is_truthy "${ATLAS_SECRETS_SCAN_CHANGED_ONLY:-}"; then
   base_sha="${ATLAS_SECRETS_SCAN_BASE_SHA:-${GITHUB_BASE_SHA:-}}"
   head_sha="${ATLAS_SECRETS_SCAN_HEAD_SHA:-${GITHUB_SHA:-HEAD}}"
 
   if [ -z "$base_sha" ] || is_zero_sha "$base_sha"; then
-    git ls-files -z >"$paths_file"
+    git ls-files -z -- ':(top,exclude).secrets.baseline' >"$paths_file"
   else
-    git diff -z --name-only --diff-filter=ACMRTUXB "$base_sha" "$head_sha" -- >"$paths_file"
+    git diff -z --name-only --diff-filter=ACMRTUXB "$base_sha" "$head_sha" -- ':(top,exclude).secrets.baseline' >"$paths_file"
   fi
 else
-  git ls-files -z >"$paths_file"
+  git ls-files -z -- ':(top,exclude).secrets.baseline' >"$paths_file"
 fi
 
 if [ ! -s "$paths_file" ]; then
@@ -40,4 +42,21 @@ fi
 file_count="$(tr -cd '\000' <"$paths_file" | wc -c | tr -d ' ')"
 
 echo "Scanning ${file_count} file(s) for committed secrets."
-xargs -0 uv --project api run --extra dev detect-secrets-hook --baseline .secrets.baseline <"$paths_file"
+# CI must reject new secrets without rewriting the reviewed baseline. The hook
+# returns 3 only after finding no new secrets and updating baseline metadata.
+xargs -0 sh -c '
+  baseline_file="$1"
+  shift
+  scan_output="$(mktemp)"
+  trap '\''rm -f "$scan_output"'\'' EXIT
+  if uv --project api run --extra dev detect-secrets-hook --baseline "$baseline_file" "$@" >"$scan_output" 2>&1; then
+    status=0
+  else
+    status=$?
+  fi
+  if [ "$status" -eq 3 ]; then
+    exit 0
+  fi
+  cat "$scan_output"
+  exit "$status"
+' secrets-scan "$baseline_file" <"$paths_file"
