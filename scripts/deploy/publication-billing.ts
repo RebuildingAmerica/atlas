@@ -8,6 +8,7 @@ import {
 } from "../bootstrap/products/atlas/env.js";
 import { fetchStripeCatalogSnapshot } from "../bootstrap/products/atlas/verify.js";
 import { verifyStripeTargetSnapshot } from "../bootstrap/products/atlas/verify-catalog.js";
+import type { StripeCatalogIssueCode } from "../bootstrap/products/atlas/verify-types.js";
 import { assessAtlasPortal } from "../bootstrap/products/atlas/portal.js";
 
 function runtimeValue(runtime: Record<string, string>, key: string): string {
@@ -20,6 +21,7 @@ function runtimeValue(runtime: Record<string, string>, key: string): string {
 export interface BillingDiagnostic {
   stage: "inputs" | "catalog-read" | "catalog-validation" | "portal-read";
   status: "running" | "pass" | "fail";
+  issueCodes?: StripeCatalogIssueCode[];
   failure?:
     | "permission"
     | "authentication"
@@ -63,6 +65,7 @@ export async function verifyPublicationBilling(
 ): Promise<void> {
   let stage: BillingDiagnostic["stage"] = "inputs";
   let failure: BillingDiagnostic["failure"];
+  let issueCodes: StripeCatalogIssueCode[] | undefined;
   const next = (value: BillingDiagnostic["stage"]) => {
     report({ stage, status: "pass" });
     report({ stage: value, status: "running" });
@@ -104,10 +107,14 @@ export async function verifyPublicationBilling(
     const snapshot = await fetchSnapshot(client, expanded, webhook);
     stage = next("catalog-validation");
     const issues = verifyStripeTargetSnapshot(env, snapshot, "prod");
-    if (issues.length)
+    if (issues.length) {
+      // Codes are fixed application constants; messages can contain private
+      // catalog values and Stripe IDs and must never enter release artifacts.
+      issueCodes = [...new Set(issues.map((issue) => issue.code))].sort();
       throw new Error(
         "Production Stripe catalog or webhook verification failed.",
       );
+    }
     stage = next("portal-read");
     const portal = await assessAtlasPortal(
       client,
@@ -129,6 +136,7 @@ export async function verifyPublicationBilling(
       failure:
         failure ??
         (stage === "catalog-read" ? billingFailure(error) : "validation"),
+      ...(issueCodes ? { issueCodes } : {}),
     });
     throw error;
   }

@@ -236,6 +236,34 @@ void test("billing records validation and portal failures as distinct boundaries
   ]);
 });
 
+void test("catalog mismatches retain issue codes without Stripe identifiers or values", async () => {
+  const f = fixture();
+  const records: BillingDiagnostic[] = [];
+  const product = [...f.snapshot.products.values()][0];
+  assert.ok(product);
+  product.metadata.atlas_product_id = "private-product-value";
+  await assert.rejects(
+    verifyPublicationBilling(
+      f.runtime,
+      f.stripe,
+      async () => f.snapshot,
+      (record) => records.push(record),
+    ),
+    /catalog or webhook/,
+  );
+  assert.deepEqual(records.at(-1), {
+    stage: "catalog-validation",
+    status: "fail",
+    failure: "validation",
+    issueCodes: ["product_metadata_mismatch"],
+  });
+  assert.doesNotMatch(
+    JSON.stringify(records),
+    /private-product-value|prod_|rk_live_/,
+  );
+  assert.deepEqual(f.calls, []);
+});
+
 void test("unknown provider failures cannot become diagnostic strings or validation claims", async () => {
   const f = fixture();
   const records: BillingDiagnostic[] = [];
