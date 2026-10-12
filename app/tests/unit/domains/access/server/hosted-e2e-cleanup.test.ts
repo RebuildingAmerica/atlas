@@ -27,7 +27,7 @@ test("hosted preparation refuses to create accounts when PDS cleanup is unavaila
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-atlas-hosted-e2e-secret": "synthetic-hosted-verifier", // Synthetic test credential. pragma: allowlist secret
+        "x-atlas-hosted-e2e-secret": "synthetic-hosted-verifier", // pragma: allowlist secret - synthetic test credential
       },
       body: JSON.stringify({ action: "prepare", runId: "38246581597-1" }),
     }),

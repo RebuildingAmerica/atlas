@@ -271,7 +271,7 @@ describe.skipIf(!process.env.ATLAS_TEST_POSTGRES_URL)(
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-atlas-hosted-e2e-secret": "synthetic-hosted-verifier", // Synthetic test credential. pragma: allowlist secret
+            "x-atlas-hosted-e2e-secret": "synthetic-hosted-verifier", // pragma: allowlist secret - synthetic test credential
           },
           body: JSON.stringify({ action: "prepare", runId }),
         }),

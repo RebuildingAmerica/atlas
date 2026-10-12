@@ -47,6 +47,18 @@ test("app remains in the standard test graph", () => {
   );
 });
 
+test("app PostgreSQL checks receive their disposable database through Turbo", () => {
+  const graph = dryRun("@rebuildingamerica/atlas-app#test");
+  const appTest = graph.tasks.find(
+    (task) => task.taskId === "@rebuildingamerica/atlas-app#test",
+  );
+
+  assert.ok(appTest);
+  assert.ok(
+    appTest.resolvedTaskDefinition.env.includes("ATLAS_TEST_POSTGRES_URL"),
+  );
+});
+
 test("behavior packages participate in the native test graph", () => {
   const graph = dryRun("test");
   const taskIds = new Set(graph.tasks.map((task) => task.taskId));
