@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   writeFileSync,
   readFileSync,
+  readdirSync,
   existsSync,
   statSync,
   symlinkSync,
@@ -12,6 +13,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Linter } from "eslint";
 import {
   publicationContext,
   publicationStage,
@@ -30,6 +32,39 @@ import {
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 
 const sha = "a".repeat(40);
+
+test("deployment and CI JavaScript has no unresolved Node identifiers", () => {
+  const linter = new Linter();
+  const config = {
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: Object.fromEntries(
+        Object.getOwnPropertyNames(globalThis).map((name) => [
+          name,
+          "readonly",
+        ]),
+      ),
+    },
+    rules: { "no-undef": "error" },
+  };
+  for (const directory of ["scripts/deploy", "scripts/ci"]) {
+    const root = new URL(`../../${directory}/`, import.meta.url);
+    for (const name of readdirSync(root).filter((name) =>
+      name.endsWith(".mjs"),
+    )) {
+      const messages = linter.verify(
+        readFileSync(new URL(name, root), "utf8"),
+        config,
+      );
+      assert.deepEqual(
+        messages,
+        [],
+        `${directory}/${name} has unresolved identifiers`,
+      );
+    }
+  }
+});
 
 test("configuration success explicitly says nothing was deployed or health checked", () => {
   const summary = publicationSummary({

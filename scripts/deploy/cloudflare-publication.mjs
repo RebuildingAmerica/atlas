@@ -1034,7 +1034,7 @@ export async function publicationCli({
   const operations = required(env, "ATLAS_API_OPERATIONS_HOSTNAME");
   const zone = required(env, "CLOUDFLARE_ZONE_ID");
   if (context.operation === "publish-api") {
-    publicationStage(bundle, "native-dependencies", () => {
+    const nativeRun = publicationStage(bundle, "native-dependencies", () => {
       const nativeRun = required(env, "ATLAS_PYTHON_WHEELS_RUN_ID");
       if (!/^\d+$/.test(nativeRun))
         throw Error("A numeric native-wheel workflow run is required.");
@@ -1044,6 +1044,7 @@ export async function publicationCli({
         nativeRun,
         "--full-api",
       ]);
+      return nativeRun;
     });
     const apiSettings = privateFile("api-settings.json", configured.service);
     const directory = join(bundle, `api/publication-${env.GITHUB_RUN_ID}`);
