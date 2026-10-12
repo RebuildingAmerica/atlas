@@ -33,12 +33,133 @@ import {
   assertWebApiRuntime,
   verifyPublicationApiRouting,
   hostedFailureLocations,
+  hostedFailureReport,
 } from "./cloudflare-publication.mjs";
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 import { assertWebObserverConfiguration } from "./web-observe.mjs";
 import { canonicalDigest } from "./api-cloudflare-release.mjs";
 
 const sha = "a".repeat(40);
+
+test("real Playwright JSON identifies catalog assertion and timeout boundaries", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-hosted-reporter-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const moduleUrl = new URL(
+    "../../app/node_modules/@playwright/test/index.js",
+    import.meta.url,
+  ).pathname;
+  const cli = new URL(
+    "../../app/node_modules/@playwright/test/cli.js",
+    import.meta.url,
+  );
+  const reportFile = join(directory, "report.json");
+  const configFile = join(directory, "playwright.config.mjs");
+  writeFileSync(
+    configFile,
+    `export default { testDir: ${JSON.stringify(directory)}, timeout: 200, workers: 1 };`,
+  );
+  writeFileSync(
+    join(directory, "catalog-hosted.spec.ts"),
+    `
+    import { test, expect } from ${JSON.stringify(moduleUrl)};
+    test('request assertion', async () => {
+      await test.step('public app map', async () => expect(401, 'public app map').toBe(200));
+    });
+    test('request timeout', async () => {
+      await test.step('direct API catalog', async () => new Promise(() => {}));
+    });
+  `,
+  );
+  const result = spawnSync(
+    process.execPath,
+    [
+      cli.pathname,
+      "test",
+      "--config",
+      configFile,
+      "--reporter=github,json",
+      "--output",
+      join(directory, "results"),
+    ],
+    {
+      env: { ...process.env, CI: "1", PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile },
+      encoding: "utf8",
+    },
+  );
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(readFileSync(reportFile, "utf8"));
+  const failures = hostedFailureReport(report);
+  assert.equal(failures.length, 2, JSON.stringify(report.errors));
+  assert.equal(failures[0].kind, "assertion");
+  assert.equal(failures[0].steps[0].name, "public app map");
+  assert.equal(failures[0].steps[0].httpStatus, 401);
+  assert.equal(failures[1].kind, "timeout");
+  assert.equal(failures[1].steps[0].name, "direct API catalog");
+  assert.equal(failures[1].steps[0].failed, true);
+  assert.equal(failures[1].steps[0].unfinished, true);
+  assert.equal(failures[1].steps[0].durationMs, null);
+});
+
+test("structured hosted failures identify timed-out catalog requests without private output", () => {
+  const report = {
+    suites: [
+      {
+        specs: [
+          {
+            file: "catalog-hosted.spec.ts",
+            line: 159,
+            column: 3,
+            tests: [
+              {
+                results: [
+                  {
+                    status: "timedOut",
+                    duration: 30001,
+                    error: {
+                      message: "Bearer private-token customer@example.org",
+                    },
+                    stdout: [{ text: "private-response" }],
+                    steps: [
+                      { title: "direct API catalog", duration: 1000 },
+                      {
+                        title: "public app map",
+                        duration: 29000,
+                        error: { message: "private-body" },
+                      },
+                      { title: "customer@example.org", duration: 5, error: {} },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  assert.deepEqual(hostedFailureReport(report), [
+    {
+      file: "app/tests/e2e/catalog-hosted.spec.ts",
+      line: 159,
+      column: 3,
+      status: "timedOut",
+      kind: "timeout",
+      durationMs: 30001,
+      steps: [
+        { name: "direct API catalog", durationMs: 1000, failed: false },
+        { name: "public app map", durationMs: 29000, failed: true },
+      ],
+    },
+  ]);
+  assert.deepEqual(
+    hostedFailureReport({
+      suites: [
+        { specs: [{ ...report.suites[0].specs[0], file: "secret.env" }] },
+      ],
+    }),
+    [],
+  );
+});
 
 test("hosted failure diagnostics retain source locations without credentials or response bodies", () => {
   const output = [
@@ -899,7 +1020,11 @@ test("hosted journeys verify PDS before smoke, identity and checkout against the
     runtime,
     env: { GITHUB_RUN_ID: "123", GITHUB_RUN_ATTEMPT: "1" },
     releaseSha: sha,
-    run: (command, args, { env }) => calls.push({ command: args.at(-1), env }),
+    run: (command, args, { env }) =>
+      calls.push({
+        command: args.find((arg) => arg.startsWith("test:hosted-")),
+        env,
+      }),
     node: (command, args, { env }) => calls.push({ command: args.at(-1), env }),
   };
   assert.equal(verifyHostedJourneys(options).status, "pass");

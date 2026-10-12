@@ -80,6 +80,76 @@ const OPERATIONS = [
 ];
 
 /** Identify failed hosted assertions without publishing test bodies or credentials. */
+const hostedReportFile = join(ROOT, "app/test-results/hosted-results.json");
+const hostedCatalogSteps = new Set([
+  "direct API catalog",
+  "public app catalog",
+  "direct API catalog, read again",
+  "public app map",
+  "public app entity detail",
+]);
+
+/** Publish only code locations, fixed request labels and numeric timing/status. */
+export function hostedFailureReport(report) {
+  const failures = [];
+  const visit = (suite) => {
+    for (const spec of suite?.specs ?? []) {
+      const file = /(?:^|\/)([a-z0-9-]+-hosted\.spec\.ts)$/.exec(
+        spec.file ?? "",
+      );
+      if (!file || !Number(spec.line) || !Number(spec.column)) continue;
+      for (const test of spec.tests ?? [])
+        for (const result of test.results ?? []) {
+          if (!["failed", "timedOut", "interrupted"].includes(result.status))
+            continue;
+          const location = result.errorLocation;
+          const precise =
+            location?.file?.endsWith(`/${file[1]}`) &&
+            Number(location.line) &&
+            Number(location.column);
+          const steps = (result.steps ?? [])
+            .filter((step) => hostedCatalogSteps.has(step.title))
+            .map((step) => {
+              const summary = {
+                name: step.title,
+                durationMs: step.duration < 0 ? null : step.duration,
+                failed: Boolean(step.error) || step.duration < 0,
+                ...(step.duration < 0 ? { unfinished: true } : {}),
+              };
+              const message = String(step.error?.message ?? "").replace(
+                /\u001b\[[0-9;]*m/g,
+                "",
+              );
+              const status =
+                /Expected:\s*200\s+Received:\s*([1-5]\d{2})\b/.exec(message);
+              if (status) summary.httpStatus = Number(status[1]);
+              return summary;
+            });
+          const message = String(result.error?.message ?? "");
+          failures.push({
+            file: `app/tests/e2e/${file[1]}`,
+            line: precise ? Number(location.line) : Number(spec.line),
+            column: precise ? Number(location.column) : Number(spec.column),
+            status: result.status,
+            kind:
+              result.status === "timedOut"
+                ? "timeout"
+                : /fetch failed|ECONNRESET|ETIMEDOUT/.test(message)
+                  ? "network"
+                  : /expect\(|Expected:|AssertionError/.test(message)
+                    ? "assertion"
+                    : "error",
+            durationMs: result.duration,
+            steps,
+          });
+        }
+    }
+    for (const child of suite?.suites ?? []) visit(child);
+  };
+  visit(report);
+  return failures;
+}
+
 export function hostedFailureLocations(output) {
   const locations = [];
   const seen = new Set();
@@ -110,7 +180,7 @@ export function hostedFailureLocations(output) {
       add(fields.file, fields.line, fields.col);
   }
   for (const match of output.matchAll(
-    /([^\s()]+\/tests\/e2e\/[a-z0-9-]+-hosted\.spec\.ts):(\d+):(\d+)/g,
+    /((?:[^\s()]+\/)?tests\/e2e\/[a-z0-9-]+-hosted\.spec\.ts):(\d+):(\d+)/g,
   ))
     add(match[1], match[2], match[3]);
   return locations;
@@ -803,33 +873,32 @@ export function verifyHostedJourneys({
   };
   node("pds-release.mjs", ["health"], { env: base });
   node("pds-release.mjs", ["invite-broker-route"], { env: base });
-  run(
-    "pnpm",
-    ["--filter", "@rebuildingamerica/atlas-app", "run", "test:hosted-smoke"],
-    { env: base },
-  );
+  const hosted = (script, runtimeEnv) => {
+    rmSync(hostedReportFile, { force: true });
+    return run(
+      "pnpm",
+      [
+        "--filter",
+        "@rebuildingamerica/atlas-app",
+        "run",
+        script,
+        "--reporter=github,json",
+      ],
+      {
+        env: { ...runtimeEnv, PLAYWRIGHT_JSON_OUTPUT_NAME: hostedReportFile },
+      },
+    );
+  };
+  hosted("test:hosted-smoke", base);
   // Identity redirects stay on this protected candidate; public MCP metadata
   // above must still advertise the canonical audience customers already use.
   const identity = {
     ...base,
     ATLAS_HOSTED_EXPECTED_PUBLIC_URL: candidate.origin,
   };
-  run(
-    "pnpm",
-    ["--filter", "@rebuildingamerica/atlas-app", "run", "test:hosted-identity"],
-    { env: identity },
-  );
+  hosted("test:hosted-identity", identity);
   if (runtime.ATLAS_BILLING_CHECKOUT_ENABLED === "true")
-    run(
-      "pnpm",
-      [
-        "--filter",
-        "@rebuildingamerica/atlas-app",
-        "run",
-        "test:hosted-checkout",
-      ],
-      { env: identity },
-    );
+    hosted("test:hosted-checkout", identity);
   return {
     releaseSha,
     workerName: deployment.workerName,
@@ -901,15 +970,24 @@ export async function publicationCli({
           args.some((arg) =>
             /^test:hosted-(smoke|identity|checkout)$/.test(arg),
           )
-        )
+        ) {
+          let failures = [];
+          try {
+            if (existsSync(hostedReportFile))
+              failures = hostedFailureReport(read(hostedReportFile));
+          } catch {
+            /* Private malformed report details remain suppressed. */
+          }
           console.error(
             JSON.stringify({
               hostedChecks: "failed",
+              failures,
               locations: hostedFailureLocations(
                 String(error.stdout ?? "") + "\n" + String(error.stderr ?? ""),
               ),
             }),
           );
+        }
         throw Error(
           `${binary} publication step failed; private provider output suppressed. Retain the release journals.`,
         );

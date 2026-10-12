@@ -137,6 +137,17 @@ async function parseJsonResponse(response: Response, label: string): Promise<unk
   return JSON.parse(body) as unknown;
 }
 
+async function catalogRequest(
+  origin: string,
+  path: string,
+  label: string,
+  init: RequestInit = {},
+): Promise<unknown> {
+  return test.step(label, async () =>
+    parseJsonResponse(await fetch(absoluteHostedUrl(origin, path), init), label),
+  );
+}
+
 function entityDetailPath(item: CatalogItem): string {
   const collection = item.type === "person" ? "people" : "organizations";
   return `/api/entities/by-slug/${collection}/${item.slug}`;
@@ -163,15 +174,14 @@ test.describe("hosted public catalog", () => {
     const mapPath = "/api/entities/map?min_lng=-125&min_lat=24&max_lng=-66&max_lat=50&limit=5";
 
     const apiCatalog = parseCatalogSummary(
-      await parseJsonResponse(
-        await fetch(absoluteHostedUrl(apiOrigin, catalogPath)),
-        "direct API catalog",
-      ),
+      await catalogRequest(apiOrigin, catalogPath, "direct API catalog"),
     );
     const publicCatalog = parseCatalogSummary(
-      await parseJsonResponse(
-        await fetch(absoluteHostedUrl(publicOrigin, catalogPath), hostedPublicRequestInit()),
+      await catalogRequest(
+        publicOrigin,
+        catalogPath,
         "public app catalog",
+        hostedPublicRequestInit(),
       ),
     );
     // Discovery publishes continuously, so the catalog can grow between two
@@ -179,16 +189,10 @@ test.describe("hosted public catalog", () => {
     // public app serves the live catalog: a stale cache would report a total
     // from before the first API read.
     const apiCatalogAfter = parseCatalogSummary(
-      await parseJsonResponse(
-        await fetch(absoluteHostedUrl(apiOrigin, catalogPath)),
-        "direct API catalog, read again",
-      ),
+      await catalogRequest(apiOrigin, catalogPath, "direct API catalog, read again"),
     );
     const map = parseMapSummary(
-      await parseJsonResponse(
-        await fetch(absoluteHostedUrl(publicOrigin, mapPath), hostedPublicRequestInit()),
-        "public app map",
-      ),
+      await catalogRequest(publicOrigin, mapPath, "public app map", hostedPublicRequestInit()),
     );
 
     expect(apiCatalog.total).toBeGreaterThan(0);
@@ -206,12 +210,11 @@ test.describe("hosted public catalog", () => {
     expect(map.points.length).toBeGreaterThan(0);
 
     const detail = parseEntityDetail(
-      await parseJsonResponse(
-        await fetch(
-          absoluteHostedUrl(publicOrigin, entityDetailPath(publicCatalogItem)),
-          hostedPublicRequestInit(),
-        ),
+      await catalogRequest(
+        publicOrigin,
+        entityDetailPath(publicCatalogItem),
         "public app entity detail",
+        hostedPublicRequestInit(),
       ),
     );
 
