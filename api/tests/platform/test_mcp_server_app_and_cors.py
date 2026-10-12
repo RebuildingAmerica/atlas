@@ -11,6 +11,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from atlas.platform.mcp.auth_middleware import McpBearerAuthMiddleware
 from atlas.platform.mcp.server import (
+    build_mcp,
     get_mcp_asgi_app,
     split_cors_origins,
 )
@@ -27,6 +28,28 @@ async def test_get_mcp_asgi_app_returns_mountable_app(patched_settings: Settings
     """`get_mcp_asgi_app` should return the Starlette streamable_http_app."""
     app = get_mcp_asgi_app()
     assert callable(app)
+
+
+@pytest.mark.asyncio
+async def test_pre_authenticated_transport_keeps_json_rpc_body(
+    patched_settings: Settings,  # noqa: ARG001
+) -> None:
+    """The hosted outer guard can pass a request to its own fresh transport."""
+    server = build_mcp()
+    app = get_mcp_asgi_app(server=server, include_bearer_auth=False)
+    async with (
+        server.session_manager.run(),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://localhost:3000"
+        ) as client,
+    ):
+        response = await client.post(
+            "/",
+            headers={"Accept": "application/json, text/event-stream"},
+            json={"jsonrpc": "2.0", "id": 1, "method": "ping"},
+        )
+    assert response.status_code == HTTP_OK
+    assert response.json() == {"jsonrpc": "2.0", "id": 1, "result": {}}
 
 
 class TestSplitCorsOrigins:
