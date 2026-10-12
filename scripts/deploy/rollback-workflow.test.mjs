@@ -21,7 +21,7 @@ test("hosted publishing keeps the full CI gate and trusted refs for both environ
     const workflow = await source(`.github/workflows/deploy-${target}.yml`);
     assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
     assert.match(workflow, /profile: production/);
-    assert.match(workflow, /needs: ci/);
+    assert.match(workflow, /needs: (?:ci|\[guard-production-ref, ci\])/);
     assert.match(workflow, /cloudflare-publication\.yml/);
     assert.doesNotMatch(
       workflow,

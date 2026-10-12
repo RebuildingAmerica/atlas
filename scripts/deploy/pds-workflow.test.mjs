@@ -27,7 +27,10 @@ for (const target of ["production", "staging"]) {
     );
     assert.match(source, /needs: guard-(production|staging)-ref/);
     assert.match(source, /profile: production/);
-    assert.match(source, /publish:\s*\n\s*needs: ci/);
+    assert.match(
+      source,
+      /publish:\s*\n\s*needs: (?:ci|\[guard-production-ref, ci\])/,
+    );
     assert.match(
       source,
       /uses: \.\/\.github\/workflows\/cloudflare-publication.yml/,
