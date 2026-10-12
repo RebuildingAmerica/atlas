@@ -31,6 +31,15 @@ const PUBLICATION_STAGES = new Set([
   "cloudflare-hyperdrive-read",
   "cloudflare-access-read",
   "native-dependencies",
+  "web-runtime-identity",
+  "web-runtime-prepare",
+  "web-build",
+  "web-auth-migration",
+  "web-artifact-copy",
+  "web-publish",
+  "web-archive",
+  "web-observe",
+  "web-hosted-journeys",
 ]);
 
 /** Retain a recovery boundary without exposing provider output or customer settings. */
@@ -109,6 +118,15 @@ export function publicationSummary({
     "cloudflare-hyperdrive-read": "Cloudflare database connection access",
     "cloudflare-access-read": "Cloudflare Access configuration",
     "native-dependencies": "Python native dependencies",
+    "web-runtime-identity": "Exact API and discovery runtime identity",
+    "web-runtime-prepare": "Protected web runtime preparation",
+    "web-build": "Workers application build",
+    "web-auth-migration": "Authentication database release migration",
+    "web-artifact-copy": "Web release artifact preparation",
+    "web-publish": "Protected web Worker publication",
+    "web-archive": "Immutable web release archive",
+    "web-observe": "Deployed web runtime observation",
+    "web-hosted-journeys": "Hosted sign-in, workspace and billing checks",
   };
   let boundary = "No safe failure boundary was recorded.";
   let details = "publication.json and release journals";
@@ -1277,61 +1295,81 @@ export async function publicationCli({
     index.publicApiState =
       context.operation === "promote-api" ? "verified" : "restored";
   } else if (context.operation === "web-candidate") {
-    const api = read(
-      join(releasePath(bundle, index.apiDirectory), "api-release.json"),
-    );
-    const evidence = read(evidenceFile);
-    assertWebApiRuntime(api, evidence);
+    publicationStage(bundle, "web-runtime-identity", () => {
+      const api = read(
+        join(releasePath(bundle, index.apiDirectory), "api-release.json"),
+      );
+      const evidence = read(evidenceFile);
+      assertWebApiRuntime(api, evidence);
+    });
     const candidateRuntimeFile = join(config, "candidate-runtime.json");
-    node("web-candidate.mjs", [
-      "prepare-runtime",
-      "--target",
-      "staging",
-      "--architecture",
-      "workers",
-      "--output",
-      candidateRuntimeFile,
-    ]);
+    publicationStage(bundle, "web-runtime-prepare", () =>
+      node("web-candidate.mjs", [
+        "prepare-runtime",
+        "--target",
+        "staging",
+        "--architecture",
+        "workers",
+        "--output",
+        candidateRuntimeFile,
+      ]),
+    );
     env.ATLAS_WEB_RUNTIME_FILE = candidateRuntimeFile;
-    node("web-runtime-command.mjs", [
-      "--",
-      "pnpm",
-      "web:prepare",
-      "--target",
-      "staging",
-      "--architecture",
-      "workers",
-    ]);
-    node("web-runtime-command.mjs", ["--", "pnpm", "web:migrate-auth"]);
-    const built = join(
-      ROOT,
-      ".atlas/web/staging",
-      context.sha,
-      "cloudflare-durable",
+    publicationStage(bundle, "web-build", () =>
+      node("web-runtime-command.mjs", [
+        "--",
+        "pnpm",
+        "web:prepare",
+        "--target",
+        "staging",
+        "--architecture",
+        "workers",
+      ]),
+    );
+    publicationStage(bundle, "web-auth-migration", () =>
+      node("web-runtime-command.mjs", ["--", "pnpm", "web:migrate-auth"]),
     );
     const destination = join(bundle, `web/candidate-${env.GITHUB_RUN_ID}`);
-    mkdirSync(join(bundle, "web"), { recursive: true });
-    cpSync(built, destination, { recursive: true });
-    node("web-candidate.mjs", [
-      "publish",
-      "--target",
-      "staging",
-      "--architecture",
-      "workers",
-      "--directory",
-      destination,
-    ]);
-    node("web-archive.mjs", ["--directory", destination]);
-    node("web-observe.mjs", [
-      "--target",
-      "staging",
-      "--deployment",
-      join(destination, "deployment.json"),
-      "--journal",
-      join(destination, "observations.jsonl"),
-    ]);
+    publicationStage(bundle, "web-artifact-copy", () => {
+      const built = join(
+        ROOT,
+        ".atlas/web/staging",
+        context.sha,
+        "cloudflare-durable",
+      );
+      mkdirSync(join(bundle, "web"), { recursive: true });
+      cpSync(built, destination, { recursive: true });
+    });
+    publicationStage(bundle, "web-publish", () =>
+      node("web-candidate.mjs", [
+        "publish",
+        "--target",
+        "staging",
+        "--architecture",
+        "workers",
+        "--directory",
+        destination,
+      ]),
+    );
+    publicationStage(bundle, "web-archive", () =>
+      node("web-archive.mjs", ["--directory", destination]),
+    );
+    publicationStage(bundle, "web-observe", () =>
+      node("web-observe.mjs", [
+        "--target",
+        "staging",
+        "--deployment",
+        join(destination, "deployment.json"),
+        "--journal",
+        join(destination, "observations.jsonl"),
+      ]),
+    );
     index.webDirectory = destination.slice(bundle.length + 1);
-    index.hostedAcceptance = hostedJourneys(destination);
+    index.hostedAcceptance = publicationStage(
+      bundle,
+      "web-hosted-journeys",
+      () => hostedJourneys(destination),
+    );
   } else if (context.operation === "promote-web") {
     if (index.publicApiState !== "verified")
       throw Error(

@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   loadWebRuntime,
   assertCandidateBudget,
@@ -86,6 +90,60 @@ test("accepts the existing canonical runtime and rejects provider credentials or
     );
   }
 });
+test("retired unified operators are removed only after both explicit roles preserve their access", () => {
+  const configured = {
+    ...runtime(),
+    ATLAS_OPERATOR_ALLOWED_EMAILS: " First@example.org,second@example.org ",
+    ATLAS_INSTANCE_OPERATOR_EMAILS:
+      "first@example.org,second@example.org,editor@example.org",
+    ATLAS_PLATFORM_OPERATOR_EMAILS: "second@example.org,first@example.org",
+  };
+  const { ATLAS_OPERATOR_ALLOWED_EMAILS: retired, ...expected } = configured;
+  assert.ok(retired);
+  assert.deepEqual(loadWebRuntime(JSON.stringify(configured)), expected);
+  for (const key of [
+    "ATLAS_INSTANCE_OPERATOR_EMAILS",
+    "ATLAS_PLATFORM_OPERATOR_EMAILS",
+  ]) {
+    assert.throws(
+      () =>
+        loadWebRuntime(
+          JSON.stringify({ ...configured, [key]: "first@example.org" }),
+        ),
+      /Both explicit operator roles must preserve the retired allowlist/,
+    );
+  }
+});
+
+test("runtime commands cannot inherit the retired operator setting from CI", () => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-runtime-command-"));
+  const file = join(directory, "runtime.json");
+  try {
+    writeFileSync(file, JSON.stringify(runtime()), { mode: 0o600 });
+    const result = spawnSync(
+      process.execPath,
+      [
+        "scripts/deploy/web-runtime-command.mjs",
+        "--",
+        process.execPath,
+        "-e",
+        "if (process.env.ATLAS_OPERATOR_ALLOWED_EMAILS) process.exit(23);",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          ATLAS_OPERATOR_ALLOWED_EMAILS: "former-operator@example.org",
+          ATLAS_WEB_RUNTIME_FILE: file,
+        },
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("candidate provisioning refuses absent traffic or quota evidence before any provider writes", () => {
   assert.throws(() => assertCandidateBudget({}, "workers"), /baseline/);
 });

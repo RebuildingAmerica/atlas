@@ -216,6 +216,64 @@ test("publication retains only closed stage outcomes when a provider fails", () 
     rmSync(directory, { recursive: true, force: true });
   }
 });
+test("web preparation failures identify the action without retaining private output", () => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-web-stage-"));
+  const env = {
+    ATLAS_PUBLICATION_TARGET: "production",
+    ATLAS_PUBLICATION_OPERATION: "web-candidate",
+    GITHUB_RUN_ID: "123",
+  };
+  try {
+    writeFileSync(
+      join(directory, "publication.json"),
+      JSON.stringify({
+        runId: "123",
+        operation: "web-candidate",
+      }),
+    );
+    for (const [stage, label] of [
+      ["web-runtime-identity", "Exact API and discovery runtime identity"],
+      ["web-runtime-prepare", "Protected web runtime preparation"],
+      ["web-build", "Workers application build"],
+      ["web-auth-migration", "Authentication database release migration"],
+      ["web-artifact-copy", "Web release artifact preparation"],
+      ["web-publish", "Protected web Worker publication"],
+      ["web-archive", "Immutable web release archive"],
+      ["web-observe", "Deployed web runtime observation"],
+      ["web-hosted-journeys", "Hosted sign-in, workspace and billing checks"],
+    ]) {
+      writeFileSync(join(directory, "publication-diagnostics.jsonl"), "");
+      const failure = new Error(
+        "private-provider-response customer@example.org",
+      );
+      assert.throws(
+        () =>
+          publicationStage(directory, stage, () => {
+            throw failure;
+          }),
+        (error) => error === failure,
+      );
+      const summary = publicationSummary({ env, directory, failed: true });
+      assert.ok(summary.includes(label), summary);
+      assert.doesNotMatch(
+        summary,
+        /private-provider-response|customer@example/,
+      );
+      assert.deepEqual(
+        readFileSync(join(directory, "publication-diagnostics.jsonl"), "utf8")
+          .trim()
+          .split("\n")
+          .map(JSON.parse),
+        [
+          { stage, status: "running" },
+          { stage, status: "fail" },
+        ],
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 const environment = {
   GITHUB_ACTIONS: "true",
   GITHUB_REPOSITORY: "RebuildingAmerica/atlas",
@@ -435,6 +493,8 @@ test("retained CI origins and authentication settings recover write-only provide
     ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.org/mcp",
     ATLAS_AUTH_MEMBERSHIP_URL: "https://atlas.example.org",
     ATLAS_OPERATOR_ALLOWED_EMAILS: "operator@example.org",
+    ATLAS_INSTANCE_OPERATOR_EMAILS: "operator@example.org",
+    ATLAS_PLATFORM_OPERATOR_EMAILS: "operator@example.org",
     DATABASE_BACKEND: "postgres",
     ATLAS_DEPLOY_MODE: "production",
     ATLAS_AUTH_BASE_PATH: "/api/auth",
@@ -494,10 +554,12 @@ test("retained CI origins and authentication settings recover write-only provide
         }),
     },
   );
+  const { ATLAS_OPERATOR_ALLOWED_EMAILS: retired, ...current } = retained;
+  assert.ok(retired);
   assert.deepEqual(result, {
     ATLAS_MANAGED: "true",
     ATLAS_MULTI_USER: "true",
-    ...retained,
+    ...current,
     ...readable,
   });
 });

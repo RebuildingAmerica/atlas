@@ -145,6 +145,27 @@ export function loadWebRuntime(raw) {
       "/mcp"
   )
     throw new Error("Canonical MCP audience mismatch.");
+  // Old hosts used one operator list for both jobs. Preserve that access through
+  // the explicit roles before dropping the key rejected by current authentication.
+  if (Object.hasOwn(env, "ATLAS_OPERATOR_ALLOWED_EMAILS")) {
+    const emails = (value) =>
+      new Set(
+        (value ?? "")
+          .split(",")
+          .map((email) => email.trim().toLowerCase())
+          .filter(Boolean),
+      );
+    const retired = emails(env.ATLAS_OPERATOR_ALLOWED_EMAILS);
+    for (const key of [
+      "ATLAS_INSTANCE_OPERATOR_EMAILS",
+      "ATLAS_PLATFORM_OPERATOR_EMAILS",
+    ])
+      if ([...retired].some((email) => !emails(env[key]).has(email)))
+        throw new Error(
+          "Both explicit operator roles must preserve the retired allowlist before migration.",
+        );
+    delete env.ATLAS_OPERATOR_ALLOWED_EMAILS;
+  }
   return env;
 }
 
