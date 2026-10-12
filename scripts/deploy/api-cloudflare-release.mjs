@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { createHash } from "node:crypto";
+import { canonicalDigest } from "./canonical-digest.mjs";
+export { canonicalDigest } from "./canonical-digest.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   appendFileSync,
@@ -53,20 +54,6 @@ const ROLES = ["discovery", "api"];
 const SHA = /^[a-f0-9]{40}$/,
   DIGEST = /^[a-f0-9]{64}$/;
 const json = (file) => JSON.parse(readFileSync(file, "utf8"));
-const sort = (value) =>
-  Array.isArray(value)
-    ? value.map(sort)
-    : value && typeof value === "object"
-      ? Object.fromEntries(
-          Object.keys(value)
-            .sort()
-            .map((key) => [key, sort(value[key])]),
-        )
-      : value;
-export const canonicalDigest = (value) =>
-  createHash("sha256")
-    .update(JSON.stringify(sort(value)))
-    .digest("hex");
 export const releaseMessage = (target, role, artifactDigest, schemaDigest) =>
   `Atlas ${target} ${role}; artifact=${artifactDigest}; schema=${schemaDigest}; consumers paused`;
 const roleClass = (role) =>

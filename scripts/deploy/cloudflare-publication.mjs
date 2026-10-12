@@ -16,7 +16,7 @@ import {
 import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertDurableBudget, sameRuntimeRelease } from "./web-assess.mjs";
-import { assertCurrentApiRoutingReceipt } from "./api-public-routing.mjs";
+import { assertCurrentApiRoutingReceipt } from "./api-routing-receipt.mjs";
 import {
   cloudflareCommand,
   CloudflareCommandError,
@@ -839,7 +839,6 @@ export async function publicationCli({
   args = process.argv.slice(2),
 } = {}) {
   const context = publicationContext(env);
-  const { loadWebRuntime } = await import("./web-candidate.mjs");
   const tool =
     command ??
     ((binary, args, options = {}) => {
@@ -871,6 +870,7 @@ export async function publicationCli({
       );
     return result;
   }
+  const { loadWebRuntime } = await import("./web-candidate.mjs");
   if (context.operation === "doctor") {
     if (existsSync(bundle))
       throw Error("Doctor requires a fresh runner directory.");

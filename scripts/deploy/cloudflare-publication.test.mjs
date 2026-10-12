@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
 import {
+  cpSync,
   mkdirSync,
   mkdtempSync,
   writeFileSync,
@@ -36,6 +38,43 @@ import { assertWebObserverConfiguration } from "./web-observe.mjs";
 import { canonicalDigest } from "./api-cloudflare-release.mjs";
 
 const sha = "a".repeat(40);
+
+test("trusted publication preflight and cleanup work in a clean checkout before dependency setup", (t) => {
+  const checkout = mkdtempSync(join(tmpdir(), "atlas-pre-setup-"));
+  t.after(() => rmSync(checkout, { recursive: true, force: true }));
+  cpSync(new URL("./", import.meta.url), join(checkout, "scripts/deploy"), {
+    recursive: true,
+  });
+  const env = {
+    GITHUB_ACTIONS: "true",
+    GITHUB_REPOSITORY: "RebuildingAmerica/atlas",
+    GITHUB_SHA: sha,
+    GITHUB_REF: "refs/tags/v2026.10.12-cf.14",
+    ATLAS_PUBLICATION_TARGET: "production",
+    ATLAS_PUBLICATION_OPERATION: "doctor",
+    CLOUDFLARE_ACCOUNT_ID: "b".repeat(32),
+    GH_TOKEN: "fixture",
+  };
+  const preflight = spawnSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      "import {publicationContext} from './scripts/deploy/cloudflare-publication.mjs'; console.log(JSON.stringify(publicationContext(process.env)));",
+    ],
+    { cwd: checkout, env, encoding: "utf8" },
+  );
+  assert.equal(preflight.status, 0, preflight.stderr);
+  assert.equal(JSON.parse(preflight.stdout).operation, "doctor");
+  for (const operation of ["--seal", "--cleanup"]) {
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/deploy/cloudflare-publication.mjs", operation],
+      { cwd: checkout, env, encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, result.stderr);
+  }
+});
 
 test("the normal publication path saves fresh canonical proof without rewriting original routing history", (t) => {
   const bundle = mkdtempSync(join(tmpdir(), "atlas-canonical-publication-"));
