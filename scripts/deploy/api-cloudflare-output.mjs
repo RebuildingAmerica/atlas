@@ -8,7 +8,7 @@ import {
   readdirSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { readBuildOutput } from "@cloudflare/build-output-utils";
 
 /** Produce portable Python artifacts without binding a public route or secrets. */
@@ -20,7 +20,7 @@ export async function preparePythonOutput({
   accountId,
   workerEnv,
   durableExport,
-  entrypoint = "entry.py",
+  entrypoint,
   packagesAsset = false,
   additionalSources = [],
   releaseTarget,
@@ -37,29 +37,21 @@ export async function preparePythonOutput({
         "Build output must not contain credentials or secret values.",
       );
   }
-  if (releaseTarget !== undefined) {
-    const role = {
-      api: ["production_entry.py", "ApiRuntime"],
-      discovery: ["production_discovery.py", "DiscoveryRuntime"],
-    }[workerRole];
-    if (
-      !["staging", "production"].includes(releaseTarget) ||
-      !role ||
-      entrypoint !== role[0] ||
-      durableExport !== role[1] ||
-      workerName !== `atlas-${workerRole}-${releaseTarget}` ||
-      !/^[a-f0-9]{32}$/.test(accountId ?? "") ||
-      additionalSources.length !== 1
-    )
-      throw new Error(
-        "An exact production runtime role, target, entrypoint and account are required.",
-      );
-  } else if (
-    !/^atlas-python-eval(?:-[a-z0-9-]+)?$/.test(workerName) ||
-    !/^[a-f0-9]{32}$/.test(accountId)
+  const role = {
+    api: ["production_entry.py", "ApiRuntime"],
+    discovery: ["production_discovery.py", "DiscoveryRuntime"],
+  }[workerRole];
+  if (
+    !["staging", "production"].includes(releaseTarget) ||
+    !role ||
+    entrypoint !== role[0] ||
+    durableExport !== role[1] ||
+    workerName !== `atlas-${workerRole}-${releaseTarget}` ||
+    !/^[a-f0-9]{32}$/.test(accountId ?? "") ||
+    additionalSources.length !== 1
   )
     throw new Error(
-      "An isolated Python evaluation Worker and account are required.",
+      "An exact production runtime role, target, entrypoint and account are required.",
     );
   const output = join(destination, ".cloudflare/output/v0");
   const worker = join(output, "workers/default");
@@ -186,74 +178,5 @@ export async function preparePythonOutput({
     }),
   );
   writeFileSync(join(worker, "worker.config.json"), JSON.stringify(config));
-  return readBuildOutput(destination);
-}
-
-/** Dispatch directly to the Python object without spending Python CPU at the edge. */
-export async function preparePythonEdgeOutput({
-  destination,
-  accountId,
-  pythonWorkerName,
-  discoveryWorkerName,
-}) {
-  if (
-    !/^[a-f0-9]{32}$/.test(accountId ?? "") ||
-    pythonWorkerName !== "atlas-python-eval-api" ||
-    (discoveryWorkerName !== undefined &&
-      discoveryWorkerName !== "atlas-python-eval-discovery")
-  )
-    throw new Error(
-      "The verified Python evaluation account and Worker are required.",
-    );
-  const output = join(destination, ".cloudflare/output/v0");
-  const worker = join(output, "workers/default");
-  const bundle = join(worker, "bundle");
-  mkdirSync(bundle, { recursive: true });
-  cpSync(
-    resolve(import.meta.dirname, "../../services/api-cloudflare/edge/index.js"),
-    join(bundle, "index.js"),
-  );
-  writeFileSync(
-    join(output, "config.json"),
-    JSON.stringify({
-      accountId,
-      buildContext: { mode: "production", isPreview: false },
-    }),
-  );
-  writeFileSync(
-    join(worker, "worker.config.json"),
-    JSON.stringify({
-      name: "atlas-python-eval-edge",
-      compatibilityDate: "2026-10-10",
-      workersDev: false,
-      previewUrls: false,
-      env: {
-        API_RUNTIME: {
-          type: "durable-object",
-          worker: pythonWorkerName,
-          exportName: "ApiRuntime",
-        },
-        ...(discoveryWorkerName
-          ? {
-              DISCOVERY_RUNTIME: {
-                type: "durable-object",
-                worker: discoveryWorkerName,
-                exportName: "ApiRuntime",
-              },
-            }
-          : {}),
-      },
-      observability: {
-        enabled: true,
-        headSamplingRate: 1,
-        redactQueryString: true,
-      },
-      manifest: {
-        type: "complete",
-        mainModule: "index.js",
-        modules: { "index.js": { type: "esm" } },
-      },
-    }),
-  );
   return readBuildOutput(destination);
 }

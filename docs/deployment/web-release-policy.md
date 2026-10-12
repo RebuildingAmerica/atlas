@@ -28,8 +28,8 @@ human verification system.
 
 Without this explicit policy the staging and production observation commands
 continue to require their original windows. Cloud Run is no longer selectable as
-a fallback. The diagnostic `web:durable-evaluate` command remains ineligible for
-production; use the normal release commands below to build a real candidate.
+a fallback. Use the normal release commands below to build a candidate. The
+standalone experiment publishers have been retired.
 
 ## Measured evidence
 

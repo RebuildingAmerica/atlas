@@ -1,4 +1,9 @@
-# Hosted migration validation
+# Hosted migration validation (historical)
+
+The experimental Workers and their standalone publishers have been retired. This
+report records earlier observations, not current production status. Use
+[the release policy](./web-release-policy.md) for the supported publication
+path.
 
 Baseline validated October 10, 2026 against commit
 `a14ff2135e7bf8e133741d2a644cf14245daa3ef`. CPU investigation and retained fixes
@@ -221,23 +226,9 @@ connections were all zero afterward. Stream overlap and cancellation tests also
 passed. These checks do not replace real hosted email, passkey, OAuth or billing
 acceptance.
 
-Reproduce a clean-source, protected evaluation with:
-
-```sh
-pnpm web:durable-evaluate \
-  --runtime-file /private/path/atlas-runtime.json \
-  --access-file /private/path/atlas-access.json \
-  --hyperdrive-id EXISTING_UNCACHED_HYPERDRIVE_ID \
-  --worker-name atlas-durable-eval-cpu \
-  --hostname atlas-durable-eval-cpu.atlas.rebuildingus.org
-```
-
-Set `CLOUDFLARE_ACCOUNT_ID` and `ATLAS_CF_PROFILE` first. The command checks
-runtime keys, complete PostgreSQL identity, Free subscriptions and exclusive
-Access protection, builds source with the Cloudflare Vite integration, deploys
-through `cf`, and records artifact digests and namespace/deployment IDs without
-secrets. It produces an `evaluation.json`, not a promotable release manifest.
-Normal release preparation rejects experimental execution explicitly.
+The retired publisher checked the database identity, Free subscriptions and
+exclusive Access protection, then recorded the deployed artifact and namespace.
+Its diagnostic report was never eligible for production promotion.
 
 Source commit `8a3f1953` was accepted by Cloudflare as Worker
 `atlas-durable-eval-cpu`, version `2035a26e-4d5d-4e9b-89cf-541493a39bfa`, with
@@ -248,7 +239,7 @@ while authoritative resolution returned `ENODATA` and HTTPS failed. Its advanced
 certificate pack was already active, so certificate issuance alone did not
 explain the failure. Resolution recovered without changing production DNS. At
 02:53 UTC on October 11, the saved deployment passed private anonymous-session
-and unauthenticated Access controls through the resumable command below.
+and unauthenticated Access controls.
 
 The descendant candidate also rendered Home, Privacy, sign-in and documentation
 HTML. Passkey authentication options returned the production RP ID,
@@ -277,19 +268,6 @@ restored. Each transition confirmed exactly one version at 100% traffic, private
 anonymous sessions, sign-in HTML, Access rejection and the removed CPU-control
 route. This is a diagnostic rollback with identical runtime secrets, not
 production session continuity or replacement-release acceptance.
-
-Deployment identity is retained as pending before probing the hostname. Resume
-the exact version after DNS/TLS is ready without rebuilding or deploying:
-
-```sh
-pnpm web:durable-evaluate \
-  --verify-file .atlas/web/durable-evaluation/COMMIT_SHA/evaluation.json \
-  --access-file /private/path/atlas-access.json
-```
-
-This mode verifies the exclusive Access policy and unchanged active version,
-then checks anonymous session behavior and unauthenticated rejection. A passing
-result establishes only those controls, not production eligibility.
 
 Duration remains an acceptance risk: Free includes 13,000 GB-seconds per day,
 with wall time charged while an object is active and unable to hibernate. At

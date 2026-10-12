@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { digestDirectory } from "./web-release.mjs";
 import {
+  validateRuntimeDatabase,
   publishApiRelease,
   canonicalDigest,
   prepareOperationsOutput,
@@ -781,3 +782,32 @@ test("stale active-release readback cannot verify a paused deployment", () =>
     );
     assert.equal(f.journals.at(-1).phase, "verification-required");
   }));
+
+test("runtime release rejects other databases on the same PostgreSQL host and enabled query caching", () => {
+  const valid = {
+    caching: { disabled: true },
+    origin: {
+      host: "db.example.com",
+      user: "atlas",
+      database: "atlas",
+      port: 5432,
+    },
+  };
+  const url = "postgres://atlas:private@db.example.com/atlas";
+  assert.doesNotThrow(() => validateRuntimeDatabase(valid, url));
+  for (const origin of [
+    { host: "other.example.com" },
+    { user: "other" },
+    { database: "other" },
+    { port: 6432 },
+  ])
+    assert.throws(() =>
+      validateRuntimeDatabase(
+        { ...valid, origin: { ...valid.origin, ...origin } },
+        url,
+      ),
+    );
+  assert.throws(() =>
+    validateRuntimeDatabase({ ...valid, caching: { disabled: false } }, url),
+  );
+});

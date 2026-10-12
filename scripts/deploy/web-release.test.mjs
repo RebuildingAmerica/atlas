@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import {
   mkdtempSync,
   mkdirSync,
@@ -282,4 +283,27 @@ test("promotion accepts only a fresh exact release after a complete staging wind
     assert.throws(() =>
       assertPromotionReady({ ...evidence, ...patch }, manifest(), now),
     );
+});
+
+test("normal release preparation refuses experimental execution before building", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      "scripts/deploy/web-hosting.mjs",
+      "prepare",
+      "--target",
+      "staging",
+      "--architecture",
+      "workers",
+    ],
+    {
+      env: { ...process.env, ATLAS_WORKERS_EXECUTION: "durable-evaluation" },
+      encoding: "utf8",
+    },
+  );
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Experimental execution cannot produce a promotable release/,
+  );
 });

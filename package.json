@@ -69,7 +69,6 @@
     "stripe:listen": "tsx scripts/bootstrap/products/atlas/listen.ts",
     "doctor": "tsx scripts/bootstrap/cold-start.ts --doctor",
     "web:doctor": "node scripts/deploy/web-hosting.mjs doctor",
-    "web:durable-evaluate": "node scripts/deploy/web-durable-evaluation.mjs",
     "web:bootstrap-google-billing": "node scripts/deploy/web-hosting.mjs bootstrap-google-billing",
     "web:baseline": "node scripts/deploy/web-baseline.mjs",
     "web:observe": "node scripts/deploy/web-observe.mjs",

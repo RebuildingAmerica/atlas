@@ -10,10 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readBuildOutput } from "@cloudflare/build-output-utils";
-import {
-  preparePythonOutput,
-  preparePythonEdgeOutput,
-} from "./api-cloudflare-output.mjs";
+import { preparePythonOutput } from "./api-cloudflare-output.mjs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { readdirSync } from "node:fs";
@@ -25,8 +22,10 @@ test("Python artifacts are portable cf Build Output with vendored package data",
     const source = join(root, "source"),
       vendor = join(root, "vendor");
     mkdirSync(source);
+    const production = join(root, "production");
+    mkdirSync(production);
     mkdirSync(join(vendor, "workers"), { recursive: true });
-    writeFileSync(join(source, "entry.py"), "class Default: pass\n");
+    writeFileSync(join(source, "production_entry.py"), "class Default: pass\n");
     writeFileSync(join(vendor, "workers", "__init__.py"), "# runtime sdk\n");
     writeFileSync(join(vendor, "workers", "bridge.js"), "export default {};\n");
     writeFileSync(join(vendor, "lookup.pyc"), Buffer.from([43, 14, 13, 10]));
@@ -34,17 +33,21 @@ test("Python artifacts are portable cf Build Output with vendored package data",
     const destination = join(root, "output");
     await preparePythonOutput({
       source,
+      additionalSources: [production],
+      releaseTarget: "staging",
+      workerRole: "api",
+      entrypoint: "production_entry.py",
+      durableExport: "ApiRuntime",
       vendor,
       destination,
-      workerName: "atlas-python-eval",
+      workerName: "atlas-api-staging",
       accountId: "a".repeat(32),
       workerEnv: { HYPERDRIVE: { type: "hyperdrive", id: "b".repeat(32) } },
-      durableExport: "ApiRuntime",
     });
     const output = await readBuildOutput(destination);
     const config = output.workers.default.config;
-    assert.equal(config.manifest.mainModule, "entry.py");
-    assert.equal(config.manifest.modules["entry.py"].type, "python");
+    assert.equal(config.manifest.mainModule, "production_entry.py");
+    assert.equal(config.manifest.modules["production_entry.py"].type, "python");
     assert.equal(
       config.manifest.modules["python_modules/workers/__init__.py"].type,
       "data",
@@ -64,20 +67,26 @@ test("Python artifacts are portable cf Build Output with vendored package data",
     );
     assert.equal(config.previewUrls, false);
     assert.deepEqual(config.domains ?? [], []);
-    writeFileSync(join(source, "discovery_entry.py"), "class Default: pass\n");
+    writeFileSync(
+      join(source, "production_discovery.py"),
+      "class Default: pass\n",
+    );
     const discovery = await preparePythonOutput({
       source,
+      additionalSources: [production],
+      releaseTarget: "staging",
+      workerRole: "discovery",
       vendor,
       destination: join(root, "discovery"),
-      workerName: "atlas-python-eval-discovery",
+      workerName: "atlas-discovery-staging",
       accountId: "a".repeat(32),
       workerEnv: {},
-      durableExport: "ApiRuntime",
-      entrypoint: "discovery_entry.py",
+      durableExport: "DiscoveryRuntime",
+      entrypoint: "production_discovery.py",
     });
     assert.equal(
       discovery.workers.default.config.manifest.mainModule,
-      "discovery_entry.py",
+      "production_discovery.py",
     );
     // Exercise cf's actual upload translation: Python's runtime recognizes
     // vendored packages by their canonical python_modules/ path prefix.
@@ -96,7 +105,7 @@ test("Python artifacts are portable cf Build Output with vendored package data",
       ),
     );
     const javascript = structuredClone(config);
-    javascript.manifest.modules["entry.py"].type = "esm";
+    javascript.manifest.modules["production_entry.py"].type = "esm";
     const jsUpload = uploadBundle(
       { ...output.workers.default, config: javascript },
       javascript,
@@ -106,13 +115,18 @@ test("Python artifacts are portable cf Build Output with vendored package data",
         (module) => module.name === "./python_modules/workers/__init__.py",
       ),
     );
-    symlinkSync(join(source, "entry.py"), join(vendor, "unsafe.py"));
+    symlinkSync(join(source, "production_entry.py"), join(vendor, "unsafe.py"));
     await assert.rejects(
       preparePythonOutput({
         source,
+        additionalSources: [production],
+        releaseTarget: "staging",
+        workerRole: "api",
+        entrypoint: "production_entry.py",
+        durableExport: "ApiRuntime",
         vendor,
         destination,
-        workerName: "atlas-python-eval",
+        workerName: "atlas-api-staging",
         accountId: "a".repeat(32),
         workerEnv: {},
       }),
@@ -135,47 +149,29 @@ test("build output rejects secret values and provider credentials", async () => 
     );
 });
 
-test("the JavaScript dispatcher binds the existing Python object without a Python edge invocation", async () => {
-  const destination = mkdtempSync(join(tmpdir(), "atlas-python-edge-"));
-  try {
-    const output = await preparePythonEdgeOutput({
-      destination,
-      accountId: "a".repeat(32),
-      pythonWorkerName: "atlas-python-eval-api",
-    });
-    const config = output.workers.default.config;
-    assert.equal(config.name, "atlas-python-eval-edge");
-    assert.equal(config.manifest.mainModule, "index.js");
-    assert.equal(config.manifest.modules["index.js"].type, "esm");
-    assert.deepEqual(config.env.API_RUNTIME, {
-      type: "durable-object",
-      worker: "atlas-python-eval-api",
-      exportName: "ApiRuntime",
-    });
-    assert.equal(config.workersDev, false);
-    assert.equal(config.previewUrls, false);
-    assert.deepEqual(config.domains ?? [], []);
-  } finally {
-    rmSync(destination, { recursive: true, force: true });
-  }
-});
-
 test("HTTP core is bundled for snapshots while deferred packages remain immutable assets", async () => {
   const root = mkdtempSync(join(tmpdir(), "atlas-python-assets-"));
   try {
     const source = join(root, "source");
     const vendor = join(root, "vendor");
     mkdirSync(source);
+    const production = join(root, "production");
+    mkdirSync(production);
     mkdirSync(vendor);
-    writeFileSync(join(source, "entry.py"), "class Default: pass\n");
+    writeFileSync(join(source, "production_entry.py"), "class Default: pass\n");
     writeFileSync(join(vendor, "pyvenv.cfg"), "");
     writeFileSync(join(vendor, "packages.zip"), "verified archive");
     await assert.rejects(
       preparePythonOutput({
         source,
+        additionalSources: [production],
+        releaseTarget: "staging",
+        workerRole: "api",
+        entrypoint: "production_entry.py",
+        durableExport: "ApiRuntime",
         vendor,
         destination: root,
-        workerName: "atlas-python-eval-api",
+        workerName: "atlas-api-staging",
         accountId: "a".repeat(32),
         workerEnv: {},
         packagesAsset: true,
@@ -185,9 +181,14 @@ test("HTTP core is bundled for snapshots while deferred packages remain immutabl
     writeFileSync(join(vendor, "core.zip"), "snapshot core");
     const output = await preparePythonOutput({
       source,
+      additionalSources: [production],
+      releaseTarget: "staging",
+      workerRole: "api",
+      entrypoint: "production_entry.py",
+      durableExport: "ApiRuntime",
       vendor,
       destination: root,
-      workerName: "atlas-python-eval-api",
+      workerName: "atlas-api-staging",
       accountId: "a".repeat(32),
       workerEnv: {},
       packagesAsset: true,
@@ -301,7 +302,7 @@ test("production Python artifacts require exact role/target and merge helpers wi
     }
     await assert.rejects(
       preparePythonOutput({ ...input, releaseTarget: undefined }),
-      /evaluation Worker/,
+      /production runtime/,
     );
     writeFileSync(join(production, "hosted_application.py"), "# collision\n");
     await assert.rejects(preparePythonOutput(input), /duplicate module/);

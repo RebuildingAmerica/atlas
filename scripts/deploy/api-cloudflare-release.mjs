@@ -23,7 +23,6 @@ import {
   assertCandidateDomain,
   loadWebRuntime,
 } from "./web-candidate.mjs";
-import { validateEvaluationDatabase } from "./web-durable-evaluation.mjs";
 import { digestDirectory } from "./web-release.mjs";
 import {
   runtimeReleaseIdentity,
@@ -33,6 +32,21 @@ import {
   captureApiRuntimeSnapshot,
   createApiRollbackPlan,
 } from "./api-runtime-rollback.mjs";
+
+export function validateRuntimeDatabase(hyperdrive, databaseUrl) {
+  const database = new URL(databaseUrl);
+  if (
+    hyperdrive.caching?.disabled !== true ||
+    hyperdrive.origin?.host !== database.hostname ||
+    hyperdrive.origin?.database !==
+      decodeURIComponent(database.pathname.slice(1)) ||
+    hyperdrive.origin?.user !== decodeURIComponent(database.username) ||
+    hyperdrive.origin?.port !== Number(database.port || 5432)
+  )
+    throw new Error(
+      "Existing PostgreSQL identity and disabled query caching must match.",
+    );
+}
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const ROLES = ["discovery", "api"];
@@ -1055,7 +1069,7 @@ export async function releaseCli(
     );
   const cf = (command, options) =>
     cloudflareCommand(command, { ...options, env });
-  validateEvaluationDatabase(
+  validateRuntimeDatabase(
     cf(["hyperdrive", "get", hyperdriveId]),
     runtime.DATABASE_URL,
   );
