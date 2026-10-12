@@ -33,6 +33,20 @@ The service health endpoint is `GET /xrpc/_health`. Caddy terminates TLS for
 the deployment-provided bearer secret, mints one-use invite codes with the local
 PDS admin password, and never exposes the admin password to the Atlas app.
 
+The hosted `doctor` runs `vm-check.sh` through the existing deployment identity.
+It inspects bounded root-only configuration files in current and previous Atlas
+directories, PDS containers attached to the same data disk, and literal Atlas
+assignments in instance startup metadata. The report contains credential
+presence and validation results, never secret values. Previous containers cannot
+qualify as the current healthy PDS. It neither executes startup code nor changes
+files, containers, permissions, or billing. Secret Manager's categorized errors
+distinguish missing access from `BILLING_DISABLED` so recovery of existing
+sign-in identities does not lead to unnecessary grants or credential rotation.
+
+The data backup operation above does not archive `/opt/atlas-pds/pds.env`. Keep
+the original credentials in the deployment secret store; a data archive alone
+does not establish that the PDS's sign-in configuration can be recovered.
+
 ## Local validation
 
 Run `pnpm run compose:validate` to validate the manifest, then start the PDS

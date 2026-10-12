@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-function fixture(t, denied, emptyQuotedKey) {
+function fixture(t, denied, emptyQuotedKey, retainedSource) {
   const root = mkdtempSync(join(tmpdir(), "atlas-pds-check-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const deploy = join(root, "deploy"),
@@ -36,9 +36,21 @@ function fixture(t, denied, emptyQuotedKey) {
       new RegExp(`^${emptyQuotedKey}=.+$`, "m"),
       `${emptyQuotedKey}=""`,
     );
+  if (retainedSource)
+    current = current.replace(
+      /^PDS_(?:ADMIN_PASSWORD|JWT_SECRET|PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX)=.+$/gm,
+      (line) => line.split("=")[0] + "=",
+    );
   writeFileSync(file, current, { mode: 0o600 });
   const before = readFileSync(file);
-  writeFileSync(join(deploy, "pds.env.previous"), contents, { mode: 0o600 });
+  if (!retainedSource)
+    writeFileSync(join(deploy, "pds.env.previous"), contents, { mode: 0o600 });
+  if (retainedSource === "sibling") {
+    mkdirSync(deploy + ".previous");
+    writeFileSync(join(deploy + ".previous", "pds.env"), contents, {
+      mode: 0o600,
+    });
+  }
   const python = spawnSync(
     "python3",
     ["-c", "import sys; print(sys.executable)"],
@@ -53,6 +65,7 @@ def request(req,timeout=None):
  if url.endswith('/email'):return io.BytesIO(b'pds-runtime@fixture-project.iam.gserviceaccount.com')
  if url.endswith('/scopes'):return io.BytesIO(b'https://www.googleapis.com/auth/cloud-platform')
  if url.endswith('/token'):return io.BytesIO(json.dumps({'access_token':os.environ['FIXTURE_PRIVATE']+'-token'}).encode())
+ if url.endswith('/startup-script'):return io.BytesIO(os.environ['FIXTURE_STARTUP'].encode())
  if '/secrets/' in url:
   if os.environ['FIXTURE_DENIED']=='true':raise urllib.error.HTTPError(url,403,'private-message',{},io.BytesIO(json.dumps({'error':{'status':'PERMISSION_DENIED','message':os.environ['FIXTURE_PRIVATE'],'details':[{'reason':'ACCESS_TOKEN_SCOPE_INSUFFICIENT'}]}}).encode()))
   return io.BytesIO(json.dumps({'payload':{'data':'Zml4dHVyZS12YWx1ZQ=='}}).encode())
@@ -67,8 +80,12 @@ exec(compile(sys.stdin.read(),'<vm-check>','exec'))
     join(bin, "docker"),
     `#!${process.execPath}
 const fs=require('node:fs');const args=process.argv.slice(2);fs.appendFileSync(process.env.FIXTURE_LOG,JSON.stringify(args)+'\\n');
-if(args[0]==='ps')console.log('1'.repeat(64));
-else if(args[0]==='inspect')console.log(JSON.stringify([{Id:'1'.repeat(64),State:{Status:'running',Health:{Status:process.env.FIXTURE_DENIED==='true'?'unhealthy':'healthy'}},Config:{Env:['PDS_HOSTNAME=pds.example.org','PDS_ADMIN_PASSWORD='+process.env.FIXTURE_PRIVATE,'PDS_JWT_SECRET='+process.env.FIXTURE_PRIVATE+'-jwt','PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX='+'1'.repeat(64)]}}]));
+if(args[0]==='ps')console.log('1'.repeat(64)+(process.env.FIXTURE_RETAINED.endsWith('container')&&!args.some(arg=>arg.startsWith('label=com.docker.compose.project.working_dir='))?'\\n'+'2'.repeat(64):''));
+else if(args[0]==='inspect'){
+ const old=args.at(-1)==='2'.repeat(64), retained=process.env.FIXTURE_RETAINED;
+ const env=retained&&!old?['PDS_HOSTNAME=pds.example.org']:['PDS_HOSTNAME=pds.example.org','PDS_ADMIN_PASSWORD='+process.env.FIXTURE_PRIVATE,'PDS_JWT_SECRET='+process.env.FIXTURE_PRIVATE+'-jwt','PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX='+'1'.repeat(64)];
+ console.log(JSON.stringify([{Id:args.at(-1),State:{Status:old?'exited':'running',Health:{Status:process.env.FIXTURE_DENIED==='true'?'unhealthy':'healthy'}},Config:{Env:env,Labels:{'com.docker.compose.project.working_dir':process.env.ATLAS_PDS_DEPLOY_DIRECTORY+(old?'.previous':'')}},Mounts:[{Source:process.env.ATLAS_PDS_DATA_DIRECTORY+(old&&retained==='foreign-container'?'.unrelated':''),Destination:'/pds'}]}]));
+}
 else process.exit(99);
 `,
     { mode: 0o755 },
@@ -89,6 +106,16 @@ else process.exit(99);
         FIXTURE_LOG: log,
         FIXTURE_PRIVATE: privateValue,
         FIXTURE_DENIED: String(denied),
+        FIXTURE_RETAINED: retainedSource ?? "",
+        FIXTURE_STARTUP:
+          retainedSource === "metadata"
+            ? contents
+            : retainedSource === "metadata-expansion"
+              ? contents.replace(
+                  /^PDS_JWT_SECRET=.+$/m,
+                  "PDS_JWT_SECRET=$(read_secret original)",
+                )
+              : "#!/bin/bash\n",
       },
     },
   );
@@ -150,3 +177,31 @@ for (const key of ["PDS_ADMIN_PASSWORD", "PDS_JWT_SECRET"])
     assert.equal(current.credentialsPresent[key], false);
     assert.equal(current.complete, false);
   });
+
+for (const source of ["sibling", "container", "metadata"])
+  test(`host check locates original configuration in retained ${source} without accepting the broken current PDS`, (t) => {
+    const { result, report, commands } = fixture(t, true, undefined, source);
+    assert.notEqual(result.status, 0);
+    assert.equal(report.recoveryConfigurationAvailable, true);
+    assert.ok(
+      report.configurationCandidates
+        .concat(report.containers)
+        .some((row) => row.complete),
+    );
+    assert.ok(commands.every((args) => ["ps", "inspect"].includes(args[0])));
+  });
+
+test("startup commands are not treated as recovered credential values", (t) => {
+  const { report } = fixture(t, true, undefined, "metadata-expansion");
+  assert.equal(report.recoveryConfigurationAvailable, false);
+  const metadata = report.configurationCandidates.find(
+    (row) => row.source === "startup-metadata",
+  );
+  assert.equal(metadata.credentialsPresent.PDS_JWT_SECRET, false);
+});
+
+test("credentials attached to another data disk do not qualify for recovery", (t) => {
+  const { report } = fixture(t, true, undefined, "foreign-container");
+  assert.equal(report.recoveryConfigurationAvailable, false);
+  assert.equal(report.containers.length, 1);
+});
