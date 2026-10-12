@@ -79,6 +79,43 @@ const OPERATIONS = [
   "restore-routing",
 ];
 
+/** Identify failed hosted assertions without publishing test bodies or credentials. */
+export function hostedFailureLocations(output) {
+  const locations = [];
+  const seen = new Set();
+  const add = (path, line, column) => {
+    const file = /(?:^|\/)tests\/e2e\/([a-z0-9-]+-hosted\.spec\.ts)$/.exec(
+      path,
+    );
+    if (!file || !Number(line) || !Number(column)) return;
+    const location = {
+      file: `app/tests/e2e/${file[1]}`,
+      line: Number(line),
+      column: Number(column),
+    };
+    const key = JSON.stringify(location);
+    if (!seen.has(key)) {
+      seen.add(key);
+      locations.push(location);
+    }
+  };
+  for (const match of output.matchAll(/::error ([^\n]*?)::/g)) {
+    const fields = Object.fromEntries(
+      match[1].split(",").map((field) => {
+        const separator = field.indexOf("=");
+        return [field.slice(0, separator), field.slice(separator + 1)];
+      }),
+    );
+    if (fields.file && fields.line && fields.col)
+      add(fields.file, fields.line, fields.col);
+  }
+  for (const match of output.matchAll(
+    /([^\s()]+\/tests\/e2e\/[a-z0-9-]+-hosted\.spec\.ts):(\d+):(\d+)/g,
+  ))
+    add(match[1], match[2], match[3]);
+  return locations;
+}
+
 /** Make release outcomes understandable without exposing provider responses. */
 export function publicationSummary({
   env,
@@ -859,7 +896,20 @@ export async function publicationCli({
           stdio: ["ignore", "pipe", "pipe"],
           ...options,
         });
-      } catch {
+      } catch (error) {
+        if (
+          args.some((arg) =>
+            /^test:hosted-(smoke|identity|checkout)$/.test(arg),
+          )
+        )
+          console.error(
+            JSON.stringify({
+              hostedChecks: "failed",
+              locations: hostedFailureLocations(
+                String(error.stdout ?? "") + "\n" + String(error.stderr ?? ""),
+              ),
+            }),
+          );
         throw Error(
           `${binary} publication step failed; private provider output suppressed. Retain the release journals.`,
         );

@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 import {
   absoluteHostedUrl,
   hostedPublicRequestInit,
-  optionalHostedOrigin,
   requiredHostedOrigin,
 } from "../helpers/hosted-endpoints";
 
@@ -48,8 +47,10 @@ async function parseJsonResponse(response: Response, label: string): Promise<unk
 test.describe("hosted ATProto identity routes", () => {
   test("serves configured client metadata through the public app", async () => {
     const publicOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
-    const expectedPublicOrigin =
-      optionalHostedOrigin("ATLAS_HOSTED_EXPECTED_PUBLIC_URL") ?? publicOrigin;
+    // OAuth redirects must return to the application being exercised. A
+    // protected candidate has its own callbacks; MCP keeps its canonical
+    // audience independently so existing customer authorization stays valid.
+    const expectedPublicOrigin = publicOrigin;
 
     const metadata = parseOAuthClientMetadata(
       await parseJsonResponse(

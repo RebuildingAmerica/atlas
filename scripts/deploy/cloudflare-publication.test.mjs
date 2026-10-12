@@ -32,12 +32,30 @@ import {
   verifyHostedJourneys,
   assertWebApiRuntime,
   verifyPublicationApiRouting,
+  hostedFailureLocations,
 } from "./cloudflare-publication.mjs";
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 import { assertWebObserverConfiguration } from "./web-observe.mjs";
 import { canonicalDigest } from "./api-cloudflare-release.mjs";
 
 const sha = "a".repeat(40);
+
+test("hosted failure diagnostics retain source locations without credentials or response bodies", () => {
+  const output = [
+    "::error file=/home/runner/work/atlas/atlas/app/tests/e2e/catalog-hosted.spec.ts,line=169,col=5,title=private-customer::Bearer private-token%0Aresponse body",
+    "    at /home/runner/work/atlas/atlas/app/tests/e2e/atproto-hosted.spec.ts:68:32",
+    "    at /private/secret.env:1:1",
+    "::error file=/tmp/secret.json,line=2,col=3::private-input",
+  ].join("\n");
+  assert.deepEqual(hostedFailureLocations(output), [
+    { file: "app/tests/e2e/catalog-hosted.spec.ts", line: 169, column: 5 },
+    { file: "app/tests/e2e/atproto-hosted.spec.ts", line: 68, column: 32 },
+  ]);
+  assert.deepEqual(
+    hostedFailureLocations("provider-secret-without-location"),
+    [],
+  );
+});
 
 test("trusted publication preflight and cleanup work in a clean checkout before dependency setup", (t) => {
   const checkout = mkdtempSync(join(tmpdir(), "atlas-pre-setup-"));
