@@ -31,6 +31,7 @@ import {
   assertWebApiRuntime,
 } from "./cloudflare-publication.mjs";
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
+import { assertWebObserverConfiguration } from "./web-observe.mjs";
 
 const sha = "a".repeat(40);
 
@@ -488,6 +489,10 @@ test("retained runtime acquisition forwards existing CI additions and preserves 
 });
 
 test("retained CI origins and authentication settings recover write-only provider configuration", async () => {
+  const verifier = {
+    ATLAS_HOSTED_E2E_ENABLED: "1",
+    ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
+  };
   const retained = {
     ATLAS_PUBLIC_URL: "https://atlas.example.org",
     ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.org/mcp",
@@ -513,6 +518,7 @@ test("retained CI origins and authentication settings recover write-only provide
     ATLAS_ADMIN_PUBLIC_URL: "https://admin.example.org",
     DATABASE_URL: "postgres://fixture@db.example.org/atlas",
     ATLAS_EMAIL_RESEND_API_KEY: "fixture-email-key",
+    ATLAS_HOSTED_E2E_SECRET: "fixture-hosted-verifier", // pragma: allowlist secret - synthetic test fixture
   };
   const inventory = [
     ...Object.entries(retained).map(([key], i) => ({
@@ -536,6 +542,7 @@ test("retained CI origins and authentication settings recover write-only provide
       VERCEL_ORG_ID: "team_fixture",
       VERCEL_TOKEN: "fixture-provider-token",
       ...retained,
+      ...verifier,
     },
     {
       collect: (input) =>
@@ -561,7 +568,15 @@ test("retained CI origins and authentication settings recover write-only provide
     ATLAS_MULTI_USER: "true",
     ...current,
     ...readable,
+    ...verifier,
   });
+  assert.doesNotThrow(() =>
+    assertWebObserverConfiguration(result, {
+      clientId: "fixture-access-id",
+      clientSecret: "fixture-access-secret", // pragma: allowlist secret - synthetic test fixture
+      hostedSecret: readable.ATLAS_HOSTED_E2E_SECRET,
+    }),
+  );
 });
 
 test("hosted journeys verify PDS before smoke, identity and checkout against the exact candidate", () => {

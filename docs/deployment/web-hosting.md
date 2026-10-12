@@ -582,7 +582,12 @@ Candidate publication is followed by `web:observe` against its actual protected
 URL. Before provisioning, the publisher verifies that the runtime already
 contains the enabled protected hosted verifier and that its secret matches the
 trusted workflow's `ATLAS_HOSTED_E2E_SECRET`. It also requires the Access
-credential pair. It never enables test routes or replaces identity secrets.
+credential pair. It never enables test routes or replaces identity secrets. The
+protected GitHub environment must explicitly set `ATLAS_HOSTED_E2E_ENABLED` and
+`ATLAS_HOSTED_E2E_PRODUCTION_ENABLED` to `1`. Publication forwards these
+settings with the existing verifier secret so hosted sign-in and workspace
+checks can exercise the candidate. An absent or disabled switch remains a
+blocker; conflicting retained provider values are rejected.
 
 The observer checks public SSR pages, published person and organization pages,
 external links in profile HTML, catalog reads, API health, a private anonymous
