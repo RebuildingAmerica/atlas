@@ -118,6 +118,13 @@ the current evidence:
   [workflow 38115026693](https://github.com/RebuildingAmerica/website/actions/runs/38115026693)
   passed. Its Vercel project is paused, Git-disconnected and has no domains.
   Atlas remains the active dependency on the paid subscription.
+- October 12 public API probes pass directory, source-linked profile,
+  private-route isolation and MCP authorization checks. Production PDS health is
+  failing after a full host release masked Secret Manager failures and wrote
+  empty credentials. Original credential recovery and hosted sign-in remain
+  release blockers. The runtime report links the failed release and the current
+  read-only diagnostic. Earlier candidate and health observations below are
+  historical; they do not supersede this incident.
 - The protected full API candidate, version prefix `c964d8a9`, source
   `3beff384`, passes health, UTC database and empty-search probes. Unsupported
   thread dependencies have been adapted. Nonempty searches still fail during

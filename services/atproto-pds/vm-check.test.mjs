@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-function fixture(t, denied) {
+function fixture(t, denied, emptyQuotedKey) {
   const root = mkdtempSync(join(tmpdir(), "atlas-pds-check-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const deploy = join(root, "deploy"),
@@ -28,13 +28,15 @@ function fixture(t, denied) {
     "",
   ].join("\n");
   const file = join(deploy, "pds.env");
-  writeFileSync(
-    file,
-    denied
-      ? contents.replace(/^PDS_JWT_SECRET=.+$/m, "PDS_JWT_SECRET=")
-      : contents,
-    { mode: 0o600 },
-  );
+  let current = denied
+    ? contents.replace(/^PDS_JWT_SECRET=.+$/m, "PDS_JWT_SECRET=")
+    : contents;
+  if (emptyQuotedKey)
+    current = current.replace(
+      new RegExp(`^${emptyQuotedKey}=.+$`, "m"),
+      `${emptyQuotedKey}=""`,
+    );
+  writeFileSync(file, current, { mode: 0o600 });
   const before = readFileSync(file);
   writeFileSync(join(deploy, "pds.env.previous"), contents, { mode: 0o600 });
   const python = spawnSync(
@@ -137,3 +139,14 @@ test("host check proves existing healthy configuration and scoped secret availab
   );
   assert.ok(commands.every((args) => ["ps", "inspect"].includes(args[0])));
 });
+
+for (const key of ["PDS_ADMIN_PASSWORD", "PDS_JWT_SECRET"])
+  test(`host check refuses an empty quoted ${key} as recoverable configuration`, (t) => {
+    const { result, report } = fixture(t, false, key);
+    assert.notEqual(result.status, 0);
+    const current = report.configurationCandidates.find((row) =>
+      row.path.endsWith("/pds.env"),
+    );
+    assert.equal(current.credentialsPresent[key], false);
+    assert.equal(current.complete, false);
+  });

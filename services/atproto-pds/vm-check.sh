@@ -24,7 +24,8 @@ allowed_reasons = {"ACCESS_TOKEN_SCOPE_INSUFFICIENT", "IAM_PERMISSION_DENIED",
 
 
 def configuration(values, hostname, data_directory):
-    present = {key: bool(values.get(key, "").strip()) for key in credential_keys}
+    present = {key: bool(values.get(key, "").strip().strip("'\"").strip())
+               for key in credential_keys}
     plc_valid = bool(re.fullmatch(r"[0-9a-fA-F]{64}", values.get(credential_keys[2], "")))
     matches = values.get("ATLAS_PDS_HOSTNAME", values.get("PDS_HOSTNAME")) == hostname
     data_matches = ("ATLAS_PDS_DATA_DIRECTORY" not in values or

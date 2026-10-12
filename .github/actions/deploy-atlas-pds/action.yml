@@ -115,6 +115,7 @@ runs:
         gcloud compute ssh "$INSTANCE_NAME" \
           --zone "$INSTANCE_ZONE" \
           --tunnel-through-iap \
+          --quiet \
           --command "$remote_command" < services/atproto-pds/vm-check.sh
 
     - name: Copy PDS release bundle to host

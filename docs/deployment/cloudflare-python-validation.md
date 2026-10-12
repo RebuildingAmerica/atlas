@@ -127,6 +127,45 @@ in ignored `.atlas/python-smoke/timer-comparison.json`.
 
 ## Shared usage and remaining gates
 
+### October 12 production readback
+
+The public Cloudflare API passed the repository's directory, source-linked
+profile, private-route isolation and MCP authorization probes at
+`2026-10-12T15:48:38Z`. This used seven HTTP requests against
+`atlas-api.rebuildingus.org`; it does not establish web sign-in, workspace,
+billing, load or rollback acceptance. The organization Worker dashboard still
+reports version prefix `0e132a50` at 100%, source `5fecdc0`, with both apex and
+`www` custom domains. Atlas's web domain remains on Vercel.
+
+Production PDS health is currently failing with HTTP 502. Publication run
+[38262678714](https://github.com/RebuildingAmerica/atlas/actions/runs/38262678714)
+received Secret Manager 403 responses, but its shell declarations masked those
+failures and replaced the host environment with empty credentials. Subsequent
+source changes stop before replacing configuration on a failed secret read and
+separate broker updates from PDS replacement. Do not rerun that old release or
+generate replacement identity keys. Existing accounts require recovery of the
+original credentials before hosted sign-in can pass.
+
+The read-only host diagnostic in
+[38271569120](https://github.com/RebuildingAmerica/atlas/actions/runs/38271569120)
+from tag `v2026.10.12-cf.14` failed before executing the diagnostic: the first
+SSH-key creation prompt consumed part of the script supplied on standard input.
+The invocation now uses Google's documented `--quiet` option so unattended
+authentication cannot consume the remote script. A black-box action test
+reproduces the lost input and verifies that the complete diagnostic reaches the
+host after the fix. This still needs a new hosted run. The diagnostic checks
+retained configuration, container health and categorized Secret Manager failures
+without writing PDS credentials or restarting containers. Google operator
+sign-in currently requires passkey verification. No original credential recovery
+is established yet.
+
+The current account dashboard shows rounded October 1–12 totals of 22.61k
+Workers requests and 187.97k CPU milliseconds. These month-to-date readings are
+not daily peak values or p99 measurements. A fresh whole-application quota and
+performance forecast is still required before the web cutover.
+
+### Earlier observations
+
 The authenticated dashboard observation at `2026-10-11T05:21:32Z` showed 18,850
 Workers requests for the displayed day and 22.08k for October 1–11. Durable
 Objects showed 249 GB-seconds and 1.66k requests for the displayed day. The
@@ -136,15 +175,16 @@ snapshots with provider aggregation delays, not historical peak measurements or
 a complete doubled-traffic forecast. Earlier lower readings are superseded by
 this observation; successful probes alone do not establish Free-plan headroom.
 
-Both retained PDS VMs are running and their public health endpoints respond
-successfully. Google billing remains closed. Actual API search/profile/MCP,
-identity isolation, bounded resumable discovery, firehose delivery, full web
-journeys, runtime latency/memory/quota forecasts and coordinated rollback still
-need hosted acceptance. Local discovery checkpoint storage now retains web
-evidence between worker invocations. That does not establish a complete
-resumable hosted discovery run; the existing 10–20 minute pipeline still needs
-bounded execution and recovery acceptance. Do not silently disable that
-capability or claim it is migrated.
+At the earlier observation, both retained PDS VMs were running and their public
+health endpoints responded successfully; the October 12 production failure above
+supersedes that health result. Google billing remains closed. Actual API
+search/profile/MCP, identity isolation, bounded resumable discovery, firehose
+delivery, full web journeys, runtime latency/memory/quota forecasts and
+coordinated rollback still need hosted acceptance. Local discovery checkpoint
+storage now retains web evidence between worker invocations. That does not
+establish a complete resumable hosted discovery run; the existing 10–20 minute
+pipeline still needs bounded execution and recovery acceptance. Do not silently
+disable that capability or claim it is migrated.
 
 Commit `234848ff` connects hosted observation producers to an instance-owned
 Firehose alarm. Local tests cover atomic observation/outbox commits, concurrent
