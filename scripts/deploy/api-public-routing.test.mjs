@@ -4,7 +4,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { prepareOperationsOutput } from "./api-cloudflare-release.mjs";
-import { changePublicApiRouting, routeClient } from "./api-public-routing.mjs";
+import {
+  assertCurrentApiRoutingReceipt,
+  changePublicApiRouting,
+  routeClient,
+} from "./api-public-routing.mjs";
 
 const accountId = "b".repeat(32),
   zoneId = "c".repeat(32);
@@ -329,6 +333,200 @@ test("restore refuses changed ownership, duplicate routes and a changed active v
       }),
     );
     assert.equal(state.mutations.length, 1);
+  }
+});
+
+async function upgradedRoute(t) {
+  const context = await fixture(t);
+  const promoted = await changePublicApiRouting({
+    ...context.options,
+    mode: "promote",
+    apply: true,
+  });
+  context.options.manifest.releaseSha = "b".repeat(40);
+  for (const identity of Object.values(
+    context.options.manifest.runtimeReleases,
+  )) {
+    identity.releaseSha = context.options.manifest.releaseSha;
+    identity.workerVersionId = "22222222-2222-2222-2222-222222222222";
+  }
+  context.options.manifest.operations.workerVersionId =
+    "22222222-2222-2222-2222-222222222222";
+  context.state.version = "22222222-2222-2222-2222-222222222222";
+  context.state.probes = [];
+  return { ...context, journal: promoted.journal };
+}
+
+test("canonical verification follows a namespace-preserving upgrade without rewriting its original routing journal", async (t) => {
+  const { state, options, journal } = await upgradedRoute(t);
+  const original = JSON.stringify(journal);
+  const result = await changePublicApiRouting({
+    ...options,
+    mode: "verify",
+    journal,
+    requireCanonical: true,
+  });
+  assert.equal(result.status, "verified-canonical");
+  assert.equal(result.releaseSha, options.manifest.releaseSha);
+  assert.equal(result.routeId, journal.routeId);
+  assert.deepEqual(result.runtimeReleases, options.manifest.runtimeReleases);
+  assert.equal(JSON.stringify(journal), original);
+  assert.equal(state.mutations.length, 1);
+  assert.ok(
+    state.probes.some(
+      (probe) => new URL(probe.url).hostname === publicHostname,
+    ),
+  );
+  assert.ok(
+    state.probes
+      .filter((probe) => new URL(probe.url).hostname === publicHostname)
+      .every((probe) => Object.keys(probe.headers).length === 0),
+  );
+  await assert.rejects(
+    changePublicApiRouting({
+      ...options,
+      mode: "restore",
+      journal,
+      apply: true,
+    }),
+    /another release/,
+  );
+  assert.equal(state.mutations.length, 1);
+});
+
+test("canonical verification refuses missing or changed retained route ownership without writes", async (t) => {
+  const mutations = [
+    (state) => {
+      state.rows.at(-1).id = "f".repeat(32);
+    },
+    (state) => {
+      state.rows.at(-1).script = "someone-else";
+    },
+    (state) => {
+      state.rows.at(-1).pattern = `${publicHostname}/api/*`;
+    },
+    (state) => {
+      state.rows.push({
+        id: "f".repeat(32),
+        pattern: "*.example.org/*",
+        script: "other",
+      });
+    },
+    (state) => {
+      state.rows.pop();
+    },
+  ];
+  for (const mutation of mutations) {
+    const { state, options, journal } = await upgradedRoute(t);
+    mutation(state);
+    await assert.rejects(
+      changePublicApiRouting({
+        ...options,
+        mode: "verify",
+        journal,
+        requireCanonical: true,
+      }),
+      /route|routing/i,
+    );
+    assert.equal(state.mutations.length, 1);
+  }
+  const { state, options } = await fixture(t);
+  await assert.rejects(
+    changePublicApiRouting({
+      ...options,
+      mode: "verify",
+      requireCanonical: true,
+    }),
+    /journal/i,
+  );
+  assert.deepEqual(state.mutations, []);
+});
+
+test("canonical verification rejects forged predecessor journals and changes during public probes", async (t) => {
+  for (const changed of ["journal", "runtime", "route"]) {
+    const { state, options, journal } = await upgradedRoute(t);
+    if (changed === "journal")
+      journal.snapshot.publicHostname = "other.example.org";
+    const fetcher = options.fetcher;
+    await assert.rejects(
+      changePublicApiRouting({
+        ...options,
+        mode: "verify",
+        journal,
+        requireCanonical: true,
+        fetcher: async (url, init) => {
+          const response = await fetcher(url, init);
+          if (new URL(url).hostname === publicHostname) {
+            if (changed === "runtime")
+              state.version = "33333333-3333-3333-3333-333333333333";
+            if (changed === "route") state.rows.at(-1).id = "f".repeat(32);
+          }
+          return response;
+        },
+      }),
+    );
+    assert.equal(state.mutations.length, 1);
+  }
+});
+
+test("promotion requires fresh canonical proof of the current runtime pair and unchanged original journal", async (t) => {
+  const { options, journal } = await upgradedRoute(t);
+  const now = Date.parse("2026-10-12T14:00:00Z");
+  const receipt = await changePublicApiRouting({
+    ...options,
+    mode: "verify",
+    journal,
+    requireCanonical: true,
+    now: () => now,
+  });
+  const input = {
+    manifest: options.manifest,
+    journal,
+    receipt,
+    zoneId,
+    publicHostname,
+    now,
+  };
+  assert.doesNotThrow(() => assertCurrentApiRoutingReceipt(input));
+  for (const mutate of [
+    (value) => {
+      value.receipt = undefined;
+    },
+    (value) => {
+      value.receipt.status = "verified-protected";
+    },
+    (value) => {
+      value.receipt.verifiedAt = new Date(now - 600_001).toISOString();
+    },
+    (value) => {
+      value.receipt.verifiedAt = new Date(now + 1).toISOString();
+    },
+    (value) => {
+      value.receipt.routeId = "f".repeat(32);
+    },
+    (value) => {
+      value.receipt.zoneId = "f".repeat(32);
+    },
+    (value) => {
+      value.receipt.workerVersionId = "33333333-3333-3333-3333-333333333333";
+    },
+    (value) => {
+      value.manifest.runtimeReleases.api.workerVersionId =
+        "33333333-3333-3333-3333-333333333333";
+    },
+    (value) => {
+      value.manifest.runtimeReleases.discovery.namespaceId = "f".repeat(32);
+    },
+    (value) => {
+      value.journal.updatedAt = "2026-10-12T14:00:01Z";
+    },
+  ]) {
+    const changed = structuredClone(input);
+    mutate(changed);
+    assert.throws(
+      () => assertCurrentApiRoutingReceipt(changed),
+      /canonical|routing/i,
+    );
   }
 });
 

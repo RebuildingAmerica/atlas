@@ -29,11 +29,131 @@ import {
   retainedPublicationRuntime,
   verifyHostedJourneys,
   assertWebApiRuntime,
+  verifyPublicationApiRouting,
 } from "./cloudflare-publication.mjs";
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 import { assertWebObserverConfiguration } from "./web-observe.mjs";
+import { canonicalDigest } from "./api-cloudflare-release.mjs";
 
 const sha = "a".repeat(40);
+
+test("the normal publication path saves fresh canonical proof without rewriting original routing history", (t) => {
+  const bundle = mkdtempSync(join(tmpdir(), "atlas-canonical-publication-"));
+  t.after(() => rmSync(bundle, { recursive: true, force: true }));
+  const apiDirectory = join(bundle, "api");
+  mkdirSync(apiDirectory);
+  const identity = {
+    releaseSha: sha,
+    accountId: "b".repeat(32),
+    zoneId: "c".repeat(32),
+    publicHostname: "api.example.org",
+    operationsHostname: "atlas-api-ops-production.example.org",
+    workerName: "atlas-api-ops-production",
+    workerVersionId: "22222222-2222-2222-2222-222222222222",
+    artifactDigest: "d".repeat(64),
+  };
+  const manifest = {
+    target: "production",
+    status: "verified-paused",
+    accountId: identity.accountId,
+    releaseSha: sha,
+    operations: {
+      hostname: identity.operationsHostname,
+      workerName: identity.workerName,
+      workerVersionId: identity.workerVersionId,
+      artifactDigest: identity.artifactDigest,
+    },
+    runtimeReleases: Object.fromEntries(
+      ["api", "discovery"].map((role) => [
+        role,
+        {
+          workerName: `atlas-${role}-production`,
+          releaseSha: sha,
+          workerVersionId: identity.workerVersionId,
+          artifactDigest: "e".repeat(64),
+          namespaceId: (role === "api" ? "1" : "2").repeat(32),
+          namespaceClass: role === "api" ? "ApiRuntime" : "DiscoveryRuntime",
+          storage: "sqlite",
+        },
+      ]),
+    ),
+  };
+  writeFileSync(
+    join(apiDirectory, "api-release.json"),
+    JSON.stringify(manifest),
+  );
+  const original = {
+    ...identity,
+    releaseSha: "f".repeat(40),
+    workerVersionId: "11111111-1111-1111-1111-111111111111",
+  };
+  const snapshot = { ...original, routes: [] };
+  const journal = {
+    schemaVersion: 1,
+    operationId: canonicalDigest(original),
+    snapshot,
+    snapshotDigest: canonicalDigest(snapshot),
+    phase: "verified",
+    routeId: "3".repeat(32),
+  };
+  const journalFile = join(bundle, "api-public-routing.json");
+  writeFileSync(journalFile, JSON.stringify(journal));
+  const bytesBefore = readFileSync(journalFile);
+  const now = Date.parse("2026-10-12T14:00:00Z");
+  const receipt = {
+    schemaVersion: 1,
+    kind: "cloudflare-api-routing-verification",
+    status: "verified-canonical",
+    ...identity,
+    runtimeReleases: manifest.runtimeReleases,
+    routeId: journal.routeId,
+    routingJournalDigest: canonicalDigest(journal),
+    verifiedAt: new Date(now).toISOString(),
+  };
+  const input = {
+    bundle,
+    apiDirectory,
+    operationsArtifact: join(apiDirectory, "operations"),
+    accessFile: join(bundle, "private-access.json"),
+    zoneId: identity.zoneId,
+    publicHostname: identity.publicHostname,
+    operationsHostname: identity.operationsHostname,
+    requireCanonical: true,
+    now: () => now + 1_000,
+    node: () =>
+      JSON.stringify({
+        ...receipt,
+        verifiedAt: new Date(now + 1_000).toISOString(),
+      }),
+  };
+  const expected = {
+    ...receipt,
+    verifiedAt: new Date(now + 1_000).toISOString(),
+  };
+  const result = verifyPublicationApiRouting(input);
+  assert.deepEqual(result, expected);
+  assert.deepEqual(
+    JSON.parse(
+      readFileSync(join(apiDirectory, "api-routing-verification.json")),
+    ),
+    expected,
+  );
+  assert.deepEqual(readFileSync(journalFile), bytesBefore);
+  for (const stale of [
+    { status: "verified-protected", releaseSha: sha },
+    { ...receipt, verifiedAt: new Date(now - 600_001).toISOString() },
+  ]) {
+    assert.throws(
+      () =>
+        verifyPublicationApiRouting({
+          ...input,
+          node: () => JSON.stringify(stale),
+        }),
+      /canonical/i,
+    );
+    assert.deepEqual(readFileSync(journalFile), bytesBefore);
+  }
+});
 
 test("web journeys use the exact verified API pair while discovery can remain paused", () => {
   const runtimeReleases = Object.fromEntries(
@@ -524,6 +644,16 @@ test("runtime captured from the retained host remains private through sealing an
       }),
     /private/,
   );
+});
+
+test("a prerequisite failure before publication has no bundle to scan or upload", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "atlas-publication-not-started-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const bundle = join(root, "absent-bundle");
+  assert.deepEqual(sealPublication(bundle, {}), {
+    status: "nothing-to-retain",
+  });
+  assert.equal(existsSync(bundle), false);
 });
 
 test("retained runtime acquisition forwards existing CI additions and preserves provider-only identity values", async () => {

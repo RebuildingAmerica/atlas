@@ -120,6 +120,16 @@ run containing its interruption journal.
    observations. Retain the exact previous web routing and immutable artifact
    before promotion. Verify the canonical site and protected admin afterward.
 
+An API upgrade preserves the original canonical route and routing journal.
+Production `verify-api` also checks that exact route's ownership and public
+directory behavior when a canonical route is retained. It saves a separate
+`api-routing-verification.json` naming the current API, discovery and operations
+versions and the original journal's digest. A replacement or consumer transition
+invalidates inherited HTTP verification flags. Immediately before web promotion,
+the publisher repeats the read-only canonical check; an old `publicApiState`
+flag cannot authorize a new release. These checks preserve source-linked profile
+URLs without deleting or recreating the API route.
+
 The measured evidence must name the exact source, Cloudflare account and API /
 discovery versions. Current daily usage alone does not prove capacity at twice
 the expected load or that discovery extraction fits its execution budget.
@@ -170,6 +180,16 @@ current versions and namespaces must still match provider readback. Recovery
 refuses changed ownership, duplicate matching routes or changed active versions.
 It leaves DNS and unrelated routes intact. Restoring an earlier origin's route
 is not proof that the earlier origin is healthy.
+
+`restore-api` removes the original route; it does not roll back an upgraded API
+runtime. The original journal remains bound to its original API pair and
+operations Worker version, so a newer manifest is deliberately rejected. The
+joint runtime rollback helper restores API and discovery versions while keeping
+the canonical route and its operations edge in place. It does not restore the
+operations Worker version. Removing the original route afterward would also
+require restoring that exact original edge version before using the original
+journal. Fresh canonical route proof does not establish that recovery sequence
+or replace a hosted joint version rollback rehearsal.
 
 The Roll Back Production workflow uses the retained web promotion journal and
 immutable prior deployment. Never recreate a rollback snapshot from the

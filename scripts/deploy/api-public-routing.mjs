@@ -11,7 +11,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { readBuildOutput } from "@cloudflare/build-output-utils";
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
-import { assertRuntimeDeployments } from "./web-assess.mjs";
+import { assertRuntimeDeployments, sameRuntimeRelease } from "./web-assess.mjs";
 import { assertAccessPolicy } from "./web-candidate.mjs";
 import { canonicalDigest } from "./api-cloudflare-release.mjs";
 import { digestDirectory } from "./web-release.mjs";
@@ -92,6 +92,99 @@ function matchesHost(pattern, hostname) {
     .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
     .replaceAll("*", ".*");
   return new RegExp(`^${escaped}$`, "i").test(hostname);
+}
+
+function routingIdentity(manifest, zoneId, publicHostname) {
+  return {
+    releaseSha: manifest.releaseSha,
+    accountId: manifest.accountId,
+    zoneId,
+    publicHostname,
+    operationsHostname: manifest.operations.hostname,
+    workerName: manifest.operations.workerName,
+    workerVersionId: manifest.operations.workerVersionId,
+    artifactDigest: manifest.operations.artifactDigest,
+  };
+}
+
+function assertRoutingContinuity(journal, identity) {
+  const { routes: originalRoutes, ...original } = journal?.snapshot ?? {};
+  if (
+    journal?.schemaVersion !== 1 ||
+    journal.phase !== "verified" ||
+    !ID.test(journal.routeId ?? "") ||
+    journal.operationId !== canonicalDigest(original) ||
+    journal.snapshotDigest !== canonicalDigest(journal.snapshot) ||
+    !/^[a-f0-9]{40}$/.test(original.releaseSha ?? "") ||
+    !VERSION.test(original.workerVersionId ?? "") ||
+    !/^[a-f0-9]{64}$/.test(original.artifactDigest ?? "") ||
+    [
+      "accountId",
+      "zoneId",
+      "publicHostname",
+      "operationsHostname",
+      "workerName",
+    ].some((key) => original[key] !== identity[key]) ||
+    !Array.isArray(originalRoutes) ||
+    originalRoutes.some((row) =>
+      matchesHost(row.pattern, identity.publicHostname),
+    )
+  )
+    throw Error(
+      "The original canonical API routing journal is invalid or its ownership differs.",
+    );
+}
+
+/** A previous cutover flag cannot certify that today's profiles reach the current API pair. */
+export function assertCurrentApiRoutingReceipt({
+  manifest,
+  receipt,
+  journal,
+  zoneId,
+  publicHostname,
+  now = Date.now(),
+}) {
+  const fail = () => {
+    throw Error(
+      "Fresh canonical API routing proof for the exact current runtime pair is required.",
+    );
+  };
+  if (
+    !manifest?.operations ||
+    manifest.target !== "production" ||
+    !["verified-active", "verified-paused"].includes(manifest.status)
+  )
+    fail();
+  const identity = routingIdentity(manifest, zoneId, publicHostname);
+  assertRoutingContinuity(journal, identity);
+  const verifiedAt = Date.parse(receipt?.verifiedAt ?? "");
+  if (
+    receipt?.schemaVersion !== 1 ||
+    receipt.kind !== "cloudflare-api-routing-verification" ||
+    receipt.status !== "verified-canonical" ||
+    Object.entries(identity).some(([key, value]) => receipt[key] !== value) ||
+    receipt.routeId !== journal.routeId ||
+    receipt.routingJournalDigest !== canonicalDigest(journal) ||
+    !Number.isFinite(verifiedAt) ||
+    !Number.isFinite(now) ||
+    verifiedAt > now ||
+    now - verifiedAt > 600_000
+  )
+    fail();
+  try {
+    for (const role of ["api", "discovery"])
+      if (
+        manifest.runtimeReleases?.[role]?.releaseSha !== manifest.releaseSha ||
+        !sameRuntimeRelease(
+          manifest.runtimeReleases?.[role],
+          receipt.runtimeReleases?.[role],
+        )
+      )
+        fail();
+  } catch {
+    fail();
+  }
+  return receipt;
 }
 
 /** Prove directory availability, private-route isolation and MCP authorization. */
@@ -208,6 +301,8 @@ export async function changePublicApiRouting({
   cloudflare = cloudflareCommand,
   fetcher = fetch,
   routeApi,
+  requireCanonical = false,
+  now = Date.now,
 }) {
   const cf = (args, options) => cloudflare(args, { ...options, env });
   const ops = manifest?.operations;
@@ -271,9 +366,34 @@ export async function changePublicApiRouting({
     ops.accessAppId,
   ]);
   assertAccessPolicy(policy, policy.policies, operationsHostname, access.id);
+  const identity = routingIdentity(manifest, zoneId, publicHostname);
   // Directory readers do not depend on discovery alarms. Prove the HTTP
   // experience while consumers stay paused, without touching public routes.
   if (mode === "verify") {
+    if (requireCanonical && !journal)
+      throw Error(
+        "The exact original canonical API routing journal is required.",
+      );
+    let assertRoute;
+    if (journal) {
+      assertRoutingContinuity(journal, identity);
+      const routes = routeApi ?? routeClient(zoneId, env);
+      assertRoute = async () => {
+        const matching = (await routes.list()).filter((row) =>
+          matchesHost(row.pattern, publicHostname),
+        );
+        if (
+          matching.length !== 1 ||
+          matching[0].id !== journal.routeId ||
+          matching[0].pattern !== `${publicHostname}/*` ||
+          matching[0].script !== ops.workerName
+        )
+          throw Error(
+            "Canonical API route ownership changed; verification was refused.",
+          );
+      };
+      await assertRoute();
+    }
     await probePublicApi({
       origin: `https://${operationsHostname}`,
       prefix: "/public-api",
@@ -283,21 +403,28 @@ export async function changePublicApiRouting({
       },
       fetcher,
     });
+    if (assertRoute)
+      await probePublicApi({ origin: `https://${publicHostname}`, fetcher });
     assertVersions();
+    if (assertRoute) {
+      await assertRoute();
+      // A fresh receipt protects profile readers after an API upgrade without
+      // relabeling the original route-removal journal or changing its recovery guards.
+      return {
+        schemaVersion: 1,
+        kind: "cloudflare-api-routing-verification",
+        status: "verified-canonical",
+        ...identity,
+        runtimeReleases: structuredClone(manifest.runtimeReleases),
+        routeId: journal.routeId,
+        routingJournalDigest: canonicalDigest(journal),
+        verifiedAt: new Date(now()).toISOString(),
+      };
+    }
     return { status: "verified-protected", releaseSha: manifest.releaseSha };
   }
   const routes = routeApi ?? routeClient(zoneId, env);
   const pattern = `${publicHostname}/*`;
-  const identity = {
-    releaseSha: manifest.releaseSha,
-    accountId: manifest.accountId,
-    zoneId,
-    publicHostname,
-    operationsHostname,
-    workerName: ops.workerName,
-    workerVersionId: ops.workerVersionId,
-    artifactDigest: ops.artifactDigest,
-  };
   const operationId = canonicalDigest(identity);
   const phases = [
     "prepared",
@@ -461,16 +588,13 @@ export async function publicRoutingCli(
     journal: existsSync(journalFile) ? read(journalFile) : undefined,
     checkpoint,
     apply: args.includes("--apply"),
+    requireCanonical: args.includes("--require-canonical"),
     env,
   });
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
   publicRoutingCli()
-    .then((r) =>
-      console.log(
-        JSON.stringify({ status: r.status, releaseSha: r.releaseSha }),
-      ),
-    )
+    .then((r) => console.log(JSON.stringify(r)))
     .catch(() => {
       console.error(
         "Public API routing failed; inspect the retained routing journal. Private provider diagnostics suppressed.",

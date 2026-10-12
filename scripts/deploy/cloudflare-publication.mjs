@@ -16,6 +16,7 @@ import {
 import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertDurableBudget, sameRuntimeRelease } from "./web-assess.mjs";
+import { assertCurrentApiRoutingReceipt } from "./api-public-routing.mjs";
 import {
   cloudflareCommand,
   CloudflareCommandError,
@@ -32,6 +33,7 @@ const PUBLICATION_STAGES = new Set([
   "cloudflare-access-read",
   "native-dependencies",
   "api-verify",
+  "api-routing-verify",
   "web-runtime-identity",
   "web-runtime-prepare",
   "web-build",
@@ -484,6 +486,64 @@ function atomicJson(file, value) {
   renameSync(temporary, file);
 }
 
+/** Keep profile URLs on the current API without replacing their original routing history. */
+export function verifyPublicationApiRouting({
+  bundle,
+  apiDirectory,
+  operationsArtifact,
+  accessFile,
+  zoneId,
+  publicHostname,
+  operationsHostname,
+  node,
+  requireCanonical = false,
+  now = Date.now,
+}) {
+  const manifestFile = join(apiDirectory, "api-release.json");
+  const journalFile = join(bundle, "api-public-routing.json");
+  const receipt = parseJson(
+    node("api-public-routing.mjs", [
+      "--mode",
+      "verify",
+      "--manifest",
+      manifestFile,
+      "--artifact",
+      operationsArtifact,
+      "--journal",
+      journalFile,
+      "--access-file",
+      accessFile,
+      "--zone-id",
+      zoneId,
+      "--public-hostname",
+      publicHostname,
+      "--operations-hostname",
+      operationsHostname,
+      ...(requireCanonical ? ["--require-canonical"] : []),
+    ]),
+  );
+  const manifest = read(manifestFile);
+  if (requireCanonical || receipt.status === "verified-canonical") {
+    assertCurrentApiRoutingReceipt({
+      manifest,
+      receipt,
+      journal: existsSync(journalFile) ? read(journalFile) : undefined,
+      zoneId,
+      publicHostname,
+      now: now(),
+    });
+    atomicJson(join(apiDirectory, "api-routing-verification.json"), receipt);
+  } else if (
+    receipt.status !== "verified-protected" ||
+    receipt.releaseSha !== manifest.releaseSha
+  ) {
+    throw Error(
+      "Current protected or canonical API routing proof is required.",
+    );
+  }
+  return receipt;
+}
+
 export function releasePath(root, relative) {
   const path = resolve(root, relative ?? "");
   if (!relative || path === root || !path.startsWith(root + sep))
@@ -634,6 +694,7 @@ function secretValues(value) {
 }
 
 export function sealPublication(bundle, env) {
+  if (!existsSync(bundle)) return { status: "nothing-to-retain" };
   const secrets = secretValues(env);
   for (const key of [
     "ATLAS_WEB_RUNTIME_ENV_JSON",
@@ -801,7 +862,15 @@ export async function publicationCli({
     cleanupPrivatePublicationDirectory(env);
     return { status: "private-inputs-removed" };
   }
-  if (args.includes("--seal")) return sealPublication(bundle, env);
+  if (args.includes("--seal")) {
+    const result = sealPublication(bundle, env);
+    if (env.GITHUB_OUTPUT)
+      appendFileSync(
+        env.GITHUB_OUTPUT,
+        `has-bundle=${result.status === "safe-to-retain"}\n`,
+      );
+    return result;
+  }
   if (context.operation === "doctor") {
     if (existsSync(bundle))
       throw Error("Doctor requires a fresh runner directory.");
@@ -1169,6 +1238,9 @@ export async function publicationCli({
     ]);
     index.apiDirectory = directory.slice(bundle.length + 1);
     index.apiPublicationDirectory = index.apiDirectory;
+    delete index.apiHttpState;
+    if (index.publicApiState === "verified")
+      index.publicApiState = "verification-required";
     delete index.pendingApiDirectory;
   } else if (
     ["verify-api", "activate-api", "pause-api"].includes(context.operation)
@@ -1216,24 +1288,24 @@ export async function publicationCli({
         ]),
       );
       if (context.target === "production") {
-        node("api-public-routing.mjs", [
-          "--mode",
-          "verify",
-          "--manifest",
-          manifestFile,
-          "--artifact",
-          join(previous, "operations"),
-          "--journal",
-          join(bundle, "api-public-routing.json"),
-          "--access-file",
-          accessFile,
-          "--zone-id",
-          zone,
-          "--public-hostname",
-          new URL(runtime.ATLAS_SERVER_API_PROXY_TARGET).hostname,
-          "--operations-hostname",
-          operations,
-        ]);
+        const receipt = publicationStage(bundle, "api-routing-verify", () =>
+          verifyPublicationApiRouting({
+            bundle,
+            apiDirectory: previous,
+            operationsArtifact: join(previous, "operations"),
+            accessFile,
+            zoneId: zone,
+            publicHostname: new URL(runtime.ATLAS_SERVER_API_PROXY_TARGET)
+              .hostname,
+            operationsHostname: operations,
+            node,
+            requireCanonical: ["verified", "verification-required"].includes(
+              index.publicApiState,
+            ),
+          }),
+        );
+        if (receipt.status === "verified-canonical")
+          index.publicApiState = "verified";
         index.apiHttpState = "verified-protected";
       }
       index.apiDirectory = previous.slice(bundle.length + 1);
@@ -1302,6 +1374,9 @@ export async function publicationCli({
           "--apply",
         ]);
         index.apiDirectory = directory.slice(bundle.length + 1);
+        delete index.apiHttpState;
+        if (index.publicApiState === "verified")
+          index.publicApiState = "verification-required";
         delete index.pendingConsumerDirectory;
       }
     }
@@ -1409,10 +1484,6 @@ export async function publicationCli({
       () => hostedJourneys(destination),
     );
   } else if (context.operation === "promote-web") {
-    if (index.publicApiState !== "verified")
-      throw Error(
-        "Canonical API cutover and hosted proof are required before web promotion.",
-      );
     const source = releasePath(bundle, index.webDirectory);
     index.hostedAcceptance = hostedJourneys(source);
     node("web-observe.mjs", [
@@ -1457,6 +1528,26 @@ export async function publicationCli({
         required(env, "VERCEL_ORG_ID"),
       ];
     }
+    publicationStage(bundle, "api-routing-verify", () =>
+      verifyPublicationApiRouting({
+        bundle,
+        apiDirectory: releasePath(bundle, index.apiDirectory),
+        operationsArtifact: join(
+          releasePath(
+            bundle,
+            index.apiPublicationDirectory ?? index.apiDirectory,
+          ),
+          "operations",
+        ),
+        accessFile,
+        zoneId: zone,
+        publicHostname: new URL(runtime.ATLAS_SERVER_API_PROXY_TARGET).hostname,
+        operationsHostname: operations,
+        node,
+        requireCanonical: true,
+      }),
+    );
+    index.publicApiState = "verified";
     node("web-promote.mjs", [
       "--target",
       "production",
