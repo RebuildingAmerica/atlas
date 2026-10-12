@@ -46,6 +46,15 @@ export async function proxyHostedRequest(
     "trailer",
   ])
     headers.delete(key);
+  // Documentation readers and API clients keep their Atlas identity and
+  // protected-host credentials private when requests cross this boundary.
+  for (const key of [...headers.keys()])
+    if (
+      key.startsWith("cf-access-") ||
+      key === "x-atlas-hosted-e2e-secret" ||
+      (docs && key.startsWith("x-atlas-"))
+    )
+      headers.delete(key);
   if (docs) headers.delete("authorization");
   const clientIp = headers.get("x-forwarded-for");
   if (api && clientIp) {
