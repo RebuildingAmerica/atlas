@@ -37,12 +37,44 @@ for (const target of ["production", "staging"]) {
       source,
       /git merge-base --is-ancestor "\$GITHUB_SHA" origin\/main/,
     );
+    const normalPublication = source.slice(
+      source.indexOf("  publish:"),
+      source.indexOf("  restore-pds:") < 0
+        ? undefined
+        : source.indexOf("  restore-pds:"),
+    );
     assert.doesNotMatch(
-      source,
+      normalPublication,
       /deploy-atlas-pds|gcloud|ATLAS_PDS_ADMIN_PASSWORD/,
     );
   });
 }
+
+test("production PDS restoration uses the existing fixed host release after full CI", async () => {
+  const source = await workflowSource(
+    ".github/workflows/deploy-production.yml",
+  );
+  assert.match(source, /restore-pds,/);
+  assert.match(
+    source,
+    /publish:\s*\n\s*needs: ci\n\s*if: inputs.operation != 'restore-pds'/,
+  );
+  const restore = source.slice(source.indexOf("  restore-pds:"));
+  assert.match(restore, /needs: ci/);
+  assert.match(restore, /if: inputs.operation == 'restore-pds'/);
+  assert.match(restore, /environment: production/);
+  assert.match(restore, /id-token: write/);
+  assert.match(restore, /uses: \.\/\.github\/actions\/deploy-atlas-pds/);
+  assert.match(restore, /mode: full/);
+  assert.match(
+    restore,
+    /invite-broker-secret: \$\{\{ secrets.ATLAS_PDS_INVITE_BROKER_SECRET \}\}/,
+  );
+  assert.doesNotMatch(
+    restore,
+    /CLOUDFLARE_API_TOKEN|DATABASE_URL|STRIPE_API_KEY|deploy-atlas-api|inputs.command|randomBytes/,
+  );
+});
 
 test("publication preserves the existing PDS broker and account verification credentials", async () => {
   const source = await workflowSource(
@@ -80,8 +112,14 @@ test("doctor checks the PDS host read-only and web candidates update its broker 
     source,
     /if: inputs.operation == 'web-candidate' \|\| inputs.operation == 'doctor'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
   );
-  assert.match(source, /mode: \$\{\{ inputs.operation == 'doctor' && 'check' \|\| 'broker' \}\}/);
-  assert.match(source, /if \(context.operation === 'web-candidate' && context.target === 'production'\)/);
+  assert.match(
+    source,
+    /mode: \$\{\{ inputs.operation == 'doctor' && 'check' \|\| 'broker' \}\}/,
+  );
+  assert.match(
+    source,
+    /if \(context.operation === 'web-candidate' && context.target === 'production'\)/,
+  );
   for (const setting of [
     "GCP_PROJECT_ID",
     "GCP_WORKLOAD_IDENTITY_PROVIDER",

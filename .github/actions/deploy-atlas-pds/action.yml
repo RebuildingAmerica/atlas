@@ -142,6 +142,7 @@ runs:
 
         gcloud compute scp "$archive" "${INSTANCE_NAME}:${remote_archive}" \
           --zone "$INSTANCE_ZONE" \
+          --quiet \
           --tunnel-through-iap
 
     - name: Release PDS on host
@@ -192,6 +193,7 @@ runs:
 
         gcloud compute ssh "$INSTANCE_NAME" \
           --zone "$INSTANCE_ZONE" \
+          --quiet \
           --tunnel-through-iap \
           --command "$remote_command"
 
