@@ -67,7 +67,9 @@ def test_compiled_routes_prepare_without_settings_or_database(monkeypatch):
     monkeypatch.setattr(database, "get_db_connection", forbidden)
     hosted = module()
     hosted.compiled_hosted_routes.cache_clear()
-    routes = hosted.compiled_hosted_routes(managed=True)
+    with monkeypatch.context() as preparation:
+        preparation.setattr("fastapi.openapi.utils.get_openapi", forbidden)
+        routes = hosted.compiled_hosted_routes(managed=True)
     assert hosted.compiled_hosted_routes(managed=True) is routes
     schema = get_openapi(title="Prepared routes", version="1", routes=list(routes))
     assert "/api/entities" in schema["paths"]

@@ -143,14 +143,17 @@ def compiled_hosted_routes(*, managed):
     resolve the current HostedRuntime; they never capture an application or user.
     """
     from fastapi import APIRouter
-    from fastapi.openapi.utils import get_openapi
+    from fastapi.routing import iter_route_contexts
     from atlas.platform.http import create_router
 
     provider = SimpleNamespace(dependency_overrides={})
     _install_async_dependencies(provider)
     router = APIRouter(dependency_overrides_provider=provider)
     router.include_router(create_router(managed=managed))
-    get_openapi(title="Atlas route preparation", version="1", routes=router.routes)
+    # Iteration compiles inclusion contexts without allocating an OpenAPI document
+    # and its JSON-schema graph, which exceed Python's deployment memory budget.
+    for _ in iter_route_contexts(router.routes):
+        pass
     return tuple(router.routes)
 
 
