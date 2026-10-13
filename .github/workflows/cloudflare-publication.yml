@@ -30,7 +30,7 @@ jobs:
   publish:
     name: >-
       ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: ${{ inputs.target }}
     timeout-minutes: 45
     concurrency:
