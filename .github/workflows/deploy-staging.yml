@@ -68,7 +68,7 @@ jobs:
     uses: ./.github/workflows/cloudflare-publication.yml
     with:
       target: staging
-      configuration-environment: ${{ (inputs.operation == 'publish-api' || inputs.operation == 'web-candidate') && 'production' || 'staging' }}
+      configuration-environment: ${{ inputs.operation != 'doctor' && 'production' || 'staging' }}
       operation: ${{ inputs.operation || 'doctor' }}
       source-run-id: ${{ inputs.source-run-id }}
     secrets: inherit
