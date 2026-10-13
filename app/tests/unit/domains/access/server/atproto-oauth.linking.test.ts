@@ -201,7 +201,7 @@ describe("atproto-oauth", () => {
 
   it("returns a signed-in operator to the identity section after a verified account link", async () => {
     mocks().getAuthRuntimeConfig.mockReturnValue({
-      internalSecret: "secret",
+      internalSecret: "secret", // pragma: allowlist secret - test fixture
       publicBaseUrl: "https://atlas.test",
     });
     const get = vi.fn().mockReturnValue({
