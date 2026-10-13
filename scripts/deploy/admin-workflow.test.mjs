@@ -27,7 +27,7 @@ for (const environment of ["production", "staging"]) {
     if (environment === "staging")
       assert.match(
         caller,
-        /configuration-environment: \$\{\{ inputs\.operation == 'web-candidate' && 'production' \|\| 'staging' \}\}/,
+        /configuration-environment: \$\{\{ \(inputs\.operation == 'publish-api' \|\| inputs\.operation == 'web-candidate'\) && 'production' \|\| 'staging' \}\}/,
       );
     assert.match(
       caller,
