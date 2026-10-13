@@ -125,7 +125,7 @@ export class CloudflareAccessVerifier implements PerimeterVerifier {
     private readonly config: AccessConfig,
     options: VerifierOptions = {},
   ) {
-    this.fetchCerts = options.fetch ?? fetch;
+    this.fetchCerts = options.fetch ?? fetch.bind(globalThis);
     this.now = options.now ?? Date.now;
   }
 

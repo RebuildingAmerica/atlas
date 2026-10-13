@@ -29,7 +29,7 @@ permissions:
 jobs:
   publish:
     name: >-
-      ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
+      ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
     runs-on: ubuntu-26.04
     environment: ${{ inputs.target }}
     timeout-minutes: 45
@@ -179,7 +179,7 @@ jobs:
       - name: Run selected deployment action
         run: node scripts/deploy/cloudflare-publication.mjs
       - name: Publish the protected platform admin
-        if: inputs.operation == 'web-candidate' || inputs.operation == 'promote-web' || inputs.operation == 'finalize-web'
+        if: inputs.operation == 'web-candidate' || inputs.operation == 'promote-web' || inputs.operation == 'finalize-web' || inputs.operation == 'publish-admin'
         uses: ./.github/actions/deploy-atlas-admin
         with:
           environment-name: ${{ inputs.target }}

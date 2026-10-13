@@ -70,6 +70,28 @@ describe("parseAccessConfig", () => {
 });
 
 describe("CloudflareAccessVerifier", () => {
+  it("binds the default native fetch to the Workers global", async () => {
+    const keys = await makeAccessTestKeys();
+    const certs = certsFetch([keys]);
+    function nativeFetch(this: unknown, ...args: Parameters<typeof fetch>) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return certs.fetch(...args);
+    }
+    vi.stubGlobal("fetch", nativeFetch);
+    try {
+      const verifier = new CloudflareAccessVerifier(CONFIG);
+      const result = await verifier.verify(
+        requestWith(await signAccessToken(keys)),
+      );
+      expect(result).toMatchObject({
+        ok: true,
+        principal: { email: TEST_OPERATOR },
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("names the operator Access signed in", async () => {
     const keys = await makeAccessTestKeys();
     const verifier = new CloudflareAccessVerifier(CONFIG, {

@@ -103,6 +103,7 @@ export function publicationStage(directory, stage, action) {
 const OPERATIONS = [
   "doctor",
   "publish-api",
+  "publish-admin",
   "verify-api",
   "activate-api",
   "pause-api",
@@ -257,6 +258,8 @@ export function publicationSummary({
   const operation = OPERATIONS.includes(env.ATLAS_PUBLICATION_OPERATION)
     ? env.ATLAS_PUBLICATION_OPERATION
     : "unknown operation";
+  if (operation === "publish-admin" && !failed)
+    return `${target} admin publication prepared for the existing deployment action. Public frontend and API remain unchanged.`;
   if (operation === "doctor")
     return `${target} configuration check: ${!failed && report?.status === "pass" ? "passed" : "failed"}.\nNothing deployed. ${target} health was not checked.\nDetails: doctor.json.`;
   if (!failed) {
@@ -1306,6 +1309,13 @@ export async function publicationCli({
       );
     return report;
   }
+  if (context.operation === "publish-admin")
+    return {
+      operation: context.operation,
+      target: context.target,
+      releaseSha: context.sha,
+      status: "admin-action-ready",
+    };
   const config = retainPrivatePublicationDirectory(env);
   const retainedRuntime = await retainedPublicationRuntime(env);
   for (const key of [
