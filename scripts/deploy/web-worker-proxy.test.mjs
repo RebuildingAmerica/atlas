@@ -86,7 +86,6 @@ test("documentation keeps proxy and test credentials and Atlas identity out of t
     "cf-access-jwt-assertion": "test-access-assertion",
     "cf-access-authenticated-user-email": "visitor@example.com",
     "cf-access-future-identity": "test-future-identity",
-    "x-atlas-hosted-e2e-secret": "test-hosted-verifier", // pragma: allowlist secret - synthetic test fixture
     "x-atlas-proxy-secret": "test-proxy-secret", // pragma: allowlist secret - synthetic test fixture
     "x-atlas-client-ip": "203.0.113.7",
     "x-atlas-future-identity": "test-future-identity",
@@ -108,7 +107,7 @@ test("documentation keeps proxy and test credentials and Atlas identity out of t
   assert.equal(await response.text(), "Documentation");
 });
 
-test("API proxy keeps bearer authentication but excludes Access and hosted verifier credentials", async () => {
+test("API proxy keeps bearer authentication but excludes Access and private credentials", async () => {
   globalThis.fetch = async (request) => {
     assert.equal(request.url, "https://api.example.com/mcp/");
     assert.equal(request.headers.get("cf-access-client-secret"), null);
@@ -116,7 +115,6 @@ test("API proxy keeps bearer authentication but excludes Access and hosted verif
       request.headers.get("cf-access-authenticated-user-email"),
       null,
     );
-    assert.equal(request.headers.get("x-atlas-hosted-e2e-secret"), null);
     assert.equal(
       request.headers.get("authorization"),
       "Bearer test-api-client",
@@ -128,8 +126,7 @@ test("API proxy keeps bearer authentication but excludes Access and hosted verif
       headers: {
         "cf-access-client-secret": "test-client-secret", // pragma: allowlist secret - synthetic test fixture
         "cf-access-authenticated-user-email": "visitor@example.com",
-        "x-atlas-hosted-e2e-secret": "test-hosted-verifier", // pragma: allowlist secret - synthetic test fixture
-        authorization: "Bearer test-api-client",
+            authorization: "Bearer test-api-client",
       },
     }),
     env,

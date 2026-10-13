@@ -44,56 +44,6 @@ export function pdsInviteBrokerUrl(pdsOrigin) {
   return new URL("/_atlas/pds/invites", origin).toString();
 }
 
-/** Diagnose fixture readiness without exposing account credentials or response bodies. */
-export async function inspectPdsCleanup(
-  runtime,
-  publisherSecret,
-  fetchImpl = fetch,
-) {
-  const result = {
-    name: "existing-pds-cleanup",
-    status: "block",
-    credentialMatchesPublisher:
-      typeof publisherSecret === "string" &&
-      publisherSecret.length > 0 &&
-      runtime.ATLAS_PDS_INVITE_BROKER_SECRET === publisherSecret,
-  };
-  let url;
-  try {
-    const origin = new URL(runtime.ATLAS_PDS_PUBLIC_URL);
-    url = pdsInviteBrokerUrl(origin.href);
-    if (
-      origin.pathname !== "/" ||
-      origin.search ||
-      origin.hash ||
-      runtime.ATLAS_PDS_INVITE_BROKER_URL !== url ||
-      !runtime.ATLAS_PDS_INVITE_BROKER_SECRET?.trim()
-    )
-      throw Error("Invalid broker configuration");
-  } catch {
-    return { ...result, reason: "broker-configuration-invalid" };
-  }
-  try {
-    const response = await fetchImpl(url, {
-      headers: {
-        authorization: `Bearer ${runtime.ATLAS_PDS_INVITE_BROKER_SECRET}`,
-      },
-      redirect: "error",
-      signal: AbortSignal.timeout(15_000),
-    });
-    result.responseStatus = response.status;
-    if (!response.ok) return { ...result, reason: "broker-rejected" };
-    const body = await response.json();
-    if (body?.hostedFixtureCleanup !== true)
-      return { ...result, reason: "broker-cleanup-unavailable" };
-    if (!result.credentialMatchesPublisher)
-      return { ...result, reason: "broker-credential-drift" };
-    return { ...result, status: "pass" };
-  } catch {
-    return { ...result, reason: "broker-transport-failed" };
-  }
-}
-
 export async function probePdsHealth(pdsOrigin, fetchImpl = fetch) {
   const url = pdsHealthUrl(pdsOrigin);
   const response = await fetchImpl(url, {

@@ -294,7 +294,6 @@ function apiRecovery({
   retained,
   runtime,
   probe,
-  hostedSecret,
   cloudflare,
 }) {
   if (!apiRollbackPlan) return runtimeRollback;
@@ -337,8 +336,7 @@ function apiRecovery({
           canonicalOrigin: runtime.ATLAS_PUBLIC_URL,
           clientId: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
           clientSecret: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
-          hostedSecret,
-          cloudflare,
+                  cloudflare,
         });
         const evidenceReference = join(
           directory,
@@ -366,7 +364,6 @@ export async function restoreCloudflareWebRouting({
   cloudflare = cloudflareCommand,
   applyDomains = applyRecoveryDomains,
   probe = probeWebRelease,
-  hostedSecret,
   runtimeRollback,
   apiRollbackPlan,
   apply = false,
@@ -385,8 +382,7 @@ export async function restoreCloudflareWebRouting({
     retained,
     runtime,
     probe,
-    hostedSecret,
-    cloudflare,
+      cloudflare,
   });
   if (
     snapshot.kind !== "cloudflare-web-routing" ||
@@ -499,8 +495,7 @@ export async function restoreCloudflareWebRouting({
     ...retained,
     origin: runtime.ATLAS_PUBLIC_URL,
     canonicalOrigin: runtime.ATLAS_PUBLIC_URL,
-    hostedSecret,
-    cloudflare,
+      cloudflare,
   });
   appendFileSync(
     join(directory, "rollback-observations.jsonl"),
@@ -536,7 +531,6 @@ async function promoteWithCloudflareRecovery({
   publish,
   applyDomains,
   probe,
-  hostedSecret,
   archive,
   runtimeRollback,
   apiRollbackPlan,
@@ -559,8 +553,7 @@ async function promoteWithCloudflareRecovery({
     retained,
     runtime: plan.runtime,
     probe,
-    hostedSecret,
-    cloudflare,
+      cloudflare,
   });
   const previous = jointRuntimes(retained);
   assertRuntimeDeployments(
@@ -640,8 +633,7 @@ async function promoteWithCloudflareRecovery({
     cloudflare,
     applyDomains,
     probe,
-    hostedSecret,
-    runtimeRollback,
+      runtimeRollback,
   };
   await restoreCloudflareWebRouting(recovery);
   try {
@@ -676,8 +668,7 @@ async function promoteWithCloudflareRecovery({
       ...production,
       origin: production.productionUrl,
       canonicalOrigin: production.productionUrl,
-      hostedSecret,
-      cloudflare,
+          cloudflare,
     });
     appendFileSync(
       production.observationJournal,
@@ -732,7 +723,6 @@ export async function promoteWebRelease({
   evidence,
   records,
   expected,
-  hostedSecret,
   cloudflare = cloudflareCommand,
   publish = publishWebCandidate,
   applyDomains = applyRecoveryDomains,
@@ -769,8 +759,7 @@ export async function promoteWebRelease({
     publish,
     applyDomains,
     probe,
-    hostedSecret,
-    archive,
+      archive,
     runtimeRollback,
     apiRollbackPlan,
   });
@@ -786,7 +775,6 @@ export async function recoverPromotedCloudflareRelease({
   cloudflare = cloudflareCommand,
   applyDomains = applyRecoveryDomains,
   probe = probeWebRelease,
-  hostedSecret,
   archive = archiveWebRelease,
 }) {
   const deployment = read(join(directory, "deployment.json"));
@@ -836,8 +824,7 @@ export async function recoverPromotedCloudflareRelease({
     cloudflare,
     applyDomains,
     probe,
-    hostedSecret,
-    apiRollbackPlan,
+      apiRollbackPlan,
     apply,
   });
   if (apply) {
@@ -887,7 +874,6 @@ async function main() {
           apiRollbackPlan: value("--api-rollback-plan")
             ? read(resolve(value("--api-rollback-plan")))
             : undefined,
-          hostedSecret: process.env.ATLAS_HOSTED_E2E_SECRET,
           apply: args.includes("--apply"),
         }),
         null,
@@ -984,7 +970,6 @@ async function main() {
           accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
           zoneId: process.env.CLOUDFLARE_ZONE_ID,
         },
-        hostedSecret: process.env.ATLAS_HOSTED_E2E_SECRET,
       }),
       null,
       2,

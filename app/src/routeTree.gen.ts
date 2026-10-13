@@ -116,8 +116,6 @@ import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/int
 import { Route as ApiAuthInternalDiscountReviewResultsRouteImport } from './routes/api/auth/internal/discount-review-results'
 import { Route as ApiAuthInternalPlatformLookupRouteImport } from './routes/api/auth/internal/platform-lookup'
 import { Route as ApiAuthInternalPlatformWaitlistRouteImport } from './routes/api/auth/internal/platform-waitlist'
-import { Route as ApiE2eHostedBillingInventoryRouteImport } from './routes/api/e2e/hosted/billing-inventory'
-import { Route as ApiE2eHostedIdentityRouteImport } from './routes/api/e2e/hosted/identity'
 import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
 import { Route as ApiAtprotoOauthHarnessAuthorizeRouteImport } from './routes/api/atproto/oauth/harness/authorize'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -691,17 +689,6 @@ const ApiAuthInternalPlatformWaitlistRoute =
     path: '/api/auth/internal/platform-waitlist',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiE2eHostedBillingInventoryRoute =
-  ApiE2eHostedBillingInventoryRouteImport.update({
-    id: '/api/e2e/hosted/billing-inventory',
-    path: '/api/e2e/hosted/billing-inventory',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiE2eHostedIdentityRoute = ApiE2eHostedIdentityRouteImport.update({
-  id: '/api/e2e/hosted/identity',
-  path: '/api/e2e/hosted/identity',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiE2eWorkspaceMemberRoute = ApiE2eWorkspaceMemberRouteImport.update({
   id: '/api/e2e/workspace/member',
   path: '/api/e2e/workspace/member',
@@ -822,8 +809,6 @@ export interface FileRoutesByFullPath {
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
-  '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
-  '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people/': typeof PublicProfilesPeopleIndexRoute
@@ -926,8 +911,6 @@ export interface FileRoutesByTo {
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
-  '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
-  '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people': typeof PublicProfilesPeopleIndexRoute
@@ -1041,8 +1024,6 @@ export interface FileRoutesById {
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
-  '/api/e2e/hosted/billing-inventory': typeof ApiE2eHostedBillingInventoryRoute
-  '/api/e2e/hosted/identity': typeof ApiE2eHostedIdentityRoute
   '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/_public/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/_public/profiles/people/': typeof PublicProfilesPeopleIndexRoute
@@ -1153,8 +1134,6 @@ export interface FileRouteTypes {
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
     | '/api/auth/internal/platform-waitlist'
-    | '/api/e2e/hosted/billing-inventory'
-    | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
     | '/profiles/organizations/'
     | '/profiles/people/'
@@ -1257,8 +1236,6 @@ export interface FileRouteTypes {
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
     | '/api/auth/internal/platform-waitlist'
-    | '/api/e2e/hosted/billing-inventory'
-    | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
     | '/profiles/organizations'
     | '/profiles/people'
@@ -1371,8 +1348,6 @@ export interface FileRouteTypes {
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
     | '/api/auth/internal/platform-waitlist'
-    | '/api/e2e/hosted/billing-inventory'
-    | '/api/e2e/hosted/identity'
     | '/api/e2e/workspace/member'
     | '/_public/profiles/organizations/'
     | '/_public/profiles/people/'
@@ -1414,8 +1389,6 @@ export interface RootRouteChildren {
   ApiAuthInternalDiscountReviewResultsRoute: typeof ApiAuthInternalDiscountReviewResultsRoute
   ApiAuthInternalPlatformLookupRoute: typeof ApiAuthInternalPlatformLookupRoute
   ApiAuthInternalPlatformWaitlistRoute: typeof ApiAuthInternalPlatformWaitlistRoute
-  ApiE2eHostedBillingInventoryRoute: typeof ApiE2eHostedBillingInventoryRoute
-  ApiE2eHostedIdentityRoute: typeof ApiE2eHostedIdentityRoute
   ApiE2eWorkspaceMemberRoute: typeof ApiE2eWorkspaceMemberRoute
   ApiAtprotoOauthHarnessAuthorizeRoute: typeof ApiAtprotoOauthHarnessAuthorizeRoute
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
@@ -2172,20 +2145,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthInternalPlatformWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/e2e/hosted/billing-inventory': {
-      id: '/api/e2e/hosted/billing-inventory'
-      path: '/api/e2e/hosted/billing-inventory'
-      fullPath: '/api/e2e/hosted/billing-inventory'
-      preLoaderRoute: typeof ApiE2eHostedBillingInventoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/e2e/hosted/identity': {
-      id: '/api/e2e/hosted/identity'
-      path: '/api/e2e/hosted/identity'
-      fullPath: '/api/e2e/hosted/identity'
-      preLoaderRoute: typeof ApiE2eHostedIdentityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/e2e/workspace/member': {
       id: '/api/e2e/workspace/member'
       path: '/api/e2e/workspace/member'
@@ -2507,8 +2466,6 @@ const rootRouteChildren: RootRouteChildren = {
     ApiAuthInternalDiscountReviewResultsRoute,
   ApiAuthInternalPlatformLookupRoute: ApiAuthInternalPlatformLookupRoute,
   ApiAuthInternalPlatformWaitlistRoute: ApiAuthInternalPlatformWaitlistRoute,
-  ApiE2eHostedBillingInventoryRoute: ApiE2eHostedBillingInventoryRoute,
-  ApiE2eHostedIdentityRoute: ApiE2eHostedIdentityRoute,
   ApiE2eWorkspaceMemberRoute: ApiE2eWorkspaceMemberRoute,
   ApiAtprotoOauthHarnessAuthorizeRoute: ApiAtprotoOauthHarnessAuthorizeRoute,
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
@@ -2519,11 +2476,13 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
+
+import type { createStart } from '@tanstack/react-start'
+
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
+
     router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

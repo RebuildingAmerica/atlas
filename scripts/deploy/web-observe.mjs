@@ -8,7 +8,6 @@ import {
 } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { runtimeInventoryPasses } from "./billing-inventory.mjs";
 import { setTimeout } from "node:timers/promises";
 import { spawnSync } from "node:child_process";
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
@@ -39,7 +38,6 @@ const BASE_CHECKS = [
   "documentation",
   "mcp:/mcp",
   "mcp:/mcp/",
-  "release-billing",
 ];
 const ROOT = resolve(import.meta.dirname, "../..");
 const TEN_MINUTES = 600_000;
@@ -79,22 +77,10 @@ const RESPONSE_TYPES = new Set([
   "text/event-stream",
 ]);
 
-/** Preserve the existing protected verifier; do not deploy an untestable candidate. */
-export function assertWebObserverConfiguration(
-  runtime,
-  { clientId, clientSecret, hostedSecret },
-) {
-  if (
-    !clientId?.trim() ||
-    !clientSecret?.trim() ||
-    !hostedSecret?.trim() ||
-    runtime.ATLAS_HOSTED_E2E_ENABLED !== "1" ||
-    runtime.ATLAS_HOSTED_E2E_PRODUCTION_ENABLED !== "1" ||
-    runtime.ATLAS_HOSTED_E2E_SECRET !== hostedSecret
-  )
-    throw new Error(
-      "The existing protected hosted verifier and matching Access credentials are required before candidate provisioning.",
-    );
+/** Require paired Cloudflare Access credentials for protected release probes. */
+export function assertWebObserverConfiguration({ clientId, clientSecret }) {
+  if (!clientId?.trim() || !clientSecret?.trim())
+    throw new Error("Cloudflare Access credentials are required before candidate provisioning.");
 }
 function cleanOrigin(value) {
   const url = new URL(value);
@@ -261,7 +247,6 @@ export async function probeWebRelease({
   originUrl,
   clientId,
   clientSecret,
-  hostedSecret,
   fetcher = fetch,
   cloudflare = cloudflareCommand,
   google = inspectCloudRun,
@@ -286,10 +271,8 @@ export async function probeWebRelease({
     originUrl,
   });
   canonicalOrigin = cleanOrigin(canonicalOrigin);
-  if (Boolean(clientId) !== Boolean(clientSecret) || !hostedSecret?.trim())
-    throw new Error(
-      "Paired Access credentials and the existing hosted verifier secret are required.",
-    );
+  if (Boolean(clientId) !== Boolean(clientSecret))
+    throw new Error("Paired Cloudflare Access credentials are required.");
   if (architecture === "hybrid") {
     const url = new URL(originUrl);
     if (
@@ -303,17 +286,16 @@ export async function probeWebRelease({
   let diagnostic;
   async function request(
     path,
-    { method = "GET", inventory = false, anonymous = false } = {},
+    { method = "GET", anonymous = false } = {},
   ) {
     let url = new URL(path, origin);
     const headers = new Headers({
-      accept: inventory ? "application/json" : "*/*",
+      accept: "*/*",
     });
     if (!anonymous && clientId) {
       headers.set("cf-access-client-id", clientId);
       headers.set("cf-access-client-secret", clientSecret);
     }
-    if (inventory) headers.set("x-atlas-hosted-e2e-secret", hostedSecret);
     // A new custom domain can be attached before its DNS and certificate are
     // usable. Settle only this credential-free transport check before testing
     // sign-in and profiles, so provider provisioning cannot mask app failures.
@@ -372,7 +354,7 @@ export async function probeWebRelease({
       }
       const location = response.headers.get("location");
       await response.body?.cancel();
-      if (inventory || !location || redirect === 3)
+      if (!location || redirect === 3)
         throw new Error("unexpected_redirect");
       url = new URL(location, url);
     }
@@ -539,17 +521,6 @@ export async function probeWebRelease({
       )
         throw new Error("mcp_challenge_failed");
     });
-  await check("release-billing", async () => {
-    const { response, text } = await request(
-      "/api/e2e/hosted/billing-inventory",
-      { method: "POST", inventory: true },
-    );
-    if (
-      response.status !== 200 ||
-      !runtimeInventoryPasses(JSON.parse(text), releaseSha)
-    )
-      throw new Error("release_billing_failed");
-  });
   if (architecture === "hybrid")
     await check("origin-rejection", async () => {
       const response = await fetcher(new URL("/api/health", originUrl).href, {
@@ -735,7 +706,6 @@ async function main(args) {
     originUrl: deployment.originUrl,
     canonicalOrigin: audience ? new URL(audience).origin : undefined,
     ...webObservationSettings(deployment),
-    hostedSecret: process.env.ATLAS_HOSTED_E2E_SECRET,
   });
   mkdirSync(dirname(journalPath), { recursive: true, mode: 0o700 });
   appendFileSync(journalPath, JSON.stringify(report) + "\n", { mode: 0o600 });

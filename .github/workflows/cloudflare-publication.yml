@@ -29,7 +29,7 @@ permissions:
 jobs:
   publish:
     name: >-
-      ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","cleanup-hosted-fixtures":"Clean synthetic accounts","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
+      ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
     runs-on: ubuntu-26.04
     environment: ${{ inputs.target }}
     timeout-minutes: 45
@@ -104,9 +104,6 @@ jobs:
       ATLAS_CF_ACCESS_SERVICE_TOKEN_ID: ${{ secrets.ATLAS_CF_ACCESS_SERVICE_TOKEN_ID }}
       ATLAS_HOSTED_CF_ACCESS_CLIENT_ID: ${{ secrets.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID }}
       ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET: ${{ secrets.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET }}
-      ATLAS_HOSTED_E2E_SECRET: ${{ secrets.ATLAS_HOSTED_E2E_SECRET }}
-      ATLAS_HOSTED_E2E_ENABLED: ${{ vars.ATLAS_HOSTED_E2E_ENABLED }}
-      ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: ${{ vars.ATLAS_HOSTED_E2E_PRODUCTION_ENABLED }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -120,7 +117,7 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - name: Check existing PDS authority and applicable billing requirements
         id: pds-release-config
-        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor' || inputs.operation == 'cleanup-hosted-fixtures'
+        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor'
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -153,7 +150,7 @@ jobs:
           }
           JS
       - name: Check or converge the PDS before hosted account verification
-        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor' || inputs.operation == 'cleanup-hosted-fixtures'
+        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor'
         uses: ./.github/actions/deploy-atlas-pds
         with:
           mode: ${{ inputs.operation == 'doctor' && 'check' || 'full' }}
@@ -186,9 +183,6 @@ jobs:
           access-team-domain: ${{ vars.ATLAS_ACCESS_TEAM_DOMAIN }}
           access-aud: ${{ vars.ATLAS_ACCESS_AUD }}
           platform-operator-emails: ${{ vars.ATLAS_PLATFORM_OPERATOR_EMAILS }}
-      - name: Retain hosted identity Playwright traces with existing-secret encryption
-        if: always()
-        run: node scripts/deploy/hosted-traces.mjs
       - name: Check retained material for deployment credentials
         id: retention
         if: always()

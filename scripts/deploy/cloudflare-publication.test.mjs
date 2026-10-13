@@ -766,7 +766,6 @@ test("individual CI settings preserve accounts, PDS, billing and separate API cr
       "ATLAS_AUTH_CALLBACK_SECRET",
       "ATLAS_EDGE_ORIGIN_SECRET",
       "ATLAS_EMAIL_RESEND_API_KEY",
-      "ATLAS_HOSTED_E2E_SECRET",
       "ATLAS_PDS_INVITE_BROKER_SECRET",
       "ATLAS_INSTANCE_OPERATOR_EMAILS",
       "ATLAS_PLATFORM_OPERATOR_EMAILS",
@@ -969,9 +968,6 @@ function existingPublicationRuntime() {
     DATABASE_URL: "postgres://fixture@db.example.org/atlas",
     ATLAS_EMAIL_RESEND_API_KEY: "fixture-email-key",
     ATLAS_SAML_SP_PRIVATE_KEY: "fixture-existing-enterprise-value",
-    ATLAS_HOSTED_E2E_SECRET: "fixture-hosted-verifier",
-    ATLAS_HOSTED_E2E_ENABLED: "1",
-    ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
   };
 }
 
@@ -983,10 +979,9 @@ test("publication runtime preserves existing GitHub-held identity and SSO", asyn
   });
   assert.deepEqual(result, existing);
   assert.doesNotThrow(() =>
-    assertWebObserverConfiguration(result, {
+    assertWebObserverConfiguration({
       clientId: "fixture-access-id",
       clientSecret: "fixture-access-secret",
-      hostedSecret: existing.ATLAS_HOSTED_E2E_SECRET,
     }),
   );
 });
@@ -1012,7 +1007,7 @@ test("publication runtime accepts its existing complete secret-store export", as
   );
 });
 
-test("hosted journeys verify PDS before smoke, identity and checkout against the exact candidate", () => {
+test("hosted journeys verify PDS health before smoke against the exact candidate", () => {
   const calls = [],
     deployment = {
       candidateUrl: "https://candidate.atlas.example.org",
@@ -1023,13 +1018,11 @@ test("hosted journeys verify PDS before smoke, identity and checkout against the
     ATLAS_PUBLIC_URL: "https://atlas.example.org",
     ATLAS_SERVER_API_PROXY_TARGET: "https://api.example.org",
     ATLAS_PDS_PUBLIC_URL: "https://pds.example.org",
-    ATLAS_HOSTED_E2E_SECRET: "fixture-hosted-secret",
-    ATLAS_BILLING_CHECKOUT_ENABLED: "true",
   };
   const options = {
     deployment,
     runtime,
-    env: { GITHUB_RUN_ID: "123", GITHUB_RUN_ATTEMPT: "1" },
+    env: {},
     releaseSha: sha,
     run: (command, args, { env }) =>
       calls.push({
@@ -1045,27 +1038,16 @@ test("hosted journeys verify PDS before smoke, identity and checkout against the
       "health",
       "invite-broker-route",
       "test:hosted-smoke",
-      "test:hosted-identity",
-      "test:hosted-checkout",
     ],
   );
   assert.equal(
     calls[2].env.ATLAS_HOSTED_EXPECTED_PUBLIC_URL,
     runtime.ATLAS_PUBLIC_URL,
   );
-  assert.equal(
-    calls[3].env.ATLAS_HOSTED_EXPECTED_PUBLIC_URL,
-    deployment.candidateUrl,
-  );
   assert.ok(
     calls.every(
       (c) =>
         c.env.ATLAS_HOSTED_API_URL === runtime.ATLAS_SERVER_API_PROXY_TARGET,
-    ),
-  );
-  assert.ok(
-    calls.every(
-      (c) => c.env.ATLAS_HOSTED_E2E_SECRET === runtime.ATLAS_HOSTED_E2E_SECRET,
     ),
   );
   assert.ok(
@@ -1083,7 +1065,7 @@ test("hosted journeys verify PDS before smoke, identity and checkout against the
       }),
     /PDS unavailable/,
   );
-  assert.equal(calls.length, 5);
+  assert.equal(calls.length, 3);
   assert.ok(calls.every((c) => c.env.ATLAS_HOSTED_EXPECT_CATALOG === "true"));
 });
 

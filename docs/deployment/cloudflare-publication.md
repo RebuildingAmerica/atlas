@@ -232,9 +232,7 @@ not certify rollback across a schema change or a different API/discovery pair.
 
 Artifacts are scanned against CI credentials and provider-only secrets before
 upload. Captured runtime values remain in owner-only runner files until that
-scan finishes, then an always-run cleanup step removes them. Browser failure
-traces are encrypted using the existing hosted verifier secret and the exact
-source/run/attempt identity; raw traces are excluded from uploaded artifacts.
+scan finishes, then an always-run cleanup step removes them.
 
 ## Acceptance
 

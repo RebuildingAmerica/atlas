@@ -29,10 +29,6 @@ interface AtprotoAuthorizationInput {
   returnTo: string;
 }
 
-interface AtprotoSignInAuthorizationInput extends AtprotoAuthorizationInput {
-  useE2EHarness: boolean;
-}
-
 interface ResolvedAtprotoIdentityInput {
   did: string;
   handle: string;
@@ -105,19 +101,15 @@ export async function createAtprotoAuthorizationUrl(
  * before Better Auth is allowed to create a browser session.
  */
 export async function createAtprotoSignInAuthorizationUrl(
-  input: AtprotoSignInAuthorizationInput,
+  input: AtprotoAuthorizationInput,
 ): Promise<URL> {
   await pruneAtprotoOAuthStores();
   const state = randomUUID();
   await appStateStore.set(state, {
-    ...(input.useE2EHarness ? { e2eHarness: true as const } : {}),
     flow: "sign-in",
     requestedHandle: input.handle.trim(),
     returnTo: sanitizeReturnTo(input.returnTo),
   });
-  if (input.useE2EHarness) {
-    return e2eHarnessAuthorizeUrl(input.handle.trim(), state);
-  }
   const client = await getAtprotoOAuthClient();
   return await client.authorize(input.handle, { state });
 }

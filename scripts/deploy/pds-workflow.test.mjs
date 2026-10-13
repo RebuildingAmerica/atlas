@@ -61,10 +61,6 @@ test("publication preserves the existing PDS broker and account verification cre
     source,
     /ATLAS_PDS_INVITE_BROKER_SECRET: \$\{\{ secrets\.ATLAS_PDS_INVITE_BROKER_SECRET \}\}/,
   );
-  assert.match(
-    source,
-    /ATLAS_HOSTED_E2E_SECRET: \$\{\{ secrets\.ATLAS_HOSTED_E2E_SECRET \}\}/,
-  );
   assert.match(publication, /ATLAS_PDS_PUBLIC_URL/);
   assert.match(publication, /ATLAS_PDS_INVITE_BROKER_URL/);
   assert.doesNotMatch(
@@ -84,7 +80,7 @@ test("doctor checks the PDS read-only and normal web deployment converges it aft
   assert.ok(preflight >= 0 && deployment > preflight);
   assert.match(
     source,
-    /if: inputs.operation == 'web-candidate' \|\| inputs.operation == 'doctor' \|\| inputs.operation == 'cleanup-hosted-fixtures'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
+    /if: inputs.operation == 'web-candidate' \|\| inputs.operation == 'doctor'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
   );
   assert.match(
     source,
@@ -108,36 +104,6 @@ test("doctor checks the PDS read-only and normal web deployment converges it aft
       source.indexOf("run: node scripts/deploy/cloudflare-publication.mjs\n"),
   );
   assert.doesNotMatch(source, /deploy-atlas-api|Generate.*secret/);
-});
-
-test("hosted verification retains encrypted failure traces only after scanning artifacts", async () => {
-  const source = await workflowSource(
-    ".github/workflows/cloudflare-publication.yml",
-  );
-  assert.match(source, /artifact-metadata: write/);
-  assert.match(
-    source,
-    /if: always\(\)\n\s*run: node scripts\/deploy\/hosted-traces.mjs/,
-  );
-  assert.match(source, /steps\.retention\.outcome == 'success'/);
-  assert.match(
-    source,
-    /actions\/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a/,
-  );
-  assert.match(source, /path: \.atlas\/cloudflare-release\//);
-  assert.doesNotMatch(source, /path: app\/test-results/);
-  assert.ok(
-    source.indexOf("hosted-traces.mjs") <
-      source.indexOf("cloudflare-publication.mjs --seal"),
-  );
-  assert.ok(
-    source.indexOf("cloudflare-publication.mjs --seal") <
-      source.indexOf("cloudflare-publication.mjs --cleanup"),
-  );
-  assert.ok(
-    source.indexOf("cloudflare-publication.mjs --cleanup") <
-      source.indexOf("actions/upload-artifact@"),
-  );
 });
 
 test("hosted PDS deploy bundle includes the backup, restore, and invite broker scripts", async () => {

@@ -9,8 +9,6 @@
     "src",
     "tests",
     "scripts/**/*.ts",
-    "playwright.hosted-checkout.config.ts",
-    "playwright.hosted-identity.config.ts",
     "playwright.hosted.config.ts",
     "playwright.config.ts",
     "playwright.screenshots.config.ts",

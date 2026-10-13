@@ -49,30 +49,13 @@ const origin = "https://candidate.atlas.example.com";
 const secrets = {
   clientId: "private-id",
   clientSecret: "private-access",
-  hostedSecret: "private-hosted",
 };
-const billingChecks = [
-  "Runtime key",
-  "Charge-enabled account",
-  "Stripe Tax",
-  "Customer portal",
-  "Catalog IDs",
-  "Webhook endpoint metadata",
-].map((name) => ({ name, status: "pass" }));
 function provider(url, init) {
   const path = new URL(url).pathname;
   assert.equal(new URL(url).origin, origin);
   assert.equal(init.redirect, "manual");
   if (!init.headers.get("cf-access-client-id"))
     return new Response("Access denied", { status: 403 });
-  if (path === "/api/e2e/hosted/billing-inventory") {
-    assert.equal(
-      init.headers.get("x-atlas-hosted-e2e-secret"),
-      secrets.hostedSecret,
-    );
-    return Response.json({ revision: sha, checks: billingChecks });
-  }
-  assert.equal(init.headers.get("x-atlas-hosted-e2e-secret"), null);
   if (path === "/api/health") return Response.json({ status: "ok" });
   if (path === "/api/auth/get-session")
     return Response.json(null, {
@@ -133,10 +116,10 @@ const input = {
   ...secrets,
 };
 
-test("hosted observation verifies the exact release, rendered pages, anonymous identity and billing without exposing credentials", async () => {
+test("hosted observation verifies the exact release, rendered pages and anonymous identity without exposing credentials", async () => {
   const report = await probeWebRelease({ ...input, fetcher: provider });
   assert.equal(report.status, "pass");
-  assert.ok(report.checks.length >= 14);
+  assert.ok(report.checks.length >= 13);
   assert.ok(report.checks.every((check) => check.status === "pass"));
   for (const value of Object.values(secrets))
     assert.equal(JSON.stringify(report).includes(value), false);
@@ -144,7 +127,7 @@ test("hosted observation verifies the exact release, rendered pages, anonymous i
   assert.equal(report.cpuP99Ms, undefined);
 });
 
-test("external redirects never receive Access or hosted credentials and cannot count as rendered pages", async () => {
+test("external redirects never receive Access credentials and cannot count as rendered pages", async () => {
   const urls = [];
   const report = await probeWebRelease({
     ...input,
@@ -169,7 +152,6 @@ test("external redirects never receive Access or hosted credentials and cannot c
 
 test("wrong release, broken SSR, unhealthy API and another user's anonymous session each fail observation", async () => {
   for (const path of [
-    "/api/e2e/hosted/billing-inventory",
     "/browse",
     "/api/health",
     "/api/auth/get-session",
@@ -182,11 +164,6 @@ test("wrong release, broken SSR, unhealthy API and another user's anonymous sess
           !init.headers.get("cf-access-client-id")
         )
           return provider(url, init);
-        if (path.endsWith("billing-inventory"))
-          return Response.json({
-            revision: "b".repeat(40),
-            checks: billingChecks,
-          });
         if (path === "/browse")
           return new Response(
             '<html><body data-testid="route-error-panel">Something went wrong</body></html>',
@@ -215,7 +192,6 @@ test("malformed target, origin, SHA or incomplete credentials fail before reques
     { origin: "https://user:private@example.com" },
     { releaseSha: "main" },
     { clientSecret: "" },
-    { hostedSecret: "" },
     { target: "other" },
     { architecture: "other" },
   ]) {
@@ -398,30 +374,11 @@ test("same-origin redirects retain Access credentials and the observation reject
   );
 });
 
-test("candidate verifier configuration is checked before provisioning without enabling test routes or replacing secrets", async () => {
+test("candidate verification requires paired Cloudflare Access credentials", async () => {
   const { assertWebObserverConfiguration } = await import("./web-observe.mjs");
-  const runtime = {
-    ATLAS_HOSTED_E2E_ENABLED: "1",
-    ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
-    ATLAS_HOSTED_E2E_SECRET: secrets.hostedSecret,
-  };
-  assert.doesNotThrow(() => assertWebObserverConfiguration(runtime, secrets));
-  for (const patch of [
-    { ATLAS_HOSTED_E2E_ENABLED: "0" },
-    { ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: undefined },
-    { ATLAS_HOSTED_E2E_SECRET: "different-private-key" },
-  ])
-    assert.throws(() =>
-      assertWebObserverConfiguration({ ...runtime, ...patch }, secrets),
-    );
-  for (const patch of [
-    { clientId: "" },
-    { clientSecret: "" },
-    { hostedSecret: "wrong-private-secret" },
-  ])
-    assert.throws(() =>
-      assertWebObserverConfiguration(runtime, { ...secrets, ...patch }),
-    );
+  assert.doesNotThrow(() => assertWebObserverConfiguration(secrets));
+  assert.throws(() => assertWebObserverConfiguration({ ...secrets, clientId: "" }));
+  assert.throws(() => assertWebObserverConfiguration({ ...secrets, clientSecret: "" }));
 });
 
 test("active Worker versions and exact artifact identity must match every observation", async () => {

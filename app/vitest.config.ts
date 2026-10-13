@@ -30,8 +30,6 @@ export default defineConfig({
         // Exercised outside vitest. Each of these has a real gate, just not this
         // one -- excluding them keeps the number about product code.
         //
-        // hosted-e2e + its route: Playwright, playwright.hosted-identity.config.ts
-        "src/domains/access/server/hosted-e2e.ts",
         "src/routes/api/e2e/**",
         // scripts/e2e: the `test:acceptance`, `e2e:mail` and `e2e:cleanup` scripts
         "scripts/e2e/**",

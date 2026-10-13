@@ -522,10 +522,9 @@ export async function publishWebCandidate(
     throw new Error(
       "Production publication requires canonical runtime configuration.",
     );
-  assertWebObserverConfiguration(runtime, {
+  assertWebObserverConfiguration({
     clientId: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
     clientSecret: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
-    hostedSecret: process.env.ATLAS_HOSTED_E2E_SECRET,
   });
   const evidence = JSON.parse(
     readFileSync(required("ATLAS_WEB_EVIDENCE_FILE"), "utf8"),

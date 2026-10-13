@@ -17,7 +17,6 @@ import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertDurableBudget, sameRuntimeRelease } from "./web-assess.mjs";
 import { assertCurrentApiRoutingReceipt } from "./api-routing-receipt.mjs";
-import { HostedFixtureCleanupError } from "./hosted-fixture-cleanup.mjs";
 import {
   cloudflareCommand,
   CloudflareCommandError,
@@ -105,7 +104,6 @@ const OPERATIONS = [
   "doctor",
   "publish-api",
   "publish-admin",
-  "cleanup-hosted-fixtures",
   "verify-api",
   "activate-api",
   "pause-api",
@@ -264,12 +262,6 @@ export function publicationSummary({
     return `${target} admin publication prepared for the existing deployment action. Public frontend and API remain unchanged.`;
   if (operation === "doctor")
     return `${target} configuration check: ${!failed && report?.status === "pass" ? "passed" : "failed"}.\nNothing deployed. ${target} health was not checked.\nDetails: doctor.json.`;
-  if (
-    failed &&
-    operation === "cleanup-hosted-fixtures" &&
-    error instanceof HostedFixtureCleanupError
-  )
-    return `${target} synthetic account cleanup: failed at ${error.stage}${error.httpStatus ? ` (HTTP ${error.httpStatus})` : ""}.\nCleanup is unverified. Response contents and credentials are omitted.`;
   if (!failed) {
     const outcomes = {
       "publish-api":
@@ -425,8 +417,6 @@ export function assemblePublicationSettings(env) {
         ATLAS_AUTH_API_KEY_INTROSPECTION_URL: `${canonical}/api/auth/internal/api-key`,
         ATLAS_AUTH_MEMBERSHIP_URL: canonical,
         ATLAS_EMAIL_PROVIDER: "resend",
-        ATLAS_HOSTED_E2E_ENABLED: "1",
-        ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
         ...Object.fromEntries(
           [
             "DATABASE_URL",
@@ -435,7 +425,6 @@ export function assemblePublicationSettings(env) {
             "ATLAS_EDGE_ORIGIN_SECRET",
             "ATLAS_ADMIN_PUBLIC_URL",
             "ATLAS_EMAIL_RESEND_API_KEY",
-            "ATLAS_HOSTED_E2E_SECRET",
             "ATLAS_PDS_PUBLIC_URL",
             "ATLAS_PDS_INVITE_BROKER_URL",
             "ATLAS_PDS_INVITE_BROKER_SECRET",
@@ -804,9 +793,6 @@ export async function retainedPublicationRuntime(env) {
     "ATLAS_EDGE_ORIGIN_SECRET",
     "ATLAS_ADMIN_PUBLIC_URL",
     "ATLAS_EMAIL_RESEND_API_KEY",
-    "ATLAS_HOSTED_E2E_SECRET",
-    "ATLAS_HOSTED_E2E_ENABLED",
-    "ATLAS_HOSTED_E2E_PRODUCTION_ENABLED",
     "ATLAS_PDS_PUBLIC_URL",
     "ATLAS_PDS_INVITE_BROKER_URL",
     "ATLAS_PDS_INVITE_BROKER_SECRET",
@@ -941,8 +927,6 @@ export function verifyHostedJourneys({
     ATLAS_HOSTED_PUBLIC_URL: candidate.origin,
     ATLAS_HOSTED_API_URL: required(runtime, "ATLAS_SERVER_API_PROXY_TARGET"),
     ATLAS_HOSTED_EXPECTED_PUBLIC_URL: required(runtime, "ATLAS_PUBLIC_URL"),
-    ATLAS_HOSTED_E2E_RUN_ID: `${required(env, "GITHUB_RUN_ID")}-${required(env, "GITHUB_RUN_ATTEMPT")}`,
-    ATLAS_HOSTED_E2E_SECRET: required(runtime, "ATLAS_HOSTED_E2E_SECRET"),
     ATLAS_PDS_PUBLIC_URL: required(runtime, "ATLAS_PDS_PUBLIC_URL"),
     ATLAS_HOSTED_PDS_URL: required(runtime, "ATLAS_PDS_PUBLIC_URL"),
     ATLAS_HOSTED_EXPECT_EDGE: "true",
@@ -967,15 +951,6 @@ export function verifyHostedJourneys({
     );
   };
   hosted("test:hosted-smoke", base);
-  // Identity redirects stay on this protected candidate; public MCP metadata
-  // above must still advertise the canonical audience customers already use.
-  const identity = {
-    ...base,
-    ATLAS_HOSTED_EXPECTED_PUBLIC_URL: candidate.origin,
-  };
-  hosted("test:hosted-identity", identity);
-  if (runtime.ATLAS_BILLING_CHECKOUT_ENABLED === "true")
-    hosted("test:hosted-checkout", identity);
   return {
     releaseSha,
     workerName: deployment.workerName,
@@ -1096,60 +1071,6 @@ export async function publicationCli({
     mkdirSync(bundle, { recursive: true, mode: 0o700 });
     let retainedHostedFailures;
     const diagnosticRunId = env.ATLAS_PUBLICATION_SOURCE_RUN_ID?.trim();
-    if (diagnosticRunId) {
-      const directory = mkdtempSync(
-        join(required(env, "RUNNER_TEMP"), "atlas-hosted-diagnostic-"),
-      );
-      try {
-        const run = parseJson(
-          tool(
-            "gh",
-            [
-              "api",
-              `repos/${context.repository}/actions/runs/${diagnosticRunId}`,
-            ],
-            { env },
-          ),
-        );
-        validateRetainedRun(run, context, {
-          runId: diagnosticRunId,
-          previous: true,
-          recovery: true,
-        });
-        tool(
-          "gh",
-          [
-            "run",
-            "download",
-            diagnosticRunId,
-            "--repo",
-            context.repository,
-            "--name",
-            `cloudflare-release-${context.target}-${diagnosticRunId}`,
-            "--dir",
-            directory,
-          ],
-          { env },
-        );
-        const { readRetainedHostedReport } =
-          await import("./hosted-traces.mjs");
-        retainedHostedFailures = hostedFailureReport(
-          readRetainedHostedReport({
-            directory: join(directory, "hosted-traces"),
-            secret: required(env, "ATLAS_HOSTED_E2E_SECRET"),
-            identity: `${run.head_sha}:${diagnosticRunId}:${run.run_attempt}`,
-          }),
-        );
-        console.log(
-          JSON.stringify({
-            retainedRunId: diagnosticRunId,
-            hostedFailures: retainedHostedFailures,
-          }),
-        );
-      } finally {
-        rmSync(directory, { recursive: true, force: true });
-      }
-    }
     const checks = [];
     checks.push({
       setting: "CLOUDFLARE_API_TOKEN",
@@ -1240,13 +1161,6 @@ export async function publicationCli({
         status: "pass",
         keys: Object.keys(runtime).sort(),
       });
-      const { inspectPdsCleanup } = await import("./pds-release.mjs");
-      const cleanup = await inspectPdsCleanup(
-        runtime,
-        env.ATLAS_PDS_INVITE_BROKER_SECRET,
-      );
-      checks.push(cleanup);
-      console.log(JSON.stringify({ pdsCleanup: cleanup }));
     } catch (error) {
       const safe =
         /^(?:[A-Z_]+ is required|Runtime [A-Z_]+ is required|Existing write-only values are required|Existing value conflict for [A-Z_]+|Staging requires)/.test(
@@ -1283,38 +1197,6 @@ export async function publicationCli({
         "Cloudflare publication doctor found release blockers; see the retained redacted doctor.json.",
       );
     return report;
-  }
-  if (context.operation === "cleanup-hosted-fixtures") {
-    const sourceRun = required(env, "ATLAS_PUBLICATION_SOURCE_RUN_ID");
-    if (!/^\d+$/.test(sourceRun))
-      throw Error("An explicit numeric publication run ID is required.");
-    const report = parseJson(
-      tool(
-        "gh",
-        ["api", `repos/${context.repository}/actions/runs/${sourceRun}`],
-        { env },
-      ),
-    );
-    const { cleanupPublicationFixtures } =
-      await import("./hosted-fixture-cleanup.mjs");
-    const receipt = await cleanupPublicationFixtures({
-      run: report,
-      context,
-      env,
-      sourceRun,
-      validate: validateRetainedRun,
-    });
-    mkdirSync(bundle, { recursive: true, mode: 0o700 });
-    atomicJson(join(bundle, "publication.json"), {
-      ...context,
-      releaseSha: context.sha,
-      runId: env.GITHUB_RUN_ID,
-      state: "verified-clean",
-      fixtureCleanup: receipt,
-    });
-    atomicJson(join(bundle, "fixture-cleanup.json"), receipt);
-    console.log(JSON.stringify({ fixtureCleanup: receipt }));
-    return receipt;
   }
   if (context.operation === "publish-admin")
     return {
