@@ -66,6 +66,18 @@ async def test_verify_current_atproto_identity_requires_bidirectional_match() ->
 
 
 @pytest.mark.asyncio
+async def test_linked_identity_verification_accepts_currently_verified_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def verified(handle: str, did: str) -> bool:
+        return handle == "person.example" and did == "did:plc:person"
+
+    monkeypatch.setattr(atproto_identity, "verify_current_atproto_identity", verified)
+
+    assert await verify_linked_atproto_identity("person.example", "did:plc:person")
+
+
+@pytest.mark.asyncio
 async def test_linked_identity_verification_accepts_managed_pds_resolution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
