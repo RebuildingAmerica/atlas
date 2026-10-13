@@ -201,6 +201,7 @@ async def test_hosted_fetchers_are_request_owned_and_used_for_search_and_direct_
 ) -> None:
     from unittest.mock import AsyncMock
 
+    import httpx
     import trafilatura
 
     from atlas.domains.discovery.pipeline.direct_sources import fetch_direct_source
@@ -235,7 +236,14 @@ async def test_hosted_fetchers_are_request_owned_and_used_for_search_and_direct_
             finally:
                 closed.append(label)
 
-        runtime = HostedRuntime(Settings(_env_file=None), AsyncMock(), public_source_fetch=fetch)
+        runtime = HostedRuntime(
+            Settings(_env_file=None),
+            AsyncMock(),
+            public_source_fetch=fetch,
+            http_transport_factory=lambda: httpx.MockTransport(
+                lambda _request: pytest.fail("must use hosted public egress")
+            ),
+        )
         with bind_hosted_runtime(runtime):
             if direct:
                 source = await fetch_direct_source("https://example.org/direct")
