@@ -29,12 +29,7 @@ import {
 import { preserveRuntimeIdentity } from "./web-runtime-identity.mjs";
 import { probeWebRelease, summarizeWebObservations } from "./web-observe.mjs";
 import { archiveWebRelease } from "./web-archive.mjs";
-import { captureVercelRollback } from "./web-rollback-capture.mjs";
-import {
-  applyRecoveryDomains,
-  restoreVercelRouting,
-  webRollbackOperationId,
-} from "./web-rollback.mjs";
+import { applyRecoveryDomains } from "./web-rollback.mjs";
 import { cloudflareCommand } from "./cloudflare-cli.mjs";
 import { restoreApiRuntimeSnapshot } from "./api-runtime-rollback.mjs";
 import {
@@ -737,22 +732,19 @@ export async function promoteWebRelease({
   evidence,
   records,
   expected,
-  token,
   hostedSecret,
   cloudflare = cloudflareCommand,
   publish = publishWebCandidate,
-  capture = captureVercelRollback,
   applyDomains = applyRecoveryDomains,
   probe = probeWebRelease,
-  rollback = restoreVercelRouting,
   archive = archiveWebRelease,
   rollbackSource,
   runtimeRollback,
   apiRollbackPlan,
 }) {
-  if (!rollbackSource && (apiRollbackPlan || runtimeRollback))
+  if (!rollbackSource)
     throw new Error(
-      "Joint runtime recovery requires explicit Cloudflare routing recovery.",
+      "Production promotion requires explicit Cloudflare routing recovery.",
     );
   const plan = planWebPromotion({ source, runtime, evidence, records });
   if (
@@ -764,127 +756,24 @@ export async function promoteWebRelease({
     throw new Error(
       "Production and rollback provider identities must match the evaluated release.",
     );
-  if (rollbackSource)
-    return promoteWithCloudflareRecovery({
-      plan,
-      source,
-      directory,
-      runtime,
-      evidence,
-      records,
-      expected,
-      rollbackSource,
-      cloudflare,
-      publish,
-      applyDomains,
-      probe,
-      hostedSecret,
-      archive,
-      runtimeRollback,
-      apiRollbackPlan,
-    });
-  const snapshot = await capture({ ...expected, token, cloudflare });
-  prepareProductionArtifacts(source, directory, plan.manifest);
-  const snapshotFile = join(directory, `rollback-vercel-${randomUUID()}.json`);
-  save(snapshotFile, snapshot);
-  const deployment = await publish(
+  return promoteWithCloudflareRecovery({
+    plan,
+    source,
     directory,
-    "production",
-    plan.manifest.architecture,
-    { promotion: plan.candidate, runtime: plan.runtime },
-  );
-  const production = {
-    ...deployment,
-    productionUrl: plan.runtime.ATLAS_PUBLIC_URL,
-    promotionState: "prepared",
-    rollbackSnapshotFile: snapshotFile,
-    stagedWorkerVersionId: plan.candidate.workerVersionId,
-  };
-  production.observationJournal = join(
-    directory,
-    `production-observations-${production.workerVersionId}.jsonl`,
-  );
-  save(join(directory, "deployment.json"), production);
-  archive({ directory, runtime: plan.runtime });
-  // The actual staging journal must still be fresh after provisioning finishes.
-  planWebPromotion({ source, runtime, evidence, records });
-  const journalFile = join(directory, "routing-rollback.json");
-  let journal = {
-    operationId: webRollbackOperationId(snapshot, production),
-    phase: "prepared",
-  };
-  const checkpoint = (entry) => {
-    save(journalFile, entry);
-    journal = entry;
-  };
-  checkpoint(journal);
-  const recovery = {
-    snapshot,
-    deployment: production,
+    runtime,
+    evidence,
+    records,
     expected,
-    token,
-    journal,
-    checkpoint,
+    rollbackSource,
     cloudflare,
-    applyDomains: (domains) =>
-      applyDomains({ directory, deployment: production, domains }),
-  };
-  await rollback(recovery); // Read-only recovery check immediately before routing changes.
-  try {
-    await applyDomains({
-      directory,
-      deployment: production,
-      domains: [new URL(production.candidateUrl).hostname, expected.hostname],
-    });
-    assertCandidateDomain(
-      cloudflare(["workers", "get", production.workerName]),
-      {
-        workerName: production.workerName,
-        hostname: expected.hostname,
-        zoneId: expected.zoneId,
-      },
-    );
-    const report = await probe({
-      ...production,
-      origin: production.productionUrl,
-      canonicalOrigin: production.productionUrl,
-      hostedSecret,
-      cloudflare,
-    });
-    appendFileSync(
-      production.observationJournal,
-      JSON.stringify(report) + "\n",
-      { mode: 0o600, flush: true },
-    );
-    if (report.status !== "pass")
-      throw new Error("Immediate production probes failed.");
-    production.promotionState = "active";
-    save(join(directory, "deployment.json"), production);
-    archive({ directory, runtime: plan.runtime });
-    return {
-      status: "promoted",
-      productionUrl: production.productionUrl,
-      workerVersionId: production.workerVersionId,
-      rollbackSnapshotFile: snapshotFile,
-      observationJournal: production.observationJournal,
-      observationRequiredHours: plan.releasePolicy ? 0 : 72,
-      releasePolicy: plan.releasePolicy,
-      observationWindowWaived: Boolean(plan.releasePolicy),
-    };
-  } catch {
-    try {
-      await rollback({ ...recovery, journal, apply: true });
-    } catch {
-      throw new Error(
-        "Production cutover failed and automatic routing recovery failed. Use the retained snapshot and routing journal for recovery.",
-      );
-    }
-    production.promotionState = "rolled-back";
-    save(join(directory, "deployment.json"), production);
-    throw new Error(
-      "Production cutover failed; Vercel routing was restored. Verify the restored production journeys.",
-    );
-  }
+    publish,
+    applyDomains,
+    probe,
+    hostedSecret,
+    archive,
+    runtimeRollback,
+    apiRollbackPlan,
+  });
 }
 
 /** Resume the retained operation without requiring stale candidate observations to be recreated. */
@@ -1076,7 +965,7 @@ async function main() {
           assetsDigest: plan.manifest.assetsDigest,
           staging: plan.staging,
           releasePolicy: plan.releasePolicy,
-          rollbackProvider: rollbackSource ? "cloudflare" : "vercel",
+          rollbackProvider: "cloudflare",
         },
         null,
         2,
@@ -1092,13 +981,9 @@ async function main() {
         expected: {
           target: "production",
           hostname: value("--hostname"),
-          owner: value("--owner"),
-          project: value("--project"),
-          team: value("--team"),
           accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
           zoneId: process.env.CLOUDFLARE_ZONE_ID,
         },
-        token: process.env.VERCEL_TOKEN,
         hostedSecret: process.env.ATLAS_HOSTED_E2E_SECRET,
       }),
       null,

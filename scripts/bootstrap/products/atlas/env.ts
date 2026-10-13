@@ -1,7 +1,5 @@
 import path from "node:path";
-import type { VercelEnvironment, VercelVar } from "../../lib/vercel.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
-
 export type StripeBootstrapTarget = "local" | "staging" | "prod";
 export type StripeRuntimeMode = "test" | "live";
 
@@ -220,24 +218,4 @@ function parseCatalogSection(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-export function buildStripeVercelEnvVars(
-  env: Map<string, string>,
-  target: StripeBootstrapTarget,
-): VercelVar[] {
-  if (target === "local") {
-    return [];
-  }
-
-  const environments: VercelEnvironment[] =
-    target === "prod" ? ["production"] : ["preview"];
-  const vars: VercelVar[] = [];
-  for (const key of STRIPE_ENV_KEYS) {
-    const value = env.get(key)?.trim();
-    if (value) {
-      vars.push({ key, value, environments });
-    }
-  }
-  return vars;
 }

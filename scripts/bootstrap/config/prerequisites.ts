@@ -10,7 +10,6 @@ export type CapabilityId =
   | "deploy-gh"
   | "deploy-actionlint"
   | "deploy-cf"
-  | "deploy-vercel"
   | "deploy-mcp-publisher"
   | "deploy-dig"
   | "deploy-jq"
@@ -296,25 +295,6 @@ export const CAPABILITY_SPECS: CapabilityConfig[] = [
     installCommands: {
       macos: ["brew install jq"],
       linux: ["sudo apt-get install -y jq"],
-    },
-  },
-  {
-    id: "deploy-vercel",
-    label: "Vercel CLI",
-    category: "deploy",
-    requiredFor: ["deploy"],
-    requiredByDefault: false,
-    binaryCommand: "command -v vercel",
-    versionCommand: "vercel --version",
-    installCommands: {
-      macos: ["pnpm install"],
-      linux: ["pnpm install"],
-    },
-    auth: {
-      checkCommand: "vercel whoami 2>/dev/null | grep -qv 'Error'",
-      identityCommand: "vercel whoami 2>/dev/null",
-      loginCommand: "pnpm exec vercel login",
-      interactive: true,
     },
   },
 ];

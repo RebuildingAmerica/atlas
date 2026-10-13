@@ -778,7 +778,7 @@ export function inspectPublicArtifact(directory, secrets) {
   inspect(directory);
 }
 
-/** Read existing GitHub-held configuration so Cloudflare releases survive Vercel retirement. */
+/** Read existing GitHub-held configuration for Cloudflare releases. */
 export async function retainedPublicationRuntime(env) {
   const { loadWebRuntime } = await import("./web-candidate.mjs");
   if (env.ATLAS_WEB_RUNTIME_ENV_JSON?.trim())

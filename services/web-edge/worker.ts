@@ -30,7 +30,7 @@ export default {
     const headers = new Headers(request.headers);
     for (const key of [...headers.keys()]) {
       if (
-        /^(?:cf-|x-forwarded-|x-vercel-)/i.test(key) ||
+        /^(?:cf-|x-forwarded-)/i.test(key) ||
         [
           "host",
           "forwarded",

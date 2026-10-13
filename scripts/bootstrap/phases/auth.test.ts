@@ -73,13 +73,6 @@ void describe("bootstrap auth identity parsing", () => {
     );
   });
 
-  void it("shows the Vercel account slug", () => {
-    assert.equal(
-      parseAuthIdentity("deploy-vercel", "atlas-team\n"),
-      "atlas-team",
-    );
-  });
-
   void it("formats account details inside the confirmation prompt", () => {
     assert.equal(
       formatAuthenticatedAccountPrompt({

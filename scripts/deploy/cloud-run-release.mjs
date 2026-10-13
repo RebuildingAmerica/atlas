@@ -214,7 +214,7 @@ function writeDeploySummary() {
     [
       `## Atlas ${environmentName} deploy`,
       "",
-      `atlas-web is deployed separately by Vercel; this workflow ships ${serviceName}.`,
+      `atlas-web is deployed through Cloudflare; this workflow ships ${serviceName}.`,
       "",
       "| Service | URL | Revision | Image |",
       "| --- | --- | --- | --- |",

@@ -4,7 +4,6 @@ export interface HostedAtlasEnv {
   ATLAS_DOCS_URL?: string;
   ATLAS_PUBLIC_URL?: string;
   ATLAS_SERVER_API_PROXY_TARGET?: string;
-  VERCEL_ENV?: string;
 }
 
 function isLocalHost(hostname: string): boolean {
@@ -63,9 +62,6 @@ function audienceValues(env: HostedAtlasEnv, context: string): string[] {
  * @param env - Environment to evaluate.
  */
 export function isHostedAtlasEnv(env: HostedAtlasEnv): boolean {
-  if (env.VERCEL_ENV === "production") {
-    return true;
-  }
   const publicUrl = env.ATLAS_PUBLIC_URL?.trim();
   if (!publicUrl) {
     return false;

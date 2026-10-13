@@ -18,12 +18,7 @@ export const test = base.extend({
     const session = await context.newCDPSession(page);
     let interceptFailure: Error | undefined;
     const intercept = async (event: PausedRequest) => {
-      const blocked = [
-        "cf-access-client-id",
-        "cf-access-client-secret",
-        "x-vercel-protection-bypass",
-        "x-vercel-trusted-oidc-idp-token",
-      ];
+      const blocked = ["cf-access-client-id", "cf-access-client-secret"];
       const headers = Object.fromEntries(
         Object.entries(event.request.headers).filter(
           ([key]) => !blocked.includes(key.toLowerCase()),

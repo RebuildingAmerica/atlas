@@ -4,7 +4,6 @@ import { describe, it } from "node:test";
 import {
   STRIPE_ATLAS_CATALOG_ENV_KEY,
   buildStripeEnvUpdates,
-  buildStripeVercelEnvVars,
   expandStripeCatalogEnv,
   resolveStripeEnvFileTargets,
   resolveStripeMode,
@@ -100,25 +99,6 @@ void describe("Stripe bootstrap environment helpers", () => {
       expandStripeCatalogEnv(updates).get("STRIPE_COUPON_STUDENT"),
       "coupon_student",
     );
-  });
-
-  void it("syncs hosted Stripe vars to the correct Vercel target only", () => {
-    const env = new Map([
-      ["STRIPE_API_KEY", "sk_test_123"],
-      ["STRIPE_WEBHOOK_SECRET", "whsec_123"],
-      [STRIPE_ATLAS_CATALOG_ENV_KEY, "{}"],
-      ["STRIPE_BILLING_PORTAL_CONFIGURATION", "bpc_atlas"],
-    ]);
-
-    assert.deepEqual(
-      buildStripeVercelEnvVars(env, "staging").map((item) => item.environments),
-      [["preview"], ["preview"], ["preview"], ["preview"]],
-    );
-    assert.deepEqual(
-      buildStripeVercelEnvVars(env, "prod").map((item) => item.environments),
-      [["production"], ["production"], ["production"], ["production"]],
-    );
-    assert.deepEqual(buildStripeVercelEnvVars(env, "local"), []);
   });
 
   void it("derives the Stripe webhook URL from the Atlas app origin", () => {

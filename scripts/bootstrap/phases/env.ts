@@ -7,12 +7,8 @@ import { parseEnvFile, mergeEnvFile } from "../lib/env-file.js";
 import { generateSecret, isPlaceholder } from "../lib/secret.js";
 import { promptOrExit, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
-import { getVercelScope, detectAndLink } from "../lib/vercel.js";
-import { removeRetiredVercelEnvVars, syncEnvVars } from "../lib/vercel-env.js";
 import {
-  buildVercelEnvVars,
   ensureProductionRoutingConfig,
-  vercelEnvironmentsForTarget,
   type HostedDeployTarget,
 } from "./env-routing.js";
 
@@ -60,7 +56,7 @@ const PROMPTED_KEYS: Record<string, EnvKeyConfig> = {
       "Create an API key that can send transactional email.",
       "Copy the key value once it is shown.",
     ],
-    writesTo: ".env and Vercel when hosted sync is available",
+    writesTo: ".env and hosted deployment configuration",
     required: false,
     localOnly: false,
   },
@@ -243,7 +239,7 @@ export async function runEnvPhase(
   doctorMode: boolean,
   state: ReadinessState,
   hostedTarget: HostedDeployTarget | null,
-  assumeYes: boolean,
+  _assumeYes: boolean,
 ): Promise<PhaseResult> {
   const followUpItems: string[] = [];
   const rootEnvPath = path.join(projectRoot, ".env");
@@ -374,54 +370,5 @@ export async function runEnvPhase(
     }
   }
 
-  // Step 6: Sync to Vercel if deploy-vercel capability is ready
-  if (hostedTarget && state.capabilities["deploy-vercel"]?.status === "ready") {
-    const appDir = path.join(projectRoot, "app");
-    await detectAndLink(appDir, { assumeYes });
-
-    const scope = getVercelScope(appDir);
-    if (scope) {
-      const productionEnv = getMergedEnv(rootEnvPath, prodEnvPath);
-      const stagingEnv = getMergedEnv(rootEnvPath, stagingEnvPath);
-      const varsToSync = buildVercelEnvVars(
-        hostedTarget,
-        productionEnv,
-        stagingEnv,
-      );
-      const synced = await syncEnvVars(varsToSync, scope, {
-        cwd: appDir,
-      });
-      if (!synced) {
-        followUpItems.push(
-          "Vercel env sync did not complete — run bootstrap again from a linked app/ directory",
-        );
-      }
-      // The app refuses to start while a retired setting is still on the
-      // project, so a copy left by an earlier run must not survive this one.
-      for (const leftover of removeRetiredVercelEnvVars(
-        vercelEnvironmentsForTarget(hostedTarget),
-        scope,
-        { cwd: appDir },
-      )) {
-        followUpItems.push(`Remove the retired Vercel variable ${leftover}`);
-      }
-    } else {
-      followUpItems.push(
-        "Vercel project not linked — run `vercel link` in app/ then re-run bootstrap",
-      );
-    }
-  }
-
   return { success: true, followUpItems };
-}
-
-function getMergedEnv(
-  rootEnvPath: string,
-  prodEnvPath: string,
-): Map<string, string> {
-  const merged = parseEnvFile(rootEnvPath);
-  for (const [key, value] of parseEnvFile(prodEnvPath)) {
-    merged.set(key, value);
-  }
-  return merged;
 }

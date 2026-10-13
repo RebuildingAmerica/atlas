@@ -130,7 +130,7 @@ export async function runApiDomainPhase(
   if (target === "prod") {
     logSubline(
       pc.dim(
-        `Set Vercel ATLAS_SERVER_API_PROXY_TARGET=https://${config.domain} to retire the *.run.app URL.`,
+        `Set ATLAS_SERVER_API_PROXY_TARGET=https://${config.domain} in the protected deployment environment.`,
       ),
     );
   }

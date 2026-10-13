@@ -13,7 +13,14 @@ const CATALOG_OFFERS = [
 const catalogOfferSet = new Set<string>(CATALOG_OFFERS);
 
 export function isProductionBillingRuntime(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.VERCEL_ENV === "production" || (!env.VERCEL_ENV && env.NODE_ENV === "production");
+  const publicUrl = env.ATLAS_PUBLIC_URL?.trim();
+  if (!publicUrl) return env.NODE_ENV === "production";
+  try {
+    const hostname = new URL(publicUrl).hostname;
+    return hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1";
+  } catch {
+    return false;
+  }
 }
 
 /** The exact new-sale combinations supported by the current catalog. */

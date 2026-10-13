@@ -1,37 +1,26 @@
-# Deployment
+# Atlas deployment
 
-[Docs](../README.md) > Deployment
+Atlas publishes through the protected Cloudflare staging and production
+workflows. They build from the selected commit, release Workers and static
+assets together, and retain an immutable release bundle for rollback.
 
-Deployment docs explain how Atlas gets shipped and how to verify it is healthy
-afterward.
+Run `pnpm doctor` to inspect local configuration without changing providers. Use
+the **Deploy Staging** workflow for a candidate and **Deploy Production** for
+production operations. Production promotion requires a retained Cloudflare
+rollback release and validates the canonical Atlas URL after routing changes.
 
-## Deployment Docs
+Cloudflare Web Analytics is enabled at the zone for the Atlas production and
+staging hostnames. Workers Observability supplies runtime telemetry.
 
-- [Web Hosting Migration](./web-hosting.md) — Workers/hybrid candidates,
-  evidence gates, provider blockers and remaining cutover work
+## Billing
 
-- [Production Deployment](./production.md) — Environment setup, hosting paths,
-  and production verification
-- [Staging Deployment](./staging.md) — Automatic staging deploys, required
-  environment secrets, and staging verification
-- [Atlas-managed ATProto PDS](./atproto-pds.md) — Persistent-host, recovery,
-  deployment, and live-verification contract for managed identities
-- [Stripe Billing Setup](./stripe-billing.md) — Product catalog, discounts,
-  webhook setup, and local/staging/production billing bootstrap
-- [Email Domain Setup](./email-domain-setup.md) — Operator runbook for Resend
-  DNS, sender-domain verification, and Atlas email configuration
-- [Google Workspace OIDC SSO](./google-workspace-oidc-sso.md) — Copy-paste setup
-  guide for Google Cloud OAuth clients and Atlas enterprise OIDC
-- [Google Workspace SAML SSO](./google-workspace-saml-sso.md) — Copy-paste setup
-  guide for Google Admin custom SAML apps and Atlas service-provider values
-- [Release Process](./release.md) — Release-readiness, deployment flow, and
-  post-release checks
+Stripe settings remain in GitHub deployment environments and are passed only to
+the protected publication workflow. `pnpm stripe:verify:staging` and
+`pnpm stripe:verify:prod` validate the selected local target and Stripe catalog;
+the deployed billing inventory endpoint is the release-level readback.
 
-## Runbooks
+## One-person operations
 
-- [Anonymous API Rate Limits](../runbooks/rate-limits.md) — Cloudflare edge
-  setup, hosted smoke checks, and incident response for unauthenticated API
-  abuse
-- [Vercel Incident Response](../runbooks/vercel-incident-response.md) —
-  Deployment protection, Trusted Sources checks, and recovery steps for hosted
-  app incidents
+The operator should use the rollback workflow before manually changing routes.
+Keep the current Cloudflare release bundle until the canonical site, sign-in,
+profiles, workspaces, and billing readback are healthy.

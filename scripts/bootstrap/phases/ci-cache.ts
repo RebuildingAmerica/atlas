@@ -10,7 +10,7 @@ import type { PhaseResult } from "../state.js";
 export function formatCiCacheStatus(): string {
   return [
     "GitHub Actions cache is the Atlas CI Turbo cache.",
-    "It is configured in .github/actions/setup-toolchain/action.yml and needs no Vercel login or token.",
+    "It is configured in .github/actions/setup-toolchain/action.yml and needs no separate provider login or token.",
   ].join("\n");
 }
 

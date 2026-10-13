@@ -88,7 +88,7 @@ Reverse both steps on return, after clearing the correction inbox.
   reset, then confirm `/health` and the next canary run. Rolling back does not
   help, because every release shares the same database.
 - **A release hurts visitors:** roll back with the Roll Back Production
-  workflow; see `docs/runbooks/vercel-incident-response.md`.
+  workflow; see `docs/deployment/cloudflare-publication.md`.
 - **Wrong data is shown confidently on a promoted profile:** stage a correction
   in `/editorial/discovery-reviews` and approve it, or reject the record's
   public change. Note it in the pilot evidence board.

@@ -197,7 +197,7 @@ export function describePhase(phaseName: string): string {
     "Initial Deployment":
       "Building, pushing, and deploying the Atlas services.",
     "CI Remote Cache":
-      "Checking Vercel Remote Cache credentials and wiring them into GitHub Actions.",
+      "Checking the repository-owned GitHub Actions cache configuration.",
     "API Canonical Domain":
       "Checking the canonical atlas-api domain, Cloud Run mapping, and DNS record.",
     "API Edge Protection":

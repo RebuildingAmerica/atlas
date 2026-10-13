@@ -106,7 +106,7 @@ describe("hosted Atlas URL helpers", () => {
     }).toThrow("ATLAS_SERVER_API_PROXY_TARGET must use https outside local development.");
   });
 
-  it("builds Vercel rewrite destinations through URL parsing", () => {
+  it("builds hosted rewrite destinations through URL parsing", () => {
     expect(buildHostedRewriteDestination("https://atlas-api.example.com", "/mcp/")).toBe(
       "https://atlas-api.example.com/mcp/",
     );
@@ -117,16 +117,14 @@ describe("hosted Atlas URL helpers", () => {
 });
 
 describe("hosted Atlas environment detection", () => {
-  it("treats a real public origin and Vercel production as hosted", () => {
+  it("treats a real public origin as hosted", () => {
     expect(isHostedAtlasEnv({ ATLAS_PUBLIC_URL: "https://atlas.example.com" })).toBe(true);
-    expect(isHostedAtlasEnv({ VERCEL_ENV: "production" })).toBe(true);
+    expect(isHostedAtlasEnv({})).toBe(false);
   });
 
   it("treats a local or preview environment as not hosted", () => {
     expect(isHostedAtlasEnv({})).toBe(false);
-    expect(
-      isHostedAtlasEnv({ ATLAS_PUBLIC_URL: "http://localhost:3000", VERCEL_ENV: "preview" }),
-    ).toBe(false);
+    expect(isHostedAtlasEnv({ ATLAS_PUBLIC_URL: "http://localhost:3000" })).toBe(false);
   });
 
   it("treats an unparseable public URL as not hosted rather than throwing", () => {

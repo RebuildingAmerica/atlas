@@ -37,8 +37,7 @@ The environment must identify its Cloudflare account and zone, production
 Hyperdrive configuration, protected API operations hostname, existing Access
 service identity, and retained native wheel build run. Runtime settings come
 from the protected GitHub environment or its complete private runtime export.
-Missing settings fail explicitly. The publisher no longer reads Vercel, and its
-workflow no longer receives Vercel credentials.
+Missing settings fail explicitly.
 
 Preserve the existing public origin, authentication audiences, membership URL,
 operator roles, signing secrets and passkey RP ID. Supply ordinary application
@@ -110,8 +109,8 @@ run containing its interruption journal.
 6. Run `promote-web` only after canonical API proof and fresh candidate
    observations. Supply `rollback-run-id` naming a successful retained
    Cloudflare production release. Its artifact, runtime and routing checks must
-   pass before promotion; there is no Vercel fallback. Verify the canonical site
-   and protected admin afterward.
+   pass before promotion. Verify the canonical site and protected admin
+   afterward.
 
 An API upgrade preserves the original canonical route and routing journal.
 Production `verify-api` also checks that exact route's ownership and public

@@ -35,20 +35,16 @@ def app_callback_headers(settings: Settings) -> dict[str, str]:
     Parameters
     ----------
     settings : Settings
-        Runtime settings carrying the callback secret and any edge bypass.
+        Runtime settings carrying the callback secret.
 
     Returns
     -------
     dict[str, str]
-        The callback secret, plus Vercel's protection bypass when configured.
+        The callback secret.
     """
-    headers = {
+    return {
         "X-Atlas-Callback-Secret": settings.auth_callback_secret,
     }
-    bypass_secret = settings.auth_membership_protection_bypass_secret.strip()
-    if bypass_secret:
-        headers["x-vercel-protection-bypass"] = bypass_secret
-    return headers
 
 
 async def verify_org_membership(

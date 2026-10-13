@@ -17,7 +17,7 @@ export async function handleRuntimeBillingInventoryRequest(
 
   try {
     const checks = await inspectRuntimeBilling(getClient(), env);
-    const candidateRevision = (env.ATLAS_RELEASE_SHA || env.VERCEL_GIT_COMMIT_SHA)?.trim() ?? "";
+    const candidateRevision = env.ATLAS_RELEASE_SHA?.trim() ?? "";
     const revision = /^[a-f0-9]{40}$/i.test(candidateRevision)
       ? candidateRevision.toLowerCase()
       : "unknown";

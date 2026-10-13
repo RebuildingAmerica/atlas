@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadWebManifest, readPublicPngSize } from "@/../tests/helpers/web-manifest-harness";
+import { CloudflareWebAnalytics } from "@/platform/analytics/cloudflare-web-analytics";
 
 vi.mock("@tanstack/react-router", async () => {
   const harness = await import("@/../tests/helpers/router-harness");
@@ -99,6 +100,23 @@ describe("routes/__root", () => {
     expect(markup).toContain(
       '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17130f"/>',
     );
+  });
+
+  it("loads the privacy-preserving visitor beacon when a site token is configured", () => {
+    const markup = renderToStaticMarkup(<CloudflareWebAnalytics token="public-site-token" />);
+
+    expect(markup).toContain('src="https://static.cloudflareinsights.com/beacon.min.js"');
+    expect(markup).toContain(
+      'data-cf-beacon="{&quot;token&quot;:&quot;public-site-token&quot;,&quot;spa&quot;:true}"',
+    );
+  });
+
+  it("does not load visitor telemetry without an explicit site token", () => {
+    expect(renderToStaticMarkup(<CloudflareWebAnalytics token="" />)).toBe("");
+  });
+
+  it("does not load visitor telemetry when the build has no configured token", () => {
+    expect(renderToStaticMarkup(<CloudflareWebAnalytics />)).toBe("");
   });
 
   it("lists installable icons in the web manifest that exist at their declared sizes", () => {

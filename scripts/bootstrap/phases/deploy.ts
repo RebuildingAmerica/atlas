@@ -46,7 +46,7 @@ export async function runDeployPhase(
       `Deploy ${serviceName} to Cloud Run now (${target})?`,
       "",
       "Bootstrap will build the API image, push it to Artifact Registry, and deploy the Cloud Run service.",
-      "The web app is not deployed here; atlas-web ships through Vercel on push to main.",
+      "The web app is deployed through the protected Cloudflare publication workflow.",
       "Choose No if you only want setup values written and will deploy later.",
     ].join("\n"),
     false,
@@ -123,7 +123,7 @@ export async function runDeployPhase(
   }
 
   // ── Deploy atlas-api ──────────────────────────────────────────────────────
-  // Ingress is `all` because Vercel proxies inbound `/api/*` traffic to this
+  // Ingress is `all` because the edge proxies inbound `/api/*` traffic to this
   // service via ATLAS_SERVER_API_PROXY_TARGET; the canonical domain mapping
   // (atlas-api.<domain>) is configured separately by the api-domain phase.
   const apiUrl = deployService(
@@ -147,7 +147,7 @@ export async function runDeployPhase(
   logSubline(`${serviceName}: ${pc.cyan(apiUrl)}`);
   logSubline(
     pc.dim(
-      "atlas-web is auto-deployed by Vercel on push to main; no Cloud Run web service.",
+      "atlas-web is published through Cloudflare; no Cloud Run web service.",
     ),
   );
 

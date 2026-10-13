@@ -25,6 +25,7 @@ export const PUBLIC_ATLAS_ENV_KEYS = [
   "ATLAS_DOCS_URL",
   "ATLAS_AUTH_BASE_PATH",
   "ATLAS_SERVER_API_PROXY_TARGET",
+  "VITE_CF_WEB_ANALYTICS_TOKEN",
 ] as const;
 
 const DOCS_SECURITY_HEADERS: Record<string, string> = {
@@ -167,7 +168,6 @@ export default defineConfig(async ({ mode }) => {
       : [
           nitro({
             rollupConfig: { onwarn },
-            vercel: { functions: { maxDuration: 180 }, regions: ["cle1"] },
             routeRules: buildHostedProxyRouteRules(env),
           }),
         ];

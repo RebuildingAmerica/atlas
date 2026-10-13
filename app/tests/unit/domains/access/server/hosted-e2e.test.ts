@@ -59,24 +59,12 @@ describe("hosted E2E guard", () => {
     expect(response?.status).toBe(404);
   });
 
-  test("returns 404 in Vercel production without explicit production proof access", () => {
-    const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
-      ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
-      ATLAS_HOSTED_E2E_ENABLED: "1",
-      ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
-      VERCEL_ENV: "production",
-    });
-
-    expect(response?.status).toBe(404);
-  });
-
   test("allows production proof only when the production gate and shared secret match", () => {
     const response = assertHostedE2EAuthorized(hostedE2ERequestWithSecret("secret"), {
       ATLAS_PUBLIC_URL: "https://atlas.test",
       ATLAS_HOSTED_E2E_ENABLED: "1",
       ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
-      VERCEL_ENV: "production",
     });
 
     expect(response).toBeNull();
@@ -87,7 +75,6 @@ describe("hosted E2E guard", () => {
       ATLAS_PUBLIC_URL: "http://127.0.0.1:3100",
       ATLAS_HOSTED_E2E_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
-      VERCEL_ENV: "preview",
     });
 
     expect(response).toBeNull();
@@ -119,7 +106,6 @@ describe("ATProto sign-in harness guard", () => {
       ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
       ATLAS_PUBLIC_URL: "https://atlas.rebuildingus.org",
-      VERCEL_ENV: "production",
     });
 
     expect(authorized).toBe(true);
@@ -131,7 +117,6 @@ describe("ATProto sign-in harness guard", () => {
       ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
       ATLAS_HOSTED_E2E_SECRET: "secret", // pragma: allowlist secret
       ATLAS_PUBLIC_URL: "https://atlas.rebuildingus.org",
-      VERCEL_ENV: "production",
     });
 
     expect(authorized).toBe(false);

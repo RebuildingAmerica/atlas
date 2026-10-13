@@ -26,6 +26,7 @@ export const WEB_PUBLIC_ENV_KEYS = [
   "ATLAS_AUTH_BASE_PATH",
   "ATLAS_SERVER_API_PROXY_TARGET",
   "ATLAS_AUTH_JWT_AUDIENCES",
+  "VITE_CF_WEB_ANALYTICS_TOKEN",
 ];
 
 /** Keep searchable URLs stable while the same bundles are tested on an isolated host. */

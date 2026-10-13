@@ -38,7 +38,7 @@ export default {
     const headers = new Headers(request.headers);
     for (const key of [...headers.keys()]) {
       if (
-        /^(?:x-forwarded-|x-vercel-)/i.test(key) ||
+        /^x-forwarded-/i.test(key) ||
         [
           "forwarded",
           "x-real-ip",

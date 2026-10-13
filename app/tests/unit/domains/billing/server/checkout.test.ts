@@ -27,7 +27,7 @@ describe("createCheckoutSession", () => {
   });
 
   it("refuses an unapproved production offer before calling Stripe", async () => {
-    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("ATLAS_PUBLIC_URL", "https://atlas.example.test");
     vi.stubEnv("ATLAS_BILLING_ALLOWED_OFFERS", "atlas_pro:monthly");
 
     await expect(
@@ -46,7 +46,7 @@ describe("createCheckoutSession", () => {
   });
 
   it("refuses production Checkout without a recorded purchase intent", async () => {
-    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("ATLAS_PUBLIC_URL", "https://atlas.example.test");
     vi.stubEnv("ATLAS_BILLING_ALLOWED_OFFERS", "atlas_pro:monthly");
 
     await expect(

@@ -49,8 +49,8 @@ export async function runHostedPhases(run: BootstrapRun): Promise<void> {
   // and production each get their own GCP project, Neon database, and
   // Cloud Run service (see infra.ts / infra-project.ts / database.ts /
   // deploy.ts). MCP Registry and CI Cache have no staging equivalent by
-  // nature — publishing to a public MCP registry and wiring Vercel
-  // Remote Cache into CI are prod-only/repo-wide concerns.
+  // nature — publishing to a public MCP registry and configuring CI cache are
+  // prod-only/repo-wide concerns.
   const hostedTarget: HostedDeployTarget =
     args.stripeTarget === "staging" ? "staging" : "production";
   const sharedInfraOnlyPhasesRun = hasSharedInfraPhases(args.stripeTarget);
@@ -172,7 +172,7 @@ export async function runHostedPhases(run: BootstrapRun): Promise<void> {
     allFollowUp.push(...result.followUpItems);
   }
 
-  // Phase 9: CI Remote Cache (Vercel Remote Cache for GitHub Actions)
+  // Phase 9: CI cache
   if (
     !shouldSkipPhase("ci-cache", state, args.resume) ||
     !(await confirmResumeSkip("CI Cache"))

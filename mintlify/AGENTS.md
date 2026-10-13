@@ -22,8 +22,8 @@ needs to use Atlas.
 
 Examples that do not belong here:
 
-- GitHub Actions quirks, Vercel build investigations, local pre-push failures,
-  lockfile recovery, or branch cleanup notes.
+- GitHub Actions quirks, build investigations, local pre-push failures, lockfile
+  recovery, or branch cleanup notes.
 - Test-only environment variables, fixture behavior, mocked credential stores,
   Playwright setup, coverage gates, or acceptance-test repair guidance.
 - Internal module names, private helper functions, adapter behavior, or

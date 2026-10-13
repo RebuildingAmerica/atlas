@@ -84,13 +84,13 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
   }
   if (args.ciCacheOnly) {
     return {
-      announcement: "Running Vercel Remote Cache wiring only.",
+      announcement: "Running CI cache configuration check only.",
       phaseLabel: "CI Remote Cache",
       run: () => runCiCachePhase(projectRoot, args.doctorMode),
       record: (result) => {
         markPhase(state, "ci-cache", reportedPhaseStatus(result));
       },
-      successMessage: "Vercel Remote Cache wired into GitHub Actions.",
+      successMessage: "CI cache configuration is ready.",
       failureMessage: "CI cache wiring had issues.",
     };
   }

@@ -3,8 +3,6 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import Stripe from "stripe";
 import { parseEnvFile } from "../../lib/env-file.js";
-import { getVercelScope } from "../../lib/vercel.js";
-import { fetchExistingKeys } from "../../lib/vercel-env.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
 import {
   expandStripeCatalogEnv,
@@ -21,11 +19,7 @@ import type {
   StripeProductSnapshot,
   StripeWebhookEndpointSnapshot,
 } from "./verify-types.js";
-import {
-  verifyHostedStripeEnvKeys,
-  verifyStripeTargetSnapshot,
-} from "./verify-catalog.js";
-import { issue } from "./verify-issue.js";
+import { verifyStripeTargetSnapshot } from "./verify-catalog.js";
 import { expectedWebhookUrlForEnv } from "./verify-webhook.js";
 
 interface VerifyCliArgs {
@@ -145,21 +139,11 @@ export function formatStripeVerificationFollowUp(
   if (target === "prod") {
     const followUp = [
       "Production Stripe verification is incomplete.",
-      "Inspect the existing live account, catalog, and Vercel Production settings before changing any key or recreating objects.",
+      "Inspect the existing live account and catalog before changing any key or recreating objects.",
     ];
     if (issues.some((item) => item.code === "missing_env")) {
       followUp.push(
         "Local verification inputs are missing; this does not prove deployed values are absent.",
-      );
-    }
-    if (issues.some((item) => item.code === "missing_hosted_env")) {
-      followUp.push(
-        "The deployed candidate is missing a required Vercel Production setting; set only accepted offers after their lifecycle checks pass.",
-      );
-    }
-    if (issues.some((item) => item.code === "vercel_project_unlinked")) {
-      followUp.push(
-        "Link app/ to the existing Atlas Vercel project to inspect hosted metadata.",
       );
     }
     return [...followUp, "Verify again: pnpm stripe:verify:prod"];
@@ -246,29 +230,6 @@ async function main(): Promise<void> {
     }
   }
 
-  if (args.target !== "local") {
-    const hostedIssues = verifyHostedStripeEnvForProject(
-      projectRoot,
-      args.target,
-    );
-    if (hostedIssues.length > 0) {
-      hasIssues = true;
-      allIssues.push(...hostedIssues);
-      console.log(
-        `not ok Vercel ${args.target === "prod" ? "Production" : "Preview"} Stripe env`,
-      );
-      for (const verificationIssue of hostedIssues) {
-        console.log(
-          `- ${verificationIssue.code} ${verificationIssue.envKey}: ${verificationIssue.message}`,
-        );
-      }
-    } else {
-      console.log(
-        `ok Vercel ${args.target === "prod" ? "Production" : "Preview"} Stripe env`,
-      );
-    }
-  }
-
   if (hasIssues) {
     const followUp = formatStripeVerificationFollowUp(args.target, allIssues);
     if (followUp.length > 0) {
@@ -279,27 +240,6 @@ async function main(): Promise<void> {
     }
     process.exitCode = 1;
   }
-}
-
-function verifyHostedStripeEnvForProject(
-  projectRoot: string,
-  target: Exclude<StripeBootstrapTarget, "local">,
-): StripeCatalogVerificationIssue[] {
-  const appDir = path.join(projectRoot, "app");
-  const scope = getVercelScope(appDir);
-  if (!scope) {
-    return [
-      issue(
-        "vercel_project_unlinked",
-        "VERCEL_PROJECT",
-        "app/ is not linked to a Vercel project, so hosted Stripe env metadata cannot be verified.",
-      ),
-    ];
-  }
-  return verifyHostedStripeEnvKeys(
-    target,
-    fetchExistingKeys(scope, { cwd: appDir }),
-  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

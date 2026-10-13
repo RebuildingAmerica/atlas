@@ -34,8 +34,6 @@ const REQUEST_HEADERS_TO_DROP = new Set([
   "x-atlas-client-ip",
   "x-atlas-proxy-secret",
   "x-real-ip",
-  "x-vercel-protection-bypass",
-  "x-vercel-trusted-oidc-idp-token",
 ]);
 
 /**

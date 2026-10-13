@@ -44,10 +44,8 @@ const PRIVACY_SECTIONS = [
       "Running Atlas means handing parts of the job to other companies. Each one below sees only what its part of the job requires, and each is bound by its own contract with us to process that information on our instructions. We do not sell personal information collected through Atlas, and we do not share it for advertising.",
     ],
     bullets: [
-      "Vercel — hosts the Atlas application and serves every page request (United States)",
-      "Google Cloud — runs the Atlas API and the identity server (United States)",
+      "Cloudflare — hosts Atlas and routes and protects traffic to atlas.rebuildingus.org (global edge network)",
       "Neon — hosts the PostgreSQL database holding accounts, workspaces, and directory records (United States)",
-      "Cloudflare — routes and protects traffic to atlas.rebuildingus.org (global edge network)",
       "Stripe — processes payments, subscriptions, and tax calculation (United States)",
       "Resend — delivers sign-in links, invitations, and account email (United States)",
       "Anthropic — reads public web pages Atlas has fetched and extracts structured records from them; account data is not sent (United States)",

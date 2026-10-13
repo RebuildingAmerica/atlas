@@ -9,8 +9,7 @@ describe("protected deployed billing inventory", () => {
     ATLAS_HOSTED_E2E_SECRET: "inventory-test-secret", // pragma: allowlist secret
     ATLAS_PUBLIC_URL: "https://atlas.example.test",
     STRIPE_API_KEY: "rk_live_example_credential", // pragma: allowlist secret
-    VERCEL_ENV: "production",
-    VERCEL_GIT_COMMIT_SHA: "0123456789abcdef0123456789abcdef01234567", // pragma: allowlist secret
+    ATLAS_RELEASE_SHA: "0123456789abcdef0123456789abcdef01234567", // pragma: allowlist secret
   };
 
   function request(secret?: string): Request {
@@ -115,7 +114,7 @@ describe("protected deployed billing inventory", () => {
     } as unknown as Stripe;
     const response = await handleRuntimeBillingInventoryRequest(
       request("inventory-test-secret"),
-      { ...env, ATLAS_RELEASE_SHA: undefined, VERCEL_GIT_COMMIT_SHA: undefined },
+      { ...env, ATLAS_RELEASE_SHA: undefined },
       () => stripe,
     );
 
@@ -126,7 +125,6 @@ describe("protected deployed billing inventory", () => {
       {
         ...env,
         ATLAS_RELEASE_SHA: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        VERCEL_GIT_COMMIT_SHA: "invalid",
       },
       () => stripe,
     );

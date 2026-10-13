@@ -7,14 +7,8 @@
  */
 
 import type Stripe from "stripe";
-import { hasVercelEnvKey } from "../../lib/vercel-env.js";
-import {
-  STRIPE_ENV_KEYS,
-  type StripeRuntimeMode,
-  type StripeBootstrapTarget,
-} from "./env.js";
+import { type StripeRuntimeMode, type StripeBootstrapTarget } from "./env.js";
 import { setupCommandForTarget as repoSetupCommandForTarget } from "../../config/setup-manifest.js";
-import type { VercelEnvKey } from "../../lib/vercel.js";
 
 interface StripeAccountPrompt {
   accountId: string;
@@ -130,7 +124,7 @@ export function formatStripeApiKeyGuidanceNote(
         "9. Reveal the key once and copy the rk_live_ value.",
         "",
         "Bootstrap will create or update the Atlas Stripe catalog, webhook,",
-        "env files, and Vercel Production env vars after this.",
+        "local environment files after this.",
       ].join("\n"),
     };
   }
@@ -181,36 +175,6 @@ export function formatStripeMissingApiKeyGuidance(
     ...params.apiKeyResolutionNotes,
     ...params.hostedEnvStatus,
   ];
-}
-
-export function formatHostedStripeEnvStatus(
-  target: Exclude<StripeBootstrapTarget, "local">,
-  existingKeys: readonly VercelEnvKey[],
-): string[] {
-  const environment = target === "prod" ? "production" : "preview";
-  const environmentLabel = target === "prod" ? "Production" : "Preview";
-  const missing = STRIPE_ENV_KEYS.filter(
-    (key) => !hasVercelEnvKey(existingKeys, key, environment),
-  );
-
-  if (missing.length === 0) {
-    return [
-      `Vercel ${environmentLabel} Stripe env already has ${STRIPE_ENV_KEYS.join(", ")}.`,
-    ];
-  }
-
-  const lines = [
-    `Vercel ${environmentLabel} Stripe env is missing ${missing.join(", ")}.`,
-  ];
-  const previewHasStripeEnv = STRIPE_ENV_KEYS.some((key) =>
-    hasVercelEnvKey(existingKeys, key, "preview"),
-  );
-  if (target === "prod" && previewHasStripeEnv) {
-    lines.push(
-      "Vercel Preview Stripe env does not configure Production; run production setup to sync Production explicitly.",
-    );
-  }
-  return lines;
 }
 
 export function formatStripeAccountVerificationFailure(
@@ -320,14 +284,14 @@ export function stripeDoctorFollowUp(
   if (target === "prod") {
     return [
       ...stripeLiveRestrictedKeySetupSteps(),
-      `That command converges Stripe ${envMode} products, coupons, the production webhook, .env.production, and Vercel Production env vars.`,
+      `That command converges Stripe ${envMode} products, coupons, the production webhook, and .env.production.`,
       "Run `pnpm stripe:verify:prod` after setup.",
     ];
   }
 
   if (target === "staging") {
     return [
-      `Run \`${setupCommandForTarget(target)}\` to converge Stripe ${envMode} products, coupons, the staging webhook, .env.staging, and Vercel Preview env vars.`,
+      `Run \`${setupCommandForTarget(target)}\` to converge Stripe ${envMode} products, coupons, the staging webhook, and .env.staging.`,
       "Run `pnpm stripe:verify:staging` after setup.",
     ];
   }

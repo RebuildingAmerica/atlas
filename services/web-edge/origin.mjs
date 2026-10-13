@@ -37,7 +37,7 @@ export function createOriginServer({ secret, publicUrl, upstreamPort }) {
     const headers = { ...request.headers };
     for (const key of Object.keys(headers)) {
       if (
-        /^(?:cf-|x-forwarded-|x-vercel-)/i.test(key) ||
+        /^(?:cf-|x-forwarded-)/i.test(key) ||
         [
           "forwarded",
           "x-real-ip",

@@ -39,7 +39,7 @@ export function createWorkerApiTransport(
         .map((name) => name.trim()) ?? [];
     for (const name of [...headers.keys()]) {
       if (
-        /^(?:x-forwarded-|x-vercel-|cf-access-)/i.test(name) ||
+        /^(?:x-forwarded-|cf-access-)/i.test(name) ||
         [
           "cookie",
           "host",

@@ -13,7 +13,7 @@ test("production recovery remains manual and serialized with releases", async ()
   assert.match(workflow, /refs\/tags\/v\*/);
   assert.match(workflow, /operation: restore-routing/);
   assert.match(workflow, /cloudflare-publication\.yml/);
-  assert.doesNotMatch(workflow, /cloud-run-release|vercel promote|gcloud/);
+  assert.doesNotMatch(workflow, /cloud-run-release|gcloud/);
 });
 
 test("hosted publishing retains trusted refs while production executes independently of CI", async () => {
@@ -32,7 +32,7 @@ test("hosted publishing retains trusted refs while production executes independe
     assert.match(workflow, /cloudflare-publication\.yml/);
     assert.doesNotMatch(
       workflow,
-      /deploy-atlas-api|deploy-atlas-pds|vercel deploy|gcloud/,
+      /deploy-atlas-api|deploy-atlas-pds|gcloud/,
     );
   }
 });

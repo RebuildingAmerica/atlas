@@ -43,7 +43,7 @@ test.describe("hosted public pages", () => {
     const appOrigin = requiredHostedOrigin("ATLAS_HOSTED_PUBLIC_URL");
     const apiOrigin = requiredHostedOrigin("ATLAS_HOSTED_API_URL");
     const timeout = { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) };
-    // Vercel access credentials go only to the app, never to the API.
+    // Access credentials go only to the app, never to the API.
     const requests: [string, RequestInit][] = [
       [appOrigin, hostedPublicRequestInit(timeout)],
       [apiOrigin, timeout],

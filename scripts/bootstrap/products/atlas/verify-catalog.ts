@@ -5,7 +5,6 @@
  * lets the verify command and its tests share them.
  */
 
-import { hasVercelEnvKey } from "../../lib/vercel-env.js";
 import { ATLAS_COUPONS, ATLAS_PRODUCTS } from "../../config/products.js";
 import {
   STRIPE_ATLAS_CATALOG_ENV_KEY,
@@ -14,7 +13,6 @@ import {
   expandStripeCatalogEnv,
 } from "./env.js";
 import type { StripeBootstrapTarget } from "./env.js";
-import type { VercelEnvKey } from "../../lib/vercel.js";
 import type {
   AtlasCouponDefinition,
   AtlasPriceDefinition,
@@ -103,29 +101,6 @@ export function verifyStripeTargetSnapshot(
     ...verifyStripeCatalogSnapshot(env, snapshot, { expectedWebhookUrl }),
   );
   return issues;
-}
-
-export function verifyHostedStripeEnvKeys(
-  target: Exclude<StripeBootstrapTarget, "local">,
-  existingKeys: readonly VercelEnvKey[],
-): StripeCatalogVerificationIssue[] {
-  const environment = target === "prod" ? "production" : "preview";
-  const requiredKeys =
-    target === "prod"
-      ? [...STRIPE_ENV_KEYS, "ATLAS_BILLING_ALLOWED_OFFERS"]
-      : STRIPE_ENV_KEYS;
-  return requiredKeys.flatMap((envKey) => {
-    if (hasVercelEnvKey(existingKeys, envKey, environment)) {
-      return [];
-    }
-    return [
-      issue(
-        "missing_hosted_env",
-        envKey,
-        `Vercel ${environment} is missing ${envKey}.`,
-      ),
-    ];
-  });
 }
 
 function collectMissingCatalogEntries(

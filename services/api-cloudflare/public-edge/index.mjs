@@ -86,7 +86,7 @@ export default {
         .map((value) => value.trim().toLowerCase()) ?? [];
     for (const key of [...headers.keys()])
       if (
-        /^(?:x-atlas-|x-forwarded-|x-vercel-|cf-)/i.test(key) ||
+        /^(?:x-atlas-|x-forwarded-|cf-)/i.test(key) ||
         hopHeaders.has(key) ||
         connectionHeaders.includes(key)
       )

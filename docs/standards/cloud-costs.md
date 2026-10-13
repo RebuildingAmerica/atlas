@@ -89,6 +89,6 @@ When Cloud Billing export is enabled:
 
 ## External Providers
 
-Vercel, Neon, and other provider plans can dominate daily cost even when GCP is
-inside free tier. Track fixed external provider costs explicitly. If billing API
-access is unavailable, record the gap as unknown rather than reporting `$0`.
+Cloudflare, Neon, and other provider plans can dominate daily cost even when GCP
+is inside free tier. Track fixed external provider costs explicitly. If billing
+API access is unavailable, record the gap as unknown rather than reporting `$0`.

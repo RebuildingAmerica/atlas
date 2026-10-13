@@ -10,7 +10,7 @@ void describe("CI cache guidance", () => {
     const status = formatCiCacheStatus();
 
     assert.match(status, /GitHub Actions cache/);
-    assert.match(status, /needs no Vercel login or token/);
+    assert.match(status, /needs no separate provider login or token/);
   });
 
   void it("recognizes an optional authenticated local Turbo remote cache", () => {

@@ -37,7 +37,6 @@ async def test_posts_the_decision_to_the_app_with_the_callback_secret(
     _app_answers(monkeypatch, 204, seen)
     settings = platform_settings(
         auth_membership_verification_url="https://atlas.example.test/",
-        auth_membership_protection_bypass_secret="bypass-value",  # pragma: allowlist secret
     )
 
     await notify_discount_review_result(
@@ -50,9 +49,6 @@ async def test_posts_the_decision_to_the_app_with_the_callback_secret(
     )
     assert (
         request.headers["X-Atlas-Callback-Secret"] == CALLBACK_TEST_SECRET
-    )  # pragma: allowlist secret
-    assert (
-        request.headers["x-vercel-protection-bypass"] == "bypass-value"
     )  # pragma: allowlist secret
     assert json.loads(request.content) == {
         "segment": "student",

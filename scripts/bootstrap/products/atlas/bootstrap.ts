@@ -3,8 +3,6 @@ import type Stripe from "stripe";
 import { log, note, password } from "@clack/prompts";
 import pc from "picocolors";
 import { mergeEnvFile, parseEnvFile } from "../../lib/env-file.js";
-import { detectAndLink, getVercelScope } from "../../lib/vercel.js";
-import { fetchExistingKeys, syncEnvVars } from "../../lib/vercel-env.js";
 import { logSubline, promptOrExit } from "../../lib/ui.js";
 import type { PhaseResult, ReadinessState } from "../../state.js";
 import { markPhase } from "../../state.js";
@@ -21,7 +19,6 @@ import {
 } from "./catalog.js";
 import {
   buildStripeEnvUpdates,
-  buildStripeVercelEnvVars,
   resolveStripeEnvFileTargets,
   resolveStripeMode,
   STRIPE_BILLING_PORTAL_CONFIGURATION_ENV_KEY,
@@ -35,7 +32,6 @@ import {
   printStripeApiKeyGuidance,
 } from "./stripe-account.js";
 import {
-  formatHostedStripeEnvStatus,
   formatStripeAccountVerificationFailure,
   formatStripeApiKeyPromptMessage,
   formatStripeMissingApiKeyGuidance,
@@ -83,15 +79,12 @@ export async function runProductPhase(
     live,
     envFileTargets,
   );
-  const hostedEnvStatus =
-    target === "local" ? [] : hostedStripeEnvStatus(projectRoot, target);
-
   if (!apiKey) {
     if (doctorMode) {
       log.warn("Stripe API key not found");
       for (const guidanceLine of formatStripeMissingApiKeyGuidance({
         apiKeyResolutionNotes,
-        hostedEnvStatus,
+        hostedEnvStatus: [],
         target,
       })) {
         logSubline(guidanceLine);
@@ -103,10 +96,9 @@ export async function runProductPhase(
           target === "prod"
             ? [
                 ...apiKeyResolutionNotes,
-                ...hostedEnvStatus,
                 ...stripeDoctorFollowUp(target, envMode),
               ]
-            : [...hostedEnvStatus, missingKeyFollowUp],
+            : [missingKeyFollowUp],
       };
     }
 
@@ -270,19 +262,6 @@ export async function runProductPhase(
     );
   }
 
-  if (target !== "local") {
-    const synced = await syncHostedStripeEnv(
-      projectRoot,
-      target,
-      envUpdates,
-      followUpItems,
-      assumeYes,
-    );
-    if (!synced) {
-      allSucceeded = false;
-    }
-  }
-
   const status = allSucceeded ? "complete" : "partial";
   markPhase(
     state,
@@ -298,58 +277,6 @@ export async function runProductPhase(
   }
 
   return { success: allSucceeded, followUpItems };
-}
-
-function hostedStripeEnvStatus(
-  projectRoot: string,
-  target: Exclude<StripeBootstrapTarget, "local">,
-): string[] {
-  const appDir = path.join(projectRoot, "app");
-  const scope = getVercelScope(appDir);
-  if (!scope) {
-    return [
-      "Vercel project is not linked, so bootstrap cannot check hosted Stripe env metadata.",
-    ];
-  }
-  return formatHostedStripeEnvStatus(
-    target,
-    fetchExistingKeys(scope, { cwd: appDir }),
-  );
-}
-
-async function syncHostedStripeEnv(
-  projectRoot: string,
-  target: Exclude<StripeBootstrapTarget, "local">,
-  envUpdates: Map<string, string>,
-  followUpItems: string[],
-  assumeYes: boolean,
-): Promise<boolean> {
-  const varsToSync = buildStripeVercelEnvVars(envUpdates, target);
-  if (varsToSync.length === 0) {
-    return true;
-  }
-
-  const appDir = path.join(projectRoot, "app");
-  await detectAndLink(appDir, { assumeYes });
-  const scope = getVercelScope(appDir);
-  if (!scope) {
-    followUpItems.push(
-      "Vercel project not linked — run `vercel link` in app/ then re-run Stripe bootstrap",
-    );
-    return false;
-  }
-
-  const synced = await syncEnvVars(varsToSync, scope, {
-    assumeYes,
-    cwd: appDir,
-    targetLabel: target === "prod" ? "production" : "preview",
-  });
-  if (!synced) {
-    followUpItems.push(
-      `Stripe ${target} env values were not fully synced to Vercel — re-run \`${setupCommandForTarget(target)}\` after checking Vercel CLI output`,
-    );
-  }
-  return synced;
 }
 
 async function processProduct(

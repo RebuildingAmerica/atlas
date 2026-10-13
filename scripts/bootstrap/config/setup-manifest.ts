@@ -50,7 +50,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
     targets: ["staging", "prod"],
     required: true,
     source: "human",
-    destinations: [".env.staging", ".env.production", "Vercel"],
+    destinations: [".env.staging", ".env.production", "Cloudflare"],
     instructions: "Use the public HTTPS app origin for the target environment.",
   },
   {
@@ -59,9 +59,9 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
     targets: ["staging", "prod"],
     required: true,
     source: "human",
-    destinations: [".env.staging", ".env.production", "Vercel"],
+    destinations: [".env.staging", ".env.production", "Cloudflare"],
     instructions:
-      "Use the public HTTPS API origin that Vercel should proxy /api traffic to.",
+      "Use the public HTTPS API origin that Atlas should proxy /api traffic to.",
   },
   {
     key: "ATLAS_DOCS_URL",
@@ -69,7 +69,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
     targets: ["staging", "prod"],
     required: true,
     source: "human",
-    destinations: [".env.staging", ".env.production", "Vercel"],
+    destinations: [".env.staging", ".env.production", "Cloudflare"],
     instructions:
       "Use the Mintlify deployment origin, then enable Host at /docs in Mintlify.",
   },
@@ -79,7 +79,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
     targets: ["staging", "prod"],
     required: true,
     source: "human",
-    destinations: [".env.staging", ".env.production", "api/.env", "Vercel"],
+    destinations: [".env.staging", ".env.production", "api/.env", "Cloudflare"],
     instructions:
       "Create or choose a Neon Postgres database and copy the pooled connection string.",
   },
@@ -94,7 +94,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       ".env.staging",
       ".env.production",
       "api/.env",
-      "Vercel",
+      "Cloudflare",
     ],
     instructions:
       "Bootstrap generates this shared app/API secret when it is missing.",
@@ -111,7 +111,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       ".env.production",
       "api/.env",
       "app/.env.local",
-      "Vercel",
+      "Cloudflare",
     ],
     instructions:
       "Bootstrap generates this secret when it is missing. The API sends it when it calls back into the app for membership checks and API-key introspection, so the app and API must hold the same value.",
@@ -128,7 +128,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       ".env.production",
       "api/.env",
       "app/.env.local",
-      "Vercel",
+      "Cloudflare",
     ],
     instructions:
       "Bootstrap generates this secret when it is missing. Cloudflare, the app server, and the API all hold it so the edge and the app proxy can vouch for visitor IP addresses.",
@@ -139,7 +139,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
     targets: ["staging", "prod"],
     required: true,
     source: "human",
-    destinations: [".env.staging", ".env.production", "Vercel"],
+    destinations: [".env.staging", ".env.production", "Cloudflare"],
     instructions:
       "Create a Resend API key after verifying the sender domain used by ATLAS_EMAIL_FROM.",
   },
@@ -154,7 +154,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       ".env.staging",
       ".env.production",
       "app/.env.local",
-      "Vercel",
+      "Cloudflare",
     ],
     instructions: [
       "Use Stripe CLI test auth for local/staging.",
@@ -174,7 +174,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       ".env.staging",
       ".env.production",
       "app/.env.local",
-      "Vercel",
+      "Cloudflare",
     ],
     instructions:
       "Bootstrap creates or verifies the target webhook; copy the signing secret if Stripe only returns an existing endpoint.",
@@ -190,7 +190,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       ".env.staging",
       ".env.production",
       "app/.env.local",
-      "Vercel",
+      "Cloudflare",
     ],
     instructions:
       "Bootstrap generates this from the canonical Atlas products, prices, and coupons.",
@@ -206,7 +206,7 @@ export const SETUP_VALUE_MANIFEST: SetupValueManifestItem[] = [
       ".env.staging",
       ".env.production",
       "app/.env.local",
-      "Vercel",
+      "Cloudflare",
     ],
     instructions:
       "Bootstrap creates or updates an Atlas-specific portal with invoices, payment-method updates, and end-of-term cancellation.",

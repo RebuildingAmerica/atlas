@@ -8,8 +8,8 @@
  * | --------------------------------------------------------- | ------------ |
  * | `pnpm setup`                                              | Full guided repo setup, including production readiness. |
  * | `pnpm setup:local`                                        | Local dev setup, including local Stripe test-mode sync. |
- * | `pnpm setup:staging`                                      | Staging setup: its own GCP project, Cloud Run service, Stripe test-mode sync, and Vercel Preview env sync. |
- * | `pnpm setup:prod`                                         | Production setup, including Stripe live-mode sync and Vercel Production env sync. |
+ * | `pnpm setup:staging`                                      | Staging setup: its own infrastructure and Stripe test-mode sync. |
+ * | `pnpm setup:prod`                                         | Production setup, including Stripe live-mode sync. |
  * | `pnpm doctor`                                             | Checks readiness without changing local or hosted state. |
  * | `pnpm bootstrap`                                          | Full guided repo setup, including production readiness. |
  * | `pnpm bootstrap --local-only`                             | Local dev setup, including local Stripe test-mode sync. |

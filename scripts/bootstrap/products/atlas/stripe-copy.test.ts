@@ -5,7 +5,6 @@ import {
   formatStripeApiKeyPromptMessage,
   formatStripeApiKeyGuidanceNote,
   formatStripeWebhookUrlPromptMessage,
-  formatHostedStripeEnvStatus,
   stripeLiveRestrictedKeySetupSteps,
   formatStripeAccountPrompt,
   formatStripeAccountVerificationFailure,
@@ -53,20 +52,6 @@ void describe("Stripe bootstrap account review", () => {
     );
   });
 
-  void it("explains when Vercel Preview has Stripe env but Production does not", () => {
-    assert.deepEqual(
-      formatHostedStripeEnvStatus("prod", [
-        { environment: "preview", key: "STRIPE_API_KEY" },
-        { environment: "preview", key: "STRIPE_WEBHOOK_SECRET" },
-        { environment: "preview", key: "STRIPE_ATLAS_CATALOG" },
-      ]),
-      [
-        "Vercel Production Stripe env is missing STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_ATLAS_CATALOG, STRIPE_BILLING_PORTAL_CONFIGURATION.",
-        "Vercel Preview Stripe env does not configure Production; run production setup to sync Production explicitly.",
-      ],
-    );
-  });
-
   void it("walks operators through creating the production Stripe key", () => {
     const steps = stripeLiveRestrictedKeySetupSteps();
 
@@ -99,9 +84,7 @@ void describe("Stripe bootstrap account review", () => {
     const steps = stripeLiveRestrictedKeySetupSteps();
     const guidance = formatStripeMissingApiKeyGuidance({
       apiKeyResolutionNotes: ["Stripe CLI has a redacted live key."],
-      hostedEnvStatus: [
-        "Vercel Production Stripe env is missing STRIPE_API_KEY.",
-      ],
+      hostedEnvStatus: [],
       target: "prod",
     });
 
@@ -109,7 +92,6 @@ void describe("Stripe bootstrap account review", () => {
       "Production Stripe setup needs a live restricted key before bootstrap can change Stripe.",
       ...steps,
       "Stripe CLI has a redacted live key.",
-      "Vercel Production Stripe env is missing STRIPE_API_KEY.",
     ]);
   });
 
@@ -133,10 +115,7 @@ void describe("Stripe bootstrap account review", () => {
       /Products, Prices, Coupons, Customers, Checkout Sessions/,
     );
     assert.match(guidance.message, /rk_live_/);
-    assert.match(
-      guidance.message,
-      /webhook,\nenv files, and Vercel Production env vars/,
-    );
+    assert.match(guidance.message, /webhook,\nlocal environment files/);
     assert.ok(
       guidance.message.split("\n").every((line) => line.length <= 88),
       "Stripe guidance should stay readable in narrow terminals",

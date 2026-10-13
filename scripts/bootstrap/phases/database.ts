@@ -19,9 +19,6 @@ import {
 } from "../lib/hosted-target.js";
 import { promptOrExit, promptConfirm, logSubline } from "../lib/ui.js";
 import type { ReadinessState } from "../state.js";
-import { getVercelScope, type VercelVar } from "../lib/vercel.js";
-import { syncEnvVars } from "../lib/vercel-env.js";
-import { vercelEnvironmentsForTarget } from "./env-routing.js";
 
 const SCHEMA_PARTS_RELATIVE_PATH = "api/atlas/models/schema_parts";
 
@@ -63,7 +60,7 @@ export function formatNeonConnectionStringPromptMessage(
     "3. Copy the pooled PostgreSQL connection string from the dashboard.",
     "4. Make sure it starts with postgresql:// or postgres:// and includes sslmode=require.",
     "",
-    `Paste the full connection string here. Bootstrap writes it to .env.${target === "production" ? "production" : "staging"} and Vercel when linked.`,
+    `Paste the full connection string here. Bootstrap writes it to .env.${target === "production" ? "production" : "staging"}.`,
   ].join("\n");
 }
 
@@ -202,31 +199,6 @@ export async function runDatabasePhase(
   // ── Write to env files ────────────────────────────────────────────────────
   if (!doctorMode && databaseUrl) {
     writeToEnvFiles(hostedEnvPath, databaseUrl);
-
-    // Sync DATABASE_URL to Vercel if deploy-vercel capability is ready
-    if (state.capabilities["deploy-vercel"]?.status === "ready") {
-      const appDir = path.join(projectRoot, "app");
-      const scope = getVercelScope(appDir);
-      if (scope) {
-        const vars: VercelVar[] = [
-          {
-            key: "DATABASE_URL",
-            value: databaseUrl,
-            environments: vercelEnvironmentsForTarget(target),
-          },
-        ];
-        const synced = await syncEnvVars(vars, scope, { cwd: appDir });
-        if (!synced) {
-          result.followUpItems.push(
-            "DATABASE_URL was not synced to Vercel — re-run bootstrap from a linked app/ directory",
-          );
-        }
-      } else {
-        result.followUpItems.push(
-          "Vercel project not linked — DATABASE_URL not synced to Vercel",
-        );
-      }
-    }
   }
 
   return result;

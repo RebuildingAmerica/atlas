@@ -31,7 +31,7 @@ for (const target of ["production", "staging"]) {
       assert.doesNotMatch(source, /profile: production/);
     } else {
       assert.match(source, /profile: production/);
-      assert.match(source, /publish:\s*\n\s*needs: ci/);
+      assert.match(source, /publish:\s*\n(?:\s+name:.*\n)?\s*needs: ci/);
     }
     assert.match(
       source,
@@ -71,7 +71,7 @@ test("publication preserves the existing PDS broker and account verification cre
     publication,
     /ATLAS_PDS_ADMIN_PASSWORD|randomBytes|ATLAS_ATPROTO_OAUTH_E2E_HARNESS/,
   );
-  assert.doesNotMatch(source, /Generate.*secret|vercel deploy|gcloud/);
+  assert.doesNotMatch(source, /Generate.*secret|gcloud/);
 });
 
 test("doctor checks the PDS read-only and normal web deployment converges it after billing preflight", async () => {
@@ -84,7 +84,7 @@ test("doctor checks the PDS read-only and normal web deployment converges it aft
   assert.ok(preflight >= 0 && deployment > preflight);
   assert.match(
     source,
-    /if: inputs.operation == 'web-candidate' \|\| inputs.operation == 'doctor'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
+    /if: inputs.operation == 'web-candidate' \|\| inputs.operation == 'doctor' \|\| inputs.operation == 'cleanup-hosted-fixtures'\n\s*uses: \.\/\.github\/actions\/deploy-atlas-pds/,
   );
   assert.match(
     source,

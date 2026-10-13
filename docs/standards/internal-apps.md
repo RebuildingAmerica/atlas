@@ -41,8 +41,6 @@ the gate did not sign.
 - TanStack Start apps build through the official `@cloudflare/vite-plugin`,
   whose output `cf deploy` reads. Nitro's Cloudflare preset writes Wrangler's
   format, which `cf` does not deploy.
-- Vercel is not used for internal apps: Vercel advises against a proxy in front
-  of it, and neither Access nor IAP can front it.
 - Deploys use the `cf` CLI pinned in the workspace catalog, from GitHub Actions
   (`.github/actions/deploy-atlas-admin`) with `CLOUDFLARE_API_TOKEN` scoped to
   Workers Scripts Edit and Zone Workers Routes Edit for one account and zone,

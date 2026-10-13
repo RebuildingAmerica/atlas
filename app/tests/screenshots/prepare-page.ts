@@ -45,7 +45,7 @@ export async function preparePage(page: Page, liveTiles: boolean): Promise<void>
 
   // Analytics beacons never render anything but do keep the network busy. Fulfilled rather
   // than aborted so they do not show up as console errors and mask real ones.
-  await page.route("**/_vercel/**", (route) =>
+  await page.route("**/cloudflareinsights.com/**", (route) =>
     route.fulfill({ body: "", contentType: "text/plain", status: 204 }),
   );
 

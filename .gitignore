@@ -14,7 +14,6 @@ dist/
 .vite/
 .cache/
 .turbo/
-.vercel/
 .wrangler/
 .cloudflare/
 .atlas/

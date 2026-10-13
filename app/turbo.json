@@ -141,11 +141,11 @@
         "ATLAS_PDS_INVITE_BROKER_URL",
         "ATLAS_PDS_PUBLIC_URL",
         "ATLAS_PUBLIC_URL",
-        "ATLAS_SERVER_API_PROXY_TARGET"
+        "ATLAS_SERVER_API_PROXY_TARGET",
+        "VITE_CF_WEB_ANALYTICS_TOKEN"
       ],
       "outputs": [
-        ".output/**",
-        ".vercel/output/**"
+        ".output/**"
       ]
     },
     "openapi:lint": {

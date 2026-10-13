@@ -115,26 +115,6 @@ export async function doctor({
       services: tool("gcloud", args).split("\n").filter(Boolean),
     };
   });
-  await check("vercel-inventory", async () => {
-    required("VERCEL_ORG_ID");
-    required("VERCEL_TOKEN");
-    // Token stays in the HTTP header, never in process arguments or logs.
-    const response = await fetcher(
-      `https://api.vercel.com/v9/projects?teamId=${encodeURIComponent(process.env.VERCEL_ORG_ID)}`,
-      { headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` } },
-    );
-    if (!response.ok)
-      throw new Error(
-        `Vercel project inventory returned HTTP ${response.status}.`,
-      );
-    const data = await response.json();
-    if (!Array.isArray(data.projects))
-      throw new Error("Vercel project inventory is unavailable.");
-    return {
-      projects: data.projects.map((project) => project.name),
-      hasMore: Boolean(data.pagination?.next),
-    };
-  });
   await check("measured-evidence", async () => {
     const file = required("ATLAS_WEB_EVIDENCE_FILE");
     const assessment = assessWebRelease(JSON.parse(readFileSync(file, "utf8")));

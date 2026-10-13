@@ -92,9 +92,9 @@ pnpm dev
 | API      | https://api.atlas.localhost      |
 | API docs | https://atlas.localhost/docs/api |
 
-The local stack uses [Portless](https://github.com/vercel-labs/portless) for
-stable HTTPS URLs. The development docs include app-only and API-only commands
-for environments where running the full stack is not the right first step.
+The local stack uses Portless for stable HTTPS URLs. The development docs
+include app-only and API-only commands for environments where running the full
+stack is not the right first step.
 
 ## Repository Map
 

@@ -975,7 +975,7 @@ function existingPublicationRuntime() {
   };
 }
 
-test("publication runtime preserves existing GitHub-held identity and SSO without Vercel credentials", async () => {
+test("publication runtime preserves existing GitHub-held identity and SSO", async () => {
   const existing = existingPublicationRuntime();
   const result = await retainedPublicationRuntime({
     ...existing,
@@ -991,13 +991,12 @@ test("publication runtime preserves existing GitHub-held identity and SSO withou
   );
 });
 
-test("publication runtime rejects missing GitHub settings instead of recovering them from Vercel", async () => {
+test("publication runtime rejects missing GitHub settings", async () => {
   const existing = existingPublicationRuntime();
   delete existing.DATABASE_URL;
   await assert.rejects(
     retainedPublicationRuntime({
       ...existing,
-      VERCEL_TOKEN: "fixture-unused-provider-token",
     }),
     /Runtime DATABASE_URL is required/,
   );
@@ -1110,10 +1109,6 @@ test("web promotion requires an explicit retained Cloudflare rollback run", () =
   const promote = {
     ...environment,
     ATLAS_PUBLICATION_OPERATION: "promote-web",
-    VERCEL_TOKEN: "obsolete-provider-token",
-    VERCEL_OWNER: "deleted-team-project",
-    VERCEL_PROJECT_ID: "deleted-project",
-    VERCEL_ORG_ID: "retained-team",
   };
   for (const runId of [undefined, "", "not-a-run", "123/456"])
     assert.throws(

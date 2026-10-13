@@ -27,9 +27,7 @@ export type StripeCatalogIssueCode =
   | "missing_webhook_endpoint"
   | "webhook_disabled"
   | "webhook_events_mismatch"
-  | "webhook_metadata_mismatch"
-  | "missing_hosted_env"
-  | "vercel_project_unlinked";
+  | "webhook_metadata_mismatch";
 
 export interface StripeCatalogVerificationIssue {
   code: StripeCatalogIssueCode;

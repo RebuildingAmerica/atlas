@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { NotFoundPage } from "@/platform/pages/not-found-page";
 import { ErrorPage } from "@/platform/pages/error-page";
+import { CloudflareWebAnalytics } from "@/platform/analytics/cloudflare-web-analytics";
 import "@/styles/app.css";
 
 export interface AtlasRouterContext {
@@ -28,6 +29,7 @@ function RootDocument() {
         {/* Values mirror --color-background in styles/app.css for each color scheme. */}
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f1e7" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17130f" />
+        <CloudflareWebAnalytics />
       </head>
       <body className="bg-background text-on-surface flex min-h-screen flex-col">
         <Outlet />

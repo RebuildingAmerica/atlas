@@ -2,7 +2,7 @@ import path from "node:path";
 
 /**
  * Staging and production bootstrap runs must only ever touch their own
- * hosted resources — GCP project, Cloud Run service, Vercel environment.
+ * hosted resources — Cloudflare deployment and environment configuration.
  * There is no "both": a staging-targeted run has no business writing to
  * production, and vice versa.
  *

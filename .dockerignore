@@ -38,4 +38,3 @@ app/.nitro
 app/.wrangler
 
 .wrangler
-app/.vercel

@@ -105,8 +105,7 @@ less protective than this DPA, and Atlas remains liable for their performance.
 
 | Subprocessor | Purpose                                                                              | Location            |
 | ------------ | ------------------------------------------------------------------------------------ | ------------------- |
-| Vercel       | Application hosting and server-side rendering                                        | United States       |
-| Google Cloud | API compute and identity server                                                      | United States       |
+| Cloudflare   | Application hosting, edge routing, and server-side rendering                         | Global edge network |
 | Neon         | PostgreSQL database for accounts, workspaces, and directory records                  | United States       |
 | Cloudflare   | Traffic routing and protection                                                       | Global edge network |
 | Stripe       | Payments, subscriptions, and tax calculation                                         | United States       |

@@ -279,8 +279,6 @@ test("doctor reports missing inputs without changing providers or printing crede
     "CLOUDFLARE_API_TOKEN",
     "GCP_PROJECT_ID",
     "GCP_REGION",
-    "VERCEL_ORG_ID",
-    "VERCEL_TOKEN",
     "ATLAS_WEB_EVIDENCE_FILE",
   ];
   const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
@@ -296,7 +294,7 @@ test("doctor reports missing inputs without changing providers or printing crede
       },
     });
     assert.equal(output.status, "block");
-    assert.equal(output.checks.length, 4);
+    assert.equal(output.checks.length, 3);
     assert.ok(output.checks.every((check) => check.status === "block"));
   } finally {
     for (const key of keys) {

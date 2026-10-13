@@ -188,7 +188,7 @@ describe("checkout availability", () => {
 
   describe("resolveCheckoutAvailability", () => {
     it("keeps production sales closed when no offer was approved", async () => {
-      vi.stubEnv("VERCEL_ENV", "production");
+      vi.stubEnv("ATLAS_PUBLIC_URL", "https://atlas.example.test");
       vi.stubEnv("ATLAS_BILLING_CHECKOUT_ENABLED", "true");
       vi.stubEnv("ATLAS_BILLING_ALLOWED_OFFERS", "");
       const fetchStub = stubFetch({ body: { items: [{ id: "e1" }] } });

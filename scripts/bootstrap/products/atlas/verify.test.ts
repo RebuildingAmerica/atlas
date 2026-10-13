@@ -14,7 +14,6 @@ import type {
   StripeWebhookEndpointSnapshot,
 } from "./verify-types.js";
 import {
-  verifyHostedStripeEnvKeys,
   verifyStripeCatalogSnapshot,
   verifyStripeTargetSnapshot,
 } from "./verify-catalog.js";
@@ -281,38 +280,6 @@ void describe("Stripe catalog verifier", () => {
     );
   });
 
-  void it("flags hosted Vercel Stripe env missing from the requested target", () => {
-    assert.deepEqual(
-      verifyHostedStripeEnvKeys("prod", [
-        { environment: "preview", key: "STRIPE_API_KEY" },
-        { environment: "preview", key: "STRIPE_WEBHOOK_SECRET" },
-        { environment: "preview", key: "STRIPE_ATLAS_CATALOG" },
-      ]).map((issue) => `${issue.code}:${issue.envKey}`),
-      [
-        "missing_hosted_env:STRIPE_API_KEY",
-        "missing_hosted_env:STRIPE_WEBHOOK_SECRET",
-        "missing_hosted_env:STRIPE_ATLAS_CATALOG",
-        "missing_hosted_env:STRIPE_BILLING_PORTAL_CONFIGURATION",
-        "missing_hosted_env:ATLAS_BILLING_ALLOWED_OFFERS",
-      ],
-    );
-  });
-
-  void it("requires a production offer allowlist even when Stripe keys exist", () => {
-    assert.deepEqual(
-      verifyHostedStripeEnvKeys("prod", [
-        { environment: "production", key: "STRIPE_API_KEY" },
-        { environment: "production", key: "STRIPE_WEBHOOK_SECRET" },
-        { environment: "production", key: "STRIPE_ATLAS_CATALOG" },
-        {
-          environment: "production",
-          key: "STRIPE_BILLING_PORTAL_CONFIGURATION",
-        },
-      ]).map((finding) => finding.envKey),
-      ["ATLAS_BILLING_ALLOWED_OFFERS"],
-    );
-  });
-
   void it("does not mistake missing local proof for missing live setup", () => {
     const followUp = formatStripeVerificationFollowUp("prod", [
       {
@@ -329,25 +296,8 @@ void describe("Stripe catalog verifier", () => {
 
     assert.deepEqual(followUp, [
       "Production Stripe verification is incomplete.",
-      "Inspect the existing live account, catalog, and Vercel Production settings before changing any key or recreating objects.",
+      "Inspect the existing live account and catalog before changing any key or recreating objects.",
       "Local verification inputs are missing; this does not prove deployed values are absent.",
-      "Verify again: pnpm stripe:verify:prod",
-    ]);
-  });
-
-  void it("identifies an absent hosted allowlist without recommending a new key", () => {
-    const followUp = formatStripeVerificationFollowUp("prod", [
-      {
-        code: "missing_hosted_env",
-        envKey: "ATLAS_BILLING_ALLOWED_OFFERS",
-        message: "Vercel production is missing ATLAS_BILLING_ALLOWED_OFFERS.",
-      },
-    ]);
-
-    assert.deepEqual(followUp, [
-      "Production Stripe verification is incomplete.",
-      "Inspect the existing live account, catalog, and Vercel Production settings before changing any key or recreating objects.",
-      "The deployed candidate is missing a required Vercel Production setting; set only accepted offers after their lifecycle checks pass.",
       "Verify again: pnpm stripe:verify:prod",
     ]);
   });
