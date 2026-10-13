@@ -37,16 +37,15 @@ async function fixture(t, options = {}) {
       return deleted || options.absent
         ? reply(400, { error: "HandleNotFound" })
         : reply(200, { did });
-    if (req.url.startsWith("/xrpc/com.atproto.admin.searchAccounts")) {
-      if (options.inventoryDenied) return reply(403, {});
-      return reply(200, {
-        accounts:
-          options.absent || deleted
-            ? []
-            : [{ did, handle, email: options.realEmail ?? email }],
-        ...(options.inventoryCursor ? { cursor: "same-cursor" } : {}),
-      });
-    }
+    if (req.url.startsWith("/xrpc/com.atproto.repo.describeRepo"))
+      return options.repoUnavailable
+        ? reply(503, {})
+        : options.absent || deleted
+          ? reply(400, { error: "RepoNotFound" })
+          : reply(200, {
+              did: options.repoDid ?? did,
+              handle: options.repoHandle ?? handle,
+            });
     if (req.url.startsWith("/xrpc/com.atproto.admin.getAccountInfo")) {
       if (
         req.url.includes("aaaaaaaaaaaaaaaaaaaaaaaa") ||
@@ -166,7 +165,7 @@ test("broker retains an account with a different provider email", async (t) => {
   assert.equal(f.deleted, false);
 });
 
-test("generic unresolved handles require complete authenticated inventory before cleanup", async (t) => {
+test("generic unresolved handles require a missing PDS repo before treating an account as absent", async (t) => {
   const f = await fixture(t, { unresolved: true, absent: true });
   const response = await f.cleanup();
   assert.equal(response.status, 200);
@@ -176,7 +175,7 @@ test("generic unresolved handles require complete authenticated inventory before
   });
   assert.ok(
     f.calls.some((path) =>
-      path.startsWith("/xrpc/com.atproto.admin.searchAccounts"),
+      path.startsWith("/xrpc/com.atproto.repo.describeRepo"),
     ),
   );
   assert.equal(f.deleted, false);
@@ -196,11 +195,11 @@ test("unresolved exact fixtures are verified by DID before deletion and cleanup 
 });
 
 for (const options of [
-  { inventoryDenied: true },
-  { inventoryCursor: true },
+  { repoUnavailable: true },
+  { repoHandle: "person.pds.example.org" },
   { realEmail: "person@example.org" },
 ])
-  test(`unresolved handle inventory fails closed ${JSON.stringify(options)}`, async (t) => {
+  test(`unresolved handle verification fails closed ${JSON.stringify(options)}`, async (t) => {
     const f = await fixture(t, { unresolved: true, ...options });
     assert.equal((await f.cleanup()).status, 502);
     assert.equal(f.deleted, false);

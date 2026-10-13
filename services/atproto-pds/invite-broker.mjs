@@ -93,58 +93,6 @@ async function assertFixtureCleanupAvailable() {
     throw new Error("fixture_cleanup_unavailable");
 }
 
-// Cleanup authority stays beside the PDS admin credential. The app can name
-// only exact synthetic run accounts, so real people's identities are excluded.
-async function inventoryFixture(account) {
-  let cursor;
-  const seen = new Set();
-  const matches = [];
-  // A resolver error cannot prove absence. Complete a bounded authenticated
-  // inventory so interrupted test setup can be cleaned without touching users.
-  for (let page = 0; page < 5; page++) {
-    const query = new URLSearchParams({ limit: "100" });
-    if (cursor) query.set("cursor", cursor);
-    const response = await pdsRequest(
-      `/xrpc/com.atproto.admin.searchAccounts?${query}`,
-    );
-    const body = await response.json();
-    if (
-      !response.ok ||
-      !Array.isArray(body.accounts) ||
-      body.accounts.some(
-        (row) =>
-          !row ||
-          typeof row.did !== "string" ||
-          typeof row.handle !== "string" ||
-          typeof row.email !== "string",
-      )
-    )
-      throw new Error("fixture_inventory_unavailable");
-    matches.push(
-      ...body.accounts.filter(
-        (row) =>
-          row.handle === account.handle ||
-          row.email === account.email ||
-          row.did === account.did,
-      ),
-    );
-    if (body.cursor === undefined) {
-      if (matches.length > 1) throw new Error("fixture_account_mismatch");
-      return matches[0] ?? null;
-    }
-    if (
-      typeof body.cursor !== "string" ||
-      !body.cursor ||
-      body.cursor.length > 4096 ||
-      seen.has(body.cursor)
-    )
-      throw new Error("fixture_inventory_incomplete");
-    cursor = body.cursor;
-    seen.add(cursor);
-  }
-  throw new Error("fixture_inventory_incomplete");
-}
-
 async function cleanupHostedFixtures(input) {
   const runId = input.runId;
   const hostname = requiredEnv("PDS_HOSTNAME");
@@ -192,23 +140,24 @@ async function cleanupHostedFixtures(input) {
     const resolution = await resolved.json();
     const absent =
       resolved.status === 400 && resolution.error === "HandleNotFound";
-    if (absent && !account.did) continue;
-    let did = absent ? account.did : resolution.did;
-    if (!resolved.ok && !absent) {
-      if (
-        resolved.status !== 400 ||
-        resolution.error !== "InvalidRequest" ||
-        resolution.message !== "Unable to resolve handle"
-      )
+    const unresolved =
+      resolved.status === 400 &&
+      resolution.error === "InvalidRequest" &&
+      resolution.message === "Unable to resolve handle";
+    if (!resolved.ok && !absent && !unresolved)
+      throw new Error("fixture_resolution_failed");
+    let did = resolved.ok ? resolution.did : account.did;
+    if (!did) {
+      // This PDS does not expose admin.searchAccounts. A missing repository
+      // corroborates an unresolved exact-run handle before treating it as absent.
+      const repo = await pds(
+        `/xrpc/com.atproto.repo.describeRepo?repo=${encodeURIComponent(account.handle)}`,
+      );
+      const description = await repo.json();
+      if (repo.status === 400 && description.error === "RepoNotFound") continue;
+      if (!repo.ok || description.handle !== account.handle)
         throw new Error("fixture_resolution_failed");
-      const inventoried = await inventoryFixture(account);
-      if (!inventoried) continue;
-      if (
-        inventoried.handle !== account.handle ||
-        inventoried.email !== account.email
-      )
-        throw new Error("fixture_account_mismatch");
-      did = inventoried.did;
+      did = description.did;
     }
     if (account.did !== undefined && account.did !== did)
       throw new Error("fixture_account_mismatch");
