@@ -29,35 +29,26 @@ deployment credentials.
 ## Required retained configuration
 
 The read-only `doctor` operation reports missing settings and provider access
-without printing values. Both callers run the complete CI profile first.
-Production requires a release tag whose source has already landed on main;
-staging accepts main or a release tag.
+without printing values. Source checks run locally; publication performs the
+credentialed deployment and hosted checks. Production requires a release tag
+whose source has already landed on main; staging accepts main or a release tag.
 
 The environment must identify its Cloudflare account and zone, production
 Hyperdrive configuration, protected API operations hostname, existing Access
-service identity, and retained native wheel build run. Runtime settings can be
-supplied as the existing private runtime export or read from the exact existing
-Vercel project and environment with its existing CI token. Staging requires its
-explicit Vercel custom environment ID. No provider-only value is replaced with a
-default or a regenerated credential.
+service identity, and retained native wheel build run. Runtime settings come
+from the protected GitHub environment or its complete private runtime export.
+Missing settings fail explicitly. The publisher no longer reads Vercel, and its
+workflow no longer receives Vercel credentials.
 
-Retained CI values for the public origin, authentication audiences, membership
-origin and legacy operator allowlist are forwarded to runtime recovery. This
-preserves existing sign-in and operator access when Vercel marks those settings
-write-only. A readable provider value that conflicts with CI still blocks the
-release; forwarding does not authorize changing an identity.
-
-When the old host also marks ordinary application settings write-only, supply
-their explicit values as protected environment variables: `DATABASE_BACKEND`,
+Preserve the existing public origin, authentication audiences, membership URL,
+operator roles, signing secrets and passkey RP ID. Supply ordinary application
+settings explicitly through the protected environment: `DATABASE_BACKEND`,
 `ATLAS_DEPLOY_MODE`, `ATLAS_AUTH_BASE_PATH`,
 `ATLAS_AUTH_API_KEY_INTROSPECTION_URL`, `ATLAS_SERVER_API_PROXY_TARGET`,
 `ATLAS_DOCS_URL`, `ATLAS_EMAIL_FROM`, `ATLAS_EMAIL_PROVIDER` and
-`ATLAS_PDS_PUBLIC_URL`. This preserves the intended sign-in routes,
-source-linked directory, documentation and email delivery while moving hosts.
-Recover values from retained configuration or verify the intended provider
-destinations before setting them; the workflow supplies no defaults and still
-rejects conflicts with readable host values. Credentials continue to come from
-environment secrets.
+`ATLAS_PDS_PUBLIC_URL`. This keeps existing accounts, source-linked profiles,
+documentation and email delivery usable across releases. Secret values remain in
+environment secrets and never enter release manifests.
 
 Read-only verification must establish that Hyperdrive points to the retained
 database. A diagnostic Hyperdrive configuration being active does not prove that
@@ -117,8 +108,10 @@ run containing its interruption journal.
    public API, signed-in identity and configured checkout, and deploys protected
    administration.
 6. Run `promote-web` only after canonical API proof and fresh candidate
-   observations. Retain the exact previous web routing and immutable artifact
-   before promotion. Verify the canonical site and protected admin afterward.
+   observations. Supply `rollback-run-id` naming a successful retained
+   Cloudflare production release. Its artifact, runtime and routing checks must
+   pass before promotion; there is no Vercel fallback. Verify the canonical site
+   and protected admin afterward.
 
 An API upgrade preserves the original canonical route and routing journal.
 Production `verify-api` also checks that exact route's ownership and public
@@ -193,7 +186,50 @@ or replace a hosted joint version rollback rehearsal.
 
 The Roll Back Production workflow uses the retained web promotion journal and
 immutable prior deployment. Never recreate a rollback snapshot from the
-already-changed public hostname.
+already-changed public hostname. The initial canonical cutover was not produced
+by that promotion workflow, so its retained candidate directory is not a valid
+`productionDirectory` for workflow recovery.
+
+### Restore an existing Worker version
+
+For that initial release, use the official `cf` deployment command to select its
+known-good immutable version on the same Worker. This preserves the canonical
+routing and Durable Object namespaces without rebuilding or running migrations.
+Select the explicit account, auth profile, Worker and retained version. Inspect
+the active deployment and target bindings before changing traffic:
+
+```sh
+pnpm exec cf workers deployments list --worker "$ATLAS_WEB_WORKER" --profile "$ATLAS_CF_PROFILE"
+pnpm exec cf workers versions get "$ATLAS_WEB_ROLLBACK_VERSION" --worker-id "$ATLAS_WEB_WORKER" --profile "$ATLAS_CF_PROFILE"
+```
+
+Create a local `rollback-versions.json` with exactly one verified version:
+
+```json
+[{ "version_id": "VERIFIED_VERSION_UUID", "percentage": 100 }]
+```
+
+Then select that version and read the active deployment back:
+
+```sh
+pnpm exec cf workers deployments create --worker "$ATLAS_WEB_WORKER" --strategy percentage --versions @rollback-versions.json --profile "$ATLAS_CF_PROFILE"
+pnpm exec cf workers deployments list --worker "$ATLAS_WEB_WORKER" --profile "$ATLAS_CF_PROFILE"
+```
+
+Do not use `--bypass-deployment-checks`. Stop if secrets, namespace lifecycle or
+resource availability prevent rollback. A version selection does not reverse a
+database migration or an independent API/discovery deployment. Verify sourced
+profiles, the existing signed-in private list, anonymous denial and upstream
+health after the active version readback; an accepted deployment alone is not
+rollback acceptance.
+
+On October 12, 2026, production completed a live round trip from `b88eea12` to
+`26c66b20` and back to `b88eea12` on `atlas-workers-staging-f38dd103c56e`. Both
+versions contained identical retained code, canonical bindings and assets.
+Cloudflare restored the original version at 100% without bypass flags. Existing
+session/list continuity, sourced profile rendering, API health and anonymous
+private-list denial passed. This proves same-Worker version restoration; it does
+not certify rollback across a schema change or a different API/discovery pair.
 
 Artifacts are scanned against CI credentials and provider-only secrets before
 upload. Captured runtime values remain in owner-only runner files until that

@@ -5,10 +5,12 @@
 This work protects the experience of searching Atlas, reading source-linked
 profiles, signing in, and using paid workspaces while replacing the fixed Vercel
 hosting fee. The approved destination is Cloudflare-only hosting using `cf`.
-**Atlas production remains on Vercel; its Cloudflare cutover is not complete.**
-The separate organization website has completed its move and Vercel retirement.
-There is no automatic paid Cloudflare fallback and no capability may be removed
-to meet a limit.
+**Atlas, protected administration and the organization website are live on
+Cloudflare.** The organization Vercel projects `atlas` and `rap-website` are
+deleted; both Vercel team records and unrelated personal projects/storage remain
+intact. The operator is handling Vercel invoices and billing separately. There
+is no automatic paid Cloudflare fallback and no capability may be removed to
+meet a limit.
 
 The operator requires Google billing to remain closed. Do not reopen or relink
 billing accounts. On October 10, 2026, the operator authorized the
@@ -77,8 +79,8 @@ is historical implementation and is not an authorized alternative.
 PostgreSQL implementation and per-dispatch authentication state. The auth
 engine's configuration is reused; physical SQL clients remain request-owned.
 `ATLAS_WEB_RUNTIME=node` enables Nitro. The adapters are mutually exclusive.
-Omitting the variable preserves the existing Node/Vercel build behavior. Node
-and SQLite remain available for local/self-hosted installations.
+Omitting the variable preserves the Node build behavior. Node and SQLite remain
+available for local/self-hosted installations.
 
 The native Worker imports the reflection polyfill needed by passkey
 dependencies, excludes the native SQLite implementation, and holds request
@@ -110,32 +112,30 @@ expected public host and replaces untrusted forwarding headers.
 
 ## Current evidence and blockers
 
-The [Cloudflare-only runtime report](./cloudflare-python-validation.md) records
-the current evidence:
+Production acceptance on October 12, 2026 established:
 
-- The organization website is on Cloudflare, version prefix `0e132a50`, source
-  prefix `5fecdc0`;
-  [workflow 38115026693](https://github.com/RebuildingAmerica/website/actions/runs/38115026693)
-  passed. Its Vercel project is paused, Git-disconnected and has no domains.
-  Atlas remains the active dependency on the paid subscription.
-- October 12 public API probes pass directory, source-linked profile,
-  private-route isolation and MCP authorization checks. Production PDS health is
-  failing after a full host release masked Secret Manager failures and wrote
-  empty credentials. Original credential recovery and hosted sign-in remain
-  release blockers. The runtime report links the failed release and the current
-  read-only diagnostic. Earlier candidate and health observations below are
-  historical; they do not supersede this incident.
-- The protected full API candidate, version prefix `c964d8a9`, source
-  `3beff384`, passes health, UTC database and empty-search probes. Unsupported
-  thread dependencies have been adapted. Nonempty searches still fail during
-  named prepared-statement cleanup; the request-owned unnamed-statement change
-  passes four real PostgreSQL tests and awaits hosted validation. Application
-  construction remains roughly 9.5 seconds, and warm reuse is unproven. A
-  cryptography preload experiment failed provider deployment validation and did
-  not replace this candidate.
-- The latest retained account dashboard snapshot reports 18,850 daily Workers
-  requests, 249 daily Durable Object GB-seconds, and 22.08k month-to-date
-  Workers requests. These readings do not replace a complete peak/load forecast.
+- Atlas search, a source-linked Housing California profile, the existing
+  signed-in account, creating and saving to a private research list, and reload
+  persistence work on the canonical Cloudflare hostname.
+- Protected administration renders through the existing Cloudflare Access
+  session. The organization website serves `rebuildingus.org` and `www` from
+  Cloudflare.
+- A real same-Worker version rollback restored `b88eea12` at 100% traffic after
+  deploying an identical canonical rehearsal version. The private list and
+  session survived; sourced profile rendering and API health passed, while
+  anonymous private-list access returned 401. See the commands and scope in
+  [Cloudflare publication](./cloudflare-publication.md#restore-an-existing-worker-version).
+- Vercel Git integration, both legacy hosting projects, and all six obsolete
+  Atlas GitHub Vercel entries have been removed. Neither Vercel team was merged
+  or deleted. Vercel rollback is no longer available. The last billing readback
+  still showed Pro / Overdue; subscription cancellation is not claimed.
+
+Discovery consumers remain paused, and the legacy Google consumer stop state is
+unverified. Synthetic hosted-test account cleanup still needs authenticated
+exact-ownership inventory; the real private research list must be preserved.
+Earlier PDS, prepared-statement and startup incidents below are historical and
+do not supersede the accepted current account/list journeys. Broader identity,
+billing and discovery acceptance is not inferred from the rollback rehearsal.
 
 The [earlier hosted validation report](./web-hosting-validation.md) records the
 direct Worker experiment, PostgreSQL release migration, browser checks, CPU
@@ -165,7 +165,11 @@ both prebuilt deployment dry runs):
 - A real Chromium test verifies that Access credentials survive Atlas redirects
   and never reach an external origin.
 
-Read-only provider inventory on 2026-10-10 established:
+### Historical provider inventory before cutover
+
+The following October 10 inventory predates the accepted Cloudflare cutover and
+Vercel project deletion. Its deployment topology and resource counts are not
+current:
 
 - Vercel authentication works. The Rebuilding America Project Pro team contains
   `atlas` and `rap-website`; the latter must be accounted for before

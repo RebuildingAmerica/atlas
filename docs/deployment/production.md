@@ -15,39 +15,19 @@ For infrastructure cost defaults and deploy guardrails, use
 
 Atlas supports two production paths:
 
-- `Managed hosted`: deploy the app from `app/` to Vercel, deploy the API to
-  Google Cloud Run, and use PostgreSQL for durable data.
+- `Managed hosted`: Cloudflare Workers and Durable Objects serve the app, API
+  and discovery runtime, with Hyperdrive to retained PostgreSQL. Follow
+  [Cloudflare publication](./cloudflare-publication.md) for release commands and
+  [Web hosting migration](./web-hosting.md) for current acceptance and blockers.
 - `Docker self-hosted`: run the app, API, and reverse proxy together with
   `compose.yaml`.
 
-Use `Managed hosted` for the Rebuilding America production and staging
-environments. It keeps the public app fast on Vercel, puts the API worker on
-Cloud Run, and lets GitHub Environments keep staging and production secrets
-separate. Use the Docker path only when you are operating your own host.
-
-## Recommended hosted setup
-
-The recommended hosted topology is:
-
-- Vercel for the app
-- Google Cloud Run for the API
-- PostgreSQL for API data
-- GitHub Environments for production and staging deploy secrets
-
-Hosted API deploys run cloud cost preflight before Docker build and push. The
-preflight verifies Artifact Registry cleanup policy presence and blocks Cloud
-Run drift that would create paid idle capacity. `pnpm bootstrap` applies the
-Artifact Registry cleanup policy during cloud infrastructure setup so normal
-deploys do not need repository-admin permissions.
-
-Why this is the recommended path:
-
-- Vercel handles the public app well and gives you easy rollbacks.
-- Cloud Run gives the API a production-grade worker surface for MCP, discovery,
-  and scheduled jobs.
-- PostgreSQL avoids tying trust-critical civic data to a single VM volume.
-- Separate GitHub Environments reduce the chance that staging points at
-  production URLs or databases.
+Rebuilding America production and staging use the managed Cloudflare path.
+GitHub Environments keep their credentials separate. The organization Vercel
+projects have been deleted, and Google billing must remain closed. Vercel and
+Cloud Run instructions retained below describe the historical topology; they are
+not the current managed deployment procedure. Docker remains available for
+operators running their own host.
 
 ## Before you start
 
@@ -65,8 +45,7 @@ Make sure you understand these pieces:
 
 Keep these roles in mind:
 
-- Vercel is for the app
-- Cloud Run is for the hosted API
+- Cloudflare serves the managed app and API
 - Docker is for local smoke tests and self-hosted deployments
 - PostgreSQL is the hosted production database
 
@@ -165,9 +144,10 @@ is:
 - TLS is terminated by the platform ingress
 - `ATLAS_PUBLIC_URL` remains the only public-origin setting Atlas needs
 
-## Vercel app
+## Historical Vercel app configuration
 
-Use this section if the app will live on Vercel.
+The Rebuilding America Vercel projects are deleted. This section preserves the
+former settings for reference; use the Cloudflare guide for managed releases.
 
 Create a Vercel project with these settings:
 
