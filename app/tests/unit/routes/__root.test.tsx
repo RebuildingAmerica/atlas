@@ -9,14 +9,6 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@vercel/analytics/react", () => ({
-  Analytics: () => <div data-testid="vercel-analytics" />,
-}));
-
-vi.mock("@vercel/speed-insights/react", () => ({
-  SpeedInsights: () => <div data-testid="vercel-speed-insights" />,
-}));
-
 vi.mock("@/platform/pages/not-found-page", () => ({
   NotFoundPage: () => <div data-testid="not-found-page" />,
 }));
@@ -43,7 +35,7 @@ describe("routes/__root", () => {
     expect(Route.options.errorComponent).toBe(ErrorPage);
   });
 
-  it("renders the root document with the Outlet, analytics, and speed insights", async () => {
+  it("renders the root document with the Outlet", async () => {
     const routeModule = await import("@/routes/__root");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
@@ -54,8 +46,6 @@ describe("routes/__root", () => {
     const markup = renderToStaticMarkup(<Component />);
 
     expect(markup).toContain('data-testid="router-outlet"');
-    expect(markup).toContain('data-testid="vercel-analytics"');
-    expect(markup).toContain('data-testid="vercel-speed-insights"');
     expect(markup).toContain('class="bg-background text-on-surface flex min-h-screen flex-col"');
   });
 

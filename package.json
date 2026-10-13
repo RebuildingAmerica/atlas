@@ -75,7 +75,6 @@
     "web:sync-runtime": "node scripts/deploy/web-runtime-sync.mjs",
     "web:archive": "node scripts/deploy/web-archive.mjs",
     "web:capture-rollback": "node scripts/deploy/web-rollback-capture.mjs",
-    "web:rollback-vercel": "node scripts/deploy/web-rollback.mjs",
     "web:promote": "node scripts/deploy/web-promote.mjs",
     "web:prepare": "node scripts/deploy/web-hosting.mjs prepare",
     "web:assess": "node scripts/deploy/web-hosting.mjs assess",
@@ -100,7 +99,6 @@
     "stripe": "catalog:",
     "tsx": "catalog:",
     "turbo": "catalog:",
-    "vercel": "^54.21.1",
     "wrangler": "^4.149.0"
   }
 }

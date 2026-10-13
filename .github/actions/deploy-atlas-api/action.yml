@@ -52,7 +52,7 @@ inputs:
     required: false
     default: ""
   auth-membership-protection-bypass-secret:
-    description: Optional Vercel automation bypass secret for protected membership checks.
+    description: Optional protected-origin bypass secret for legacy membership checks.
     required: false
     default: ""
   atlas-public-url:
