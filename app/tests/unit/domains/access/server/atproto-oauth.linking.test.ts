@@ -200,6 +200,10 @@ describe("atproto-oauth", () => {
   });
 
   it("returns a signed-in operator to the identity section after a verified account link", async () => {
+    mocks().getAuthRuntimeConfig.mockReturnValue({
+      internalSecret: "secret",
+      publicBaseUrl: "https://atlas.test",
+    });
     const get = vi.fn().mockReturnValue({
       value: JSON.stringify({
         requestedHandle: "operator.example",
@@ -245,6 +249,9 @@ describe("atproto-oauth", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe(
       "https://atlas.test/account?atprotoStatus=connected&atprotoIdentityId=identity_operator#identity",
+    );
+    expect(String(mocks().fetch.mock.calls[0]?.[0])).toBe(
+      "https://atlas.test/api/atproto/identities",
     );
   });
 
