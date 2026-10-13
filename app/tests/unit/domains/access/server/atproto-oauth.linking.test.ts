@@ -199,6 +199,55 @@ describe("atproto-oauth", () => {
     );
   });
 
+  it("returns a signed-in operator to the identity section after a verified account link", async () => {
+    const get = vi.fn().mockReturnValue({
+      value: JSON.stringify({
+        requestedHandle: "operator.example",
+        returnTo: "/account",
+        userId: "user_1",
+      }),
+    });
+    mocks().getAuthDatabase.mockReturnValue({
+      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
+    });
+    mocks().getTokenInfo.mockResolvedValue({ aud: "https://pds.example" });
+    mocks().callback.mockResolvedValue({
+      state: "state_1",
+      session: { did: "did:plc:operator", getTokenInfo: mocks().getTokenInfo },
+    });
+    mocks().getProfile.mockResolvedValue({
+      data: { did: "did:plc:operator", handle: "operator.example" },
+    });
+    mocks().resolveIdentity.mockResolvedValue({
+      data: {
+        did: "did:plc:operator",
+        didDoc: { id: "did:plc:operator" },
+        handle: "operator.example",
+      },
+    });
+    mocks().fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          current_handle: "operator.example",
+          did: "did:plc:operator",
+          id: "identity_operator",
+          pds_url: "https://pds.example",
+        }),
+        { status: 201 },
+      ),
+    );
+    const { completeAtprotoOAuthCallback } = await import("@/domains/access/server/atproto-oauth");
+
+    const response = await completeAtprotoOAuthCallback(
+      new URLSearchParams("code=abc&state=state_1"),
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe(
+      "https://atlas.test/account?atprotoStatus=connected&atprotoIdentityId=identity_operator#identity",
+    );
+  });
+
   it("rejects the callback when resolved ATProto identity no longer matches the profile handle", async () => {
     const get = vi.fn().mockReturnValue({
       value: JSON.stringify({
