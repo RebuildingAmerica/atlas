@@ -375,7 +375,9 @@ export async function resolveClientIdMetadataDocument(
     response = await fetchImpl(clientIdUrl, {
       method: "GET",
       headers: { accept: "application/json" },
-      redirect: "error",
+      // Reject redirects via the non-2xx guard below on both Node and Workers,
+      // so an allowed metadata host cannot redirect into a private network.
+      redirect: "manual",
       signal: controller.signal,
     });
   } catch {

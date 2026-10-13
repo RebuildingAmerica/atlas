@@ -69,8 +69,9 @@ describe("resolveClientIdMetadataDocument", () => {
   });
 
   it("returns the validated document on success", async () => {
-    const fakeFetch: typeof fetch = (url) => {
+    const fakeFetch: typeof fetch = (url, init) => {
       expect(url).toBe(VALID_DOCUMENT.client_id);
+      expect(init?.redirect).toBe("manual");
       return Promise.resolve(jsonResponse(VALID_DOCUMENT));
     };
 
@@ -82,6 +83,25 @@ describe("resolveClientIdMetadataDocument", () => {
 
     expect(result.client_name).toBe(VALID_DOCUMENT.client_name);
     expect(result.redirect_uris).toEqual(VALID_DOCUMENT.redirect_uris);
+  });
+
+  it("rejects redirects without requesting the redirect target", async () => {
+    let calls = 0;
+    const fakeFetch: typeof fetch = (_url, init) => {
+      calls += 1;
+      expect(init?.redirect).toBe("manual");
+      return Promise.resolve(
+        new Response(null, { status: 302, headers: { location: "https://127.0.0.1/internal" } }),
+      );
+    };
+    await expect(
+      resolveClientIdMetadataDocument(
+        VALID_DOCUMENT.client_id,
+        DEFAULT_CIMD_RESOLVER_OPTIONS,
+        fakeFetch,
+      ),
+    ).rejects.toThrow(/HTTP 302/);
+    expect(calls).toBe(1);
   });
 
   it("rejects bodies that exceed the size cap", async () => {

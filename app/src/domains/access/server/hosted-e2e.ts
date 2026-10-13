@@ -514,7 +514,9 @@ async function brokerRequest(body?: {
       method: body ? "POST" : "GET",
       headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}),
-      redirect: "error",
+      // Workers supports manual redirects; the non-2xx guard below rejects them
+      // without forwarding the broker credential to another origin.
+      redirect: "manual",
       signal: AbortSignal.timeout(60_000),
     });
   } catch {

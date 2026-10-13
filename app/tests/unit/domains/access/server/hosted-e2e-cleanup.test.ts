@@ -30,6 +30,14 @@ test.each([
     fetch: () => Promise.resolve(new Response("fixture-private-body", { status: 405 })),
   },
   {
+    stage: "broker-response",
+    httpStatus: 302,
+    fetch: () =>
+      Promise.resolve(
+        new Response(null, { status: 302, headers: { location: "https://other.example.org" } }),
+      ),
+  },
+  {
     stage: "broker-transport",
     fetch: () => Promise.reject(new Error("fixture-private-network-error")),
   },
@@ -63,6 +71,11 @@ test.each([
     );
     expect(response.status).toBe(503);
     expect(mocks.ensureAuthReady).not.toHaveBeenCalled();
+    if (stage !== "broker-configuration")
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        new URL("https://pds.example.org/_atlas/pds/invites"),
+        expect.objectContaining({ redirect: "manual" }),
+      );
     expect(await response.json()).toEqual({ error: "Hosted E2E cleanup is unavailable." });
     expect(diagnostic).toHaveBeenCalledWith(
       JSON.stringify({ hostedCleanup: { stage, ...(httpStatus ? { httpStatus } : {}) } }),
