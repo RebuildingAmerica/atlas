@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cleanupPublicationFixtures } from "./hosted-fixture-cleanup.mjs";
+import { publicationSummary } from "./cloudflare-publication.mjs";
 const run = {
   id: 38339161713,
   run_attempt: 1,
@@ -76,6 +77,92 @@ test("cleanup requires successful empty repeat readback and suppresses response 
     }),
     (error) =>
       /could not be verified/.test(error.message) &&
+      error.stage === "response" &&
+      error.httpStatus === 503 &&
       !error.message.includes("private-value"),
+  );
+});
+
+test("failed cleanup reports the HTTP boundary without response contents or credentials", async () => {
+  let failure;
+  try {
+    await cleanupPublicationFixtures({
+      run,
+      context,
+      env,
+      sourceRun: "38339161713",
+      validate: () => {},
+      fetch: async () =>
+        Response.json({ error: "private-value" }, { status: 404 }),
+    });
+  } catch (error) {
+    failure = error;
+  }
+  const summary = publicationSummary({
+    env: {
+      ATLAS_PUBLICATION_TARGET: "production",
+      ATLAS_PUBLICATION_OPERATION: "cleanup-hosted-fixtures",
+    },
+    failed: true,
+    error: failure,
+  });
+  assert.match(summary, /response.*HTTP 404/);
+  assert.doesNotMatch(
+    summary,
+    /private-value|synthetic-secret|No safe failure boundary/,
+  );
+});
+
+test("transport errors retain only a closed request stage", async () => {
+  await assert.rejects(
+    cleanupPublicationFixtures({
+      run,
+      context,
+      env,
+      sourceRun: "38339161713",
+      validate: () => {},
+      fetch: async () => {
+        throw Error("private transport details");
+      },
+    }),
+    (error) => error.stage === "request" && !error.message.includes("private"),
+  );
+});
+
+test("source rejection cannot expose provider metadata or make a request", async () => {
+  await assert.rejects(
+    cleanupPublicationFixtures({
+      run,
+      context,
+      env,
+      sourceRun: "38339161713",
+      validate: () => {
+        throw Error("private metadata");
+      },
+      fetch: async () => {
+        assert.fail("request must not run");
+      },
+    }),
+    (error) =>
+      error.stage === "source-run" && !error.message.includes("private"),
+  );
+});
+
+test("a nonempty repeated cleanup reports a readback failure", async () => {
+  await assert.rejects(
+    cleanupPublicationFixtures({
+      run,
+      context,
+      env,
+      sourceRun: "38339161713",
+      validate: () => {},
+      fetch: async () =>
+        Response.json({
+          ok: true,
+          runId: "38339161713-1",
+          deleted: { users: 1, workspaces: 0, identities: 0 },
+        }),
+    }),
+    (error) => error.stage === "readback",
   );
 });

@@ -1,6 +1,23 @@
 /** Remove only the synthetic identities owned by a completed protected publisher attempt.
  * The existing application helper verifies workspace, billing and PDS ownership.
  * A second empty cleanup proves idempotency without rerunning account creation. */
+export class HostedFixtureCleanupError extends Error {
+  constructor(stage, httpStatus) {
+    if (
+      !["source-run", "authority", "request", "response", "readback"].includes(
+        stage,
+      )
+    )
+      throw new Error("Unknown cleanup failure stage.");
+    super(
+      `Hosted fixture cleanup could not be verified: ${stage === "source-run" ? "source run or attempt" : stage}.`,
+    );
+    this.stage = stage;
+    if (Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599)
+      this.httpStatus = httpStatus;
+  }
+}
+
 export async function cleanupPublicationFixtures({
   run,
   context,
@@ -9,13 +26,26 @@ export async function cleanupPublicationFixtures({
   validate,
   fetch = globalThis.fetch,
 }) {
-  validate(run, context, { runId: sourceRun, previous: true, recovery: true });
+  try {
+    validate(run, context, {
+      runId: sourceRun,
+      previous: true,
+      recovery: true,
+    });
+  } catch {
+    throw new HostedFixtureCleanupError("source-run");
+  }
   if (!Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1)
-    throw Error("A verified hosted fixture attempt is required.");
+    throw new HostedFixtureCleanupError("source-run");
   const runId = `${sourceRun}-${run.run_attempt}`;
   if (!/^\d{6,20}-\d{1,4}$/.test(runId))
-    throw Error("A verified hosted fixture attempt is required.");
-  const origin = new URL(env.ATLAS_PUBLIC_URL);
+    throw new HostedFixtureCleanupError("source-run");
+  let origin;
+  try {
+    origin = new URL(env.ATLAS_PUBLIC_URL);
+  } catch {
+    throw new HostedFixtureCleanupError("authority");
+  }
   if (
     origin.protocol !== "https:" ||
     origin.username ||
@@ -25,7 +55,7 @@ export async function cleanupPublicationFixtures({
     origin.hash ||
     !env.ATLAS_HOSTED_E2E_SECRET?.trim()
   )
-    throw Error("Existing hosted cleanup authority is incomplete.");
+    throw new HostedFixtureCleanupError("authority");
   const headers = {
     "content-type": "application/json",
     "x-atlas-hosted-e2e-secret": env.ATLAS_HOSTED_E2E_SECRET,
@@ -39,8 +69,10 @@ export async function cleanupPublicationFixtures({
       env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET;
   }
   let deleted;
+  let stage = "request";
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
+      stage = "request";
       const response = await fetch(
         new URL("/api/e2e/hosted/identity", origin),
         {
@@ -51,7 +83,9 @@ export async function cleanupPublicationFixtures({
           signal: AbortSignal.timeout(120000),
         },
       );
-      if (!response.ok) throw Error("Cleanup failed");
+      if (!response.ok)
+        throw new HostedFixtureCleanupError("response", response.status);
+      stage = "readback";
       const result = await response.json();
       if (
         result.ok !== true ||
@@ -65,7 +99,7 @@ export async function cleanupPublicationFixtures({
         (attempt === 1 &&
           Object.values(result.deleted).some((value) => value !== 0))
       )
-        throw Error("Cleanup readback differs");
+        throw new HostedFixtureCleanupError("readback");
       if (attempt === 0)
         deleted = Object.fromEntries(
           ["users", "workspaces", "identities"].map((key) => [
@@ -74,10 +108,9 @@ export async function cleanupPublicationFixtures({
           ]),
         );
     }
-  } catch {
-    throw Error(
-      "Hosted fixture cleanup could not be verified; private provider output suppressed.",
-    );
+  } catch (error) {
+    if (error instanceof HostedFixtureCleanupError) throw error;
+    throw new HostedFixtureCleanupError(stage);
   }
   return {
     status: "verified-clean",

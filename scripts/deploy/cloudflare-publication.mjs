@@ -17,6 +17,7 @@ import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertDurableBudget, sameRuntimeRelease } from "./web-assess.mjs";
 import { assertCurrentApiRoutingReceipt } from "./api-routing-receipt.mjs";
+import { HostedFixtureCleanupError } from "./hosted-fixture-cleanup.mjs";
 import {
   cloudflareCommand,
   CloudflareCommandError,
@@ -263,6 +264,12 @@ export function publicationSummary({
     return `${target} admin publication prepared for the existing deployment action. Public frontend and API remain unchanged.`;
   if (operation === "doctor")
     return `${target} configuration check: ${!failed && report?.status === "pass" ? "passed" : "failed"}.\nNothing deployed. ${target} health was not checked.\nDetails: doctor.json.`;
+  if (
+    failed &&
+    operation === "cleanup-hosted-fixtures" &&
+    error instanceof HostedFixtureCleanupError
+  )
+    return `${target} synthetic account cleanup: failed at ${error.stage}${error.httpStatus ? ` (HTTP ${error.httpStatus})` : ""}.\nCleanup is unverified. Response contents and credentials are omitted.`;
   if (!failed) {
     const outcomes = {
       "publish-api":
