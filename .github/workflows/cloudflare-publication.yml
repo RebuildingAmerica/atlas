@@ -4,8 +4,12 @@ on:
   workflow_call:
     inputs:
       target:
-        description: GitHub environment and Cloudflare deployment target.
+        description: Cloudflare deployment target.
         required: true
+        type: string
+      configuration-environment:
+        description: GitHub environment that provides the existing runtime configuration.
+        required: false
         type: string
       operation:
         description: Deployment action selected by the staging or production workflow.
@@ -31,7 +35,7 @@ jobs:
     name: >-
       ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
     runs-on: ubuntu-latest
-    environment: ${{ inputs.target }}
+    environment: ${{ inputs.configuration-environment || inputs.target }}
     timeout-minutes: 45
     concurrency:
       group: cloudflare-hosted-publication

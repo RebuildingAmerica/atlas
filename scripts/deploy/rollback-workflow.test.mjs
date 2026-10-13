@@ -39,7 +39,10 @@ test("hosted publishing retains trusted refs while production executes independe
 
 test("release credentials stay in the protected job and retained artifacts are sealed first", async () => {
   const workflow = await source(".github/workflows/cloudflare-publication.yml");
-  assert.match(workflow, /environment: \$\{\{ inputs\.target \}\}/);
+  assert.match(
+    workflow,
+    /environment: \$\{\{ inputs\.configuration-environment \|\| inputs\.target \}\}/,
+  );
   assert.match(
     workflow,
     /CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN/,

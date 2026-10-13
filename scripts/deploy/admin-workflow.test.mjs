@@ -24,6 +24,11 @@ for (const environment of ["production", "staging"]) {
       "utf8",
     );
     assert.match(caller, new RegExp(`target: ${environment}`));
+    if (environment === "staging")
+      assert.match(
+        caller,
+        /configuration-environment: \$\{\{ inputs\.operation == 'web-candidate' && 'production' \|\| 'staging' \}\}/,
+      );
     assert.match(
       caller,
       /uses: \.\/\.github\/workflows\/cloudflare-publication.yml/,
@@ -36,7 +41,10 @@ for (const environment of ["production", "staging"]) {
       "utf8",
     );
     const [configuration, steps] = source.split("    steps:\n");
-    assert.match(configuration, /environment: \$\{\{ inputs.target \}\}/);
+    assert.match(
+      configuration,
+      /environment: \$\{\{ inputs\.configuration-environment \|\| inputs\.target \}\}/,
+    );
     assert.match(steps, /uses: \.\/\.github\/actions\/deploy-atlas-admin/);
     assert.match(steps, /api-url: \$\{\{ vars.ATLAS_PLATFORM_API_URL \}\}/);
     assert.match(
