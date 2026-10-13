@@ -1106,6 +1106,38 @@ test("staging uses trusted main or release tags and has no public promotion oper
   );
 });
 
+test("web promotion requires an explicit retained Cloudflare rollback run", () => {
+  const promote = {
+    ...environment,
+    ATLAS_PUBLICATION_OPERATION: "promote-web",
+    VERCEL_TOKEN: "obsolete-provider-token",
+    VERCEL_OWNER: "deleted-team-project",
+    VERCEL_PROJECT_ID: "deleted-project",
+    VERCEL_ORG_ID: "retained-team",
+  };
+  for (const runId of [undefined, "", "not-a-run", "123/456"])
+    assert.throws(
+      () =>
+        publicationContext({
+          ...promote,
+          ATLAS_PUBLICATION_ROLLBACK_RUN_ID: runId,
+        }),
+      /Web promotion requires an explicit numeric Cloudflare rollback run ID/,
+    );
+  assert.equal(
+    publicationContext({ ...promote, ATLAS_PUBLICATION_ROLLBACK_RUN_ID: "123" })
+      .operation,
+    "promote-web",
+  );
+  assert.doesNotThrow(() =>
+    publicationContext({
+      ...environment,
+      ATLAS_PUBLICATION_OPERATION: "promote-web",
+      ATLAS_PUBLICATION_ROLLBACK_RUN_ID: "123",
+    }),
+  );
+});
+
 test("retained artifacts come only from this repository's trusted publication workflow", () => {
   const context = publicationContext(environment);
   const run = {

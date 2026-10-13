@@ -597,6 +597,13 @@ export function publicationContext(env) {
     throw Error(
       "Canonical routing operations require the production environment.",
     );
+  if (
+    operation === "promote-web" &&
+    !/^\d+$/.test(env.ATLAS_PUBLICATION_ROLLBACK_RUN_ID ?? "")
+  )
+    throw Error(
+      "Web promotion requires an explicit numeric Cloudflare rollback run ID.",
+    );
   if (!/^[a-f0-9]{32}$/.test(env.CLOUDFLARE_ACCOUNT_ID ?? ""))
     throw Error("Explicit Cloudflare account is required.");
   if (operation !== "doctor") required(env, "CLOUDFLARE_API_TOKEN");
@@ -1136,46 +1143,6 @@ export async function publicationCli({
       }
     }
     const checks = [];
-    if (env.VERCEL_TOKEN?.trim()) {
-      const until = new Date();
-      until.setUTCHours(0, 0, 0, 0);
-      const since = new Date(until.getTime() - 14 * 86_400_000);
-      try {
-        tool(
-          process.execPath,
-          [
-            join(ROOT, "scripts/deploy/web-baseline.mjs"),
-            "--scope",
-            required(env, "VERCEL_ORG_ID"),
-            "--project",
-            required(env, "VERCEL_PROJECT_ID"),
-            "--since",
-            since.toISOString(),
-            "--until",
-            until.toISOString(),
-            "--output",
-            ".atlas/cloudflare-release/baseline-vercel.json",
-          ],
-          { env },
-        );
-        const baseline = read(join(bundle, "baseline-vercel.json"));
-        const check = {
-          name: "current-vercel-baseline",
-          status: baseline.complete ? "pass" : "block",
-          window: baseline.window,
-          collectedAt: baseline.collectedAt,
-        };
-        checks.push(check);
-        console.log(JSON.stringify({ baseline: check }));
-      } catch {
-        checks.push({
-          name: "current-vercel-baseline",
-          status: "block",
-          reason:
-            "Current provider measurements are unavailable; private diagnostics suppressed.",
-        });
-      }
-    }
     checks.push({
       setting: "CLOUDFLARE_API_TOKEN",
       status: env.CLOUDFLARE_API_TOKEN?.trim() ? "pass" : "block",
@@ -1274,7 +1241,7 @@ export async function publicationCli({
       console.log(JSON.stringify({ pdsCleanup: cleanup }));
     } catch (error) {
       const safe =
-        /^(?:[A-Z_]+ is required|Runtime [A-Z_]+ is required|Existing write-only values are required|Existing value conflict for [A-Z_]+|Vercel runtime read failed with HTTP|Staging requires)/.test(
+        /^(?:[A-Z_]+ is required|Runtime [A-Z_]+ is required|Existing write-only values are required|Existing value conflict for [A-Z_]+|Staging requires)/.test(
           error.message,
         );
       checks.push({
@@ -1932,37 +1899,26 @@ export async function publicationCli({
     const destination = join(bundle, `web/production-${env.GITHUB_RUN_ID}`);
     index.pendingProductionDirectory = destination.slice(bundle.length + 1);
     atomicJson(join(bundle, "publication.json"), index);
-    let recoveryArgs;
-    if (env.ATLAS_PUBLICATION_ROLLBACK_RUN_ID) {
-      const rollbackRoot = join(ROOT, ".atlas/cloudflare-rollback");
-      const rollback = download(
-        env.ATLAS_PUBLICATION_ROLLBACK_RUN_ID,
-        rollbackRoot,
-        { previous: true },
+    // Retained Cloudflare routing keeps profiles and sessions recoverable after
+    // the legacy hosting projects have been retired.
+    const rollbackRoot = join(ROOT, ".atlas/cloudflare-rollback");
+    const rollback = download(
+      env.ATLAS_PUBLICATION_ROLLBACK_RUN_ID,
+      rollbackRoot,
+      { previous: true },
+    );
+    const recoveryArgs = [
+      "--rollback-cloudflare-source",
+      releasePath(rollbackRoot, rollback.productionDirectory),
+    ];
+    if (env.ATLAS_API_ROLLBACK_PLAN_JSON)
+      recoveryArgs.push(
+        "--api-rollback-plan",
+        privateFile(
+          "api-rollback-plan.json",
+          parseJson(env.ATLAS_API_ROLLBACK_PLAN_JSON),
+        ),
       );
-      recoveryArgs = [
-        "--rollback-cloudflare-source",
-        releasePath(rollbackRoot, rollback.productionDirectory),
-      ];
-      if (env.ATLAS_API_ROLLBACK_PLAN_JSON)
-        recoveryArgs.push(
-          "--api-rollback-plan",
-          privateFile(
-            "api-rollback-plan.json",
-            parseJson(env.ATLAS_API_ROLLBACK_PLAN_JSON),
-          ),
-        );
-    } else {
-      required(env, "VERCEL_TOKEN");
-      recoveryArgs = [
-        "--owner",
-        required(env, "VERCEL_OWNER"),
-        "--project",
-        required(env, "VERCEL_PROJECT_ID"),
-        "--team",
-        required(env, "VERCEL_ORG_ID"),
-      ];
-    }
     publicationStage(bundle, "api-routing-verify", () =>
       verifyPublicationApiRouting({
         bundle,
