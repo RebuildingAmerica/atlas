@@ -237,10 +237,11 @@ def create_firehose_alarm(env, storage):
     """
     from hosted_application import _hyperdrive_parameters, _settings, connect_database
     from dns_transport import workers_dns_txt_lookup
-    from http_transport import WorkersHttpTransport
+    from http_transport import workers_http_transport_factory
 
     try:
         settings = _settings(env)
+        transport_factory = workers_http_transport_factory(env)
         _hyperdrive_parameters(env)
     except Exception:
         raise RuntimeError("Invalid hosted API configuration.") from None
@@ -255,7 +256,7 @@ def create_firehose_alarm(env, storage):
             settings,
             connect,
             dns_txt_lookup=workers_dns_txt_lookup,
-            http_transport_factory=WorkersHttpTransport,
+            http_transport_factory=transport_factory,
         ),
         storage=storage,
         wake=storage.setAlarm,

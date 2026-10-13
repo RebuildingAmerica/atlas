@@ -36,7 +36,7 @@ def create_discovery_alarm(env, storage):
     """Construct services without opening SQL or starting a process worker."""
     from dns_transport import workers_dns_txt_lookup
     from hosted_application import _hyperdrive_parameters, _settings, connect_database
-    from http_transport import WorkersHttpTransport
+    from http_transport import workers_http_transport_factory
     from public_source_transport import workers_public_source_fetch
 
     from atlas.domains.discovery.hosted_jobs import DiscoveryAlarmAdapter
@@ -44,6 +44,7 @@ def create_discovery_alarm(env, storage):
 
     try:
         settings = _settings(env)
+        transport_factory = workers_http_transport_factory(env)
         _hyperdrive_parameters(env)
     except Exception:
         raise RuntimeError("Invalid hosted API configuration.") from None
@@ -60,7 +61,7 @@ def create_discovery_alarm(env, storage):
             firehose_wake=_FirehoseWake(env),
             public_source_fetch=workers_public_source_fetch,
             dns_txt_lookup=workers_dns_txt_lookup,
-            http_transport_factory=WorkersHttpTransport,
+            http_transport_factory=transport_factory,
         ),
         storage=storage,
     )

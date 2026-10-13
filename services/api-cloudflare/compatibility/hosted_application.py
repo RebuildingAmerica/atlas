@@ -8,7 +8,7 @@ from inspect import signature
 from database_adapter import connect_database
 from dns_transport import workers_dns_txt_lookup
 from hosted_jwks import HostedJwksCache
-from http_transport import WorkersHttpTransport
+from http_transport import workers_http_transport_factory
 from public_source_transport import workers_public_source_fetch
 
 from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
@@ -146,6 +146,7 @@ def create_hosted_application(
     """
     try:
         settings = _settings(env)
+        transport_factory = workers_http_transport_factory(env)
         _hyperdrive_parameters(env)
 
         async def no_factory_connection(_url, *, backend=None):
@@ -159,7 +160,7 @@ def create_hosted_application(
                 workers_public_source_fetch,
                 discovery_wake=discovery_wake,
                 dns_txt_lookup=workers_dns_txt_lookup,
-                http_transport_factory=WorkersHttpTransport,
+                http_transport_factory=transport_factory,
             )
         ):
             # atlas.main also constructs its ordinary server at import. Bind
@@ -213,7 +214,7 @@ def create_hosted_application(
                 discovery_wake=discovery_wake,
                 jwks_documents=await keys.for_headers(scope.get("headers", [])),
                 dns_txt_lookup=workers_dns_txt_lookup,
-                http_transport_factory=WorkersHttpTransport,
+                http_transport_factory=transport_factory,
             )
         ):
             try:

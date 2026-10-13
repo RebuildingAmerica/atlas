@@ -43,6 +43,7 @@ const PUBLICATION_STAGES = new Set([
   "web-auth-migration",
   "web-artifact-copy",
   "web-publish",
+  "web-callback-configuration",
   "web-archive",
   "web-observe",
   "web-hosted-journeys",
@@ -81,6 +82,17 @@ export function publicationStage(directory, stage, action) {
   record("running");
   try {
     const result = action();
+    if (result && typeof result.then === "function")
+      return result.then(
+        (value) => {
+          record("pass");
+          return value;
+        },
+        (error) => {
+          record("fail");
+          throw error;
+        },
+      );
     record("pass");
     return result;
   } catch (error) {
@@ -1327,15 +1339,71 @@ export async function publicationCli({
       [join(ROOT, "scripts/deploy", script), ...args],
       options,
     );
-  const hostedJourneys = (directory) =>
+  const hostedJourneys = (directory, publicOrigin) =>
     verifyHostedJourneys({
-      deployment: read(join(directory, "deployment.json")),
+      deployment: {
+        ...read(join(directory, "deployment.json")),
+        ...(publicOrigin ? { candidateUrl: publicOrigin } : {}),
+      },
       runtime,
       env,
       run,
       node,
       releaseSha: context.sha,
     });
+  const configureCallbacks = async (origin, webDirectory, phase) => {
+    const { publishCallbackConfiguration } =
+      await import("./api-callback-configuration.mjs");
+    const previous = read(
+      join(releasePath(bundle, index.apiDirectory), "api-release.json"),
+    );
+    if (previous.status !== "verified-paused")
+      throw Error(
+        "Callback configuration requires the verified paused API pair.",
+      );
+    const artifactDirectory = releasePath(
+      bundle,
+      index.apiPublicationDirectory ?? index.apiDirectory,
+    );
+    const directory = join(
+      bundle,
+      `api/callbacks-${phase}-${env.GITHUB_RUN_ID}`,
+    );
+    index.pendingApiDirectory = directory.slice(bundle.length + 1);
+    atomicJson(join(bundle, "publication.json"), index);
+    const manifest = await publishCallbackConfiguration({
+      previous,
+      artifactDirectory,
+      directory,
+      service: configured.service,
+      runtime,
+      origin,
+      access,
+      env,
+      checkpoint: async () => {},
+    });
+    index.apiDirectory = directory.slice(bundle.length + 1);
+    index.apiPublicationDirectory = index.apiDirectory;
+    delete index.pendingApiDirectory;
+    if (index.publicApiState === "verified")
+      index.publicApiState = "verification-required";
+    atomicJson(join(bundle, "publication.json"), index);
+    // These are actual cf version readbacks; never retain the replaced versions
+    // as the candidate's dependencies or mark its journeys passed here.
+    for (const name of ["manifest.json", "deployment.json"]) {
+      const file = join(webDirectory, name);
+      const web = read(file);
+      web.runtimeDependencies = manifest.runtimeReleases;
+      atomicJson(file, web);
+    }
+    const evidence = read(evidenceFile);
+    evidence.durable.runtimeReleases = {
+      ...evidence.durable.runtimeReleases,
+      ...manifest.runtimeReleases,
+    };
+    atomicJson(evidenceFile, evidence);
+    return manifest;
+  };
   const sourceRun = env.ATLAS_PUBLICATION_SOURCE_RUN_ID?.trim();
   let index;
   const download = (id, destination, flags) => {
@@ -1781,6 +1849,13 @@ export async function publicationCli({
         destination,
       ]),
     );
+    await publicationStage(bundle, "web-callback-configuration", () =>
+      configureCallbacks(
+        read(join(destination, "deployment.json")).candidateUrl,
+        destination,
+        "candidate",
+      ),
+    );
     publicationStage(bundle, "web-archive", () =>
       node("web-archive.mjs", ["--directory", destination]),
     );
@@ -1881,6 +1956,18 @@ export async function publicationCli({
       ...recoveryArgs,
       "--apply",
     ]);
+    await publicationStage(bundle, "web-callback-configuration", () =>
+      configureCallbacks(
+        runtime.ATLAS_WEB_CANONICAL_URL ?? runtime.ATLAS_PUBLIC_URL,
+        destination,
+        "canonical",
+      ),
+    );
+    node("web-archive.mjs", ["--directory", destination]);
+    index.hostedAcceptance = hostedJourneys(
+      destination,
+      runtime.ATLAS_WEB_CANONICAL_URL ?? runtime.ATLAS_PUBLIC_URL,
+    );
     index.productionDirectory = destination.slice(bundle.length + 1);
     delete index.pendingProductionDirectory;
   } else {

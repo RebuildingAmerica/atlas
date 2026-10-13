@@ -1310,3 +1310,36 @@ test("only first bootstrap with absent production runtimes can defer billing", (
     /isolation/,
   );
 });
+
+test("asynchronous publication stages retain the actual completion boundary", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-stage-async-"));
+  try {
+    assert.equal(
+      await publicationStage(
+        directory,
+        "web-callback-configuration",
+        async () => "complete",
+      ),
+      "complete",
+    );
+    await assert.rejects(
+      publicationStage(directory, "web-callback-configuration", async () => {
+        throw Error("private provider output");
+      }),
+    );
+    const records = readFileSync(
+      join(directory, "publication-diagnostics.jsonl"),
+      "utf8",
+    )
+      .trim()
+      .split("\n")
+      .map(JSON.parse);
+    assert.deepEqual(
+      records.map((item) => item.status),
+      ["running", "pass", "running", "fail"],
+    );
+    assert.doesNotMatch(JSON.stringify(records), /private provider/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
