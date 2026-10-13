@@ -1,11 +1,12 @@
 name: Deploy Staging
-run-name: "Staging — ${{ inputs.operation && inputs.operation != 'doctor' && inputs.operation || 'Configuration check (no deployment)' }} — ${{ github.ref_name }}"
+run-name: >-
+  Staging — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","restore-routing":"Restore previous production routing"}')[inputs.operation || 'doctor'] }} — ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Operation to run. Doctor checks configuration and deploys nothing.
+        description: Deployment action. Doctor checks configuration and provider access without deploying.
         type: choice
         options:
           [
@@ -18,7 +19,7 @@ on:
           ]
         default: doctor
       source-run-id:
-        description: Completed Deploy Staging run retaining the exact release artifacts.
+        description: Completed Deploy Staging run containing the release artifacts to verify or promote.
         type: string
         required: false
 
@@ -33,6 +34,7 @@ concurrency:
 
 jobs:
   guard-staging-ref:
+    name: Check staging source and main-branch ancestry
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -47,6 +49,7 @@ jobs:
             *) echo 'Staging publication requires main or a v* release tag.' >&2; exit 1 ;;
           esac
   ci:
+    name: Validate staging source
     needs: guard-staging-ref
     uses: ./.github/workflows/ci.yml
     with:
@@ -55,6 +58,7 @@ jobs:
       STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
       STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
   publish:
+    name: Run the selected staging deployment action
     needs: ci
     permissions:
       contents: read

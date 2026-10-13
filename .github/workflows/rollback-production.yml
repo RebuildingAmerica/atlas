@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   guard:
+    name: Check release tag and main-branch ancestry
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -33,6 +34,7 @@ jobs:
             *) echo 'Production recovery requires a v* release tag.' >&2; exit 1 ;;
           esac
   recover:
+    name: Restore previous production routing
     needs: guard
     permissions:
       contents: read

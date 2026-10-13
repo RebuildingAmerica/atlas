@@ -4,15 +4,19 @@ on:
   workflow_call:
     inputs:
       target:
+        description: GitHub environment and Cloudflare deployment target.
         required: true
         type: string
       operation:
+        description: Deployment action selected by the staging or production workflow.
         required: true
         type: string
       source-run-id:
+        description: Completed deployment run containing the exact source artifacts.
         required: false
         type: string
       rollback-run-id:
+        description: Successful production run containing the release to restore.
         required: false
         type: string
 
@@ -24,7 +28,8 @@ permissions:
 
 jobs:
   publish:
-    name: "${{ inputs.target }} / ${{ inputs.operation == 'doctor' && 'Configuration check (no deployment)' || inputs.operation }}"
+    name: >-
+      ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.target }}
     timeout-minutes: 45
@@ -169,7 +174,7 @@ jobs:
         run: |
           pnpm --filter @rebuildingamerica/atlas-app exec playwright install-deps chromium
           timeout 480 pnpm --filter @rebuildingamerica/atlas-app exec playwright install chromium
-      - name: "${{ inputs.operation == 'doctor' && 'Check configuration (deploys nothing)' || inputs.operation }}"
+      - name: Run selected deployment action
         run: node scripts/deploy/cloudflare-publication.mjs
       - name: Publish the protected platform admin
         if: inputs.operation == 'web-candidate' || inputs.operation == 'promote-web'

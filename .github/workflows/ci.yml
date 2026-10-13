@@ -42,6 +42,7 @@ concurrency:
 
 jobs:
   changes:
+    name: Detect affected checks
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -105,6 +106,7 @@ jobs:
           pnpm exec turbo run typecheck lint "${affected_args[@]}"
 
   actions-lint:
+    name: Validate GitHub Actions workflows
     needs: changes
     if: needs.changes.outputs.actions_lint == 'true'
     runs-on: ubuntu-latest
@@ -119,6 +121,7 @@ jobs:
         run: pnpm run actionlint
 
   deploy-scripts:
+    name: Test deployment tooling
     needs: changes
     if: needs.changes.outputs.deploy_scripts == 'true'
     runs-on: ubuntu-latest
@@ -200,6 +203,7 @@ jobs:
           fi
 
   acceptance:
+    name: Test browser journeys
     needs: changes
     if: needs.changes.outputs.browser_acceptance == 'true'
     runs-on: ubuntu-latest
@@ -246,6 +250,7 @@ jobs:
           retention-days: 14
 
   stripe-acceptance:
+    name: Test Stripe billing journeys
     needs: changes
     if: needs.changes.outputs.stripe_acceptance == 'true'
     runs-on: ubuntu-latest
@@ -334,6 +339,7 @@ jobs:
           fi
 
   docs:
+    name: Validate documentation and links
     needs: changes
     if: needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
@@ -350,6 +356,7 @@ jobs:
         run: pnpm run docs:broken-links
 
   compose-validate:
+    name: Validate local service configuration
     needs: changes
     if: needs.changes.outputs.compose == 'true'
     runs-on: ubuntu-latest

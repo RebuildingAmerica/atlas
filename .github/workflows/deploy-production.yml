@@ -1,11 +1,12 @@
 name: Deploy Production
-run-name: "Production — ${{ inputs.operation && inputs.operation != 'doctor' && inputs.operation || 'Configuration check (no deployment)' }} — ${{ github.ref_name }}"
+run-name: >-
+  Production — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","restore-routing":"Restore previous production routing"}')[inputs.operation || 'doctor'] }} — ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Operation to run. Doctor checks configuration and deploys nothing.
+        description: Deployment action. Doctor checks configuration and provider access without deploying.
         type: choice
         options:
           [
@@ -22,11 +23,11 @@ on:
           ]
         default: doctor
       source-run-id:
-        description: Completed Deploy Production run retaining the exact release artifacts.
+        description: Completed Deploy Production run containing the release artifacts to verify or promote.
         type: string
         required: false
       rollback-run-id:
-        description: Known-good Cloudflare production artifact run for routing recovery.
+        description: Successful production run containing the release to restore.
         type: string
         required: false
 
@@ -41,6 +42,7 @@ concurrency:
 
 jobs:
   guard-production-ref:
+    name: Check release tag and main-branch ancestry
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -57,6 +59,7 @@ jobs:
             *) echo 'Production publication requires a v* release tag.' >&2; exit 1 ;;
           esac
   publish:
+    name: Run the selected production deployment action
     # Local hooks validate source; this workflow executes credentialed deployment.
     # Keep immutable artifact, trusted ref and hosted acceptance checks below.
     needs: guard-production-ref
