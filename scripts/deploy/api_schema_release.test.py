@@ -99,6 +99,15 @@ class SchemaReleaseTests(unittest.IsolatedAsyncioTestCase):
                     )[0]
                 )
 
+    async def test_doctor_reports_idle_transactions_without_connection_details(self):
+        async with await psycopg.AsyncConnection.connect(self.url) as conn:
+            await conn.execute("SELECT 1")
+            result = await self.run_release()
+            self.assertEqual(result["databaseActivity"]["idleTransactions"], 1)
+            self.assertEqual(result["databaseActivity"]["lockWaiters"], 0)
+            self.assertNotIn(self.url, json.dumps(result))
+            self.assertNotIn("SELECT", json.dumps(result))
+
     async def test_advisory_lock_rejects_concurrent_job_without_waiting(self):
         entered, release = asyncio.Event(), asyncio.Event()
 

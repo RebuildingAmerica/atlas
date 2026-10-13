@@ -34,12 +34,34 @@ import {
   verifyPublicationApiRouting,
   hostedFailureLocations,
   hostedFailureReport,
+  schemaFailureDiagnostic,
 } from "./cloudflare-publication.mjs";
 import { collectWebRuntime } from "./web-runtime-sync.mjs";
 import { assertWebObserverConfiguration } from "./web-observe.mjs";
 import { canonicalDigest } from "./api-cloudflare-release.mjs";
 
 const sha = "a".repeat(40);
+
+test("schema failures expose only phase, exception type and SQLSTATE", () => {
+  const diagnostic = {
+    schemaRelease: "failed",
+    phase: "schema-apply",
+    errorType: "QueryCanceled",
+    sqlstate: "57014",
+  };
+  assert.deepEqual(
+    schemaFailureDiagnostic(JSON.stringify(diagnostic)),
+    diagnostic,
+  );
+  for (const output of [
+    "private query",
+    JSON.stringify({ ...diagnostic, query: "private SQL" }),
+    JSON.stringify({ ...diagnostic, phase: "private host" }),
+    JSON.stringify({ ...diagnostic, sqlstate: "private secret" }),
+  ]) {
+    assert.equal(schemaFailureDiagnostic(output), null);
+  }
+});
 
 test("real Playwright JSON identifies catalog assertion and timeout boundaries", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "atlas-hosted-reporter-"));

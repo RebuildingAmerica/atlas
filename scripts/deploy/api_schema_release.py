@@ -23,6 +23,45 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[2]
 LOCK_KEY = 0x41544C415352454C
 RECEIPT_TABLE = "atlas_schema_releases"
+PHASES = {
+    "configuration",
+    "connect",
+    "transaction",
+    "release-lock",
+    "receipt-table",
+    "receipt-read",
+    "activity-read",
+    "catalog-read",
+    "migration",
+    "schema-apply",
+    "receipt-write",
+    "commit",
+}
+
+
+def failure_diagnostic(error, phase):
+    """Describe a failed release without exposing SQL, connection strings or data."""
+    import psycopg
+
+    name = type(error).__name__
+    safe_type = (
+        name
+        if isinstance(error, psycopg.Error) and re.fullmatch(r"[A-Za-z]{1,64}", name)
+        else name
+        if type(error) in (ValueError, RuntimeError, OSError, TimeoutError)
+        else "Error"
+    )
+    state = (
+        getattr(error, "sqlstate", None) if isinstance(error, psycopg.Error) else None
+    )
+    return {
+        "schemaRelease": "failed",
+        "phase": phase if phase in PHASES else "unknown",
+        "errorType": safe_type,
+        "sqlstate": state
+        if isinstance(state, str) and re.fullmatch(r"[0-9A-Z]{5}", state)
+        else None,
+    }
 
 
 def canonical_digest(value):
@@ -74,6 +113,7 @@ async def schema_release(
     migration_digest=None,
     migrate=None,
     connect=None,
+    on_phase=None,
 ):
     """Return a credential-free receipt or read-only doctor result.
 
@@ -109,20 +149,33 @@ async def schema_release(
     schema_digest = canonical_digest(
         {"sql": schema_sql, "migrationSourcesDigest": migration_digest}
     )
+
+    def phase(value):
+        if on_phase is not None:
+            on_phase(value)
+
     connector = connect or psycopg.AsyncConnection.connect
-    conn = await connector(database_url, autocommit=False)
+    phase("connect")
+    conn = await connector(database_url, autocommit=False, connect_timeout=15)
     try:
+        phase("transaction")
         await conn.execute(
             "SET TRANSACTION READ WRITE" if apply else "SET TRANSACTION READ ONLY"
         )
         await conn.execute("SET LOCAL search_path TO public, pg_catalog")
-        await conn.execute("SET LOCAL statement_timeout = '300s'")
+        await conn.execute(
+            "SET LOCAL statement_timeout = '300s'"
+            if apply
+            else "SET LOCAL statement_timeout = '15s'"
+        )
         if apply:
+            phase("release-lock")
             locked = await (
                 await conn.execute("SELECT pg_try_advisory_xact_lock(%s)", (LOCK_KEY,))
             ).fetchone()
             if not locked[0]:
                 raise ValueError("Another Atlas schema release is already running.")
+        phase("receipt-table")
         exists = (
             await (
                 await conn.execute("SELECT to_regclass('public.atlas_schema_releases')")
@@ -134,7 +187,32 @@ async def schema_release(
             )
             exists = RECEIPT_TABLE
         previous = None
+        activity = None
+        if not apply:
+            phase("activity-read")
+            row = await (
+                await conn.execute(
+                    "SELECT count(*) FILTER (WHERE state = 'idle in transaction'), "
+                    "count(*) FILTER (WHERE wait_event_type = 'Lock'), "
+                    "count(*) FILTER (WHERE state = 'active'), "
+                    "coalesce(max(extract(epoch FROM clock_timestamp() - xact_start)), 0) "
+                    "FROM pg_stat_activity WHERE datname = current_database() "
+                    "AND usename = current_user AND pid <> pg_backend_pid()"
+                )
+            ).fetchone()
+            activity = dict(
+                zip(
+                    (
+                        "idleTransactions",
+                        "lockWaiters",
+                        "activeConnections",
+                        "oldestTransactionSeconds",
+                    ),
+                    (int(value) for value in row),
+                )
+            )
         if exists:
+            phase("receipt-read")
             previous = await (
                 await conn.execute(
                     "SELECT schema_digest,receipt FROM public.atlas_schema_releases WHERE release_sha=%s",
@@ -145,6 +223,7 @@ async def schema_release(
             if previous[0] != schema_digest:
                 raise ValueError("This release already names a different schema.")
             receipt = previous[1]
+            phase("catalog-read")
             if receipt["databaseIdentityDigest"] != database_identity or receipt[
                 "catalogDigest"
             ] != await catalog_digest(conn):
@@ -154,6 +233,7 @@ async def schema_release(
             await conn.rollback()
             return {
                 "status": "already-applied" if apply else "ready",
+                **({"databaseActivity": activity} if activity is not None else {}),
                 "receipt": receipt,
                 "receiptDigest": receipt_digest(receipt),
             }
@@ -164,11 +244,15 @@ async def schema_release(
                 "releaseSha": release_sha,
                 "schemaDigest": schema_digest,
                 "databaseIdentityDigest": database_identity,
+                "databaseActivity": activity,
             }
+        phase("migration")
         await (migrate or migrate_atproto_identity_graph)(
             PostgresConnection(conn), backend="postgres"
         )
+        phase("schema-apply")
         await conn.execute(schema_sql)
+        phase("catalog-read")
         receipt = {
             "schemaVersion": 1,
             "kind": "atlas-postgres-schema-release",
@@ -179,10 +263,12 @@ async def schema_release(
             "catalogDigest": await catalog_digest(conn),
             "completedAt": datetime.now(timezone.utc).isoformat(),
         }
+        phase("receipt-write")
         await conn.execute(
             "INSERT INTO public.atlas_schema_releases (release_sha,schema_digest,receipt) VALUES (%s,%s,%s::jsonb)",
             (release_sha, schema_digest, json.dumps(receipt)),
         )
+        phase("commit")
         await conn.commit()
         return {
             "status": "applied",
@@ -216,6 +302,12 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
+    current_phase = "configuration"
+
+    def record_phase(value):
+        nonlocal current_phase
+        current_phase = value
+
     try:
         committed = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
@@ -230,6 +322,7 @@ def main(argv=None):
                 private_config(args.config_file),
                 release_sha=committed,
                 apply=args.apply,
+                on_phase=record_phase,
             )
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -244,11 +337,8 @@ def main(argv=None):
             )
         )
         return 0
-    except Exception:
-        print(
-            "Schema release failed; private database/configuration diagnostics were suppressed.",
-            file=sys.stderr,
-        )
+    except Exception as error:
+        print(json.dumps(failure_diagnostic(error, current_phase)), file=sys.stderr)
         return 1
 
 

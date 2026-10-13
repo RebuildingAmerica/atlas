@@ -34,6 +34,7 @@ const PUBLICATION_STAGES = new Set([
   "cloudflare-hyperdrive-read",
   "cloudflare-access-read",
   "native-dependencies",
+  "api-schema",
   "api-verify",
   "api-routing-verify",
   "web-runtime-identity",
@@ -46,6 +47,27 @@ const PUBLICATION_STAGES = new Set([
   "web-observe",
   "web-hosted-journeys",
 ]);
+
+/** Accept only the schema command's credential-free failure contract. */
+export function schemaFailureDiagnostic(output) {
+  try {
+    const value = JSON.parse(String(output).trim());
+    if (
+      Object.keys(value).sort().join(",") !==
+        "errorType,phase,schemaRelease,sqlstate" ||
+      value.schemaRelease !== "failed" ||
+      !/^(configuration|connect|transaction|release-lock|receipt-table|receipt-read|activity-read|catalog-read|migration|schema-apply|receipt-write|commit|unknown)$/.test(
+        value.phase,
+      ) ||
+      !/^[A-Za-z]{1,64}$/.test(value.errorType) ||
+      !(value.sqlstate === null || /^[0-9A-Z]{5}$/.test(value.sqlstate))
+    )
+      return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
 
 /** Retain a recovery boundary without exposing provider output or customer settings. */
 export function publicationStage(directory, stage, action) {
@@ -250,6 +272,7 @@ export function publicationSummary({
     "cloudflare-hyperdrive-read": "Cloudflare database connection access",
     "cloudflare-access-read": "Cloudflare Access configuration",
     "native-dependencies": "Python native dependencies",
+    "api-schema": "PostgreSQL schema release",
     "api-verify": "API/discovery runtime verification",
     "web-runtime-identity": "Exact API and discovery runtime identity",
     "web-runtime-prepare": "Protected web runtime preparation",
@@ -985,6 +1008,10 @@ export async function publicationCli({
           ...options,
         });
       } catch (error) {
+        if (args.includes("scripts/deploy/api_schema_release.py")) {
+          const diagnostic = schemaFailureDiagnostic(error.stderr);
+          if (diagnostic) console.error(JSON.stringify(diagnostic));
+        }
         if (
           args.some((arg) =>
             /^test:hosted-(smoke|identity|checkout)$/.test(arg),
@@ -1180,10 +1207,38 @@ export async function publicationCli({
         "ATLAS_PDS_INVITE_BROKER_SECRET",
       ])
         required(runtime, key);
-      assemblePublicationSettings({
+      const configured = assemblePublicationSettings({
         ...env,
         ATLAS_WEB_RUNTIME_ENV_JSON: JSON.stringify(runtime),
       });
+      const databaseDirectory = mkdtempSync(
+        join(required(env, "RUNNER_TEMP"), "atlas-schema-doctor-"),
+      );
+      try {
+        const databaseConfig = join(databaseDirectory, "runtime.json");
+        writeFileSync(databaseConfig, JSON.stringify(configured.runtime), {
+          mode: 0o600,
+        });
+        const output = join(bundle, "schema-doctor.json");
+        tool(join(ROOT, "api/.venv/bin/python"), [
+          "scripts/deploy/api_schema_release.py",
+          "--config-file",
+          databaseConfig,
+          "--release-sha",
+          context.sha,
+          "--output",
+          output,
+        ]);
+        const schema = read(output);
+        checks.push({
+          name: "postgres-read-only",
+          status: "pass",
+          schemaStatus: schema.status,
+          databaseActivity: schema.databaseActivity,
+        });
+      } finally {
+        rmSync(databaseDirectory, { recursive: true, force: true });
+      }
       checks.push({
         name: "existing-runtime-settings",
         status: "pass",
@@ -1452,16 +1507,18 @@ export async function publicationCli({
     index.pendingApiDirectory = directory.slice(bundle.length + 1);
     atomicJson(join(bundle, "publication.json"), index);
     const schema = join(directory, "schema-receipt.json");
-    run(join(ROOT, "api/.venv/bin/python"), [
-      "scripts/deploy/api_schema_release.py",
-      "--config-file",
-      runtimeFile,
-      "--release-sha",
-      context.sha,
-      "--output",
-      schema,
-      "--apply",
-    ]);
+    publicationStage(bundle, "api-schema", () =>
+      run(join(ROOT, "api/.venv/bin/python"), [
+        "scripts/deploy/api_schema_release.py",
+        "--config-file",
+        runtimeFile,
+        "--release-sha",
+        context.sha,
+        "--output",
+        schema,
+        "--apply",
+      ]),
+    );
     const provenance = join(ROOT, ".atlas/python-native-evaluation", nativeRun);
     const prior = index.apiDirectory
       ? releasePath(bundle, index.apiDirectory)
