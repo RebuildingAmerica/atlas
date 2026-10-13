@@ -110,6 +110,7 @@ const OPERATIONS = [
   "restore-api",
   "web-candidate",
   "promote-web",
+  "finalize-web",
   "restore-routing",
 ];
 
@@ -273,6 +274,8 @@ export function publicationSummary({
       "web-candidate":
         "Published a protected web candidate and passed hosted journey checks.",
       "promote-web": "Promoted web routing after hosted journey checks.",
+      "finalize-web":
+        "Finalized canonical callbacks for the already accepted frozen live release. Retained failed automated results remain unchanged.",
       "restore-routing": "Restored previous web routing.",
     };
     return `${target} ${operation}: completed.\n${outcomes[operation] ?? "No recognized release operation was reported."}\nDetails: publication.json.`;
@@ -580,9 +583,13 @@ export function publicationContext(env) {
     );
   if (
     target !== "production" &&
-    ["promote-web", "restore-routing", "promote-api", "restore-api"].includes(
-      operation,
-    )
+    [
+      "promote-web",
+      "finalize-web",
+      "restore-routing",
+      "promote-api",
+      "restore-api",
+    ].includes(operation)
   )
     throw Error(
       "Canonical routing operations require the production environment.",
@@ -977,6 +984,7 @@ export function preflightPublicationBilling(
       "restore-routing",
       "restore-api",
       "verify-api",
+      "finalize-web",
       "pause-api",
     ].includes(context.operation)
   )
@@ -1396,12 +1404,14 @@ export async function publicationCli({
       web.runtimeDependencies = manifest.runtimeReleases;
       atomicJson(file, web);
     }
-    const evidence = read(evidenceFile);
-    evidence.durable.runtimeReleases = {
-      ...evidence.durable.runtimeReleases,
-      ...manifest.runtimeReleases,
-    };
-    atomicJson(evidenceFile, evidence);
+    if (evidenceFile) {
+      const evidence = read(evidenceFile);
+      evidence.durable.runtimeReleases = {
+        ...evidence.durable.runtimeReleases,
+        ...manifest.runtimeReleases,
+      };
+      atomicJson(evidenceFile, evidence);
+    }
     return manifest;
   };
   const sourceRun = env.ATLAS_PUBLICATION_SOURCE_RUN_ID?.trim();
@@ -1442,12 +1452,14 @@ export async function publicationCli({
     index = download(sourceRun, bundle, {
       previous:
         context.operation === "publish-api" ||
+        context.operation === "finalize-web" ||
         context.operation === "restore-routing" ||
         context.operation === "restore-api",
       recovery: [
         "restore-routing",
         "restore-api",
         "verify-api",
+        "finalize-web",
         "pause-api",
       ].includes(context.operation),
     });
@@ -1870,11 +1882,35 @@ export async function publicationCli({
       ]),
     );
     index.webDirectory = destination.slice(bundle.length + 1);
+    atomicJson(join(bundle, "publication.json"), index);
     index.hostedAcceptance = publicationStage(
       bundle,
       "web-hosted-journeys",
       () => hostedJourneys(destination),
     );
+  } else if (context.operation === "finalize-web") {
+    const source = releasePath(
+      bundle,
+      index.webDirectory ?? `web/candidate-${sourceRun}`,
+    );
+    const artifact = read(join(source, "deployment.json"));
+    const canonical =
+      runtime.ATLAS_WEB_CANONICAL_URL ?? runtime.ATLAS_PUBLIC_URL;
+    // The controller may advance independently; callback publication reuses
+    // the retained API/discovery bundles and their original source SHA.
+    index.artifactReleaseSha = artifact.releaseSha;
+    index.controllerReleaseSha = context.sha;
+    index.webDirectory = source.slice(bundle.length + 1);
+    atomicJson(join(bundle, "operator-acceptance.json"), acceptance);
+    atomicJson(join(bundle, "publication.json"), index);
+    const api = await publicationStage(
+      bundle,
+      "web-callback-configuration",
+      () => configureCallbacks(canonical, source, "canonical"),
+    );
+    index.canonicalCallbacksOrigin = canonical;
+    index.artifactSourceRunId = sourceRun;
+    index.runtimeDependencies = api.runtimeReleases;
   } else if (context.operation === "promote-web") {
     const source = releasePath(bundle, index.webDirectory);
     index.hostedAcceptance = hostedJourneys(source);
