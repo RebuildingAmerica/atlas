@@ -5,6 +5,7 @@ import dns.message
 import dns.rcode
 import dns.rdatatype
 import httpx
+from http_transport import WorkersHttpTransport
 
 
 async def workers_dns_txt_lookup(name):
@@ -17,7 +18,9 @@ async def workers_dns_txt_lookup(name):
     """
     query = dns.message.make_query(name, dns.rdatatype.TXT)
     try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=False) as client:
+        async with httpx.AsyncClient(
+            timeout=5.0, follow_redirects=False, transport=WorkersHttpTransport()
+        ) as client:
             response = await client.post(
                 "https://cloudflare-dns.com/dns-query",
                 content=query.to_wire(),

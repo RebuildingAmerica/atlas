@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Literal
 import httpx
 
 from atlas.domains.access.membership import app_callback_headers
+from atlas.platform.outbound_http import outbound_http_client
 
 if TYPE_CHECKING:
     from atlas.domains.access.verification import DiscountSegment
@@ -51,7 +52,7 @@ async def notify_discount_review_result(
     """
     url = f"{settings.auth_membership_verification_url.rstrip('/')}{REVIEW_RESULT_PATH}"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with outbound_http_client(timeout=10.0) as client:
             response = await client.post(
                 url,
                 json={"segment": segment, "status": status, "user_id": user_id},

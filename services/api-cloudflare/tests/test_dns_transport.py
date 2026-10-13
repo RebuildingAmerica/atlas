@@ -30,13 +30,20 @@ def resolver(monkeypatch, mode="valid"):
             return httpx.Response(200, content=b"invalid DNS")
         reply = dns.message.make_response(query)
         if mode == "wrong-question":
-            reply = dns.message.make_response(dns.message.make_query("attacker.example", "TXT"))
+            reply = dns.message.make_response(
+                dns.message.make_query("attacker.example", "TXT")
+            )
         if mode == "nxdomain":
             reply.set_rcode(dns.rcode.NXDOMAIN)
         if mode == "valid":
             reply.answer.append(
                 dns.rrset.from_text(
-                    "_atproto.example.org.", 60, "IN", "TXT", '"did=" "did:plc:verified"', '"\\255"'
+                    "_atproto.example.org.",
+                    60,
+                    "IN",
+                    "TXT",
+                    '"did=" "did:plc:verified"',
+                    '"\\255"',
                 )
             )
             reply.answer.append(
@@ -47,7 +54,9 @@ def resolver(monkeypatch, mode="valid"):
     monkeypatch.setattr(
         module.httpx,
         "AsyncClient",
-        lambda **kwargs: client_factory(transport=httpx.MockTransport(respond), **kwargs),
+        lambda **kwargs: client_factory(
+            **{**kwargs, "transport": httpx.MockTransport(respond)}
+        ),
     )
     return module.workers_dns_txt_lookup, calls
 

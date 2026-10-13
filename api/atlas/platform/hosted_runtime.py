@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any, Protocol
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    import httpx
+
     from atlas.domains.discovery.pipeline.source_http import PublicSourceFetcher
     from atlas.platform.config import Settings
 
@@ -36,6 +38,12 @@ class DnsTxtLookup(Protocol):  # pragma: no cover - typing-only protocol
     async def __call__(self, name: str) -> tuple[str, ...]: ...
 
 
+class HttpTransportFactory(Protocol):  # pragma: no cover - typing-only protocol
+    """Allocate an outbound HTTP transport owned by the current client."""
+
+    def __call__(self) -> httpx.AsyncBaseTransport: ...
+
+
 @dataclass(frozen=True)
 class HostedRuntime:
     """Provider configuration and connector; never shared visitor identity."""
@@ -47,6 +55,7 @@ class HostedRuntime:
     discovery_wake: FirehoseWake | None = None
     jwks_documents: dict[str, dict[str, Any]] | None = None
     dns_txt_lookup: DnsTxtLookup | None = None
+    http_transport_factory: HttpTransportFactory | None = None
 
 
 _runtime: ContextVar[HostedRuntime | None] = ContextVar("atlas_hosted_runtime", default=None)

@@ -5,12 +5,14 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from functools import wraps
 from inspect import signature
 
-from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
-from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
 from database_adapter import connect_database
 from dns_transport import workers_dns_txt_lookup
 from hosted_jwks import HostedJwksCache
+from http_transport import WorkersHttpTransport
 from public_source_transport import workers_public_source_fetch
+
+from atlas.platform.config import Settings, get_settings, validate_runtime_auth_config
+from atlas.platform.hosted_runtime import HostedRuntime, bind_hosted_runtime
 
 
 class ExplicitSettings(Settings):
@@ -157,6 +159,7 @@ def create_hosted_application(
                 workers_public_source_fetch,
                 discovery_wake=discovery_wake,
                 dns_txt_lookup=workers_dns_txt_lookup,
+                http_transport_factory=WorkersHttpTransport,
             )
         ):
             # atlas.main also constructs its ordinary server at import. Bind
@@ -210,6 +213,7 @@ def create_hosted_application(
                 discovery_wake=discovery_wake,
                 jwks_documents=await keys.for_headers(scope.get("headers", [])),
                 dns_txt_lookup=workers_dns_txt_lookup,
+                http_transport_factory=WorkersHttpTransport,
             )
         ):
             try:

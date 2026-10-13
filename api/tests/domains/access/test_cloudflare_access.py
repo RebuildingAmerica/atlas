@@ -240,7 +240,7 @@ async def test_fetches_the_team_certs_over_https(monkeypatch: pytest.MonkeyPatch
     def _client(**kwargs: Any) -> httpx.AsyncClient:
         return real_client(transport=httpx.MockTransport(_handler), **kwargs)
 
-    monkeypatch.setattr(cloudflare_access.httpx, "AsyncClient", _client)
+    monkeypatch.setattr(cloudflare_access, "outbound_http_client", _client)
 
     body = await cloudflare_access._fetch_certs(access_config().certs_url)  # noqa: SLF001
 
@@ -254,7 +254,7 @@ async def test_refuses_certs_that_are_not_a_json_object(monkeypatch: pytest.Monk
         transport = httpx.MockTransport(lambda _request: httpx.Response(200, json=["no"]))
         return real_client(transport=transport, **kwargs)
 
-    monkeypatch.setattr(cloudflare_access.httpx, "AsyncClient", _client)
+    monkeypatch.setattr(cloudflare_access, "outbound_http_client", _client)
 
     with pytest.raises(TypeError, match="JSON object"):
         await cloudflare_access._fetch_certs(access_config().certs_url)  # noqa: SLF001

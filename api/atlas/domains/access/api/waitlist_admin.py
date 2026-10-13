@@ -18,6 +18,7 @@ from atlas.domains.access.membership import app_callback_headers
 from atlas.platform.authz import Action, PlatformOperator, require_platform_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
+from atlas.platform.outbound_http import outbound_http_client
 
 router = APIRouter(tags=["platform"])
 CALLBACK_PATH = "/api/auth/internal/platform-waitlist"
@@ -170,7 +171,7 @@ async def _ask_app[Answer: BaseModel](
     if data is not None:
         payload.update(data.model_dump(by_alias=True, exclude_none=True))
     try:
-        async with httpx.AsyncClient(timeout=WAITLIST_CALLBACK_TIMEOUT_SECONDS) as client:
+        async with outbound_http_client(timeout=WAITLIST_CALLBACK_TIMEOUT_SECONDS) as client:
             result = await client.post(
                 f"{settings.auth_membership_verification_url.rstrip('/')}{CALLBACK_PATH}",
                 json=payload,

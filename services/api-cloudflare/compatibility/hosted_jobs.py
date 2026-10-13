@@ -237,6 +237,7 @@ def create_firehose_alarm(env, storage):
     """
     from hosted_application import _hyperdrive_parameters, _settings, connect_database
     from dns_transport import workers_dns_txt_lookup
+    from http_transport import WorkersHttpTransport
 
     try:
         settings = _settings(env)
@@ -250,9 +251,14 @@ def create_firehose_alarm(env, storage):
         return await connect_database(**_hyperdrive_parameters(env))
 
     adapter = FirehoseAlarmAdapter(
-        runtime=HostedRuntime(settings, connect, dns_txt_lookup=workers_dns_txt_lookup),
+        runtime=HostedRuntime(
+            settings,
+            connect,
+            dns_txt_lookup=workers_dns_txt_lookup,
+            http_transport_factory=WorkersHttpTransport,
+        ),
         storage=storage,
-        wake=storage.setAlarm
+        wake=storage.setAlarm,
     )
     # Materialization can itself produce observations. Those transactions use
     # this object's wake receipts just like HTTP producers do.

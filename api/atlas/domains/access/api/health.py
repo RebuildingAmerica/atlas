@@ -8,6 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends
 
 from atlas.platform.config import Settings, get_settings
+from atlas.platform.outbound_http import outbound_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ async def auth_health(
     if not settings.multi_user:
         return {"status": "ok", "mode": "local", "checks": {}}
 
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with outbound_http_client(timeout=5.0) as client:
         checks["jwks"] = await _check_url(client, settings.auth_jwt_jwks_url, "JWKS")
 
         if settings.auth_membership_verification_url:

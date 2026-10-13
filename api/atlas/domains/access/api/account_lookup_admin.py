@@ -21,6 +21,7 @@ from atlas.domains.access.models.discount_verifications import DiscountVerificat
 from atlas.platform.authz import Action, PlatformOperator, require_platform_action
 from atlas.platform.config import Settings, get_settings
 from atlas.platform.http.cache import apply_no_store_headers
+from atlas.platform.outbound_http import outbound_http_client
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -136,7 +137,7 @@ class AccountLookupResponse(BaseModel):
 
 async def _ask_app(settings: Settings, query: str) -> AppLookupAnswer:
     url = f"{settings.auth_membership_verification_url.rstrip('/')}{LOOKUP_PATH}"
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with outbound_http_client(timeout=10.0) as client:
         response = await client.post(
             url, json={"query": query}, headers=app_callback_headers(settings)
         )

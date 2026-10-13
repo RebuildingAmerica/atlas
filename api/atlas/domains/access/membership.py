@@ -6,8 +6,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import httpx
 from fastapi import status
+
+from atlas.platform.outbound_http import outbound_http_client
 
 if TYPE_CHECKING:
     from atlas.platform.config import Settings
@@ -65,7 +66,7 @@ async def verify_org_membership(
     )
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with outbound_http_client(timeout=5.0) as client:
             response = await client.get(
                 url,
                 headers=app_callback_headers(settings),

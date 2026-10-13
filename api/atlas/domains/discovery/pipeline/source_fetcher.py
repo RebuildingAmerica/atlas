@@ -18,6 +18,8 @@ from typing import Any
 import httpx
 from atlas_discovery_engine import BraveSearchProvider, SearchProvider, SearchResult
 
+from atlas.platform.outbound_http import outbound_http_client
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["FetchedSource", "build_search_provider", "fetch_sources"]
@@ -135,7 +137,7 @@ async def fetch_sources(
             continue
         unique[result.url] = result
 
-    async with httpx.AsyncClient(
+    async with outbound_http_client(
         follow_redirects=True, timeout=20.0, headers=PAGE_FETCH_HEADERS
     ) as client:
         gate = asyncio.Semaphore(PAGE_FETCH_CONCURRENCY)

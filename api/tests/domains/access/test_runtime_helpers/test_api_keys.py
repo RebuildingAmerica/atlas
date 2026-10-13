@@ -48,7 +48,7 @@ async def test_verify_api_key_handles_success_and_rejected_tokens(
         request=httpx.Request("POST", test_settings.auth_api_key_introspection_url),
     )
     monkeypatch.setattr(
-        "atlas.domains.access.api_keys.httpx.AsyncClient",
+        "atlas.domains.access.api_keys.outbound_http_client",
         _async_client_factory(success_response),
     )
 
@@ -64,7 +64,7 @@ async def test_verify_api_key_handles_success_and_rejected_tokens(
         request=httpx.Request("POST", test_settings.auth_api_key_introspection_url),
     )
     monkeypatch.setattr(
-        "atlas.domains.access.api_keys.httpx.AsyncClient",
+        "atlas.domains.access.api_keys.outbound_http_client",
         _async_client_factory(invalid_response),
     )
 
@@ -85,7 +85,7 @@ async def test_verify_api_key_treats_not_found_and_unauthorized_as_invalid(
             request=httpx.Request("POST", test_settings.auth_api_key_introspection_url),
         )
         monkeypatch.setattr(
-            "atlas.domains.access.api_keys.httpx.AsyncClient",
+            "atlas.domains.access.api_keys.outbound_http_client",
             _async_client_factory(response),
         )
         assert await verify_api_key("atlas_test_key", test_settings) is None
@@ -105,14 +105,14 @@ async def test_verify_api_key_raises_for_server_errors_and_transport_failures(
         request=httpx.Request("POST", test_settings.auth_api_key_introspection_url),
     )
     monkeypatch.setattr(
-        "atlas.domains.access.api_keys.httpx.AsyncClient",
+        "atlas.domains.access.api_keys.outbound_http_client",
         _async_client_factory(server_error),
     )
     with pytest.raises(httpx.HTTPStatusError):
         await verify_api_key("atlas_test_key", test_settings)
 
     monkeypatch.setattr(
-        "atlas.domains.access.api_keys.httpx.AsyncClient",
+        "atlas.domains.access.api_keys.outbound_http_client",
         _async_client_factory(RuntimeError("network down")),
     )
     with pytest.raises(RuntimeError, match="network down"):

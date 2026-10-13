@@ -13,6 +13,7 @@ from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
 from atlas.platform.config import get_settings
 from atlas.platform.hosted_runtime import current_hosted_runtime
+from atlas.platform.outbound_http import outbound_http_client
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -53,7 +54,7 @@ class NetworkAtprotoIdentityResolver:
         url = _did_document_url(did)
         if url is None:
             return None
-        async with httpx.AsyncClient(timeout=ATPROTO_IDENTITY_TIMEOUT_SECONDS) as client:
+        async with outbound_http_client(timeout=ATPROTO_IDENTITY_TIMEOUT_SECONDS) as client:
             try:
                 response = await client.get(url)
             except httpx.HTTPError:
@@ -135,7 +136,7 @@ async def _verify_pds_handle_resolution(handle: str, did: str, pds_url: str | No
         endpoint = _pds_resolve_handle_url(pds_url, _normalize_handle(handle))
     except ValueError:
         return False
-    async with httpx.AsyncClient(timeout=ATPROTO_IDENTITY_TIMEOUT_SECONDS) as client:
+    async with outbound_http_client(timeout=ATPROTO_IDENTITY_TIMEOUT_SECONDS) as client:
         try:
             response = await client.get(endpoint)
         except httpx.HTTPError:
@@ -246,7 +247,7 @@ async def _resolve_handle_dns(handle: str) -> str | None:
 
 async def _resolve_handle_https(handle: str) -> str | None:
     url = f"https://{handle}/.well-known/atproto-did"
-    async with httpx.AsyncClient(timeout=ATPROTO_IDENTITY_TIMEOUT_SECONDS) as client:
+    async with outbound_http_client(timeout=ATPROTO_IDENTITY_TIMEOUT_SECONDS) as client:
         try:
             response = await client.get(url)
         except httpx.HTTPError:

@@ -34,11 +34,13 @@ class _FirehoseWake:
 
 def create_discovery_alarm(env, storage):
     """Construct services without opening SQL or starting a process worker."""
+    from dns_transport import workers_dns_txt_lookup
+    from hosted_application import _hyperdrive_parameters, _settings, connect_database
+    from http_transport import WorkersHttpTransport
+    from public_source_transport import workers_public_source_fetch
+
     from atlas.domains.discovery.hosted_jobs import DiscoveryAlarmAdapter
     from atlas.platform.hosted_runtime import HostedRuntime
-    from hosted_application import _hyperdrive_parameters, _settings, connect_database
-    from dns_transport import workers_dns_txt_lookup
-    from public_source_transport import workers_public_source_fetch
 
     try:
         settings = _settings(env)
@@ -58,6 +60,7 @@ def create_discovery_alarm(env, storage):
             firehose_wake=_FirehoseWake(env),
             public_source_fetch=workers_public_source_fetch,
             dns_txt_lookup=workers_dns_txt_lookup,
+            http_transport_factory=WorkersHttpTransport,
         ),
         storage=storage,
     )

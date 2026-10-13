@@ -91,7 +91,7 @@ async def test_membership_change_is_visible_on_the_next_request(
         return _FakeAsyncClient(response)
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         counting_factory,
     )
 
@@ -135,7 +135,7 @@ async def test_cache_miss_makes_http_get(
         return client_instance
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         factory,
     )
 
@@ -174,7 +174,7 @@ async def test_membership_request_includes_configured_edge_bypass(
         return client_instance
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         factory,
     )
 
@@ -205,7 +205,7 @@ async def test_404_response_returns_none(
         return _FakeAsyncClient(response)
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         factory,
     )
 
@@ -239,7 +239,7 @@ async def test_200_response_returns_membership_result(
         return _FakeAsyncClient(response)
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         factory,
     )
 
@@ -281,7 +281,7 @@ async def test_200_response_returns_workspace_domain_proof_fields(
         return _FakeAsyncClient(response)
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         factory,
     )
 
@@ -299,7 +299,7 @@ async def test_network_failure_propagates_after_logging(
     settings = _make_settings()
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         _client_factory(RuntimeError("network down")),
     )
 
@@ -326,7 +326,7 @@ async def test_non_200_non_404_raises_error(
         return _FakeAsyncClient(response)
 
     monkeypatch.setattr(
-        "atlas.domains.access.membership.httpx.AsyncClient",
+        "atlas.domains.access.membership.outbound_http_client",
         factory,
     )
 

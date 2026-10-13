@@ -26,7 +26,7 @@ from functools import cache
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Literal, TypeGuard
 
-import httpx
+from atlas.platform.outbound_http import outbound_http_client
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -169,7 +169,7 @@ async def _fetch_certs(url: str) -> dict[str, Any]:
             message = "Access certs were not a JSON object."
             raise TypeError(message)
         return body
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with outbound_http_client(timeout=5.0) as client:
         response = await client.get(url)
     response.raise_for_status()
     body = response.json()

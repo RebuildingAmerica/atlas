@@ -26,6 +26,7 @@ from typing import NamedTuple
 import httpx
 
 from atlas.domains.catalog.geo.gazetteer import lookup_centroid, lookup_state_centroid
+from atlas.platform.outbound_http import outbound_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ async def _census_rooftop(full_address: str) -> GeocodeResult | None:
         "format": "json",
     }
     try:
-        async with httpx.AsyncClient(timeout=_CENSUS_TIMEOUT_SECONDS) as client:
+        async with outbound_http_client(timeout=_CENSUS_TIMEOUT_SECONDS) as client:
             response = await client.get(_CENSUS_ONELINE_URL, params=params)
     except httpx.HTTPError:
         logger.warning("Census geocoder request failed; falling back to gazetteer")

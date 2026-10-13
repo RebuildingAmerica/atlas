@@ -9,6 +9,7 @@ import httpx
 from atlas_discovery_engine.web_content import ContentExtraction, extract_html_content
 
 from atlas.platform.hosted_runtime import current_hosted_runtime
+from atlas.platform.outbound_http import outbound_http_client
 
 from .source_fetcher import (
     PAGE_FETCH_HEADERS,
@@ -45,7 +46,7 @@ async def fetch_direct_source(url: str) -> FetchedSource | None:
     async def validate_redirect(request: httpx.Request) -> None:
         validate_public_source_url(str(request.url))
 
-    async with httpx.AsyncClient(
+    async with outbound_http_client(
         follow_redirects=True,
         timeout=20.0,
         headers=PAGE_FETCH_HEADERS,
@@ -108,7 +109,7 @@ async def _ordinary_source_fetch(
 ) -> AsyncIterator[PublicSourceResponse]:
     # A fresh client per hop cannot retain a publisher's cookies on redirects.
     async with (
-        httpx.AsyncClient(follow_redirects=False, timeout=20.0) as client,
+        outbound_http_client(follow_redirects=False, timeout=20.0) as client,
         client.stream("GET", url, headers=headers) as response,
     ):
         yield PublicSourceResponse(response.status_code, response.headers, response.aiter_bytes())

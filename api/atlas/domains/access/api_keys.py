@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-import httpx
 from fastapi import status
+
+from atlas.platform.outbound_http import outbound_http_client
 
 from .principals import ApiKeyPrincipal
 
@@ -22,7 +23,7 @@ async def verify_api_key(api_key: str, settings: Settings) -> ApiKeyPrincipal | 
         return None
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with outbound_http_client(timeout=5.0) as client:
             response = await client.post(
                 settings.auth_api_key_introspection_url,
                 headers={
