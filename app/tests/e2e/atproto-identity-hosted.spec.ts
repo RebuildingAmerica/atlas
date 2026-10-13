@@ -206,11 +206,16 @@ test("signed-in profile saves survive reload and stay private to their owner", a
     const picker = page.getByRole("dialog", { name: "Save to list" });
     await picker.getByRole("button", { name: "Create a new list" }).click();
     await picker.getByLabel("List name").fill(listName);
-    await picker.getByRole("button", { name: "Create", exact: true }).click();
-    await expect(picker.getByRole("button", { name: listName, exact: true })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    const itemSaved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        /^\/api\/lists\/[^/]+\/items$/.test(new URL(response.url()).pathname),
     );
+    await picker.getByRole("button", { name: "Create", exact: true }).click();
+    expect((await itemSaved).status()).toBe(201);
+    await expect(
+      picker.getByRole("button", { name: new RegExp(`^${listName}(?:\\s|$)`) }),
+    ).toHaveAttribute("aria-pressed", "true");
     await visitHostedRoute(page, "/lists");
     await page.getByRole("link", { name: new RegExp(listName) }).click();
     await expect(page.getByRole("link", { name: "Housing California", exact: true })).toBeVisible();
