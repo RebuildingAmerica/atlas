@@ -1901,7 +1901,6 @@ export async function publicationCli({
     index.artifactReleaseSha = artifact.releaseSha;
     index.controllerReleaseSha = context.sha;
     index.webDirectory = source.slice(bundle.length + 1);
-    atomicJson(join(bundle, "operator-acceptance.json"), acceptance);
     atomicJson(join(bundle, "publication.json"), index);
     const api = await publicationStage(
       bundle,
