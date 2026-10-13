@@ -12,6 +12,7 @@ import httpx
 from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
 from atlas.platform.config import get_settings
+from atlas.platform.hosted_runtime import current_hosted_runtime
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -219,6 +220,17 @@ async def revalidate_linked_atproto_profiles(
 
 
 async def _resolve_handle_dns(handle: str) -> str | None:
+    runtime = current_hosted_runtime()
+    if runtime is not None and runtime.dns_txt_lookup is not None:
+        values = await runtime.dns_txt_lookup(f"_atproto.{handle}")
+        return next(
+            (
+                value.removeprefix(ATPROTO_HANDLE_TXT_PREFIX).strip()
+                for value in values
+                if value.startswith(ATPROTO_HANDLE_TXT_PREFIX)
+            ),
+            None,
+        )
     resolver = dns.asyncresolver.Resolver()
     resolver.lifetime = ATPROTO_IDENTITY_TIMEOUT_SECONDS
     try:

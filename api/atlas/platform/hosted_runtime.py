@@ -30,6 +30,12 @@ class FirehoseWake(Protocol):  # pragma: no cover - typing-only protocol
     async def abort_wake(self, receipt: str) -> None: ...
 
 
+class DnsTxtLookup(Protocol):  # pragma: no cover - typing-only protocol
+    """Resolve public ownership evidence without host filesystem or sockets."""
+
+    async def __call__(self, name: str) -> tuple[str, ...]: ...
+
+
 @dataclass(frozen=True)
 class HostedRuntime:
     """Provider configuration and connector; never shared visitor identity."""
@@ -40,6 +46,7 @@ class HostedRuntime:
     public_source_fetch: PublicSourceFetcher | None = None
     discovery_wake: FirehoseWake | None = None
     jwks_documents: dict[str, dict[str, Any]] | None = None
+    dns_txt_lookup: DnsTxtLookup | None = None
 
 
 _runtime: ContextVar[HostedRuntime | None] = ContextVar("atlas_hosted_runtime", default=None)

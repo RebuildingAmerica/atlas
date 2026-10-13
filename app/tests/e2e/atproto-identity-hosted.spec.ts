@@ -172,7 +172,9 @@ async function fillFieldAndClickWhenEnabled(
   await button.click();
 }
 
-test.describe.configure({ mode: "serial" });
+// Each test prepares and cleans up its own accounts. Run every journey even
+// when another fails so identity administration cannot hide Save regressions.
+test.describe.configure({ mode: "default" });
 
 // A failed browser assertion or partially completed preparation still owns
 // disposable accounts. The independent request fixture survives page failures.
@@ -180,6 +182,63 @@ test.afterEach(async ({ request }) => {
   const runId = requiredEnv("ATLAS_HOSTED_E2E_RUN_ID");
   const result = await postHostedHelper(request, { action: "cleanup", runId });
   expect(result).toMatchObject({ ok: true, runId });
+});
+
+interface HostedSavedList {
+  id: string;
+  name: string;
+  user_id: string;
+}
+
+test("signed-in profile saves survive reload and stay private to their owner", async ({ page }) => {
+  const run = await prepareHostedRun(page.request);
+  const listName = `Hosted Save ${compactHostedRunId(run.runId)}`;
+  const publicHeaders = Object.fromEntries(
+    new Headers(hostedPublicRequestInit().headers).entries(),
+  );
+  await signInHostedAccount(page, { email: run.owner.email, runId: run.runId });
+  try {
+    await visitHostedRoute(page, "/profiles/organizations/housing-california-f25e");
+    await expect(
+      page.getByRole("heading", { name: "Housing California", exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    const picker = page.getByRole("dialog", { name: "Save to list" });
+    await picker.getByRole("button", { name: "Create a new list" }).click();
+    await picker.getByLabel("List name").fill(listName);
+    await picker.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(picker.getByRole("button", { name: listName, exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await visitHostedRoute(page, "/lists");
+    await page.getByRole("link", { name: new RegExp(listName) }).click();
+    await expect(page.getByRole("link", { name: "Housing California", exact: true })).toBeVisible();
+    const savedUrl = new URL(page.url()).pathname;
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("link", { name: "Housing California", exact: true })).toBeVisible();
+    await signInHostedAccount(page, { email: run.delegate.email, runId: run.runId });
+    await visitHostedRoute(page, "/lists");
+    await expect(
+      page.getByRole("heading", { name: "Your research lists", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: new RegExp(listName) })).toHaveCount(0);
+    const denied = await page.request.get(`/api${savedUrl}`, { headers: publicHeaders });
+    expect([403, 404]).toContain(denied.status());
+  } finally {
+    await signInHostedAccount(page, { email: run.owner.email, runId: run.runId });
+    const response = await page.request.get("/api/lists", { headers: publicHeaders });
+    expect(response.status()).toBe(200);
+    const lists = (await response.json()) as HostedSavedList[];
+    for (const list of lists.filter(
+      (item) => item.name === listName && item.user_id === run.owner.userId,
+    )) {
+      const removed = await page.request.delete(`/api/lists/${encodeURIComponent(list.id)}`, {
+        headers: publicHeaders,
+      });
+      expect(removed.status()).toBe(204);
+    }
+  }
 });
 
 test("hosted ATProto identity administration works without a personal browser session", async ({

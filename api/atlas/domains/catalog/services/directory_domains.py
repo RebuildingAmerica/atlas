@@ -9,6 +9,7 @@ import dns.asyncresolver
 import dns.exception
 
 from atlas.domains.catalog.models.ownership import DirectoryDomainModel, OwnershipCRUD
+from atlas.platform.hosted_runtime import current_hosted_runtime
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -38,6 +39,9 @@ class DnsDirectoryDomainTxtResolver:
 
     async def resolve_txt_records(self, domain: str) -> set[str]:
         """Resolve TXT records for a workspace directory domain."""
+        runtime = current_hosted_runtime()
+        if runtime is not None and runtime.dns_txt_lookup is not None:
+            return set(await runtime.dns_txt_lookup(domain))
         resolver = dns.asyncresolver.Resolver()
         resolver.lifetime = DIRECTORY_DOMAIN_TXT_RESOLUTION_TIMEOUT_SECONDS
         try:

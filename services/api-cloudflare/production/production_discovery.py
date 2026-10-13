@@ -37,6 +37,7 @@ def create_discovery_alarm(env, storage):
     from atlas.domains.discovery.hosted_jobs import DiscoveryAlarmAdapter
     from atlas.platform.hosted_runtime import HostedRuntime
     from hosted_application import _hyperdrive_parameters, _settings, connect_database
+    from dns_transport import workers_dns_txt_lookup
     from public_source_transport import workers_public_source_fetch
 
     try:
@@ -56,6 +57,7 @@ def create_discovery_alarm(env, storage):
             connect,
             firehose_wake=_FirehoseWake(env),
             public_source_fetch=workers_public_source_fetch,
+            dns_txt_lookup=workers_dns_txt_lookup,
         ),
         storage=storage,
     )
