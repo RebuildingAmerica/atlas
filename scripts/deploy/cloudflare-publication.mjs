@@ -760,14 +760,15 @@ export function inspectPublicArtifact(directory, secrets) {
   inspect(directory);
 }
 
-/** Recover the complete existing runtime inside Linux CI, retaining optional SSO/PDS settings. */
-export async function retainedPublicationRuntime(env, { collect } = {}) {
+/** Read existing GitHub-held configuration so Cloudflare releases survive Vercel retirement. */
+export async function retainedPublicationRuntime(env) {
   const { loadWebRuntime } = await import("./web-candidate.mjs");
   if (env.ATLAS_WEB_RUNTIME_ENV_JSON?.trim())
     return loadWebRuntime(env.ATLAS_WEB_RUNTIME_ENV_JSON);
-  const { collectWebRuntime } = await import("./web-runtime-sync.mjs");
   const keys = [
     "ATLAS_PUBLIC_URL",
+    "ATLAS_MANAGED",
+    "ATLAS_MULTI_USER",
     "DATABASE_BACKEND",
     "ATLAS_DEPLOY_MODE",
     "ATLAS_AUTH_BASE_PATH",
@@ -806,16 +807,13 @@ export async function retainedPublicationRuntime(env, { collect } = {}) {
     "STRIPE_BILLING_PORTAL_CONFIGURATION",
     "ATLAS_BILLING_ALLOWED_OFFERS",
   ];
-  return (collect ?? collectWebRuntime)({
-    target: env.ATLAS_PUBLICATION_TARGET,
-    project: required(env, "VERCEL_PROJECT_ID"),
-    team: required(env, "VERCEL_ORG_ID"),
-    token: required(env, "VERCEL_TOKEN"),
-    customEnvironmentId: env.ATLAS_VERCEL_STAGING_ENVIRONMENT_ID,
-    additional: Object.fromEntries(
-      keys.filter((key) => env[key]?.trim()).map((key) => [key, env[key]]),
+  return loadWebRuntime(
+    JSON.stringify(
+      Object.fromEntries(
+        keys.filter((key) => env[key]?.trim()).map((key) => [key, env[key]]),
+      ),
     ),
-  });
+  );
 }
 
 /** Keep provider-only existing secrets available to the final artifact scan.

@@ -36,7 +36,6 @@ import {
   hostedFailureReport,
   schemaFailureDiagnostic,
 } from "./cloudflare-publication.mjs";
-import { collectWebRuntime } from "./web-runtime-sync.mjs";
 import { assertWebObserverConfiguration } from "./web-observe.mjs";
 import { canonicalDigest } from "./api-cloudflare-release.mjs";
 
@@ -943,43 +942,14 @@ test("a prerequisite failure before publication has no bundle to scan or upload"
   assert.equal(existsSync(bundle), false);
 });
 
-test("retained runtime acquisition forwards existing CI additions and preserves provider-only identity values", async () => {
-  const supplied = {
-    ATLAS_PUBLICATION_TARGET: "production",
-    VERCEL_PROJECT_ID: "project",
-    VERCEL_ORG_ID: "team",
-    VERCEL_TOKEN: "fixture-provider-token",
-    ATLAS_AUTH_CALLBACK_SECRET: "fixture-callback",
-    ATLAS_PLATFORM_OPERATOR_EMAILS: "operator@example.org",
-  };
-  let input;
-  const result = await retainedPublicationRuntime(supplied, {
-    collect: async (value) => {
-      input = value;
-      return { ATLAS_SAML_SP_PRIVATE_KEY: "fixture-existing-enterprise-value" };
-    },
-  });
-  assert.equal(input.token, supplied.VERCEL_TOKEN);
-  assert.deepEqual(input.additional, {
-    ATLAS_AUTH_CALLBACK_SECRET: supplied.ATLAS_AUTH_CALLBACK_SECRET,
-    ATLAS_PLATFORM_OPERATOR_EMAILS: supplied.ATLAS_PLATFORM_OPERATOR_EMAILS,
-  });
-  assert.equal(
-    result.ATLAS_SAML_SP_PRIVATE_KEY,
-    "fixture-existing-enterprise-value",
-  );
-});
-
-test("retained CI origins and authentication settings recover write-only provider configuration", async () => {
-  const verifier = {
-    ATLAS_HOSTED_E2E_ENABLED: "1",
-    ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
-  };
-  const retained = {
+function existingPublicationRuntime() {
+  return {
     ATLAS_PUBLIC_URL: "https://atlas.example.org",
+    ATLAS_MANAGED: "true",
+    ATLAS_MULTI_USER: "true",
     ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.org/mcp",
-    ATLAS_AUTH_MEMBERSHIP_URL: "https://atlas.example.org",
-    ATLAS_OPERATOR_ALLOWED_EMAILS: "operator@example.org",
+    ATLAS_AUTH_MEMBERSHIP_URL:
+      "https://atlas.example.org/api/auth/internal/membership",
     ATLAS_INSTANCE_OPERATOR_EMAILS: "operator@example.org",
     ATLAS_PLATFORM_OPERATOR_EMAILS: "operator@example.org",
     DATABASE_BACKEND: "postgres",
@@ -992,72 +962,54 @@ test("retained CI origins and authentication settings recover write-only provide
     ATLAS_EMAIL_FROM: "Atlas <hello@example.org>",
     ATLAS_EMAIL_PROVIDER: "resend",
     ATLAS_PDS_PUBLIC_URL: "https://pds.example.org",
-  };
-  const readable = {
     ATLAS_AUTH_INTERNAL_SECRET: "fixture-internal-signing",
     ATLAS_AUTH_CALLBACK_SECRET: "fixture-api-callback",
     ATLAS_EDGE_ORIGIN_SECRET: "fixture-visitor-proof",
     ATLAS_ADMIN_PUBLIC_URL: "https://admin.example.org",
     DATABASE_URL: "postgres://fixture@db.example.org/atlas",
     ATLAS_EMAIL_RESEND_API_KEY: "fixture-email-key",
-    ATLAS_HOSTED_E2E_SECRET: "fixture-hosted-verifier", // pragma: allowlist secret - synthetic test fixture
+    ATLAS_SAML_SP_PRIVATE_KEY: "fixture-existing-enterprise-value",
+    ATLAS_HOSTED_E2E_SECRET: "fixture-hosted-verifier",
+    ATLAS_HOSTED_E2E_ENABLED: "1",
+    ATLAS_HOSTED_E2E_PRODUCTION_ENABLED: "1",
   };
-  const inventory = [
-    ...Object.entries(retained).map(([key], i) => ({
-      id: `retained_${i}`,
-      key,
-      type: "sensitive",
-      target: ["production"],
-    })),
-    ...Object.entries(readable).map(([key, value], i) => ({
-      id: `readable_${i}`,
-      key,
-      value,
-      type: "plain",
-      target: ["production"],
-    })),
-  ];
-  const result = await retainedPublicationRuntime(
-    {
-      ATLAS_PUBLICATION_TARGET: "production",
-      VERCEL_PROJECT_ID: "prj_fixture",
-      VERCEL_ORG_ID: "team_fixture",
-      VERCEL_TOKEN: "fixture-provider-token",
-      ...retained,
-      ...verifier,
-    },
-    {
-      collect: (input) =>
-        collectWebRuntime({
-          ...input,
-          fetcher: async (url) => {
-            const pathname = new URL(url).pathname;
-            if (pathname.endsWith("/env"))
-              return Response.json({ envs: inventory });
-            const row = inventory.find(
-              ({ id }) => id === pathname.split("/").at(-1),
-            );
-            assert.equal(row?.type, "plain");
-            return Response.json(row);
-          },
-        }),
-    },
-  );
-  const { ATLAS_OPERATOR_ALLOWED_EMAILS: retired, ...current } = retained;
-  assert.ok(retired);
-  assert.deepEqual(result, {
-    ATLAS_MANAGED: "true",
-    ATLAS_MULTI_USER: "true",
-    ...current,
-    ...readable,
-    ...verifier,
+}
+
+test("publication runtime preserves existing GitHub-held identity and SSO without Vercel credentials", async () => {
+  const existing = existingPublicationRuntime();
+  const result = await retainedPublicationRuntime({
+    ...existing,
+    GH_TOKEN: "fixture-provider-token-not-application-config",
   });
+  assert.deepEqual(result, existing);
   assert.doesNotThrow(() =>
     assertWebObserverConfiguration(result, {
       clientId: "fixture-access-id",
-      clientSecret: "fixture-access-secret", // pragma: allowlist secret - synthetic test fixture
-      hostedSecret: readable.ATLAS_HOSTED_E2E_SECRET,
+      clientSecret: "fixture-access-secret",
+      hostedSecret: existing.ATLAS_HOSTED_E2E_SECRET,
     }),
+  );
+});
+
+test("publication runtime rejects missing GitHub settings instead of recovering them from Vercel", async () => {
+  const existing = existingPublicationRuntime();
+  delete existing.DATABASE_URL;
+  await assert.rejects(
+    retainedPublicationRuntime({
+      ...existing,
+      VERCEL_TOKEN: "fixture-unused-provider-token",
+    }),
+    /Runtime DATABASE_URL is required/,
+  );
+});
+
+test("publication runtime accepts its existing complete secret-store export", async () => {
+  const existing = existingPublicationRuntime();
+  assert.deepEqual(
+    await retainedPublicationRuntime({
+      ATLAS_WEB_RUNTIME_ENV_JSON: JSON.stringify(existing),
+    }),
+    existing,
   );
 });
 
