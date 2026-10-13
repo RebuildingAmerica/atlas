@@ -11,7 +11,6 @@ import httpx
 
 from atlas.domains.catalog.models.atproto_identities import AtprotoIdentityCRUD
 from atlas.domains.catalog.models.profile_atproto_links import ProfileAtprotoLinkCRUD
-from atlas.platform.config import get_settings
 from atlas.platform.hosted_runtime import current_hosted_runtime
 from atlas.platform.outbound_http import outbound_http_client
 
@@ -110,23 +109,10 @@ async def verify_linked_atproto_identity(
     *,
     pds_url: str | None = None,
 ) -> bool:
-    """Verify a linked identity, including the explicit hermetic OAuth harness."""
-    if e2e_harness_identity_matches(handle, did):
-        return True
+    """Verify a linked identity against ATProto and its public PDS."""
     if await verify_current_atproto_identity(handle, did):
         return True
     return await _verify_pds_handle_resolution(handle, did, pds_url)
-
-
-def e2e_harness_identity_matches(handle: str, did: str) -> bool:
-    """Recognize only identities minted by the explicitly enabled E2E harness.
-
-    Reads the flag through ``Settings`` rather than the process environment so
-    it is validated once at startup and refused outright in production.
-    """
-    if not get_settings().atproto_oauth_e2e_harness:
-        return False
-    return did == f"did:web:{_normalize_handle(handle)}"
 
 
 async def _verify_pds_handle_resolution(handle: str, did: str, pds_url: str | None) -> bool:

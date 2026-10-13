@@ -68,16 +68,6 @@ class Settings(BaseSettings):
     someone else runs it and none of those are theirs to have.
     """
 
-    atproto_oauth_e2e_harness: bool = Field(
-        default=False,
-        validation_alias="ATLAS_ATPROTO_OAUTH_E2E_HARNESS",
-    )
-    """Accept synthetic ``did:web`` identities minted by the ATProto proof lane.
-
-    Staging-only. Production startup refuses this flag, because it short-circuits
-    real identity verification before it runs.
-    """
-
     auth_callback_secret: str = Field(default="", validation_alias="ATLAS_AUTH_CALLBACK_SECRET")
     """Secret the API presents when it calls back into the app.
 

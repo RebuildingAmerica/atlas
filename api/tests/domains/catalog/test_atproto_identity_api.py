@@ -12,7 +12,6 @@ from atlas.domains.catalog.api.atproto_identities import (
     _identity_to_response,
     _required_response_timestamp,
     _response_timestamp,
-    _verify_linked_atproto_identity,
     disconnect_atproto_identity,
     link_atproto_identity,
     list_atproto_identities,
@@ -35,7 +34,6 @@ from atlas.domains.catalog.schemas.public import (
 )
 from atlas.domains.catalog.services.atproto_identity import (
     AtprotoIdentityResolution,
-    e2e_harness_identity_matches,
 )
 
 
@@ -335,25 +333,6 @@ async def test_identity_response_serializes_postgres_timestamps(
     assert response.connected_at == "2026-07-15T00:48:07+00:00"
     assert response.verified_at == "2026-07-15T00:48:07+00:00"
     assert response.last_checked_at == "2026-07-15T00:48:07+00:00"
-
-
-def test_e2e_harness_match_is_explicit_and_normalized(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", raising=False)
-    assert not e2e_harness_identity_matches("Person.Example", "did:web:person.example")
-    monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
-    assert e2e_harness_identity_matches(" @Person.Example ", "did:web:person.example")
-
-
-@pytest.mark.asyncio
-async def test_e2e_harness_verification_short_circuits_network(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
-    assert await _verify_linked_atproto_identity(
-        "Person.Example", "did:web:person.example", pds_url=None
-    )
 
 
 @pytest.mark.asyncio

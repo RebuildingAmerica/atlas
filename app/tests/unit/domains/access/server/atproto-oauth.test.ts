@@ -105,114 +105,12 @@ describe("atproto-oauth", () => {
       createAtprotoSignInAuthorizationUrl({
         handle: "person.example",
         returnTo: "/account",
-        useE2EHarness: false,
       }),
     ).resolves.toEqual(new URL("https://bsky.social/oauth/authorize"));
 
     const insertedPayload = String(run.mock.calls.at(-1)?.[1]);
     expect(insertedPayload).toContain('"flow":"sign-in"');
     expect(insertedPayload).toContain('"requestedHandle":"person.example"');
-  });
-
-  it("builds an internal provider authorization URL when the end-to-end OAuth harness is enabled", async () => {
-    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
-    const run = vi.fn();
-    const prepare = vi.fn().mockReturnValue({ run });
-    mocks().getAuthDatabase.mockReturnValue({ prepare });
-    const { createAtprotoAuthorizationUrl } = await import("@/domains/access/server/atproto-oauth");
-
-    const authorizationUrl = await createAtprotoAuthorizationUrl({
-      handle: "org.example",
-      returnTo: "/claim/org",
-    });
-
-    expect(mocks().authorize).not.toHaveBeenCalled();
-    expect(authorizationUrl.origin).toBe("https://atlas.test");
-    expect(authorizationUrl.pathname).toBe("/api/atproto/oauth/harness/authorize");
-    expect(authorizationUrl.searchParams.get("handle")).toBe("org.example");
-    expect(authorizationUrl.searchParams.get("state")).toEqual(expect.any(String));
-  });
-
-  it("builds a callback URL from the internal provider harness", async () => {
-    const { createAtprotoHarnessProviderCallbackUrl } =
-      await import("@/domains/access/server/atproto-oauth");
-
-    const callbackUrl = createAtprotoHarnessProviderCallbackUrl(
-      new URLSearchParams("state=state_1&handle=org.example"),
-    );
-
-    expect(callbackUrl.toString()).toBe(
-      "https://atlas.test/api/atproto/oauth/callback?code=atlas-e2e-harness&state=state_1&handle=org.example",
-    );
-  });
-
-  it("starts a harness sign-in authorization without contacting the real provider", async () => {
-    mocks().loadAtlasSession.mockResolvedValue(null);
-    const run = vi.fn();
-    mocks().getAuthDatabase.mockReturnValue({ prepare: vi.fn().mockReturnValue({ run }) });
-    const { createAtprotoSignInAuthorizationUrl } =
-      await import("@/domains/access/server/atproto-oauth");
-
-    const authorizationUrl = await createAtprotoSignInAuthorizationUrl({
-      handle: "person.example",
-      returnTo: "/account",
-      useE2EHarness: true,
-    });
-
-    expect(mocks().authorize).not.toHaveBeenCalled();
-    expect(authorizationUrl.pathname).toBe("/api/atproto/oauth/harness/authorize");
-    expect(authorizationUrl.searchParams.get("handle")).toBe("person.example");
-    expect(String(run.mock.calls.at(-1)?.[1])).toContain('"e2eHarness":true');
-  });
-
-  it("refuses to build a harness callback URL without both state and handle", async () => {
-    const { createAtprotoHarnessProviderCallbackUrl } =
-      await import("@/domains/access/server/atproto-oauth");
-
-    for (const query of ["state=state_1", "handle=org.example", ""]) {
-      expect(() => createAtprotoHarnessProviderCallbackUrl(new URLSearchParams(query))).toThrow(
-        "ATProto provider harness needs state and handle.",
-      );
-    }
-  });
-
-  it("falls back to the public origin when no separate API base URL is configured", async () => {
-    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
-    mocks().getAuthRuntimeConfig.mockReturnValue({
-      apiBaseUrl: null,
-      internalSecret: "secret",
-      publicBaseUrl: "https://atlas.test",
-    });
-    const get = vi.fn().mockReturnValue({
-      value: JSON.stringify({
-        requestedHandle: "org.example",
-        returnTo: "/claim/org",
-        userId: "user_1",
-      }),
-    });
-    mocks().getAuthDatabase.mockReturnValue({
-      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
-    });
-    mocks().fetch.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          current_handle: "org.example",
-          did: "did:web:org.example",
-          id: "identity_harness",
-          pds_url: "https://pds.atlas-e2e.test",
-        }),
-        { status: 201 },
-      ),
-    );
-    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
-
-    await completeAtprotoAuthorization(
-      new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
-    );
-
-    expect(String(mocks().fetch.mock.calls[0]?.[0])).toBe(
-      "https://atlas.test/api/atproto/identities",
-    );
   });
 
   it("reuses one OAuth client across callbacks and allows a non-local http deployment", async () => {

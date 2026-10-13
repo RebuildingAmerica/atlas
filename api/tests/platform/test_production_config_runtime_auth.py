@@ -200,45 +200,6 @@ class TestValidateRuntimeAuthConfig:
             create_app()
 
 
-class TestRefuseIdentityHarnessOutsideStaging:
-    """A seam that skips identity verification belongs only to the proof lane."""
-
-    def test_production_refuses_the_harness(self) -> None:
-        """Production must not accept synthetic did:web identities."""
-        settings = Settings(
-            database_url="sqlite:///tmp/test.db",
-            environment="production",
-            atproto_oauth_e2e_harness=True,
-        )
-        with pytest.raises(RuntimeError, match="only for the staging proof lane"):
-            validate_runtime_auth_config(settings)
-
-    def test_single_user_does_not_exempt_the_harness(self) -> None:
-        """The refusal runs ahead of the no-accounts early return, not behind it.
-
-        Whoever runs the instance, a verified badge shown to a reader has to
-        mean the same thing.
-        """
-        settings = Settings(
-            database_url="sqlite:///tmp/test.db",
-            environment="production",
-            multi_user=False,
-            atproto_oauth_e2e_harness=True,
-        )
-        with pytest.raises(RuntimeError, match="only for the staging proof lane"):
-            validate_runtime_auth_config(settings)
-
-    def test_staging_allows_the_harness(self) -> None:
-        """Staging runs the proof lane, so the harness stays available there."""
-        settings = Settings(
-            database_url="sqlite:///tmp/test.db",
-            environment="staging",
-            multi_user=False,
-            atproto_oauth_e2e_harness=True,
-        )
-        validate_runtime_auth_config(settings)
-
-
 class TestValidationHasNoEnvironmentExemption:
     """Requirements follow from accounts, not from which environment this is."""
 

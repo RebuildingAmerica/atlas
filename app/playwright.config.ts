@@ -3,10 +3,6 @@ import { createHash, randomBytes, generateKeyPairSync, sign } from "node:crypto"
 import path from "node:path";
 import { defineConfig } from "@playwright/test";
 import { buildAtlasAuthJwtAudiences } from "@rebuildingamerica/atlas-access/oauth-resource-config";
-import {
-  resolveAtprotoOAuthHarnessMode,
-  resolveAtprotoPdsHarnessMode,
-} from "./playwright-atproto-env";
 
 function absoluteUrl(origin: string, pathname: string): string {
   return new URL(pathname, origin).toString().replace(/\/$/, "");
@@ -72,8 +68,6 @@ const e2eCallbackSecret = createHash("sha256")
 const e2eEdgeOriginSecret = createHash("sha256")
   .update(`atlas-e2e-edge-origin:${e2eRunId}`)
   .digest("hex");
-const atprotoOAuthHarness = resolveAtprotoOAuthHarnessMode(process.env);
-const atprotoPdsHarness = resolveAtprotoPdsHarnessMode(process.env);
 delete process.env.NO_COLOR;
 delete process.env.FORCE_COLOR;
 const baseWebServerEnv = { ...process.env };
@@ -207,10 +201,7 @@ export default defineConfig({
         ATLAS_AUTH_JWT_AUDIENCES: authJwtAudiences,
         ATLAS_ANON_RATE_LIMIT_ENABLED: "false",
         ATLAS_EDGE_ORIGIN_SECRET: e2eEdgeOriginSecret,
-        ATLAS_E2E_WORKSPACE_SEED_ENABLED: "1",
         ATLAS_E2E_INTERNAL_SECRET: e2eInternalSecret,
-        ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
-        ATLAS_ATPROTO_PDS_E2E_HARNESS: atprotoPdsHarness,
         ATLAS_MANAGED: "true",
         ATLAS_MULTI_USER: "true",
         ATLAS_INSTANCE_OPERATOR_EMAILS: instanceOperatorEmails,
@@ -236,8 +227,6 @@ export default defineConfig({
         ...baseWebServerEnv,
         ...commonAuthEnv,
         ATLAS_SERVER_API_PROXY_TARGET: apiUrl,
-        ATLAS_ATPROTO_OAUTH_E2E_HARNESS: atprotoOAuthHarness,
-        ATLAS_ATPROTO_PDS_E2E_HARNESS: atprotoPdsHarness,
         // The acceptance run has to be able to buy. The e2e API seeds
         // profiles before it boots, so the catalog probe finds entries.
         ATLAS_BILLING_CHECKOUT_ENABLED: "true",

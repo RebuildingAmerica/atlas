@@ -66,21 +66,6 @@ async def test_verify_current_atproto_identity_requires_bidirectional_match() ->
 
 
 @pytest.mark.asyncio
-async def test_linked_identity_verification_uses_only_explicit_harness(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1")
-    assert await verify_linked_atproto_identity("Harness.Example", "did:web:harness.example")
-    monkeypatch.delenv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS")
-
-    async def verified(_handle: str, _did: str) -> bool:
-        return True
-
-    monkeypatch.setattr(atproto_identity, "verify_current_atproto_identity", verified)
-    assert await verify_linked_atproto_identity("real.example", "did:plc:real")
-
-
-@pytest.mark.asyncio
 async def test_linked_identity_verification_accepts_managed_pds_resolution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

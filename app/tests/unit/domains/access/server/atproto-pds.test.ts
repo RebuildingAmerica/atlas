@@ -331,23 +331,4 @@ describe("provisionManagedAtprotoIdentity", () => {
     ).rejects.toThrow("Atlas PDS invite broker did not return a code.");
     expect(pdsMocks.createAccount).not.toHaveBeenCalled();
   });
-
-  it("uses a credential-free managed identity fixture in the managed PDS E2E harness", async () => {
-    vi.stubEnv("ATLAS_ATPROTO_PDS_E2E_HARNESS", "1");
-    pdsMocks.getAuthRuntimeConfig.mockReturnValue({ atprotoPdsUrl: null });
-    const { provisionManagedAtprotoIdentity } = await import("@/domains/access/server/atproto-pds");
-
-    await expect(
-      provisionManagedAtprotoIdentity({
-        email: "operator@atlas.test",
-        handle: "Workspace.Atlas.Test",
-        userId: "user_1",
-      }),
-    ).resolves.toEqual({
-      current_handle: "workspace.atlas.test",
-      did: "did:web:workspace.atlas.test",
-      pds_url: "https://pds.atlas-e2e.test",
-    });
-    expect(pdsMocks.createAccount).not.toHaveBeenCalled();
-  });
 });

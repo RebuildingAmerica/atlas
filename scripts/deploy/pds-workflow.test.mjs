@@ -65,7 +65,7 @@ test("publication preserves the existing PDS broker and account verification cre
   assert.match(publication, /ATLAS_PDS_INVITE_BROKER_URL/);
   assert.doesNotMatch(
     publication,
-    /ATLAS_PDS_ADMIN_PASSWORD|randomBytes|ATLAS_ATPROTO_OAUTH_E2E_HARNESS/,
+    /ATLAS_PDS_ADMIN_PASSWORD|randomBytes/,
   );
   assert.doesNotMatch(source, /Generate.*secret|gcloud/);
 });

@@ -116,8 +116,6 @@ import { Route as ApiAuthInternalApiKeyRouteImport } from './routes/api/auth/int
 import { Route as ApiAuthInternalDiscountReviewResultsRouteImport } from './routes/api/auth/internal/discount-review-results'
 import { Route as ApiAuthInternalPlatformLookupRouteImport } from './routes/api/auth/internal/platform-lookup'
 import { Route as ApiAuthInternalPlatformWaitlistRouteImport } from './routes/api/auth/internal/platform-waitlist'
-import { Route as ApiE2eWorkspaceMemberRouteImport } from './routes/api/e2e/workspace/member'
-import { Route as ApiAtprotoOauthHarnessAuthorizeRouteImport } from './routes/api/atproto/oauth/harness/authorize'
 import { Route as ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport } from './routes/api/auth/internal/memberships/$organizationId/members/$userId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -689,17 +687,6 @@ const ApiAuthInternalPlatformWaitlistRoute =
     path: '/api/auth/internal/platform-waitlist',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiE2eWorkspaceMemberRoute = ApiE2eWorkspaceMemberRouteImport.update({
-  id: '/api/e2e/workspace/member',
-  path: '/api/e2e/workspace/member',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAtprotoOauthHarnessAuthorizeRoute =
-  ApiAtprotoOauthHarnessAuthorizeRouteImport.update({
-    id: '/api/atproto/oauth/harness/authorize',
-    path: '/api/atproto/oauth/harness/authorize',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute =
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRouteImport.update({
     id: '/api/auth/internal/memberships/$organizationId/members/$userId',
@@ -809,10 +796,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
-  '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people/': typeof PublicProfilesPeopleIndexRoute
-  '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -911,10 +896,8 @@ export interface FileRoutesByTo {
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
-  '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/profiles/organizations': typeof PublicProfilesOrganizationsIndexRoute
   '/profiles/people': typeof PublicProfilesPeopleIndexRoute
-  '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRoutesById {
@@ -1024,10 +1007,8 @@ export interface FileRoutesById {
   '/api/auth/internal/discount-review-results': typeof ApiAuthInternalDiscountReviewResultsRoute
   '/api/auth/internal/platform-lookup': typeof ApiAuthInternalPlatformLookupRoute
   '/api/auth/internal/platform-waitlist': typeof ApiAuthInternalPlatformWaitlistRoute
-  '/api/e2e/workspace/member': typeof ApiE2eWorkspaceMemberRoute
   '/_public/profiles/organizations/': typeof PublicProfilesOrganizationsIndexRoute
   '/_public/profiles/people/': typeof PublicProfilesPeopleIndexRoute
-  '/api/atproto/oauth/harness/authorize': typeof ApiAtprotoOauthHarnessAuthorizeRoute
   '/api/auth/internal/memberships/$organizationId/members/$userId': typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 export interface FileRouteTypes {
@@ -1134,10 +1115,8 @@ export interface FileRouteTypes {
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
     | '/api/auth/internal/platform-waitlist'
-    | '/api/e2e/workspace/member'
     | '/profiles/organizations/'
     | '/profiles/people/'
-    | '/api/atproto/oauth/harness/authorize'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1236,10 +1215,8 @@ export interface FileRouteTypes {
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
     | '/api/auth/internal/platform-waitlist'
-    | '/api/e2e/workspace/member'
     | '/profiles/organizations'
     | '/profiles/people'
-    | '/api/atproto/oauth/harness/authorize'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   id:
     | '__root__'
@@ -1348,10 +1325,8 @@ export interface FileRouteTypes {
     | '/api/auth/internal/discount-review-results'
     | '/api/auth/internal/platform-lookup'
     | '/api/auth/internal/platform-waitlist'
-    | '/api/e2e/workspace/member'
     | '/_public/profiles/organizations/'
     | '/_public/profiles/people/'
-    | '/api/atproto/oauth/harness/authorize'
     | '/api/auth/internal/memberships/$organizationId/members/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -1389,8 +1364,6 @@ export interface RootRouteChildren {
   ApiAuthInternalDiscountReviewResultsRoute: typeof ApiAuthInternalDiscountReviewResultsRoute
   ApiAuthInternalPlatformLookupRoute: typeof ApiAuthInternalPlatformLookupRoute
   ApiAuthInternalPlatformWaitlistRoute: typeof ApiAuthInternalPlatformWaitlistRoute
-  ApiE2eWorkspaceMemberRoute: typeof ApiE2eWorkspaceMemberRoute
-  ApiAtprotoOauthHarnessAuthorizeRoute: typeof ApiAtprotoOauthHarnessAuthorizeRoute
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute: typeof ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute
 }
 
@@ -2145,20 +2118,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthInternalPlatformWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/e2e/workspace/member': {
-      id: '/api/e2e/workspace/member'
-      path: '/api/e2e/workspace/member'
-      fullPath: '/api/e2e/workspace/member'
-      preLoaderRoute: typeof ApiE2eWorkspaceMemberRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/atproto/oauth/harness/authorize': {
-      id: '/api/atproto/oauth/harness/authorize'
-      path: '/api/atproto/oauth/harness/authorize'
-      fullPath: '/api/atproto/oauth/harness/authorize'
-      preLoaderRoute: typeof ApiAtprotoOauthHarnessAuthorizeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/auth/internal/memberships/$organizationId/members/$userId': {
       id: '/api/auth/internal/memberships/$organizationId/members/$userId'
       path: '/api/auth/internal/memberships/$organizationId/members/$userId'
@@ -2466,8 +2425,6 @@ const rootRouteChildren: RootRouteChildren = {
     ApiAuthInternalDiscountReviewResultsRoute,
   ApiAuthInternalPlatformLookupRoute: ApiAuthInternalPlatformLookupRoute,
   ApiAuthInternalPlatformWaitlistRoute: ApiAuthInternalPlatformWaitlistRoute,
-  ApiE2eWorkspaceMemberRoute: ApiE2eWorkspaceMemberRoute,
-  ApiAtprotoOauthHarnessAuthorizeRoute: ApiAtprotoOauthHarnessAuthorizeRoute,
   ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute:
     ApiAuthInternalMembershipsOrganizationIdMembersUserIdRoute,
 }

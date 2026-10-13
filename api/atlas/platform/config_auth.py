@@ -19,32 +19,6 @@ def protected_resource_metadata_url(resource_url: str) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, metadata_path, "", ""))
 
 
-def _refuse_identity_harness_outside_staging(settings: Settings) -> None:
-    """Refuse a seam that accepts identities without verifying them.
-
-    Runs ahead of every other check, including the single-user early return,
-    because a seam that bypasses identity verification must not survive by
-    taking a permissive branch.
-
-    Parameters
-    ----------
-    settings
-        Loaded application settings.
-
-    Raises
-    ------
-    RuntimeError
-        If a non-staging deployment enables the ATProto proof-lane harness.
-    """
-    if settings.atproto_oauth_e2e_harness and settings.environment != "staging":
-        msg = (
-            "ATLAS_ATPROTO_OAUTH_E2E_HARNESS is only for the staging proof lane. "
-            "It accepts synthetic did:web identities without verification, so a "
-            "verified badge would stop meaning anything."
-        )
-        raise RuntimeError(msg)
-
-
 def _require_parseable_machine_issuers(settings: Settings) -> None:
     """Refuse to start with a trusted machine list that does not parse.
 
@@ -135,7 +109,6 @@ def validate_runtime_auth_config(settings: Settings) -> None:
     RuntimeError
         If an instance with accounts is missing required configuration.
     """
-    _refuse_identity_harness_outside_staging(settings)
     _require_parseable_machine_issuers(settings)
     _require_valid_access_config(settings)
     _refuse_retired_operator_allowlist(settings)

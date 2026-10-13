@@ -393,10 +393,8 @@ export const EXCLUDED_ROUTES = {
   "/api/stripe/webhook": { reason: "API route, not a page." },
   "/api/atproto/oauth/callback": { reason: "API route, not a page." },
   "/api/atproto/oauth/client-metadata.json": { reason: "API route, not a page." },
-  "/api/atproto/oauth/harness/authorize": { reason: "E2E harness route, not a page." },
   "/api/atproto/oauth/start": { reason: "API route, not a page." },
   "/api/atproto/sign-in/start": { reason: "API route, not a page." },
-  "/api/e2e/workspace/member": { reason: "E2E seed route, not a page." },
 } as const satisfies Partial<Record<AtlasRoutePath, ExcludedRoute>>;
 
 /**

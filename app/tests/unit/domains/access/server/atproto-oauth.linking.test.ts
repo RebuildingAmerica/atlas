@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  configureHarnessCallback,
   getAtprotoOAuthMocks as mocks,
   setupAtprotoOAuthMocks,
 } from "./atproto-oauth-test-support";
@@ -71,30 +70,6 @@ describe("atproto-oauth", () => {
       did: "did:plc:managed",
       pds_url: "https://pds.atlas.test",
     });
-  });
-
-  it("returns successful Account callbacks to the Identity section", async () => {
-    configureHarnessCallback("/account#identity");
-    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
-
-    await expect(
-      completeAtprotoAuthorization(
-        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
-      ),
-    ).resolves.toBe(
-      "https://atlas.test/account?atprotoStatus=connected&atprotoIdentityId=identity_harness#identity",
-    );
-  });
-
-  it("rejects a callback when Atlas cannot persist the verified identity", async () => {
-    configureHarnessCallback("/manage/org", 409);
-    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
-
-    await expect(
-      completeAtprotoAuthorization(
-        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
-      ),
-    ).rejects.toThrow("ATProto identity could not be linked.");
   });
 
   it("persists the callback identity only after the DID resolves back to the returned handle", async () => {
@@ -344,57 +319,6 @@ describe("atproto-oauth", () => {
     expect(prepare).toHaveBeenCalledWith("DELETE FROM atproto_oauth_session WHERE key = ?");
     expect(run).toHaveBeenCalledWith("state_1");
     expect(run).toHaveBeenCalledWith("did:plc:other");
-  });
-
-  it("sends the shared provider callback to identity linking for every other flow", async () => {
-    configureHarnessCallback("/claim/org");
-    const { completeAtprotoOAuthCallback } = await import("@/domains/access/server/atproto-oauth");
-
-    const response = await completeAtprotoOAuthCallback(
-      new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
-    );
-
-    expect(response.status).toBe(302);
-    expect(response.headers.get("location")).toContain("/claim/org");
-    expect(response.headers.get("location")).toContain("atprotoStatus=connected");
-  });
-
-  it("refuses a harness link callback that belongs to another Atlas session", async () => {
-    vi.stubEnv("ATLAS_ATPROTO_OAUTH_E2E_HARNESS", "1");
-    const get = vi.fn().mockReturnValue({
-      value: JSON.stringify({
-        requestedHandle: "org.example",
-        returnTo: "/claim/org",
-        userId: "someone-else",
-      }),
-    });
-    mocks().getAuthDatabase.mockReturnValue({
-      prepare: vi.fn().mockReturnValue({ get, run: vi.fn() }),
-    });
-    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
-
-    await expect(
-      completeAtprotoAuthorization(
-        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=org.example"),
-      ),
-    ).rejects.toThrow("ATProto verification state could not be matched to this session.");
-    await expect(
-      completeAtprotoAuthorization(new URLSearchParams("code=atlas-e2e-harness&state=state_1")),
-    ).rejects.toThrow("ATProto verification state could not be matched to this session.");
-  });
-
-  it("refuses a harness link callback whose handle differs from the request", async () => {
-    configureHarnessCallback("/claim/org");
-    const { completeAtprotoAuthorization } = await import("@/domains/access/server/atproto-oauth");
-
-    await expect(
-      completeAtprotoAuthorization(
-        new URLSearchParams("code=atlas-e2e-harness&state=state_1&handle=impostor.example"),
-      ),
-    ).rejects.toMatchObject({
-      attemptedHandle: "org.example",
-      message: "ATProto identity could not be verified.",
-    });
   });
 
   it("refuses a link callback whose profile does not match the DID that authorized", async () => {
