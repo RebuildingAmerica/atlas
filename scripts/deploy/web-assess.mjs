@@ -53,6 +53,27 @@ export function validateReleasePolicy(policy, releaseSha, now = Date.now()) {
   const authorized = Date.parse(policy.authorizedAt ?? "");
   if (!Number.isFinite(authorized) || authorized > now)
     throw new Error("The real operator instruction timestamp is required.");
+  let performance;
+  if (policy.performance !== undefined) {
+    reference(
+      policy.performance.authorizationReference,
+      "Performance instruction",
+    );
+    const timestamp = Date.parse(policy.performance.authorizedAt ?? "");
+    if (
+      policy.performance.acceptance !== "functional" ||
+      !Number.isFinite(timestamp) ||
+      timestamp > now
+    )
+      throw new Error(
+        "Functional cutover requires the real performance instruction.",
+      );
+    performance = {
+      acceptance: "functional",
+      authorizationReference: policy.performance.authorizationReference,
+      authorizedAt: policy.performance.authorizedAt,
+    };
+  }
   return {
     mode: policy.mode,
     architecture: policy.architecture,
@@ -60,6 +81,7 @@ export function validateReleasePolicy(policy, releaseSha, now = Date.now()) {
     authorizedBy: policy.authorizedBy,
     authorizationReference: policy.authorizationReference,
     authorizedAt: policy.authorizedAt,
+    ...(performance ? { performance } : {}),
   };
 }
 
@@ -177,6 +199,7 @@ export function assessWebRelease(input, now = Date.now()) {
   let releasePolicy = null;
   const blockers = [];
   let forecastUsd = null;
+  let deferredChecks = [];
   try {
     releasePolicy = validateReleasePolicy(
       input.releasePolicy,
@@ -185,12 +208,16 @@ export function assessWebRelease(input, now = Date.now()) {
     );
     forecastUsd = assertDurableBudget(input, now);
     const candidate = input.durable;
+    const functional = releasePolicy.performance?.acceptance === "functional";
+    if (functional)
+      deferredChecks = ["warm/cold latency", "representative/concurrency load"];
     if (candidate.journeysPassed !== true)
       throw new Error("Complete hosted product journeys must pass.");
     if (
-      number(candidate.warmP95Ms, "Warm p95") >
+      !functional &&
+      (number(candidate.warmP95Ms, "Warm p95") >
         number(input.baseline.warmP95Ms, "Baseline p95") * 1.2 ||
-      number(candidate.coldP95Ms, "Cold p95") > 3000
+        number(candidate.coldP95Ms, "Cold p95") > 3000)
     )
       throw new Error("Hosted warm/cold latency gates failed.");
     if (
@@ -216,9 +243,9 @@ export function assessWebRelease(input, now = Date.now()) {
       if (
         measured.provider !== "cloudflare" ||
         measured.knownMemoryLimitBytes !== 128 * 1024 * 1024 ||
-        measured.providerLoad?.representativePassed !== true ||
+        (!functional && measured.providerLoad?.representativePassed !== true) ||
         measured.providerLoad.maxBoundedPayloadPassed !== true ||
-        measured.providerLoad.concurrencyPassed !== true ||
+        (!functional && measured.providerLoad.concurrencyPassed !== true) ||
         number(measured.memoryLimitFailures, `${key} memory failures`) !== 0
       )
         throw new Error(
@@ -271,6 +298,7 @@ export function assessWebRelease(input, now = Date.now()) {
   return {
     selected: blockers.length ? null : "workers",
     releasePolicy,
+    ...(deferredChecks.length ? { deferredChecks } : {}),
     alternatives: {
       workers: {
         currentForecastUsd: forecastUsd === null ? null : forecastUsd / 2,

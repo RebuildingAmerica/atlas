@@ -221,6 +221,64 @@ test("provider load outcomes establish memory-limit acceptance when Cloudflare e
   assert.equal(assessWebRelease(input, now).selected, "workers");
 });
 
+test("explicit functional cutover defers latency and load percentiles while retaining runtime safety and Free budget", () => {
+  const input = evidence();
+  input.releasePolicy.performance = {
+    acceptance: "functional",
+    authorizationReference:
+      "Operator: Cut over after functional checks; accept slower initial requests",
+    authorizedAt: new Date(now - 500).toISOString(),
+  };
+  input.durable.warmP95Ms = 5000;
+  input.durable.coldP95Ms = 10000;
+  for (const measured of Object.values(input.durable.measurements)) {
+    measured.providerLoad.representativePassed = false;
+    measured.providerLoad.concurrencyPassed = false;
+  }
+  const result = assessWebRelease(input, now);
+  assert.equal(result.selected, "workers");
+  assert.equal(result.releasePolicy.performance.acceptance, "functional");
+  assert.deepEqual(result.deferredChecks, [
+    "warm/cold latency",
+    "representative/concurrency load",
+  ]);
+  for (const mutate of [
+    (x) => {
+      x.durable.journeysPassed = false;
+    },
+    (x) => {
+      x.durable.rollback.readbackPassed = false;
+    },
+    (x) => {
+      x.durable.measurements.api.memoryLimitFailures = 1;
+    },
+    (x) => {
+      x.durable.measurements.web.limitFailures = 1;
+    },
+    (x) => {
+      x.durable.edgeCpuLimitFailures = 1;
+    },
+    (x) => {
+      x.durable.addedMonthlyCosts.databaseUsd = 1;
+    },
+    (x) => {
+      x.cloudflare.quotas.workersRequestsPerDay.candidate = 80000;
+    },
+    (x) => {
+      x.releasePolicy.performance.authorizationReference = "";
+    },
+    (x) => {
+      x.releasePolicy.performance.authorizedAt = new Date(
+        now + 1,
+      ).toISOString();
+    },
+  ]) {
+    const invalid = structuredClone(input);
+    mutate(invalid);
+    assert.equal(assessWebRelease(invalid, now).selected, null);
+  }
+});
+
 test("every shared Free allowance keeps doubled candidate usage below 80 percent", () => {
   for (const key of Object.keys(evidence().cloudflare.quotas)) {
     for (const value of [undefined, -1, NaN, Infinity, 100_000_000_000]) {

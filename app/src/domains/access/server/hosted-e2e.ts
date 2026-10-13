@@ -500,16 +500,39 @@ async function brokerRequest(body?: {
   runId: string;
   accounts: PdsFixture[];
 }) {
-  const { url, secret } = brokerSettings();
-  const response = await fetch(url, {
-    method: body ? "POST" : "GET",
-    headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    redirect: "error",
-    signal: AbortSignal.timeout(60_000),
-  });
-  if (!response.ok) throw new Error("Hosted E2E cleanup is unavailable.");
-  return (await response.json()) as unknown;
+  let settings: ReturnType<typeof brokerSettings>;
+  try {
+    settings = brokerSettings();
+  } catch {
+    console.error(JSON.stringify({ hostedCleanup: { stage: "broker-configuration" } }));
+    throw new Error("Hosted E2E cleanup is unavailable.");
+  }
+  const { url, secret } = settings;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: body ? "POST" : "GET",
+      headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      redirect: "error",
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch {
+    console.error(JSON.stringify({ hostedCleanup: { stage: "broker-transport" } }));
+    throw new Error("Hosted E2E cleanup is unavailable.");
+  }
+  if (!response.ok) {
+    console.error(
+      JSON.stringify({ hostedCleanup: { stage: "broker-response", httpStatus: response.status } }),
+    );
+    throw new Error("Hosted E2E cleanup is unavailable.");
+  }
+  try {
+    return (await response.json()) as unknown;
+  } catch {
+    console.error(JSON.stringify({ hostedCleanup: { stage: "broker-json" } }));
+    throw new Error("Hosted E2E cleanup is unavailable.");
+  }
 }
 
 /** Refuse fixture creation until the existing PDS broker can delete this run's accounts. */

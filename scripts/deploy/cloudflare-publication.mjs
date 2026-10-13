@@ -1088,6 +1088,46 @@ export async function publicationCli({
       }
     }
     const checks = [];
+    if (env.VERCEL_TOKEN?.trim()) {
+      const until = new Date();
+      until.setUTCHours(0, 0, 0, 0);
+      const since = new Date(until.getTime() - 14 * 86_400_000);
+      try {
+        tool(
+          process.execPath,
+          [
+            join(ROOT, "scripts/deploy/web-baseline.mjs"),
+            "--scope",
+            required(env, "VERCEL_ORG_ID"),
+            "--project",
+            required(env, "VERCEL_PROJECT_ID"),
+            "--since",
+            since.toISOString(),
+            "--until",
+            until.toISOString(),
+            "--output",
+            ".atlas/cloudflare-release/baseline-vercel.json",
+          ],
+          { env },
+        );
+        const baseline = read(join(bundle, "baseline-vercel.json"));
+        const check = {
+          name: "current-vercel-baseline",
+          status: baseline.complete ? "pass" : "block",
+          window: baseline.window,
+          collectedAt: baseline.collectedAt,
+        };
+        checks.push(check);
+        console.log(JSON.stringify({ baseline: check }));
+      } catch {
+        checks.push({
+          name: "current-vercel-baseline",
+          status: "block",
+          reason:
+            "Current provider measurements are unavailable; private diagnostics suppressed.",
+        });
+      }
+    }
     checks.push({
       setting: "CLOUDFLARE_API_TOKEN",
       status: env.CLOUDFLARE_API_TOKEN?.trim() ? "pass" : "block",
