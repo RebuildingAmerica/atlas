@@ -28,9 +28,25 @@ async function fixture(t, options = {}) {
     )
       return reply(401, { error: "AuthenticationRequired" });
     if (req.url.startsWith("/xrpc/com.atproto.identity.resolveHandle"))
+      if (options.unresolved)
+        return reply(400, {
+          error: "InvalidRequest",
+          message: "Unable to resolve handle",
+        });
+    if (req.url.startsWith("/xrpc/com.atproto.identity.resolveHandle"))
       return deleted || options.absent
         ? reply(400, { error: "HandleNotFound" })
         : reply(200, { did });
+    if (req.url.startsWith("/xrpc/com.atproto.admin.searchAccounts")) {
+      if (options.inventoryDenied) return reply(403, {});
+      return reply(200, {
+        accounts:
+          options.absent || deleted
+            ? []
+            : [{ did, handle, email: options.realEmail ?? email }],
+        ...(options.inventoryCursor ? { cursor: "same-cursor" } : {}),
+      });
+    }
     if (req.url.startsWith("/xrpc/com.atproto.admin.getAccountInfo")) {
       if (
         req.url.includes("aaaaaaaaaaaaaaaaaaaaaaaa") ||
@@ -149,6 +165,46 @@ test("broker retains an account with a different provider email", async (t) => {
   assert.equal((await f.cleanup()).status, 502);
   assert.equal(f.deleted, false);
 });
+
+test("generic unresolved handles require complete authenticated inventory before cleanup", async (t) => {
+  const f = await fixture(t, { unresolved: true, absent: true });
+  const response = await f.cleanup();
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    deletedDids: [],
+    cleanedHandles: [handle],
+  });
+  assert.ok(
+    f.calls.some((path) =>
+      path.startsWith("/xrpc/com.atproto.admin.searchAccounts"),
+    ),
+  );
+  assert.equal(f.deleted, false);
+});
+
+test("unresolved exact fixtures are verified by DID before deletion and cleanup is repeatable", async (t) => {
+  const f = await fixture(t, { unresolved: true });
+  assert.equal(
+    (await f.cleanup({ accounts: [{ handle, email, did }] })).status,
+    200,
+  );
+  assert.equal(f.deleted, true);
+  assert.equal(
+    (await f.cleanup({ accounts: [{ handle, email, did }] })).status,
+    200,
+  );
+});
+
+for (const options of [
+  { inventoryDenied: true },
+  { inventoryCursor: true },
+  { realEmail: "person@example.org" },
+])
+  test(`unresolved handle inventory fails closed ${JSON.stringify(options)}`, async (t) => {
+    const f = await fixture(t, { unresolved: true, ...options });
+    assert.equal((await f.cleanup()).status, 502);
+    assert.equal(f.deleted, false);
+  });
 
 test("broker verifies every account before deleting any", async (t) => {
   const f = await fixture(t);

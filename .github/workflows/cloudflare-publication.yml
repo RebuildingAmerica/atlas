@@ -29,7 +29,7 @@ permissions:
 jobs:
   publish:
     name: >-
-      ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
+      ${{ inputs.target }} — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","cleanup-hosted-fixtures":"Clean synthetic accounts","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation] }}
     runs-on: ubuntu-26.04
     environment: ${{ inputs.target }}
     timeout-minutes: 45
@@ -119,7 +119,7 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - name: Check existing PDS authority and applicable billing requirements
         id: pds-release-config
-        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor'
+        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor' || inputs.operation == 'cleanup-hosted-fixtures'
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -152,7 +152,7 @@ jobs:
           }
           JS
       - name: Check or converge the PDS before hosted account verification
-        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor'
+        if: inputs.operation == 'web-candidate' || inputs.operation == 'doctor' || inputs.operation == 'cleanup-hosted-fixtures'
         uses: ./.github/actions/deploy-atlas-pds
         with:
           mode: ${{ inputs.operation == 'doctor' && 'check' || 'full' }}

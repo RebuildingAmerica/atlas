@@ -104,6 +104,7 @@ const OPERATIONS = [
   "doctor",
   "publish-api",
   "publish-admin",
+  "cleanup-hosted-fixtures",
   "verify-api",
   "activate-api",
   "pause-api",
@@ -1275,6 +1276,38 @@ export async function publicationCli({
         "Cloudflare publication doctor found release blockers; see the retained redacted doctor.json.",
       );
     return report;
+  }
+  if (context.operation === "cleanup-hosted-fixtures") {
+    const sourceRun = required(env, "ATLAS_PUBLICATION_SOURCE_RUN_ID");
+    if (!/^\d+$/.test(sourceRun))
+      throw Error("An explicit numeric publication run ID is required.");
+    const report = parseJson(
+      tool(
+        "gh",
+        ["api", `repos/${context.repository}/actions/runs/${sourceRun}`],
+        { env },
+      ),
+    );
+    const { cleanupPublicationFixtures } =
+      await import("./hosted-fixture-cleanup.mjs");
+    const receipt = await cleanupPublicationFixtures({
+      run: report,
+      context,
+      env,
+      sourceRun,
+      validate: validateRetainedRun,
+    });
+    mkdirSync(bundle, { recursive: true, mode: 0o700 });
+    atomicJson(join(bundle, "publication.json"), {
+      ...context,
+      releaseSha: context.sha,
+      runId: env.GITHUB_RUN_ID,
+      state: "verified-clean",
+      fixtureCleanup: receipt,
+    });
+    atomicJson(join(bundle, "fixture-cleanup.json"), receipt);
+    console.log(JSON.stringify({ fixtureCleanup: receipt }));
+    return receipt;
   }
   if (context.operation === "publish-admin")
     return {
