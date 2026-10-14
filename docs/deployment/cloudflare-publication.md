@@ -106,11 +106,16 @@ run containing its interruption journal.
    publishes and checks the protected candidate, exercises the existing PDS,
    public API, signed-in identity and configured checkout, and deploys protected
    administration.
-6. Run `promote-web` only after canonical API proof and fresh candidate
-   observations. Supply `rollback-run-id` naming a successful retained
-   Cloudflare production release. Its artifact, runtime and routing checks must
-   pass before promotion. Verify the canonical site and protected admin
-   afterward.
+6. For the first already-routed Cloudflare release, run `adopt-web-baseline`
+   with the successful production `web-candidate` run as `source-run-id`. It
+   checks the exact artifact, assets, account, zone, Worker version, canonical
+   route, bindings, and API/discovery versions with `cf`, then retains an active
+   production bundle. It does not build, upload, or change routing. Repeating it
+   with the same source records the same Worker identity.
+7. For later releases, run `promote-web` after canonical API proof and fresh
+   candidate observations. Supply the successful adopted or promoted production
+   run as `rollback-run-id`. Its artifact, runtime and routing checks must pass
+   before promotion. Verify the canonical site and protected admin afterward.
 
 An API upgrade preserves the original canonical route and routing journal.
 Production `verify-api` also checks that exact route's ownership and public
@@ -183,11 +188,11 @@ require restoring that exact original edge version before using the original
 journal. Fresh canonical route proof does not establish that recovery sequence
 or replace a hosted joint version rollback rehearsal.
 
-The Roll Back Production workflow uses the retained web promotion journal and
-immutable prior deployment. Never recreate a rollback snapshot from the
-already-changed public hostname. The initial canonical cutover was not produced
-by that promotion workflow, so its retained candidate directory is not a valid
-`productionDirectory` for workflow recovery.
+The Roll Back Production workflow uses a later web promotion's retained routing
+journal and immutable prior deployment. Never recreate a rollback snapshot from
+the already-changed public hostname. The adopted initial cutover is a valid
+`productionDirectory` for a later promotion's rollback source, but the initial
+cutover itself has no promotion journal.
 
 ### Restore an existing Worker version
 
@@ -221,14 +226,6 @@ database migration or an independent API/discovery deployment. Verify sourced
 profiles, the existing signed-in private list, anonymous denial and upstream
 health after the active version readback; an accepted deployment alone is not
 rollback acceptance.
-
-On October 12, 2026, production completed a live round trip from `b88eea12` to
-`26c66b20` and back to `b88eea12` on `atlas-workers-staging-f38dd103c56e`. Both
-versions contained identical retained code, canonical bindings and assets.
-Cloudflare restored the original version at 100% without bypass flags. Existing
-session/list continuity, sourced profile rendering, API health and anonymous
-private-list denial passed. This proves same-Worker version restoration; it does
-not certify rollback across a schema change or a different API/discovery pair.
 
 Artifacts are scanned against CI credentials and provider-only secrets before
 upload. Captured runtime values remain in owner-only runner files until that

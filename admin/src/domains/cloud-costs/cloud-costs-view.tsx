@@ -149,7 +149,7 @@ function CloudCostPosturePanel({
           <h2 className="type-title-large text-ink-strong">Accounting gaps</h2>
           <div className="mt-4 space-y-4">
             <ConnectionStatus
-              label="Cloud Billing export"
+              label="Cloudflare usage"
               detail={posture.billing_export.detail}
               status={posture.billing_export.status}
             />

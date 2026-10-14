@@ -93,6 +93,17 @@ void describe("single-phase bootstrap modes", () => {
     );
   });
 
+  void it("blocks retired Cloud Run domain and edge setup before provider access", async () => {
+    for (const flag of ["--api-domain", "--api-edge"]) {
+      const mode = selectSingleMode(runFor([flag]));
+      assert.ok(mode);
+      const result = await mode.run();
+      assert.equal(result.success, false);
+      assert.equal(result.status, "blocked");
+      assert.match(result.followUpItems[0] ?? "", /Cloud Run.*retired/);
+    }
+  });
+
   void it("records a failed product sync outside doctor mode as failed", () => {
     const run = runFor(["--product", "atlas"]);
     const mode = selectSingleMode(run);

@@ -8,7 +8,7 @@ describe("CloudCostsView", () => {
   function blockedPosture(): CloudCostPostureResponse {
     return {
       billing_export: {
-        detail: "Cloud Billing BigQuery export streams into the ledger.",
+        detail: "Cloudflare usage is available from the provider.",
         status: "connected",
       },
       discovery_spend: {
@@ -48,7 +48,7 @@ describe("CloudCostsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("distinguishes a connected billing export from an unconnected one", () => {
+  it("distinguishes connected Cloudflare usage from an unconnected provider", () => {
     render(<CloudCostsView posture={blockedPosture()} />);
 
     expect(screen.getByText("Connected")).toBeInTheDocument();

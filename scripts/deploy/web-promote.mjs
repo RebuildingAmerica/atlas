@@ -195,7 +195,12 @@ function jointRuntimes(deployment) {
   };
 }
 
-function retainedCloudflareRelease(source, runtime, expected, newWorkerName) {
+export function retainedCloudflareRelease(
+  source,
+  runtime,
+  expected,
+  newWorkerName,
+) {
   const retained = read(join(source, "deployment.json"));
   const manifest = read(join(source, "manifest.json"));
   verifyWebManifest(retained, {
@@ -220,14 +225,32 @@ function retainedCloudflareRelease(source, runtime, expected, newWorkerName) {
       throw new Error(
         "The retained Cloudflare manifest and deployment differ.",
       );
+  const adopted = retained.adoptedBaseline === true;
+  const canonical = runtime.ATLAS_PUBLIC_URL;
   if (
-    retained.target !== "production" ||
+    !(
+      retained.target === "production" ||
+      (adopted && retained.target === "staging")
+    ) ||
     retained.execution !== "cloudflare-durable" ||
     retained.promotionState !== "active" ||
     retained.accountId !== expected.accountId ||
     retained.zoneId !== expected.zoneId ||
     retained.workerName === newWorkerName ||
-    retained.publicEnv.ATLAS_PUBLIC_URL !== runtime.ATLAS_PUBLIC_URL ||
+    (adopted
+      ? retained.publicEnv.ATLAS_PUBLIC_URL !== retained.candidateUrl ||
+        retained.publicEnv.ATLAS_WEB_CANONICAL_URL !== canonical ||
+        retained.buildPublicEnv.ATLAS_PUBLIC_URL !== canonical ||
+        retained.productionUrl !== canonical ||
+        JSON.stringify(retained.baselineDomains) !==
+          JSON.stringify(
+            [
+              new URL(retained.candidateUrl).hostname,
+              `atlas-staging.${new URL(canonical).hostname.split(".").slice(-2).join(".")}`,
+              new URL(canonical).hostname,
+            ].sort(),
+          )
+      : retained.publicEnv.ATLAS_PUBLIC_URL !== canonical) ||
     retained.candidateUrl !==
       `https://${retained.workerName}.${expected.hostname}`
   )
@@ -247,18 +270,22 @@ function retainedCloudflareRelease(source, runtime, expected, newWorkerName) {
   return retained;
 }
 
-function recoveryDomains(deployment, expected, cloudflare) {
+export function recoveryDomains(deployment, expected, cloudflare) {
   const worker = cloudflare(["workers", "get", deployment.workerName]);
   const domains = worker.references?.domains;
   const candidate = new URL(deployment.candidateUrl).hostname;
+  const allowed =
+    deployment.adoptedBaseline === true
+      ? deployment.baselineDomains
+      : [candidate, expected.hostname];
   if (
     worker.name !== deployment.workerName ||
     !Array.isArray(domains) ||
     !domains.some((row) => row.hostname === candidate) ||
+    !Array.isArray(allowed) ||
     domains.some(
       (row) =>
-        row.zone_id !== expected.zoneId ||
-        ![candidate, expected.hostname].includes(row.hostname),
+        row.zone_id !== expected.zoneId || !allowed.includes(row.hostname),
     )
   )
     throw new Error(
@@ -336,7 +363,7 @@ function apiRecovery({
           canonicalOrigin: runtime.ATLAS_PUBLIC_URL,
           clientId: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
           clientSecret: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
-                  cloudflare,
+          cloudflare,
         });
         const evidenceReference = join(
           directory,
@@ -382,7 +409,7 @@ export async function restoreCloudflareWebRouting({
     retained,
     runtime,
     probe,
-      cloudflare,
+    cloudflare,
   });
   if (
     snapshot.kind !== "cloudflare-web-routing" ||
@@ -476,7 +503,10 @@ export async function restoreCloudflareWebRouting({
     await applyDomains({
       directory: snapshot.directory,
       deployment: retained,
-      domains: [new URL(retained.candidateUrl).hostname, expected.hostname],
+      domains:
+        retained.adoptedBaseline === true
+          ? retained.baselineDomains
+          : [new URL(retained.candidateUrl).hostname, expected.hostname],
     });
   if (
     !recoveryDomains(retained, expected, cloudflare).includes(
@@ -495,7 +525,7 @@ export async function restoreCloudflareWebRouting({
     ...retained,
     origin: runtime.ATLAS_PUBLIC_URL,
     canonicalOrigin: runtime.ATLAS_PUBLIC_URL,
-      cloudflare,
+    cloudflare,
   });
   appendFileSync(
     join(directory, "rollback-observations.jsonl"),
@@ -553,7 +583,7 @@ async function promoteWithCloudflareRecovery({
     retained,
     runtime: plan.runtime,
     probe,
-      cloudflare,
+    cloudflare,
   });
   const previous = jointRuntimes(retained);
   assertRuntimeDeployments(
@@ -633,14 +663,19 @@ async function promoteWithCloudflareRecovery({
     cloudflare,
     applyDomains,
     probe,
-      runtimeRollback,
+    runtimeRollback,
   };
   await restoreCloudflareWebRouting(recovery);
   try {
     await applyDomains({
       directory: rollbackSource,
       deployment: retained,
-      domains: [new URL(retained.candidateUrl).hostname],
+      domains:
+        retained.adoptedBaseline === true
+          ? retained.baselineDomains.filter(
+              (domain) => domain !== expected.hostname,
+            )
+          : [new URL(retained.candidateUrl).hostname],
     });
     if (
       recoveryDomains(retained, expected, cloudflare).includes(
@@ -668,7 +703,7 @@ async function promoteWithCloudflareRecovery({
       ...production,
       origin: production.productionUrl,
       canonicalOrigin: production.productionUrl,
-          cloudflare,
+      cloudflare,
     });
     appendFileSync(
       production.observationJournal,
@@ -759,7 +794,7 @@ export async function promoteWebRelease({
     publish,
     applyDomains,
     probe,
-      archive,
+    archive,
     runtimeRollback,
     apiRollbackPlan,
   });
@@ -824,7 +859,7 @@ export async function recoverPromotedCloudflareRelease({
     cloudflare,
     applyDomains,
     probe,
-      apiRollbackPlan,
+    apiRollbackPlan,
     apply,
   });
   if (apply) {
