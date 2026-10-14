@@ -153,7 +153,8 @@ function fixture() {
   bootstrapArtifact.artifactDigest = digestDirectory(
     join(bootstrapArtifact.directory, ".cloudflare/output/v0"),
   );
-  const messages = {};
+  const messages = {},
+    tags = { api: sha, discovery: sha };
   const env = {
     CLOUDFLARE_ACCOUNT_ID: accountId,
     CLOUDFLARE_API_TOKEN: "never-print-bearer",
@@ -179,7 +180,10 @@ function fixture() {
     if (cmd[1] === "versions")
       return {
         id: state[role],
-        annotations: { "workers/tag": sha, "workers/message": messages[role] },
+        annotations: {
+          "workers/tag": tags[role],
+          "workers/message": messages[role],
+        },
       };
     throw Error("Unexpected provider call");
   };
@@ -228,7 +232,7 @@ function fixture() {
     bootstrap: true,
     now: () => Date.parse("2026-10-11T01:00:00Z"),
   };
-  return { root, input, state, calls, journals };
+  return { root, input, state, calls, journals, messages, tags };
 }
 async function using(fn) {
   const f = fixture();
@@ -394,6 +398,54 @@ test("reconciles a provider re-upload only when the retained artifact is unchang
       cloudflare: f.input.cloudflare,
     });
     assert.equal(reconciled.api.workerVersionId, f.state.api);
+    assert.equal(reconciled.discovery.workerVersionId, f.state.discovery);
+  }));
+test("recovers a paused partial pair as the exact rollback baseline", () =>
+  using(async (f) => {
+    await publishApiRelease({ ...f.input, apply: true });
+    const partialSha = "d".repeat(40),
+      partialArtifact = "e".repeat(64),
+      partialSchema = "f".repeat(64);
+    f.state.discovery = "55555555-5555-5555-5555-555555555555";
+    f.tags.discovery = partialSha;
+    f.messages.discovery = `Atlas staging discovery; artifact=${partialArtifact}; schema=${partialSchema}; consumers paused`;
+    const previous = {
+      schemaReceiptDigest: f.input.schemaResult.receiptDigest,
+      runtimeReleases: Object.fromEntries(
+        ["api", "discovery"].map((role) => [
+          role,
+          {
+            workerName: `atlas-${role}-staging`,
+            releaseSha: sha,
+            artifactDigest: f.input.artifacts[role].artifactDigest,
+            workerVersionId: versions[role],
+            namespaceId: (role === "api" ? "1" : "2").repeat(32),
+            namespaceClass: role === "api" ? "ApiRuntime" : "DiscoveryRuntime",
+            storage: "sqlite",
+          },
+        ]),
+      ),
+    };
+    assert.throws(
+      () =>
+        reconcileRetainedRuntimeVersions({
+          previous,
+          target: "staging",
+          schemaReceiptDigest: previous.schemaReceiptDigest,
+          cloudflare: f.input.cloudflare,
+        }),
+      /active runtime differs/,
+    );
+    const reconciled = reconcileRetainedRuntimeVersions({
+      previous,
+      target: "staging",
+      schemaReceiptDigest: previous.schemaReceiptDigest,
+      cloudflare: f.input.cloudflare,
+      recoverPausedPartial: true,
+    });
+    assert.equal(reconciled.discovery.releaseSha, partialSha);
+    assert.equal(reconciled.discovery.artifactDigest, partialArtifact);
+    assert.equal(reconciled.discovery.schemaReceiptDigest, partialSchema);
     assert.equal(reconciled.discovery.workerVersionId, f.state.discovery);
   }));
 test("operations edge requires existing Access-protected hostname and rejects all writes", async () => {

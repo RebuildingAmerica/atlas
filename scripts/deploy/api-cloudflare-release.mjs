@@ -123,12 +123,59 @@ function activeVersion(result) {
     throw Error("One exact active runtime version is required.");
   return versions[0].version_id;
 }
+function activePausedRuntimeRelease({ role, target, cloudflare }) {
+  const workerName = `atlas-${role}-${target}`,
+    workerVersionId = activeVersion(
+      cloudflare(["workers", "deployments", "list", "--worker", workerName]),
+    ),
+    version = cloudflare([
+      "workers",
+      "versions",
+      "get",
+      workerVersionId,
+      "--worker-id",
+      workerName,
+    ]),
+    message = version?.annotations?.["workers/message"],
+    match = new RegExp(
+      `^Atlas ${target} ${role}; artifact=([a-f0-9]{64}); schema=([a-f0-9]{64}); consumers paused$`,
+    ).exec(message ?? ""),
+    namespaces = cloudflare(["durable-objects", "namespaces", "list"]),
+    namespace = Array.isArray(namespaces)
+      ? namespaces.find(
+          (row) =>
+            row.script === workerName &&
+            row.class === roleClass(role) &&
+            row.use_sqlite === true,
+        )
+      : undefined;
+  if (
+    version?.id !== workerVersionId ||
+    !SHA.test(version.annotations?.["workers/tag"] ?? "") ||
+    !match ||
+    !namespace?.id
+  )
+    throw Error("The active partial runtime identity is incomplete.");
+  return {
+    ...runtimeReleaseIdentity({
+      workerName,
+      workerVersionId,
+      releaseSha: version.annotations["workers/tag"],
+      artifactDigest: match[1],
+      namespaceId: namespace.id,
+      namespaceClass: roleClass(role),
+      storage: "sqlite",
+    }),
+    schemaReceiptDigest: match[2],
+  };
+}
 /** Reconcile provider re-uploads of the exact retained artifact before replacement. */
 export function reconcileRetainedRuntimeVersions({
   previous,
   target,
   schemaReceiptDigest,
   cloudflare,
+  recoverPausedPartial = false,
 }) {
   const runtimeReleases = {};
   for (const role of ROLES) {
@@ -164,11 +211,18 @@ export function reconcileRetainedRuntimeVersions({
           retained.artifactDigest,
           schemaReceiptDigest,
         )
-    )
-      throw Error(
-        "The active runtime differs from the retained release artifact.",
-      );
-    runtimeReleases[role] = { ...retained, workerVersionId };
+    ) {
+      if (recoverPausedPartial)
+        runtimeReleases[role] = activePausedRuntimeRelease({
+          role,
+          target,
+          cloudflare,
+        });
+      else
+        throw Error(
+          "The active runtime differs from the retained release artifact.",
+        );
+    } else runtimeReleases[role] = { ...retained, workerVersionId };
   }
   return runtimeReleases;
 }
@@ -435,6 +489,7 @@ export async function publishApiRelease({
       target,
       schemaReceiptDigest: previous.schemaReceiptDigest,
       cloudflare: cf,
+      recoverPausedPartial: true,
     });
     previousSnapshot = captureApiRuntimeSnapshot({
       accountId,
@@ -450,8 +505,9 @@ export async function publishApiRelease({
       await probeRole(
         probe,
         role,
-        previous.runtimeReleases[role].releaseSha,
-        previous.schemaReceiptDigest,
+        reconciledRuntimeReleases[role].releaseSha,
+        reconciledRuntimeReleases[role].schemaReceiptDigest ??
+          previous.schemaReceiptDigest,
       );
   } else {
     reportStage("paused-release-bootstrap-inventory");
