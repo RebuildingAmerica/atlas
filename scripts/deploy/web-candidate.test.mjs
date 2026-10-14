@@ -12,6 +12,7 @@ import {
   assertCandidateDomain,
   durableCandidateBindings,
   assertDurableDependencies,
+  providerFailureCategory,
 } from "./web-candidate.mjs";
 import { doctor, webReleaseBuildSettings } from "./web-hosting.mjs";
 
@@ -29,6 +30,25 @@ const runtime = () => ({
   ATLAS_AUTH_JWT_AUDIENCES: "https://atlas.example.com/mcp",
   ATLAS_AUTH_API_KEY_INTROSPECTION_URL:
     "https://atlas.example.com/api/auth/internal/api-key",
+});
+
+test("candidate publication reports only a safe Cloudflare failure category", () => {
+  assert.equal(
+    providerFailureCategory({ status: 1, stderr: "HTTP 401 Unauthorized" }),
+    "authentication",
+  );
+  assert.equal(
+    providerFailureCategory({ status: 1, stdout: "status code 403" }),
+    "permission-denied",
+  );
+  assert.equal(
+    providerFailureCategory({ status: 1, stderr: "invalid Build Output" }),
+    "invalid-build-output",
+  );
+  assert.equal(
+    providerFailureCategory({ status: 1, stderr: "private detail" }),
+    "nonzero-exit",
+  );
 });
 
 test("publication requires the candidate domain on the intended Worker and zone", () => {

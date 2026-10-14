@@ -65,6 +65,20 @@ function required(name) {
   if (!value) throw new Error(`${name} is required.`);
   return value;
 }
+
+/** Classify provider failures without copying provider output into release logs. */
+export function providerFailureCategory(result) {
+  if (result.error?.code === "ENOENT") return "executable-not-found";
+  if (result.error) return "process-error";
+  const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}`;
+  if (/(?:status(?:\s+code|Code)?[\s\":=]+|HTTP\s+)401\b/i.test(output))
+    return "authentication";
+  if (/(?:status(?:\s+code|Code)?[\s\":=]+|HTTP\s+)403\b/i.test(output))
+    return "permission-denied";
+  if (/invalid Build Output/i.test(output)) return "invalid-build-output";
+  return "nonzero-exit";
+}
+
 function tool(binary, args, options = {}) {
   const result = spawnSync(binary, args, {
     cwd: ROOT,
@@ -73,7 +87,7 @@ function tool(binary, args, options = {}) {
   });
   if (result.error || result.status !== 0)
     throw new Error(
-      `${binary} failed; provider output was suppressed to protect credentials.`,
+      `${binary} failed (${providerFailureCategory(result)}); provider output was suppressed to protect credentials.`,
     );
   return result.stdout?.trim() ?? "";
 }
