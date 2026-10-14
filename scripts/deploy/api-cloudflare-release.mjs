@@ -50,6 +50,7 @@ export function validateRuntimeDatabase(hyperdrive, databaseUrl) {
 }
 
 const ROOT = resolve(import.meta.dirname, "../..");
+let apiReleaseStage = null;
 const ROLES = ["discovery", "api"];
 const SHA = /^[a-f0-9]{40}$/,
   DIGEST = /^[a-f0-9]{64}$/;
@@ -869,6 +870,7 @@ export async function releaseCli(
   args = process.argv.slice(2),
   { env = process.env } = {},
 ) {
+  apiReleaseStage = null;
   const option = (flag) => {
     const index = args.indexOf(flag),
       value = args[index + 1];
@@ -1150,6 +1152,7 @@ export async function releaseCli(
   const schemaReceiptDigest = checkedSchema(schemaResult, releaseSha),
     artifacts = {};
   for (const role of ROLES) {
+    apiReleaseStage = `build-output-${role}`;
     const destination = join(directory, role);
     await preparePythonOutput({
       source: join(ROOT, "services/api-cloudflare/compatibility"),
@@ -1196,6 +1199,7 @@ export async function releaseCli(
     ? { directory: join(directory, "bootstrap-api") }
     : undefined;
   if (bootstrapArtifact) {
+    apiReleaseStage = "build-output-bootstrap";
     cpSync(artifacts.api.directory, bootstrapArtifact.directory, {
       recursive: true,
     });
@@ -1210,6 +1214,7 @@ export async function releaseCli(
       join(bootstrapArtifact.directory, ".cloudflare/output/v0"),
     );
   }
+  apiReleaseStage = "operations-output";
   const ops = await prepareOperationsOutput({
     destination: join(directory, "operations"),
     accountId,
@@ -1237,6 +1242,7 @@ export async function releaseCli(
   const previous = args.includes("--previous-release")
     ? json(resolve(option("--previous-release")))
     : undefined;
+  apiReleaseStage = "paused-release";
   const manifest = await publishApiRelease({
     target,
     releaseSha,
@@ -1326,6 +1332,8 @@ if (
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   releaseCli().catch(() => {
+    if (apiReleaseStage)
+      console.error(JSON.stringify({ apiReleaseStage }));
     console.error(
       "API release failed; credential-bearing provider, database and configuration diagnostics were suppressed. Inspect the retained release journal, then run read-only doctor/readback or explicit rollback.",
     );

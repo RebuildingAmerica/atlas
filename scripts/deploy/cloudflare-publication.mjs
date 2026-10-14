@@ -1030,8 +1030,12 @@ export async function publicationCli({
         const candidateStage = /\{"candidateStage":"([a-z-]+)"\}/.exec(
           nestedOutput,
         )?.[1];
+        const apiReleaseStage = /\{"apiReleaseStage":"([a-z-]+)"\}/.exec(
+          nestedOutput,
+        )?.[1];
         if (providerFailure) console.error(JSON.stringify({ providerFailure }));
         if (candidateStage) console.error(JSON.stringify({ candidateStage }));
+        if (apiReleaseStage) console.error(JSON.stringify({ apiReleaseStage }));
         if (args.includes("scripts/deploy/api_schema_release.py")) {
           const diagnostic = schemaFailureDiagnostic(error.stderr);
           if (diagnostic) console.error(JSON.stringify(diagnostic));
