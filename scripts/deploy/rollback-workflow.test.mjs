@@ -27,7 +27,10 @@ test("hosted publishing retains trusted refs while production executes independe
     } else {
       assert.match(workflow, /uses: \.\/\.github\/workflows\/ci\.yml/);
       assert.match(workflow, /profile: production/);
-      assert.match(workflow, /needs: ci/);
+      assert.match(workflow, /needs: \[ci, reuse-validation\]/);
+      assert.match(workflow, /needs\.ci\.result == 'success'/);
+      assert.match(workflow, /needs\.reuse-validation\.result == 'success'/);
+      assert.match(workflow, /workflowName.*Deploy Staging/);
     }
     assert.match(workflow, /cloudflare-publication\.yml/);
     assert.doesNotMatch(
