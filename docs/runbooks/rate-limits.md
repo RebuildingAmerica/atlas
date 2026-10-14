@@ -1,12 +1,10 @@
-# Anonymous API Rate Limits Runbook
+# Anonymous API rate limits
 
-Atlas rate limits unauthenticated public API traffic so a wrapper, crawler, or
-misconfigured integration cannot make the public directory slower or less
-trustworthy for people using the product directly.
-
-## Current Limits
-
-Hosted anonymous defaults are per client:
+Atlas limits anonymous traffic so search, source-linked profiles, and sign-in
+remain usable when a crawler or integration sends too many requests. The public
+web Worker proxies the intended API paths to the Cloudflare API Worker;
+`atlas-api.rebuildingus.org` is the canonical API route. Neither route points to
+Cloud Run.
 
 | Bucket                          | Limit | Window   |
 | ------------------------------- | ----: | -------- |
@@ -15,179 +13,40 @@ Hosted anonymous defaults are per client:
 | Total anonymous public requests |   120 | 1 hour   |
 | Credential-present pre-auth     |    60 | 1 minute |
 | Credential-present sustained    |   600 | 1 hour   |
-| Cloudflare origin backstop      |   300 | 1 minute |
 
-Credentialed browser sessions, trusted app-to-API requests, valid API keys, and
-valid OAuth JWTs do not spend anonymous buckets after they are verified.
-Requests that include `Authorization` or `X-API-Key` first spend the
-credential-present pre-auth buckets so forged credentials cannot force repeated
-API key introspection or JWT verification. Invalid or missing credentials are
-then treated as anonymous traffic. External requests must use exactly one of
-`Authorization` or `X-API-Key`; requests that supply both are invalid and cannot
-use one credential to subsidize verification of the other.
+The app proxy and API middleware enforce their own limits. A request with
+`Authorization` or `X-API-Key` spends the pre-auth bucket before the API
+verifies the credential; a verified session or key then avoids the anonymous
+bucket. Requests with both credential headers are invalid. The API trusts
+`X-Atlas-Client-IP` only with a valid `X-Atlas-Proxy-Secret` signed using
+`ATLAS_EDGE_ORIGIN_SECRET`; unsigned forwarding headers remain untrusted.
 
-## Enforcement Layers
+## Diagnose an incident
 
-1. **Cloudflare edge** protects the canonical API domain before traffic reaches
-   Cloud Run. Bootstrap installs rate-limit rules in the `http_ratelimit` phase
-   and signed origin identity headers in the `http_request_late_transform`
-   phase.
-2. **App proxy** protects public `/api/*`, `/openapi.json`, and `/mcp` traffic
-   that reaches the app server before it forwards to the API. External
-   credential headers bypass the proxy's anonymous bucket because the proxy
-   cannot validate them; the API still verifies and limits those requests.
-3. **API middleware** protects direct API-origin traffic and keeps the same
-   anonymous and credential-present buckets available when Cloudflare or the app
-   proxy is bypassed.
+1. Check the production canary and the public `/health`, `/openapi.json`,
+   search, and sign-in paths. Use Cloudflare Workers Observability on the web
+   and API Workers to locate `anonymous_rate_limited` and
+   `invalid_credential_attempt` events. Logs identify the layer, bucket, path
+   group, and hashed client key without exposing the raw IP or credential.
+2. Distinguish a Worker error or Free-plan quota exhaustion from an intentional
+   `429`. Check the response's `Retry-After` and `X-RateLimit-*` headers where
+   present; Cloudflare edge responses may omit the latter.
+3. For a legitimate integration, use an API key or OAuth. For an abusive source,
+   adjust only the relevant Cloudflare rule or application bucket; do not
+   disable all protection. Confirm ordinary visitors can search and open
+   profiles afterward.
+4. If a release changed behavior, use the current production release's protected
+   rollback path in the
+   [Cloudflare publication guide](../deployment/cloudflare-publication.md). The
+   initial cutover uses its immutable Worker version because it has no promotion
+   journal.
 
-The API only trusts `X-Atlas-Client-IP` when it is paired with a matching
-`X-Atlas-Proxy-Secret`. Both the app proxy and Cloudflare sign that header with
-`ATLAS_EDGE_ORIGIN_SECRET`, so the app server, the API, and the Cloudflare rule
-must all hold the same value. No other secret vouches for a client address.
-Hosted API deployments keep `ATLAS_TRUST_UNSIGNED_FORWARD_HEADERS=false` so raw
-`X-Forwarded-For` cannot be used to change a direct request's rate-limit
-identity.
+Use `pnpm web:doctor` and the protected production `doctor` for read-only
+configuration and provider checks. Hosted routing and release changes go through
+**Deploy Production**. The retired `pnpm bootstrap --api-domain` and
+`--api-edge` commands cannot modify DNS or rate-limit rules.
 
-If the holders disagree, the API ignores the vouched address and counts requests
-against the proxy's own address. Many visitors then share one bucket and can be
-blocked together. To change the secret without that, follow
-[Callback and Edge Origin Secret Rotation](./rotate-auth-secrets.md).
-
-The API and app return `429` with `Retry-After`, `X-RateLimit-Limit`,
-`X-RateLimit-Remaining`, and `X-RateLimit-Reset` when they block. Cloudflare
-edge blocks return JSON `{"detail":"Too many requests."}`; Cloudflare may not
-include the same `X-RateLimit-*` headers.
-
-## Enable Hosted Edge Protection
-
-Run the canonical domain phase first. It intentionally creates a DNS-only CNAME
-so Cloud Run can finish certificate provisioning before Cloudflare is proxied.
-
-```bash
-pnpm bootstrap --api-domain
-pnpm bootstrap --api-edge
-```
-
-For staging:
-
-```bash
-pnpm bootstrap --api-domain --target staging
-pnpm bootstrap --api-edge --target staging
-```
-
-Use doctor mode for a read-only check:
-
-```bash
-pnpm bootstrap --api-edge --doctor
-pnpm bootstrap --api-edge --doctor --target staging
-```
-
-The Cloudflare token needs DNS edit, zone read, WAF rule edit, and Transform
-Rules edit access for `rebuildingus.org` so bootstrap can install the proxy,
-rate-limit rules, and origin identity header rule.
-
-Create an account-owned token from Cloudflare:
-
-1. Open
-   `https://dash.cloudflare.com/e34437d6da60fe58537bafc5eb760cfc/api-tokens`.
-2. In **Manage account > Account API tokens**, click **Create token**.
-3. Set **Token name** to `Atlas Cloudflare API Edge`.
-4. In **Permission policies**, choose **Custom**.
-5. Set the policy scope to **Specified Domains**.
-6. In **Select domains**, choose `rebuildingus.org`.
-7. In **DNS & Zones**, select **DNS > Edit** and **Zone > Read**.
-8. In **App Security**, select **Zone WAF Rules > Edit**.
-9. In **Rules & Configuration**, select **Zone Transform Rules > Edit**.
-10. Continue to summary, create the token, and paste the one-time token value
-    into bootstrap.
-
-## Verify After Deploy
-
-Run the normal hosted smoke suite:
-
-```bash
-cd app
-ATLAS_HOSTED_PUBLIC_URL=https://atlas.rebuildingus.org \
-ATLAS_HOSTED_API_URL=https://atlas-api.rebuildingus.org \
-pnpm run test:hosted-smoke
-```
-
-To intentionally exercise the anonymous limit, opt in:
-
-```bash
-cd app
-ATLAS_HOSTED_EXPECT_RATE_LIMIT=true \
-ATLAS_HOSTED_EXPECT_EDGE=true \
-ATLAS_HOSTED_PUBLIC_URL=https://atlas.rebuildingus.org \
-ATLAS_HOSTED_API_URL=https://atlas-api.rebuildingus.org \
-pnpm run test:hosted-smoke
-```
-
-Manual probes:
-
-```bash
-curl -i https://atlas-api.rebuildingus.org/health
-curl -i "https://atlas-api.rebuildingus.org/api/issue-areas?limit=1"
-```
-
-## Operator Signals
-
-Look for structured log events named `anonymous_rate_limited` and
-`invalid_credential_attempt`.
-
-Important fields:
-
-- `layer`: `api` or `app-proxy`
-- `bucket`: `read-minute`, `write-minute`, `total-hour`, `credential-minute`, or
-  `credential-hour`; present on `anonymous_rate_limited`
-- `credential_kind`: `api_key`, `bearer`, `authorization`, or `multiple`;
-  present on `invalid_credential_attempt`
-- `method`
-- `path_group`
-- `retry_after_seconds`
-- `client_key_hash`
-
-Logs intentionally use a hash of the client key, not the raw client IP.
-`invalid_credential_attempt` intentionally avoids the raw credential value, so
-operators can alert on forged credential pressure without collecting secrets.
-
-Cloudflare rule descriptions:
-
-- `Atlas anonymous API reads`
-- `Atlas anonymous API writes`
-- `Atlas anonymous sustained API traffic`
-- `Atlas credentialed API pre-auth traffic`
-- `Atlas credentialed sustained API pre-auth traffic`
-- `Atlas API origin abuse backstop`
-- `Atlas API origin identity headers`
-
-## Incident Response
-
-If public API traffic spikes:
-
-1. Confirm whether blocks are from Cloudflare, the app proxy, or the API.
-2. Check `path_group` and `bucket` to identify the traffic shape.
-3. If it is a legitimate integration, ask the caller to use an API key or OAuth.
-4. If it is abusive unauthenticated traffic, keep the anonymous limits in place
-   and consider lowering Cloudflare thresholds temporarily.
-5. If real public users are blocked, prefer raising the specific bucket over
-   disabling all anonymous limits.
-
-Emergency disable switches:
-
-- Set `ATLAS_ANON_RATE_LIMIT_ENABLED=false` on the app/API runtime to disable
-  in-process anonymous limiting.
-- Disable the Cloudflare WAF rules by description for edge-only rollback.
-
-Re-enable the protection after the incident and run hosted smoke checks again.
-
-## Changing Limits
-
-When changing anonymous limits:
-
-1. Update runtime environment variables.
-2. Update Cloudflare desired rules in `scripts/bootstrap/phases/api-edge.ts`.
-3. Run `pnpm bootstrap --api-edge` for each hosted target.
-4. Update `docs/standards/api-conventions.md`, this runbook, and Mintlify API
-   docs.
-5. Run the focused API and app tests that cover anonymous limiting.
+After a change, run the hosted smoke suite with
+`ATLAS_HOSTED_PUBLIC_URL=https://atlas.rebuildingus.org` and
+`ATLAS_HOSTED_API_URL=https://atlas-api.rebuildingus.org`, then inspect the next
+production canary result.

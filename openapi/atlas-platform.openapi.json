@@ -46,7 +46,7 @@
         "type": "object"
       },
       "CloudBillingExportPosture": {
-        "description": "Cloud Billing BigQuery export connection status.",
+        "description": "Provider usage accounting connection status.",
         "properties": {
           "detail": {
             "title": "Detail",

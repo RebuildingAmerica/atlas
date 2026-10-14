@@ -6,9 +6,9 @@ creating runs.
 ## How you find out
 
 The Production Canary workflow probes the app, the API health endpoint, the
-sitemap, the PDS, and the catalog itself every thirty minutes, and fails when
-any of them is wrong. It asks `/api/entities?limit=1` for real rows rather than
-trusting `/health`, which answers `ok` while the database is unreachable.
+sitemap, the PDS, and the catalog itself every hour, and fails when any of them
+is wrong. It asks `/api/entities?limit=1` for real rows rather than trusting
+`/health`, which answers `ok` while the database is unreachable.
 
 It exists because OpenStatus watches one URL, the app homepage, and that page is
 static. It answered 200 for the whole five-week outage that began on 2026-08-02
@@ -34,7 +34,7 @@ Expected healthy catalog state:
 
 ## Repair Scheduled Discovery
 
-Cloud Scheduler must call the API with the trusted internal secret and the
+The scheduled trigger endpoint requires the trusted internal secret and the
 internal actor identity headers:
 
 - `X-Atlas-Internal-Secret`
@@ -44,19 +44,12 @@ internal actor identity headers:
 The scheduled trigger only queues each enabled target once per day, so it does
 not need an operator identity. Listing or changing schedule targets does.
 
-Redeploying production from the fixed deploy workflow updates the
-`atlas-discovery-scheduled` job. To verify the live job without printing
-secrets:
-
-```bash
-gcloud scheduler jobs describe atlas-discovery-scheduled \
-  --location us-central1 \
-  --format="value(state,schedule,lastAttemptTime,status.code)"
-```
-
-After the next run, `status.code` should not show the previous HTTP 400 failure.
-If no discovery schedules exist, a successful scheduler call still enqueues `0`
-jobs.
+Check the active Cloudflare discovery Worker and its consumer status through the
+protected production publication workflow and Workers Observability. A healthy
+HTTP endpoint does not prove that a schedule fired or that a discovery job
+completed. If no trigger is configured, record scheduled discovery as an
+unresolved dependency; do not rely on the retired Google Cloud Scheduler job. If
+no discovery schedules exist, a successful trigger enqueues `0` jobs.
 
 ## Populate Production Data
 

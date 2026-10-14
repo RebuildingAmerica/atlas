@@ -1,118 +1,38 @@
-# Release Process
+# Release process
 
-[Docs](../README.md) > [Deployment](./README.md) > Release Process
+[Docs](../README.md) > [Deployment](./README.md) > Release process
 
-This document covers how we decide Atlas is ready to release, what to check
-before shipping, and what to verify afterward.
+Atlas's web app, API, and discovery run on Cloudflare Workers. The PDS is a
+separate Google-hosted dependency. Use the protected
+[Cloudflare publication workflow](./cloudflare-publication.md) for staging,
+production, and rollback. A passing build is not proof that source-linked
+profiles or existing accounts work on the public site.
 
-Use [Production Deployment](./production.md) and
-[Staging Deployment](./staging.md) for environment and hosting details. Use this
-document for the release workflow itself.
+## Prepare a release
 
-## Release Readiness
+1. Land the intended commit on `main` and run the checks relevant to the change.
+   For workflow changes run `pnpm actionlint`; for app, API, or auth changes run
+   their focused tests and hosted acceptance.
+2. Use **Deploy Staging** for the appropriate operation and verify the real
+   Worker, directory, sign-in, private-route denial, and API/discovery versions.
+3. Tag a commit already on `main` as `vYYYY.MM.DD.N` and push the tag. Main
+   pushes and tags do not start production deployment automatically.
+4. Run **Deploy Production** against that tag. Select `doctor` first, then the
+   required publication operation with its completed `source-run-id`. A new web
+   release uses `web-candidate`, followed by `promote-web` with the successful
+   current production run as `rollback-run-id`.
+5. Verify the canonical site after the operation: searchable profiles and source
+   links, sign-in and workspace isolation, `/health`, `/openapi.json`, MCP
+   challenges, billing controls, and the PDS. Record any failed dependency as
+   unresolved rather than calling the release complete.
 
-A release is ready only when:
+The initial Cloudflare cutover uses `adopt-web-baseline` once to record the
+already-routed Worker. This operation reads Cloudflare and retains the exact
+candidate; it does not deploy or switch traffic. Use its successful run as the
+rollback source for later `promote-web` operations. The initial cutover itself
+has no promotion journal; follow the version-based recovery procedure in the
+[publication guide](./cloudflare-publication.md#restore-an-existing-worker-version).
 
-- The intended changes are merged to the release branch or mainline you are
-  shipping from
-- `make quality` passes locally or in the relevant CI path
-- The deployment path is understood for the environment you are using
-- The user-facing or operator-facing changes are documented
-- Known risks are explicit, not implicit
-
-## Before You Release
-
-Work through these checks:
-
-1. Pull the exact code you intend to release
-2. Run the relevant verification commands
-   - include `make test-e2e` for auth and protected-route coverage when the
-     release touches app auth or deployment
-   - if Playwright browsers are not installed yet, run
-     `cd app && pnpm exec playwright install chromium` first
-   - include `actionlint`, `pnpm run compose:validate`, focused app/API auth
-     tests, and the hosted MCP endpoint test when the release touches GitHub
-     Actions, Cloud Run, OAuth audience, or staging/production deployment config
-3. Confirm environment variables and deployment config are correct
-4. Confirm database and auth storage are on persistent volumes where required
-5. Read the diff with release eyes:
-   - API changes
-   - auth changes
-   - discovery workflow changes
-   - config changes
-   - docs changes
-
-## Release Commands And Flow
-
-The exact deployment command depends on the environment, but the release flow
-should look like this:
-
-1. Verify the code
-   ```bash
-   make quality
-   ```
-2. Build or deploy using the intended environment path
-   - staging: run **Deploy Staging** explicitly against `main` or a `v*` tag and
-     select the intended operation
-   - production: create and push a `v*` tag, then run **Deploy Production**
-     against that tag and select the intended operation
-3. Record the release tag and any known follow-up items
-
-Production release tags should point at a commit that has already passed the
-staging lane on `main`:
-
-```bash
-git checkout main
-git pull --ff-only
-git tag vYYYY.MM.DD-N
-git push origin vYYYY.MM.DD-N
-```
-
-Main pushes and release tags do not start deployment workflows. PR CI owns
-source checks; the explicit deployment runs retain the full release gate.
-Selecting `doctor` checks configuration, deploys nothing, and does not verify
-production health. Follow [Cloudflare publication](./cloudflare-publication.md)
-for the operations that publish, verify, and promote a release.
-
-Production uses the full CI gate even when the tag only includes a small surface
-change. Turbo remote cache and Docker layer cache should make unchanged work
-cheap, but release tags do not skip correctness checks.
-
-## Post-Release Verification
-
-After deployment, verify in this order:
-
-1. `GET /health` returns `200`
-2. `GET /openapi.json` returns the public API contract
-3. `GET /docs` lands on the Mintlify docs site when docs are part of the release
-4. The app loads successfully
-5. Core browse or entry-detail pages render
-6. Magic-link sign-in works if auth is enabled
-7. Passkey sign-in works if auth is enabled
-8. API key creation and direct `X-API-Key` access work if auth is enabled
-9. `/.well-known/oauth-protected-resource/mcp` returns the deployed MCP
-   protected-resource metadata
-10. unauthenticated `POST /mcp` and `POST /mcp/` return a bearer challenge
-    without a redirect
-11. Discovery-run creation works if that path is part of the release
-12. Restarting the API does not lose persistent data
-
-Do not treat “deployment command succeeded” as the same thing as “Atlas is
-healthy.”
-
-## When to stop the release
-
-Pause and fix the issue before continuing if:
-
-- Health checks fail
-- The app cannot load real data
-- Auth is broken
-- Discovery creation fails unexpectedly
-- The deployed config differs from what the release assumed
-
-## Related Docs
-
-- [Production Deployment](./production.md)
-- [Staging Deployment](./staging.md)
-- [Workflow](../development/workflow.md)
-- [Code Review](../development/code-review.md)
+Keep Cloudflare on Free. A quota or hosted-journey failure blocks a new
+publication. The PDS remains on Google, and this workflow does not change Google
+billing.

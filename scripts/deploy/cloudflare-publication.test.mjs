@@ -1166,6 +1166,21 @@ test("web promotion requires an explicit retained Cloudflare rollback run", () =
   );
 });
 
+test("baseline adoption requires a trusted production candidate and performs no billing preflight", () => {
+  const adoption = {
+    ...environment,
+    ATLAS_PUBLICATION_OPERATION: "adopt-web-baseline",
+    ATLAS_PUBLICATION_SOURCE_RUN_ID: "123",
+  };
+  const context = publicationContext(adoption);
+  assert.equal(context.operation, "adopt-web-baseline");
+  assert.throws(() => publicationContext({ ...adoption, ATLAS_PUBLICATION_SOURCE_RUN_ID: "" }));
+  assert.throws(() => publicationContext({ ...adoption, ATLAS_PUBLICATION_TARGET: "staging" }));
+  assert.doesNotThrow(() => preflightPublicationBilling(context, () => {
+    throw Error("adoption must not invoke billing publication");
+  }));
+});
+
 test("retained artifacts come only from this repository's trusted publication workflow", () => {
   const context = publicationContext(environment);
   const run = {

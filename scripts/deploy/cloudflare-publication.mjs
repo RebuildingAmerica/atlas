@@ -16,6 +16,7 @@ import {
 import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { assertDurableBudget, sameRuntimeRelease } from "./web-assess.mjs";
+import { adoptWebBaseline } from "./web-baseline.mjs";
 import { assertCurrentApiRoutingReceipt } from "./api-routing-receipt.mjs";
 import {
   cloudflareCommand,
@@ -47,6 +48,7 @@ const PUBLICATION_STAGES = new Set([
   "web-archive",
   "web-observe",
   "web-hosted-journeys",
+  "web-baseline-readback",
 ]);
 
 /** Accept only the schema command's credential-free failure contract. */
@@ -110,6 +112,7 @@ const OPERATIONS = [
   "promote-api",
   "restore-api",
   "web-candidate",
+  "adopt-web-baseline",
   "promote-web",
   "finalize-web",
   "restore-routing",
@@ -589,6 +592,7 @@ export function publicationContext(env) {
     target !== "production" &&
     [
       "promote-web",
+      "adopt-web-baseline",
       "finalize-web",
       "restore-routing",
       "promote-api",
@@ -605,6 +609,11 @@ export function publicationContext(env) {
     throw Error(
       "Web promotion requires an explicit numeric Cloudflare rollback run ID.",
     );
+  if (
+    operation === "adopt-web-baseline" &&
+    !/^\d+$/.test(env.ATLAS_PUBLICATION_SOURCE_RUN_ID ?? "")
+  )
+    throw Error("Baseline adoption requires a completed candidate run ID.");
   if (!/^[a-f0-9]{32}$/.test(env.CLOUDFLARE_ACCOUNT_ID ?? ""))
     throw Error("Explicit Cloudflare account is required.");
   if (operation !== "doctor") required(env, "CLOUDFLARE_API_TOKEN");
@@ -634,9 +643,10 @@ export function publicationFailureSummary(error) {
   const apiReleaseStage = /\{"apiReleaseStage":"([a-z-]+)"\}/.exec(
     nestedOutput,
   )?.[1];
-  const apiReleaseFailure = /\{"apiReleaseFailure":\{"role":"(api|discovery)","category":"([-a-z]+)"\}\}/.exec(
-    nestedOutput,
-  );
+  const apiReleaseFailure =
+    /\{"apiReleaseFailure":\{"role":"(api|discovery)","category":"([-a-z]+)"\}\}/.exec(
+      nestedOutput,
+    );
   return {
     providerFailure,
     candidateStage,
@@ -1016,6 +1026,7 @@ export function preflightPublicationBilling(
       "verify-api",
       "finalize-web",
       "pause-api",
+      "adopt-web-baseline",
     ].includes(context.operation)
   )
     return;
@@ -1067,7 +1078,8 @@ export async function publicationCli({
         if (providerFailure) console.error(JSON.stringify({ providerFailure }));
         if (candidateStage) console.error(JSON.stringify({ candidateStage }));
         if (apiReleaseStage) console.error(JSON.stringify({ apiReleaseStage }));
-        if (apiReleaseFailure) console.error(JSON.stringify({ apiReleaseFailure }));
+        if (apiReleaseFailure)
+          console.error(JSON.stringify({ apiReleaseFailure }));
         if (args.includes("scripts/deploy/api_schema_release.py")) {
           const diagnostic = schemaFailureDiagnostic(error.stderr);
           if (diagnostic) console.error(JSON.stringify(diagnostic));
@@ -1398,6 +1410,7 @@ export async function publicationCli({
     index = download(sourceRun, bundle, {
       previous:
         context.operation === "publish-api" ||
+        context.operation === "adopt-web-baseline" ||
         context.operation === "finalize-web" ||
         context.operation === "restore-routing" ||
         context.operation === "restore-api",
@@ -1424,6 +1437,8 @@ export async function publicationCli({
       accountId: context.accountId,
     };
   }
+  const sourceOperation = index.operation;
+  const sourceReleaseSha = index.releaseSha;
   index = {
     ...index,
     releaseSha: context.sha,
@@ -1834,6 +1849,37 @@ export async function publicationCli({
       "web-hosted-journeys",
       () => hostedJourneys(destination),
     );
+  } else if (context.operation === "adopt-web-baseline") {
+    if (
+      sourceOperation !== "web-candidate" ||
+      !index.webDirectory ||
+      index.productionDirectory ||
+      index.hostedAcceptance?.status !== "pass"
+    )
+      throw Error(
+        "Baseline adoption requires a successful retained web candidate.",
+      );
+    const source = releasePath(bundle, index.webDirectory);
+    const destination = join(bundle, `web/production-${env.GITHUB_RUN_ID}`);
+    const deployment = publicationStage(bundle, "web-baseline-readback", () =>
+      adoptWebBaseline({
+        source,
+        destination,
+        accountId: context.accountId,
+        zoneId: required(env, "CLOUDFLARE_ZONE_ID"),
+        canonicalUrl: runtime.ATLAS_PUBLIC_URL,
+        runtime,
+        cloudflare: (args) => cloudflareCommand(args, { env }),
+      }),
+    );
+    publicationStage(bundle, "web-archive", () =>
+      node("web-archive.mjs", ["--directory", destination]),
+    );
+    index.artifactReleaseSha = sourceReleaseSha;
+    index.controllerReleaseSha = context.sha;
+    index.artifactSourceRunId = sourceRun;
+    index.productionDirectory = destination.slice(bundle.length + 1);
+    index.runtimeDependencies = deployment.runtimeDependencies;
   } else if (context.operation === "finalize-web") {
     const source = releasePath(
       bundle,

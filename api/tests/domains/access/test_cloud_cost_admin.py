@@ -82,9 +82,8 @@ async def test_cloud_cost_posture_reports_discovery_spend_against_daily_ceiling(
     assert response.discovery_spend.daily_ceiling_usd == 10.0
     assert response.discovery_spend.posture == "pass"
     assert {guardrail.id for guardrail in response.guardrails} >= {
-        "artifact-registry-cleanup",
-        "cloud-run-scale-to-zero",
-        "cloud-billing-export",
+        "cloudflare-free-capacity",
+        "cloudflare-usage",
         "external-fixed-costs",
     }
 

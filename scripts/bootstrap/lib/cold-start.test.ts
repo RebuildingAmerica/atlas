@@ -21,12 +21,12 @@ interface PackageJson {
 }
 
 void describe("Atlas bootstrap argument parsing", () => {
-  void it("runs exhaustive production setup by default", () => {
+  void it("runs local setup by default", () => {
     const args = parseArgs([]);
 
-    assert.equal(args.localOnly, false);
-    assert.equal(args.stripeTarget, "prod");
-    assert.equal(args.live, true);
+    assert.equal(args.localOnly, true);
+    assert.equal(args.stripeTarget, "local");
+    assert.equal(args.live, false);
   });
 
   void it("keeps local setup behind an explicit local-only flag", () => {
@@ -37,14 +37,14 @@ void describe("Atlas bootstrap argument parsing", () => {
     assert.equal(args.live, false);
   });
 
-  void it("keeps the default package setup command exhaustive", () => {
+  void it("keeps the default package setup command local", () => {
     const packageJson = JSON.parse(
       readFileSync(path.resolve("package.json"), "utf8"),
     ) as PackageJson;
 
     assert.equal(
       packageJson.scripts?.setup,
-      "tsx scripts/bootstrap/cold-start.ts",
+      "tsx scripts/bootstrap/cold-start.ts --local-only",
     );
     assert.equal(
       packageJson.scripts?.["setup:local"],

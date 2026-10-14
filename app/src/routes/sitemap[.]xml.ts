@@ -13,9 +13,8 @@ import { buildCanonicalUrl } from "@/platform/seo";
 const ONE_HOUR = 3600;
 const SITEMAP_PAGE_SIZE = 100;
 
-// Cloud Run runs the API at four instances of eight, so 32 requests is the
-// whole service. Six leaves room for the other entry type's walk and for a
-// visitor who arrives mid-render.
+// Keep the sitemap's concurrent API requests bounded so it does not crowd
+// out visitor searches or profile reads.
 const SITEMAP_PAGE_CONCURRENCY = 6;
 
 type SitemapEntryType = Extract<EntryType, "person" | "organization">;
@@ -29,9 +28,9 @@ function fetchSitemapPage(entryType: SitemapEntryType, offset: number): Promise<
 }
 
 // The API caps a page at 100 rows, so a growing catalog means more pages.
-// Walking them one after another timed the production canary out against a
-// cold Cloud Run instance, and firing all of them at once would out-scale the
-// service the moment the catalog grows, so they go in fixed-size waves.
+// Walking them one after another can time out the production canary. Fetch
+// later pages in fixed-size waves so a growing catalog does not saturate the
+// API Worker.
 async function listSitemapEntries(entryType: SitemapEntryType): Promise<Entry[]> {
   const firstPage = await fetchSitemapPage(entryType, 0);
   const total = firstPage.pagination.total;

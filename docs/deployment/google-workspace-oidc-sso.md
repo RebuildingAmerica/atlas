@@ -5,16 +5,17 @@
 Use this guide when a customer wants Atlas to trust Google Workspace through
 OpenID Connect instead of magic-link-only sign-in.
 
-Atlas does not hardcode customer domains. Atlas suggests a workspace domain
-from the signed-in operator email, keeps it editable in the organization
-screen, and generates the exact provider ID and callback URL to copy into
-Google Cloud.
+Atlas does not hardcode customer domains. Atlas suggests a workspace domain from
+the signed-in operator email, keeps it editable in the organization screen, and
+generates the exact provider ID and callback URL to copy into Google Cloud.
 
 ## What Atlas Uses
 
 - Better Auth `sso()` for enterprise OIDC and SAML providers
-- Better Auth `organization()` for workspaces, roles, invitations, and active organization
-- Better Auth domain verification so Atlas can prove ownership of the customer email domain before routing sign-in through that provider
+- Better Auth `organization()` for workspaces, roles, invitations, and active
+  organization
+- Better Auth domain verification so Atlas can prove ownership of the customer
+  email domain before routing sign-in through that provider
 
 ## Before You Start
 
@@ -42,7 +43,8 @@ https://<your-atlas-domain>/sign-in?redirect=/organization/sso
 
 ## Values Atlas Generates
 
-Open Atlas and go to `Organization` → `Enterprise SSO` → `Google Workspace OIDC`.
+Open Atlas and go to `Organization` → `Enterprise SSO` →
+`Google Workspace OIDC`.
 
 Atlas shows these exact values:
 
@@ -81,7 +83,8 @@ configuring.
 4. Click `Create Credentials` → `OAuth client ID`.
 5. Choose `Web application`.
 6. Name the client something clear, such as `Atlas OIDC`.
-7. Under `Authorized redirect URIs`, paste the `Authorized redirect URI` from Atlas.
+7. Under `Authorized redirect URIs`, paste the `Authorized redirect URI` from
+   Atlas.
 8. Save the client.
 9. Copy the generated `Client ID`.
 10. Copy the generated `Client secret`.
@@ -96,23 +99,22 @@ Back in Atlas, fill these fields in the OIDC form:
 - `Client ID`: paste from Google Cloud.
 - `Client secret`: paste from Google Cloud.
 
-`Provider ID` lives under an `Advanced` disclosure. Keep the suggested
-value unless you have a reason to override it; collisions across providers
-cause registration to fail.
+`Provider ID` lives under an `Advanced` disclosure. Keep the suggested value
+unless you have a reason to override it; collisions across providers cause
+registration to fail.
 
-Then click `Save Google Workspace OIDC`. Atlas will save the provider and
-create a domain-verification token.
+Then click `Save Google Workspace OIDC`. Atlas will save the provider and create
+a domain-verification token.
 
-To make this provider the default enterprise entrypoint for the workspace,
-use the per-provider `Make primary` button on the provider list after
-saving. There is no longer a "Set as primary" checkbox on the registration
-form.
+To make this provider the default enterprise entrypoint for the workspace, use
+the per-provider `Make primary` button on the provider list after saving. There
+is no longer a "Set as primary" checkbox on the registration form.
 
 ## Step 3: Publish The DNS Verification Record
 
-After the provider is saved, Atlas shows the provider under `Configured
-providers` with `Verification pending`. Atlas resolves the TXT record
-itself — `verifyDomain` performs a real `dns.resolveTxt` lookup and only
+After the provider is saved, Atlas shows the provider under
+`Configured providers` with `Verification pending`. Atlas resolves the TXT
+record itself — `verifyDomain` performs a real `dns.resolveTxt` lookup and only
 flips `domainVerified=true` when the record matches the issued token.
 
 If the domain is not yet verified:
@@ -128,10 +130,9 @@ The verification host pattern is:
 _better-auth-token-<provider-id>.<workspace-domain>
 ```
 
-Atlas auto-polls DNS silently every 30 seconds for up to ten minutes
-after registration; the card flips to `Domain verified` as soon as the
-resolver sees the record. Click `Verify domain` to force an immediate
-lookup.
+Atlas auto-polls DNS silently every 30 seconds for up to ten minutes after
+registration; the card flips to `Domain verified` as soon as the resolver sees
+the record. Click `Verify domain` to force an immediate lookup.
 
 ## Step 4: Test Sign-In
 
@@ -142,7 +143,8 @@ Use an email address from the verified customer domain.
 3. Click `Continue with email`.
 4. Atlas should redirect to Google instead of sending a magic link.
 5. Complete the Google sign-in.
-6. Confirm Atlas returns to the requested page and the user lands in the correct workspace.
+6. Confirm Atlas returns to the requested page and the user lands in the correct
+   workspace.
 
 ## Expected Success State
 
@@ -162,7 +164,8 @@ Check:
 1. The provider domain in Atlas exactly matches the user's email domain.
 2. The provider is linked to the correct workspace.
 3. The domain is verified in Atlas.
-4. The user is allowlisted, already belongs to a workspace, or has a pending invitation.
+4. The user is allowlisted, already belongs to a workspace, or has a pending
+   invitation.
 
 ### Google rejects the callback
 
@@ -182,4 +185,4 @@ Check:
 ## Related Docs
 
 - [Google Workspace SAML SSO](./google-workspace-saml-sso.md)
-- [Production Deployment](./production.md)
+- [Cloudflare publication](./cloudflare-publication.md)

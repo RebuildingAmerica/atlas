@@ -1,6 +1,6 @@
 name: Deploy Production
 run-name: >-
-  Production — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation || 'doctor'] }} — ${{ github.ref_name }}
+  Production — ${{ fromJSON('{"doctor":"Check configuration (no deployment)","publish-api":"Publish API and discovery","publish-admin":"Publish protected admin","verify-api":"Verify deployed API","activate-api":"Start discovery consumers","pause-api":"Pause discovery consumers","promote-api":"Switch API routing","restore-api":"Restore previous API release","web-candidate":"Deploy and verify frontend candidate","adopt-web-baseline":"Record live frontend baseline","promote-web":"Switch frontend routing","finalize-web":"Finalize live frontend callbacks and admin","restore-routing":"Restore previous production routing"}')[inputs.operation || 'doctor'] }} — ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
@@ -19,6 +19,7 @@ on:
             promote-api,
             restore-api,
             web-candidate,
+            adopt-web-baseline,
             promote-web,
             finalize-web,
             restore-routing,

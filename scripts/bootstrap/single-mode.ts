@@ -228,4 +228,5 @@ export async function runSingleMode(
     note(formatFollowUpNote(result.followUpItems), "Follow-up");
   }
   outro(result.success ? mode.successMessage : mode.failureMessage);
+  if (!result.success) process.exitCode = 1;
 }

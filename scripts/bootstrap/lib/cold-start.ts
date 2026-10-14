@@ -46,7 +46,13 @@ export function parseArgs(argv: string[]): CliArgs {
     argv.includes("--admin-keys") ||
     argv.includes("--infra") ||
     argv.includes("--ci-cache");
-  const defaultTarget = explicitLocalOnly || productOnly ? "local" : "prod";
+  const defaultLocal =
+    !explicitTarget &&
+    !argv.includes("--live") &&
+    !hasHostedOnlyMode &&
+    !productOnly;
+  const defaultTarget =
+    explicitLocalOnly || defaultLocal || productOnly ? "local" : "prod";
   const targetArg =
     explicitTarget ?? (argv.includes("--live") ? "prod" : defaultTarget);
   const apiDomainTarget: ApiDomainTarget =
@@ -57,11 +63,9 @@ export function parseArgs(argv: string[]): CliArgs {
       : targetArg === "prod"
         ? "prod"
         : "local";
-  const live =
-    argv.includes("--live") ||
-    (!explicitTarget && !explicitLocalOnly && !productOnly);
+  const live = argv.includes("--live");
   return {
-    localOnly: explicitLocalOnly && !hasHostedOnlyMode,
+    localOnly: (explicitLocalOnly || defaultLocal) && !hasHostedOnlyMode,
     doctorMode: argv.includes("--doctor"),
     resume: argv.includes("--resume"),
     productOnly,

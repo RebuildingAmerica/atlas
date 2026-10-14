@@ -46,7 +46,7 @@ class DiscoverySpendPosture(BaseModel):
 
 
 class CloudBillingExportPosture(BaseModel):
-    """Cloud Billing BigQuery export connection status."""
+    """Provider usage accounting connection status."""
 
     status: CloudCostConnectionStatus
     detail: str
@@ -94,10 +94,10 @@ def _overall_posture(guardrails: list[CloudCostGuardrail]) -> CloudCostPosture:
 
 
 def _billing_export_posture() -> CloudBillingExportPosture:
-    """Return the current billing export posture for v1."""
+    """Do not claim live Cloudflare usage without a provider readback."""
     return CloudBillingExportPosture(
         status="not_connected",
-        detail="Cloud Billing BigQuery export is not connected yet.",
+        detail="Cloudflare Workers, Durable Objects, and Hyperdrive usage is not connected to this view.",
     )
 
 
@@ -128,20 +128,14 @@ def _guardrails(
             detail="Discovery spend is checked against the rolling daily and per-run ceilings.",
         ),
         CloudCostGuardrail(
-            id="artifact-registry-cleanup",
-            label="Artifact Registry cleanup",
-            posture="pass",
-            detail="Deploy preflight applies and verifies Docker image cleanup before building.",
+            id="cloudflare-free-capacity",
+            label="Cloudflare Free capacity",
+            posture=billing_posture,
+            detail="Check shared Worker, Durable Object, and Hyperdrive usage in Cloudflare before publication.",
         ),
         CloudCostGuardrail(
-            id="cloud-run-scale-to-zero",
-            label="Cloud Run scale-to-zero",
-            posture="pass",
-            detail="Deploy preflight blocks min instances and always-allocated CPU drift.",
-        ),
-        CloudCostGuardrail(
-            id="cloud-billing-export",
-            label="Cloud Billing export",
+            id="cloudflare-usage",
+            label="Cloudflare usage",
             posture=billing_posture,
             detail=billing_export.detail,
         ),
