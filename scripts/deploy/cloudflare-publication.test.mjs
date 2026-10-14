@@ -17,6 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Linter } from "eslint";
 import {
+  publicationFailureSummary,
   publicationContext,
   publicationStage,
   publicationSummary,
@@ -60,6 +61,26 @@ test("schema failures expose only phase, exception type and SQLSTATE", () => {
   ]) {
     assert.equal(schemaFailureDiagnostic(output), null);
   }
+});
+
+test("API publication failures preserve only the role and classified boundary", () => {
+  const error = new Error("private provider output");
+  error.stderr = [
+    '{"apiReleaseStage":"paused-release-deploy-api"}',
+    '{"apiReleaseFailure":{"role":"api","category":"timeout"}}',
+  ].join("\n");
+  assert.deepEqual(publicationFailureSummary(error), {
+    providerFailure: undefined,
+    candidateStage: undefined,
+    apiReleaseStage: "paused-release-deploy-api",
+    apiReleaseFailure: { role: "api", category: "timeout" },
+  });
+  assert.deepEqual(publicationFailureSummary(new Error("private output")), {
+    providerFailure: undefined,
+    candidateStage: undefined,
+    apiReleaseStage: undefined,
+    apiReleaseFailure: undefined,
+  });
 });
 
 test("real Playwright JSON identifies catalog assertion and timeout boundaries", (t) => {

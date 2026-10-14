@@ -618,6 +618,35 @@ export function publicationContext(env) {
   };
 }
 
+/** Preserve only classified deployment failures from private child-process output. */
+export function publicationFailureSummary(error) {
+  const nestedOutput =
+    String(error instanceof Error ? error.message : "") +
+    "\n" +
+    String(error?.stderr ?? "");
+  const providerFailure =
+    /failed \(([-a-z]+)\); provider output was suppressed\./.exec(
+      nestedOutput,
+    )?.[1];
+  const candidateStage = /\{"candidateStage":"([a-z-]+)"\}/.exec(
+    nestedOutput,
+  )?.[1];
+  const apiReleaseStage = /\{"apiReleaseStage":"([a-z-]+)"\}/.exec(
+    nestedOutput,
+  )?.[1];
+  const apiReleaseFailure = /\{"apiReleaseFailure":\{"role":"(api|discovery)","category":"([-a-z]+)"\}\}/.exec(
+    nestedOutput,
+  );
+  return {
+    providerFailure,
+    candidateStage,
+    apiReleaseStage,
+    apiReleaseFailure: apiReleaseFailure
+      ? { role: apiReleaseFailure[1], category: apiReleaseFailure[2] }
+      : undefined,
+  };
+}
+
 /** Artifact authority is the protected publisher, never an arbitrary workflow or fork. */
 export function validateRetainedRun(
   run,
@@ -1029,23 +1058,16 @@ export async function publicationCli({
           ...options,
         });
       } catch (error) {
-        const nestedOutput =
-          String(error instanceof Error ? error.message : "") +
-          "\n" +
-          String(error?.stderr ?? "");
-        const providerFailure =
-          /failed \(([-a-z]+)\); provider output was suppressed\./.exec(
-            nestedOutput,
-          )?.[1];
-        const candidateStage = /\{"candidateStage":"([a-z-]+)"\}/.exec(
-          nestedOutput,
-        )?.[1];
-        const apiReleaseStage = /\{"apiReleaseStage":"([a-z-]+)"\}/.exec(
-          nestedOutput,
-        )?.[1];
+        const {
+          providerFailure,
+          candidateStage,
+          apiReleaseStage,
+          apiReleaseFailure,
+        } = publicationFailureSummary(error);
         if (providerFailure) console.error(JSON.stringify({ providerFailure }));
         if (candidateStage) console.error(JSON.stringify({ candidateStage }));
         if (apiReleaseStage) console.error(JSON.stringify({ apiReleaseStage }));
+        if (apiReleaseFailure) console.error(JSON.stringify({ apiReleaseFailure }));
         if (args.includes("scripts/deploy/api_schema_release.py")) {
           const diagnostic = schemaFailureDiagnostic(error.stderr);
           if (diagnostic) console.error(JSON.stringify(diagnostic));
