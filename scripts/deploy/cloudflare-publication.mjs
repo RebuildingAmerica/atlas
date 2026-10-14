@@ -1019,9 +1019,13 @@ export async function publicationCli({
           ...options,
         });
       } catch (error) {
+        const nestedOutput =
+          String(error instanceof Error ? error.message : "") +
+          "\n" +
+          String(error?.stderr ?? "");
         const providerFailure =
           /failed \(([-a-z]+)\); provider output was suppressed\./.exec(
-            error instanceof Error ? error.message : "",
+            nestedOutput,
           )?.[1];
         if (providerFailure) console.error(JSON.stringify({ providerFailure }));
         if (args.includes("scripts/deploy/api_schema_release.py")) {
