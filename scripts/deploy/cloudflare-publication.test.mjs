@@ -825,6 +825,15 @@ test("individual CI settings preserve accounts, PDS, billing and separate API cr
       }),
     /ATLAS_PDS_INVITE_BROKER_SECRET/,
   );
+  const retained = assemblePublicationSettings({
+    ...env,
+    ATLAS_WEB_RUNTIME_ENV_JSON: JSON.stringify(runtime),
+    VITE_CF_WEB_ANALYTICS_TOKEN: "public-analytics-token",
+  });
+  assert.equal(
+    retained.runtime.VITE_CF_WEB_ANALYTICS_TOKEN,
+    "public-analytics-token",
+  );
 });
 
 test("production publication requires a release tag and explicit existing CI credentials", () => {

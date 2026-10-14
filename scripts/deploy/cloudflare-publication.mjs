@@ -454,6 +454,10 @@ export function assemblePublicationSettings(env) {
             .map((key) => [key, env[key]]),
         ),
       };
+  // This build-time value is public, but the candidate runtime must retain it
+  // so its manifest matches the published assets exactly.
+  if (Object.hasOwn(env, "VITE_CF_WEB_ANALYTICS_TOKEN"))
+    runtime.VITE_CF_WEB_ANALYTICS_TOKEN = env.VITE_CF_WEB_ANALYTICS_TOKEN;
   if (runtime.ATLAS_BILLING_CHECKOUT_ENABLED === "true")
     for (const key of [
       "STRIPE_API_KEY",
