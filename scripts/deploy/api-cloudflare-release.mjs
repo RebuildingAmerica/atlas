@@ -55,6 +55,26 @@ const ROLES = ["discovery", "api"];
 const SHA = /^[a-f0-9]{40}$/,
   DIGEST = /^[a-f0-9]{64}$/;
 const json = (file) => JSON.parse(readFileSync(file, "utf8"));
+function deploymentFailureCategory(result) {
+  if (result.error?.code === "ETIMEDOUT") return "timeout";
+  if (result.error) return "process-error";
+  const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}`;
+  if (/\b401\b|authentication/i.test(output)) return "authentication";
+  if (/\b403\b|permission denied|forbidden/i.test(output))
+    return "permission-denied";
+  if (/\b413\b|payload too large|request entity too large/i.test(output))
+    return "payload-too-large";
+  if (/unknown (?:option|argument)|invalid (?:option|argument)/i.test(output))
+    return "invalid-arguments";
+  return "nonzero-exit";
+}
+function deploymentFailure(category) {
+  const error = Error(
+    `cf runtime deployment failed (${category}); private diagnostics were suppressed.`,
+  );
+  error.deploymentFailure = category;
+  return error;
+}
 export const releaseMessage = (target, role, artifactDigest, schemaDigest) =>
   `Atlas ${target} ${role}; artifact=${artifactDigest}; schema=${schemaDigest}; consumers paused`;
 const roleClass = (role) =>
@@ -498,6 +518,7 @@ export async function publishApiRelease({
     }
     for (const role of ROLES) {
       if (Object.keys(known).length) assertRuntimeDeployments(known, cf);
+      reportStage(`paused-release-deploy-${role}`);
       await save(`deploying-${role}`);
       try {
         await deploy(role, artifacts[role], {
@@ -509,10 +530,15 @@ export async function publishApiRelease({
           ),
           releaseSha,
         });
-      } catch {
-        throw Error(
+      } catch (error) {
+        const failure = Error(
           "Runtime deployment failed; private diagnostics suppressed.",
         );
+        failure.apiReleaseFailure = {
+          role,
+          category: error?.deploymentFailure ?? "unknown",
+        };
+        throw failure;
       }
       manifest.runtimeReleases[role] = readRuntime(role, artifacts[role]);
       known[role] = manifest.runtimeReleases[role];
@@ -864,13 +890,10 @@ export function deployReleaseArtifact(
       },
     );
     if (result.error || result.status !== 0)
-      throw Error(
-        "cf runtime deployment failed; private diagnostics were suppressed.",
-      );
-  } catch {
-    throw Error(
-      "cf runtime deployment failed; private diagnostics were suppressed.",
-    );
+      throw deploymentFailure(deploymentFailureCategory(result));
+  } catch (error) {
+    if (error?.deploymentFailure) throw error;
+    throw deploymentFailure("process-error");
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
@@ -1344,9 +1367,12 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
-  releaseCli().catch(() => {
-    if (apiReleaseStage)
-      console.error(JSON.stringify({ apiReleaseStage }));
+  releaseCli().catch((error) => {
+    if (apiReleaseStage) console.error(JSON.stringify({ apiReleaseStage }));
+    if (error?.apiReleaseFailure)
+      console.error(
+        JSON.stringify({ apiReleaseFailure: error.apiReleaseFailure }),
+      );
     console.error(
       "API release failed; credential-bearing provider, database and configuration diagnostics were suppressed. Inspect the retained release journal, then run read-only doctor/readback or explicit rollback.",
     );

@@ -554,7 +554,7 @@ test("cf deployment receives bearer only via env and removes private settings on
           env: f.input.env,
           runner,
         }),
-      /private diagnostics were suppressed/,
+      /nonzero-exit.*private diagnostics were suppressed/,
     );
     assert.throws(() => readFileSync(privateFile), /ENOENT/);
     assert.throws(
@@ -567,6 +567,35 @@ test("cf deployment receives bearer only via env and removes private settings on
         }),
       (e) => !e.message.includes("secret-value"),
     );
+  }));
+
+test("replacement records the failed runtime role without exposing provider output", () =>
+  using(async (f) => {
+    const retained = await publishApiRelease({ ...f.input, apply: true });
+    const stages = [];
+    const providerError = Error("credential-bearing-provider-output");
+    providerError.deploymentFailure = "permission-denied";
+    await assert.rejects(
+      publishApiRelease({
+        ...f.input,
+        previous: retained,
+        bootstrap: false,
+        apply: true,
+        reportStage: (stage) => stages.push(stage),
+        deploy: async () => {
+          throw providerError;
+        },
+      }),
+      (error) => {
+        assert.deepEqual(error.apiReleaseFailure, {
+          role: "discovery",
+          category: "permission-denied",
+        });
+        return !error.message.includes("credential-bearing-provider-output");
+      },
+    );
+    assert.equal(stages.at(-1), "paused-release-deploy-discovery");
+    assert.deepEqual(f.journals.at(-1).manifest.runtimeReleases, {});
   }));
 
 test("verification-only resumes exact published versions without a deployment callback", () =>
