@@ -119,6 +119,11 @@ test("publication requires the candidate domain on the intended Worker and zone"
 
 test("accepts the existing canonical runtime and rejects provider credentials or missing identity secrets", () => {
   assert.deepEqual(loadWebRuntime(JSON.stringify(runtime())), runtime());
+  const withAnalytics = {
+    ...runtime(),
+    VITE_CF_WEB_ANALYTICS_TOKEN: "public-analytics-token",
+  };
+  assert.deepEqual(loadWebRuntime(JSON.stringify(withAnalytics)), withAnalytics);
   for (const patch of [
     { CLOUDFLARE_API_TOKEN: "must-not-copy" },
     { ATLAS_AUTH_INTERNAL_SECRET: "" },

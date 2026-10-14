@@ -99,7 +99,7 @@ export function loadWebRuntime(raw) {
     throw new Error("Runtime must be a JSON object.");
   for (const [key, value] of Object.entries(env)) {
     if (
-      !/^(?:ATLAS_[A-Z0-9_]+|STRIPE_[A-Z0-9_]+|DATABASE_URL|DATABASE_BACKEND|NODE_ENV)$/.test(
+      !/^(?:ATLAS_[A-Z0-9_]+|STRIPE_[A-Z0-9_]+|DATABASE_URL|DATABASE_BACKEND|NODE_ENV|VITE_CF_WEB_ANALYTICS_TOKEN)$/.test(
         key,
       ) ||
       typeof value !== "string"
