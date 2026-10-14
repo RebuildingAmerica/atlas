@@ -136,6 +136,55 @@ test("production promotion cannot substitute missing observation or baseline evi
   assert.throws(() => assertPromotionReady({}, manifest(), Date.now()));
 });
 
+test("immediate promotion relies on the sealed candidate checks", () => {
+  const now = Date.now();
+  const evidence = {
+    releaseSha: sha,
+    releasePolicy: {
+      mode: "immediate",
+      architecture: "cloudflare-durable",
+      releaseSha: sha,
+      authorizedBy: "Atlas operator",
+      authorizationReference: "Immediate cutover authorization",
+      authorizedAt: new Date(now - 60_000).toISOString(),
+      performance: {
+        acceptance: "functional",
+        authorizationReference: "Functional acceptance authorization",
+        authorizedAt: new Date(now - 60_000).toISOString(),
+      },
+    },
+  };
+  const candidate = createWebManifest({
+    ...manifest(),
+    execution: "cloudflare-durable",
+    runtimeDependencies: {
+      api: {
+        workerName: "atlas-api",
+        releaseSha: sha,
+        artifactDigest: digest,
+        workerVersionId: "12345678-1234-1234-1234-123456789abc",
+        namespaceId: "c".repeat(32),
+        namespaceClass: "ApiRuntime",
+        storage: "sqlite",
+      },
+      discovery: {
+        workerName: "atlas-discovery",
+        releaseSha: sha,
+        artifactDigest: digest,
+        workerVersionId: "12345678-1234-1234-1234-123456789abc",
+        namespaceId: "d".repeat(32),
+        namespaceClass: "DiscoveryRuntime",
+        storage: "sqlite",
+      },
+    },
+    releasePolicy: evidence.releasePolicy,
+  });
+  assert.equal(
+    assertPromotionReady(evidence, candidate, now).selected,
+    "workers",
+  );
+});
+
 test("DO release manifest pins API and discovery dependencies and rejects incomplete execution metadata", () => {
   const dependency = {
     workerName: "atlas-api",

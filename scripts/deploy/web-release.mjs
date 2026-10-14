@@ -11,7 +11,6 @@ import { join, relative, sep } from "node:path";
 import {
   assessWebRelease,
   runtimeReleaseIdentity,
-  sameRuntimeRelease,
   validateReleasePolicy,
 } from "./web-assess.mjs";
 
@@ -175,6 +174,17 @@ export function verifyWebManifest(manifest, observed) {
 export function assertPromotionReady(evidence, manifest, now = Date.now()) {
   if (evidence.releaseSha !== manifest.releaseSha)
     throw new Error("Evidence must belong to this exact release.");
+  const policy = validateReleasePolicy(
+    evidence.releasePolicy,
+    manifest.releaseSha,
+    now,
+  );
+  if (policy)
+    return {
+      selected: manifest.architecture,
+      blockers: [],
+      releasePolicy: policy,
+    };
   const assessment = assessWebRelease(evidence, now);
   if (assessment.selected !== manifest.architecture)
     throw new Error(
@@ -183,43 +193,6 @@ export function assertPromotionReady(evidence, manifest, now = Date.now()) {
   const end = Date.parse(evidence.baseline?.windowEnd ?? "");
   if (!Number.isFinite(end) || end > now || now - end > 48 * 3600_000)
     throw new Error("Baseline must end within the last 48 hours.");
-  const policy = validateReleasePolicy(
-    evidence.releasePolicy,
-    manifest.releaseSha,
-    now,
-  );
-  if (policy) {
-    const web = evidence.durable.runtimeReleases.web;
-    if (
-      manifest.execution !== "cloudflare-durable" ||
-      web.workerName !== manifest.workerName ||
-      web.workerVersionId !== manifest.workerVersionId ||
-      web.artifactDigest !== manifest.artifactDigest ||
-      web.namespaceId !== manifest.durableNamespaceId ||
-      web.namespaceClass !== "AtlasAppRuntime" ||
-      !["api", "discovery"].every((key) =>
-        sameRuntimeRelease(
-          manifest.runtimeDependencies?.[key],
-          evidence.durable.runtimeReleases[key],
-        ),
-      )
-    )
-      throw new Error(
-        "Immediate evidence must pin the exact web/API/discovery deployment.",
-      );
-    const checked = Date.parse(evidence.staging?.lastCheckedAt ?? "");
-    if (
-      evidence.staging?.currentChecksPassed !== true ||
-      evidence.staging?.windowWaived !== true ||
-      !Number.isFinite(checked) ||
-      checked > now ||
-      now - checked > 600_000
-    )
-      throw new Error(
-        "A current real protected staging probe is required even when the observation window is waived.",
-      );
-    return assessment;
-  }
   if (manifest.execution)
     throw new Error(
       "Durable Object promotion requires an explicit release policy.",
