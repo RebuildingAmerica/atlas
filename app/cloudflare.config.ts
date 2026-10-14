@@ -5,7 +5,7 @@ export default defineConfig({
   worker: {
     name: "atlas-app-candidate",
     compatibilityDate: "2026-10-10",
-    compatibilityFlags: ["nodejs_compat"],
+    compatibilityFlags: ["nodejs_compat", "nodejs_als"],
     entrypoint: "server/worker.ts",
     workersDev: false,
     previewUrls: false,
