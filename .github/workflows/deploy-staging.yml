@@ -51,15 +51,36 @@ jobs:
   ci:
     name: Validate staging source
     needs: guard-staging-ref
+    if: ${{ inputs.operation != 'web-candidate' || inputs.source-run-id == '' }}
     uses: ./.github/workflows/ci.yml
     with:
       profile: production
     secrets:
       STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
       STRIPE_ATLAS_CATALOG: ${{ secrets.STRIPE_ATLAS_CATALOG }}
+  reuse-validation:
+    name: Verify reusable staging validation
+    needs: guard-staging-ref
+    if: ${{ inputs.operation == 'web-candidate' && inputs.source-run-id != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Require successful validation for this exact source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source-run-id }}
+        run: |
+          run="$(gh run view "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --json conclusion,headSha,workflowName)"
+          test "$(jq -r '.conclusion' <<<"$run")" = success
+          test "$(jq -r '.headSha' <<<"$run")" = "$GITHUB_SHA"
+          test "$(jq -r '.workflowName' <<<"$run")" = 'Deploy Staging'
   publish:
     name: Run the selected staging deployment action
-    needs: ci
+    needs: [ci, reuse-validation]
+    if: >-
+      always() &&
+      (needs.ci.result == 'success' || needs.reuse-validation.result == 'success')
     permissions:
       contents: read
       actions: read
