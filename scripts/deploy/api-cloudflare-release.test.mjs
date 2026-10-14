@@ -18,6 +18,7 @@ import {
   deployReleaseArtifact,
   verifyPausedApiRelease,
   runPausedVerificationStage,
+  reconcileRetainedRuntimeVersions,
 } from "./api-cloudflare-release.mjs";
 
 const sha = "a".repeat(40),
@@ -363,6 +364,37 @@ test("retained release captures rollback before replacement and rejects enabled 
     });
     assert.ok(identities.rollbackPlan.planId);
     assert.ok(f.journals.some((j) => j.previousSnapshot?.snapshotId));
+  }));
+test("reconciles a provider re-upload only when the retained artifact is unchanged", () =>
+  using(async (f) => {
+    await publishApiRelease({ ...f.input, apply: true });
+    f.state.api = "33333333-3333-3333-3333-333333333333";
+    f.state.discovery = "44444444-4444-4444-4444-444444444444";
+    const previous = {
+      schemaReceiptDigest: f.input.schemaResult.receiptDigest,
+      runtimeReleases: Object.fromEntries(
+        ["api", "discovery"].map((role) => [
+          role,
+          {
+            workerName: `atlas-${role}-staging`,
+            releaseSha: sha,
+            artifactDigest: f.input.artifacts[role].artifactDigest,
+            workerVersionId: versions[role],
+            namespaceId: (role === "api" ? "1" : "2").repeat(32),
+            namespaceClass: role === "api" ? "ApiRuntime" : "DiscoveryRuntime",
+            storage: "sqlite",
+          },
+        ]),
+      ),
+    };
+    const reconciled = reconcileRetainedRuntimeVersions({
+      previous,
+      target: "staging",
+      schemaReceiptDigest: previous.schemaReceiptDigest,
+      cloudflare: f.input.cloudflare,
+    });
+    assert.equal(reconciled.api.workerVersionId, f.state.api);
+    assert.equal(reconciled.discovery.workerVersionId, f.state.discovery);
   }));
 test("operations edge requires existing Access-protected hostname and rejects all writes", async () => {
   const f = fixture();

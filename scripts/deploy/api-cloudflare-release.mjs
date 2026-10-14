@@ -123,6 +123,55 @@ function activeVersion(result) {
     throw Error("One exact active runtime version is required.");
   return versions[0].version_id;
 }
+/** Reconcile provider re-uploads of the exact retained artifact before replacement. */
+export function reconcileRetainedRuntimeVersions({
+  previous,
+  target,
+  schemaReceiptDigest,
+  cloudflare,
+}) {
+  const runtimeReleases = {};
+  for (const role of ROLES) {
+    const retained = runtimeReleaseIdentity(previous.runtimeReleases?.[role]);
+    const workerVersionId = activeVersion(
+      cloudflare([
+        "workers",
+        "deployments",
+        "list",
+        "--worker",
+        retained.workerName,
+      ]),
+    );
+    if (workerVersionId === retained.workerVersionId) {
+      runtimeReleases[role] = retained;
+      continue;
+    }
+    const version = cloudflare([
+      "workers",
+      "versions",
+      "get",
+      workerVersionId,
+      "--worker-id",
+      retained.workerName,
+    ]);
+    if (
+      version?.id !== workerVersionId ||
+      version.annotations?.["workers/tag"] !== retained.releaseSha ||
+      version.annotations?.["workers/message"] !==
+        releaseMessage(
+          target,
+          role,
+          retained.artifactDigest,
+          schemaReceiptDigest,
+        )
+    )
+      throw Error(
+        "The active runtime differs from the retained release artifact.",
+      );
+    runtimeReleases[role] = { ...retained, workerVersionId };
+  }
+  return runtimeReleases;
+}
 function checkedSchema(result, releaseSha) {
   const r = result?.receipt;
   if (
@@ -381,9 +430,15 @@ export async function publishApiRelease({
         throw Error("The retained runtime role/target differs.");
     }
     reportStage("paused-release-snapshot");
+    const reconciledRuntimeReleases = reconcileRetainedRuntimeVersions({
+      previous,
+      target,
+      schemaReceiptDigest: previous.schemaReceiptDigest,
+      cloudflare: cf,
+    });
     previousSnapshot = captureApiRuntimeSnapshot({
       accountId,
-      runtimeReleases: previous.runtimeReleases,
+      runtimeReleases: reconciledRuntimeReleases,
       env,
       cloudflare: cf,
       now,
