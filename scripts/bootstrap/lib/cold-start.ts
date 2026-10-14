@@ -193,7 +193,7 @@ export function describePhase(phaseName: string): string {
     "Stripe Products":
       "Confirming the Stripe account, then creating or updating products, prices, coupons, webhooks, and env values.",
     "Cloud Infrastructure":
-      "Creating or updating the hosted cloud resources Atlas needs before it can deploy.",
+      "This hosted provisioning path is retired; use the protected Cloudflare publication workflow.",
     Database:
       "Checking database access, creating the database when needed, and applying schema setup.",
     "MCP Registry Publisher":
@@ -203,9 +203,9 @@ export function describePhase(phaseName: string): string {
     "CI Remote Cache":
       "Checking the repository-owned GitHub Actions cache configuration.",
     "API Canonical Domain":
-      "Checking the canonical atlas-api domain, Cloud Run mapping, and DNS record.",
+      "This API domain mapping is retired; use the protected Cloudflare publication workflow.",
     "API Edge Protection":
-      "Checking Cloudflare proxying and API edge protection for the public API.",
+      "This API edge setup is retired; use the protected Cloudflare publication workflow.",
   };
   return descriptions[phaseName] ?? `Running ${phaseName}.`;
 }

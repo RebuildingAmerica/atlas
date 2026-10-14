@@ -77,7 +77,7 @@ void describe("Atlas bootstrap argument parsing", () => {
     assert.equal(args.stripeTarget, "staging");
   });
 
-  void it("supports rerunning cloud infrastructure setup directly", () => {
+  void it("recognizes the retired infrastructure flag for a blocked message", () => {
     const args = parseArgs(["--infra"]);
 
     assert.equal(args.infraOnly, true);

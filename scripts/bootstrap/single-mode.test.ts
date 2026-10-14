@@ -43,7 +43,7 @@ void describe("single-phase bootstrap modes", () => {
     assert.equal(mode?.phaseLabel, "Cloud Infrastructure");
     assert.equal(
       mode.announcement,
-      "Running cloud infrastructure setup only (target=production).",
+      "Hosted infrastructure setup is retired (target=production).",
     );
   });
 
@@ -93,14 +93,17 @@ void describe("single-phase bootstrap modes", () => {
     );
   });
 
-  void it("blocks retired Cloud Run domain and edge setup before provider access", async () => {
-    for (const flag of ["--api-domain", "--api-edge"]) {
+  void it("blocks retired hosted infrastructure, domain, and edge setup before provider access", async () => {
+    for (const flag of ["--infra", "--api-domain", "--api-edge"]) {
       const mode = selectSingleMode(runFor([flag]));
       assert.ok(mode);
       const result = await mode.run();
       assert.equal(result.success, false);
       assert.equal(result.status, "blocked");
-      assert.match(result.followUpItems[0] ?? "", /Cloud Run.*retired/);
+      assert.match(
+        result.followUpItems[0] ?? "",
+        /(?:Cloud Run.*retired|Cloudflare hosting)/,
+      );
     }
   });
 

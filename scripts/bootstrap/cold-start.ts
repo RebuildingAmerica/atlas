@@ -1,36 +1,33 @@
 #!/usr/bin/env tsx
 /**
- * Atlas Bootstrap CLI — Complete product development, deployment, and operations setup.
+ * Atlas Bootstrap CLI — local setup and explicit product configuration.
  *
  * Usage:
  *
  * | Command                                                   | What it does |
  * | --------------------------------------------------------- | ------------ |
- * | `pnpm setup`                                              | Full guided repo setup, including production readiness. |
+ * | `pnpm setup`                                              | Local development setup. |
  * | `pnpm setup:local`                                        | Local dev setup, including local Stripe test-mode sync. |
- * | `pnpm setup:staging`                                      | Staging setup: its own infrastructure and Stripe test-mode sync. |
- * | `pnpm setup:prod`                                         | Production setup, including Stripe live-mode sync. |
- * | `pnpm doctor`                                             | Checks readiness without changing local or hosted state. |
- * | `pnpm bootstrap`                                          | Full guided repo setup, including production readiness. |
+ * | `pnpm setup:staging`                                      | Staging Stripe test-mode sync only. |
+ * | `pnpm setup:prod`                                         | Production Stripe live-mode sync only. |
+ * | `pnpm doctor`                                             | Checks local readiness without changing hosted state. |
+ * | `pnpm bootstrap`                                          | Local development setup. |
  * | `pnpm bootstrap --local-only`                             | Local dev setup, including local Stripe test-mode sync. |
- * | `pnpm bootstrap --doctor`                                 | Checks readiness without changing local or hosted state. |
+ * | `pnpm bootstrap --doctor`                                 | Checks local readiness without changing hosted state. |
  * | `pnpm bootstrap --resume`                                 | Skips phases already marked complete. |
  * | `pnpm bootstrap --product atlas`                          | Runs local Stripe test-mode sync only. |
  * | `pnpm bootstrap --product atlas --target staging`         | Runs staging Stripe test-mode sync. |
  * | `pnpm bootstrap --product atlas --target staging --yes`   | Applies hosted staging env sync without prompting. |
  * | `pnpm bootstrap --product atlas --target prod --live`     | Runs production Stripe live sync. |
  * | `pnpm bootstrap --mcp-registry`                           | Runs MCP Registry publisher setup only. |
- * | `pnpm bootstrap --infra`                                  | Runs production cloud infrastructure setup only. |
- * | `pnpm bootstrap --infra --target staging`                 | Runs staging cloud infrastructure setup only. |
+ * | `pnpm bootstrap --infra`                                  | Retired hosted provisioning; use protected Cloudflare publication. |
  * | `pnpm bootstrap --ci-cache`                               | Reports the turnkey GitHub Actions cache. |
- * | `pnpm bootstrap --api-domain`                             | Ensures atlas-api Cloud Run and Cloudflare CNAME. |
- * | `pnpm bootstrap --api-domain --target staging`            | Ensures the staging atlas-api Cloud Run and Cloudflare CNAME. |
- * | `pnpm bootstrap --api-edge`                               | Enables Cloudflare proxy and API rate limits. |
- * | `pnpm bootstrap --api-edge --target staging`              | Enables staging Cloudflare proxy and API rate limits. |
+ * | `pnpm bootstrap --api-domain`                             | Retired API mapping; use protected Cloudflare publication. |
+ * | `pnpm bootstrap --api-edge`                               | Retired API edge setup; use protected Cloudflare publication. |
  * | `pnpm bootstrap --access-gate`                            | Puts Cloudflare Access (Google Workspace) in front of the platform admin. |
  * | `pnpm bootstrap --access-gate --doctor`                   | Reports how the live Access gate differs, changing nothing. |
  * | `pnpm bootstrap --admin-keys --target staging`            | Creates or rotates the staging platform admin's signing key. |
- * | `pnpm bootstrap --target prod --live`                     | Runs explicit production setup. |
+ * | `pnpm bootstrap --target prod --live`                     | Retired hosted setup; use Deploy Production. |
  */
 
 import path from "node:path";

@@ -14,7 +14,6 @@ import { detectGithubRepo, runAdminKeysPhase } from "./phases/admin-keys.js";
 import { runApiDomainPhase } from "./phases/api-domain.js";
 import { runApiEdgePhase } from "./phases/api-edge.js";
 import { runCiCachePhase } from "./phases/ci-cache.js";
-import { runInfraPhase } from "./phases/infra.js";
 import { runMcpRegistryPhase } from "./phases/mcp-registry.js";
 import { runProductPhase } from "./products/atlas/bootstrap.js";
 import {
@@ -48,16 +47,16 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
     const infraTarget =
       args.stripeTarget === "staging" ? "staging" : "production";
     return {
-      announcement: `Running cloud infrastructure setup only (target=${infraTarget}).`,
+      announcement: `Hosted infrastructure setup is retired (target=${infraTarget}).`,
       phaseLabel: "Cloud Infrastructure",
       run: () =>
-        runInfraPhase(
-          projectRoot,
-          state,
-          args.doctorMode,
-          infraTarget,
-          args.assumeYes,
-        ),
+        Promise.resolve({
+          success: false,
+          status: "blocked",
+          followUpItems: [
+            "Use Deploy Staging / Deploy Production and pnpm web:doctor for Cloudflare hosting.",
+          ],
+        }),
       record: (result) => {
         markTargetPhase(
           state,
@@ -66,8 +65,8 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
           resultPhaseStatus(result, args.doctorMode),
         );
       },
-      successMessage: "Cloud infrastructure setup complete.",
-      failureMessage: "Cloud infrastructure setup had issues.",
+      successMessage: "Hosted infrastructure setup is retired.",
+      failureMessage: "Hosted infrastructure setup is retired.",
     };
   }
   if (args.mcpRegistryOnly) {
@@ -96,7 +95,7 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
   }
   if (args.apiDomainOnly) {
     return {
-      announcement: `Running atlas-api domain mapping only (target=${args.apiDomainTarget}).`,
+      announcement: `API domain mapping is retired (target=${args.apiDomainTarget}).`,
       phaseLabel: "API Canonical Domain",
       run: () =>
         runApiDomainPhase(projectRoot, args.doctorMode, args.apiDomainTarget),
@@ -108,13 +107,13 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
           reportedPhaseStatus(result),
         );
       },
-      successMessage: `atlas-api ${args.apiDomainTarget} canonical domain ready.`,
-      failureMessage: "API domain wiring had issues.",
+      successMessage: "API domain mapping is retired.",
+      failureMessage: "API domain mapping is retired.",
     };
   }
   if (args.apiEdgeOnly) {
     return {
-      announcement: `Running atlas-api edge protection only (target=${args.apiDomainTarget}).`,
+      announcement: `API edge setup is retired (target=${args.apiDomainTarget}).`,
       phaseLabel: "API Edge Protection",
       run: () =>
         runApiEdgePhase(
@@ -131,8 +130,8 @@ export function selectSingleMode(run: BootstrapRun): SingleMode | null {
           reportedPhaseStatus(result),
         );
       },
-      successMessage: `atlas-api ${args.apiDomainTarget} edge protection ready.`,
-      failureMessage: "API edge protection had issues.",
+      successMessage: "API edge setup is retired.",
+      failureMessage: "API edge setup is retired.",
     };
   }
   if (args.adminKeysOnly) {
