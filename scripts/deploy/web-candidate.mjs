@@ -529,7 +529,7 @@ export async function publishWebCandidate(
   architecture,
   { promotion, runtime = loadWebRuntime(runtimeInput()) } = {},
 ) {
-  candidatePublicationStage = "preflight";
+  candidatePublicationStage = "preflight-promotion";
   if (
     promotion &&
     (target !== "production" ||
@@ -538,10 +538,12 @@ export async function publishWebCandidate(
     throw new Error(
       "Production publication requires canonical runtime configuration.",
     );
+  candidatePublicationStage = "preflight-access-observer";
   assertWebObserverConfiguration({
     clientId: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_ID,
     clientSecret: process.env.ATLAS_HOSTED_CF_ACCESS_CLIENT_SECRET,
   });
+  candidatePublicationStage = "preflight-budget";
   const evidence = JSON.parse(
     readFileSync(required("ATLAS_WEB_EVIDENCE_FILE"), "utf8"),
   );
@@ -552,11 +554,13 @@ export async function publishWebCandidate(
       account: process.env.ATLAS_GCP_ACCOUNT,
       tool,
     });
+  candidatePublicationStage = "preflight-account";
   if (evidence.cloudflare.accountId !== required("CLOUDFLARE_ACCOUNT_ID"))
     throw new Error(
       "Quota evidence belongs to a different Cloudflare account.",
     );
   await ensureFreeAccount();
+  candidatePublicationStage = "preflight-artifact";
   const manifestPath = join(directory, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   if (manifest.target !== target || manifest.architecture !== architecture)
@@ -573,6 +577,7 @@ export async function publishWebCandidate(
     throw new Error(
       "Candidate execution and recorded operator policy must match the release evidence.",
     );
+  candidatePublicationStage = "preflight-runtime-dependencies";
   const durableBindings = durableCandidateBindings(
     manifest,
     JSON.parse(
@@ -585,6 +590,7 @@ export async function publishWebCandidate(
   if (manifest.execution)
     assertDurableDependencies(manifest.runtimeDependencies);
   // Hybrid identity is filled only after the pinned revision is deployed.
+  candidatePublicationStage = "preflight-source";
   const observed = {
     releaseSha: tool("git", ["rev-parse", "HEAD"]),
     artifactDigest: digestDirectory(join(directory, "artifact")),
@@ -600,6 +606,7 @@ export async function publishWebCandidate(
     throw new Error(
       "Candidate artifacts must match a clean committed source tree.",
     );
+  candidatePublicationStage = "preflight-public-environment";
   for (const key of PUBLIC_KEYS)
     if ((manifest.publicEnv[key] ?? "") !== (runtime[key] ?? ""))
       throw new Error(`Candidate build-time ${key} differs from runtime.`);
@@ -615,6 +622,7 @@ export async function publishWebCandidate(
     throw new Error(
       "Prepared build-time public configuration differs from the release.",
     );
+  candidatePublicationStage = "preflight-zone";
   const zone = required("CLOUDFLARE_ZONE_ID");
   const zoneInfo = cloudflareCommand(["zones", "get", "--zone", zone]);
   const canonical = new URL(runtime.ATLAS_WEB_CANONICAL_URL ?? "");
@@ -628,6 +636,7 @@ export async function publishWebCandidate(
     throw new Error(
       "Candidate runtime must match its isolated protected hostname.",
     );
+  candidatePublicationStage = "preflight-runtime-identity";
   const journalPath = join(directory, "private-journal.json");
   const runtimeJournal = preserveRuntimeIdentity(
     runtime,

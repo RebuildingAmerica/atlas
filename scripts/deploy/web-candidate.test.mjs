@@ -51,6 +51,34 @@ test("candidate publication reports only a safe Cloudflare failure category", ()
   );
 });
 
+test("candidate preflight identifies missing observer credentials without printing values", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "atlas-candidate-preflight-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const result = spawnSync(
+    process.execPath,
+    [
+      "scripts/deploy/web-candidate.mjs",
+      "publish",
+      "--target",
+      "staging",
+      "--architecture",
+      "workers",
+      "--directory",
+      directory,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        PATH: process.env.PATH,
+        ATLAS_WEB_RUNTIME_ENV_JSON: JSON.stringify(runtime()),
+      },
+    },
+  );
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /candidateStage":"preflight-access-observer/);
+  assert.doesNotMatch(result.stderr, /existing-signing-secret/);
+});
+
 test("publication requires the candidate domain on the intended Worker and zone", () => {
   const expected = {
     workerName: "atlas-candidate",
