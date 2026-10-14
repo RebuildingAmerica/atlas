@@ -953,6 +953,9 @@ test("sealing retains the public Cloudflare analytics beacon", (t) => {
   assert.deepEqual(
     sealPublication(bundle, {
       VITE_CF_WEB_ANALYTICS_TOKEN: "public-analytics-token",
+      ATLAS_WEB_RUNTIME_ENV_JSON: JSON.stringify({
+        VITE_CF_WEB_ANALYTICS_TOKEN: "public-analytics-token",
+      }),
     }),
     { status: "safe-to-retain" },
   );

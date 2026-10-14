@@ -860,12 +860,13 @@ function privatePublicationDirectory(env) {
   return resolved;
 }
 
-const secretKey = /TOKEN|SECRET|PASSWORD|PRIVATE_KEY|API_KEY|DATABASE_URL/i;
 const publicBuildValueKeys = new Set(["VITE_CF_WEB_ANALYTICS_TOKEN"]);
+const secretKey = /TOKEN|SECRET|PASSWORD|PRIVATE_KEY|API_KEY|DATABASE_URL/i;
 function secretValues(value) {
   if (!value || typeof value !== "object") return [];
   if (Array.isArray(value)) return value.flatMap(secretValues);
   return Object.entries(value).flatMap(([key, entry]) => {
+    if (publicBuildValueKeys.has(key)) return [];
     if (secretKey.test(key) && typeof entry === "string") return [entry];
     if (
       key === "value" &&
