@@ -38,6 +38,7 @@ import { assertWebObserverConfiguration } from "./web-observe.mjs";
 import { preserveRuntimeIdentity } from "./web-runtime-identity.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
+let candidatePublicationStage = null;
 
 /** Confirm the protected URL actually serves this release before recording success. */
 export function assertCandidateDomain(
@@ -528,6 +529,7 @@ export async function publishWebCandidate(
   architecture,
   { promotion, runtime = loadWebRuntime(runtimeInput()) } = {},
 ) {
+  candidatePublicationStage = "preflight";
   if (
     promotion &&
     (target !== "production" ||
@@ -635,7 +637,9 @@ export async function publishWebCandidate(
       : undefined,
   );
   writeFileSync(journalPath, JSON.stringify(runtimeJournal), { mode: 0o600 });
+  candidatePublicationStage = "access-protection";
   const accessAppId = await protectCandidate(hostname, manifest.workerName);
+  candidatePublicationStage = "atproto-metadata";
   await exposeAtprotoMetadata(hostname, manifest.workerName);
   const temp = mkdtempSync(join(tmpdir(), "atlas-web-release-"));
   try {
@@ -660,6 +664,7 @@ export async function publishWebCandidate(
       ),
     );
     if (architecture === "workers") {
+      candidatePublicationStage = "hyperdrive";
       workerEnv.HYPERDRIVE = {
         type: "hyperdrive",
         id: await ensureHyperdrive(target, runtime),
@@ -817,6 +822,7 @@ export async function publishWebCandidate(
     }
     verifyWebManifest(manifest, observed);
     for (const key of Object.keys(secrets)) workerEnv[key] = { type: "secret" };
+    candidatePublicationStage = "build-output";
     await prepareCloudflareOutput({
       directory,
       architecture,
@@ -828,6 +834,7 @@ export async function publishWebCandidate(
     });
     const secretFile = join(temp, "secrets.json");
     writeFileSync(secretFile, JSON.stringify(secrets), { mode: 0o600 });
+    candidatePublicationStage = "worker-deploy";
     tool(
       process.execPath,
       [
@@ -848,6 +855,7 @@ export async function publishWebCandidate(
       { cwd: temp },
     );
     // Read back the exact deployed version after cf applies its protected domain.
+    candidatePublicationStage = "deployment-readback";
     const deployments = cloudflareCommand([
       "workers",
       "deployments",
@@ -958,6 +966,10 @@ async function main() {
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
   main().catch((error) => {
+    if (candidatePublicationStage)
+      console.error(
+        JSON.stringify({ candidateStage: candidatePublicationStage }),
+      );
     console.error(error.message);
     process.exitCode = 1;
   });
