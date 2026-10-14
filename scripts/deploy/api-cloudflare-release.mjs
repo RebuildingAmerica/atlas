@@ -293,6 +293,7 @@ export async function publishApiRelease({
   deploy,
   probe,
   checkpoint,
+  reportStage = () => {},
   now = Date.now,
   apply = false,
 }) {
@@ -306,8 +307,10 @@ export async function publishApiRelease({
     throw Error(
       "An exact target/commit/account and an in-memory Cloudflare token session are required.",
     );
+  reportStage("paused-release-provenance");
   const schemaReceiptDigest = checkedSchema(schemaResult, releaseSha),
     verifiedProvenance = checkedProvenance(provenance);
+  reportStage("paused-release-artifacts");
   artifacts = checkedArtifacts(artifacts, {
     target,
     releaseSha,
@@ -326,6 +329,7 @@ export async function publishApiRelease({
       );
     }
   };
+  reportStage("paused-release-subscription");
   const subscriptions = cf(["accounts", "subscriptions", "get"]);
   if (
     !Array.isArray(subscriptions) ||
@@ -341,6 +345,7 @@ export async function publishApiRelease({
     );
   let previousSnapshot = null;
   if (previous) {
+    reportStage("paused-release-previous");
     if (
       previous.target !== target ||
       previous.accountId !== accountId ||
@@ -355,6 +360,7 @@ export async function publishApiRelease({
       )
         throw Error("The retained runtime role/target differs.");
     }
+    reportStage("paused-release-snapshot");
     previousSnapshot = captureApiRuntimeSnapshot({
       accountId,
       runtimeReleases: previous.runtimeReleases,
@@ -364,6 +370,7 @@ export async function publishApiRelease({
     });
     if (typeof probe !== "function")
       throw Error("Real paused-state probes are required before replacement.");
+    reportStage("paused-release-existing-probes");
     for (const role of ROLES)
       await probeRole(
         probe,
@@ -372,6 +379,7 @@ export async function publishApiRelease({
         previous.schemaReceiptDigest,
       );
   } else {
+    reportStage("paused-release-bootstrap-inventory");
     const list = cf(["workers", "list"]);
     const workers = Array.isArray(list) ? list : list?.workers;
     if (
@@ -383,6 +391,7 @@ export async function publishApiRelease({
       throw Error("Bootstrap requires both selected Workers to be absent.");
   }
   if (bootstrap) {
+    reportStage("paused-release-bootstrap-artifact");
     if (!bootstrapArtifact)
       throw Error(
         "An explicit paused API seed artifact is required for circular binding bootstrap.",
@@ -449,6 +458,7 @@ export async function publishApiRelease({
       previousSnapshot,
       manifest: structuredClone(manifest),
     });
+  reportStage("paused-release-journal");
   await save("prepared");
   const known = { ...(previousSnapshot?.runtimeReleases ?? {}) };
   try {
@@ -1256,6 +1266,9 @@ export async function releaseCli(
     bootstrap: args.includes("--bootstrap"),
     cloudflare: cf,
     probe,
+    reportStage: (stage) => {
+      apiReleaseStage = stage;
+    },
     apply: args.includes("--apply"),
     checkpoint: async (journal) => {
       writeFileSync(

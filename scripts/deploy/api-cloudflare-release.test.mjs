@@ -240,10 +240,21 @@ async function using(fn) {
 
 test("dry run validates exact artifacts/schema and performs no provider writes", () =>
   using(async (f) => {
-    const r = await publishApiRelease(f.input);
+    const stages = [];
+    const r = await publishApiRelease({
+      ...f.input,
+      reportStage: (stage) => stages.push(stage),
+    });
     assert.equal(r.status, "planned");
     assert.deepEqual(f.state, {});
     assert.equal(f.journals.length, 0);
+    assert.deepEqual(stages, [
+      "paused-release-provenance",
+      "paused-release-artifacts",
+      "paused-release-subscription",
+      "paused-release-bootstrap-inventory",
+      "paused-release-bootstrap-artifact",
+    ]);
   }));
 test("bootstrap records exact joint readbacks and real paused probes without activation", () =>
   using(async (f) => {
