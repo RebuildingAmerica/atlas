@@ -940,6 +940,24 @@ test("runtime captured from the retained host remains private through sealing an
   );
 });
 
+test("sealing retains the public Cloudflare analytics beacon", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "atlas-publication-public-build-value-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const bundle = join(root, "bundle");
+  mkdirSync(bundle);
+  writeFileSync(
+    join(bundle, "asset.js"),
+    "const beacon = 'public-analytics-token';\n",
+  );
+
+  assert.deepEqual(
+    sealPublication(bundle, {
+      VITE_CF_WEB_ANALYTICS_TOKEN: "public-analytics-token",
+    }),
+    { status: "safe-to-retain" },
+  );
+});
+
 test("a prerequisite failure before publication has no bundle to scan or upload", (t) => {
   const root = mkdtempSync(join(tmpdir(), "atlas-publication-not-started-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));

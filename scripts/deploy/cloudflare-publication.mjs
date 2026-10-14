@@ -861,6 +861,7 @@ function privatePublicationDirectory(env) {
 }
 
 const secretKey = /TOKEN|SECRET|PASSWORD|PRIVATE_KEY|API_KEY|DATABASE_URL/i;
+const publicBuildValueKeys = new Set(["VITE_CF_WEB_ANALYTICS_TOKEN"]);
 function secretValues(value) {
   if (!value || typeof value !== "object") return [];
   if (Array.isArray(value)) return value.flatMap(secretValues);
@@ -878,7 +879,11 @@ function secretValues(value) {
 
 export function sealPublication(bundle, env) {
   if (!existsSync(bundle)) return { status: "nothing-to-retain" };
-  const secrets = secretValues(env);
+  const secrets = secretValues(
+    Object.fromEntries(
+      Object.entries(env).filter(([key]) => !publicBuildValueKeys.has(key)),
+    ),
+  );
   for (const key of [
     "ATLAS_WEB_RUNTIME_ENV_JSON",
     "ATLAS_API_SETTINGS_EXPORT_JSON",
