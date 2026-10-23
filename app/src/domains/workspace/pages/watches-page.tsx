@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { MapPinned, ShieldCheck } from "lucide-react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { useWorkspaceWatches } from "@/domains/workspace/hooks/use-workspace-watches";
 import { pluralize } from "@/lib/pluralize";
 import { Badge } from "@rebuildingamerica/atlas-ui/ui/badge";

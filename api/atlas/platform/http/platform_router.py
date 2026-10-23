@@ -31,6 +31,11 @@ __all__ = [
 PLATFORM_OPENAPI_TITLE = "Atlas platform API"
 PLATFORM_OPENAPI_FILENAME = "atlas-platform.openapi.json"
 
+# The checkout root, where ``main`` writes the exported document. A constant so a
+# test can aim the export at a temporary directory instead of rewriting this
+# module's ``__file__``, which makes coverage drop its lines under pytest-xdist.
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
 
 def create_platform_router() -> APIRouter:
     """Create the router holding every platform route.
@@ -76,8 +81,7 @@ def build_platform_openapi(version: str) -> dict[str, Any]:
 
 def main() -> None:
     """Write the platform OpenAPI document next to the public one, in ``openapi/``."""
-    project_root = Path(__file__).resolve().parents[4]
-    output_path = project_root / "openapi" / PLATFORM_OPENAPI_FILENAME
+    output_path = PROJECT_ROOT / "openapi" / PLATFORM_OPENAPI_FILENAME
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(build_platform_openapi(OPENAPI_VERSION), indent=2, sort_keys=True) + "\n",

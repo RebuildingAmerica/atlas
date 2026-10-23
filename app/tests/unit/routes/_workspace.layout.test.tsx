@@ -14,7 +14,7 @@ beforeEach(async () => {
   readRouterMocks().useRouteContext.mockReturnValue({
     session: createAtlasSessionFixture({ isLocal: true }),
   });
-  const { useAtlasSession } = await import("@/domains/access");
+  const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
   vi.mocked(useAtlasSession).mockReturnValue({
     data: createAtlasSessionFixture({ isLocal: true }),
   } as unknown as ReturnType<typeof useAtlasSession>);
@@ -53,7 +53,7 @@ describe("routes/_workspace layout", () => {
   });
 
   it("surfaces saved-work rail items without Organization for a signed-in session that does not need it", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,
@@ -86,7 +86,7 @@ describe("routes/_workspace layout", () => {
   });
 
   it("falls back to the core workbench rail items when the session is null", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);
@@ -109,7 +109,7 @@ describe("routes/_workspace layout", () => {
   });
 
   it("delegates the workspace-switch mutationFn to setActiveWorkspace", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useMutation } = await import("@tanstack/react-query");
     const { setActiveWorkspace } = await import("@/domains/access/organizations.functions");
     interface MutationOptions {
@@ -147,7 +147,7 @@ describe("routes/_workspace layout", () => {
   });
 
   it("includes Organization in the rail when onboarding needs it and renders the workspace switcher", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { setActiveWorkspace } = await import("@/domains/access/organizations.functions");
     const { useMutation, useQueryClient } = await import("@tanstack/react-query");
     const switchMutation = vi.fn().mockResolvedValue(undefined);
@@ -207,7 +207,7 @@ describe("routes/_workspace layout", () => {
   });
 
   it("falls back to an empty workspace-switcher value when no active organization is set", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,
@@ -227,7 +227,7 @@ describe("routes/_workspace layout", () => {
   });
 
   it("falls back to the active organization name pill and the email when name is empty", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,

@@ -19,7 +19,7 @@ vi.mock("@/domains/catalog/components/profiles/actor-avatar", () => ({
   ActorAvatar: ({ name }: { name: string }) => <span data-testid="actor-avatar">{name}</span>,
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(),
 }));
 
@@ -32,7 +32,7 @@ describe("routes/_workspace/lists/$id packet exports", () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: {
         workspace: {
@@ -60,7 +60,7 @@ describe("routes/_workspace/lists/$id packet exports", () => {
 
   it("copies institutional export and CRM handoff packets for team research workspaces", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     const clipboardWriteText = vi.fn().mockResolvedValue(undefined);
     const createObjectUrl = vi.fn().mockReturnValue("blob:atlas-team-list-export");
     const revokeObjectUrl = vi.fn();
@@ -185,7 +185,7 @@ describe("routes/_workspace/lists/$id packet exports", () => {
 
   it("copies a nonprofit systems packet for adjacent advocacy and grant tools", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     const clipboardWriteText = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, {
       clipboard: {

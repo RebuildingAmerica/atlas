@@ -102,7 +102,7 @@ def test_sqlite_fixture_removes_database_after_teardown(
 
             import pytest
 
-            from tests.conftest import db_url, test_db, tmp_db_path
+            from tests.conftest import db_url, sqlite_schema_template, test_db, tmp_db_path
             {fixture_import}
 
             scenario = {scenario!r}

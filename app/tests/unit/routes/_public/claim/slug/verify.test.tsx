@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(),
 }));
 
@@ -66,7 +66,7 @@ describe("routes/_public/claim/$slug verification", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useAtprotoIdentities } = await import("@/domains/access/atproto-identities");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReset();
@@ -151,7 +151,7 @@ describe("routes/_public/claim/$slug verification", () => {
   });
 
   it("invites the user to sign in when no session is present", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);
@@ -181,7 +181,7 @@ describe("routes/_public/claim/$slug verification", () => {
   });
 
   it("shows the verification CTA when a token is present and the claim is unverified", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -212,7 +212,7 @@ describe("routes/_public/claim/$slug verification", () => {
   });
 
   it("surfaces a verify error message when the verify mutation rejects", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -243,7 +243,7 @@ describe("routes/_public/claim/$slug verification", () => {
   });
 
   it("does nothing when handleVerify runs without a verification token in the search", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -272,7 +272,7 @@ describe("routes/_public/claim/$slug verification", () => {
   });
 
   it("renders the pending button copy while verify mutation is running", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -303,7 +303,7 @@ describe("routes/_public/claim/$slug verification", () => {
   });
 
   it("uses the generic verify-failure copy when the rejection is not an Error", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },

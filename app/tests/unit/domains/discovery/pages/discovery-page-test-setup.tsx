@@ -47,7 +47,7 @@ export const FREE_TIER_SESSION = {
   },
 };
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
 }));
 

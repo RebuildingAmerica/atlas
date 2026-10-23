@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { OAuthConsentPage, oauthConsentSearchSchema } from "@/domains/access";
+import {
+  OAuthConsentPage,
+  oauthConsentSearchSchema,
+} from "@/domains/access/pages/auth/oauth-consent-page";
 
 export const Route = createFileRoute("/_auth/oauth/consent")({
   ssr: false,

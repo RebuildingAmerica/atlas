@@ -6,7 +6,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(),
 }));
 
@@ -72,7 +72,7 @@ export async function setupOrganizationClaimTest() {
   await import("@tanstack/react-router");
   const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
   resetRouterMocks();
-  const { useAtlasSession } = await import("@/domains/access");
+  const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
   const { useAtprotoIdentities } = await import("@/domains/access/atproto-identities");
   const claims = await import("@/domains/catalog/hooks/use-claims");
   vi.mocked(useAtlasSession).mockReset();

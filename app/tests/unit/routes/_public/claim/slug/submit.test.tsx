@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(),
 }));
 
@@ -55,7 +55,7 @@ describe("routes/_public/claim/$slug submission", () => {
   beforeEach(async () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useAtprotoIdentities } = await import("@/domains/access/atproto-identities");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReset();
@@ -92,7 +92,7 @@ describe("routes/_public/claim/$slug submission", () => {
   }
 
   it("renders the verified, pending, and submit-claim states", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -194,7 +194,7 @@ describe("routes/_public/claim/$slug submission", () => {
   });
 
   it("shows tier-2 review copy for non-tier-1 pending claims", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -217,7 +217,7 @@ describe("routes/_public/claim/$slug submission", () => {
   });
 
   it("renders the pending button copy while initiate mutation is running", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -248,7 +248,7 @@ describe("routes/_public/claim/$slug submission", () => {
   });
 
   it("keeps callback-selected ATProto identities from submitting before identity data resolves", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useAtprotoIdentities } = await import("@/domains/access/atproto-identities");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
@@ -291,7 +291,7 @@ describe("routes/_public/claim/$slug submission", () => {
   });
 
   it("uses the generic initiate-failure copy when the rejection is not an Error", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },
@@ -322,7 +322,7 @@ describe("routes/_public/claim/$slug submission", () => {
   });
 
   it("surfaces an initiate error message when the submit mutation rejects", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const claims = await import("@/domains/catalog/hooks/use-claims");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: { user: { id: "u1" } },

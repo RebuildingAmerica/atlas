@@ -14,7 +14,7 @@ vi.mock("@/domains/catalog/hooks/use-claims", () => ({
   useSavedLists: vi.fn(),
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(),
 }));
 
@@ -43,7 +43,7 @@ describe("routes/_workspace/lists", () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(access.useAtlasSession).mockReturnValue({ data: null } as unknown as ReturnType<
       typeof access.useAtlasSession
     >);
@@ -280,7 +280,7 @@ describe("routes/_workspace/lists", () => {
 
   it("renders saved lists with the singular/plural counter and the description block", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: { user: { id: "user-1" } },
     } as unknown as ReturnType<typeof access.useAtlasSession>);
@@ -316,7 +316,7 @@ describe("routes/_workspace/lists", () => {
 
   it("surfaces team collaboration context for shared project workspaces", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: {
         user: { id: "owner" },

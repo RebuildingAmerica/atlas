@@ -14,7 +14,7 @@ beforeEach(async () => {
   readRouterMocks().useRouteContext.mockReturnValue({
     session: createAtlasSessionFixture({ isLocal: true }),
   });
-  const { useAtlasSession } = await import("@/domains/access");
+  const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
   vi.mocked(useAtlasSession).mockReturnValue({
     data: createAtlasSessionFixture({ isLocal: true }),
   } as unknown as ReturnType<typeof useAtlasSession>);
@@ -34,7 +34,7 @@ afterEach(() => {
 
 describe("routes/_workspace actions", () => {
   it("signs out by hitting RP logout and falls back to / when the URL is missing", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { getAuthClient } = await import("@/domains/access/client/auth-client");
     const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
 
@@ -78,7 +78,7 @@ describe("routes/_workspace actions", () => {
   });
 
   it("surfaces an error message when sign-out fails", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { getAuthClient } = await import("@/domains/access/client/auth-client");
     const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
 
@@ -113,7 +113,7 @@ describe("routes/_workspace actions", () => {
   });
 
   it("surfaces a workspace-switch error when the mutation fails with a non-Error", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useMutation } = await import("@tanstack/react-query");
     const switchMutation = vi.fn().mockRejectedValue("plain string error");
     vi.mocked(useMutation).mockReturnValue({
@@ -146,7 +146,7 @@ describe("routes/_workspace actions", () => {
   });
 
   it("surfaces a workspace-switch error written for the operator verbatim when the mutation rejects", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useMutation } = await import("@tanstack/react-query");
     const { UserFacingError } =
       await import("@rebuildingamerica/atlas-api-client/user-facing-errors");

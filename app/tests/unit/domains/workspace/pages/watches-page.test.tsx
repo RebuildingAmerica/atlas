@@ -18,7 +18,7 @@ vi.mock("@/domains/workspace/hooks/use-workspace-watches", () => ({
   useWorkspaceWatches: mocks.useWorkspaceWatches,
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
 }));
 

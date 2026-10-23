@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { hasSerializedCapability } from "@rebuildingamerica/atlas-access/workspace/capabilities";
 import {
   isAtLimitError,

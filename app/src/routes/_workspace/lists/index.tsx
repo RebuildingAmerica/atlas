@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { ArrowUpRight, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import {
   useCreateSavedList,
   useDeleteSavedList,

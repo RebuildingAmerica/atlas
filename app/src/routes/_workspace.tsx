@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { Building2, ChevronDown, LogOut, UserRound } from "lucide-react";
 import { useState } from "react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { signOutWithRedirect } from "@/domains/access/client/sign-out";
 import { atlasSessionQueryKey } from "@/domains/access/client/use-atlas-session";
 import { setActiveWorkspace } from "@/domains/access/organizations.functions";

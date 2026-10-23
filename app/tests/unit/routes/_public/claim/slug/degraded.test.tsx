@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   return { ...(await importOriginal<object>()), ...harness.installRouterMocks() };
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(() => ({ data: null })),
 }));
 

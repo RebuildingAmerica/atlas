@@ -9,7 +9,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => {
+vi.mock("@/domains/access/pages/auth/device-approval-page", () => {
   return {
     DeviceApprovalPage: ({ status, userCode }: DeviceApprovalPageProps) => (
       <div
@@ -34,7 +34,8 @@ describe("routes/_auth/device/index", () => {
 
   it("registers the device approval search schema", async () => {
     const routeModule = await import("@/routes/_auth/device/index");
-    const { deviceApprovalSearchSchema } = await import("@/domains/access");
+    const { deviceApprovalSearchSchema } =
+      await import("@/domains/access/pages/auth/device-approval-page");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 

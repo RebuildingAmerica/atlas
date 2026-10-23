@@ -24,7 +24,7 @@ vi.mock("@/domains/workspace/hooks/use-research-summary", () => ({
   useResearchSummary: mocks.useResearchSummary,
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
 }));
 

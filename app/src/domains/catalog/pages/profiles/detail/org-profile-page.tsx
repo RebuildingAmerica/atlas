@@ -1,5 +1,5 @@
 import { Contact, History, Network, Newspaper, ShieldCheck, Tags, Users } from "lucide-react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";
 import { AvatarRow } from "@/domains/catalog/components/profiles/avatar-row";

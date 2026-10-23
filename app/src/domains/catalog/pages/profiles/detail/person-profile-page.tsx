@@ -9,7 +9,7 @@ import {
   ShieldCheck,
   Tags,
 } from "lucide-react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { ActorAvatar } from "@/domains/catalog/components/profiles/actor-avatar";
 import { ActionCluster } from "@/domains/catalog/components/profiles/action-cluster";
 import { AppearancesList } from "@/domains/catalog/components/profiles/appearances-list";

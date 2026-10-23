@@ -37,11 +37,18 @@ function collectClientFiles() {
 
 statSync(schemasIndex);
 
+// The schemas are re-exported as types only. `export *` is a runtime import, so
+// a plain re-export makes every module that touches this barrel load all ~460
+// schema files (each one empty once its types are erased) before it can run.
+// Importing the barrel for a client function then cost seconds of cold module
+// load in every test and every server cold start. A schema that carries a
+// runtime value, such as an enum constant, is imported from
+// `generated/atlas-schemas` directly.
 const exports = [
   ...collectClientFiles().map(
     (file) => `export * from '${modulePath(clientRoot, file)}';`,
   ),
-  `export * from '${modulePath(clientRoot, schemasIndex)}';`,
+  `export type * from '${modulePath(clientRoot, schemasIndex)}';`,
 ];
 
 writeFileSync(
