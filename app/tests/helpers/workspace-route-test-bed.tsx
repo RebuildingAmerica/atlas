@@ -27,16 +27,13 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: vi.fn(),
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
+  atlasSessionQueryKey: ["session"],
   useAtlasSession: vi.fn(),
 }));
 
 vi.mock("@/domains/access/client/auth-client", () => ({
   getAuthClient: vi.fn(),
-}));
-
-vi.mock("@/domains/access/client/use-atlas-session", () => ({
-  atlasSessionQueryKey: ["session"],
 }));
 
 vi.mock("@/domains/access/organizations.functions", () => ({

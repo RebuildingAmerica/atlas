@@ -54,6 +54,12 @@ __all__ = [
 
 HTTP_METHODS = {"get", "put", "post", "delete", "patch", "options", "head", "trace"}
 
+# The checkout root, where ``main`` writes the exported document. A constant so a
+# test can aim the export at a temporary directory. Rewriting this module's
+# ``__file__`` for that instead makes coverage attribute the module's lines to
+# the fake path, and lines are then lost from the report under pytest-xdist.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
 
 def generate_operation_id(route: APIRoute) -> str:
     """Generate stable, human-readable operation IDs from route names."""
@@ -219,8 +225,7 @@ def export_openapi_schema(app: FastAPI, output_path: Path) -> Path:
 def main() -> None:
     """CLI entrypoint for exporting the Atlas OpenAPI schema."""
     create_app = importlib.import_module("atlas.main").create_app
-    project_root = Path(__file__).resolve().parents[3]
-    output_path = project_root / "openapi" / "atlas.openapi.json"
+    output_path = PROJECT_ROOT / "openapi" / "atlas.openapi.json"
     export_openapi_schema(create_app(), output_path)
     print(output_path)
 

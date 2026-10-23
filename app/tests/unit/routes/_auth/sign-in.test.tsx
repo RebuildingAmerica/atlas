@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/pages/auth/sign-in-page", () => ({
   SignInPage: (props: Record<string, unknown>) => (
     <div data-testid="sign-in-page" data-props={JSON.stringify(props)} />
   ),
@@ -33,7 +33,7 @@ describe("routes/_auth/sign-in", () => {
 
   it("registers the sign-in search schema and redirects local sessions", async () => {
     const routeModule = await import("@/routes/_auth/sign-in");
-    const { signInSearchSchema } = await import("@/domains/access");
+    const { signInSearchSchema } = await import("@/domains/access/pages/auth/sign-in-page");
     const access = await import("@/domains/access/server");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);

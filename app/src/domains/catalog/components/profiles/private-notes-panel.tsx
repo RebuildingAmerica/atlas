@@ -1,6 +1,6 @@
 import { NotebookPen } from "lucide-react";
 import { useState } from "react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import {
   useCreateOrgAnnotation,
   useOrgAnnotations,

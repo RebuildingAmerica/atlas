@@ -133,7 +133,7 @@ describe("routes/_public/claim/$slug organization proofs", () => {
   });
 
   it("submits active workspace role for organization verification", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         user: { id: "u1" },
@@ -297,7 +297,7 @@ describe("routes/_public/claim/$slug organization proofs", () => {
   });
 
   it("sends a signed-out visitor back to the plain claim page after sign-in", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);

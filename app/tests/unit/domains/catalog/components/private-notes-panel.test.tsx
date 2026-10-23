@@ -13,7 +13,7 @@ const annotationMocks = vi.hoisted(() => ({
   useOrgAnnotations: vi.fn(),
 }));
 
-vi.mock("@/domains/access", () => sessionMocks);
+vi.mock("@/domains/access/client/use-atlas-session", () => sessionMocks);
 vi.mock("@/domains/catalog/hooks/use-org-annotations", () => annotationMocks);
 
 import { PrivateNotesPanel } from "@/domains/catalog/components/profiles/private-notes-panel";

@@ -182,7 +182,8 @@
     },
     "test": {
       "dependsOn": [
-        "@rebuildingamerica/atlas-api-client#api-client"
+        "@rebuildingamerica/atlas-api-client#api-client",
+        "@rebuildingamerica/atlas-api#test"
       ],
       "inputs": [
         "$TURBO_DEFAULT$",

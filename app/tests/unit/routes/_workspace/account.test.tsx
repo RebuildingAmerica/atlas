@@ -7,7 +7,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/pages/workspace/account-page", () => ({
   AccountPage: () => null,
 }));
 
@@ -18,7 +18,7 @@ vi.mock("@/domains/access/server", () => ({
 describe("routes/_workspace/account", () => {
   it("registers AccountPage and redirects local sessions before loading", async () => {
     const routeModule = await import("@/routes/_workspace/account");
-    const { AccountPage } = await import("@/domains/access");
+    const { AccountPage } = await import("@/domains/access/pages/workspace/account-page");
     const access = await import("@/domains/access/server");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);

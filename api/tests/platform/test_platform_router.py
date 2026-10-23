@@ -16,8 +16,7 @@ if TYPE_CHECKING:
 def test_writes_the_platform_document_to_the_openapi_folder(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    fake_module = tmp_path / "api" / "atlas" / "platform" / "http" / "platform_router.py"
-    monkeypatch.setattr(platform_router, "__file__", str(fake_module))
+    monkeypatch.setattr(platform_router, "PROJECT_ROOT", tmp_path)
 
     platform_router.main()
 

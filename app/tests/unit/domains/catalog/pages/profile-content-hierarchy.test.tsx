@@ -18,7 +18,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: () => ({ data: null }),
 }));
 

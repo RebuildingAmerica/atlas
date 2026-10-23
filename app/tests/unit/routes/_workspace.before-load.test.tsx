@@ -32,16 +32,13 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: vi.fn(),
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
+  atlasSessionQueryKey: ["session"],
   useAtlasSession: vi.fn(),
 }));
 
 vi.mock("@/domains/access/client/auth-client", () => ({
   getAuthClient: vi.fn(),
-}));
-
-vi.mock("@/domains/access/client/use-atlas-session", () => ({
-  atlasSessionQueryKey: ["session"],
 }));
 
 vi.mock("@/domains/access/organizations.functions", () => ({
@@ -193,7 +190,7 @@ describe("routes/_workspace beforeLoad", () => {
     const initialSession = createAtlasSessionFixture({ isLocal: true });
     const { readRouterMocks } = await import("@/../tests/helpers/router-harness");
     readRouterMocks().useRouteContext.mockReturnValue({ session: initialSession });
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: initialSession,
     } as unknown as ReturnType<typeof useAtlasSession>);

@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
-import { AccountSetupPage } from "@/domains/access";
+import { AccountSetupPage } from "@/domains/access/pages/auth/account-setup-page";
 import { createWorkspace } from "@/domains/access/organizations.functions";
 import {
   attachPurchaseWorkspace,

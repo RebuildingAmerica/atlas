@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/pages/auth/account-setup-page", () => ({
   AccountSetupPage: ({ redirectTo }: { redirectTo?: string }) => (
     <div data-testid="setup-page" data-redirect={redirectTo ?? ""} />
   ),

@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/pages/auth/oauth-consent-page", () => ({
   OAuthConsentPage: ({
     clientId,
     scope,
@@ -40,7 +40,8 @@ describe("routes/_auth/oauth/consent", () => {
 
   it("disables SSR and registers the consent search schema", async () => {
     const routeModule = await import("@/routes/_auth/oauth/consent");
-    const { oauthConsentSearchSchema } = await import("@/domains/access");
+    const { oauthConsentSearchSchema } =
+      await import("@/domains/access/pages/auth/oauth-consent-page");
     const { asRouteStub } = await import("@/../tests/helpers/router-harness");
     const Route = asRouteStub(routeModule.Route);
 

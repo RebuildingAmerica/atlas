@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DeviceApprovalCompletePage } from "@/domains/access";
+import { DeviceApprovalCompletePage } from "@/domains/access/pages/auth/device-approval-page";
 import { requireAtlasSession } from "@/domains/access/server";
 
 export const Route = createFileRoute("/_auth/device/approved")({

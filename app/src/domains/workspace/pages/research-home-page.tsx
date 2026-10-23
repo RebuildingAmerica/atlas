@@ -8,7 +8,7 @@
  * it renders from the summary the loader already computed, never a client-fetch
  * shell, and degrades to honest empty states.
  */
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import type { AtlasWorkspaceType } from "@rebuildingamerica/atlas-access/workspace/organization-metadata";
 import { useWorkspaceBriefs } from "../hooks/use-briefs";
 import { useWorkspaceCoverageTargets } from "../hooks/use-coverage-targets";

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SignInPage, signInSearchSchema } from "@/domains/access";
+import { SignInPage, signInSearchSchema } from "@/domains/access/pages/auth/sign-in-page";
 import { redirectIfLocalSession } from "@/domains/access/server";
 
 export const Route = createFileRoute("/_auth/sign-in")({

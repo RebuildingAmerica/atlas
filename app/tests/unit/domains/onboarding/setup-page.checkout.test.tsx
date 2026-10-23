@@ -23,7 +23,7 @@ vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: mocks.useAtlasSession,
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/pages/auth/account-setup-page", () => ({
   AccountSetupPage: () => <div data-testid="account-setup-page" />,
 }));
 

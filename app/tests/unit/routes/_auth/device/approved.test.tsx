@@ -8,7 +8,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/pages/auth/device-approval-page", () => ({
   DeviceApprovalCompletePage: () => <div data-testid="device-approved" />,
 }));
 

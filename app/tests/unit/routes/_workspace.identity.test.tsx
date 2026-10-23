@@ -20,7 +20,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("delegates the workspace-switch mutationFn to setActiveWorkspace", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useMutation } = await import("@tanstack/react-query");
     const { setActiveWorkspace } = await import("@/domains/access/organizations.functions");
     interface MutationOptions {
@@ -48,7 +48,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("includes Organization in the rail when onboarding needs it and renders the workspace switcher", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { setActiveWorkspace } = await import("@/domains/access/organizations.functions");
     const { useMutation, useQueryClient } = await import("@tanstack/react-query");
     const switchMutation = vi.fn().mockResolvedValue(undefined);
@@ -101,7 +101,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("falls back to an empty workspace-switcher value when no active organization is set", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: workspaceSession({ activeOrganization: null, canSwitchOrganizations: true }),
     } as unknown as ReturnType<typeof useAtlasSession>);
@@ -112,7 +112,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("falls back to the active organization name pill and the email when name is empty", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: workspaceSession({
         hasPendingInvitations: true,
@@ -129,7 +129,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("signs out by hitting RP logout and falls back to / when the URL is missing", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { getAuthClient } = await import("@/domains/access/client/auth-client");
     const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
 
@@ -159,7 +159,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("surfaces an error message when sign-out fails", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { getAuthClient } = await import("@/domains/access/client/auth-client");
     const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
 
@@ -181,7 +181,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("keeps the sign-out failure message safe when the RP logout lookup itself fails", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { getRpLogoutRedirect } = await import("@/domains/access/session.functions");
 
     vi.mocked(useAtlasSession).mockReturnValue({
@@ -201,7 +201,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("still draws an avatar when the account has neither a name nor an email", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         ...workspaceSession({ activeOrganization: null, memberships: [] }),
@@ -215,7 +215,7 @@ describe("routes/_workspace identity controls", () => {
   });
 
   it("surfaces workspace-switch errors", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     const { useMutation } = await import("@tanstack/react-query");
     const { UserFacingError } =
       await import("@rebuildingamerica/atlas-api-client/user-facing-errors");

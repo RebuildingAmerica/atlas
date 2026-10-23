@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DeviceApprovalPage, deviceApprovalSearchSchema } from "@/domains/access";
+import {
+  DeviceApprovalPage,
+  deviceApprovalSearchSchema,
+} from "@/domains/access/pages/auth/device-approval-page";
 
 export const Route = createFileRoute("/_auth/device/")({
   validateSearch: deviceApprovalSearchSchema,

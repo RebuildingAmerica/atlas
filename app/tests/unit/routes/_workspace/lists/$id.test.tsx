@@ -19,7 +19,7 @@ vi.mock("@/domains/catalog/components/profiles/actor-avatar", () => ({
   ActorAvatar: ({ name }: { name: string }) => <span data-testid="actor-avatar">{name}</span>,
 }));
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(),
 }));
 
@@ -32,7 +32,7 @@ describe("routes/_workspace/lists/$id", () => {
     const { resetRouterMocks } = await import("@/../tests/helpers/router-harness");
     resetRouterMocks();
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: {
         workspace: {
@@ -96,7 +96,7 @@ describe("routes/_workspace/lists/$id", () => {
 
   it("lets the owner deliberately share a private list with the active team", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     const setSharing = vi.fn().mockResolvedValue(undefined);
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: {
@@ -141,7 +141,7 @@ describe("routes/_workspace/lists/$id", () => {
 
   it("lets the owner stop sharing and explains a failed change", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     const setSharing = vi.fn().mockRejectedValue(new Error("internal failure"));
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: {
@@ -231,7 +231,7 @@ describe("routes/_workspace/lists/$id", () => {
 
   it("lets a free researcher reuse a saved lead without offering paid actions that will fail", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(access.useAtlasSession).mockReturnValue({
       data: { workspace: { resolvedCapabilities: { capabilities: [] } } },
     } as unknown as ReturnType<typeof access.useAtlasSession>);
@@ -273,7 +273,7 @@ describe("routes/_workspace/lists/$id", () => {
 
   it("does not label a workspace Free before its session resolves", async () => {
     const claims = await import("@/domains/catalog/hooks/use-claims");
-    const access = await import("@/domains/access");
+    const access = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(access.useAtlasSession).mockReturnValue({ data: null } as unknown as ReturnType<
       typeof access.useAtlasSession
     >);

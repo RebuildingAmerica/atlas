@@ -9,7 +9,7 @@ vi.mock("@tanstack/react-router", async () => {
   return harness.installRouterMocks();
 });
 
-vi.mock("@/domains/access", () => ({
+vi.mock("@/domains/access/client/use-atlas-session", () => ({
   useAtlasSession: vi.fn(),
 }));
 
@@ -19,7 +19,7 @@ describe("PublicTopNav", () => {
   });
 
   it("keeps public navigation public-only for signed-out visitors", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);
@@ -74,7 +74,7 @@ describe("PublicTopNav", () => {
   });
 
   it("lets the home page own search instead of duplicating it in chrome", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);
@@ -98,7 +98,7 @@ describe("PublicTopNav", () => {
   });
 
   it("keeps secondary destinations in an operable More menu after the brand", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);
@@ -133,7 +133,7 @@ describe("PublicTopNav", () => {
   });
 
   it("lets signed-out public chrome float before anchoring on scroll", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: null,
     } as unknown as ReturnType<typeof useAtlasSession>);
@@ -146,7 +146,7 @@ describe("PublicTopNav", () => {
   });
 
   it("keeps signed-in public pages discovery-first instead of rendering the app nav in the top bar", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,
@@ -195,7 +195,7 @@ describe("PublicTopNav", () => {
   });
 
   it("keeps local single-user mode compact while linking into the workbench", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: true,
@@ -232,7 +232,7 @@ describe("PublicTopNav", () => {
   });
 
   it("gives a team member direct access to saved work and their organization", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,
@@ -273,7 +273,7 @@ describe("PublicTopNav", () => {
   });
 
   it("falls back to the person glyph when a signed-in visitor has no avatar", async () => {
-    const { useAtlasSession } = await import("@/domains/access");
+    const { useAtlasSession } = await import("@/domains/access/client/use-atlas-session");
     vi.mocked(useAtlasSession).mockReturnValue({
       data: {
         isLocal: false,

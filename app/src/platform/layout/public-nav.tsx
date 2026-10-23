@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { UserRound } from "lucide-react";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { useHydrated } from "@/platform/runtime/use-hydrated";
 import { shouldShowOrganizationNav, type AppNavItem } from "./app-navigation";
 import {

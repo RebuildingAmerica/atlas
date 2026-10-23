@@ -19,9 +19,14 @@ os.environ.setdefault("ATLAS_MULTI_USER", "false")
 # themselves.
 os.environ.setdefault("ATLAS_MANAGED", "false")
 
+import asyncio  # noqa: E402
+import shutil  # noqa: E402
+import sqlite3  # noqa: E402
 import tempfile  # noqa: E402
 import uuid  # noqa: E402
 from collections.abc import AsyncIterator, Iterator  # noqa: E402
+from concurrent.futures import ThreadPoolExecutor  # noqa: E402
+from contextlib import closing  # noqa: E402
 from datetime import UTC, date, datetime, timedelta  # noqa: E402
 from pathlib import Path  # noqa: E402
 from urllib.parse import urlsplit, urlunsplit  # noqa: E402
@@ -106,8 +111,46 @@ def tmp_db_path() -> Iterator[str]:
         yield str(path)
 
 
+@pytest.fixture(scope="session")
+def sqlite_schema_template() -> Iterator[Path]:
+    """Build the SQLite schema once per process and hand every test a copy of it.
+
+    ``init_db`` is a few dozen sequential statements, each a round trip to
+    aiosqlite's worker thread. Alone that is about a tenth of a second; with the
+    machine busy it is most of a second, and it ran for every test that touched a
+    database, which made it the largest cost in the API suite by a wide margin.
+    The schema never differs between tests, so it is built once and copied. A
+    copy is a single file read.
+
+    The build runs on its own thread because ``asyncio.run`` leaves the calling
+    thread without an event loop, and pytest-asyncio expects to manage that
+    thread's loop itself.
+
+    The directory is owned here rather than taken from pytest's temporary path
+    factory, which leaves a ``pytest-of-<user>`` folder behind in the system
+    temp directory. Like every other fixture database, this one is removed when
+    the session ends.
+
+    Yields
+    ------
+    Path
+        A fully initialized SQLite database file with no write-ahead log pending.
+    """
+    with tempfile.TemporaryDirectory(prefix="atlas-test-schema-") as directory:
+        template = Path(directory) / "template.db"
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(asyncio.run, init_db(f"sqlite:///{template}", backend="sqlite")).result()
+        # The database runs in WAL mode. A copy of the main file alone is only whole
+        # once nothing is waiting in the log, so fold it in before anyone copies.
+        with closing(sqlite3.connect(template)) as connection:
+            connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        yield template
+
+
 @pytest_asyncio.fixture
-async def db_url(tmp_db_path: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[str]:
+async def db_url(
+    tmp_db_path: str, monkeypatch: pytest.MonkeyPatch, sqlite_schema_template: Path
+) -> AsyncIterator[str]:
     """Create and initialize a test database.
 
     Runs against PostgreSQL whenever ``ATLAS_TEST_POSTGRES_URL`` names a server,
@@ -135,7 +178,7 @@ async def db_url(tmp_db_path: str, monkeypatch: pytest.MonkeyPatch) -> AsyncIter
         # a backend that contradicts its own default URL.
         monkeypatch.setenv("DATABASE_BACKEND", "sqlite")
         monkeypatch.setenv("DATABASE_URL", sqlite_url)
-        await init_db(sqlite_url, backend="sqlite")
+        shutil.copyfile(sqlite_schema_template, tmp_db_path)
         yield sqlite_url
         return
 

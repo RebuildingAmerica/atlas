@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { AccountSetupPage } from "@/domains/access";
+import { AccountSetupPage } from "@/domains/access/pages/auth/account-setup-page";
 import { requireIncompleteAtlasSession } from "@/domains/access/server";
 
 const setupSearchSchema = z.object({

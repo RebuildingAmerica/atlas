@@ -79,11 +79,10 @@ class TestMain:
         mock_module.create_app.return_value = mock_app
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            fake_file = str(Path(tmpdir) / "api" / "atlas" / "platform" / "openapi.py")
             expected = Path(tmpdir) / "openapi" / "atlas.openapi.json"
 
             with (
-                patch.object(openapi_module, "__file__", fake_file),
+                patch.object(openapi_module, "PROJECT_ROOT", Path(tmpdir)),
                 patch(
                     "atlas.platform.openapi.importlib.import_module",
                     return_value=mock_module,

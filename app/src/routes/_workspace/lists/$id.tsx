@@ -7,7 +7,7 @@ import {
   useSavedList,
   useSetSavedListSharing,
 } from "@/domains/catalog/hooks/use-claims";
-import { useAtlasSession } from "@/domains/access";
+import { useAtlasSession } from "@/domains/access/client/use-atlas-session";
 import { buildNewsroomAssignmentPacket } from "@/domains/workspace/newsroom-handoff";
 import { buildNonprofitSystemsPacket } from "@/domains/workspace/nonprofit-systems-bridge";
 import {
